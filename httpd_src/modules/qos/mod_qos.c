@@ -44,7 +44,7 @@
  * Version
  ***********************************************************************/
 
-static const char rcsid[] = "$Header: /home/cvs/m/mo/mod-qos/src/httpd_src/modules/qos/mod_qos.c,v 1.1 2007-05-18 20:30:12 pbuchbinder Exp $";
+static const char rcsid[] = "$Header: /home/cvs/m/mo/mod-qos/src/httpd_src/modules/qos/mod_qos.c,v 1.2 2007-05-19 07:56:34 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -109,8 +109,8 @@ static int qos_header_parser(request_rec * r) {
 
     /* get the request limitation for this location */
     int limit = sconf->default_loc_limit;
-    char *limit_location;
-    int limit_location_len;
+    char *limit_location = apr_pstrdup(r->pool, "/");
+    int limit_location_len = strlen(limit_location);
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->location_t)->elts;
     for(i = 0; i < apr_table_elts(sconf->location_t)->nelts; i++) {
       if(strncmp(entry[i].key, r->parsed_uri.path, strlen(entry[i].key)) == 0) {
@@ -163,7 +163,7 @@ static int qos_header_parser(request_rec * r) {
  * Intit the server configuration
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
-  char *rev = apr_pstrdup(ptemp, "$Revision: 1.1 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 1.2 $");
   char *e = strrchr(rev, ' ');
   e[0] = '\0';
   rev++;
