@@ -34,11 +34,51 @@ code</a> of mod_qos is available under the <a href="LICENSE.txt">GNU General Pub
 The first release of the module implements a very simple control mechanism for the maximum number of concurrent requests to a location 
 (URL). Following releases will introduce additional features.
 </p>
+<hr>
+<h3>Build</h3>
+<p>
+mod_qos does not have and dependencies to other Apache modules or special libraries. Just copy
+the module into the modules directory of the Apache server's source code and compile it using
+the following commands:
+<pre>
+./buildconf
+./configure --enable-so --enable-qos=shared
+make
+</pre>
+This creates a DSO module, which can be loaded into the Apache server using the following directive:
+<pre>
+LoadModule qos_module &lt;path to module&gt;/mod_qos.so
+</pre>
+</p>
+<h3>Source</h3>
+<p>
+<a href="../apache2">mod_qos for Apache 2</a>
+</p>
+<h3>Configuration</h3>
+<p>
+The module features the following directives:
+<ul>
+<li>
+<code>QS_LocRequestLimit &lt;location&gt; &lt;number&gt;</code><br>
+Defines the number of concurrent requests for the specified location. By default, no 
+limitations are active for locations.
+</li>
+<li>
+<code>QS_LocRequestLimitDefault &lt;number&gt;</code><br>Defines the default limitation 
+for the maximum of concurrent per locations for those locations not defined by the 
+QS_LocRequestLimit directive.
+</li>
+<li>
+<code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when
+a request is denied.
+</li>
+</ul>
+</p>
 </td></tr>
 </tbody>
 </table>
 <br>
 <hr>
-<SMALL><SMALL>&copy; 2007, mod_qos <span style="color: rgb(255, 255, 255);">Pascal Buchbinder</span></SMALL></SMALL>
+<SMALL><SMALL>&copy; 2007, mod_qos</SMALL></SMALL>
 </body>
 </html>
