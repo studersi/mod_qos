@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 1.2 2007-05-24 20:15:40 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 1.3 2007-05-30 20:33:25 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
@@ -28,6 +28,7 @@ cd httpd
 ./buildconf
 ./configure --enable-so --enable-qos=shared
 make
+strip modules/qos/.libs/mod_qos.so
 cd ..
 echo "END"
 
