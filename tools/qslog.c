@@ -41,6 +41,7 @@
 /* ----------------------------------
  * definitions
  * ---------------------------------- */
+#define ACTIVE_TIME 600 /* how long is a client "active" (ip addresses seen in the log) */
 #define LOG_INTERVAL 60 /* log interval ist 60 sec, don't change this value */
 
 /* ----------------------------------
@@ -60,6 +61,7 @@ static long m_duration_3 = 0;
 static long m_duration_4 = 0;
 static long m_duration_5 = 0;
 static long m_duration_6 = 0;
+static qs_event_t *m_ip_list = NULL;
 /* output file */
 static FILE *m_f = NULL;
 static char  m_file_name[MAX_LINE];
@@ -137,6 +139,7 @@ static void printAndResetStat(char *timeStr) {
           "4s;%ld;"
           "5s;%ld;"
           ">5s;%ld;"
+	  "ip;%ld;"
 	  ,
 	  timeStr,
           m_line_count/LOG_INTERVAL,
@@ -148,7 +151,8 @@ static void printAndResetStat(char *timeStr) {
           m_duration_3,
           m_duration_4,
           m_duration_5,
-          m_duration_6
+          m_duration_6,
+          qs_countEvent(&m_ip_list)
           );
   m_line_count = 0;
   m_byte_count = 0;
@@ -186,6 +190,7 @@ static void updateStat(const char *cstr, char *line) {
   char *T = NULL; /* time */
   char *B = NULL; /* bytes */
   char *R = NULL; /* request line */
+  char *I = NULL; /* client ip */
   const char *c = cstr;
   char *l = line;
   while(c[0]) {
@@ -206,6 +211,10 @@ static void updateStat(const char *cstr, char *line) {
       if(l != NULL && l[0] != '\0') {
         R = cutNext(&l);
       }
+    } else if(strncmp(c, "I", 1) == 0) {
+      if(l != NULL && l[0] != '\0') {
+        I = cutNext(&l);
+      }
     } else if(strncmp(c, " ", 1) == 0) {
       /* do nothing */
     } else {
@@ -218,12 +227,17 @@ static void updateStat(const char *cstr, char *line) {
   }
   if(m_offline && m_verbose) {
     m_lines++;
-    printf("[%ld] B=%s T=%s\n", m_lines,
+    printf("[%ld] I=%s B=%s T=%s\n", m_lines,
+	   I == NULL ? "(null)" : I,
 	   B == NULL ? "(null)" : B,
 	   T == NULL ? "(null)" : T
 	   );
   }
   qs_csLock();
+  if(I != NULL) {
+    /* update/store client IP */
+    qs_insertEvent(&m_ip_list, I);
+  }
   if(B != NULL) {
     /* transferred bytes */
     m_byte_count = m_byte_count + atoi(B);
@@ -369,6 +383,7 @@ static void readStdinOffline(const char *cstr) {
       fprintf(m_f, "leap in time ---------------\n");
       /* reset user counter */
       qs_setTime(99999 * 60);
+      qs_GCEvent(&m_ip_list);
 
       /* continue */
       unitTime = l_time;
@@ -428,6 +443,7 @@ static void usage(char *cmd) {
   printf("  - distribution of response durations within the last minute\n");
   printf("    (<1s,1s,2s,3s,4s,5s,>5)\n");
   printf("  - average system load (sl)\n");
+  printf("  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
   printf("\n");
   printf("Options\n");
   printf("  -f <format_string>\n");
@@ -440,6 +456,7 @@ static void usage(char *cmd) {
   printf("     T defines the request duration (%%T)\n");
   printf("     B defines the transferred bytes (%%b)\n");
   printf("     R defines the request line (%%r)\n");
+  printf("     I defines the client ip address (%%h)\n");
   printf("  -o <out_file>\n");
   printf("     Specifies the file to store the output to.\n");
   printf("  -p\n");
@@ -454,8 +471,8 @@ static void usage(char *cmd) {
   printf("     Become another user, e.g. nobody.\n");
   printf("\n");
   printf("Example configuration\n");
-  printf("  LogFormat \"%%t \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
-  printf("  TransferLog \"|./bin/%s -f ..R.B.T -o ./logs/stat_log\"\n", cmd);
+  printf("  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
+  printf("  TransferLog \"|./bin/%s -f ..IR.B.T -o ./logs/stat_log\"\n", cmd);
   printf("\n");
   exit(1);
 }
@@ -468,6 +485,7 @@ int main(int argc, char **argv) {
   pthread_attr_t *tha = NULL;
   pthread_t tid;
   qs_csInitLock();
+  qs_setExpiration(ACTIVE_TIME);
   if(cmd == NULL) {
     cmd = argv[0];
   } else {
