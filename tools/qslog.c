@@ -470,9 +470,12 @@ static void usage(char *cmd) {
   printf("  -u <name>\n");
   printf("     Become another user, e.g. nobody.\n");
   printf("\n");
-  printf("Example configuration\n");
+  printf("Example configuration using pipped logging:\n");
   printf("  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
   printf("  TransferLog \"|./bin/%s -f ..IR.B.T -o ./logs/stat_log\"\n", cmd);
+  printf("\n");
+  printf("Example for post processing:\n");
+  printf("  cat access_log | ./bin/%s -f ..IR.B.T -o ./logs/stat_log -p\n", cmd);
   printf("\n");
   exit(1);
 }
@@ -491,6 +494,8 @@ int main(int argc, char **argv) {
   } else {
     cmd++;
   }
+  argc--;
+  argv++;
   while(argc >= 1) {
     if(strcmp(*argv,"-f") == 0) { /* this is the format string */
       if (--argc >= 1) {
@@ -511,6 +516,15 @@ int main(int argc, char **argv) {
       m_verbose = 1;
     } else if(strcmp(*argv,"-x") == 0) { /* activate log rotation */
       m_rotate = 1;
+    } else if(strcmp(*argv,"-h") == 0) {
+      usage(cmd);
+    } else if(strcmp(*argv,"--help") == 0) {
+      usage(cmd);
+    } else if(strcmp(*argv,"-?") == 0) {
+      usage(cmd);
+    } else {
+      fprintf(stderr,"[%s]: ERROR, unknown option '%s'\n", cmd, *argv);
+      exit(1);
     }
     argc--;
     argv++;
@@ -522,7 +536,7 @@ int main(int argc, char **argv) {
     struct passwd *pwd = getpwnam(username);
     uid_t uid, gid;
     if(pwd == NULL) {
-      fprintf(stderr,"[%s]: ERROR, unknown user id %s\n", cmd, username);
+      fprintf(stderr,"[%s]: ERROR, unknown user id '%s'\n", cmd, username);
       exit(1);
     }
     uid = pwd->pw_uid;
@@ -541,11 +555,11 @@ int main(int argc, char **argv) {
 
   m_f = fopen(file, "a+"); 
   if(m_f == NULL) {
-    fprintf(stderr, "[%s]: ERROR, could not open file for writing <%s>\n", cmd, file);
+    fprintf(stderr, "[%s]: ERROR, could not open file for writing '%s'\n", cmd, file);
     exit(1);
   }
   if(strlen(file) > (sizeof(m_file_name) - strlen(".yyyymmddHHMMSS "))) {
-    fprintf(stderr, "[%s]: ERROR, file name too long <%s>\n", cmd, file);
+    fprintf(stderr, "[%s]: ERROR, file name too long '%s'\n", cmd, file);
     exit(1);
   }
   strcpy(m_file_name, file);
