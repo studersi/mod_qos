@@ -15,23 +15,25 @@ QS_PORT_BASE=`expr $QS_PORT_BASE + 5000`
 ERRORS=0
 
 rm -f logs/access_log
-echo "start `date` -----------------------------" >>  logs/error_log
+echo "-- start `date` --" >>  logs/error_log
+# -----------------------------------------------------------------
 ./ctl.sh start
+(echo "GET /test/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null
 
 # -----------------------------------------------------------------
-(echo "GET /test/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null
+echo "-- 7 requests to an url limited to max 5 concurrent requests" >>  logs/error_log
 RON="1 2 3 4 5 6 7"
 for E in $RON; do
 (echo "GET /cgi/sleep.cgi HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null &
 done
-
 sleep 5
-if [ `grep -c "GET /cgi/sleep.cgi HTTP/1.0\" 500" logs/access_log` -eq 0 ]; then
+if [ `grep -c "GET /cgi/sleep.cgi HTTP/1.0\" 500" logs/access_log` -ne 2 ]; then
     ./ctl.sh stop
     echo "FAILED"
     exit 1
 fi
 
+# -----------------------------------------------------------------
 ./ctl.sh stop
 echo "normal end"
 exit 0
