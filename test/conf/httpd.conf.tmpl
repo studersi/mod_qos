@@ -1,0 +1,54 @@
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 1.1 2007-07-04 19:02:42 pbuchbinder Exp $
+
+ServerName              127.0.0.1
+StartServers            5
+MinSpareServers         5
+MaxSpareServers         10
+MaxClients              128
+MaxRequestsPerChild     300000
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/htdocs
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept.lock
+Timeout                 90
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        10
+
+Options                 FollowSymLinks Indexes
+DefaultType             text/plain
+
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T #%P"
+
+LogLevel                debug
+ErrorLog                ##ROOT##/logs/error_log
+TransferLog             ##ROOT##/logs/access_log
+PidFile                 ##ROOT##/logs/apache.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+TypesConfig             conf/mime.types
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+
+NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
+Listen                  127.0.0.1:##QS_PORT_BASE##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE##>
+   ServerName           127.0.0.1
+
+   QS_LocRequestLimit   /cgi  5
+   QS_LocRequestLimit   /test 50
+
+   ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
+   <Location ##ROOT##/htdocs/cgi/>
+        AllowOverride None
+        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Order allow,deny
+        Allow from all
+   </Location>
+
+</VirtualHost>
