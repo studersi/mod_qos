@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 1.2 2007-05-24 20:15:40 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 1.3 2007-07-05 17:07:13 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -22,6 +22,7 @@ echo "install documentation"
 cp doc/README.TXT mod_qos-${VERSION}
 cp doc/index.html mod_qos-${VERSION}/doc
 cp doc/mod_qos_s.gif mod_qos-${VERSION}/doc
+cp doc/favicon.ico mod_qos-${VERSION}/doc
 
 echo "install source"
 cp httpd_src/modules/qos/mod_qos.c mod_qos-${VERSION}/apache2
