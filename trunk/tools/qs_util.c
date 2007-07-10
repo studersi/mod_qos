@@ -23,6 +23,8 @@
  *
  */
 
+static const char revision[] = "$Id: qs_util.c,v 1.2 2007-07-10 19:16:42 pbuchbinder Exp $";
+
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
@@ -62,6 +64,24 @@ int qs_getLine(char *s, int n) {
     if ((s[i] == 0x4) || (s[i] == LF) || (i == (n - 1))) {
       s[i] = '\0';
       return 1;
+    }
+    ++i;
+  }
+}
+
+/*
+ * reads a line from file
+ */
+int qs_getLinef(char *s, int n, FILE *f) {
+  register int i = 0;
+  while (1) {
+    s[i] = (char) fgetc(f);
+    if (s[i] == CR) {
+      s[i] = fgetc(f);
+    }
+    if ((s[i] == 0x4) || (s[i] == LF) || (i == (n - 1))) {
+      s[i] = '\0';
+      return (feof(f) ? 1 : 0);
     }
     ++i;
   }
