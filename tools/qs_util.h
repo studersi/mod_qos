@@ -50,6 +50,7 @@ typedef struct qs_event_st {
  * ---------------------------------- */
 /* io */
 int qs_getLine(char *s, int n);
+int qs_getLinef(char *s, int n, FILE *f);
 
 /* time */
 void qs_time(time_t *tme);
