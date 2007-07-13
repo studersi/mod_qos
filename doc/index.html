@@ -76,14 +76,31 @@ QS_LocRequestLimit directive.
 a request is denied.
 </li>
 </ul>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Sample configuration:<br>
+<pre>
+QS_LocRequestLimitDefault              200
+QS_LocRequestLimit        /images      100
+QS_LocRequestLimit        /application 300
+QS_ErrorPage              /error.html
+</pre>
+</td></tr>
+</table>
 </p>
 <h3>Log Messages</h3>
 <p>
 mod_qos writes messages to Apache's error log when enforcing a rule. The number of
 concurrent requests to location defined by QS_LocRequestLimit can be logged to the
-access log using the mod_qos_cr HTTP header. <br>
-Example:<br>
-<code>LogFormat "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o #%P"</code>
+access log using the mod_qos_cr HTTP header.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Sample configuration:<br>
+<pre>
+LogFormat "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o #%P"
+</pre>
+</td></tr>
+</table>
 </p>
 </td></tr>
 </tbody>
