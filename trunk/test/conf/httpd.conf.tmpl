@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 1.1 2007-07-04 19:02:42 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 1.2 2007-07-13 09:27:06 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            5
@@ -40,6 +40,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
    ServerName           127.0.0.1
 
+   QS_LocRequestLimitDefault  30
    QS_LocRequestLimit   /cgi  5
    QS_LocRequestLimit   /test 50
 

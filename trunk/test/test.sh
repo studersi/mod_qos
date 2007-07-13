@@ -15,9 +15,10 @@ QS_PORT_BASE=`expr $QS_PORT_BASE + 5000`
 ERRORS=0
 
 rm -f logs/access_log
+echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
 echo "-- start `date` --" >>  logs/error_log
 # -----------------------------------------------------------------
-./ctl.sh start
+./ctl.sh start > /dev/null
 (echo "GET /test/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null
 
 # -----------------------------------------------------------------
@@ -34,6 +35,6 @@ if [ `grep -c "GET /cgi/sleep.cgi HTTP/1.0\" 500" logs/access_log` -ne 2 ]; then
 fi
 
 # -----------------------------------------------------------------
-./ctl.sh stop
+./ctl.sh stop > /dev/null
 echo "normal end"
 exit 0
