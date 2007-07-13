@@ -24,16 +24,17 @@
 <p>
 The Apache Web Server requires threads and processes to serve HTTP requests. Each TCP connection to 
 the web server occupies one of these threads respecively processes. Sometimes a server gets too busy 
-to serve every request due the lack of free processes or threads. mod_qos is a <b>Quality of Service module 
-for the Apache Web Server</b> implementing control mechanisms that can provide different priority to different requests.
+to serve every request due the lack of free processes or threads. mod_qos is a <b>Quality of Service 
+module for the Apache Web Server</b> implementing control mechanisms that can provide different 
+priority to different requests.
 </p>
 <p>
-mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a>. The <a href="http://mod-qos.cvs.sourceforge.net/*checkout*/mod-qos/src/httpd_src/modules/qos/mod_qos.c">source 
-code</a> of mod_qos is available under the <a href="LICENSE.txt">GNU General Public License</a>. 
+mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a> under 
+the <a href="LICENSE.txt">GNU General Public License</a>.
 </p>
 <p>
-The first release of the module implements a very simple control mechanism for the maximum number of concurrent requests to a location 
-(URL). Following releases will introduce additional features.
+The current release of the module implements a very simple control mechanism for the maximum number 
+of concurrent requests to a location (URL). Following releases will introduce additional features.
 </p>
 <hr>
 <h3>Build</h3>
@@ -75,6 +76,14 @@ QS_LocRequestLimit directive.
 a request is denied.
 </li>
 </ul>
+</p>
+<h3>Log Messages</h3>
+<p>
+mod_qos writes messages to Apache's error log when enforcing a rule. The number of
+concurrent requests to location defined by QS_LocRequestLimit can be logged to the
+access log using the mod_qos_cr HTTP header. <br>
+Example:<br>
+<code>LogFormat "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o #%P"</code>
 </p>
 </td></tr>
 </tbody>
