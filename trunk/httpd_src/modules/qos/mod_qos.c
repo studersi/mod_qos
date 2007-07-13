@@ -44,7 +44,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 1.4 2007-07-13 09:28:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 1.5 2007-07-13 19:12:15 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -107,6 +107,13 @@ typedef struct {
   qs_acentry_t *entry;
 } qs_req_ctx;
 
+/** rule set */
+typedef struct {
+  char *url;
+  int limit;
+  //ap_regex_t *regex;
+} qs_rule_ctx_t;
+
 
 /************************************************************************
  * globals
@@ -160,11 +167,12 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     act->entry = apr_shm_baseaddr_get(act->m);
     e = act->entry;
     for(i = 0; i < length; i++) {
+      qs_rule_ctx_t *rule = (qs_rule_ctx_t *)entry[i].val;
       e->next = e + APR_ALIGN_DEFAULT(sizeof(qs_acentry_t *));
       e->id = i;
-      e->url = entry[i].key;
+      e->url = rule->url;
       e->url_len = strlen(e->url);
-      e->limit = atoi(entry[i].val);
+      e->limit = rule->limit;
       e->counter = 0;
       e->lock_file = apr_psprintf(act->pool, "%s.mod_qos", ap_server_root_relative(act->pool, tmpnam(NULL)));
       res = apr_global_mutex_create(&e->lock, e->lock_file, APR_LOCK_DEFAULT, act->pool);
@@ -269,9 +277,13 @@ static int qos_logger(request_rec * r) {
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   qs_acentry_t *e = rctx->entry;
   if(e) {
+    char *h = apr_psprintf(r->pool, "%d", e->counter);
     apr_global_mutex_lock(e->lock);
     e->counter--;
     apr_global_mutex_unlock(e->lock);
+    /* alow logging of the current location usage */
+    apr_table_set(r->headers_out, "mod_qos_cr", h);
+    apr_table_set(r->err_headers_out, "mod_qos_cr", h);
   }
   return DECLINED;
 }
@@ -308,7 +320,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 1.4 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 1.5 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -365,7 +377,12 @@ static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
 const char *qos_loc_con_cmd(cmd_parms * cmd, void *dcfg, const char *loc, const char *limit) {
   qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  apr_table_add(sconf->location_t, loc, limit);
+  char *id = apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->location_t)->nelts);
+  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+  rule->url = apr_pstrdup(cmd->pool, loc);
+  rule->limit = atoi(limit);
+  //rule->regex = NULL;
+  apr_table_setn(sconf->location_t, id, (char *)rule);
   return NULL;
 }
 
@@ -375,8 +392,7 @@ const char *qos_loc_con_cmd(cmd_parms * cmd, void *dcfg, const char *loc, const 
 const char *qos_loc_con_def_cmd(cmd_parms * cmd, void *dcfg, const char *limit) {
   qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  apr_table_add(sconf->location_t, "/", limit);
-  return NULL;
+  return qos_loc_con_cmd(cmd, dcfg, "/", limit);
 }
 
 /**
@@ -416,7 +432,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_post_config(qos_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_header_parser(qos_header_parser, NULL, NULL, APR_HOOK_MIDDLE);
-  ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
 }
 
 /************************************************************************
