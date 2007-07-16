@@ -35,6 +35,19 @@ if [ `grep -c "GET /cgi/sleep.cgi HTTP/1.0\" 500" logs/access_log` -ne 2 ]; then
 fi
 
 # -----------------------------------------------------------------
+echo "-- 7 requests with matching regex rule (overrides location rule)" >>  logs/error_log
+RON="1 2 3 4 5 6 7"
+for E in $RON; do
+(echo "GET /cgi/image.gif HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null &
+done
+sleep 5
+if [ `grep -c "GET /cgi/image.gif HTTP/1.0\" 500" logs/access_log` -ne 5 ]; then
+    ./ctl.sh stop
+    echo "FAILED"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
 echo "normal end"
 exit 0

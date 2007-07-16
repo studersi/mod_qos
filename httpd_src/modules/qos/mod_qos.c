@@ -13,6 +13,9 @@
  * different priority to different requests.
  *
  * This release features the following directives:
+ * - QS_LocRequestLimitMatch:
+ *   Limits the number of concurrent requests matching a
+ *   regular expression.
  * - QS_LocRequestLimit/QS_LocRequestLimitDefault:
  *   Limits the number of concurrent requests for a location.
  * - QS_ErrorPage:
@@ -44,7 +47,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 1.5 2007-07-13 19:12:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 1.6 2007-07-16 19:08:53 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -80,6 +83,11 @@ typedef struct qs_acentry_st {
   int limit;
   struct qs_acentry_st *next;
   int url_len;
+#ifdef AP_REGEX_H
+  ap_regex_t *regex;
+#else
+  regex_t *regex;
+#endif
   char *lock_file;
   char *url;
 } qs_acentry_t;
@@ -111,7 +119,13 @@ typedef struct {
 typedef struct {
   char *url;
   int limit;
-  //ap_regex_t *regex;
+#ifdef AP_REGEX_H
+  /* apache 2.2 */
+  ap_regex_t *regex;
+#else
+  /* apache 2.0 */
+  regex_t *regex;
+#endif
 } qs_rule_ctx_t;
 
 
@@ -172,6 +186,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
       e->id = i;
       e->url = rule->url;
       e->url_len = strlen(e->url);
+      e->regex = rule->regex;
       e->limit = rule->limit;
       e->counter = 0;
       e->lock_file = apr_psprintf(act->pool, "%s.mod_qos", ap_server_root_relative(act->pool, tmpnam(NULL)));
@@ -214,19 +229,49 @@ static void qos_error_response(request_rec *r, const char *error_page) {
 }
 
 /**
- * returns the best matching location entry
+ * returns the matching regex with the lowest limitation
  */
-static qs_acentry_t *qos_getlocation(request_rec * r, qos_srv_config* sconf) {
+static qs_acentry_t *qos_getrule_byregex(request_rec * r, qos_srv_config* sconf) {
   qs_acentry_t *ret = NULL;
   qs_actable_t *act = sconf->act;
   qs_acentry_t *e = act->entry;
-  int match = 0;
+  int limit = -1;
   while(e) {
-    if(strncmp(e->url, r->parsed_uri.path, e->url_len) == 0) {
-      /* best match */
-      if(e->url_len > match) {
-        match = e->url_len;
-        ret = e;
+    if(e->regex != NULL) {
+      if((limit == -1) || (e->limit < limit)) {
+        if(ap_regexec(e->regex, r->unparsed_uri, 0, NULL, 0) == 0) {
+          if(limit == -1) {
+            ret = e;
+            limit = e->limit;
+          } else if(e->limit < limit) {
+            ret = e;
+            limit = e->limit;
+          }
+        }
+      }
+    }
+    e = e->next;
+  }
+  return ret;
+}
+
+/**
+ * returns the best matching location entry
+ */
+static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config* sconf) {
+  qs_acentry_t *ret = NULL;
+  qs_actable_t *act = sconf->act;
+  qs_acentry_t *e = act->entry;
+  int match_len = 0;
+  while(e) {
+    if(e->regex == NULL) {
+      /* per location limitation */
+      if(strncmp(e->url, r->parsed_uri.path, e->url_len) == 0) {
+        /* best match */
+        if(e->url_len > match_len) {
+          match_len = e->url_len;
+          ret = e;
+        }
       }
     }
     e = e->next;
@@ -242,29 +287,35 @@ static qs_acentry_t *qos_getlocation(request_rec * r, qos_srv_config* sconf) {
  * header parser implements restrictions on a per location (url) basis.
  */
 static int qos_header_parser(request_rec * r) {
-  qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  /* apply rules only to main request (avoid filtering of error documents) */
+  if(ap_is_initial_req(r)) {
+    qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
 
-  /*
-   * QS_LocRequestLimit/QS_LocRequestLimitDefault enforcement
-   */
-  qs_acentry_t *e = qos_getlocation(r, sconf);
-  if(e) {
-    qs_req_ctx *rctx = qos_rctx_config_get(r);
-    rctx->entry = e;
-    apr_global_mutex_lock(e->lock);
-    e->counter++;
-    apr_global_mutex_unlock(e->lock);
-
-    /* enforce the limitation */
-    if(e->counter > e->limit) {
-      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                    QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests: %d",
-                    e->url, e->limit, e->counter);
-      if(sconf->error_page) {
-        qos_error_response(r, sconf->error_page);
-        return DONE;
+    /*
+     * QS_LocRequestLimitMatch/QS_LocRequestLimit/QS_LocRequestLimitDefault enforcement
+     */
+    /* 1st prio has QS_LocRequestLimitMatch */
+    qs_acentry_t *e = qos_getrule_byregex(r, sconf);
+    /* 2th prio has QS_LocRequestLimit */
+    if(!e) e = qos_getrule_bylocation(r, sconf);
+    if(e) {
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      rctx->entry = e;
+      apr_global_mutex_lock(e->lock);
+      e->counter++;
+      apr_global_mutex_unlock(e->lock);
+      
+      /* enforce the limitation */
+      if(e->counter > e->limit) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests: %d",
+                      e->url, e->limit, e->counter);
+        if(sconf->error_page) {
+          qos_error_response(r, sconf->error_page);
+          return DONE;
+        }
+        return HTTP_INTERNAL_SERVER_ERROR;
       }
-      return HTTP_INTERNAL_SERVER_ERROR;
     }
   }
   return DECLINED;
@@ -284,6 +335,8 @@ static int qos_logger(request_rec * r) {
     /* alow logging of the current location usage */
     apr_table_set(r->headers_out, "mod_qos_cr", h);
     apr_table_set(r->err_headers_out, "mod_qos_cr", h);
+    /* decrement only once */
+    ap_set_module_config(r->request_config, &qos_module, NULL);
   }
   return DECLINED;
 }
@@ -320,7 +373,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 1.5 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 1.6 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -381,7 +434,31 @@ const char *qos_loc_con_cmd(cmd_parms * cmd, void *dcfg, const char *loc, const 
   qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
   rule->url = apr_pstrdup(cmd->pool, loc);
   rule->limit = atoi(limit);
-  //rule->regex = NULL;
+  rule->regex = NULL;
+  apr_table_setn(sconf->location_t, id, (char *)rule);
+  return NULL;
+}
+
+/**
+ * defines the maximum of concurrent requests matching the specified
+ * request line pattern
+ */
+const char *qos_match_con_cmd(cmd_parms * cmd, void *dcfg, const char *match, const char *limit) {
+  qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  char *id = apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->location_t)->nelts);
+  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+  rule->url = apr_pstrdup(cmd->pool, match);
+  rule->limit = atoi(limit);
+#ifdef AP_REGEX_H
+  rule->regex = ap_pregcomp(cmd->pool, match, AP_REG_EXTENDED);
+#else
+  rule->regex = ap_pregcomp(cmd->pool, match, REG_EXTENDED);
+#endif
+  if(rule->regex == NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
+                       cmd->directive->directive, match);
+  }
   apr_table_setn(sconf->location_t, id, (char *)rule);
   return NULL;
 }
@@ -418,7 +495,12 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_LocRequestLimitDefault", qos_loc_con_def_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestLimitDefault <number>, defines the default for the"
-                " QS_LocRequestLimit directive."),
+                " QS_LocRequestLimit and QS_LocRequestLimitMatch directive."),
+  AP_INIT_TAKE2("QS_LocRequestLimitMatch", qos_match_con_cmd, NULL,
+                RSRC_CONF,
+                "QS_LocRequestLimitMatch <regex> <number>, defines the number of"
+                " concurrent requests to the request line pattern."
+                " Default is defined by the QS_LocRequestLimitDefault directive."),
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorPage <url>, defines a custom error page."),
