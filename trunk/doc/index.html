@@ -62,17 +62,25 @@ Note: the module requires shared memory support.
 The module features the following directives:
 <ul>
 <li>
+<code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
+Defines the number of concurrent requests for the specified request pattern 
+(applied to the unparsed uri). Rule with the lowest number of allowed 
+concurrent connection has the highest priority if multiple expressions 
+match the request. By default, no limitations are active for locations.
+</li>
+<li>
 <code>QS_LocRequestLimit &lt;location&gt; &lt;number&gt;</code><br>
-Defines the number of concurrent requests for the specified location. By default, no 
-limitations are active for locations.
+Defines the number of concurrent requests for the specified location (applied to 
+the parsed path). By default, no limitations are active for locations. Has 
+lower priority than QS_LocRequestLimitMatch.
 </li>
 <li>
 <code>QS_LocRequestLimitDefault &lt;number&gt;</code><br>Defines the default limitation 
-for the maximum of concurrent per locations for those locations not defined by the 
+for the maximum of concurrent per locations for those locations not defined by any 
 QS_LocRequestLimit directive.
 </li>
 <li>
-<code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when
+<code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when 
 a request is denied.
 </li>
 </ul>
@@ -81,6 +89,7 @@ a request is denied.
 Sample configuration:<br>
 <pre>
 QS_LocRequestLimitDefault              200
+QS_LocRequestLimitMatch   "^.*\.gif$"  100
 QS_LocRequestLimit        /images      100
 QS_LocRequestLimit        /application 300
 QS_ErrorPage              /error.html
