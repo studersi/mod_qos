@@ -9,6 +9,7 @@ QS_UID=`expr "$QS_UID" : 'uid=\([0-9]*\)'`
 QS_PORT_BASE=`expr ${QS_UID} - 1000`
 QS_PORT_BASE=`expr $QS_PORT_BASE '*' 120`
 QS_PORT_BASE=`expr $QS_PORT_BASE + 5000`
+QS_PORT_BASE1=`expr $QS_PORT_BASE + 1`
 
 ./generate.sh
 

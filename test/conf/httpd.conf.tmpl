@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 1.5 2007-07-16 19:08:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 1.6 2007-07-18 10:50:32 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            5
@@ -25,7 +25,7 @@ DefaultType             text/plain
 
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o #%P"
 
-LogLevel                debug
+LogLevel                info
 ErrorLog                ##ROOT##/logs/error_log
 TransferLog             ##ROOT##/logs/access_log
 PidFile                 ##ROOT##/logs/apache.pid
@@ -33,25 +33,38 @@ CoreDumpDirectory       ##ROOT##/logs/
 
 TypesConfig             conf/mime.types
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
+LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
-   ServerName           127.0.0.1
+   ServerName                 127.0.0.1
+
+   # -----------------------------------------------------------------
+   # sample configuration using mod_proxy
+   # -----------------------------------------------------------------
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE1##/
+   ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE1##/
 
    QS_LocRequestLimitDefault                30
-   QS_LocRequestLimit        /cgi            5
-   QS_LocRequestLimit        /test          50
-   QS_LocRequestLimitMatch   "^.*\.gif$"     2
+   QS_LocRequestLimit         /cgi            5
+   QS_LocRequestLimit         /test          50
+   QS_LocRequestLimitMatch    "^.*\.gif$"     2
 
-   QS_ErrorPage              /error.html
+   QS_ErrorPage               /error-docs/error.html
 
-   ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
-   <Location ##ROOT##/htdocs/cgi/>
-        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
-        Order allow,deny
-        Allow from all
-   </Location>
+   <Directory /error-docs>
+      SetHandler              default
+   </Directory>
 
 </VirtualHost>
