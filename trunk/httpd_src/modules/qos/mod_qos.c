@@ -47,7 +47,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 1.6 2007-07-16 19:08:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 1.7 2007-07-18 17:30:24 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -113,6 +113,7 @@ typedef struct {
 /** request configuration */
 typedef struct {
   qs_acentry_t *entry;
+  char *evmsg;
 } qs_req_ctx;
 
 /** rule set */
@@ -144,6 +145,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
   if(rctx == NULL) {
     rctx = apr_pcalloc(r->pool, sizeof(qs_req_ctx));
     rctx->entry = NULL;
+    rctx->evmsg = NULL;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
@@ -310,6 +312,7 @@ static int qos_header_parser(request_rec * r) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests: %d",
                       e->url, e->limit, e->counter);
+        rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
         if(sconf->error_page) {
           qos_error_response(r, sconf->error_page);
           return DONE;
@@ -335,8 +338,20 @@ static int qos_logger(request_rec * r) {
     /* alow logging of the current location usage */
     apr_table_set(r->headers_out, "mod_qos_cr", h);
     apr_table_set(r->err_headers_out, "mod_qos_cr", h);
+    if(r->next) {
+      apr_table_set(r->next->headers_out, "mod_qos_cr", h);
+      apr_table_set(r->next->err_headers_out, "mod_qos_cr", h);
+    }
     /* decrement only once */
     ap_set_module_config(r->request_config, &qos_module, NULL);
+  }
+  if(rctx->evmsg) {
+    apr_table_set(r->headers_out, "mod_qos_ev", rctx->evmsg);
+    apr_table_set(r->err_headers_out, "mod_qos_ev", rctx->evmsg);
+    if(r->next) {
+      apr_table_set(r->next->headers_out, "mod_qos_ev", rctx->evmsg);
+      apr_table_set(r->next->err_headers_out, "mod_qos_ev", rctx->evmsg);
+    }
   }
   return DECLINED;
 }
@@ -373,7 +388,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 1.6 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 1.7 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -415,6 +430,10 @@ static void *qos_srv_config_create(apr_pool_t * p, server_rec *s) {
   return sconf;
 }
 
+/**
+ * "merges" server configuration: virtual host overwrites global settings (if
+ * any rule has been specified)
+ */
 static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
   qos_srv_config *b = (qos_srv_config *)basev;
   qos_srv_config *o = (qos_srv_config *)addv;
