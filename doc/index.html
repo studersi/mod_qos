@@ -33,21 +33,24 @@ mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">Sourc
 the <a href="LICENSE.txt">GNU General Public License</a>.
 </p>
 <p>
-The current release of the module implements a very simple control mechanism for the maximum number 
-of concurrent requests to a location (URL). Following releases will introduce additional features.
+The current release of the module implements a control mechanism for the maximum number 
+of concurrent requests to a location (URL) or virtual host. It can also "detect" very 
+important persons (VIP) which may access the web server without any restrictions.
 </p>
 <hr>
 <h3>Build</h3>
 <p>
-mod_qos does not have any dependencies to other Apache modules or special libraries. Just copy
-the module into the modules directory of the Apache server's source code and compile it using
-the following commands:
+mod_qos version 2 requires OpenSSL but has no other dependencies to other modules nor any 
+special libraries. It works with Apache version 2.0 and 2.2. Just copy the module into 
+the modules directory of the Apache server's source code and compile it using the 
+following commands:
 <pre>
 ./buildconf
-./configure --enable-so --enable-qos=shared
+./configure --enable-so --enable-qos=shared --enable-ssl
 make
 </pre>
-This creates a DSO module, which can be loaded into the Apache server using the following directive:
+This creates a DSO module, which can be loaded into the Apache server using the 
+following directive:
 <pre>
 LoadModule qos_module &lt;path to module&gt;/mod_qos.so
 </pre>
@@ -78,22 +81,50 @@ lower priority than QS_LocRequestLimitMatch.
 <li>
 <code>QS_LocRequestLimitDefault &lt;number&gt;</code><br>Defines the default limitation 
 for the maximum of concurrent per locations for those locations not defined by any 
-QS_LocRequestLimit directive.
+QS_LocRequestLimit directive. It can also be used to limit the number of concurrent 
+requests to a virtual host.
 </li>
 <li>
 <code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when 
 a request is denied.
 </li>
 </ul>
+
+Additional directives are used to identify VIP's and to control the session 
+life time and its cookie format:
+<ul>
+<li>
+<code>QS_VipHeaderName &lt;header name&gt;</code><br>
+Defines a HTTP response header which marks a user as a VIP. mod_qos creates 
+a session for this user by setting a cookie. Whenever an application handler 
+sets this response header, the user gets unlimited access any location.
+</li>
+<li>
+<code>QS_SessionTimeout &lt;seconds&gt;</code><br>
+Defines the session life time for a VIP. Default are 3600 seconds.
+</li>
+<li>
+<code>QS_SessionCookieName &lt;name&gt;</code><br>
+Defines a custom cookie name. Default is MODQOS.
+</li>
+<li>
+<code>QS_SessionCookiePath &lt;path&gt;</code><br>
+Defines a the cookie path. Default is "/".
+</li>
+</ul>
+
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
 <pre>
+QS_ErrorPage              /error.html
+
 QS_LocRequestLimitDefault              200
 QS_LocRequestLimitMatch   "^.*\.gif$"  100
 QS_LocRequestLimit        /images      100
 QS_LocRequestLimit        /application 300
-QS_ErrorPage              /error.html
+
+QS_VipHeaderName          mod-qos-vip
 </pre>
 </td></tr>
 </table>
@@ -103,7 +134,7 @@ QS_ErrorPage              /error.html
 mod_qos writes messages to Apache's error log when enforcing a rule. The number of 
 concurrent requests to location defined by QS_LocRequestLimit can be logged to the 
 access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
-header is used to log event messages: D=denied, S=session available, V=create vip session.
+header is used to log event messages: D=denied, S=session available, V=create VIP session.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
