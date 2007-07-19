@@ -26,7 +26,6 @@
  * - QS_SessionTimeout/QS_SessionCookieName/QS_SessionCookiePath:
  *   Session is stored in cookie with several attributes.
  *
- *
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
@@ -53,11 +52,12 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 1.8 2007-07-19 18:05:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.0 2007-07-19 19:48:12 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
  ***********************************************************************/
+
 /* mod_qos requires OpenSSL */
 #include <openssl/rand.h>
 #include <openssl/evp.h>
@@ -226,7 +226,7 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
     int dec_len = apr_base64_decode(dec, value);
     if(dec_len == 0) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                    QOS_LOG_PFX"session cookie verification failed, base64 decoding failed");
+                    QOS_LOG_PFX"session cookie verification failed, invalid base64 encoding");
       return 0;
     }
 
@@ -272,7 +272,7 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
   failed:
     EVP_CIPHER_CTX_cleanup(&cipher_ctx);
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                  QOS_LOG_PFX"session cookie verification failed");
+                  QOS_LOG_PFX"session cookie verification failed, could not decrypt data");
     return 0;
   }
 }
@@ -590,6 +590,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   if(!sconf->act->child_init) {
     sconf->act->child_init = 1;
     while(e) {
+      /* attach to the mutex */
       apr_global_mutex_child_init(&e->lock, e->lock_file, sconf->act->pool);
       e = e->next;
     }
@@ -612,7 +613,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 1.8 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.0 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
