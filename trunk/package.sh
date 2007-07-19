@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 1.4 2007-07-13 09:28:27 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.0 2007-07-19 19:48:09 pbuchbinder Exp $
 #
 # Script to build file release
 #

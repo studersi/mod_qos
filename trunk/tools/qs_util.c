@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.2 2007-07-10 19:16:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 2.0 2007-07-19 19:48:18 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
