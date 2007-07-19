@@ -20,6 +20,12 @@
  *   Limits the number of concurrent requests for a location.
  * - QS_ErrorPage:
  *   Customizable error page for denied requests.
+ * - QS_VipHeaderName:
+ *   Defines a response header which marks a VIP. VIP users have
+ *   no access restrictions.
+ * - QS_SessionTimeout/QS_SessionCookieName/QS_SessionCookiePath:
+ *   Session is stored in cookie with several attributes.
+ *
  *
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
@@ -47,11 +53,15 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 1.7 2007-07-18 17:30:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 1.8 2007-07-19 18:05:51 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
  ***********************************************************************/
+/* mod_qos requires OpenSSL */
+#include <openssl/rand.h>
+#include <openssl/evp.h>
+
 /* apache */
 #include <httpd.h>
 #include <http_protocol.h>
@@ -70,12 +80,28 @@ static const char revision[] = "$Id: mod_qos.c,v 1.7 2007-07-18 17:30:24 pbuchbi
  * defines
  ***********************************************************************/
 #define QOS_LOG_PFX "mod_qos: "
+#define QOS_RAN 10
+#define QOS_MAGIC_LEN 8
+#define QOS_MAX_AGE "3600"
+#define QOS_COOKIE_NAME "MODQOS"
+static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 /************************************************************************
  * structures
  ***********************************************************************/
 
-/** access table entry */
+/**
+ * session cookie
+ */
+typedef struct {
+  unsigned char ran[QOS_RAN];
+  char magic[QOS_MAGIC_LEN];
+  time_t time;
+} qos_session_t;
+
+/** 
+ * access table entry
+ */
 typedef struct qs_acentry_st {
   int id;
   apr_global_mutex_t *lock;
@@ -92,7 +118,9 @@ typedef struct qs_acentry_st {
   char *url;
 } qs_acentry_t;
 
-/** access table */
+/**
+ * access table (act)
+ */
 typedef struct qs_actable_st {
   apr_size_t size;
   apr_shm_t *m;
@@ -102,21 +130,33 @@ typedef struct qs_actable_st {
   int child_init;
 } qs_actable_t;
 
-/** server configuration */
+/**
+ * server configuration
+ */
 typedef struct {
   apr_table_t *location_t;
   const char *error_page;
   qs_actable_t *act;
   int is_virtual;
+  char *cookie_name;
+  char *cookie_path;
+  int max_age;
+  unsigned char key[EVP_MAX_KEY_LENGTH];
+  char *header_name;
 } qos_srv_config;
 
-/** request configuration */
+/**
+ * request configuration
+ */
 typedef struct {
   qs_acentry_t *entry;
   char *evmsg;
+  int is_vip;
 } qs_req_ctx;
 
-/** rule set */
+/**
+ * rule set
+ */
 typedef struct {
   char *url;
   int limit;
@@ -140,17 +180,170 @@ module AP_MODULE_DECLARE_DATA qos_module;
  * private functions
  ***********************************************************************/
 
+/**
+ * extract the session cookie from the request
+ */
+static char *qos_get_remove_cookie(request_rec *r, qos_srv_config* sconf) {
+  const char *cookie_h = apr_table_get(r->headers_in, "cookie");
+  if(cookie_h) {
+    char *cn = apr_pstrcat(r->pool, sconf->cookie_name, "=", NULL);
+    char *p = ap_strcasestr(cookie_h, cn);
+    if(p) {
+      char *value = NULL;
+      p[0] = '\0'; /* terminate the beginning of the cookie header */
+      p = p + strlen(cn);
+      value = ap_getword(r->pool, (const char **)&p, ';');
+      while(p && (p[0] == ' ')) p++;
+      /* skip a path, if there is any */
+      if(p && (strncasecmp(p, "$path=", strlen("$path=")) == 0)) {
+        ap_getword(r->pool, (const char **)&p, ';');
+      }
+      /* restore cookie header */
+      cookie_h = apr_pstrcat(r->pool, cookie_h, p, NULL);
+      if((strncasecmp(cookie_h, "$Version=", strlen("$Version=")) == 0) &&
+         (strlen(cookie_h) <= strlen("$Version=X; "))) {
+        /* nothing left */
+        apr_table_unset(r->headers_in, "cookie");
+      } else {
+        apr_table_set(r->headers_in, "cookie", cookie_h);
+      }
+      return value;
+    }
+  }
+  return NULL;
+}
+
+/**
+ * verifies the session cookie 0=failed, 1=succeeded
+ */
+static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
+  char *value = qos_get_remove_cookie(r, sconf);
+  if(value == NULL) return 0;
+
+  {
+    /* decode */
+    char *dec = (char *)apr_palloc(r->pool, 1 + apr_base64_decode_len(value));
+    int dec_len = apr_base64_decode(dec, value);
+    if(dec_len == 0) {
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                    QOS_LOG_PFX"session cookie verification failed, base64 decoding failed");
+      return 0;
+    }
+
+    /* decrypt */
+    int len = 0;
+    int buf_len = 0;
+    unsigned char *buf = apr_pcalloc(r->pool, dec_len);
+    EVP_CIPHER_CTX cipher_ctx;
+    EVP_CIPHER_CTX_init(&cipher_ctx);
+    EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
+    if(!EVP_DecryptUpdate(&cipher_ctx, (unsigned char *)&buf[buf_len], &len,
+                          (const unsigned char *)dec, dec_len)) {
+      goto failed;
+    }
+    buf_len+=len;
+    if(!EVP_DecryptFinal(&cipher_ctx, (unsigned char *)&buf[buf_len], &len)) {
+      goto failed;
+    }
+    buf_len+=len;
+    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+    if(buf_len != sizeof(qos_session_t)) {
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                    QOS_LOG_PFX"session cookie verification failed, invalid size");
+      return 0;
+    } else {
+      qos_session_t *s = (qos_session_t *)buf;
+      s->magic[QOS_MAGIC_LEN] = '\0';
+      if(strcmp(qs_magic, s->magic) != 0) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                      QOS_LOG_PFX"session cookie verification failed, invalid magic");
+        return 0;
+      }
+      if(s->time < time(NULL) - sconf->max_age) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                      QOS_LOG_PFX"session cookie verification failed, expired");
+        return 0;
+      }
+    }
+
+    /* success */
+    return 1;
+  
+  failed:
+    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                  QOS_LOG_PFX"session cookie verification failed");
+    return 0;
+  }
+}
+
+/**
+ * set/update the session cookie
+ */
+static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
+  qos_session_t *s = (qos_session_t *)apr_pcalloc(r->pool, sizeof(qos_session_t));
+  EVP_CIPHER_CTX cipher_ctx;
+  int buf_len = 0;
+  int len = 0;
+  unsigned char *buf = apr_pcalloc(r->pool, sizeof(qos_session_t) +
+                                   EVP_CIPHER_block_size(EVP_des_ede3_cbc()));
+    
+  /* payload */
+  strcpy(s->magic, qs_magic);
+  s->magic[QOS_MAGIC_LEN] = '\0';
+  s->time = time(NULL);
+  RAND_bytes(s->ran, sizeof(s->ran));
+  
+  /* sym enc, should be sufficient for this use case */
+  EVP_CIPHER_CTX_init(&cipher_ctx);
+  EVP_EncryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
+  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, (const unsigned char *)s, sizeof(qos_session_t))) {
+    goto failed;
+  }
+  buf_len+=len;
+  if(!EVP_EncryptFinal(&cipher_ctx, &buf[buf_len], &len)) {
+    goto failed;
+  }
+  buf_len+=len;
+  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+  
+  /* encode and set data */
+  {
+    char *cookie;
+    char *session = (char *)apr_pcalloc(r->pool, 1 + apr_base64_encode_len(buf_len));
+    len = apr_base64_encode(session, (const char *)buf, buf_len);
+    session[len] = '\0';
+    cookie = apr_psprintf(r->pool, "%s=%s; Path=%s; Max-Age=%d",
+                          sconf->cookie_name, session,
+                          sconf->cookie_path, sconf->max_age);
+    apr_table_add(r->headers_out,"Set-Cookie", cookie);
+  }
+  return;
+  
+ failed:
+  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+  ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                QOS_LOG_PFX"failed to create session cookie");
+}
+
+/**
+ * returns the request context
+ */
 static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
   qs_req_ctx *rctx = ap_get_module_config(r->request_config, &qos_module);
   if(rctx == NULL) {
     rctx = apr_pcalloc(r->pool, sizeof(qs_req_ctx));
     rctx->entry = NULL;
     rctx->evmsg = NULL;
+    rctx->is_vip = 0;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
 }
 
+/**
+ * destroys the act
+ */
 static apr_status_t qos_cleanup_shm(void *p) {
   qs_actable_t *act = p;
   qs_acentry_t *e = act->entry;
@@ -163,6 +356,9 @@ static apr_status_t qos_cleanup_shm(void *p) {
   return APR_SUCCESS;
 }
 
+/**
+ * init the shared memory act
+ */
 static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *table) {
   apr_status_t res;
   int i;
@@ -233,7 +429,7 @@ static void qos_error_response(request_rec *r, const char *error_page) {
 /**
  * returns the matching regex with the lowest limitation
  */
-static qs_acentry_t *qos_getrule_byregex(request_rec * r, qos_srv_config* sconf) {
+static qs_acentry_t *qos_getrule_byregex(request_rec *r, qos_srv_config *sconf) {
   qs_acentry_t *ret = NULL;
   qs_actable_t *act = sconf->act;
   qs_acentry_t *e = act->entry;
@@ -260,7 +456,7 @@ static qs_acentry_t *qos_getrule_byregex(request_rec * r, qos_srv_config* sconf)
 /**
  * returns the best matching location entry
  */
-static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config* sconf) {
+static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sconf) {
   qs_acentry_t *ret = NULL;
   qs_actable_t *act = sconf->act;
   qs_acentry_t *e = act->entry;
@@ -291,7 +487,7 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config* sco
 static int qos_header_parser(request_rec * r) {
   /* apply rules only to main request (avoid filtering of error documents) */
   if(ap_is_initial_req(r)) {
-    qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
 
     /*
      * QS_LocRequestLimitMatch/QS_LocRequestLimit/QS_LocRequestLimitDefault enforcement
@@ -309,6 +505,15 @@ static int qos_header_parser(request_rec * r) {
       
       /* enforce the limitation */
       if(e->counter > e->limit) {
+        /* vip session has no limitation */
+        if(sconf->header_name) {
+          rctx->is_vip = qos_verify_session(r, sconf);
+          if(rctx->is_vip) {
+            rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+            return DECLINED;
+          }
+        }
+        /* std user */
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests: %d",
                       e->url, e->limit, e->counter);
@@ -322,6 +527,25 @@ static int qos_header_parser(request_rec * r) {
     }
   }
   return DECLINED;
+}
+
+/**
+ * process response
+ */
+static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
+  request_rec *r = f->r;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  if(sconf->header_name) {
+    const char *ctrl_h = apr_table_get(r->headers_out, sconf->header_name);
+    if(ctrl_h) {
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      qos_set_session(r, sconf);
+      rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
+      apr_table_unset(r->headers_out, sconf->header_name);
+    }
+  }
+  ap_remove_output_filter(f);
+  return ap_pass_brigade (f->next, bb); 
 }
 
 /**
@@ -361,7 +585,7 @@ static int qos_logger(request_rec * r) {
  */
 static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   server_rec *s = bs->next;
-  qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   qs_acentry_t *e = sconf->act->entry;
   if(!sconf->act->child_init) {
     sconf->act->child_init = 1;
@@ -387,8 +611,8 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  * inits the server configuration
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
-  qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 1.7 $");
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+  char *rev = apr_pstrdup(ptemp, "$Revision: 1.8 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -415,6 +639,13 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   return DECLINED;
 }
 
+/**
+ * insert response filter
+ */
+static void qos_insert_filter(request_rec *r) {
+  ap_add_output_filter("qos-out-filter", NULL, r, r->connection);
+}
+
 /************************************************************************
  * directiv handlers 
  ***********************************************************************/
@@ -427,6 +658,16 @@ static void *qos_srv_config_create(apr_pool_t * p, server_rec *s) {
   sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
   sconf->is_virtual = s->is_virtual;
+  sconf->cookie_name = apr_pstrdup(p, QOS_COOKIE_NAME);
+  sconf->cookie_path = apr_pstrdup(p, "/");
+  sconf->max_age = atoi(QOS_MAX_AGE);
+  sconf->header_name = NULL;
+  {
+    int len = EVP_MAX_KEY_LENGTH;
+    unsigned char *rand = apr_pcalloc(p, len);
+    RAND_bytes(rand, len);
+    EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, rand, len, 1, sconf->key, NULL);
+  }
   return sconf;
 }
 
@@ -447,7 +688,7 @@ static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
  * command to define the concurrent request limitation for a location
  */
 const char *qos_loc_con_cmd(cmd_parms * cmd, void *dcfg, const char *loc, const char *limit) {
-  qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *id = apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->location_t)->nelts);
   qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
@@ -463,7 +704,7 @@ const char *qos_loc_con_cmd(cmd_parms * cmd, void *dcfg, const char *loc, const 
  * request line pattern
  */
 const char *qos_match_con_cmd(cmd_parms * cmd, void *dcfg, const char *match, const char *limit) {
-  qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *id = apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->location_t)->nelts);
   qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
@@ -486,7 +727,7 @@ const char *qos_match_con_cmd(cmd_parms * cmd, void *dcfg, const char *match, co
  * sets the default limitation of cuncurrent requests
  */
 const char *qos_loc_con_def_cmd(cmd_parms * cmd, void *dcfg, const char *limit) {
-  qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   return qos_loc_con_cmd(cmd, dcfg, "/", limit);
 }
@@ -495,13 +736,47 @@ const char *qos_loc_con_def_cmd(cmd_parms * cmd, void *dcfg, const char *limit) 
  * defines custom error page
  */
 const char *qos_error_page_cmd(cmd_parms * cmd, void *dcfg, const char *path) {
-  qos_srv_config* sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->error_page = apr_pstrdup(cmd->pool, path);
   if(sconf->error_page[0] != '/') {
     return apr_psprintf(cmd->pool, "%s: requires absolute path (%s)", 
                         cmd->directive->directive, sconf->error_page);
   }
+  return NULL;
+}
+
+/**
+ * session definitions: cookie name and path, expiration/max-age
+ */
+const char *qos_cookie_name_cmd(cmd_parms * cmd, void *dcfg, const char *name) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->cookie_name = apr_pstrdup(cmd->pool, name);
+  return NULL;
+}
+
+const char *qos_cookie_path_cmd(cmd_parms * cmd, void *dcfg, const char *path) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->cookie_path = apr_pstrdup(cmd->pool, path);
+  return NULL;
+}
+
+const char *qos_timeout_cmd(cmd_parms * cmd, void *dcfg, const char *sec) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->max_age = atoi(sec);
+  return NULL;
+}
+
+/**
+ * name of the http header to mark a vip
+ */
+const char *qos_header_name_cmd(cmd_parms * cmd, void *dcfg, const char *name) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->header_name = apr_pstrdup(cmd->pool, name);
   return NULL;
 }
 
@@ -523,6 +798,21 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorPage <url>, defines a custom error page."),
+  AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
+                RSRC_CONF,
+                "QS_SessionCookieName <name>, defines a custom session cookie name,"
+                " default is "QOS_COOKIE_NAME"."),
+  AP_INIT_TAKE1("QS_SessionCookiePath", qos_cookie_path_cmd, NULL,
+                RSRC_CONF,
+                "QS_SessionCookiePath <path>, default it \"/\"."),
+  AP_INIT_TAKE1("QS_SessionTimeout", qos_timeout_cmd, NULL,
+                RSRC_CONF,
+                "QS_SessionTimeout <seconds>, defines vip session life time,"
+                " default are "QOS_MAX_AGE" seconds."),
+  AP_INIT_TAKE1("QS_VipHeaderName", qos_header_name_cmd, NULL,
+                RSRC_CONF,
+                "QS_VipHeaderName <name>, defines the http header name which is"
+                " used to signalize a very important person (vip)."),
   NULL,
 };
 
@@ -534,6 +824,8 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_header_parser(qos_header_parser, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
+  ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
 }
 
 /************************************************************************

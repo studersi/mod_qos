@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 1.7 2007-07-18 17:30:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 1.8 2007-07-19 18:05:51 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            5
@@ -56,12 +56,18 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE1##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE1##/
 
-   QS_LocRequestLimitDefault                30
+   QS_ErrorPage               /error-docs/error.html
+
+   QS_LocRequestLimitDefault                 30
    QS_LocRequestLimit         /cgi            5
    QS_LocRequestLimit         /test          50
+   QS_LocRequestLimit         /no             0
    QS_LocRequestLimitMatch    "^.*\.gif$"     2
 
-   QS_ErrorPage               /error-docs/error.html
+   QS_VipHeaderName           mod-qos-vip
+   QS_SessionTimeout          3
+   #QS_SessionCookieName       mm
+   #QS_SessionCookiePath       /x
 
    <Directory /error-docs>
       SetHandler              default

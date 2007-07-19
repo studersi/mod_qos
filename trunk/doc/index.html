@@ -39,7 +39,7 @@ of concurrent requests to a location (URL). Following releases will introduce ad
 <hr>
 <h3>Build</h3>
 <p>
-mod_qos does not have and dependencies to other Apache modules or special libraries. Just copy
+mod_qos does not have any dependencies to other Apache modules or special libraries. Just copy
 the module into the modules directory of the Apache server's source code and compile it using
 the following commands:
 <pre>
@@ -59,7 +59,8 @@ Note: the module requires shared memory support.
 </p>
 <h3>Configuration</h3>
 <p>
-The module features the following directives:
+Configuration is made on a per server basis. Commands within a virtual host overwrites the 
+global configuration. The module features the following directives:
 <ul>
 <li>
 <code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
@@ -101,8 +102,8 @@ QS_ErrorPage              /error.html
 <p>
 mod_qos writes messages to Apache's error log when enforcing a rule. The number of 
 concurrent requests to location defined by QS_LocRequestLimit can be logged to the 
-access log using the mod_qos_cr HTTP header. The mod_qos_ev header is used to log 
-event messages.
+access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
+header is used to log event messages: D=denied, S=session available, V=create vip session.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
