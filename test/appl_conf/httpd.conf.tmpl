@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 1.2 2007-07-18 17:30:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 1.3 2007-07-19 18:05:51 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            5
@@ -40,7 +40,13 @@ Listen                  127.0.0.1:##QS_PORT_BASE1##
    ServerName           127.0.0.1
 
    ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
+   ScriptAlias /login/ ##ROOT##/htdocs/login/
    <Location ##ROOT##/htdocs/cgi/>
+        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Order allow,deny
+        Allow from all
+   </Location>
+   <Location ##ROOT##/htdocs/login/>
         Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
         Order allow,deny
         Allow from all
