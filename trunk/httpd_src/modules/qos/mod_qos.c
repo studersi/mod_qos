@@ -52,7 +52,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.0 2007-07-19 19:48:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.1 2007-07-20 08:40:30 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -218,6 +218,7 @@ static char *qos_get_remove_cookie(request_rec *r, qos_srv_config* sconf) {
  */
 static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
   char *value = qos_get_remove_cookie(r, sconf);
+  EVP_CIPHER_CTX cipher_ctx;
   if(value == NULL) return 0;
 
   {
@@ -230,39 +231,40 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
       return 0;
     }
 
-    /* decrypt */
-    int len = 0;
-    int buf_len = 0;
-    unsigned char *buf = apr_pcalloc(r->pool, dec_len);
-    EVP_CIPHER_CTX cipher_ctx;
-    EVP_CIPHER_CTX_init(&cipher_ctx);
-    EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
-    if(!EVP_DecryptUpdate(&cipher_ctx, (unsigned char *)&buf[buf_len], &len,
-                          (const unsigned char *)dec, dec_len)) {
-      goto failed;
-    }
-    buf_len+=len;
-    if(!EVP_DecryptFinal(&cipher_ctx, (unsigned char *)&buf[buf_len], &len)) {
-      goto failed;
-    }
-    buf_len+=len;
-    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
-    if(buf_len != sizeof(qos_session_t)) {
-      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                    QOS_LOG_PFX"session cookie verification failed, invalid size");
-      return 0;
-    } else {
-      qos_session_t *s = (qos_session_t *)buf;
-      s->magic[QOS_MAGIC_LEN] = '\0';
-      if(strcmp(qs_magic, s->magic) != 0) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                      QOS_LOG_PFX"session cookie verification failed, invalid magic");
-        return 0;
+    {
+      /* decrypt */
+      int len = 0;
+      int buf_len = 0;
+      unsigned char *buf = apr_pcalloc(r->pool, dec_len);
+      EVP_CIPHER_CTX_init(&cipher_ctx);
+      EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
+      if(!EVP_DecryptUpdate(&cipher_ctx, (unsigned char *)&buf[buf_len], &len,
+                            (const unsigned char *)dec, dec_len)) {
+        goto failed;
       }
-      if(s->time < time(NULL) - sconf->max_age) {
+      buf_len+=len;
+      if(!EVP_DecryptFinal(&cipher_ctx, (unsigned char *)&buf[buf_len], &len)) {
+        goto failed;
+      }
+      buf_len+=len;
+      EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+      if(buf_len != sizeof(qos_session_t)) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                      QOS_LOG_PFX"session cookie verification failed, expired");
+                      QOS_LOG_PFX"session cookie verification failed, invalid size");
         return 0;
+      } else {
+        qos_session_t *s = (qos_session_t *)buf;
+        s->magic[QOS_MAGIC_LEN] = '\0';
+        if(strcmp(qs_magic, s->magic) != 0) {
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                        QOS_LOG_PFX"session cookie verification failed, invalid magic");
+          return 0;
+        }
+        if(s->time < time(NULL) - sconf->max_age) {
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                        QOS_LOG_PFX"session cookie verification failed, expired");
+          return 0;
+        }
       }
     }
 
@@ -613,7 +615,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.0 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.1 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
