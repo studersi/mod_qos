@@ -20,6 +20,12 @@ case "$COMMAND" in
 	   kill `cat logs/apache1.pid`
          fi
 	 ;;
+  graceful)
+         if [ -f logs/apache.pid ]; then
+           echo "sigusr1 proxy `cat logs/apache.pid`"
+	   kill -USR1 `cat logs/apache.pid`
+         fi
+	 ;;
 esac
 
 exit 0

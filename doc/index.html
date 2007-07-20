@@ -111,6 +111,13 @@ Defines a custom cookie name. Default is MODQOS.
 <code>QS_SessionCookiePath &lt;path&gt;</code><br>
 Defines a the cookie path. Default is "/".
 </li>
+<li>
+<code>QS_SessionKey &lt;string&gt;</code><br>
+Secret key used for cookie encryption. Used when using the same 
+session cookie for multiple web servers (load balancing) or 
+sessions should survive a server restart. By default, 
+a random key is used which changes every server restart.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -125,6 +132,7 @@ QS_LocRequestLimit        /images      100
 QS_LocRequestLimit        /application 300
 
 QS_VipHeaderName          mod-qos-vip
+QS_SessionKey             na&5san-sB.F4_0a=%D200ahLK1
 </pre>
 </td></tr>
 </table>
@@ -134,12 +142,23 @@ QS_VipHeaderName          mod-qos-vip
 mod_qos writes messages to Apache's error log when enforcing a rule. The number of 
 concurrent requests to location defined by QS_LocRequestLimit can be logged to the 
 access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
-header is used to log event messages: D=denied, S=session available, V=create VIP session.
+header is used to log event messages: D=denied, S=pass due an available VIP session, 
+V=create VIP session.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
 <pre>
 LogFormat "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o #%P"
+</pre>
+</td></tr>
+</table>
+The <code>qslog</code> tool, which is part of the support utilities of mod_qos, may be 
+used to gather request statistics such denied requests or new VIP session creations 
+per minute but also total requests per second and other measurements.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+<pre>
+TransferLog "| ./bin/qslog -o logs/qs_log -f I....R.B.T.Q"
 </pre>
 </td></tr>
 </table>

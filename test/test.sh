@@ -59,17 +59,17 @@ curl -c cookie http://localhost:5960/login/vip.cgi 2>/dev/null 1>/dev/null
 echo "--> vip access" >> logs/error_log
 curl -b cookie http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
 sleep 1
-if [ `grep -c "GET /no/index.html HTTP/1.1\" 500.*curl.*D.*" logs/access_log` -ne 1 ]; then
+if [ `grep -c "GET /no/index.html HTTP/1.1\" 500.*curl.* D; .*" logs/access_log` -ne 1 ]; then
     ./ctl.sh stop
     echo "FAILED 3"
     exit 1
 fi
-if [ `grep -c "GET /login/vip.cgi HTTP/1.1\" 200.*curl.*V.*" logs/access_log` -ne 1 ]; then
+if [ `grep -c "GET /login/vip.cgi HTTP/1.1\" 200.*curl.* V; .*" logs/access_log` -ne 1 ]; then
     ./ctl.sh stop
     echo "FAILED 4"
     exit 1
 fi
-if [ `grep -c "GET /no/index.html HTTP/1.1\" 500.*curl.*D.*" logs/access_log` -ne 1 ]; then
+if [ `grep -c "GET /no/index.html HTTP/1.1\" 200.*curl.* S; .*" logs/access_log` -ne 1 ]; then
     ./ctl.sh stop
     echo "FAILED 5"
     exit 1
@@ -79,7 +79,21 @@ echo "--> vip timeout" >> logs/error_log
 COOKIE=`cat cookie  | grep MODQOS | awk '{print $(NF)}'`
 curl -b MODQOS=${COOKIE} http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
 sleep 1
-if [ `grep -c "GET /no/index.html HTTP/1.1\" 500.*curl.*D.*" logs/access_log` -ne 2 ]; then
+if [ `grep -c "GET /no/index.html HTTP/1.1\" 500.*curl.*D; .*" logs/access_log` -ne 2 ]; then
+    ./ctl.sh stop
+    echo "FAILED 6"
+    exit 1
+fi
+
+echo "-- graceful restart" >>  logs/error_log
+rm -f cookie
+curl -c cookie http://localhost:5960/login/vip.cgi 2>/dev/null 1>/dev/null
+curl -b cookie http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
+sleep 1
+./ctl.sh graceful > /dev/null
+curl -b cookie http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
+sleep 1
+if [ `grep -c "GET /no/index.html HTTP/1.1\" 200.*curl.* S; .*" logs/access_log` -ne 3 ]; then
     ./ctl.sh stop
     echo "FAILED 6"
     exit 1

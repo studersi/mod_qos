@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.0 2007-07-19 19:48:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.1 2007-07-20 17:50:46 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
@@ -32,5 +32,10 @@ cd httpd
 make
 strip modules/qos/.libs/mod_qos.so
 cd ..
+
+cd tools
+make
+cd ..
+
 echo "END"
 

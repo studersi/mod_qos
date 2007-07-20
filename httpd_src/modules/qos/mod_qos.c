@@ -52,7 +52,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.1 2007-07-20 08:40:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.2 2007-07-20 17:50:47 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -615,7 +615,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.1 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.2 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -773,6 +773,13 @@ const char *qos_timeout_cmd(cmd_parms * cmd, void *dcfg, const char *sec) {
   return NULL;
 }
 
+const char *qos_key_cmd(cmd_parms * cmd, void *dcfg, const char *seed) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, seed, strlen(seed), 1, sconf->key, NULL);
+  return NULL;
+}
+
 /**
  * name of the http header to mark a vip
  */
@@ -812,6 +819,10 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_SessionTimeout <seconds>, defines vip session life time,"
                 " default are "QOS_MAX_AGE" seconds."),
+  AP_INIT_TAKE1("QS_SessionKey", qos_key_cmd, NULL,
+                RSRC_CONF,
+                "QS_SessionKey <string>, defines a key used for session"
+                " cookie encryption."),
   AP_INIT_TAKE1("QS_VipHeaderName", qos_header_name_cmd, NULL,
                 RSRC_CONF,
                 "QS_VipHeaderName <name>, defines the http header name which is"
