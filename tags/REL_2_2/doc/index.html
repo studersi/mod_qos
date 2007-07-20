@@ -1,0 +1,173 @@
+<html>
+<head>
+ <title>mod_qos</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<meta name="author" content="Pascal Buchbinder">
+<link rel="shortcut icon" href="favicon.ico" />
+<style TYPE="text/css">
+<!--  
+  body {
+	background-color: white;
+	color: black;
+	font-family: arial, helvetica, verdana, sans-serif;
+	font-weight: normal;
+	text-align: left;
+  }
+-->
+</style>
+</head>
+<body>
+<table>
+<tbody>
+<tr><td><img src="mod_qos_s.gif"></td><td style="vertical-align: bottom;"><h1>mod_qos</h1></td></tr>
+<tr><td>&nbsp;</td><td>
+<p>
+The Apache Web Server requires threads and processes to serve HTTP requests. Each TCP connection to 
+the web server occupies one of these threads respecively processes. Sometimes a server gets too busy 
+to serve every request due the lack of free processes or threads. mod_qos is a <b>Quality of Service 
+module for the Apache Web Server</b> implementing control mechanisms that can provide different 
+priority to different requests.
+</p>
+<p>
+mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a> under 
+the <a href="LICENSE.txt">GNU General Public License</a>.
+</p>
+<p>
+The current release of the module implements a control mechanism for the maximum number 
+of concurrent requests to a location (URL) or virtual host. It can also "detect" very 
+important persons (VIP) which may access the web server without any restrictions.
+</p>
+<hr>
+<h3>Build</h3>
+<p>
+mod_qos version 2 requires OpenSSL but has no other dependencies to other modules nor any 
+special libraries. It works with Apache version 2.0 and 2.2. Just copy the module into 
+the modules directory of the Apache server's source code and compile it using the 
+following commands:
+<pre>
+./buildconf
+./configure --enable-so --enable-qos=shared --enable-ssl
+make
+</pre>
+This creates a DSO module, which can be loaded into the Apache server using the 
+following directive:
+<pre>
+LoadModule qos_module &lt;path to module&gt;/mod_qos.so
+</pre>
+Note: the module requires shared memory support.
+</p>
+<h3>Source</h3>
+<p>
+<a href="../apache2">mod_qos for Apache 2</a>
+</p>
+<h3>Configuration</h3>
+<p>
+Configuration is made on a per server basis. Commands within a virtual host overwrites the 
+global configuration. The module features the following directives:
+<ul>
+<li>
+<code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
+Defines the number of concurrent requests for the specified request pattern 
+(applied to the unparsed uri). Rule with the lowest number of allowed 
+concurrent connection has the highest priority if multiple expressions 
+match the request. By default, no limitations are active for locations.
+</li>
+<li>
+<code>QS_LocRequestLimit &lt;location&gt; &lt;number&gt;</code><br>
+Defines the number of concurrent requests for the specified location (applied to 
+the parsed path). By default, no limitations are active for locations. Has 
+lower priority than QS_LocRequestLimitMatch.
+</li>
+<li>
+<code>QS_LocRequestLimitDefault &lt;number&gt;</code><br>Defines the default limitation 
+for the maximum of concurrent per locations for those locations not defined by any 
+QS_LocRequestLimit directive. It can also be used to limit the number of concurrent 
+requests to a virtual host.
+</li>
+<li>
+<code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when 
+a request is denied.
+</li>
+</ul>
+
+Additional directives are used to identify VIP's and to control the session 
+life time and its cookie format:
+<ul>
+<li>
+<code>QS_VipHeaderName &lt;header name&gt;</code><br>
+Defines a HTTP response header which marks a user as a VIP. mod_qos creates 
+a session for this user by setting a cookie. Whenever an application handler 
+sets this response header, the user gets unlimited access any location.
+</li>
+<li>
+<code>QS_SessionTimeout &lt;seconds&gt;</code><br>
+Defines the session life time for a VIP. Default are 3600 seconds.
+</li>
+<li>
+<code>QS_SessionCookieName &lt;name&gt;</code><br>
+Defines a custom cookie name. Default is MODQOS.
+</li>
+<li>
+<code>QS_SessionCookiePath &lt;path&gt;</code><br>
+Defines a the cookie path. Default is "/".
+</li>
+<li>
+<code>QS_SessionKey &lt;string&gt;</code><br>
+Secret key used for cookie encryption. Used when using the same 
+session cookie for multiple web servers (load balancing) or 
+sessions should survive a server restart. By default, 
+a random key is used which changes every server restart.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Sample configuration:<br>
+<pre>
+QS_ErrorPage              /error.html
+
+QS_LocRequestLimitDefault              200
+QS_LocRequestLimitMatch   "^.*\.gif$"  100
+QS_LocRequestLimit        /images      100
+QS_LocRequestLimit        /application 300
+
+QS_VipHeaderName          mod-qos-vip
+QS_SessionKey             na&5san-sB.F4_0a=%D200ahLK1
+</pre>
+</td></tr>
+</table>
+</p>
+<h3>Log Messages</h3>
+<p>
+mod_qos writes messages to Apache's error log when enforcing a rule. The number of 
+concurrent requests to location defined by QS_LocRequestLimit can be logged to the 
+access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
+header is used to log event messages: D=denied, S=pass due an available VIP session, 
+V=create VIP session.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Sample configuration:<br>
+<pre>
+LogFormat "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o #%P"
+</pre>
+</td></tr>
+</table>
+The <code>qslog</code> tool, which is part of the support utilities of mod_qos, may be 
+used to gather request statistics such denied requests or new VIP session creations 
+per minute but also total requests per second and other measurements.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+<pre>
+TransferLog "| ./bin/qslog -o logs/qs_log -f I....R.B.T.Q"
+</pre>
+</td></tr>
+</table>
+</p>
+</td></tr>
+</tbody>
+</table>
+<br>
+<hr>
+<SMALL><SMALL>&copy; 2007, mod_qos</SMALL></SMALL>
+</body>
+</html>

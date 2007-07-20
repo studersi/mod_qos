@@ -1,0 +1,55 @@
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.0 2007-07-19 19:48:14 pbuchbinder Exp $
+
+ServerName              127.0.0.1
+StartServers            5
+MinSpareServers         5
+MaxSpareServers         10
+MaxClients              128
+MaxRequestsPerChild     300000
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/htdocs
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept.lock
+Timeout                 90
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        10
+
+Options                 FollowSymLinks Indexes
+DefaultType             text/plain
+
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T #%P"
+
+LogLevel                info
+ErrorLog                ##ROOT##/logs/error1_log
+TransferLog             ##ROOT##/logs/access1_log
+PidFile                 ##ROOT##/logs/apache1.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+TypesConfig             conf/mime.types
+
+NameVirtualHost         127.0.0.1:##QS_PORT_BASE1##
+Listen                  127.0.0.1:##QS_PORT_BASE1##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE1##>
+   ServerName           127.0.0.1
+
+   ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
+   ScriptAlias /login/ ##ROOT##/htdocs/login/
+   <Location ##ROOT##/htdocs/cgi/>
+        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Order allow,deny
+        Allow from all
+   </Location>
+   <Location ##ROOT##/htdocs/login/>
+        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Order allow,deny
+        Allow from all
+   </Location>
+
+</VirtualHost>
