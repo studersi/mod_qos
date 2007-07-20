@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.0 2007-07-19 19:48:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.1 2007-07-20 17:50:47 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -63,6 +63,11 @@ static long m_duration_3 = 0;
 static long m_duration_4 = 0;
 static long m_duration_5 = 0;
 static long m_duration_6 = 0;
+
+static long m_qos_s = 0;
+static long m_qos_d = 0;
+static long m_qos_v = 0;
+
 static qs_event_t *m_ip_list = NULL;
 /* output file */
 static FILE *m_f = NULL;
@@ -142,6 +147,9 @@ static void printAndResetStat(char *timeStr) {
           "5s;%ld;"
           ">5s;%ld;"
 	  "ip;%ld;"
+	  "qv;%d;"
+	  "qs;%d;"
+	  "qd;%d;"
 	  ,
 	  timeStr,
           m_line_count/LOG_INTERVAL,
@@ -154,7 +162,10 @@ static void printAndResetStat(char *timeStr) {
           m_duration_4,
           m_duration_5,
           m_duration_6,
-          qs_countEvent(&m_ip_list)
+          qs_countEvent(&m_ip_list),
+	  m_qos_v,
+	  m_qos_s,
+	  m_qos_d
           );
   m_line_count = 0;
   m_byte_count = 0;
@@ -166,6 +177,9 @@ static void printAndResetStat(char *timeStr) {
   m_duration_4 = 0;
   m_duration_5 = 0;
   m_duration_6 = 0;
+  m_qos_v = 0;
+  m_qos_s = 0;
+  m_qos_d = 0;
   if(!m_offline) {
     fprintf(m_f, "sl;%.2f", av[0]); 
   } else {
@@ -193,6 +207,7 @@ static void updateStat(const char *cstr, char *line) {
   char *B = NULL; /* bytes */
   char *R = NULL; /* request line */
   char *I = NULL; /* client ip */
+  char *Q = NULL; /* mod_qos event message */
   const char *c = cstr;
   char *l = line;
   while(c[0]) {
@@ -217,6 +232,10 @@ static void updateStat(const char *cstr, char *line) {
       if(l != NULL && l[0] != '\0') {
         I = cutNext(&l);
       }
+    } else if(strncmp(c, "Q", 1) == 0) {
+      if(l != NULL && l[0] != '\0') {
+        Q = cutNext(&l);
+      }
     } else if(strncmp(c, " ", 1) == 0) {
       /* do nothing */
     } else {
@@ -229,13 +248,26 @@ static void updateStat(const char *cstr, char *line) {
   }
   if(m_offline && m_verbose) {
     m_lines++;
-    printf("[%ld] I=%s B=%s T=%s\n", m_lines,
+    printf("[%ld] I=%s B=%s T=%s Q=%s\n", m_lines,
 	   I == NULL ? "(null)" : I,
 	   B == NULL ? "(null)" : B,
-	   T == NULL ? "(null)" : T
+	   T == NULL ? "(null)" : T,
+	   Q == NULL ? "(null)" : Q
 	   );
   }
   qs_csLock();
+
+  if(Q != NULL) {
+    if(strchr(Q, 'S') != NULL) {
+      m_qos_s++;
+    }
+    if(strchr(Q, 'D') != NULL) {
+      m_qos_d++;
+    }
+    if(strchr(Q, 'V') != NULL) {
+      m_qos_v++;
+    }
+  }
   if(I != NULL) {
     /* update/store client IP */
     qs_insertEvent(&m_ip_list, I);
@@ -446,6 +478,8 @@ static void usage(char *cmd) {
   printf("    (<1s,1s,2s,3s,4s,5s,>5)\n");
   printf("  - average system load (sl)\n");
   printf("  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
+  printf("  - number of mod_qos events within the last minite (qv=create session,\n");
+  printf("    qs=session pass, qd=access denied)\n");
   printf("\n");
   printf("Options\n");
   printf("  -f <format_string>\n");
@@ -459,6 +493,7 @@ static void usage(char *cmd) {
   printf("     B defines the transferred bytes (%%b)\n");
   printf("     R defines the request line (%%r)\n");
   printf("     I defines the client ip address (%%h)\n");
+  printf("     Q defines the mod_qos_ev event message (%%{mod_qos_ev})\n");
   printf("  -o <out_file>\n");
   printf("     Specifies the file to store the output to.\n");
   printf("  -p\n");
