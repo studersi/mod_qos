@@ -99,6 +99,22 @@ if [ `grep -c "GET /no/index.html HTTP/1.1\" 200.*curl.* S; .*" logs/access_log`
     exit 1
 fi
 
+echo "-- QS_VipRequest" >> logs/error_log
+(echo "GET /no/index2.html HTTP/1.0";  echo "User-Agent: telnet"; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null &
+(echo "GET /no/index.html HTTP/1.0";  echo "User-Agent: pass"; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null &
+sleep 1
+if [ `grep -c "GET /no/index2.html HTTP/1.0\" 200.*telnet.* S; .*" logs/access_log` -ne 1 ]; then
+    ./ctl.sh stop
+    echo "FAILED 7"
+    exit 1
+fi
+if [ `grep -c "GET /no/index.html HTTP/1.0\" 200.*pass.* S; .*" logs/access_log` -ne 1 ]; then
+    ./ctl.sh stop
+    echo "FAILED 8"
+    exit 1
+fi
+
+
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
 echo "normal end"

@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.1 2007-07-20 17:50:47 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.2 2007-07-26 15:10:16 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            5
@@ -71,6 +71,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    #QS_SessionCookiePath       /x
    QS_SessionKey              12345678
 
+   BrowserMatch "pass"                       QS_VipRequest=yes
+   SetEnvIf     Request_URI /no/index2.html  QS_VipRequest=yes
    <Directory /error-docs>
       SetHandler              default
    </Directory>

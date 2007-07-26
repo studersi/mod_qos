@@ -12,6 +12,8 @@ QS_PORT_BASE=`expr $QS_PORT_BASE '*' 120`
 QS_PORT_BASE=`expr $QS_PORT_BASE + 5000`
 QS_PORT_BASE1=`expr $QS_PORT_BASE + 1`
 
+echo "QS_PORT_BASE=$QS_PORT_BASE"   >  HOSTS_AND_PORTS
+echo "QS_PORT_BASE1=$QS_PORT_BASE1" >> HOSTS_AND_PORTS
 
 sed <conf/httpd.conf.tmpl >conf/httpd.conf \
     -e "s;##ROOT##;$ROOT;g" \
