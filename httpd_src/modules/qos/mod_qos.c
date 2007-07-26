@@ -52,7 +52,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.2 2007-07-20 17:50:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.3 2007-07-26 15:10:16 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -479,6 +479,22 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sco
   return ret;
 }
 
+/**
+ * checks for VIP user (may pass restrictions)
+ */
+static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
+  if(qos_verify_session(r, sconf)) {
+    return 1;
+  }
+  if (r->subprocess_env) {
+    const char *v = apr_table_get(r->subprocess_env, "QS_VipRequest");
+    if(v && (strcasecmp(v, "yes") == 0)) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -509,7 +525,7 @@ static int qos_header_parser(request_rec * r) {
       if(e->counter > e->limit) {
         /* vip session has no limitation */
         if(sconf->header_name) {
-          rctx->is_vip = qos_verify_session(r, sconf);
+          rctx->is_vip = qos_is_vip(r, sconf);
           if(rctx->is_vip) {
             rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
             return DECLINED;
@@ -615,7 +631,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.2 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.3 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
