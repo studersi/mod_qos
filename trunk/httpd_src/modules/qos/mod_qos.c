@@ -52,7 +52,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.3 2007-07-26 15:10:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.4 2007-07-27 06:43:33 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -364,48 +364,51 @@ static apr_status_t qos_cleanup_shm(void *p) {
 static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *table) {
   apr_status_t res;
   int i;
-  int length = apr_table_elts(table)->nelts;
-  if(length) {
-    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(table)->elts;
-    qs_acentry_t *e;
-    act->m_file = apr_psprintf(act->pool, "%s.mod_qos", ap_server_root_relative(act->pool, tmpnam(NULL)));
-    act->size = length * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t));
-    res = apr_shm_create(&act->m, act->size + 512, act->m_file, act->pool);
+  int rule_entries = apr_table_elts(table)->nelts;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(table)->elts;
+  qs_acentry_t *e;
+  act->m_file = apr_psprintf(act->pool, "%s.mod_qos", ap_server_root_relative(act->pool, tmpnam(NULL)));
+  act->size = rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t));
+  res = apr_shm_create(&act->m, act->size + 512, act->m_file, act->pool);
+  if (res != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(res, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                 QOS_LOG_PFX"could not create shared memory: %s", buf);
+    return res;
+  }
+  if(rule_entries) {
+    act->entry = apr_shm_baseaddr_get(act->m);
+  } else {
+    act->entry = NULL;
+  }
+  e = act->entry;
+  for(i = 0; i < rule_entries; i++) {
+    qs_rule_ctx_t *rule = (qs_rule_ctx_t *)entry[i].val;
+    e->next = &e[1];
+    e->id = i;
+    e->url = rule->url;
+    e->url_len = strlen(e->url);
+    e->regex = rule->regex;
+    e->limit = rule->limit;
+    e->counter = 0;
+    e->lock_file = apr_psprintf(act->pool, "%s.mod_qos", ap_server_root_relative(act->pool, tmpnam(NULL)));
+    res = apr_global_mutex_create(&e->lock, e->lock_file, APR_LOCK_DEFAULT, act->pool);
     if (res != APR_SUCCESS) {
       char buf[MAX_STRING_LEN];
       apr_strerror(res, buf, sizeof(buf));
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX"could not create shared memory: %s", buf);
+                   QOS_LOG_PFX"could create mutex: %s", buf);
       return res;
     }
-    act->entry = apr_shm_baseaddr_get(act->m);
-    e = act->entry;
-    for(i = 0; i < length; i++) {
-      qs_rule_ctx_t *rule = (qs_rule_ctx_t *)entry[i].val;
-      e->next = e + APR_ALIGN_DEFAULT(sizeof(qs_acentry_t *));
-      e->id = i;
-      e->url = rule->url;
-      e->url_len = strlen(e->url);
-      e->regex = rule->regex;
-      e->limit = rule->limit;
-      e->counter = 0;
-      e->lock_file = apr_psprintf(act->pool, "%s.mod_qos", ap_server_root_relative(act->pool, tmpnam(NULL)));
-      res = apr_global_mutex_create(&e->lock, e->lock_file, APR_LOCK_DEFAULT, act->pool);
-      if (res != APR_SUCCESS) {
-        char buf[MAX_STRING_LEN];
-        apr_strerror(res, buf, sizeof(buf));
-        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                     QOS_LOG_PFX"could create mutex: %s", buf);
-        return res;
-      }
-      if(i < length - 1) {
-        e = e->next;
-      } else {
-        e->next = NULL;
-      }
+    if(i < rule_entries - 1) {
+      e = e->next;
+    } else {
+      e->next = NULL;
     }
-    apr_pool_cleanup_register(act->pool, act, qos_cleanup_shm, apr_pool_cleanup_null);
   }
+  apr_pool_cleanup_register(act->pool, act, qos_cleanup_shm, apr_pool_cleanup_null);
+  
   return APR_SUCCESS;
 }
 
@@ -631,7 +634,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.3 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.4 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
