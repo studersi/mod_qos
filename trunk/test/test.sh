@@ -114,9 +114,14 @@ if [ `grep -c "GET /no/index.html HTTP/1.0\" 200.*pass.* S; .*" logs/access_log`
     exit 1
 fi
 
-#echo "-- QS_SrvMaxConn 40" >> logs/error_log
-#../test_tools/src/httest -s ./scripts/QS_SrvMaxConn_50.txt | grep -v Success
-#sleep 10
+echo "-- QS_SrvMaxConn 40" >> logs/error_log
+../test_tools/src/httest -s ./scripts/QS_SrvMaxConn_50.txt | grep -v Success
+sleep 3
+if [ `grep -c "access denied, rule: max=40" logs/error_log` -lt 10 ]; then
+    ./ctl.sh stop
+    echo "FAILED 9"
+    exit 1
+fi
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
