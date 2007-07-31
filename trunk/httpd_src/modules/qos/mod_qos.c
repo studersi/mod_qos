@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.5 2007-07-31 12:58:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.6 2007-07-31 19:26:33 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -95,11 +95,20 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
  * ip entry
  */
 typedef struct qs_ip_entry_st {
-  long ip;
+  unsigned long ip;
   struct qs_ip_entry_st* left;
   struct qs_ip_entry_st* right;
   struct qs_ip_entry_st* next;
 } qs_ip_entry_t;
+
+/**
+ * connection data
+ */
+typedef struct qs_conn_st {
+  int connections;
+  qs_ip_entry_t *ip_tree;   /** ip tree main node */
+  qs_ip_entry_t *ip_free;   /** ip node free list */
+} qs_conn_t;
 
 /**
  * session cookie
@@ -111,10 +120,11 @@ typedef struct {
 } qos_session_t;
 
 /** 
- * access table entry
+ * access control table entry
  */
 typedef struct qs_acentry_st {
   int id;
+  char *lock_file;
   apr_global_mutex_t *lock;
   int counter;
   int limit;
@@ -125,21 +135,21 @@ typedef struct qs_acentry_st {
 #else
   regex_t *regex;
 #endif
-  char *lock_file;
   char *url;
 } qs_acentry_t;
 
 /**
- * access table (act)
+ * access control table (act)
  */
 typedef struct qs_actable_st {
   apr_size_t size;
   apr_shm_t *m;
   char *m_file;
   apr_pool_t *pool;
-  qs_acentry_t *entry;    /** rule entry list */
-  qs_ip_entry_t *ip_tree; /** ip tree main node */
-  qs_ip_entry_t *ip_free; /** ip node free list */
+  qs_acentry_t *entry;      /** rule entry list */
+  char *lock_file;
+  apr_global_mutex_t *lock; /** ip/conn lock */
+  qs_conn_t *c;
   int child_init;
 } qs_actable_t;
 
@@ -156,8 +166,13 @@ typedef struct {
   int max_age;
   unsigned char key[EVP_MAX_KEY_LENGTH];
   char *header_name;
+  int max_conn;
+  int max_conn_per_ip;
 } qos_srv_config;
 
+/**
+ * connection configuration
+ */
 typedef struct {
   unsigned long ip;
   conn_rec *c;
@@ -369,6 +384,7 @@ static apr_status_t qos_cleanup_shm(void *p) {
   qs_actable_t *act = p;
   qs_acentry_t *e = act->entry;
   act->child_init = 0;
+  apr_global_mutex_destroy(act->lock);
   while(e) {
     apr_global_mutex_destroy(e->lock);
     e = e->next;
@@ -393,8 +409,10 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   if(thread_limit == 0) thread_limit = 1; // mpm prefork
   max_ip = thread_limit * server_limit;
 
-  act->m_file = apr_psprintf(act->pool, "%s.mod_qos", ap_server_root_relative(act->pool, tmpnam(NULL)));
-  act->size = (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
+  act->m_file = apr_psprintf(act->pool, "%s.mod_qos",
+                             ap_server_root_relative(act->pool, tmpnam(NULL)));
+  act->size = APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
+    (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t)));
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
                QOS_LOG_PFX"%s(%s), create shared memory: %d", 
@@ -408,13 +426,14 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
                  QOS_LOG_PFX"could not create shared memory: %s", buf);
     return res;
   }
+  act->c = apr_shm_baseaddr_get(act->m);
   if(rule_entries) {
-    act->entry = apr_shm_baseaddr_get(act->m);
+    act->entry = (qs_acentry_t *)&act->c[1];
     e = act->entry;
-    act->ip_free = (qs_ip_entry_t *)&e[rule_entries];
+    act->c->ip_free = (qs_ip_entry_t *)&e[rule_entries];
   } else {
     act->entry = NULL;
-    act->ip_free = apr_shm_baseaddr_get(act->m);
+    act->c->ip_free = (qs_ip_entry_t *)&act->c[1];
   }
   /* init rule entries (link data, init mutex) */
   for(i = 0; i < rule_entries; i++) {
@@ -426,7 +445,8 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->regex = rule->regex;
     e->limit = rule->limit;
     e->counter = 0;
-    e->lock_file = apr_psprintf(act->pool, "%s.mod_qos", ap_server_root_relative(act->pool, tmpnam(NULL)));
+    e->lock_file = apr_psprintf(act->pool, "%s.mod_qos", 
+                                ap_server_root_relative(act->pool, tmpnam(NULL)));
     res = apr_global_mutex_create(&e->lock, e->lock_file, APR_LOCK_DEFAULT, act->pool);
     if (res != APR_SUCCESS) {
       char buf[MAX_STRING_LEN];
@@ -442,7 +462,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     }
   }
   /* init free ip node list */
-  ip = act->ip_free;
+  ip = act->c->ip_free;
   for(i = 0; i < max_ip; i++) {
     ip->next = &ip[1];
     if(i < max_ip - 1) {
@@ -474,10 +494,16 @@ static void qos_remove_ip(qs_conn_ctx *cconf) {
   fprintf(stderr, "qos_remove_ip() %ld\n", cconf->ip); fflush(stderr);
 }
 
-static apr_status_t qos_cleanup_conn(void *p) {
-  qs_conn_ctx *cconf = p;
-  qos_remove_ip(cconf);
-  return APR_SUCCESS;
+static int qos_return_error(conn_rec *c) {
+  char *line = apr_pstrcat(c->pool, AP_SERVER_PROTOCOL, " ",
+                           ap_get_status_line(500), CRLF CRLF, NULL);
+  apr_bucket *e = apr_bucket_pool_create(line, strlen(line), c->pool, c->bucket_alloc);
+  apr_bucket_brigade *bb = apr_brigade_create(c->pool, c->bucket_alloc);
+  APR_BRIGADE_INSERT_HEAD(bb, e);
+  e = apr_bucket_flush_create(c->bucket_alloc);
+  APR_BRIGADE_INSERT_TAIL(bb, e);
+  ap_pass_brigade(c->output_filters, bb);
+  return HTTP_INTERNAL_SERVER_ERROR;
 }
 
 /**
@@ -570,6 +596,19 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
  * handlers
  ***********************************************************************/
 
+static apr_status_t qos_cleanup_conn(void *p) {
+  qs_conn_ctx *cconf = p;
+  if(cconf->sconf->max_conn != -1) {
+    apr_global_mutex_lock(cconf->sconf->act->lock);
+    cconf->sconf->act->c->connections--;
+    apr_global_mutex_unlock(cconf->sconf->act->lock);
+  }
+  if(cconf->sconf->max_conn_per_ip != -1) {
+    qos_remove_ip(cconf);
+  }
+  return APR_SUCCESS;
+}
+
 static int qos_process_connection(conn_rec * c) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
   if(cconf == NULL) {
@@ -578,9 +617,26 @@ static int qos_process_connection(conn_rec * c) {
     cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
     cconf->c = c;
     cconf->sconf = sconf;
-    qos_add_ip(cconf);
     ap_set_module_config(c->conn_config, &qos_module, cconf);
     apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
+    if(sconf->max_conn != -1) {
+      int connections;
+      apr_global_mutex_lock(cconf->sconf->act->lock);
+      cconf->sconf->act->c->connections++;
+      connections = cconf->sconf->act->c->connections;
+      apr_global_mutex_unlock(cconf->sconf->act->lock);
+      if(connections > sconf->max_conn) {
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                     QOS_LOG_PFX"access denied, rule: max=%d, concurrent connections=%d, c=%s",
+                     sconf->max_conn, connections,
+                     c->remote_ip == NULL ? "-" : c->remote_ip);
+        c->keepalive = AP_CONN_CLOSE;
+        return qos_return_error(c);
+      }
+    }
+    if(sconf->max_conn_per_ip != -1) {
+      qos_add_ip(cconf);
+    }
   }
   return DECLINED;
 }
@@ -619,8 +675,9 @@ static int qos_header_parser(request_rec * r) {
         }
         /* std user */
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests: %d",
-                      e->url, e->limit, e->counter);
+                      QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests=%d, c=%s",
+                      e->url, e->limit, e->counter,
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
         rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
         if(sconf->error_page) {
           qos_error_response(r, sconf->error_page);
@@ -694,6 +751,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   qs_acentry_t *e = sconf->act->entry;
   if(!sconf->act->child_init) {
     sconf->act->child_init = 1;
+    apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, sconf->act->pool);
     while(e) {
       /* attach to the mutex */
       apr_global_mutex_child_init(&e->lock, e->lock_file, sconf->act->pool);
@@ -702,6 +760,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
     while(s) {
       sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
       if(sconf->is_virtual) {
+        apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, sconf->act->pool);
         e = sconf->act->entry;
         while(e) {
           apr_global_mutex_child_init(&e->lock, e->lock_file, sconf->act->pool);
@@ -718,7 +777,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.5 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.6 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -757,17 +816,30 @@ static void qos_insert_filter(request_rec *r) {
  ***********************************************************************/
 static void *qos_srv_config_create(apr_pool_t * p, server_rec *s) {
   qos_srv_config *sconf=(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
+  apr_status_t rv;
   sconf->location_t = apr_table_make(p, 2);
   sconf->error_page = NULL;
   sconf->act = (qs_actable_t *)apr_pcalloc(p, sizeof(qs_actable_t));
   sconf->act->pool = p;
   sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
+  sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%sa.mod_qos",
+                                       ap_server_root_relative(sconf->act->pool, tmpnam(NULL)));
+  rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file, APR_LOCK_DEFAULT, sconf->act->pool);
+  if (rv != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(rv, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                 QOS_LOG_PFX"could create mutex: %s", buf);
+    exit(1);
+  }
   sconf->is_virtual = s->is_virtual;
   sconf->cookie_name = apr_pstrdup(p, QOS_COOKIE_NAME);
   sconf->cookie_path = apr_pstrdup(p, "/");
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
+  sconf->max_conn = -1;
+  sconf->max_conn_per_ip = -1;
   {
     int len = EVP_MAX_KEY_LENGTH;
     unsigned char *rand = apr_pcalloc(p, len);
@@ -893,7 +965,22 @@ const char *qos_header_name_cmd(cmd_parms * cmd, void *dcfg, const char *name) {
   return NULL;
 }
 
+const char *qos_max_conn_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->max_conn = atoi(number);
+  return NULL;
+}
+
+const char *qos_max_conn_ip_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->max_conn_per_ip = atoi(number);
+  return NULL;
+}
+
 static const command_rec qos_config_cmds[] = {
+  /* request limitation per location */
   AP_INIT_TAKE2("QS_LocRequestLimit", qos_loc_con_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestLimit <location> <number>, defines the number of"
@@ -908,9 +995,11 @@ static const command_rec qos_config_cmds[] = {
                 "QS_LocRequestLimitMatch <regex> <number>, defines the number of"
                 " concurrent requests to the request line pattern."
                 " Default is defined by the QS_LocRequestLimitDefault directive."),
+  /* error document */
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorPage <url>, defines a custom error page."),
+  /* vip session */
   AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
                 RSRC_CONF,
                 "QS_SessionCookieName <name>, defines a custom session cookie name,"
@@ -930,6 +1019,15 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_VipHeaderName <name>, defines the http header name which is"
                 " used to signalize a very important person (vip)."),
+  /* connection limitations */
+  AP_INIT_TAKE1("QS_SrvMaxConn", qos_max_conn_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvMaxConn <number>, defines the maximum number of"
+                " concurrent tcp connections for this server."),
+  AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
+                " concurrent tcp connections per ip source address."),
   NULL,
 };
 

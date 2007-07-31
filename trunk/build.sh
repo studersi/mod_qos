@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.1 2007-07-20 17:50:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.2 2007-07-31 19:26:32 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
@@ -23,12 +23,12 @@ ln -s `pwd`/httpd_src/modules/qos/mod_qos.c httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/config.m4 httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/Makefile.in httpd/modules/qos
 
-CFLAGS="-DDEFAULT_SERVER_LIMIT=1000 -DDEFAULT_THREAD_LIMIT=256"
+CFLAGS="-DDEFAULT_SERVER_LIMIT=1000 -DDEFAULT_THREAD_LIMIT=256 -g"
 export CFLAGS 
 
 cd httpd
 ./buildconf
-./configure --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl
 make
 strip modules/qos/.libs/mod_qos.so
 cd ..

@@ -114,6 +114,9 @@ if [ `grep -c "GET /no/index.html HTTP/1.0\" 200.*pass.* S; .*" logs/access_log`
     exit 1
 fi
 
+#echo "-- QS_SrvMaxConn 40" >> logs/error_log
+#../test_tools/src/httest -s ./scripts/QS_SrvMaxConn_50.txt | grep -v Success
+#sleep 10
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
