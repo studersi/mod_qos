@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.2 2007-07-31 19:26:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.3 2007-07-31 19:57:18 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
@@ -23,7 +23,7 @@ ln -s `pwd`/httpd_src/modules/qos/mod_qos.c httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/config.m4 httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/Makefile.in httpd/modules/qos
 
-CFLAGS="-DDEFAULT_SERVER_LIMIT=1000 -DDEFAULT_THREAD_LIMIT=256 -g"
+CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -g"
 export CFLAGS 
 
 cd httpd
