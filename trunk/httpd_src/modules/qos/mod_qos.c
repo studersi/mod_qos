@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.6 2007-07-31 19:26:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.7 2007-07-31 19:57:18 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -404,8 +404,10 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   qs_acentry_t *e = NULL;
   qs_ip_entry_t *ip = NULL;
   int server_limit, thread_limit, max_ip;
-  ap_mpm_query(AP_MPMQ_MAX_DAEMON_USED, &server_limit);
-  ap_mpm_query(AP_MPMQ_MAX_THREADS, &thread_limit);
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
+  //ap_mpm_query(AP_MPMQ_MAX_DAEMON_USED, &server_limit);
+  //ap_mpm_query(AP_MPMQ_MAX_THREADS, &thread_limit);
   if(thread_limit == 0) thread_limit = 1; // mpm prefork
   max_ip = thread_limit * server_limit;
 
@@ -418,7 +420,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
                QOS_LOG_PFX"%s(%s), create shared memory: %d", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->is_virtual ? "v" : "b", act->size);
-  res = apr_shm_create(&act->m, act->size + 512, act->m_file, act->pool);
+  res = apr_shm_create(&act->m, (act->size + 512), act->m_file, act->pool);
   if (res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
@@ -777,7 +779,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.6 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.7 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -1024,10 +1026,12 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_SrvMaxConn <number>, defines the maximum number of"
                 " concurrent tcp connections for this server."),
+  /*
   AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
                 " concurrent tcp connections per ip source address."),
+  */
   NULL,
 };
 
