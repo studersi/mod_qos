@@ -76,7 +76,8 @@ Note: the module requires shared memory support.
 <h3>Configuration</h3>
 <p>
 Configuration is made on a per server basis. Commands within a virtual host overwrites the 
-global configuration. The module features the following directives:
+global configuration (requires the definition of a QS_LocRequestLimit or QS_LocRequestLimitDefault 
+directive). The module features the following directives:
 <ul>
 <li>
 <code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>

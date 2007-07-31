@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.3 2007-07-27 06:43:34 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.4 2007-07-31 19:26:33 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            5
@@ -61,6 +61,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
    QS_LocRequestLimitDefault                 30
    QS_LocRequestLimit         /cgi            5
+   QS_LocRequestLimit         /cgi100       100
    QS_LocRequestLimit         /test          50
    QS_LocRequestLimit         /no             0
    QS_LocRequestLimitMatch    "^.*\.gif$"     2
@@ -70,6 +71,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    #QS_SessionCookieName       mm
    #QS_SessionCookiePath       /x
    QS_SessionKey              12345678
+
+   QS_SrvMaxConn                             40
 
    BrowserMatch "pass"                       QS_VipRequest=yes
    SetEnvIf     Request_URI /no/index2.html  QS_VipRequest=yes

@@ -6,8 +6,13 @@ use CGI;
 my $cgi = new CGI;
 my $method = $ENV{"REQUEST_METHOD"};
 my $user = $ENV{"REMOTE_USER"};
+my $s = $cgi->param('s');
 
-sleep 3;
+if($s) {
+  sleep $s;
+} else {
+  sleep 3;
+}
 
 print "Content-type: text/plain\r\n";
 print "\r\n";
