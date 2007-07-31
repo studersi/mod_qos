@@ -25,6 +25,7 @@
  *   no access restrictions.
  * - QS_SessionTimeout/QS_SessionCookieName/QS_SessionCookiePath:
  *   Session is stored in cookie with several attributes.
+ * - QS_VipRequest environment variable
  *
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
@@ -52,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.4 2007-07-27 06:43:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.5 2007-07-31 12:58:27 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -91,6 +92,16 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
  ***********************************************************************/
 
 /**
+ * ip entry
+ */
+typedef struct qs_ip_entry_st {
+  long ip;
+  struct qs_ip_entry_st* left;
+  struct qs_ip_entry_st* right;
+  struct qs_ip_entry_st* next;
+} qs_ip_entry_t;
+
+/**
  * session cookie
  */
 typedef struct {
@@ -126,7 +137,9 @@ typedef struct qs_actable_st {
   apr_shm_t *m;
   char *m_file;
   apr_pool_t *pool;
-  qs_acentry_t *entry;
+  qs_acentry_t *entry;    /** rule entry list */
+  qs_ip_entry_t *ip_tree; /** ip tree main node */
+  qs_ip_entry_t *ip_free; /** ip node free list */
   int child_init;
 } qs_actable_t;
 
@@ -144,6 +157,12 @@ typedef struct {
   unsigned char key[EVP_MAX_KEY_LENGTH];
   char *header_name;
 } qos_srv_config;
+
+typedef struct {
+  unsigned long ip;
+  conn_rec *c;
+  qos_srv_config *sconf;
+} qs_conn_ctx;
 
 /**
  * request configuration
@@ -366,9 +385,21 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   int i;
   int rule_entries = apr_table_elts(table)->nelts;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(table)->elts;
-  qs_acentry_t *e;
+  qs_acentry_t *e = NULL;
+  qs_ip_entry_t *ip = NULL;
+  int server_limit, thread_limit, max_ip;
+  ap_mpm_query(AP_MPMQ_MAX_DAEMON_USED, &server_limit);
+  ap_mpm_query(AP_MPMQ_MAX_THREADS, &thread_limit);
+  if(thread_limit == 0) thread_limit = 1; // mpm prefork
+  max_ip = thread_limit * server_limit;
+
   act->m_file = apr_psprintf(act->pool, "%s.mod_qos", ap_server_root_relative(act->pool, tmpnam(NULL)));
-  act->size = rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t));
+  act->size = (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
+    (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t)));
+  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
+               QOS_LOG_PFX"%s(%s), create shared memory: %d", 
+               s->server_hostname == NULL ? "-" : s->server_hostname,
+               s->is_virtual ? "v" : "b", act->size);
   res = apr_shm_create(&act->m, act->size + 512, act->m_file, act->pool);
   if (res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
@@ -379,10 +410,13 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   }
   if(rule_entries) {
     act->entry = apr_shm_baseaddr_get(act->m);
+    e = act->entry;
+    act->ip_free = (qs_ip_entry_t *)&e[rule_entries];
   } else {
     act->entry = NULL;
+    act->ip_free = apr_shm_baseaddr_get(act->m);
   }
-  e = act->entry;
+  /* init rule entries (link data, init mutex) */
   for(i = 0; i < rule_entries; i++) {
     qs_rule_ctx_t *rule = (qs_rule_ctx_t *)entry[i].val;
     e->next = &e[1];
@@ -407,8 +441,42 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
       e->next = NULL;
     }
   }
+  /* init free ip node list */
+  ip = act->ip_free;
+  for(i = 0; i < max_ip; i++) {
+    ip->next = &ip[1];
+    if(i < max_ip - 1) {
+      ip = ip->next;
+    } else {
+      ip->next = NULL;
+    }
+  }
   apr_pool_cleanup_register(act->pool, act, qos_cleanup_shm, apr_pool_cleanup_null);
   
+  return APR_SUCCESS;
+}
+
+/**
+ * adds an ip entry (insert or increment)
+ * returns the number of entries
+ */
+static int qos_add_ip(qs_conn_ctx *cconf) {
+  int num = 0;
+  cconf->ip = inet_addr(cconf->c->remote_ip); /* v4 */
+  fprintf(stderr, "qos_add_ip() %ld %d\n", cconf->ip, num); fflush(stderr);
+  return num;
+}
+
+/**
+ * removes an ip entry (delete or decrement)
+ */
+static void qos_remove_ip(qs_conn_ctx *cconf) {
+  fprintf(stderr, "qos_remove_ip() %ld\n", cconf->ip); fflush(stderr);
+}
+
+static apr_status_t qos_cleanup_conn(void *p) {
+  qs_conn_ctx *cconf = p;
+  qos_remove_ip(cconf);
   return APR_SUCCESS;
 }
 
@@ -502,6 +570,21 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
  * handlers
  ***********************************************************************/
 
+static int qos_process_connection(conn_rec * c) {
+  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
+  if(cconf == NULL) {
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
+                                                                  &qos_module);
+    cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
+    cconf->c = c;
+    cconf->sconf = sconf;
+    qos_add_ip(cconf);
+    ap_set_module_config(c->conn_config, &qos_module, cconf);
+    apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
+  }
+  return DECLINED;
+}
+
 /**
  * header parser implements restrictions on a per location (url) basis.
  */
@@ -551,7 +634,8 @@ static int qos_header_parser(request_rec * r) {
 }
 
 /**
- * process response
+ * process response:
+ * - detects vip header and create session
  */
 static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
@@ -566,7 +650,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     }
   }
   ap_remove_output_filter(f);
-  return ap_pass_brigade (f->next, bb); 
+  return ap_pass_brigade(f->next, bb); 
 }
 
 /**
@@ -634,7 +718,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.4 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.5 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -855,10 +939,12 @@ static const command_rec qos_config_cmds[] = {
 static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_post_config(qos_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_header_parser(qos_header_parser, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
-  ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
+
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
+  ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
 /************************************************************************
