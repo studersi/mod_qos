@@ -1,0 +1,9 @@
+
+CLIENT 50 1
+_REQ localhost 5960
+__GET /cgi100/sleep.cgi?s=10 HTTP/1.1
+__Host: localhost
+__
+_WAIT
+
+_END
