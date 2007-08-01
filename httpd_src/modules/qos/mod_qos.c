@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.7 2007-07-31 19:57:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.8 2007-08-01 06:54:12 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -96,6 +96,7 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
  */
 typedef struct qs_ip_entry_st {
   unsigned long ip;
+  int counter;
   struct qs_ip_entry_st* left;
   struct qs_ip_entry_st* right;
   struct qs_ip_entry_st* next;
@@ -404,10 +405,10 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   qs_acentry_t *e = NULL;
   qs_ip_entry_t *ip = NULL;
   int server_limit, thread_limit, max_ip;
-  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
-  ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
-  //ap_mpm_query(AP_MPMQ_MAX_DAEMON_USED, &server_limit);
-  //ap_mpm_query(AP_MPMQ_MAX_THREADS, &thread_limit);
+  ap_mpm_query(AP_MPMQ_MAX_DAEMON_USED, &server_limit);
+  ap_mpm_query(AP_MPMQ_MAX_THREADS, &thread_limit);
+  if(server_limit <= 0) ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
+  if(thread_limit <= 0) ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   if(thread_limit == 0) thread_limit = 1; // mpm prefork
   max_ip = thread_limit * server_limit;
 
@@ -417,7 +418,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t)));
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
-               QOS_LOG_PFX"%s(%s), create shared memory: %d", 
+               QOS_LOG_PFX"%s(%s), create shared memory: %d bytes", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->is_virtual ? "v" : "b", act->size);
   res = apr_shm_create(&act->m, (act->size + 512), act->m_file, act->pool);
@@ -478,6 +479,20 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   return APR_SUCCESS;
 }
 
+
+static void qos_free_ip(qs_actable_t *act, qs_ip_entry_t *ipe) {
+  ipe->next = act->c->ip_free;
+  act->c->ip_free->next = ipe;
+}
+
+static qs_ip_entry_t *qos_new_ip(qs_actable_t *act) {
+  qs_ip_entry_t *ipe = act->c->ip_free;
+  act->c->ip_free = ipe->next;
+  ipe->next = NULL;
+  ipe->counter = 0;
+  return ipe;
+}
+
 /**
  * adds an ip entry (insert or increment)
  * returns the number of entries
@@ -485,6 +500,22 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
 static int qos_add_ip(qs_conn_ctx *cconf) {
   int num = 0;
   cconf->ip = inet_addr(cconf->c->remote_ip); /* v4 */
+
+  apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT1 */
+  {
+    qs_ip_entry_t *ipe = cconf->sconf->act->c->ip_tree;
+    if(ipe == NULL) {
+      ipe = qos_new_ip(cconf->sconf->act);
+      ipe->ip = cconf->ip;
+      ipe->counter = 1;
+      num = 1;
+      cconf->sconf->act->c->ip_tree = ipe;
+    } else {
+      /* $$$ */
+    }
+  }
+  apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
+
   fprintf(stderr, "qos_add_ip() %ld %d\n", cconf->ip, num); fflush(stderr);
   return num;
 }
@@ -493,9 +524,18 @@ static int qos_add_ip(qs_conn_ctx *cconf) {
  * removes an ip entry (delete or decrement)
  */
 static void qos_remove_ip(qs_conn_ctx *cconf) {
+  apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT2 */
+  {
+    qs_ip_entry_t *ipe;
+  }
+  apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT2 */
+
   fprintf(stderr, "qos_remove_ip() %ld\n", cconf->ip); fflush(stderr);
 }
 
+/**
+ * send server error, used for connection errors
+ */
 static int qos_return_error(conn_rec *c) {
   char *line = apr_pstrcat(c->pool, AP_SERVER_PROTOCOL, " ",
                            ap_get_status_line(500), CRLF CRLF, NULL);
@@ -598,12 +638,15 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
  * handlers
  ***********************************************************************/
 
+/**
+ * connection destructor
+ */
 static apr_status_t qos_cleanup_conn(void *p) {
   qs_conn_ctx *cconf = p;
   if(cconf->sconf->max_conn != -1) {
-    apr_global_mutex_lock(cconf->sconf->act->lock);
+    apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT3 */
     cconf->sconf->act->c->connections--;
-    apr_global_mutex_unlock(cconf->sconf->act->lock);
+    apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT3 */
   }
   if(cconf->sconf->max_conn_per_ip != -1) {
     qos_remove_ip(cconf);
@@ -611,6 +654,9 @@ static apr_status_t qos_cleanup_conn(void *p) {
   return APR_SUCCESS;
 }
 
+/**
+ * connection constructor
+ */
 static int qos_process_connection(conn_rec * c) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
   if(cconf == NULL) {
@@ -623,9 +669,9 @@ static int qos_process_connection(conn_rec * c) {
     apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
     if(sconf->max_conn != -1) {
       int connections;
-      apr_global_mutex_lock(cconf->sconf->act->lock);
+      apr_global_mutex_lock(cconf->sconf->act->lock);  /* @CRT4 */
       cconf->sconf->act->c->connections++;
-      connections = cconf->sconf->act->c->connections;
+      connections = cconf->sconf->act->c->connections; /* @CRT4 */
       apr_global_mutex_unlock(cconf->sconf->act->lock);
       if(connections > sconf->max_conn) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
@@ -637,7 +683,15 @@ static int qos_process_connection(conn_rec * c) {
       }
     }
     if(sconf->max_conn_per_ip != -1) {
-      qos_add_ip(cconf);
+      int current = qos_add_ip(cconf);
+      if(current > sconf->max_conn_per_ip) {
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                     QOS_LOG_PFX"access denied, rule: max_ip=%d, concurrent connections=%d, c=%s",
+                     sconf->max_conn_per_ip, current,
+                     c->remote_ip == NULL ? "-" : c->remote_ip);
+        c->keepalive = AP_CONN_CLOSE;
+        return qos_return_error(c);
+      }
     }
   }
   return DECLINED;
@@ -661,9 +715,9 @@ static int qos_header_parser(request_rec * r) {
     if(e) {
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       rctx->entry = e;
-      apr_global_mutex_lock(e->lock);
+      apr_global_mutex_lock(e->lock);   /* @CRT5 */
       e->counter++;
-      apr_global_mutex_unlock(e->lock);
+      apr_global_mutex_unlock(e->lock); /* @CRT5 */
       
       /* enforce the limitation */
       if(e->counter > e->limit) {
@@ -674,8 +728,7 @@ static int qos_header_parser(request_rec * r) {
             rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
             return DECLINED;
           }
-        }
-        /* std user */
+        }        /* std user */
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests=%d, c=%s",
                       e->url, e->limit, e->counter,
@@ -720,9 +773,9 @@ static int qos_logger(request_rec * r) {
   qs_acentry_t *e = rctx->entry;
   if(e) {
     char *h = apr_psprintf(r->pool, "%d", e->counter);
-    apr_global_mutex_lock(e->lock);
+    apr_global_mutex_lock(e->lock);   /* @CRT6 */
     e->counter--;
-    apr_global_mutex_unlock(e->lock);
+    apr_global_mutex_unlock(e->lock); /* @CRT6 */
     /* alow logging of the current location usage */
     apr_table_set(r->headers_out, "mod_qos_cr", h);
     apr_table_set(r->err_headers_out, "mod_qos_cr", h);
@@ -779,7 +832,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.7 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.8 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -827,7 +880,8 @@ static void *qos_srv_config_create(apr_pool_t * p, server_rec *s) {
   sconf->act->child_init = 0;
   sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%sa.mod_qos",
                                        ap_server_root_relative(sconf->act->pool, tmpnam(NULL)));
-  rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file, APR_LOCK_DEFAULT, sconf->act->pool);
+  rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
+                               APR_LOCK_DEFAULT, sconf->act->pool);
   if (rv != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(rv, buf, sizeof(buf));
@@ -967,6 +1021,9 @@ const char *qos_header_name_cmd(cmd_parms * cmd, void *dcfg, const char *name) {
   return NULL;
 }
 
+/**
+ * max concurrent connections per server
+ */
 const char *qos_max_conn_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -974,6 +1031,9 @@ const char *qos_max_conn_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
   return NULL;
 }
 
+/**
+ * max concurrent connections per client ip
+ */
 const char *qos_max_conn_ip_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
