@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.8 2007-08-01 06:54:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.9 2007-08-01 11:38:50 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -168,6 +168,7 @@ typedef struct {
   unsigned char key[EVP_MAX_KEY_LENGTH];
   char *header_name;
   int max_conn;
+  int max_conn_close;
   int max_conn_per_ip;
 } qos_srv_config;
 
@@ -761,6 +762,13 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       apr_table_unset(r->headers_out, sconf->header_name);
     }
   }
+  if(sconf->max_conn_close != -1) {
+    if(sconf->act->c->connections > sconf->max_conn_close) {
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      rctx->evmsg = apr_pstrcat(r->pool, "K;", rctx->evmsg, NULL);
+      r->connection->keepalive = AP_CONN_CLOSE;
+    }
+  }
   ap_remove_output_filter(f);
   return ap_pass_brigade(f->next, bb); 
 }
@@ -832,7 +840,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.8 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.9 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -895,6 +903,7 @@ static void *qos_srv_config_create(apr_pool_t * p, server_rec *s) {
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
   sconf->max_conn = -1;
+  sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
   {
     int len = EVP_MAX_KEY_LENGTH;
@@ -1032,6 +1041,16 @@ const char *qos_max_conn_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
 }
 
 /**
+ * disable keep-alive
+ */
+const char *qos_max_conn_close_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->max_conn_close = atoi(number);
+  return NULL;
+}
+
+/**
  * max concurrent connections per client ip
  */
 const char *qos_max_conn_ip_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
@@ -1085,12 +1104,19 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_SrvMaxConn", qos_max_conn_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConn <number>, defines the maximum number of"
-                " concurrent tcp connections for this server."),
+                " concurrent TCP connections for this server."),
+  AP_INIT_TAKE1("QS_SrvMaxConnClose", qos_max_conn_close_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvMaxConnClose <number>, defines the maximum number of"
+                " concurrent TCP connections until the server disables"
+                " keep-alive for this server (closes the connection after"
+                " each requests."),
   /*
   AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
-                " concurrent tcp connections per ip source address."),
+                " concurrent TCP connections per IP source address "
+                " (IP v4 only)."),
   */
   NULL,
 };

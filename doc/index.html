@@ -74,10 +74,14 @@ Note: the module requires shared memory support.
 
 <a name="configuration">
 <h3>Configuration</h3>
-<p>
 Configuration is made on a per server basis. Commands within a virtual host overwrites the 
-global configuration (requires the definition of a QS_LocRequestLimit or QS_LocRequestLimitDefault 
-directive). The module features the following directives:
+global configuration (requires the definition of a QS_LocRequestLimit, QS_LocRequestLimitDefault, 
+or QS_SrvMaxConn directive).
+
+<h4>Per Location Limitations</h4>
+<p>
+The module features the following directives to control server access on a per location 
+(URL) level:
 <ul>
 <li>
 <code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
@@ -172,6 +176,17 @@ SetEnvIf     Request_URI /application/start.html  QS_VipRequest=yes
 </td></tr>
 </table>
 
+<h4>Per Server Limitations</h4>
+The module features the following directives to control server access on a per server 
+(TCP connection) level:
+<ul>
+<li>
+<code>QS_SrvMaxConn &lt;number&gt;</code><br>
+</li>
+<li>
+<code>QS_SrvMaxConnClose &lt;number&gt;</code><br>
+</li>
+</ul>
 
 </p>
 
@@ -182,7 +197,7 @@ mod_qos writes messages to Apache's error log when enforcing a rule. The number 
 concurrent requests to location defined by QS_LocRequestLimit can be logged to the 
 access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
 header is used to log event messages: D=denied, S=pass due an available VIP session, 
-V=create VIP session.
+V=create VIP session, K=connection closed (no keep-alive).
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
