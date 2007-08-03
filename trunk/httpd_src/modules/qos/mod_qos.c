@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.11 2007-08-03 20:57:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.12 2007-08-03 21:21:17 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -153,6 +153,7 @@ typedef struct qs_actable_st {
   apr_global_mutex_t *lock; /** ip/conn lock */
   qs_conn_t *c;
   int child_init;
+  apr_interval_time_t timeout;
 } qs_actable_t;
 
 /**
@@ -386,6 +387,9 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
 
 /**
  * destroys the act
+ * shared memory must not be destroyed before graceful restart has
+ * been finished due running requests still need the shared memory
+ * till they have finished
  */
 static apr_status_t qos_cleanup_shm(void *p) {
   qs_actable_t *act = p;
@@ -396,7 +400,9 @@ static apr_status_t qos_cleanup_shm(void *p) {
     apr_global_mutex_destroy(e->lock);
     e = e->next;
   }
+  if(act->entry) memset(act->entry, 0, act->size);
   apr_shm_destroy(act->m);
+  apr_pool_destroy(act->pool);
   return APR_SUCCESS;
 }
 
@@ -478,8 +484,6 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
       ip->next = NULL;
     }
   }
-  apr_pool_cleanup_register(act->pool, act, qos_cleanup_shm, apr_pool_cleanup_null);
-  
   return APR_SUCCESS;
 }
 
@@ -889,7 +893,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.11 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.12 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -898,6 +902,9 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   if(qos_init_shm(bs, sconf->act, sconf->location_t) != APR_SUCCESS) {
     return !OK;
   }
+  //$$$  apr_pool_cleanup_register(sconf->act->pool, sconf->act,
+  apr_pool_cleanup_register(sconf->pool, sconf->act,
+                            qos_cleanup_shm, apr_pool_cleanup_null);
   rules = apr_table_elts(sconf->location_t)->nelts;
   while(s) {
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
@@ -905,6 +912,9 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       if(qos_init_shm(s, sconf->act, sconf->location_t) != APR_SUCCESS) {
         return !OK;
       }
+      //$$$      apr_pool_cleanup_register(sconf->act->pool, sconf->act,
+      apr_pool_cleanup_register(sconf->pool, sconf->act,
+                                qos_cleanup_shm, apr_pool_cleanup_null);
       rules = rules + apr_table_elts(sconf->location_t)->nelts;
     }
     s = s->next;
@@ -928,7 +938,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   qos_srv_config *sconf;
   apr_status_t rv;
   apr_pool_t *act_pool;
-  apr_pool_create(&act_pool, p);
+  //  $$$ apr_pool_create(&act_pool, p);
+  apr_pool_create(&act_pool, NULL);
   sconf =(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
   sconf->pool = p;
   sconf->location_t = apr_table_make(sconf->pool, 2);
@@ -937,6 +948,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act->pool = act_pool;
   sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
+  sconf->act->timeout = s->timeout;
   sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
                                        ap_server_root_relative(sconf->act->pool, tmpnam(NULL)));
   rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
@@ -1172,13 +1184,13 @@ static const command_rec qos_config_cmds[] = {
                 " concurrent TCP connections until the server disables"
                 " keep-alive for this server (closes the connection after"
                 " each requests."),
-
+  /*
   AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
                 " concurrent TCP connections per IP source address "
                 " (IP v4 only)."),
-
+  */
   NULL,
 };
 
