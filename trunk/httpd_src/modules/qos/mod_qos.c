@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.10 2007-08-03 17:49:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.11 2007-08-03 20:57:09 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -411,22 +411,20 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   qs_acentry_t *e = NULL;
   qs_ip_entry_t *ip = NULL;
   int server_limit, thread_limit, max_ip;
-  ap_mpm_query(AP_MPMQ_MAX_DAEMON_USED, &server_limit);
-  ap_mpm_query(AP_MPMQ_MAX_THREADS, &thread_limit);
-  if(server_limit <= 0) ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
-  if(thread_limit <= 0) ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   if(thread_limit == 0) thread_limit = 1; // mpm prefork
   max_ip = thread_limit * server_limit;
 
-  act->m_file = apr_psprintf(act->pool, "%s.mod_qos",
+  act->m_file = apr_psprintf(act->pool, "%s_m.mod_qos",
                              ap_server_root_relative(act->pool, tmpnam(NULL)));
   act->size = APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t)));
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
-               QOS_LOG_PFX"%s(%s), create shared memory: %d bytes", 
+               QOS_LOG_PFX"%s(%s), create shared memory: %d bytes (r=%d,ip=%d)", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
-               s->is_virtual ? "v" : "b", act->size);
+               s->is_virtual ? "v" : "b", act->size, rule_entries, max_ip);
   res = apr_shm_create(&act->m, (act->size + 512), act->m_file, act->pool);
   if (res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
@@ -454,8 +452,8 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->regex = rule->regex;
     e->limit = rule->limit;
     e->counter = 0;
-    e->lock_file = apr_psprintf(act->pool, "%s.mod_qos", 
-                                ap_server_root_relative(act->pool, tmpnam(NULL)));
+    e->lock_file = apr_psprintf(act->pool, "%s_e%d.mod_qos", 
+                                ap_server_root_relative(act->pool, tmpnam(NULL)), i);
     res = apr_global_mutex_create(&e->lock, e->lock_file, APR_LOCK_DEFAULT, act->pool);
     if (res != APR_SUCCESS) {
       char buf[MAX_STRING_LEN];
@@ -891,7 +889,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.10 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.11 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -929,17 +927,17 @@ static void qos_insert_filter(request_rec *r) {
 static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   qos_srv_config *sconf;
   apr_status_t rv;
-  apr_pool_t *srv_pool;
-  apr_pool_create(&srv_pool, p);
-  sconf =(qos_srv_config *)apr_pcalloc(srv_pool, sizeof(qos_srv_config));
-  sconf->pool = srv_pool;
+  apr_pool_t *act_pool;
+  apr_pool_create(&act_pool, p);
+  sconf =(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
+  sconf->pool = p;
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->error_page = NULL;
-  sconf->act = (qs_actable_t *)apr_pcalloc(sconf->pool, sizeof(qs_actable_t));
-  sconf->act->pool = srv_pool;
+  sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
+  sconf->act->pool = act_pool;
   sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
-  sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%sa.mod_qos",
+  sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
                                        ap_server_root_relative(sconf->act->pool, tmpnam(NULL)));
   rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
                                APR_LOCK_DEFAULT, sconf->act->pool);
@@ -1174,13 +1172,13 @@ static const command_rec qos_config_cmds[] = {
                 " concurrent TCP connections until the server disables"
                 " keep-alive for this server (closes the connection after"
                 " each requests."),
-  /*
+
   AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
                 " concurrent TCP connections per IP source address "
                 " (IP v4 only)."),
-  */
+
   NULL,
 };
 
