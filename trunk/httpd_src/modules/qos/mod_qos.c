@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.9 2007-08-01 11:38:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.10 2007-08-03 17:49:28 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -85,6 +85,7 @@ static const char revision[] = "$Id: mod_qos.c,v 2.9 2007-08-01 11:38:50 pbuchbi
 #define QOS_MAGIC_LEN 8
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
+#define QS_SIM_IP_LEN 10
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 /************************************************************************
@@ -158,6 +159,7 @@ typedef struct qs_actable_st {
  * server configuration
  */
 typedef struct {
+  apr_pool_t *pool;
   apr_table_t *location_t;
   const char *error_page;
   qs_actable_t *act;
@@ -170,6 +172,9 @@ typedef struct {
   int max_conn;
   int max_conn_close;
   int max_conn_per_ip;
+#ifdef QS_SIM_IP
+  apr_table_t *testip;
+#endif
 } qos_srv_config;
 
 /**
@@ -483,6 +488,9 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
 
 static void qos_free_ip(qs_actable_t *act, qs_ip_entry_t *ipe) {
   ipe->next = act->c->ip_free;
+  ipe->left = NULL;
+  ipe->right = NULL;
+  ipe->counter = 0;
   act->c->ip_free->next = ipe;
 }
 
@@ -490,7 +498,6 @@ static qs_ip_entry_t *qos_new_ip(qs_actable_t *act) {
   qs_ip_entry_t *ipe = act->c->ip_free;
   act->c->ip_free = ipe->next;
   ipe->next = NULL;
-  ipe->counter = 0;
   return ipe;
 }
 
@@ -498,26 +505,52 @@ static qs_ip_entry_t *qos_new_ip(qs_actable_t *act) {
  * adds an ip entry (insert or increment)
  * returns the number of entries
  */
-static int qos_add_ip(qs_conn_ctx *cconf) {
+static int qos_add_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
   int num = 0;
   cconf->ip = inet_addr(cconf->c->remote_ip); /* v4 */
-
+#ifdef QS_SIM_IP
+  /* use one of the predefined ip addresses */
+  {
+    char *testid = apr_psprintf(p, "%d", rand()%(QS_SIM_IP_LEN-1));
+    const char *testip = apr_table_get(cconf->sconf->testip, testid);
+    cconf->ip = inet_addr(testip);
+  }
+#endif
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT1 */
   {
     qs_ip_entry_t *ipe = cconf->sconf->act->c->ip_tree;
     if(ipe == NULL) {
       ipe = qos_new_ip(cconf->sconf->act);
       ipe->ip = cconf->ip;
-      ipe->counter = 1;
-      num = 1;
+      ipe->counter = 0;
       cconf->sconf->act->c->ip_tree = ipe;
     } else {
-      /* $$$ */
+      qs_ip_entry_t *last;
+      while(ipe->ip != cconf->ip) {
+        last = ipe;
+        if(cconf->ip > ipe->ip) {
+          ipe = ipe->right;
+        } else {
+          ipe = ipe->left;
+        }
+        if(ipe == NULL) {
+          ipe = qos_new_ip(cconf->sconf->act);
+          ipe->ip = cconf->ip;
+          if(last->ip > ipe->ip) {
+            last->left = ipe;
+          } else {
+            last->right = ipe;
+          }
+          break;
+        }
+      }
     }
+    ipe->counter++;
+    num = ipe->counter;
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
 
-  fprintf(stderr, "qos_add_ip() %ld %d\n", cconf->ip, num); fflush(stderr);
+  fprintf(stderr, "qos_add_ip() %lu %d\n", cconf->ip, num); fflush(stderr);
   return num;
 }
 
@@ -528,10 +561,19 @@ static void qos_remove_ip(qs_conn_ctx *cconf) {
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT2 */
   {
     qs_ip_entry_t *ipe;
+
+    /* $$$ */
+    {
+      qs_ip_entry_t *f = cconf->sconf->act->c->ip_free;
+      int c = 0;
+      while(f) {
+        c++;
+        f = f->next;
+      }
+      fprintf(stderr, "free list size: %d\n", c); fflush(stderr);
+    }
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT2 */
-
-  fprintf(stderr, "qos_remove_ip() %ld\n", cconf->ip); fflush(stderr);
 }
 
 /**
@@ -661,6 +703,8 @@ static apr_status_t qos_cleanup_conn(void *p) {
 static int qos_process_connection(conn_rec * c) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
   if(cconf == NULL) {
+    int connections;
+    int current;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                   &qos_module);
     cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
@@ -668,12 +712,20 @@ static int qos_process_connection(conn_rec * c) {
     cconf->sconf = sconf;
     ap_set_module_config(c->conn_config, &qos_module, cconf);
     apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
+
+    /* update data */
     if(sconf->max_conn != -1) {
-      int connections;
       apr_global_mutex_lock(cconf->sconf->act->lock);  /* @CRT4 */
       cconf->sconf->act->c->connections++;
       connections = cconf->sconf->act->c->connections; /* @CRT4 */
       apr_global_mutex_unlock(cconf->sconf->act->lock);
+    }
+    if(sconf->max_conn_per_ip != -1) {
+      current = qos_add_ip(c->pool, cconf);
+    }
+
+    /* enforce rule */
+    if(sconf->max_conn != -1) {
       if(connections > sconf->max_conn) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                      QOS_LOG_PFX"access denied, rule: max=%d, concurrent connections=%d, c=%s",
@@ -684,7 +736,6 @@ static int qos_process_connection(conn_rec * c) {
       }
     }
     if(sconf->max_conn_per_ip != -1) {
-      int current = qos_add_ip(cconf);
       if(current > sconf->max_conn_per_ip) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                      QOS_LOG_PFX"access denied, rule: max_ip=%d, concurrent connections=%d, c=%s",
@@ -840,13 +891,12 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.9 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.10 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
   er[0] = '\0';
   rev++;
-
   if(qos_init_shm(bs, sconf->act, sconf->location_t) != APR_SUCCESS) {
     return !OK;
   }
@@ -861,7 +911,6 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     }
     s = s->next;
   }
-
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, bs,
                QOS_LOG_PFX"%s loaded (%d rules)", rev, rules);
   return DECLINED;
@@ -877,13 +926,17 @@ static void qos_insert_filter(request_rec *r) {
 /************************************************************************
  * directiv handlers 
  ***********************************************************************/
-static void *qos_srv_config_create(apr_pool_t * p, server_rec *s) {
-  qos_srv_config *sconf=(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
+static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
+  qos_srv_config *sconf;
   apr_status_t rv;
-  sconf->location_t = apr_table_make(p, 2);
+  apr_pool_t *srv_pool;
+  apr_pool_create(&srv_pool, p);
+  sconf =(qos_srv_config *)apr_pcalloc(srv_pool, sizeof(qos_srv_config));
+  sconf->pool = srv_pool;
+  sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->error_page = NULL;
-  sconf->act = (qs_actable_t *)apr_pcalloc(p, sizeof(qs_actable_t));
-  sconf->act->pool = p;
+  sconf->act = (qs_actable_t *)apr_pcalloc(sconf->pool, sizeof(qs_actable_t));
+  sconf->act->pool = srv_pool;
   sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
   sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%sa.mod_qos",
@@ -898,8 +951,8 @@ static void *qos_srv_config_create(apr_pool_t * p, server_rec *s) {
     exit(1);
   }
   sconf->is_virtual = s->is_virtual;
-  sconf->cookie_name = apr_pstrdup(p, QOS_COOKIE_NAME);
-  sconf->cookie_path = apr_pstrdup(p, "/");
+  sconf->cookie_name = apr_pstrdup(sconf->pool, QOS_COOKIE_NAME);
+  sconf->cookie_path = apr_pstrdup(sconf->pool, "/");
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
   sconf->max_conn = -1;
@@ -911,6 +964,16 @@ static void *qos_srv_config_create(apr_pool_t * p, server_rec *s) {
     RAND_bytes(rand, len);
     EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, rand, len, 1, sconf->key, NULL);
   }
+#ifdef QS_SIM_IP
+  {
+    int i;
+    sconf->testip = apr_table_make(sconf->pool, QS_SIM_IP_LEN);
+    for(i = 0; i < QS_SIM_IP_LEN; i++) {
+      char *qsmi = apr_psprintf(p, "%d.%d.%d.%d", rand()%255, rand()%255, rand()%255, rand()%255);
+      apr_table_add(sconf->testip, apr_psprintf(p, "%d", i), qsmi);
+    }
+  }
+#endif
   return sconf;
 }
 
