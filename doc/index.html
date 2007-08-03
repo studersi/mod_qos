@@ -48,7 +48,7 @@ important persons (VIP) which may access the web server without any restrictions
 </p>
 <hr>
 <a name="build">
-<h3>Build</h3>
+<h2>Build</h3>
 <p>
 mod_qos version 2 requires OpenSSL but has no other dependencies to other modules nor any 
 special libraries. It works with Apache version 2.0 and 2.2. Just copy the module into 
@@ -67,18 +67,18 @@ LoadModule qos_module &lt;path to module&gt;/mod_qos.so
 Note: the module requires shared memory support.
 </p>
 <a name="source">
-<h3>Source</h3>
+<h2>Source</h3>
 <p>
 <a href="../apache2">mod_qos</a> is available for Apache version 2.0 and 2.2.
 </p>
 
 <a name="configuration">
-<h3>Configuration</h3>
+<h2>Configuration</h3>
 Configuration is made on a per server basis. Commands within a virtual host overwrites the 
 global configuration (requires the definition of a QS_LocRequestLimit, QS_LocRequestLimitDefault, 
 or QS_SrvMaxConn directive).
 
-<h4>Per Location Limitations</h4>
+<h4>Request Level Control</h4>
 <p>
 The module features the following directives to control server access on a per location 
 (URL) level:
@@ -160,14 +160,14 @@ additonal control mechanisms. The following variables may be used:
 <ul>
 <li>
 <code>QS_VipRequest=yes</code><br>
-Defines a user agent header which allows unrestricted access.
+Allows unrestricted access.
 </li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample variable usage:<br>
 <pre>
-# allows curl clients unlimited access:
+# unlimited access for curl clients:
 BrowserMatch                  "curl"              QS_VipRequest=yes
 
 # allows unlimited access to a single resource:
@@ -176,22 +176,26 @@ SetEnvIf     Request_URI /application/start.html  QS_VipRequest=yes
 </td></tr>
 </table>
 
-<h4>Per Server Limitations</h4>
+<h4>Connection Level Control</h4>
 The module features the following directives to control server access on a per server 
 (TCP connection) level:
 <ul>
 <li>
 <code>QS_SrvMaxConn &lt;number&gt;</code><br>
+Defines the maximum number of concurrent TCP connections for this server.
 </li>
 <li>
 <code>QS_SrvMaxConnClose &lt;number&gt;</code><br>
+Defines the maximum number of connections supporting keep-alive. If the number 
+of concurrent connections exceeds this threshold, the TCP connetion gets closed 
+after each request.
 </li>
 </ul>
 
 </p>
 
 <a name="messages">
-<h3>Log Messages</h3>
+<h2>Log Messages</h3>
 <p>
 mod_qos writes messages to Apache's error log when enforcing a rule. The number of 
 concurrent requests to location defined by QS_LocRequestLimit can be logged to the 
