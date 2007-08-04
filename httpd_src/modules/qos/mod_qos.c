@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.13 2007-08-04 13:31:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.14 2007-08-04 20:47:58 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -532,13 +532,16 @@ static void qos_free_ip(qs_actable_t *act, qs_ip_entry_t *ipe) {
   ipe->left = NULL;
   ipe->right = NULL;
   ipe->counter = 0;
-  act->c->ip_free->next = ipe;
+  act->c->ip_free = ipe;
 }
 
 static qs_ip_entry_t *qos_new_ip(qs_actable_t *act) {
   qs_ip_entry_t *ipe = act->c->ip_free;
   act->c->ip_free = ipe->next;
   ipe->next = NULL;
+  ipe->left = NULL;
+  ipe->right = NULL;
+  ipe->counter = 0;
   return ipe;
 }
 
@@ -577,10 +580,10 @@ static int qos_add_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
         if(ipe == NULL) {
           ipe = qos_new_ip(cconf->sconf->act);
           ipe->ip = cconf->ip;
-          if(last->ip > ipe->ip) {
-            last->left = ipe;
-          } else {
+          if(ipe->ip > last->ip) {
             last->right = ipe;
+          } else {
+            last->left = ipe;
           }
           break;
         }
@@ -591,8 +594,30 @@ static int qos_add_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
 
-  fprintf(stderr, "qos_add_ip() %lu %d\n", cconf->ip, num); fflush(stderr);
+  fprintf(stderr, "qos_add_ip() ip=%lu count=%d\n", cconf->ip, num); fflush(stderr);
   return num;
+}
+
+static void qos_insert_ip(qs_ip_entry_t *root, qs_ip_entry_t *re) {
+  qs_ip_entry_t *ipe = re;
+  qs_ip_entry_t *last = root;
+  while(last) {
+    if(ipe->ip > last->ip) {
+      if(last->right == NULL) {
+        last->right = ipe;
+        last = NULL;
+      } else {
+        last = last->right;
+      }
+    } else {
+      if(last->left == NULL) {
+        last->left = ipe;
+        last = NULL;
+      } else {
+        last = last->left;
+      }
+    }
+  }
 }
 
 /**
@@ -601,8 +626,44 @@ static int qos_add_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
 static void qos_remove_ip(qs_conn_ctx *cconf) {
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT2 */
   {
-    qs_ip_entry_t *ipe;
-
+    qs_ip_entry_t *ipe = cconf->sconf->act->c->ip_tree;
+    qs_ip_entry_t *last = NULL;
+    qs_ip_entry_t *re;
+    int right = 0;
+    /* find entry ... */
+    while(ipe->ip != cconf->ip) {
+      last = ipe;
+      if(cconf->ip > ipe->ip) {
+        ipe = ipe->right;
+        right = 1;
+      } else {
+        ipe = ipe->left;
+        right = 0;
+      }
+    }
+    ipe->counter--;
+    if(ipe->counter == 0) {
+      if(last == NULL) {
+        if(ipe->right) {
+          cconf->sconf->act->c->ip_tree = ipe->right;
+          re = ipe->left;
+        } else {
+          cconf->sconf->act->c->ip_tree = ipe->left;
+          re = ipe->right;
+        }
+        last = cconf->sconf->act->c->ip_tree;
+      } else {
+        if(right) {
+          last->right = ipe->right;
+          re = ipe->left;
+        } else {
+          last->left = ipe->right;
+          re = ipe->left;
+        }
+      }
+      qos_free_ip(cconf->sconf->act, ipe);
+      if(last && re) qos_insert_ip(last, re);
+    }
     /* $$$ */
     {
       qs_ip_entry_t *f = cconf->sconf->act->c->ip_free;
@@ -611,7 +672,7 @@ static void qos_remove_ip(qs_conn_ctx *cconf) {
         c++;
         f = f->next;
       }
-      fprintf(stderr, "free list size: %d\n", c); fflush(stderr);
+      fprintf(stderr, "qos_remove_ip() free_list_size=%d\n", c); fflush(stderr);
     }
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT2 */
@@ -932,7 +993,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.13 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.14 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
