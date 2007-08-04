@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.7 2007-08-01 11:38:50 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.8 2007-08-04 13:31:45 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 ServerLimit             16
@@ -76,6 +76,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
    QS_SrvMaxConn                             40
    QS_SrvMaxConnClose                        20
+#   QS_SrvMaxConnPerIP                        50
 
    BrowserMatch "pass"                       QS_VipRequest=yes
    SetEnvIf     Request_URI /no/index2.html  QS_VipRequest=yes

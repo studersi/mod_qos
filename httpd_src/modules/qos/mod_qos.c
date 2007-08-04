@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.12 2007-08-03 21:21:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.13 2007-08-04 13:31:45 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -394,15 +394,54 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
 static apr_status_t qos_cleanup_shm(void *p) {
   qs_actable_t *act = p;
   qs_acentry_t *e = act->entry;
-  act->child_init = 0;
-  apr_global_mutex_destroy(act->lock);
-  while(e) {
-    apr_global_mutex_destroy(e->lock);
-    e = e->next;
+  pid_t pid;
+  pid_t ppid = getpid();
+  int status;
+  int timeout = act->timeout;
+  if(timeout == 0) timeout = 300;
+  switch (pid = fork()) {
+  case -1:
+    ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, NULL,
+                 QOS_LOG_PFX"failed to fork cleanup process");
+    return !OK;
+  case 0:
+    /* this child must return (it's in the scoreboard) */
+    switch (pid = fork()) {
+    case -1:
+      ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, NULL,
+                   QOS_LOG_PFX"failed to fork cleanup process");
+      return !OK;
+    case 0:
+      sleep(1);
+      if(getsid(ppid) != -1) {
+        ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
+                     QOS_LOG_PFX"graceful restart detected, waiting %d seconds"
+                     " (no server re-start possible during this time) #%d",
+                     timeout, getpid());
+        sleep(timeout);
+        ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
+                     QOS_LOG_PFX"graceful restart has finished,"
+                     " cleaning up shared memory: %d bytes #%d",
+                     act->size, getpid());
+      }
+      act->child_init = 0;
+      apr_global_mutex_destroy(act->lock);
+      while(e) {
+        apr_global_mutex_destroy(e->lock);
+        e = e->next;
+      }
+      if(act->entry) memset(act->entry, 0, act->size);
+      apr_shm_destroy(act->m);
+      apr_pool_destroy(act->pool);
+      exit(0);
+    default:
+      exit(0);
+    }
+  default:
+    /* suppress "long lost child came home!" */
+    waitpid(pid, &status, 0);
+    return APR_SUCCESS;
   }
-  if(act->entry) memset(act->entry, 0, act->size);
-  apr_shm_destroy(act->m);
-  apr_pool_destroy(act->pool);
   return APR_SUCCESS;
 }
 
@@ -893,26 +932,26 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.12 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.13 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
   er[0] = '\0';
   rev++;
+  sconf->act->timeout = apr_time_sec(bs->timeout);
   if(qos_init_shm(bs, sconf->act, sconf->location_t) != APR_SUCCESS) {
     return !OK;
   }
-  //$$$  apr_pool_cleanup_register(sconf->act->pool, sconf->act,
   apr_pool_cleanup_register(sconf->pool, sconf->act,
                             qos_cleanup_shm, apr_pool_cleanup_null);
   rules = apr_table_elts(sconf->location_t)->nelts;
   while(s) {
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    sconf->act->timeout = apr_time_sec(s->timeout);
     if(sconf->is_virtual) {
       if(qos_init_shm(s, sconf->act, sconf->location_t) != APR_SUCCESS) {
         return !OK;
       }
-      //$$$      apr_pool_cleanup_register(sconf->act->pool, sconf->act,
       apr_pool_cleanup_register(sconf->pool, sconf->act,
                                 qos_cleanup_shm, apr_pool_cleanup_null);
       rules = rules + apr_table_elts(sconf->location_t)->nelts;
@@ -938,7 +977,6 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   qos_srv_config *sconf;
   apr_status_t rv;
   apr_pool_t *act_pool;
-  //  $$$ apr_pool_create(&act_pool, p);
   apr_pool_create(&act_pool, NULL);
   sconf =(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
   sconf->pool = p;
@@ -948,7 +986,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act->pool = act_pool;
   sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
-  sconf->act->timeout = s->timeout;
+  sconf->act->timeout = apr_time_sec(s->timeout);
   sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
                                        ap_server_root_relative(sconf->act->pool, tmpnam(NULL)));
   rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
