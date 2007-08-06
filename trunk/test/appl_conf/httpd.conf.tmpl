@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.2 2007-07-31 19:57:19 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.3 2007-08-06 19:59:05 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            1
@@ -33,10 +33,10 @@ CoreDumpDirectory       ##ROOT##/logs/
 
 TypesConfig             conf/mime.types
 
-NameVirtualHost         127.0.0.1:##QS_PORT_BASE1##
-Listen                  127.0.0.1:##QS_PORT_BASE1##
+NameVirtualHost         127.0.0.1:##QS_PORT_BASE5##
+Listen                  127.0.0.1:##QS_PORT_BASE5##
 
-<VirtualHost 127.0.0.1:##QS_PORT_BASE1##>
+<VirtualHost 127.0.0.1:##QS_PORT_BASE5##>
    ServerName           127.0.0.1
 
    ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
