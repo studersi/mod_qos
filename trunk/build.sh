@@ -1,14 +1,14 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.5 2007-08-06 19:59:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.6 2007-08-06 20:18:05 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
 
 TOP=`pwd`
 
-APACHE_VER=2.0.59
-#APACHE_VER=2.2.4
+#APACHE_VER=2.0.59
+APACHE_VER=2.2.4
 
 echo "build Apache $APACHE_VER"
 if [ ! -d httpd-${APACHE_VER} ]; then
@@ -28,8 +28,7 @@ export CFLAGS
 
 cd httpd
 ./buildconf
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl
-#./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl --enable-status
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl --enable-status
 make
 strip modules/qos/.libs/mod_qos.so
 cd ..
