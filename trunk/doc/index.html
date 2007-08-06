@@ -33,9 +33,21 @@ mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">Sourc
 the <a href="LICENSE.txt">GNU General Public License</a>.
 </p>
 <p>
-The current release of the module implements a control mechanism for the maximum number 
-of concurrent requests to a location (URL) or virtual host. It can also "detect" very 
-important persons (VIP) which may access the web server without any restrictions.
+The current release of the module implements control mechanisms for:
+<ul>
+<li type=square>
+The maximum number of concurrent requests to a location (URL) or virtual host.
+</li>
+<li type=square>
+It can also "detect" very important persons (VIP) which may access the web server 
+without any restrictions when accessing an URL.
+</li>
+<li type=square>
+Limitations on the TCP connection level, e.g. maximum of allowd connections from 
+a single IP source address or dynamic keep-alive control.
+</li>
+</ul>
+
 </p>
 <hr>
 <p>
