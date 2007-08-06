@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.14 2007-08-04 20:47:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.15 2007-08-06 10:48:02 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -86,11 +86,20 @@ static const char revision[] = "$Id: mod_qos.c,v 2.14 2007-08-04 20:47:58 pbuchb
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
 #define QS_SIM_IP_LEN 10
+#define QS_USR_SPE "mod_qos::user"
+#define QS_STACK_SIZE 32768
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 /************************************************************************
  * structures
  ***********************************************************************/
+
+/**
+ * user space
+ */
+typedef struct {
+  int server_start;
+} qos_user_t;
 
 /**
  * ip entry
@@ -148,6 +157,7 @@ typedef struct qs_actable_st {
   apr_shm_t *m;
   char *m_file;
   apr_pool_t *pool;
+  apr_pool_t *ppool;
   qs_acentry_t *entry;      /** rule entry list */
   char *lock_file;
   apr_global_mutex_t *lock; /** ip/conn lock */
@@ -386,61 +396,79 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
 }
 
 /**
+ * destroy shared memory and mutexes
+ */
+static void qos_destroy_act(qs_actable_t *act) {
+  qs_acentry_t *e = act->entry;
+  apr_os_thread_t tid = apr_os_thread_current();
+  ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
+               QOS_LOG_PFX"cleanup shared memory: %d bytes [#%d(%d)]",
+               act->size, getpid(), tid);
+  act->child_init = 0;
+  apr_global_mutex_destroy(act->lock);
+  while(e) {
+    apr_global_mutex_destroy(e->lock);
+    e = e->next;
+  }
+  apr_shm_destroy(act->m);
+  apr_pool_destroy(act->pool);
+}
+
+static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
+  void *v;
+  qos_user_t *u;
+  apr_pool_userdata_get(&v, QS_USR_SPE, ppool);
+  if(v) return v;
+  u = (qos_user_t *)apr_pcalloc(ppool, sizeof(qos_user_t));
+  u->server_start = 0;
+  apr_pool_userdata_set(u, QS_USR_SPE, apr_pool_cleanup_null, ppool);
+  return u;
+}
+
+/**
+ * deletes the act after the server timeout
+ */
+static void *qos_clean_thread(apr_thread_t *t ,void *p) {
+  qs_actable_t *act = p;
+  apr_os_thread_t tid = apr_os_thread_current();
+  ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
+               QOS_LOG_PFX"start cleanup thread [#%d(%d)]", getpid(), tid);
+  sleep(act->timeout);
+  qos_destroy_act(act);
+  return 0;
+}
+
+/**
+ * well, we don't know if it is a graceful restart due we can't access
+ * the mpm static varibale is_graceful. at least, we detect inital config
+ * check start
+ */
+static int qos_is_graceful(qs_actable_t *act) {
+  qos_user_t *u = qos_get_user_conf(act->ppool);
+  if(u->server_start > 1) return 1;
+  return 0;
+}
+
+/**
  * destroys the act
  * shared memory must not be destroyed before graceful restart has
  * been finished due running requests still need the shared memory
- * till they have finished
+ * till they have finished.
+ * try to keep memory leak as lttle as possible...
  */
 static apr_status_t qos_cleanup_shm(void *p) {
   qs_actable_t *act = p;
-  qs_acentry_t *e = act->entry;
-  pid_t pid;
-  pid_t ppid = getpid();
-  int status;
-  int timeout = act->timeout;
-  if(timeout == 0) timeout = 300;
-  switch (pid = fork()) {
-  case -1:
-    ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, NULL,
-                 QOS_LOG_PFX"failed to fork cleanup process");
-    return !OK;
-  case 0:
-    /* this child must return (it's in the scoreboard) */
-    switch (pid = fork()) {
-    case -1:
-      ap_log_error(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, NULL,
-                   QOS_LOG_PFX"failed to fork cleanup process");
-      return !OK;
-    case 0:
-      sleep(1);
-      if(getsid(ppid) != -1) {
-        ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
-                     QOS_LOG_PFX"graceful restart detected, waiting %d seconds"
-                     " (no server re-start possible during this time) #%d",
-                     timeout, getpid());
-        sleep(timeout);
-        ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
-                     QOS_LOG_PFX"graceful restart has finished,"
-                     " cleaning up shared memory: %d bytes #%d",
-                     act->size, getpid());
-      }
-      act->child_init = 0;
-      apr_global_mutex_destroy(act->lock);
-      while(e) {
-        apr_global_mutex_destroy(e->lock);
-        e = e->next;
-      }
-      if(act->entry) memset(act->entry, 0, act->size);
-      apr_shm_destroy(act->m);
-      apr_pool_destroy(act->pool);
-      exit(0);
-    default:
-      exit(0);
-    }
-  default:
-    /* suppress "long lost child came home!" */
-    waitpid(pid, &status, 0);
-    return APR_SUCCESS;
+  if(qos_is_graceful(act)) {
+    apr_thread_t *tid;
+    apr_pool_t *pool;
+    apr_threadattr_t *attr;
+    apr_pool_create(&pool, NULL);
+    apr_threadattr_create(&attr, pool);
+    apr_threadattr_detach_set(attr, 1);
+    apr_threadattr_stacksize_set(attr, QS_STACK_SIZE);
+    apr_thread_create(&tid, attr, qos_clean_thread, act, act->pool);
+  } else {
+    qos_destroy_act(act);
   }
   return APR_SUCCESS;
 }
@@ -993,13 +1021,16 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.14 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.15 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
+  qos_user_t *u = qos_get_user_conf(s->process->pool);
+  u->server_start++;
   er[0] = '\0';
   rev++;
   sconf->act->timeout = apr_time_sec(bs->timeout);
+  if(sconf->act->timeout == 0) sconf->act->timeout = 300;
   if(qos_init_shm(bs, sconf->act, sconf->location_t) != APR_SUCCESS) {
     return !OK;
   }
@@ -1009,6 +1040,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   while(s) {
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
     sconf->act->timeout = apr_time_sec(s->timeout);
+    if(sconf->act->timeout == 0) sconf->act->timeout = 300;
     if(sconf->is_virtual) {
       if(qos_init_shm(s, sconf->act, sconf->location_t) != APR_SUCCESS) {
         return !OK;
@@ -1045,6 +1077,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->error_page = NULL;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
+  sconf->act->ppool = s->process->pool;
   sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
   sconf->act->timeout = apr_time_sec(s->timeout);
@@ -1283,13 +1316,13 @@ static const command_rec qos_config_cmds[] = {
                 " concurrent TCP connections until the server disables"
                 " keep-alive for this server (closes the connection after"
                 " each requests."),
-  /*
+
   AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
                 " concurrent TCP connections per IP source address "
                 " (IP v4 only)."),
-  */
+
   NULL,
 };
 
