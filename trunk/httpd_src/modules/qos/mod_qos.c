@@ -12,21 +12,6 @@
  * This module implements control mechanisms that can provide
  * different priority to different requests.
  *
- * This release features the following directives:
- * - QS_LocRequestLimitMatch:
- *   Limits the number of concurrent requests matching a
- *   regular expression.
- * - QS_LocRequestLimit/QS_LocRequestLimitDefault:
- *   Limits the number of concurrent requests for a location.
- * - QS_ErrorPage:
- *   Customizable error page for denied requests.
- * - QS_VipHeaderName:
- *   Defines a response header which marks a VIP. VIP users have
- *   no access restrictions.
- * - QS_SessionTimeout/QS_SessionCookieName/QS_SessionCookiePath:
- *   Session is stored in cookie with several attributes.
- * - QS_VipRequest environment variable
- *
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
@@ -53,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.16 2007-08-06 19:59:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.0 2007-08-06 20:19:23 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -957,7 +942,8 @@ static int qos_header_parser(request_rec * r) {
             rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
             return DECLINED;
           }
-        }        /* std user */
+        }        
+        /* std user */
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests=%d, c=%s",
                       e->url, e->limit, e->counter,
@@ -1068,7 +1054,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.16 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.0 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -1101,7 +1087,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     s = s->next;
   }
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, bs,
-               QOS_LOG_PFX"%s loaded (%d rules)", rev, rules);
+               QOS_LOG_PFX"%s loaded (%d req rules)", rev, rules);
 
   APR_OPTIONAL_HOOK(ap, status_hook, qos_ext_status_hook, NULL, NULL, APR_HOOK_MIDDLE);
 
