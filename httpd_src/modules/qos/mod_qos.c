@@ -53,7 +53,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 2.15 2007-08-06 10:48:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 2.16 2007-08-06 19:59:05 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -77,6 +77,9 @@ static const char revision[] = "$Id: mod_qos.c,v 2.15 2007-08-06 10:48:02 pbuchb
 /* apr */
 #include <apr_strings.h>
 
+/* additional modules */
+#include "mod_status.h"
+
 /************************************************************************
  * defines
  ***********************************************************************/
@@ -85,7 +88,7 @@ static const char revision[] = "$Id: mod_qos.c,v 2.15 2007-08-06 10:48:02 pbuchb
 #define QOS_MAGIC_LEN 8
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
-#define QS_SIM_IP_LEN 10
+#define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
 #define QS_STACK_SIZE 32768
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
@@ -186,6 +189,7 @@ typedef struct {
 #ifdef QS_SIM_IP
   apr_table_t *testip;
 #endif
+  server_rec *base_server;
 } qos_srv_config;
 
 /**
@@ -621,8 +625,6 @@ static int qos_add_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
     num = ipe->counter;
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
-
-  fprintf(stderr, "qos_add_ip() ip=%lu count=%d\n", cconf->ip, num); fflush(stderr);
   return num;
 }
 
@@ -691,16 +693,6 @@ static void qos_remove_ip(qs_conn_ctx *cconf) {
       }
       qos_free_ip(cconf->sconf->act, ipe);
       if(last && re) qos_insert_ip(last, re);
-    }
-    /* $$$ */
-    {
-      qs_ip_entry_t *f = cconf->sconf->act->c->ip_free;
-      int c = 0;
-      while(f) {
-        c++;
-        f = f->next;
-      }
-      fprintf(stderr, "qos_remove_ip() free_list_size=%d\n", c); fflush(stderr);
     }
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT2 */
@@ -808,6 +800,61 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
 }
 
 /************************************************************************
+ * "public"
+ ***********************************************************************/
+static int qos_ext_status_hook(request_rec *r, int flags) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  server_rec *s = sconf->base_server;
+  if (flags & AP_STATUS_SHORT)
+    return OK;
+
+  ap_rputs("<hr>\n", r);
+  ap_rputs("<h2>mod_qos</h2>\n", r);
+  while(s) {
+    qs_acentry_t *e;
+    ap_rprintf(r, "<h3>%s:%d (%s)</h3>\n",
+               s->server_hostname == NULL ? "-" : s->server_hostname,
+               s->addrs->host_port,
+               s->is_virtual ? "virtual" : "base");
+    sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    if(sconf && sconf->act) {
+      e = sconf->act->entry;
+      ap_rputs("<p><table border=\"1\">\n", r);
+      ap_rputs("<tr><td>rule</td><td>limit</td><td>current</td></tr>\n", r);
+      while(e) {
+        ap_rputs("<tr>\n", r);
+        ap_rprintf(r, "<td>%s</td>\n", e->url);
+        ap_rprintf(r, "<td>%d</td>\n", e->limit);
+        ap_rprintf(r, "<td>%d</td>\n", e->counter);
+        ap_rputs("</tr>\n", r);
+        e = e->next;
+      }
+      ap_rputs("</table></p>\n", r);
+    }
+    if(sconf) {
+      qs_ip_entry_t *f;
+      int c = 0;
+      apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
+      f = sconf->act->c->ip_free;
+      while(f) {
+        c++;
+        f = f->next;
+      }
+      apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
+      ap_rprintf(r,"<p>free ip entries: %d<br>", c);
+      ap_rprintf(r,"max connections: %d<br>", sconf->max_conn);
+      ap_rprintf(r,"max connections with keep-alive: %d<br>", sconf->max_conn_close);
+      ap_rprintf(r,"max connections per client: %d</p>", sconf->max_conn_per_ip);
+
+    }
+
+    s = s->next;
+  }
+  return OK;
+}
+
+
+/************************************************************************
  * handlers
  ***********************************************************************/
 
@@ -854,7 +901,7 @@ static int qos_process_connection(conn_rec * c) {
       current = qos_add_ip(c->pool, cconf);
     }
 
-    /* enforce rule */
+    /* enforce rules */
     if(sconf->max_conn != -1) {
       if(connections > sconf->max_conn) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
@@ -1021,7 +1068,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 2.15 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 2.16 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -1029,6 +1076,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   u->server_start++;
   er[0] = '\0';
   rev++;
+  sconf->base_server = bs;
   sconf->act->timeout = apr_time_sec(bs->timeout);
   if(sconf->act->timeout == 0) sconf->act->timeout = 300;
   if(qos_init_shm(bs, sconf->act, sconf->location_t) != APR_SUCCESS) {
@@ -1039,6 +1087,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   rules = apr_table_elts(sconf->location_t)->nelts;
   while(s) {
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    sconf->base_server = bs;
     sconf->act->timeout = apr_time_sec(s->timeout);
     if(sconf->act->timeout == 0) sconf->act->timeout = 300;
     if(sconf->is_virtual) {
@@ -1053,6 +1102,9 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, bs,
                QOS_LOG_PFX"%s loaded (%d rules)", rev, rules);
+
+  APR_OPTIONAL_HOOK(ap, status_hook, qos_ext_status_hook, NULL, NULL, APR_HOOK_MIDDLE);
+
   return DECLINED;
 }
 
@@ -1126,7 +1178,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
 static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
   qos_srv_config *b = (qos_srv_config *)basev;
   qos_srv_config *o = (qos_srv_config *)addv;
-  if(apr_table_elts(o->location_t)->nelts > 0) {
+  if((apr_table_elts(o->location_t)->nelts > 0) ||
+     (o->max_conn != -1)) {
     return o;
   }
   return b;
@@ -1316,13 +1369,11 @@ static const command_rec qos_config_cmds[] = {
                 " concurrent TCP connections until the server disables"
                 " keep-alive for this server (closes the connection after"
                 " each requests."),
-
   AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
                 " concurrent TCP connections per IP source address "
                 " (IP v4 only)."),
-
   NULL,
 };
 
@@ -1338,6 +1389,7 @@ static void qos_register_hooks(apr_pool_t * p) {
 
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
+
 }
 
 /************************************************************************
