@@ -185,6 +185,11 @@ BrowserMatch                  "curl"              QS_VipRequest=yes
 
 # allows unlimited access to a single resource:
 SetEnvIf     Request_URI /application/start.html  QS_VipRequest=yes
+
+# allows unlimited access from a specified source address
+# or source address range:
+SetEnvIf     Remote_Addr 172.18.3.32              QS_VipRequest=yes
+SetEnvIf     Remote_Addr 192.168.10.              QS_VipRequest=yes
 </pre>
 </td></tr>
 </table>
