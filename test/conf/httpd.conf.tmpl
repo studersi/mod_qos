@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.11 2007-08-07 20:53:57 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.12 2007-08-07 20:59:09 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 ServerLimit             16
@@ -60,6 +60,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
+   # -----------------------------------------------------------------
+   # request level control
+   # -----------------------------------------------------------------
+
    QS_ErrorPage               /error-docs/error.html
 
    QS_LocRequestLimitDefault                 30
@@ -112,6 +116,10 @@ Listen                  server1:##QS_PORT_BASE1##
    ProxyPass                  /status !
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+   # -----------------------------------------------------------------
+   # connection level control
+   # -----------------------------------------------------------------
 
    QS_SrvMaxConn                            800
    QS_SrvMaxConnClose                       600
