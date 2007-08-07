@@ -212,6 +212,11 @@ after each request.
 <code>QS_SrvMaxConnPerIP &lt;number&gt;</code><br>
 Defines the maximum number of connections per source IP address.
 </li>
+<li>
+<code>QS_SrvMaxConnExcludeIP &lt;address&gt;</code><br>
+Defines an IP address or address range to be excluded from connection 
+level control restrictions.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -221,6 +226,9 @@ Sample configuration:<br>
 QS_SrvMaxConn                                     800
 QS_SrvMaxConnClose                                600
 QS_SrvMaxConnPerIP                                 50
+
+QS_SrvMaxConnExcludeIP                    172.18.3.32
+QS_SrvMaxConnExcludeIP                    192.168.10.
 </pre>
 </td></tr>
 </table>

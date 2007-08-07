@@ -1,6 +1,6 @@
 
 CLIENT 150 1
-_REQ localhost 5961
+_REQ server1 5961
 __GET /cgi100/sleep.cgi?s=10 HTTP/1.1
 __Host: localhost
 __
