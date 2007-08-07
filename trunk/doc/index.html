@@ -239,7 +239,7 @@ QS_SrvMaxConnExcludeIP                    192.168.10.
 <h2>Log Messages</h3>
 <p>
 mod_qos writes messages to Apache's error log when enforcing a rule. The number of 
-concurrent requests to location defined by QS_LocRequestLimit can be logged to the 
+concurrent requests to a location defined by QS_LocRequestLimit can be logged to the 
 access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
 header is used to log event messages: D=denied, S=pass due an available VIP session, 
 V=create VIP session, K=connection closed (no keep-alive).
