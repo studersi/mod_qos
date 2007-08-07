@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.10 2007-08-07 16:49:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.11 2007-08-07 20:53:57 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 ServerLimit             16
@@ -132,7 +132,19 @@ Listen                  server1:##QS_PORT_BASE1##
 NameVirtualHost         server1:##QS_PORT_BASE2##
 Listen                  server1:##QS_PORT_BASE2##
 
+SSLCipherSuite          RC4-MD5:EXP-RC4-MD5
+SSLSessionCacheTimeout  864000
+SSLProtocol             all
+SSLCryptoDevice         builtin
+SSLMutex                file:##ROOT##/logs/ssl_mutex
+SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
+SSLRandomSeed           startup builtin
+
 <VirtualHost server1:##QS_PORT_BASE2##>
+   SSLCertificateKeyFile  ssl/key.pem
+   SSLCertificateFile     ssl/cert.pem
+   SSLVerifyDepth         10
+   SSLEngine on
    ServerName                 server1
 
 </VirtualHost>
