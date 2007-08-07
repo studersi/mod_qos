@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.0 2007-08-06 20:19:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.1 2007-08-07 16:49:22 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -151,7 +151,7 @@ typedef struct qs_actable_st {
   apr_global_mutex_t *lock; /** ip/conn lock */
   qs_conn_t *c;
   int child_init;
-  apr_interval_time_t timeout;
+  unsigned int timeout;
 } qs_actable_t;
 
 /**
@@ -159,10 +159,11 @@ typedef struct qs_actable_st {
  */
 typedef struct {
   apr_pool_t *pool;
-  apr_table_t *location_t;
-  const char *error_page;
-  qs_actable_t *act;
   int is_virtual;
+  server_rec *base_server;
+  qs_actable_t *act;
+  const char *error_page;
+  apr_table_t *location_t;
   char *cookie_name;
   char *cookie_path;
   int max_age;
@@ -171,10 +172,10 @@ typedef struct {
   int max_conn;
   int max_conn_close;
   int max_conn_per_ip;
+  apr_table_t *exclude_ip;
 #ifdef QS_SIM_IP
   apr_table_t *testip;
 #endif
-  server_rec *base_server;
 } qos_srv_config;
 
 /**
@@ -183,6 +184,7 @@ typedef struct {
 typedef struct {
   unsigned long ip;
   conn_rec *c;
+  char *evmsg;
   qos_srv_config *sconf;
 } qs_conn_ctx;
 
@@ -864,6 +866,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
  */
 static int qos_process_connection(conn_rec * c) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
+  int vip = 0;
   if(cconf == NULL) {
     int connections;
     int current;
@@ -871,6 +874,7 @@ static int qos_process_connection(conn_rec * c) {
                                                                   &qos_module);
     cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
     cconf->c = c;
+    cconf->evmsg = NULL;
     cconf->sconf = sconf;
     ap_set_module_config(c->conn_config, &qos_module, cconf);
     apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
@@ -886,8 +890,20 @@ static int qos_process_connection(conn_rec * c) {
       current = qos_add_ip(c->pool, cconf);
     }
 
+    /* check for vip */
+    if(apr_table_elts(sconf->exclude_ip)->nelts > 0) {
+      int i;
+      apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->exclude_ip)->elts;
+      for(i = 0; i < apr_table_elts(sconf->exclude_ip)->nelts; i++) {
+        if(strncmp(entry[i].key, cconf->c->remote_ip, strlen(entry[i].key)) == 0) {
+          vip = 1;
+          cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
+        }
+      }
+    }
+
     /* enforce rules */
-    if(sconf->max_conn != -1) {
+    if((sconf->max_conn != -1) && !vip) {
       if(connections > sconf->max_conn) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                      QOS_LOG_PFX"access denied, rule: max=%d, concurrent connections=%d, c=%s",
@@ -897,7 +913,7 @@ static int qos_process_connection(conn_rec * c) {
         return qos_return_error(c);
       }
     }
-    if(sconf->max_conn_per_ip != -1) {
+    if((sconf->max_conn_per_ip != -1) && !vip) {
       if(current > sconf->max_conn_per_ip) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                      QOS_LOG_PFX"access denied, rule: max_ip=%d, concurrent connections=%d, c=%s",
@@ -993,6 +1009,10 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 static int qos_logger(request_rec * r) {
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   qs_acentry_t *e = rctx->entry;
+  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+  if(cconf && cconf->evmsg) {
+    rctx->evmsg = apr_pstrcat(r->pool, cconf->evmsg, rctx->evmsg, NULL);
+  }
   if(e) {
     char *h = apr_psprintf(r->pool, "%d", e->counter);
     apr_global_mutex_lock(e->lock);   /* @CRT6 */
@@ -1054,7 +1074,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.0 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.1 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -1138,6 +1158,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_conn = -1;
   sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
+  sconf->exclude_ip = apr_table_make(sconf->pool, 2);
   {
     int len = EVP_MAX_KEY_LENGTH;
     unsigned char *rand = apr_pcalloc(p, len);
@@ -1260,7 +1281,8 @@ const char *qos_timeout_cmd(cmd_parms * cmd, void *dcfg, const char *sec) {
 const char *qos_key_cmd(cmd_parms * cmd, void *dcfg, const char *seed) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, seed, strlen(seed), 1, sconf->key, NULL);
+  EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL,
+                 (const unsigned char *)seed, strlen(seed), 1, sconf->key, NULL);
   return NULL;
 }
 
@@ -1301,6 +1323,16 @@ const char *qos_max_conn_ip_cmd(cmd_parms * cmd, void *dcfg, const char *number)
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->max_conn_per_ip = atoi(number);
+  return NULL;
+}
+
+/**
+ * ip address without any limitation
+ */
+const char *qos_max_conn_ex_cmd(cmd_parms * cmd, void *dcfg, const char *addr) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  apr_table_add(sconf->exclude_ip, addr, "e");
   return NULL;
 }
 
@@ -1360,6 +1392,10 @@ static const command_rec qos_config_cmds[] = {
                 "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
                 " concurrent TCP connections per IP source address "
                 " (IP v4 only)."),
+  AP_INIT_TAKE1("QS_SrvMaxConnExcludeIP", qos_max_conn_ex_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvMaxConnExcludeIP <addr>, excludes an ip address or"
+                " address range from beeing limited."),
   NULL,
 };
 
