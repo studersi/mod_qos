@@ -46,15 +46,16 @@
 <tr><td><img src="mod_qos_s.gif"></td><td style="vertical-align: bottom;"><h1>mod_qos</h1></td></tr>
 <tr><td>&nbsp;</td><td>
 <p>
-The Apache Web Server requires threads and processes to serve HTTP requests. Each TCP connection to 
-the web server occupies one of these threads respecively processes. Sometimes a server gets too busy 
-to serve every request due the lack of free processes or threads. mod_qos is a <b>Quality of Service 
-module for the Apache Web Server</b> implementing control mechanisms that can provide different 
-priority to different requests.
+The Apache Web Server requires threads and processes to serve HTTP requests. Each 
+TCP connection to the web server occupies one of these threads respecively processes. 
+Sometimes a server gets too busy to serve every request due the lack of free 
+processes or threads. mod_qos is a <b>Quality of Service module for the Apache 
+Web Server</b> implementing control mechanisms that can provide different priority 
+to different requests.
 </p>
 <p>
-mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a> under 
-the <a href="LICENSE.txt">GNU General Public License</a>.
+mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a> 
+under the <a href="LICENSE.txt">GNU General Public License</a>.
 </p>
 <p>
 The current release of the module implements control mechanisms for:
@@ -86,8 +87,9 @@ a single IP source address or dynamic keep-alive control.
 <a name="build">
 <h2>Build</h3>
 <p>
-mod_qos version 3 requires OpenSSL and thread support but has no other dependencies to 
-other Apache modules nor any special libraries. It works with Apache version 2.0 and 2.2. 
+mod_qos version 3 requires OpenSSL, shared memory and thread support but has no other 
+dependencies to other Apache modules nor any special libraries. It works with Apache 
+version 2.0 and 2.2. 
 Just copy the module into the modules directory of the Apache server's source code and 
 compile it using the following commands:
 <pre>
@@ -100,7 +102,16 @@ following directive:
 <pre>
 LoadModule qos_module &lt;path to module&gt;/mod_qos.so
 </pre>
-Note: the module requires shared memory support.
+</p>
+<p>
+You can also compile the module using apxs alternatively. Your httpd must support 
+dynamically loaded objects (DSO). Verify this by checking the availablility 
+of mod_so: The command <code>httpd -l</code> must list the mod_so.c module. 
+The following command compiles the module and installs the mod_qos into the 
+server's modules directory.
+<pre>
+apxs -i -c mod_qos.c
+</pre>
 </p>
 <a name="source">
 <h2>Source</h3>
@@ -291,6 +302,6 @@ TransferLog "| ./bin/qslog -o logs/qs_log -f I....R.B.T.Q"
 </table>
 <br>
 <hr>
-<SMALL><SMALL>&copy; 2007, mod_qos</SMALL></SMALL>
+<SMALL><SMALL>&copy; 2007, Pascal Buchbinder</SMALL></SMALL>
 </body>
 </html>
