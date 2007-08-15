@@ -1,6 +1,7 @@
+INCLUDE scripts/ports
 
 CLIENT 50 1
-_REQ localhost 5960
+_REQ localhost $QS_PORT_BASE
 __GET /cgi100/sleep.cgi?s=10 HTTP/1.1
 __Host: localhost
 __
