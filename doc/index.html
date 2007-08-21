@@ -252,6 +252,13 @@ Defines the maximum number of connections per source IP address.
 Defines an IP address or address range to be excluded from connection 
 level control restrictions.
 </li>
+<li>
+<code>QS_SrvMaxConnTimeout &lt;seconds&gt;</code><br>
+Defines the inital timeout for reading a request from the client from 
+a new TCP connection. This parameter is used to drop TCP sessions 
+from very slow clients which do not send the HTTP request data 
+(request line and header) within this timeout.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
