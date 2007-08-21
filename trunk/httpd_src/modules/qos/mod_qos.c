@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.1 2007-08-07 16:49:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.2 2007-08-21 20:18:51 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -81,6 +81,24 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 /************************************************************************
  * structures
  ***********************************************************************/
+
+typedef enum  {
+  CONN_STATE_NEW,
+  CONN_STATE_APPROVED,
+  CONN_STATE_SHORT,
+  CONN_STATE_END
+} qs_conn_state_e;
+
+/**
+ * in_filter ctx
+ */
+typedef struct {
+  apr_socket_t *client_socket;
+  apr_interval_time_t at;
+  apr_interval_time_t qt;
+  qs_conn_state_e status;
+} qos_ifctx_t;
+
 
 /**
  * user space
@@ -173,6 +191,7 @@ typedef struct {
   int max_conn_close;
   int max_conn_per_ip;
   apr_table_t *exclude_ip;
+  int connect_timeout;
 #ifdef QS_SIM_IP
   apr_table_t *testip;
 #endif
@@ -809,10 +828,10 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       ap_rputs("<p><table border=\"1\">\n", r);
       ap_rputs("<tr><td>rule</td><td>limit</td><td>current</td></tr>\n", r);
       while(e) {
-        ap_rputs("<tr>\n", r);
-        ap_rprintf(r, "<td>%s</td>\n", e->url);
-        ap_rprintf(r, "<td>%d</td>\n", e->limit);
-        ap_rprintf(r, "<td>%d</td>\n", e->counter);
+        ap_rputs("<tr>", r);
+        ap_rprintf(r, "<td>%s</td>", e->url);
+        ap_rprintf(r, "<td>%d</td>", e->limit);
+        ap_rprintf(r, "<td>%d</td>", e->counter);
         ap_rputs("</tr>\n", r);
         e = e->next;
       }
@@ -828,15 +847,18 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         f = f->next;
       }
       apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
-      ap_rprintf(r,"<p>free ip entries: %d<br>", c);
-      ap_rprintf(r,"max connections: %d<br>", sconf->max_conn);
-      ap_rprintf(r,"max connections with keep-alive: %d<br>", sconf->max_conn_close);
-      ap_rprintf(r,"max connections per client: %d</p>", sconf->max_conn_per_ip);
-
+      ap_rprintf(r,"<p>free ip entries: %d<br>\n", c);
+      ap_rprintf(r,"current connections: %d<br>\n", sconf->act->c->connections);
+      ap_rputs("<br>\n", r);
+      ap_rprintf(r,"max connections: %d<br>\n", sconf->max_conn);
+      ap_rprintf(r,"max connections with keep-alive: %d<br>\n", sconf->max_conn_close);
+      ap_rprintf(r,"max connections per client: %d<br>\n", sconf->max_conn_per_ip);
+      ap_rprintf(r,"inital request timeout: %d</p>\n", sconf->connect_timeout);
     }
 
     s = s->next;
   }
+  ap_rputs("<hr>\n", r);
   return OK;
 }
 
@@ -878,6 +900,20 @@ static int qos_process_connection(conn_rec * c) {
     cconf->sconf = sconf;
     ap_set_module_config(c->conn_config, &qos_module, cconf);
     apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
+
+    /* control timeout */
+    if(sconf && (sconf->connect_timeout != -1)) {
+      ap_filter_t *f = c->input_filters;
+      while(f) {
+        if(strcmp(f->frec->name, "qos-in-filter") == 0) {
+          qos_ifctx_t *inctx = f->ctx;
+          if(inctx->status == CONN_STATE_NEW) {
+            inctx->status = CONN_STATE_APPROVED;
+          }
+          break;
+        }
+      }
+    }
 
     /* update data */
     if(sconf->max_conn != -1) {
@@ -924,6 +960,41 @@ static int qos_process_connection(conn_rec * c) {
       }
     }
   }
+  return DECLINED;
+}
+
+static int qos_pre_connection(conn_rec * c, void *skt) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
+                                                                &qos_module);
+  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
+  if(sconf && (sconf->connect_timeout != -1)) {
+    qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
+    inctx->client_socket = skt;
+    inctx->status = CONN_STATE_NEW;
+    inctx->qt = apr_time_from_sec(sconf->connect_timeout);
+    ap_add_input_filter("qos-in-filter", inctx, NULL, c);
+  }
+  return DECLINED;
+}
+
+static int qos_post_read_request(request_rec * r) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
+                                                                &qos_module);
+  if(sconf && (sconf->connect_timeout != -1)) {
+    ap_filter_t *f = r->connection->input_filters;
+    while(f) {
+      if(strcmp(f->frec->name, "qos-in-filter") == 0) {
+        qos_ifctx_t *inctx = f->ctx;
+        if(inctx->status == CONN_STATE_SHORT) {
+          /* clear short timeout */
+          apr_socket_timeout_set(inctx->client_socket, inctx->at);
+          inctx->status = CONN_STATE_END;
+        }
+        break;
+      }
+      f = f->next;
+    }
+  }  
   return DECLINED;
 }
 
@@ -974,6 +1045,31 @@ static int qos_header_parser(request_rec * r) {
     }
   }
   return DECLINED;
+}
+
+static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
+                                  ap_input_mode_t mode, apr_read_type_e block,
+                                  apr_off_t nbytes) {
+  apr_status_t rv;
+  qos_ifctx_t *inctx = f->ctx;
+  if(inctx->status == CONN_STATE_APPROVED) {
+    rv = apr_socket_timeout_get(inctx->client_socket, &inctx->at);
+    if(rv == APR_SUCCESS) {
+      /* set short timeout */
+      apr_socket_timeout_set(inctx->client_socket, inctx->qt);
+      inctx->status = CONN_STATE_SHORT;
+    }
+  }
+  rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
+
+  if((rv == APR_TIMEUP) && (inctx->status == CONN_STATE_SHORT)) {
+    int qti = apr_time_sec(inctx->qt);
+    ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
+                 QOS_LOG_PFX"connection timeout, rule: %d sec inital timeout, c=%s",
+                 qti,
+                 f->c->remote_ip == NULL ? "-" : f->c->remote_ip);
+  }
+  return rv;
 }
 
 /**
@@ -1074,7 +1170,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.1 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.2 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -1133,6 +1229,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->pool = p;
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->error_page = NULL;
+  sconf->connect_timeout = -1;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
@@ -1187,6 +1284,7 @@ static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
   qos_srv_config *o = (qos_srv_config *)addv;
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1)) {
+    o->connect_timeout = b->connect_timeout;
     return o;
   }
   return b;
@@ -1195,13 +1293,19 @@ static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
 /**
  * command to define the concurrent request limitation for a location
  */
-const char *qos_loc_con_cmd(cmd_parms * cmd, void *dcfg, const char *loc, const char *limit) {
+const char *qos_loc_con_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *id = apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->location_t)->nelts);
   qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
   rule->url = apr_pstrdup(cmd->pool, loc);
   rule->limit = atoi(limit);
+#ifndef QS_SIM_IP
+  if(rule->limit == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+#endif
   rule->regex = NULL;
   apr_table_setn(sconf->location_t, id, (char *)rule);
   return NULL;
@@ -1211,13 +1315,17 @@ const char *qos_loc_con_cmd(cmd_parms * cmd, void *dcfg, const char *loc, const 
  * defines the maximum of concurrent requests matching the specified
  * request line pattern
  */
-const char *qos_match_con_cmd(cmd_parms * cmd, void *dcfg, const char *match, const char *limit) {
+const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *id = apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->location_t)->nelts);
   qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
   rule->url = apr_pstrdup(cmd->pool, match);
   rule->limit = atoi(limit);
+  if(rule->limit == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
 #ifdef AP_REGEX_H
   rule->regex = ap_pregcomp(cmd->pool, match, AP_REG_EXTENDED);
 #else
@@ -1234,7 +1342,7 @@ const char *qos_match_con_cmd(cmd_parms * cmd, void *dcfg, const char *match, co
 /**
  * sets the default limitation of cuncurrent requests
  */
-const char *qos_loc_con_def_cmd(cmd_parms * cmd, void *dcfg, const char *limit) {
+const char *qos_loc_con_def_cmd(cmd_parms *cmd, void *dcfg, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   return qos_loc_con_cmd(cmd, dcfg, "/", limit);
@@ -1243,7 +1351,7 @@ const char *qos_loc_con_def_cmd(cmd_parms * cmd, void *dcfg, const char *limit) 
 /**
  * defines custom error page
  */
-const char *qos_error_page_cmd(cmd_parms * cmd, void *dcfg, const char *path) {
+const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->error_page = apr_pstrdup(cmd->pool, path);
@@ -1257,28 +1365,32 @@ const char *qos_error_page_cmd(cmd_parms * cmd, void *dcfg, const char *path) {
 /**
  * session definitions: cookie name and path, expiration/max-age
  */
-const char *qos_cookie_name_cmd(cmd_parms * cmd, void *dcfg, const char *name) {
+const char *qos_cookie_name_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->cookie_name = apr_pstrdup(cmd->pool, name);
   return NULL;
 }
 
-const char *qos_cookie_path_cmd(cmd_parms * cmd, void *dcfg, const char *path) {
+const char *qos_cookie_path_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->cookie_path = apr_pstrdup(cmd->pool, path);
   return NULL;
 }
 
-const char *qos_timeout_cmd(cmd_parms * cmd, void *dcfg, const char *sec) {
+const char *qos_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->max_age = atoi(sec);
+  if(sconf->max_age == 0) {
+    return apr_psprintf(cmd->pool, "%s: timeout must be numeric value >0", 
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
-const char *qos_key_cmd(cmd_parms * cmd, void *dcfg, const char *seed) {
+const char *qos_key_cmd(cmd_parms *cmd, void *dcfg, const char *seed) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL,
@@ -1289,7 +1401,7 @@ const char *qos_key_cmd(cmd_parms * cmd, void *dcfg, const char *seed) {
 /**
  * name of the http header to mark a vip
  */
-const char *qos_header_name_cmd(cmd_parms * cmd, void *dcfg, const char *name) {
+const char *qos_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->header_name = apr_pstrdup(cmd->pool, name);
@@ -1299,40 +1411,67 @@ const char *qos_header_name_cmd(cmd_parms * cmd, void *dcfg, const char *name) {
 /**
  * max concurrent connections per server
  */
-const char *qos_max_conn_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
+const char *qos_max_conn_cmd(cmd_parms *cmd, void *dcfg, const char *number) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->max_conn = atoi(number);
+  if(sconf->max_conn == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
 /**
  * disable keep-alive
  */
-const char *qos_max_conn_close_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
+const char *qos_max_conn_close_cmd(cmd_parms *cmd, void *dcfg, const char *number) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->max_conn_close = atoi(number);
+  if(sconf->max_conn_close == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
 /**
  * max concurrent connections per client ip
  */
-const char *qos_max_conn_ip_cmd(cmd_parms * cmd, void *dcfg, const char *number) {
+const char *qos_max_conn_ip_cmd(cmd_parms *cmd, void *dcfg, const char *number) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->max_conn_per_ip = atoi(number);
+  if(sconf->max_conn_per_ip == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
 /**
  * ip address without any limitation
  */
-const char *qos_max_conn_ex_cmd(cmd_parms * cmd, void *dcfg, const char *addr) {
+const char *qos_max_conn_ex_cmd(cmd_parms *cmd, void *dcfg, const char *addr) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   apr_table_add(sconf->exclude_ip, addr, "e");
+  return NULL;
+}
+
+const char *qos_max_conn_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->connect_timeout = atoi(sec);
+  if(sconf->connect_timeout == 0) {
+    return apr_psprintf(cmd->pool, "%s: seconds must be a numeric value >0", 
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
@@ -1396,6 +1535,12 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an ip address or"
                 " address range from beeing limited."),
+  AP_INIT_TAKE1("QS_SrvMaxConnTimeout", qos_max_conn_timeout_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvMaxConnTimeout <seconds>, defines the inital timeout"
+                " a client must send the HTTP request on a new TCP"
+                " connection. Default is the timeout defined by the"
+                " Apache standard Timeout directive."),
   NULL,
 };
 
@@ -1405,10 +1550,13 @@ static const command_rec qos_config_cmds[] = {
 static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_post_config(qos_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_post_read_request(qos_post_read_request, NULL, NULL, APR_HOOK_LAST);
   ap_hook_header_parser(qos_header_parser, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
 
+  ap_register_input_filter("qos-in-filter", qos_in_filter, NULL, AP_FTYPE_CONNECTION);
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
 

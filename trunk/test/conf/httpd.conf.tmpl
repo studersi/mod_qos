@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.12 2007-08-07 20:59:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.13 2007-08-21 20:18:51 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 ServerLimit             16
@@ -20,7 +20,9 @@ LockFile                ##ROOT##/logs/accept.lock
 Timeout                 90
 KeepAlive               on
 MaxKeepAliveRequests    100
-KeepAliveTimeout        1
+KeepAliveTimeout        5
+
+QS_SrvMaxConnTimeout    3
 
 Options                 FollowSymLinks Indexes
 DefaultType             text/plain
@@ -153,6 +155,6 @@ SSLRandomSeed           startup builtin
    SSLCertificateFile     ssl/cert.pem
    SSLVerifyDepth         10
    SSLEngine on
-   ServerName                 server1
+   ServerName             server1
 
 </VirtualHost>
