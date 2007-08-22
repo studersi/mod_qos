@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.14 2007-08-22 14:25:42 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.15 2007-08-22 15:50:58 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 ServerLimit             16
@@ -22,7 +22,7 @@ KeepAlive               on
 MaxKeepAliveRequests    100
 KeepAliveTimeout        5
 
-QS_SrvMaxConnTimeout    3
+QS_SrvConnTimeout    3
 
 Options                 FollowSymLinks Indexes
 DefaultType             text/plain
