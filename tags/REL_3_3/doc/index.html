@@ -1,0 +1,316 @@
+<html>
+<head>
+ <title>mod_qos</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<meta name="author" content="Pascal Buchbinder">
+<link rel="shortcut icon" href="favicon.ico" />
+<style TYPE="text/css">
+<!--  
+  body {
+	background-color: white;
+	color: black;
+	font-family: arial, helvetica, verdana, sans-serif;
+	font-weight: normal;
+	text-align: left;
+  }
+-->
+</style>
+</head>
+<body>
+<!--
+
+ Quality of service module for Apache Web Server.
+
+ See http://sourceforge.net/projects/mod-qos/ for further details.
+
+ Copyright (C) 2007 Pascal Buchbinder
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 2
+ of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ MA 02110-1301, USA.
+
+-->
+<table>
+<tbody>
+<tr><td><img src="mod_qos_s.gif"></td><td style="vertical-align: bottom;"><h1>mod_qos</h1></td></tr>
+<tr><td>&nbsp;</td><td>
+<p>
+The Apache Web Server requires threads and processes to serve HTTP requests. Each 
+TCP connection to the web server occupies one of these threads respecively processes. 
+Sometimes a server gets too busy to serve every request due the lack of free 
+processes or threads. mod_qos is a <b>Quality of Service module for the Apache 
+Web Server</b> implementing control mechanisms that can provide different priority 
+to different requests.
+</p>
+<p>
+mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a> 
+under the <a href="LICENSE.txt">GNU General Public License</a>.
+</p>
+<p>
+The current release of the module implements control mechanisms for:
+<ul>
+<li type=square>
+The maximum number of concurrent requests to a location (URL) or virtual host.
+</li>
+<li type=square>
+It can also "detect" very important persons (VIP) which may access the web server 
+without any restrictions when accessing an URL.
+</li>
+<li type=square>
+Limitations on the TCP connection level, e.g. the maximum of allowed connections from 
+a single IP source address or dynamic keep-alive control.
+</li>
+</ul>
+
+</p>
+<hr>
+<p>
+<ul>
+<li><a href="#build">Build</a></li>
+<li><a href="#source">Source</a></li>
+<li><a href="#configuration">Configuration</a></li>
+<li><a href="#messages">Log Messages</a></li>
+</ul>
+</p>
+<hr>
+<a name="build">
+<h2>Build</h3>
+<p>
+mod_qos version 3 requires OpenSSL, shared memory and thread support but has no other 
+dependencies to other Apache modules nor any special libraries. It works with Apache 
+version 2.0 and 2.2. 
+Just copy the module into the modules directory of the Apache server's source code and 
+compile it using the following commands:
+<pre>
+./buildconf
+./configure --enable-so --enable-qos=shared --enable-ssl
+make
+</pre>
+This creates a DSO module, which can be loaded into the Apache server using the 
+following directive:
+<pre>
+LoadModule qos_module &lt;path to module&gt;/mod_qos.so
+</pre>
+</p>
+<p>
+You can also compile the module using apxs alternatively. Your httpd must support 
+dynamically loaded objects (DSO). Verify this by checking the availablility 
+of mod_so: The command <code>httpd -l</code> must list the mod_so.c module. 
+The following command compiles the module and installs the mod_qos into the 
+server's modules directory.
+<pre>
+apxs -i -c mod_qos.c
+</pre>
+</p>
+<a name="source">
+<h2>Source</h3>
+<p>
+<a href="../apache2">mod_qos</a> is available for Apache version 2.0 and 2.2.
+</p>
+
+<a name="configuration">
+<h2>Configuration</h3>
+Configuration is made on a per server basis. Commands within a virtual host overwrites the 
+global configuration (requires the definition of a QS_LocRequestLimit, QS_LocRequestLimitDefault, 
+or QS_SrvMaxConn directive).
+
+<h4>Request Level Control</h4>
+<p>
+The module features the following directives to control server access on a per location 
+(URL) level:
+<ul>
+<li>
+<code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
+Defines the number of concurrent requests for the specified request pattern 
+(applied to the unparsed uri). Rule with the lowest number of allowed 
+concurrent connection has the highest priority if multiple expressions 
+match the request. By default, no limitations are active for locations.
+</li>
+<li>
+<code>QS_LocRequestLimit &lt;location&gt; &lt;number&gt;</code><br>
+Defines the number of concurrent requests for the specified location (applied to 
+the parsed path). By default, no limitations are active for locations. Has 
+lower priority than QS_LocRequestLimitMatch.
+</li>
+<li>
+<code>QS_LocRequestLimitDefault &lt;number&gt;</code><br>Defines the default limitation 
+for the maximum of concurrent per locations for those locations not defined by any 
+QS_LocRequestLimit directive. It can also be used to limit the number of concurrent 
+requests to a virtual host.
+</li>
+<li>
+<code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when 
+a request is denied.
+</li>
+</ul>
+
+Additional directives are used to identify VIP's and to control the session 
+life time and its cookie format:
+<ul>
+<li>
+<code>QS_VipHeaderName &lt;header name&gt;</code><br>
+Defines a HTTP response header which marks a user as a VIP. mod_qos creates 
+a session for this user by setting a cookie. Whenever an application handler 
+sets this response header, the user gets unlimited access any location.
+</li>
+<li>
+<code>QS_SessionTimeout &lt;seconds&gt;</code><br>
+Defines the session life time for a VIP. Default are 3600 seconds.
+</li>
+<li>
+<code>QS_SessionCookieName &lt;name&gt;</code><br>
+Defines a custom cookie name. Default is MODQOS.
+</li>
+<li>
+<code>QS_SessionCookiePath &lt;path&gt;</code><br>
+Defines a the cookie path. Default is "/".
+</li>
+<li>
+<code>QS_SessionKey &lt;string&gt;</code><br>
+Secret key used for cookie encryption. Used when using the same 
+session cookie for multiple web servers (load balancing) or 
+sessions should survive a server restart. By default, 
+a random key is used which changes every server restart.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Sample configuration:<br>
+<pre>
+QS_ErrorPage                  /error.html
+
+QS_LocRequestLimitDefault                         200
+QS_LocRequestLimitMatch       "^.*\.gif$"         100
+QS_LocRequestLimit            /images             100
+QS_LocRequestLimit            /application        300
+
+QS_VipHeaderName              mod-qos-vip
+QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
+</pre>
+</td></tr>
+</table>
+
+Environment variables are used on a per request level and implement
+additonal control mechanisms. The following variables may be used:
+<ul>
+<li>
+<code>QS_VipRequest=yes</code><br>
+Allows unrestricted access.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Sample variable usage:<br>
+<pre>
+# unlimited access for curl clients:
+BrowserMatch                  "curl"              QS_VipRequest=yes
+
+# allows unlimited access to a single resource:
+SetEnvIf     Request_URI /application/start.html  QS_VipRequest=yes
+
+# allows unlimited access from a specified source address
+# or source address range:
+SetEnvIf     Remote_Addr 172.18.3.32              QS_VipRequest=yes
+SetEnvIf     Remote_Addr 192.168.10.              QS_VipRequest=yes
+</pre>
+</td></tr>
+</table>
+
+<h4>Connection Level Control</h4>
+The module features the following directives to control server access on a per server 
+(TCP connection) level:
+<ul>
+<li>
+<code>QS_SrvMaxConn &lt;number&gt;</code><br>
+Defines the maximum number of concurrent TCP connections for this server.
+</li>
+<li>
+<code>QS_SrvMaxConnClose &lt;number&gt;</code><br>
+Defines the maximum number of connections supporting keep-alive. If the number 
+of concurrent connections exceeds this threshold, the TCP connetion gets closed 
+after each request.
+</li>
+<li>
+<code>QS_SrvMaxConnPerIP &lt;number&gt;</code><br>
+Defines the maximum number of connections per source IP address.
+</li>
+<li>
+<code>QS_SrvMaxConnExcludeIP &lt;address&gt;</code><br>
+Defines an IP address or address range to be excluded from connection 
+level control restrictions.
+</li>
+<li>
+<code>QS_SrvMaxConnTimeout &lt;seconds&gt;</code><br>
+Defines the inital timeout for reading a request from the client from 
+a new TCP connection. This parameter is used to drop TCP sessions 
+from very slow clients which do not send the HTTP request data 
+(request line and header) within this timeout.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Sample configuration:<br>
+<pre>
+QS_SrvMaxConn                                     800
+QS_SrvMaxConnClose                                600
+QS_SrvMaxConnPerIP                                 50
+
+QS_SrvMaxConnExcludeIP                    172.18.3.32
+QS_SrvMaxConnExcludeIP                    192.168.10.
+</pre>
+</td></tr>
+</table>
+
+</p>
+
+<a name="messages">
+<h2>Log Messages</h3>
+<p>
+mod_qos writes messages to Apache's error log when enforcing a rule. The number of 
+concurrent requests to a location defined by QS_LocRequestLimit can be logged to the 
+access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
+header is used to log event messages: D=denied, S=pass due an available VIP session, 
+V=create VIP session, K=connection closed (no keep-alive).
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Sample configuration:<br>
+<pre>
+LogFormat "%h %l %u %t \"%r\" %>s %b %T \"%{User-Agent}i\" %{mod_qos_cr}o %{mod_qos_ev}o #%P"
+</pre>
+</td></tr>
+</table>
+The <code>qslog</code> tool, which is part of the support utilities of mod_qos, may be
+used to gather request statistics such as the number of denied requests or new VIP session creations
+per minute but also total requests per second and other data.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+<pre>
+TransferLog "| ./bin/qslog -o logs/qs_log -f I....R.B.T.Q"
+</pre>
+</td></tr>
+</table>
+The current status of mod_qos and the open server requests and connectons are 
+also shown by the mod_status handler.
+</p>
+</td></tr>
+</tbody>
+</table>
+<br>
+<hr>
+<SMALL><SMALL>&copy; 2007, Pascal Buchbinder</SMALL></SMALL>
+</body>
+</html>
