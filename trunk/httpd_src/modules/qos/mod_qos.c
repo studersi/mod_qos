@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.4 2007-08-22 15:50:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.5 2007-08-22 19:35:39 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -795,7 +795,7 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
   if(qos_verify_session(r, sconf)) {
     return 1;
   }
-  if (r->subprocess_env) {
+  if(r->subprocess_env) {
     const char *v = apr_table_get(r->subprocess_env, "QS_VipRequest");
     if(v && (strcasecmp(v, "yes") == 0)) {
       return 1;
@@ -1008,13 +1008,37 @@ static int qos_post_read_request(request_rec * r) {
 static int qos_header_parser(request_rec * r) {
   /* apply rules only to main request (avoid filtering of error documents) */
   if(ap_is_initial_req(r)) {
-    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+    qs_acentry_t *e;
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_module);
 
+    /* set dynamic keep alive */
+    if(r->subprocess_env) {
+      const char *v = apr_table_get(r->subprocess_env, "QS_KeepAliveTimeout");
+      if(v) {
+        int ka = atoi(v);
+        if(ka > 0) {
+          /* well, it works ... */
+          qs_req_ctx *rctx = qos_rctx_config_get(r);
+          apr_interval_time_t kat = apr_time_from_sec(ka);
+          server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+          server_rec *sc = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+          rctx->evmsg = apr_pstrcat(r->pool, "T;", rctx->evmsg, NULL);
+          memcpy(sr, r->server, sizeof(server_rec));
+          memcpy(sc, r->connection->base_server, sizeof(server_rec));
+          r->server = sr;
+          r->server->keep_alive_timeout = kat;
+          r->connection->base_server = sc;
+          r->connection->base_server->keep_alive_timeout = kat;
+        }
+      }
+    }
+    
     /*
      * QS_LocRequestLimitMatch/QS_LocRequestLimit/QS_LocRequestLimitDefault enforcement
      */
     /* 1st prio has QS_LocRequestLimitMatch */
-    qs_acentry_t *e = qos_getrule_byregex(r, sconf);
+    e = qos_getrule_byregex(r, sconf);
     /* 2th prio has QS_LocRequestLimit */
     if(!e) e = qos_getrule_bylocation(r, sconf);
     if(e) {
@@ -1167,7 +1191,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.4 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.5 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
