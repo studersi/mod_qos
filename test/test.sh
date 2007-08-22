@@ -135,6 +135,15 @@ if [ `grep -c "connection timeout, rule: 3 sec inital timeout" logs/error_log` -
 fi
 
 # -----------------------------------------------------------------
+echo "-- QS_KeepAliveTimeout" >>  logs/error_log
+../test_tools/src/httest -s scripts/QS_KeepAliveTimeout.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED 11"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
 echo "normal end"
 exit 0

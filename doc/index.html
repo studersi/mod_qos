@@ -209,6 +209,11 @@ additonal control mechanisms. The following variables may be used:
 <code>QS_VipRequest=yes</code><br>
 Allows unrestricted access.
 </li>
+<li>
+<code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
+Applies dynamic connection keep-alive settings overriding the Apache 
+KeepAliveTimeout directive settings.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -225,6 +230,9 @@ SetEnvIf     Request_URI /application/start.html  QS_VipRequest=yes
 # or source address range:
 SetEnvIf     Remote_Addr 172.18.3.32              QS_VipRequest=yes
 SetEnvIf     Remote_Addr 192.168.10.              QS_VipRequest=yes
+
+# set keep-alive timeout for MSIE version 5.x browser to 65 seconds
+BrowserMatch "(MSIE 5\.)"                         QS_KeepAliveTimeout=65
 </pre>
 </td></tr>
 </table>
@@ -284,7 +292,7 @@ mod_qos writes messages to Apache's error log when enforcing a rule. The number 
 concurrent requests to a location defined by QS_LocRequestLimit can be logged to the 
 access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
 header is used to log event messages: D=denied, S=pass due an available VIP session, 
-V=create VIP session, K=connection closed (no keep-alive).
+V=create VIP session, K=connection closed (no keep-alive), T=dynamic keep-alive.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
