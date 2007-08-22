@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.3 2007-08-22 14:25:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.4 2007-08-22 15:50:58 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1167,7 +1167,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.3 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.4 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -1534,7 +1534,10 @@ static const command_rec qos_config_cmds[] = {
                 " address range from beeing limited."),
   AP_INIT_TAKE1("QS_SrvMaxConnTimeout", qos_max_conn_timeout_cmd, NULL,
                 RSRC_CONF,
-                "QS_SrvMaxConnTimeout <seconds>, defines the inital timeout"
+                "-"),
+  AP_INIT_TAKE1("QS_SrvConnTimeout", qos_max_conn_timeout_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvConnTimeout <seconds>, defines the inital timeout"
                 " a client must send the HTTP request on a new TCP"
                 " connection. Default is the timeout defined by the"
                 " Apache standard Timeout directive."),
