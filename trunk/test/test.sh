@@ -10,12 +10,14 @@ QS_PORT_BASE=`expr ${QS_UID} - 1000`
 QS_PORT_BASE=`expr $QS_PORT_BASE '*' 120`
 QS_PORT_BASE=`expr $QS_PORT_BASE + 5000`
 QS_PORT_BASE1=`expr $QS_PORT_BASE + 1`
+QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 
 ./generate.sh
 
 ERRORS=0
 
 rm -f logs/access_log
+rm -f logs/error_log
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
 echo "-- start `date` --" >>  logs/error_log
 # -----------------------------------------------------------------
@@ -92,7 +94,7 @@ curl -b cookie http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
 sleep 1
 ./ctl.sh graceful > /dev/null
 curl -b cookie http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
-sleep 1
+sleep 2
 if [ `grep -c "GET /no/index.html HTTP/1.1\" 200.*curl.* S; .*" logs/access_log` -ne 3 ]; then
     ./ctl.sh stop
     echo "FAILED 6"
@@ -120,6 +122,15 @@ sleep 3
 if [ `grep -c "access denied, rule: max=40" logs/error_log` -lt 10 ]; then
     ./ctl.sh stop
     echo "FAILED 9"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- connection timeout" >>  logs/error_log
+openssl s_client -connect server1:${QS_PORT_BASE2} >/dev/null 2>/dev/null
+if [ `grep -c "connection timeout, rule: 3 sec inital timeout" logs/error_log` -lt 1 ]; then
+    ./ctl.sh stop
+    echo "FAILED 10"
     exit 1
 fi
 

@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.13 2007-08-21 20:18:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.14 2007-08-22 14:25:42 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 ServerLimit             16
@@ -37,6 +37,7 @@ PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 
 TypesConfig             conf/mime.types
+LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
