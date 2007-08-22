@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.2 2007-08-21 20:18:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.3 2007-08-22 14:25:42 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -75,7 +75,7 @@ static const char revision[] = "$Id: mod_qos.c,v 3.2 2007-08-21 20:18:51 pbuchbi
 #define QOS_COOKIE_NAME "MODQOS"
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
-#define QS_STACK_SIZE 32768
+#define QS_STACK_SIZE 131072
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 /************************************************************************
@@ -84,7 +84,6 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 typedef enum  {
   CONN_STATE_NEW,
-  CONN_STATE_APPROVED,
   CONN_STATE_SHORT,
   CONN_STATE_END
 } qs_conn_state_e;
@@ -908,7 +907,12 @@ static int qos_process_connection(conn_rec * c) {
         if(strcmp(f->frec->name, "qos-in-filter") == 0) {
           qos_ifctx_t *inctx = f->ctx;
           if(inctx->status == CONN_STATE_NEW) {
-            inctx->status = CONN_STATE_APPROVED;
+            apr_status_t rv = apr_socket_timeout_get(inctx->client_socket, &inctx->at);
+            if(rv == APR_SUCCESS) {
+              /* set short timeout */
+              apr_socket_timeout_set(inctx->client_socket, inctx->qt);
+              inctx->status = CONN_STATE_SHORT;
+            }
           }
           break;
         }
@@ -1047,21 +1051,14 @@ static int qos_header_parser(request_rec * r) {
   return DECLINED;
 }
 
+/**
+ * input filter, used to log timeout event
+ */
 static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
                                   ap_input_mode_t mode, apr_read_type_e block,
                                   apr_off_t nbytes) {
-  apr_status_t rv;
+  apr_status_t rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
   qos_ifctx_t *inctx = f->ctx;
-  if(inctx->status == CONN_STATE_APPROVED) {
-    rv = apr_socket_timeout_get(inctx->client_socket, &inctx->at);
-    if(rv == APR_SUCCESS) {
-      /* set short timeout */
-      apr_socket_timeout_set(inctx->client_socket, inctx->qt);
-      inctx->status = CONN_STATE_SHORT;
-    }
-  }
-  rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
-
   if((rv == APR_TIMEUP) && (inctx->status == CONN_STATE_SHORT)) {
     int qti = apr_time_sec(inctx->qt);
     ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
@@ -1170,7 +1167,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.2 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.3 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
