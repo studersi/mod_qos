@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.5 2007-08-22 19:35:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.6 2007-08-23 06:42:16 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -191,6 +191,7 @@ typedef struct {
   int max_conn_per_ip;
   apr_table_t *exclude_ip;
   int connect_timeout;
+  int stack_size;
 #ifdef QS_SIM_IP
   apr_table_t *testip;
 #endif
@@ -1191,7 +1192,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.5 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.6 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -1251,6 +1252,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->error_page = NULL;
   sconf->connect_timeout = -1;
+  sconf->stack_size = QS_STACK_SIZE;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
@@ -1306,6 +1308,7 @@ static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1)) {
     o->connect_timeout = b->connect_timeout;
+    o->stack_size = b->stack_size;
     return o;
   }
   return b;
@@ -1496,6 +1499,17 @@ const char *qos_max_conn_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec
   return NULL;
 }
 
+const char *qos_stack_size_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->stack_size = atoi(bytes);
+  if(sconf->stack_size < QS_STACK_SIZE) {
+    return apr_psprintf(cmd->pool, "%s: stack size must be greater than %d bytes", 
+                        cmd->directive->directive, QS_STACK_SIZE);
+  }
+  return NULL;
+}
+
 static const command_rec qos_config_cmds[] = {
   /* request limitation per location */
   AP_INIT_TAKE2("QS_LocRequestLimit", qos_loc_con_cmd, NULL,
@@ -1565,6 +1579,10 @@ static const command_rec qos_config_cmds[] = {
                 " a client must send the HTTP request on a new TCP"
                 " connection. Default is the timeout defined by the"
                 " Apache standard Timeout directive."),
+  /* internal settings */
+  AP_INIT_TAKE1("QS_StackSize", qos_stack_size_cmd, NULL,
+                RSRC_CONF,
+                "QS_StackSize <bytes>"),
   NULL,
 };
 
