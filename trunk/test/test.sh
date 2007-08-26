@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.9 2007-08-26 09:06:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.10 2007-08-26 09:22:06 pbuchbinder Exp $
 #
 
 QS_UID=`id`
@@ -19,8 +19,6 @@ QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 
 ERRORS=0
 
-rm -f logs/access_log
-rm -f logs/error_log
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
 echo "-- start `date` --" >>  logs/error_log
 # -----------------------------------------------------------------
@@ -29,7 +27,7 @@ echo "-- start `date` --" >>  logs/error_log
 
 # -----------------------------------------------------------------
 echo "-- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_LocRequestLimit_5.txt | grep -v Success
+../test_tools/src/httest -s ./scripts/QS_LocRequestLimit_5.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_LocRequestLimit_5.txt"
@@ -38,7 +36,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- 3 requests with matching regex rule max 2 (overrides location rule), QS_LocRequestLimitMatch_2.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_LocRequestLimitMatch_2.txt | grep -v Success
+../test_tools/src/httest -s ./scripts/QS_LocRequestLimitMatch_2.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_LocRequestLimitMatch_2.txt"
@@ -47,7 +45,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- vip session, QS_VipHeaderName.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_VipHeaderName.txt | grep -v Success
+../test_tools/src/httest -s ./scripts/QS_VipHeaderName.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_VipHeaderName.txt"
@@ -56,7 +54,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- vip request, QS_VipRequest.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_VipRequest.txt | grep -v Success
+../test_tools/src/httest -s ./scripts/QS_VipRequest.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_VipRequest.txt"
@@ -65,28 +63,24 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
-../test_tools/src/httest -s ./scripts/QS_SrvMaxConn_50.txt | grep -v Success
+../test_tools/src/httest -s ./scripts/QS_SrvMaxConn_50.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_SrvMaxConn_50.txt"
-    exit 1
-fi
-sleep 3
-if [ `grep -c "access denied, rule: max=40" logs/error_log` -lt 10 ]; then
-    ./ctl.sh stop
-    echo "FAILED 10"
     exit 1
 fi
 
 # -----------------------------------------------------------------
 echo "-- connection timeout" >>  logs/error_log
 openssl s_client -connect server1:${QS_PORT_BASE2} >/dev/null 2>/dev/null
-if [ `grep -c "connection timeout, rule: 3 sec inital timeout" logs/error_log` -lt 1 ]; then
+QSD=`date '+%d %H:'`
+if [ `grep "$QSD" logs/error_log | grep -c "connection timeout, rule: 3 sec inital timeout"` -lt 1 ]; then
     ./ctl.sh stop
-    echo "FAILED 11"
+    echo "FAILED QS_SrvConnClose"
     exit 1
 fi
 
+sleep 1
 # -----------------------------------------------------------------
 echo "-- disable keep alive, QS_SrvMaxConnClose_20.txt" >>  logs/error_log
 ../test_tools/src/httest -s scripts/QS_SrvMaxConnClose_20.txt
@@ -104,6 +98,8 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_KeepAliveTimeout.txt"
     exit 1
 fi
+
+sleep 1
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
