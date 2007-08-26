@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.6 2007-08-23 06:42:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.7 2007-08-26 09:06:33 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1192,13 +1192,15 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.6 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.7 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
   qos_user_t *u = qos_get_user_conf(s->process->pool);
   u->server_start++;
   er[0] = '\0';
+  er = strchr(rev, ' ');
+  if(er) rev = er;
   rev++;
   sconf->base_server = bs;
   sconf->act->timeout = apr_time_sec(bs->timeout);
@@ -1225,7 +1227,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     s = s->next;
   }
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, bs,
-               QOS_LOG_PFX"%s loaded (%d req rules)", rev, rules);
+               QOS_LOG_PFX"version %s loaded (%d req rules)", rev, rules);
 
   APR_OPTIONAL_HOOK(ap, status_hook, qos_ext_status_hook, NULL, NULL, APR_HOOK_MIDDLE);
 
@@ -1324,12 +1326,10 @@ const char *qos_loc_con_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const c
   qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
   rule->url = apr_pstrdup(cmd->pool, loc);
   rule->limit = atoi(limit);
-#ifndef QS_SIM_IP
   if(rule->limit == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
   }
-#endif
   rule->regex = NULL;
   apr_table_setn(sconf->location_t, id, (char *)rule);
   return NULL;
@@ -1502,6 +1502,10 @@ const char *qos_max_conn_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec
 const char *qos_stack_size_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
   sconf->stack_size = atoi(bytes);
   if(sconf->stack_size < QS_STACK_SIZE) {
     return apr_psprintf(cmd->pool, "%s: stack size must be greater than %d bytes", 

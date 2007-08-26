@@ -1,7 +1,7 @@
 #
 # test QS_LocRequestLimit and QS_ErrorPage directive
 #
-# $Id: QS_LocRequestLimit_5.txt,v 1.1 2007-08-26 07:58:42 pbuchbinder Exp $
+# $Id: QS_LocRequestLimit_5.txt,v 1.2 2007-08-26 09:06:33 pbuchbinder Exp $
 #
 
 
@@ -9,7 +9,7 @@ INCLUDE scripts/ports
 
 CLIENT 5 1
 _REQ localhost $QS_PORT_BASE
-__GET /cgi/sleep.cgi?s=10 HTTP/1.1
+__GET /cgi/sleep.cgi?s=4 HTTP/1.1
 __Host: localhost
 __
 _EXPECT . "200 OK"
@@ -20,7 +20,7 @@ END
 CLIENT 1 1
 _SLEEP 2000
 _REQ localhost $QS_PORT_BASE
-__GET /cgi/sleep.cgi?s=10 HTTP/1.1
+__GET /cgi/sleep.cgi HTTP/1.1
 __Host: localhost
 __
 _EXPECT . "500 Internal Server Error"

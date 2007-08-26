@@ -121,10 +121,12 @@ apxs -i -c mod_qos.c
 
 <a name="configuration">
 <h2>Configuration</h3>
-Configuration is made on a per server basis. Commands within a virtual host overwrites the 
-global configuration (requires the definition of a QS_LocRequestLimit, QS_LocRequestLimitDefault, 
-or QS_SrvMaxConn directive).
-
+<p>Configuration is made on a per server basis. Commands within a virtual host overwrites the 
+global configuration (requires the definition of a <code>QS_LocRequestLimit</code>, 
+<code>QS_LocRequestLimitDefault</code>, or <code>QS_SrvMaxConn</code> directive). The 
+directive <code>QS_SrvConnTimeout</code> can only be used outside of virtual host 
+configurations.
+</p>
 <h4>Request Level Control</h4>
 <p>
 The module features the following directives to control server access on a per location 
