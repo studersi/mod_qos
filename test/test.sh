@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.8 2007-08-26 08:45:43 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.9 2007-08-26 09:06:33 pbuchbinder Exp $
 #
 
 QS_UID=`id`
@@ -84,6 +84,15 @@ openssl s_client -connect server1:${QS_PORT_BASE2} >/dev/null 2>/dev/null
 if [ `grep -c "connection timeout, rule: 3 sec inital timeout" logs/error_log` -lt 1 ]; then
     ./ctl.sh stop
     echo "FAILED 11"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- disable keep alive, QS_SrvMaxConnClose_20.txt" >>  logs/error_log
+../test_tools/src/httest -s scripts/QS_SrvMaxConnClose_20.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_SrvMaxConnClose_20.txt"
     exit 1
 fi
 
