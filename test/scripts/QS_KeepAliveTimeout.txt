@@ -1,3 +1,9 @@
+#
+# test QS_KeepAliveTimeout
+#
+# $Id: QS_KeepAliveTimeout.txt,v 1.2 2007-08-26 07:58:42 pbuchbinder Exp $
+#
+
 INCLUDE scripts/ports
 
 CLIENT
