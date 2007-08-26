@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.10 2007-08-26 09:22:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.11 2007-08-26 10:40:56 pbuchbinder Exp $
 #
 
 QS_UID=`id`
@@ -58,6 +58,24 @@ echo "-- vip request, QS_VipRequest.txt" >>  logs/error_log
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_VipRequest.txt"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- vip request and graceful restart, QS_VipHeaderName_Graceful.txt" >>  logs/error_log
+../test_tools/src/httest -s ./scripts/QS_VipHeaderName_Graceful.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_VipHeaderName_Graceful.txt"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- graceful, QS_Graceful.txt" >> logs/error_log
+../test_tools/src/httest -s ./scripts/QS_Graceful.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_Graceful.txt"
     exit 1
 fi
 
