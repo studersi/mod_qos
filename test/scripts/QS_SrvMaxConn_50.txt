@@ -1,10 +1,29 @@
+#
+# test QS_SrvMaxConn directive
+#
+# $Id: QS_SrvMaxConn_50.txt,v 1.4 2007-08-26 07:30:12 pbuchbinder Exp $
+#
+
+
 INCLUDE scripts/ports
 
-CLIENT 50 1
+CLIENT 40 1
 _REQ localhost $QS_PORT_BASE
 __GET /cgi100/sleep.cgi?s=10 HTTP/1.1
 __Host: localhost
 __
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+CLIENT 10 1
+_SLEEP 2000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=10 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
 _WAIT
 
 END
