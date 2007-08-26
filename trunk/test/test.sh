@@ -25,13 +25,9 @@ echo "-- start `date` --" >>  logs/error_log
 (echo "GET /test/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null
 
 # -----------------------------------------------------------------
-echo "-- 7 requests to an url limited to max 5 concurrent requests" >>  logs/error_log
-RON="1 2 3 4 5 6 7"
-for E in $RON; do
-(echo "GET /cgi/sleep.cgi HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null &
-done
-sleep 5
-if [ `grep -c "GET /cgi/sleep.cgi HTTP/1.0\" 500" logs/access_log` -ne 2 ]; then
+echo "-- 6 requests to an url limited to max 5 concurrent requests" >>  logs/error_log
+../test_tools/src/httest -s ./scripts/QS_LocRequestLimit_5.txt | grep -v Success
+if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED 1"
     exit 1
@@ -118,10 +114,15 @@ fi
 
 echo "-- QS_SrvMaxConn 40" >> logs/error_log
 ../test_tools/src/httest -s ./scripts/QS_SrvMaxConn_50.txt | grep -v Success
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED 9"
+    exit 1
+fi
 sleep 3
 if [ `grep -c "access denied, rule: max=40" logs/error_log` -lt 10 ]; then
     ./ctl.sh stop
-    echo "FAILED 9"
+    echo "FAILED 10"
     exit 1
 fi
 
@@ -130,7 +131,7 @@ echo "-- connection timeout" >>  logs/error_log
 openssl s_client -connect server1:${QS_PORT_BASE2} >/dev/null 2>/dev/null
 if [ `grep -c "connection timeout, rule: 3 sec inital timeout" logs/error_log` -lt 1 ]; then
     ./ctl.sh stop
-    echo "FAILED 10"
+    echo "FAILED 11"
     exit 1
 fi
 
@@ -139,7 +140,7 @@ echo "-- QS_KeepAliveTimeout" >>  logs/error_log
 ../test_tools/src/httest -s scripts/QS_KeepAliveTimeout.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED 11"
+    echo "FAILED 12"
     exit 1
 fi
 
