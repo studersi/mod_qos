@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.16 2007-08-22 19:35:40 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.17 2007-08-26 08:45:43 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 ServerLimit             16
@@ -73,7 +73,6 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_LocRequestLimit         /cgi            5
    QS_LocRequestLimit         /cgi100       100
    QS_LocRequestLimit         /test          50
-   QS_LocRequestLimit         /no             0
    QS_LocRequestLimitMatch    "^.*\.gif$"     2
 
    QS_VipHeaderName           mod-qos-vip
@@ -87,8 +86,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_SrvMaxConnPerIP                        10
 
    BrowserMatch "pass"                       QS_VipRequest=yes
-   SetEnvIf     Request_URI /no/index2.html  QS_VipRequest=yes
-   #SetEnvIf     Remote_Addr 127.0.0.1        QS_VipRequest=yes
+   SetEnvIf     Request_URI /cgi/index2.cgi  QS_VipRequest=yes
+   #SetEnvIf     Remote_Addr 127.0.0.1       QS_VipRequest=yes
    <Directory /error-docs>
       SetHandler              default
    </Directory>
