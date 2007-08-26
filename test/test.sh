@@ -1,4 +1,7 @@
 #!/bin/sh
+#
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.8 2007-08-26 08:45:43 pbuchbinder Exp $
+#
 
 QS_UID=`id`
 QS_UID_STR=`expr "$QS_UID" : 'uid=[0-9]*.\([a-z,A-Z,0-9,_]*\)'`
@@ -25,98 +28,47 @@ echo "-- start `date` --" >>  logs/error_log
 (echo "GET /test/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null
 
 # -----------------------------------------------------------------
-echo "-- 6 requests to an url limited to max 5 concurrent requests" >>  logs/error_log
+echo "-- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.txt" >>  logs/error_log
 ../test_tools/src/httest -s ./scripts/QS_LocRequestLimit_5.txt | grep -v Success
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED 1"
+    echo "FAILED QS_LocRequestLimit_5.txt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- 7 requests with matching regex rule max 2 (overrides location rule)" >>  logs/error_log
-RON="1 2 3 4 5 6 7"
-for E in $RON; do
-(echo "GET /cgi/image.gif HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null &
-done
-sleep 5
-if [ `grep -c "GET /cgi/image.gif HTTP/1.0\" 500" logs/access_log` -ne 5 ]; then
+echo "-- 3 requests with matching regex rule max 2 (overrides location rule), QS_LocRequestLimitMatch_2.txt" >>  logs/error_log
+../test_tools/src/httest -s ./scripts/QS_LocRequestLimitMatch_2.txt | grep -v Success
+if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED 2"
+    echo "FAILED QS_LocRequestLimitMatch_2.txt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-rm -f cookie
-echo "-- 1 request to an url limited to max 0 (only vip)" >>  logs/error_log
-(echo "GET /no/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null &
-echo "-- 1 request to an url limited to max 0 (only vip) - invalid key" >>  logs/error_log
-curl -b MODQOS=eg3LcsEBcTAlxjE12JVz+Q/GqaT/PiZC88AOPK08ckQ= http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
-echo "--> vip login" >> logs/error_log
-curl -c cookie http://localhost:5960/login/vip.cgi 2>/dev/null 1>/dev/null
-echo "--> vip access" >> logs/error_log
-curl -b cookie http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
-sleep 1
-if [ `grep -c "GET /no/index.html HTTP/1.1\" 500.*curl.* D; .*" logs/access_log` -ne 1 ]; then
+echo "-- vip session, QS_VipHeaderName.txt" >>  logs/error_log
+../test_tools/src/httest -s ./scripts/QS_VipHeaderName.txt | grep -v Success
+if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED 3"
-    exit 1
-fi
-if [ `grep -c "GET /login/vip.cgi HTTP/1.1\" 200.*curl.* V; .*" logs/access_log` -ne 1 ]; then
-    ./ctl.sh stop
-    echo "FAILED 4"
-    exit 1
-fi
-if [ `grep -c "GET /no/index.html HTTP/1.1\" 200.*curl.* S; .*" logs/access_log` -ne 1 ]; then
-    ./ctl.sh stop
-    echo "FAILED 5"
-    exit 1
-fi
-sleep 4
-echo "--> vip timeout" >> logs/error_log
-COOKIE=`cat cookie  | grep MODQOS | awk '{print $(NF)}'`
-curl -b MODQOS=${COOKIE} http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
-sleep 1
-if [ `grep -c "GET /no/index.html HTTP/1.1\" 500.*curl.*D; .*" logs/access_log` -ne 2 ]; then
-    ./ctl.sh stop
-    echo "FAILED 6"
+    echo "FAILED QS_VipHeaderName.txt"
     exit 1
 fi
 
-echo "-- graceful restart" >>  logs/error_log
-rm -f cookie
-curl -c cookie http://localhost:5960/login/vip.cgi 2>/dev/null 1>/dev/null
-curl -b cookie http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
-sleep 1
-./ctl.sh graceful > /dev/null
-curl -b cookie http://localhost:5960/no/index.html 2>/dev/null 1>/dev/null
-sleep 2
-if [ `grep -c "GET /no/index.html HTTP/1.1\" 200.*curl.* S; .*" logs/access_log` -ne 3 ]; then
+# -----------------------------------------------------------------
+echo "-- vip request, QS_VipRequest.txt" >>  logs/error_log
+../test_tools/src/httest -s ./scripts/QS_VipRequest.txt | grep -v Success
+if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED 6"
+    echo "FAILED QS_VipRequest.txt"
     exit 1
 fi
 
-echo "-- QS_VipRequest" >> logs/error_log
-(echo "GET /no/index2.html HTTP/1.0";  echo "User-Agent: telnet"; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null &
-(echo "GET /no/index.html HTTP/1.0";  echo "User-Agent: pass"; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null &
-sleep 1
-if [ `grep -c "GET /no/index2.html HTTP/1.0\" 200.*telnet.* S; .*" logs/access_log` -ne 1 ]; then
-    ./ctl.sh stop
-    echo "FAILED 7"
-    exit 1
-fi
-if [ `grep -c "GET /no/index.html HTTP/1.0\" 200.*pass.* S; .*" logs/access_log` -ne 1 ]; then
-    ./ctl.sh stop
-    echo "FAILED 8"
-    exit 1
-fi
-
-echo "-- QS_SrvMaxConn 40" >> logs/error_log
+# -----------------------------------------------------------------
+echo "-- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
 ../test_tools/src/httest -s ./scripts/QS_SrvMaxConn_50.txt | grep -v Success
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED 9"
+    echo "FAILED QS_SrvMaxConn_50.txt"
     exit 1
 fi
 sleep 3
@@ -136,11 +88,11 @@ if [ `grep -c "connection timeout, rule: 3 sec inital timeout" logs/error_log` -
 fi
 
 # -----------------------------------------------------------------
-echo "-- QS_KeepAliveTimeout" >>  logs/error_log
+echo "-- dynamic keep alive, QS_KeepAliveTimeout" >>  logs/error_log
 ../test_tools/src/httest -s scripts/QS_KeepAliveTimeout.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED 12"
+    echo "FAILED QS_KeepAliveTimeout.txt"
     exit 1
 fi
 
