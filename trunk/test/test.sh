@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.11 2007-08-26 10:40:56 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.12 2007-08-26 11:24:15 pbuchbinder Exp $
 #
 
 QS_UID=`id`
@@ -114,6 +114,15 @@ echo "-- dynamic keep alive, QS_KeepAliveTimeout" >>  logs/error_log
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_KeepAliveTimeout.txt"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- multiple requests in parallel, MultiRequest.txt" >>  logs/error_log
+../test_tools/src/httest -s scripts/MultiRequest.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED MultiRequest.txt"
     exit 1
 fi
 

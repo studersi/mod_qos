@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.17 2007-08-26 08:45:43 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.18 2007-08-26 11:24:15 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 ServerLimit             16
@@ -126,6 +126,8 @@ Listen                  server1:##QS_PORT_BASE1##
    QS_SrvMaxConn                            800
    QS_SrvMaxConnClose                       600
    QS_SrvMaxConnPerIP                        10
+
+   QS_LocRequestLimit         /no           200
 
    #QS_SrvMaxConnExcludeIP           192.168.32.
 
