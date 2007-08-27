@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.2 2007-08-27 19:23:59 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.3 2007-08-27 19:24:53 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -44,7 +44,7 @@ else
     echo "FAILED"
     exit 1
 fi
-exit 0
+
 rm -rf mod_qos-${VERSION}*
 mkdir -p mod_qos-${VERSION}/doc
 mkdir -p mod_qos-${VERSION}/apache2
