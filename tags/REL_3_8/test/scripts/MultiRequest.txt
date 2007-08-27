@@ -1,0 +1,58 @@
+#
+# $Id: MultiRequest.txt,v 1.1 2007-08-26 11:24:16 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 50 10
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index404.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "404 Not Found"
+_WAIT
+
+_SLEEP 100
+
+END
