@@ -1,6 +1,28 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.12 2007-08-26 11:24:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.13 2007-08-27 12:21:36 pbuchbinder Exp $
+#
+# mod_qos test cases, requires htt, see http://htt.sourceforge.net/
+#
+# See http://sourceforge.net/projects/mod-qos/ for further
+# details about mod_qos.
+#
+# Copyright (C) 2007 Pascal Buchbinder
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301, USA.
 #
 
 QS_UID=`id`
@@ -89,19 +111,18 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- connection timeout" >>  logs/error_log
-openssl s_client -connect server1:${QS_PORT_BASE2} >/dev/null 2>/dev/null
-QSD=`date '+%d %H:'`
-if [ `grep "$QSD" logs/error_log | grep -c "connection timeout, rule: 3 sec inital timeout"` -lt 1 ]; then
+echo "-- connection timeout, QS_SrvConnTimeout.txt" >>  logs/error_log
+../test_tools/src/httest -s ./scripts/QS_SrvConnTimeout.txt
+if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_SrvConnClose"
+    echo "FAILED QS_SrvConnTimeout.txt"
     exit 1
 fi
 
 sleep 1
 # -----------------------------------------------------------------
 echo "-- disable keep alive, QS_SrvMaxConnClose_20.txt" >>  logs/error_log
-../test_tools/src/httest -s scripts/QS_SrvMaxConnClose_20.txt
+../test_tools/src/httest -s ./scripts/QS_SrvMaxConnClose_20.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_SrvMaxConnClose_20.txt"
@@ -110,7 +131,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- dynamic keep alive, QS_KeepAliveTimeout" >>  logs/error_log
-../test_tools/src/httest -s scripts/QS_KeepAliveTimeout.txt
+../test_tools/src/httest -s ./scripts/QS_KeepAliveTimeout.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_KeepAliveTimeout.txt"
@@ -119,7 +140,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- multiple requests in parallel, MultiRequest.txt" >>  logs/error_log
-../test_tools/src/httest -s scripts/MultiRequest.txt
+../test_tools/src/httest -s ./scripts/MultiRequest.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED MultiRequest.txt"
