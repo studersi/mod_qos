@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.1 2007-08-27 12:21:36 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.2 2007-08-27 19:23:59 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -36,6 +36,15 @@ TOP=`pwd`
 VERSION=`grep mod_qos.c,v httpd_src/modules/qos/mod_qos.c | awk '{print $8}'`
 echo "build mod_dos version $VERSION distribution package"
 
+TAGV=`echo $VERSION | awk -F'.' '{print "REL_" $1 "_" $2}'`
+echo "check release tag $TAGV ..."
+if [ "`cvs -q diff -r $TAGV`" = "" ]; then
+    echo ok
+else
+    echo "FAILED"
+    exit 1
+fi
+exit 0
 rm -rf mod_qos-${VERSION}*
 mkdir -p mod_qos-${VERSION}/doc
 mkdir -p mod_qos-${VERSION}/apache2
