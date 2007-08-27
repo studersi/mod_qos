@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.7 2007-08-26 09:06:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.8 2007-08-27 12:21:14 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -73,6 +73,8 @@ static const char revision[] = "$Id: mod_qos.c,v 3.7 2007-08-26 09:06:33 pbuchbi
 #define QOS_MAGIC_LEN 8
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
+#define QS_BLACKLIST_SIZE 20
+#define QS_BLACKLIST_TIMEOUT 600;
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
 #define QS_STACK_SIZE 131072
@@ -81,6 +83,12 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 /************************************************************************
  * structures
  ***********************************************************************/
+
+typedef struct qos_blacklist_st {
+  unsigned long ip;
+  time_t tme;
+  struct qos_blacklist_st* next;
+} qos_blacklist_t;
 
 typedef enum  {
   CONN_STATE_NEW,
@@ -95,6 +103,7 @@ typedef struct {
   apr_socket_t *client_socket;
   apr_interval_time_t at;
   apr_interval_time_t qt;
+  apr_interval_time_t server_timeout;
   qs_conn_state_e status;
 } qos_ifctx_t;
 
@@ -167,6 +176,7 @@ typedef struct qs_actable_st {
   char *lock_file;
   apr_global_mutex_t *lock; /** ip/conn lock */
   qs_conn_t *c;
+  qos_blacklist_t* blacklist;
   int child_init;
   unsigned int timeout;
 } qs_actable_t;
@@ -862,7 +872,6 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   return OK;
 }
 
-
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -910,9 +919,17 @@ static int qos_process_connection(conn_rec * c) {
           if(inctx->status == CONN_STATE_NEW) {
             apr_status_t rv = apr_socket_timeout_get(inctx->client_socket, &inctx->at);
             if(rv == APR_SUCCESS) {
+              server_rec *sc;
               /* set short timeout */
               apr_socket_timeout_set(inctx->client_socket, inctx->qt);
               inctx->status = CONN_STATE_SHORT;
+              /* make change "persisten" till we got the whole request
+                 line and headers (again, ugly but it works) */
+              inctx->server_timeout = c->base_server->timeout;
+              sc = apr_pcalloc(c->pool, sizeof(server_rec));
+              memcpy(sc, c->base_server, sizeof(server_rec));
+              c->base_server = sc;
+              c->base_server->timeout = inctx->qt;
             }
           }
           break;
@@ -994,6 +1011,7 @@ static int qos_post_read_request(request_rec * r) {
           /* clear short timeout */
           apr_socket_timeout_set(inctx->client_socket, inctx->at);
           inctx->status = CONN_STATE_END;
+          r->connection->base_server->timeout = inctx->server_timeout;
         }
         break;
       }
@@ -1019,7 +1037,7 @@ static int qos_header_parser(request_rec * r) {
       if(v) {
         int ka = atoi(v);
         if(ka > 0) {
-          /* well, it works ... */
+          /* well, at least it works ... */
           qs_req_ctx *rctx = qos_rctx_config_get(r);
           apr_interval_time_t kat = apr_time_from_sec(ka);
           server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
@@ -1086,6 +1104,7 @@ static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
   qos_ifctx_t *inctx = f->ctx;
   if((rv == APR_TIMEUP) && (inctx->status == CONN_STATE_SHORT)) {
     int qti = apr_time_sec(inctx->qt);
+    f->c->base_server->timeout = inctx->server_timeout;
     ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
                  QOS_LOG_PFX"connection timeout, rule: %d sec inital timeout, c=%s",
                  qti,
@@ -1192,7 +1211,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.7 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.8 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
