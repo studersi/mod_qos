@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvConnTimeout.txt,v 1.1 2007-08-27 12:21:36 pbuchbinder Exp $
+# $Id: QS_SrvConnTimeout.txt,v 1.2 2007-08-27 19:15:52 pbuchbinder Exp $
 #
 
 
@@ -10,6 +10,16 @@ _REQ server1 SSL:$QS_PORT_BASE2
 __GET /cgi100/sleep.cgi?s=3 HTTP/1.1
 __SLEEP 6000
 _WAIT
+_CLOSE
+
+END
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=3 HTTP/1.1
+__SLEEP 6000
+_WAIT
+_CLOSE
 
 END
 
@@ -21,5 +31,6 @@ __Host: localhost
 __
 _EXPECT. "1 requests currently being processed"
 _WAIT
+
 
 END
