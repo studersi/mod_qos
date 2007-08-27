@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.0 2007-07-19 19:48:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.3 2007-08-27 19:24:53 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -11,10 +11,39 @@
 # ./tools
 # supplemental code
 #
+# See http://sourceforge.net/projects/mod-qos/ for further
+# details about mod_qos.
+#
+# Copyright (C) 2007 Pascal Buchbinder
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301, USA.
+#
 
 TOP=`pwd`
 VERSION=`grep mod_qos.c,v httpd_src/modules/qos/mod_qos.c | awk '{print $8}'`
-echo "build version $VERSION"
+echo "build mod_dos version $VERSION distribution package"
+
+TAGV=`echo $VERSION | awk -F'.' '{print "REL_" $1 "_" $2}'`
+echo "check release tag $TAGV ..."
+if [ "`cvs -q diff -r $TAGV`" = "" ]; then
+    echo ok
+else
+    echo "FAILED"
+    exit 1
+fi
 
 rm -rf mod_qos-${VERSION}*
 mkdir -p mod_qos-${VERSION}/doc
@@ -40,8 +69,8 @@ cp tools/qslog.c mod_qos-${VERSION}/tools
 cp tools/qscheck.c mod_qos-${VERSION}/tools
 cp tools/Makefile mod_qos-${VERSION}/tools
 
-echo "package"
-tar cf mod_qos-${VERSION}.tar mod_qos-${VERSION}
+echo "package: mod_qos-${VERSION}.tar.gz"
+tar cf mod_qos-${VERSION}.tar --owner root --group bin mod_qos-${VERSION}
 gzip mod_qos-${VERSION}.tar
 rm -r mod_qos-${VERSION}
 
