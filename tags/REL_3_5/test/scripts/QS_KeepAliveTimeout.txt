@@ -1,0 +1,24 @@
+INCLUDE scripts/ports
+
+CLIENT
+_REQ server1 $QS_PORT_BASE1
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Keep-Alive: 300
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "Keep-Alive: timeout=5"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Keep-Alive: 300
+__Connection: keep-alive
+__User-Agent: Mozilla/4.0 (compatible; MSIE 5.1)"
+__
+_EXPECT . "Keep-Alive: timeout=7"
+_WAIT
+
+END
