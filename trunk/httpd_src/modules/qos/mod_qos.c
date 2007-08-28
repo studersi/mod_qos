@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.8 2007-08-27 12:21:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.9 2007-08-28 06:17:06 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -821,6 +821,7 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
 static int qos_ext_status_hook(request_rec *r, int flags) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   server_rec *s = sconf->base_server;
+  int i = 0;
   if (flags & AP_STATUS_SHORT)
     return OK;
 
@@ -838,7 +839,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       ap_rputs("<p><table border=\"1\">\n", r);
       ap_rputs("<tr><td>rule</td><td>limit</td><td>current</td></tr>\n", r);
       while(e) {
-        ap_rputs("<tr>", r);
+        ap_rprintf(r, "<!-- %d --><tr>", i);
         ap_rprintf(r, "<td>%s</td>", e->url);
         ap_rprintf(r, "<td>%d</td>", e->limit);
         ap_rprintf(r, "<td>%d</td>", e->counter);
@@ -857,15 +858,15 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         f = f->next;
       }
       apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
-      ap_rprintf(r,"<p>free ip entries: %d<br>\n", c);
-      ap_rprintf(r,"current connections: %d<br>\n", sconf->act->c->connections);
+      ap_rprintf(r,"<!-- %d --><p>free ip entries: %d<br>\n", i, c);
+      ap_rprintf(r,"<!-- %d -->current connections: %d<br>\n", i, sconf->act->c->connections);
       ap_rputs("<br>\n", r);
       ap_rprintf(r,"max connections: %d<br>\n", sconf->max_conn);
       ap_rprintf(r,"max connections with keep-alive: %d<br>\n", sconf->max_conn_close);
       ap_rprintf(r,"max connections per client: %d<br>\n", sconf->max_conn_per_ip);
       ap_rprintf(r,"inital request timeout: %d</p>\n", sconf->connect_timeout);
     }
-
+    i++;
     s = s->next;
   }
   ap_rputs("<hr>\n", r);
@@ -1211,7 +1212,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.8 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.9 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
@@ -1251,6 +1252,22 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   APR_OPTIONAL_HOOK(ap, status_hook, qos_ext_status_hook, NULL, NULL, APR_HOOK_MIDDLE);
 
   return DECLINED;
+}
+
+/**
+ * handler which may be used as an alternative to mod_status
+ */
+static int qos_handler(request_rec * r) {
+  if (strcmp(r->handler, "qos-viewer") != 0) {
+    return DECLINED;
+  } 
+  ap_set_content_type(r, "text/html");
+  if(!r->header_only) {
+    ap_rputs("<html><head></head><body>", r);
+    qos_ext_status_hook(r, 0);
+    ap_rputs("</body></html>", r);
+  }
+  return OK;
 }
 
 /**
@@ -1619,6 +1636,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request, NULL, NULL, APR_HOOK_LAST);
   ap_hook_header_parser(qos_header_parser, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_handler(qos_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
 
   ap_register_input_filter("qos-in-filter", qos_in_filter, NULL, AP_FTYPE_CONNECTION);
