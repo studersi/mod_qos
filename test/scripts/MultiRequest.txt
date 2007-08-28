@@ -1,5 +1,5 @@
 #
-# $Id: MultiRequest.txt,v 1.1 2007-08-26 11:24:16 pbuchbinder Exp $
+# $Id: MultiRequest.txt,v 1.2 2007-08-28 06:17:07 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -54,5 +54,30 @@ _EXPECT . "404 Not Found"
 _WAIT
 
 _SLEEP 100
+
+END
+
+CLIENT
+_SLEEP 10000
+_REQ localhost $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "<!-- 0 --><p>free ip entries: 4096<br>"
+_EXPECT . "<!-- 0 -->current connections: 0<br>"
+_EXPECT . "<!-- 1 --><p>free ip entries: 4096<br>"
+_EXPECT . "<!-- 1 -->current connections: 0<br>"
+_EXPECT . "<!-- 2 --><p>free ip entries: 4096<br>"
+_EXPECT . "<!-- 2 -->current connections: 0<br>"
+_EXPECT . "<!-- 2 --><tr><td>/no</td><td>200</td><td>0</td></tr>"
+_EXPECT . "<!-- 3 --><p>free ip entries: 4095<br>"
+_EXPECT . "<!-- 3 -->current connections: 1<br>"
+_EXPECT . "<!-- 3 --><tr><td>/</td><td>30</td><td>1</td></tr>"
+_EXPECT . "<!-- 3 --><tr><td>/cgi</td><td>5</td><td>0</td></tr>"
+_EXPECT . "<!-- 3 --><tr><td>/cgi100</td><td>100</td><td>0</td></tr>"
+_EXPECT . "<!-- 3 --><tr><td>/test</td><td>50</td><td>0</td></tr>"
+_EXPECT . "<!-- 3 --><tr><td>.*gif.*</td><td>2</td><td>0</td></tr>"
+_WAIT
 
 END
