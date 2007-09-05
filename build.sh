@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.8 2007-08-27 12:21:36 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.9 2007-09-05 19:10:18 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
@@ -48,6 +48,7 @@ export CFLAGS
 
 cd httpd
 ./buildconf
+#./configure --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl --enable-status=shared
 ./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl --enable-status=shared
 make
 strip modules/qos/.libs/mod_qos.so

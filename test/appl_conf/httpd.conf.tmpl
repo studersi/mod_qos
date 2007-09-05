@@ -1,10 +1,14 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.3 2007-08-06 19:59:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.4 2007-09-05 19:10:18 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            1
+
 MinSpareThreads         5
 MaxSpareThreads         75
 ThreadsPerChild         64
+#MinSpareServers         5
+#MaxSpareServers         10
+
 MaxRequestsPerChild     300000
 User                    ##USR##
 Group                   users
