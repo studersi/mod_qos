@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.13 2007-08-27 12:21:36 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.14 2007-09-05 18:39:57 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -53,6 +53,12 @@ echo "-- 6 requests to an url limited to max 5 concurrent requests, QS_LocReques
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_LocRequestLimit_5.txt"
+    exit 1
+fi
+../test_tools/src/httest -s ./scripts/QS_LocRequestLimit_DynamicErrorPage.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocRequestLimit_DynamicErrorPage.txt"
     exit 1
 fi
 
