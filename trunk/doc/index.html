@@ -191,7 +191,7 @@ a random key is used which changes every server restart.
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
 <pre>
-QS_ErrorPage                  /error.html
+QS_ErrorPage                  /error-docs/qs_error.html
 
 QS_LocRequestLimitDefault                         200
 QS_LocRequestLimitMatch       "^.*\.gif$"         100
@@ -216,6 +216,11 @@ Allows unrestricted access.
 Applies dynamic connection keep-alive settings overriding the Apache 
 KeepAliveTimeout directive settings.
 </li>
+<li>
+<code>QS_ErrorPage=&lt;url&gt;</code><br>
+Defines the error page overriding the sessing made by the QS_ErrorPage 
+directive.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -235,6 +240,9 @@ SetEnvIf     Remote_Addr 192.168.10.              QS_VipRequest=yes
 
 # set keep-alive timeout for MSIE version 5.x browser to 65 seconds
 BrowserMatch "(MSIE 5\.)"                         QS_KeepAliveTimeout=65
+
+# dynamic error page url
+SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.html
 </pre>
 </td></tr>
 </table>

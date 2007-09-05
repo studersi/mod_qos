@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.10 2007-09-05 10:06:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.11 2007-09-05 18:39:57 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -58,6 +58,7 @@ static const char revision[] = "$Id: mod_qos.c,v 3.10 2007-09-05 10:06:11 pbuchb
 #include <util_filter.h>
 #include <time.h>
 #include <ap_mpm.h>
+#include <scoreboard.h>
 
 /* apr */
 #include <apr_strings.h>
@@ -459,13 +460,21 @@ static void *qos_clean_thread(apr_thread_t *t ,void *p) {
 }
 
 /**
- * well, we don't know if it is a graceful restart due we can't access
- * the mpm static varibale is_graceful. at least, we detect inital config
- * check start
+ * tells if server is terminating immediately or not
  */
 static int qos_is_graceful(qs_actable_t *act) {
   qos_user_t *u = qos_get_user_conf(act->ppool);
+  if(ap_scoreboard_image) {
+    /* available scoreboard and quiescing processes
+       are an indication, that this is a final server
+       stop */
+    process_score *ps = ap_get_scoreboard_process(0);
+    if(ps->quiescing) {
+      return 0;
+    }
+  }
   if(u->server_start > 1) return 1;
+  /* always cleanup at inital server start */
   return 0;
 }
 
@@ -1220,7 +1229,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.10 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.11 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;
