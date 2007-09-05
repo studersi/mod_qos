@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.22 2007-09-05 10:06:12 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.23 2007-09-05 19:10:18 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -25,11 +25,15 @@
 #
 
 ServerName              127.0.0.1
-ServerLimit             16
 StartServers            1
+
+ServerLimit             16
 MinSpareThreads         5
 MaxSpareThreads         75
 ThreadsPerChild         64
+#MinSpareServers         5
+#MaxSpareServers         10
+
 MaxClients              896
 MaxRequestsPerChild     0
 User                    ##USR##
@@ -182,7 +186,6 @@ Listen                  server1:##QS_PORT_BASE2##
 SSLCipherSuite          RC4-MD5:EXP-RC4-MD5
 SSLSessionCacheTimeout  864000
 SSLProtocol             all
-SSLCryptoDevice         builtin
 SSLMutex                file:##ROOT##/logs/ssl_mutex
 SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
 SSLRandomSeed           startup builtin
