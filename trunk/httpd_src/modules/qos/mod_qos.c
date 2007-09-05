@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.9 2007-08-28 06:17:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.10 2007-09-05 10:06:11 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1070,6 +1070,7 @@ static int qos_header_parser(request_rec * r) {
       
       /* enforce the limitation */
       if(e->counter > e->limit) {
+        const char *error_page = sconf->error_page;
         /* vip session has no limitation */
         if(sconf->header_name) {
           rctx->is_vip = qos_is_vip(r, sconf);
@@ -1084,8 +1085,15 @@ static int qos_header_parser(request_rec * r) {
                       e->url, e->limit, e->counter,
                       r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
         rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-        if(sconf->error_page) {
-          qos_error_response(r, sconf->error_page);
+        
+        if(r->subprocess_env) {
+          const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+          if(v) {
+            error_page = v;
+          }
+        }
+        if(error_page) {
+          qos_error_response(r, error_page);
           return DONE;
         }
         return HTTP_INTERNAL_SERVER_ERROR;
@@ -1212,7 +1220,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.9 $");
+  char *rev = apr_pstrdup(ptemp, "$Revision: 3.10 $");
   char *er = strrchr(rev, ' ');
   server_rec *s = bs->next;
   int rules = 0;

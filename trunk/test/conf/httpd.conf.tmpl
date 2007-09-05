@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.21 2007-08-28 06:17:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.22 2007-09-05 10:06:12 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -204,5 +204,13 @@ SSLRandomSeed           startup builtin
    ProxyPass                  /status !
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+   QS_ErrorPage               /error-docs/error.html
+   SetEnvIf   Host (.*):.*    QS_ErrorPage=/error-docs/$1.html
+   QS_LocRequestLimit         /cgi            5
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
 
 </VirtualHost>

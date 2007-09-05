@@ -12,12 +12,14 @@ QS_PORT_BASE=`expr $QS_PORT_BASE '*' 120`
 QS_PORT_BASE=`expr $QS_PORT_BASE + 5000`
 QS_PORT_BASE1=`expr $QS_PORT_BASE + 1`
 QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
+QS_PORT_BASE3=`expr $QS_PORT_BASE + 3`
 QS_PORT_BASE5=`expr $QS_PORT_BASE + 5`
 QS_PORT_BASE6=`expr $QS_PORT_BASE + 6`
 
 echo "SET QS_PORT_BASE=$QS_PORT_BASE"   >  scripts/ports
 echo "SET QS_PORT_BASE1=$QS_PORT_BASE1" >> scripts/ports
 echo "SET QS_PORT_BASE2=$QS_PORT_BASE2" >> scripts/ports
+echo "SET QS_PORT_BASE3=$QS_PORT_BASE3" >> scripts/ports
 echo "SET QS_PORT_BASE5=$QS_PORT_BASE5" >> scripts/ports
 echo "SET QS_PORT_BASE6=$QS_PORT_BASE6" >> scripts/ports
 
@@ -27,6 +29,7 @@ sed <conf/httpd.conf.tmpl >conf/httpd.conf \
     -e "s;##QS_PORT_BASE##;$QS_PORT_BASE;g" \
     -e "s;##QS_PORT_BASE1##;$QS_PORT_BASE1;g" \
     -e "s;##QS_PORT_BASE2##;$QS_PORT_BASE2;g" \
+    -e "s;##QS_PORT_BASE3##;$QS_PORT_BASE3;g" \
     -e "s;##QS_PORT_BASE5##;$QS_PORT_BASE5;g" \
     -e "s;##QS_PORT_BASE6##;$QS_PORT_BASE6;g"
 
