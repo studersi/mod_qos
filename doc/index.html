@@ -43,7 +43,7 @@
 -->
 <table>
 <tbody>
-<tr><td><img src="mod_qos_s.gif"></td><td style="vertical-align: bottom;"><h1>mod_qos</h1></td></tr>
+<tr><td><img src="mod_qos_s.gif" alt="mod_qos"></td><td style="vertical-align: bottom;"><h1>mod_qos</h1></td></tr>
 <tr><td>&nbsp;</td><td>
 <p>
 The Apache Web Server requires threads and processes to serve HTTP requests. Each 
@@ -321,8 +321,17 @@ TransferLog "| ./bin/qslog -o logs/qs_log -f I....R.B.T.Q"
 </pre>
 </td></tr>
 </table>
-The current status of mod_qos and the open server requests and connectons are 
-also shown by the mod_status handler.
+mod_qos features a handler showing the current connection and request status.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+<pre>
+&lt;Location /qos&gt;
+   SetHandler qos-viewer
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+
 </p>
 </td></tr>
 </tbody>
