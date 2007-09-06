@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.23 2007-09-05 19:10:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.24 2007-09-06 18:34:34 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -154,6 +154,7 @@ Listen                  server1:##QS_PORT_BASE1##
 
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
+   ProxyPass                  /qos !
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
@@ -176,6 +177,10 @@ Listen                  server1:##QS_PORT_BASE1##
 
    <Location /status>
        SetHandler server-status
+   </Location>
+
+   <Location /qos>
+       SetHandler qos-viewer
    </Location>
 
 </VirtualHost>
@@ -205,6 +210,7 @@ SSLRandomSeed           startup builtin
 
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
+   ProxyPass                  /qos !
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
@@ -214,6 +220,10 @@ SSLRandomSeed           startup builtin
 
    <Location /status>
        SetHandler server-status
+   </Location>
+
+   <Location /qos>
+       SetHandler qos-viewer
    </Location>
 
 </VirtualHost>

@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.11 2007-09-05 18:39:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.12 2007-09-06 18:34:34 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -74,8 +74,6 @@ static const char revision[] = "$Id: mod_qos.c,v 3.11 2007-09-05 18:39:57 pbuchb
 #define QOS_MAGIC_LEN 8
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
-#define QS_BLACKLIST_SIZE 20
-#define QS_BLACKLIST_TIMEOUT 600;
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
 #define QS_STACK_SIZE 131072
@@ -84,12 +82,6 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 /************************************************************************
  * structures
  ***********************************************************************/
-
-typedef struct qos_blacklist_st {
-  unsigned long ip;
-  time_t tme;
-  struct qos_blacklist_st* next;
-} qos_blacklist_t;
 
 typedef enum  {
   CONN_STATE_NEW,
@@ -152,16 +144,17 @@ typedef struct qs_acentry_st {
   int id;
   char *lock_file;
   apr_global_mutex_t *lock;
-  int counter;
-  int limit;
-  struct qs_acentry_st *next;
+  /** location rules */
+  char *url;
   int url_len;
 #ifdef AP_REGEX_H
   ap_regex_t *regex;
 #else
   regex_t *regex;
 #endif
-  char *url;
+  int counter;
+  int limit;
+  struct qs_acentry_st *next;
 } qs_acentry_t;
 
 /**
@@ -173,13 +166,15 @@ typedef struct qs_actable_st {
   char *m_file;
   apr_pool_t *pool;
   apr_pool_t *ppool;
-  qs_acentry_t *entry;      /** rule entry list */
+  /** rule entry list */
+  qs_acentry_t *entry;
+  /** ip/conn data */
   char *lock_file;
-  apr_global_mutex_t *lock; /** ip/conn lock */
+  apr_global_mutex_t *lock;
   qs_conn_t *c;
-  qos_blacklist_t* blacklist;
-  int child_init;
   unsigned int timeout;
+  /* settings */
+  int child_init;
 } qs_actable_t;
 
 /**
@@ -252,6 +247,13 @@ module AP_MODULE_DECLARE_DATA qos_module;
 /************************************************************************
  * private functions
  ***********************************************************************/
+
+static char *qos_revision(apr_pool_t *p) {
+  char *ver = apr_pstrdup(p, &revision[strlen("$Id: mod_qos.c,v ")]);
+  char *h = strchr(ver, ' ');
+  h[0] = '\0';
+  return ver;
+}
 
 /**
  * extract the session cookie from the request
@@ -795,7 +797,7 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sco
   while(e) {
     if(e->regex == NULL) {
       /* per location limitation */
-      if(strncmp(e->url, r->parsed_uri.path, e->url_len) == 0) {
+      if(e->url && (strncmp(e->url, r->parsed_uri.path, e->url_len) == 0)) {
         /* best match */
         if(e->url_len > match_len) {
           match_len = e->url_len;
@@ -835,7 +837,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     return OK;
 
   ap_rputs("<hr>\n", r);
-  ap_rputs("<h2>mod_qos</h2>\n", r);
+  ap_rprintf(r, "<h2>mod_qos %s</h2>\n", qos_revision(r->pool));
   while(s) {
     qs_acentry_t *e;
     ap_rprintf(r, "<h3>%s:%d (%s)</h3>\n",
@@ -845,13 +847,40 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
     if(sconf && sconf->act) {
       e = sconf->act->entry;
-      ap_rputs("<p><table border=\"1\">\n", r);
-      ap_rputs("<tr><td>rule</td><td>limit</td><td>current</td></tr>\n", r);
+      if(strcmp(r->handler, "qos-viewer") == 0) {
+        ap_rputs("<p><table class=\"btable\">\n", r);
+      } else {
+        ap_rputs("<p><table border=\"1\">\n", r);
+      }
+      ap_rputs("<tr class=\"rowt\">"
+               "<td style=\"width:70%\">location rule&nbsp;</td>"
+               "<td style=\"width:15%\">limit&nbsp;</td>"
+               "<td style=\"width:15%\">current&nbsp;</td></tr>\n", r);
+      if(!e) {
+        ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
+        ap_rprintf(r, "<td><i>none</i></td><td></td><td></td></tr>");
+      }
       while(e) {
-        ap_rprintf(r, "<!-- %d --><tr>", i);
+        int percent = e->counter * 100 / e->limit;
+        int cr = 255;
+        int cg = 255;
+        int cb = 255;
+        if(percent > 70) {
+          cr = 255;
+          cg = 255;
+          cb = 90;
+        }
+        if(percent > 95) {
+          cr = 255;
+          cg = 0;
+          cb = 0;
+        }
+        ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
         ap_rprintf(r, "<td>%s</td>", e->url);
         ap_rprintf(r, "<td>%d</td>", e->limit);
-        ap_rprintf(r, "<td>%d</td>", e->counter);
+        ap_rprintf(r, "<td style=\"background-color: rgb(%d, %d, %d);\">%d</td>",
+                   cr, cg, cb,
+                   e->counter);
         ap_rputs("</tr>\n", r);
         e = e->next;
       }
@@ -860,6 +889,21 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     if(sconf) {
       qs_ip_entry_t *f;
       int c = 0;
+      int cr = 255;
+      int cg = 255;
+      int cb = 255;
+      if((sconf->max_conn_close > 0) &&
+         (sconf->act->c->connections >= sconf->max_conn_close)) {
+        cr = 255;
+        cg = 255;
+        cb = 90;
+      }
+      if((sconf->max_conn > 0) &&
+         (sconf->act->c->connections >= sconf->max_conn)) {
+        cr = 255;
+        cg = 0;
+        cb = 0;
+      }
       apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
       f = sconf->act->c->ip_free;
       while(f) {
@@ -867,13 +911,51 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         f = f->next;
       }
       apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
-      ap_rprintf(r,"<!-- %d --><p>free ip entries: %d<br>\n", i, c);
-      ap_rprintf(r,"<!-- %d -->current connections: %d<br>\n", i, sconf->act->c->connections);
-      ap_rputs("<br>\n", r);
-      ap_rprintf(r,"max connections: %d<br>\n", sconf->max_conn);
-      ap_rprintf(r,"max connections with keep-alive: %d<br>\n", sconf->max_conn_close);
-      ap_rprintf(r,"max connections per client: %d<br>\n", sconf->max_conn_per_ip);
-      ap_rprintf(r,"inital request timeout: %d</p>\n", sconf->connect_timeout);
+      if(strcmp(r->handler, "qos-viewer") == 0) {
+        ap_rputs("<p><table class=\"btable\">\n", r);
+      } else {
+        ap_rputs("<p><table border=\"1\">\n", r);
+      }
+      ap_rputs("<tr class=\"rowt\">"
+               "<td style=\"width:85%\">connections</td>"
+               "<td>current&nbsp;</td></tr>\n", r);
+      ap_rputs("<tr class=\"row1\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
+      ap_rprintf(r,"<!-- %d -->free ip entries</td><td>%d</td>\n", i, c);
+      ap_rputs("</tr>", r);
+      ap_rputs("<tr class=\"row1\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
+      ap_rprintf(r,"<!-- %d -->current connections</td>"
+                 "<td style=\"background-color: rgb(%d, %d, %d);\">%d</td>\n",
+                 i, cr, cg, cb, sconf->act->c->connections);
+      ap_rputs("</tr>", r);
+      ap_rputs("</table></p>\n", r);
+
+      if(strcmp(r->handler, "qos-viewer") == 0) {
+        ap_rputs("<p><table class=\"btable\">\n", r);
+      } else {
+        ap_rputs("<p><table border=\"1\">\n", r);
+      }
+      ap_rputs("<tr class=\"rowt\">"
+               "<td style=\"width:85%\">settings</td>"
+               "<td>limit&nbsp;</td></tr>\n", r);
+      ap_rputs("<tr class=\"row1\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
+      ap_rprintf(r,"max connections</td><td>%d</td>\n", sconf->max_conn);
+      ap_rputs("</tr>", r);
+      ap_rputs("<tr class=\"row1\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
+      ap_rprintf(r,"max connections with keep-alive</td><td>%d</td>\n", sconf->max_conn_close);
+      ap_rputs("</tr>", r);
+      ap_rputs("<tr class=\"row1\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
+      ap_rprintf(r,"max connections per client</td><td>%d</td>\n", sconf->max_conn_per_ip);
+      ap_rputs("</tr>", r);
+      ap_rputs("<tr class=\"row1\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
+      ap_rprintf(r,"inital connection timeout</td><td>%d</td>\n", sconf->connect_timeout);
+      ap_rputs("</tr>", r);
+      ap_rputs("</table></p>\n", r);
     }
     i++;
     s = s->next;
@@ -1229,16 +1311,11 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  char *rev = apr_pstrdup(ptemp, "$Revision: 3.11 $");
-  char *er = strrchr(rev, ' ');
+  char *rev = qos_revision(ptemp);
   server_rec *s = bs->next;
   int rules = 0;
   qos_user_t *u = qos_get_user_conf(s->process->pool);
   u->server_start++;
-  er[0] = '\0';
-  er = strchr(rev, ' ');
-  if(er) rev = er;
-  rev++;
   sconf->base_server = bs;
   sconf->act->timeout = apr_time_sec(bs->timeout);
   if(sconf->act->timeout == 0) sconf->act->timeout = 300;
@@ -1280,7 +1357,41 @@ static int qos_handler(request_rec * r) {
   } 
   ap_set_content_type(r, "text/html");
   if(!r->header_only) {
-    ap_rputs("<html><head></head><body>", r);
+    ap_rputs("<html><head>", r);
+    ap_rputs("<style TYPE=\"text/css\">\n", r);
+    ap_rputs("<!--", r);
+    ap_rputs("  body {\n\
+	background-color: white;\n\
+	color: black;\n\
+	font-family: arial, helvetica, verdana, sans-serif;\n\
+  }\n\
+  .btable{\n\
+	  background-color: white;\n\
+	  border: 1px solid;\n\
+	  padding: 0px;\n\
+	  margin: 6px;\n\
+	  width: 500px;\n\
+	  font-weight: normal;\n\
+	  border-collapse: collapse;\n\
+  }\n\
+  .rowt {\n\
+	  background-color: rgb(230,233,235);\n\
+	  border: 1px solid;\n\
+	  font-weight: bold;\n\
+	  padding: 0px;\n\
+	  margin: 0px;\n\
+  }\n\
+  .row1 {\n\
+	  background-color: white;\n\
+	  border: 1px solid;\n\
+	  font-weight: normal;\n\
+	  padding: 0px;\n\
+	  margin: 0px;\n\
+  }\n\
+", r);
+    ap_rputs("-->\n", r);
+    ap_rputs("</style>\n", r);
+    ap_rputs("</head><body>", r);
     qos_ext_status_hook(r, 0);
     ap_rputs("</body></html>", r);
   }
