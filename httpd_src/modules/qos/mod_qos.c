@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.14 2007-09-07 19:31:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.15 2007-09-07 19:52:29 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -854,22 +854,6 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
     if(sconf && sconf->act) {
       e = sconf->act->entry;
-      if(strcmp(r->handler, "qos-viewer") == 0) {
-        ap_rputs("<p><table class=\"btable\">\n", r);
-      } else {
-        ap_rputs("<p><table border=\"1\">\n", r);
-      }
-      ap_rputs("<tr class=\"rowt\">"
-               "<td style=\"width:56%\">location rule&nbsp;</td>"
-               "<td style=\"width:11%\">limit&nbsp;</td>"
-               "<td style=\"width:11%\">current&nbsp;</td>"
-               "<td style=\"width:11%\">req/sec&nbsp;</td>"
-               "<td style=\"width:11%\">kbytes/sec&nbsp;</td>"
-               "</tr>\n", r);
-      if(!e) {
-        ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
-        ap_rprintf(r, "<td><i>none</i></td><td></td><td></td></tr>");
-      }
       while(e) {
         int percent = e->counter * 100 / e->limit;
         int cr = 255;
@@ -885,19 +869,37 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           cg = 0;
           cb = 0;
         }
+        if(strcmp(r->handler, "qos-viewer") == 0) {
+          ap_rputs("<p><table class=\"btable\">\n", r);
+        } else {
+          ap_rputs("<table border=\"1\">\n", r);
+        }
+        ap_rprintf(r, "<tr class=\"rowt\">"
+                   "<td style=\"width:70%\">rule:&nbsp;%s&nbsp;</td>"
+                   "<td style=\"width:15%\">limit&nbsp;</td>"
+                   "<td style=\"width:15%\">current&nbsp;</td>"
+                   "</tr>\n", e->url);
         ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
-        ap_rprintf(r, "<td>%s</td>", e->url);
+        ap_rprintf(r, "<td>concurrent requests</td>");
         ap_rprintf(r, "<td>%d</td>", e->limit);
-        ap_rprintf(r, "<td style=\"background-color: rgb(%d, %d, %d);\">%d</td>"
-                   "<td>%ld</td><td>%ld</td>",
+        ap_rprintf(r, "<td style=\"background-color: rgb(%d, %d, %d);\">%d</td>",
                    cr, cg, cb,
-                   e->counter,
-                   now > (e->interval + 11) ? 0 : e->req_per_sec,
+                   e->counter);
+        ap_rputs("</tr>\n", r);
+        ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
+        ap_rprintf(r, "<td>requests/second</td>");
+        ap_rprintf(r, "<td>%d</td>", -1);
+        ap_rprintf(r, "<td>%d</td>",
+                   now > (e->interval + 11) ? 0 : e->req_per_sec);
+        ap_rputs("</tr>\n", r);
+        ap_rprintf(r, "<td>kbytes/second</td>");
+        ap_rprintf(r, "<td>%d</td>", -1);
+        ap_rprintf(r, "<td>%d</td>",
                    now > (e->interval + 11) ? 0 : e->kbytes_per_sec);
         ap_rputs("</tr>\n", r);
         e = e->next;
+        ap_rputs("</table>\n", r);
       }
-      ap_rputs("</table></p>\n", r);
     }
     if(sconf) {
       qs_ip_entry_t *f;
@@ -930,14 +932,14 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         ap_rputs("<p><table border=\"1\">\n", r);
       }
       ap_rputs("<tr class=\"rowt\">"
-               "<td style=\"width:89%\">connections</td>"
+               "<td style=\"width:85%\">connections</td>"
                "<td>current&nbsp;</td></tr>\n", r);
       ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:89%\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
       ap_rprintf(r,"<!-- %d -->free ip entries</td><td>%d</td>\n", i, c);
       ap_rputs("</tr>", r);
       ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:89%\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
       ap_rprintf(r,"<!-- %d -->current connections</td>"
                  "<td style=\"background-color: rgb(%d, %d, %d);\">%d</td>\n",
                  i, cr, cg, cb, sconf->act->c->connections);
@@ -950,22 +952,22 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         ap_rputs("<p><table border=\"1\">\n", r);
       }
       ap_rputs("<tr class=\"rowt\">"
-               "<td style=\"width:89%\">settings</td>"
+               "<td style=\"width:85%\">settings</td>"
                "<td>limit&nbsp;</td></tr>\n", r);
       ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:89%\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
       ap_rprintf(r,"max connections</td><td>%d</td>\n", sconf->max_conn);
       ap_rputs("</tr>", r);
       ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:89%\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
       ap_rprintf(r,"max connections with keep-alive</td><td>%d</td>\n", sconf->max_conn_close);
       ap_rputs("</tr>", r);
       ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:89%\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
       ap_rprintf(r,"max connections per client</td><td>%d</td>\n", sconf->max_conn_per_ip);
       ap_rputs("</tr>", r);
       ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:89%\">\n", r);
+      ap_rputs("<td style=\"width:85%\">\n", r);
       ap_rprintf(r,"inital connection timeout</td><td>%d</td>\n", sconf->connect_timeout);
       ap_rputs("</tr>", r);
       ap_rputs("</table></p>\n", r);
@@ -1414,7 +1416,7 @@ static int qos_handler(request_rec * r) {
 	  border: 1px solid;\n\
 	  padding: 0px;\n\
 	  margin: 6px;\n\
-	  width: 700px;\n\
+	  width: 500px;\n\
 	  font-weight: normal;\n\
 	  border-collapse: collapse;\n\
   }\n\

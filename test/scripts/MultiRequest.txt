@@ -1,5 +1,5 @@
 #
-# $Id: MultiRequest.txt,v 1.3 2007-09-06 18:34:34 pbuchbinder Exp $
+# $Id: MultiRequest.txt,v 1.4 2007-09-07 19:52:29 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -70,14 +70,14 @@ _EXPECT . "<!-- 1 -->free ip entries</td><td>4096"
 _EXPECT . "<!-- 1 -->current connections</td><td.*>0"
 _EXPECT . "<!-- 2 -->free ip entries</td><td>4096"
 _EXPECT . "<!-- 2 -->current connections</td><td.*>0"
-_EXPECT . "<!-- 2 -->.*<td>/no</td><td>200</td>.*>0</td></tr>"
+_EXPECT . "<!-- 2 -->.*<td>200</td>.*>0</td></tr>"
 _EXPECT . "<!-- 3 -->free ip entries</td><td>4095"
 _EXPECT . "<!-- 3 -->current connections</td><td.*>1"
-_EXPECT . "<!-- 3 -->.*<td>/</td><td>30</td>.*>1</td></tr>"
-_EXPECT . "<!-- 3 -->.*<td>/cgi</td><td>5</td>.*>0</td></tr>"
-_EXPECT . "<!-- 3 -->.*<td>/cgi100</td><td>100</td>.*>0</td></tr>"
-_EXPECT . "<!-- 3 -->.*<td>/test</td><td>50</td>.*>0</td></tr>"
-_EXPECT . "<!-- 3 -->.*<td>.*gif.*</td><td>2</td>.*>0</td></tr>"
+_EXPECT . "<!-- 3 -->.*<td>30</td>.*>1</td></tr>"
+_EXPECT . "<!-- 3 -->.*<td>5</td>.*>0</td></tr>"
+_EXPECT . "<!-- 3 -->.*<td>100</td>.*>0</td></tr>"
+_EXPECT . "<!-- 3 -->.*<td>50</td>.*>0</td></tr>"
+_EXPECT . "<!-- 3 -->.*<td>2</td>.*>0</td></tr>"
 _WAIT
 
 END
