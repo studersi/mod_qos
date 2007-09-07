@@ -1,12 +1,12 @@
 #
-# $Id: MultiRequest2.txt,v 1.2 2007-09-07 21:41:33 pbuchbinder Exp $
+# $Id: MultiRequest3.txt,v 1.1 2007-09-07 21:41:33 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
-CLIENT 10 10000
+CLIENT 50 1000
 _REQ server1 $QS_PORT_BASE1
-__GET /aaa/index.html HTTP/1.1
+__GET /cgi/slow.cgi HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
@@ -14,7 +14,7 @@ _EXPECT . "200 OK"
 _WAIT
 
 _REQ server1 $QS_PORT_BASE1
-__GET /aaa/index.html HTTP/1.1
+__GET /cgi/slow.cgi HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
@@ -22,7 +22,7 @@ _EXPECT . "200 OK"
 _WAIT
 
 _REQ server1 $QS_PORT_BASE1
-__GET /aaa/index.html HTTP/1.1
+__GET /cgi/slow.cgi HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
@@ -30,7 +30,7 @@ _EXPECT . "200 OK"
 _WAIT
 
 _REQ server1 $QS_PORT_BASE1
-__GET /aaa/index.html HTTP/1.1
+__GET /cgi/slow.cgi HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
@@ -38,7 +38,7 @@ _EXPECT . "200 OK"
 _WAIT
 
 _REQ server1 $QS_PORT_BASE1
-__GET /aaa/index.html HTTP/1.1
+__GET /cgi/slow.cgi HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
