@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.15 2007-09-07 19:52:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.16 2007-09-07 20:52:20 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -158,8 +158,10 @@ typedef struct qs_acentry_st {
   time_t interval;
   long req;
   long req_per_sec;
+  long req_per_sec_limit;
   long bytes;
   long kbytes_per_sec;
+  long kbytes_per_sec_limit;
   struct qs_acentry_st *next;
 } qs_acentry_t;
 
@@ -241,6 +243,8 @@ typedef struct {
   /* apache 2.0 */
   regex_t *regex;
 #endif
+  long req_per_sec_limit;
+  long kbytes_per_sec_limit;
 } qs_rule_ctx_t;
 
 
@@ -561,6 +565,8 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->url_len = strlen(e->url);
     e->regex = rule->regex;
     e->limit = rule->limit;
+    e->req_per_sec_limit = rule->req_per_sec_limit;
+    e->kbytes_per_sec_limit = rule->kbytes_per_sec_limit;
     e->counter = 0;
     e->lock_file = apr_psprintf(act->pool, "%s_e%d.mod_qos", 
                                 ap_server_root_relative(act->pool, tmpnam(NULL)), i);
@@ -881,19 +887,19 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                    "</tr>\n", e->url);
         ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
         ap_rprintf(r, "<td>concurrent requests</td>");
-        ap_rprintf(r, "<td>%d</td>", e->limit);
+        ap_rprintf(r, "<td>%d</td>", e->limit == 0 ? -1 : e->limit);
         ap_rprintf(r, "<td style=\"background-color: rgb(%d, %d, %d);\">%d</td>",
                    cr, cg, cb,
                    e->counter);
         ap_rputs("</tr>\n", r);
         ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
         ap_rprintf(r, "<td>requests/second</td>");
-        ap_rprintf(r, "<td>%d</td>", -1);
+        ap_rprintf(r, "<td>%d</td>", e->req_per_sec_limit == 0 ? -1 : e->req_per_sec_limit);
         ap_rprintf(r, "<td>%d</td>",
                    now > (e->interval + 11) ? 0 : e->req_per_sec);
         ap_rputs("</tr>\n", r);
         ap_rprintf(r, "<td>kbytes/second</td>");
-        ap_rprintf(r, "<td>%d</td>", -1);
+        ap_rprintf(r, "<td>%d</td>", e->kbytes_per_sec_limit == 0 ? -1 : e->kbytes_per_sec_limit);
         ap_rprintf(r, "<td>%d</td>",
                    now > (e->interval + 11) ? 0 : e->kbytes_per_sec);
         ap_rputs("</tr>\n", r);
@@ -1175,7 +1181,7 @@ static int qos_header_parser(request_rec * r) {
       apr_global_mutex_unlock(e->lock); /* @CRT5 */
       
       /* enforce the limitation */
-      if(e->counter > e->limit) {
+      if(e->limit && (e->counter > e->limit)) {
         const char *error_page = sconf->error_page;
         /* vip session has no limitation */
         if(sconf->header_name) {
@@ -1235,6 +1241,7 @@ static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
 static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qs_req_ctx *rctx = qos_rctx_config_get(r);
   if(sconf->header_name) {
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->header_name);
     if(ctrl_h) {
@@ -1251,6 +1258,20 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       r->connection->keepalive = AP_CONN_CLOSE;
     }
   }
+
+//  if(rctx) {
+//    qs_acentry_t *e = rctx->entry;
+//    if(e) {
+//      if(e->req_per_sec_limit) {
+//        if(e->req_per_sec > e->req_per_sec_limit) {
+//          struct timespec delay;
+//          delay.tv_sec  = 0;
+//          delay.tv_nsec = 0;
+//          nanosleep(&delay,NULL);
+//        }
+//      }
+//    }
+//  }
   ap_remove_output_filter(f);
   return ap_pass_brigade(f->next, bb); 
 }
@@ -1532,16 +1553,60 @@ static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
 const char *qos_loc_con_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  char *id = apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->location_t)->nelts);
-  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
-  rule->url = apr_pstrdup(cmd->pool, loc);
+  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_table_get(sconf->location_t, loc);
+  if(rule == NULL) {
+    rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+    rule->url = apr_pstrdup(cmd->pool, loc);
+  }
   rule->limit = atoi(limit);
   if(rule->limit == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
   }
   rule->regex = NULL;
-  apr_table_setn(sconf->location_t, id, (char *)rule);
+  apr_table_setn(sconf->location_t, loc, (char *)rule);
+  return NULL;
+}
+
+/**
+ * command to define the req/sec limitation for a location
+ */
+const char *qos_loc_rs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const char *limit) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_table_get(sconf->location_t, loc);
+  if(rule == NULL) {
+    rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+    rule->url = apr_pstrdup(cmd->pool, loc);
+  }
+  rule->req_per_sec_limit = atol(limit);
+  if(rule->req_per_sec_limit == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  rule->regex = NULL;
+  apr_table_setn(sconf->location_t, loc, (char *)rule);
+  return NULL;
+}
+
+/**
+ * command to define the kbytes/sec limitation for a location
+ */
+const char *qos_loc_bs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const char *limit) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_table_get(sconf->location_t, loc);
+  if(rule == NULL) {
+    rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+    rule->url = apr_pstrdup(cmd->pool, loc);
+  }
+  rule->kbytes_per_sec_limit = atol(limit);
+  if(rule->kbytes_per_sec_limit == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  rule->regex = NULL;
+  apr_table_setn(sconf->location_t, loc, (char *)rule);
   return NULL;
 }
 
@@ -1552,9 +1617,11 @@ const char *qos_loc_con_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const c
 const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  char *id = apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->location_t)->nelts);
-  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
-  rule->url = apr_pstrdup(cmd->pool, match);
+  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_table_get(sconf->location_t, match);
+  if(rule == NULL) {
+    rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+    rule->url = apr_pstrdup(cmd->pool, match);
+  }
   rule->limit = atoi(limit);
   if(rule->limit == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
@@ -1569,7 +1636,7 @@ const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, con
     return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
                        cmd->directive->directive, match);
   }
-  apr_table_setn(sconf->location_t, id, (char *)rule);
+  apr_table_setn(sconf->location_t, match, (char *)rule);
   return NULL;
 }
 
@@ -1740,6 +1807,12 @@ static const command_rec qos_config_cmds[] = {
                 "QS_LocRequestLimitMatch <regex> <number>, defines the number of"
                 " concurrent requests to the request line pattern."
                 " Default is defined by the QS_LocRequestLimitDefault directive."),
+  AP_INIT_TAKE2("QS_LocRequestPerSecLimit", qos_loc_rs_cmd, NULL,
+                RSRC_CONF,
+                "QS_LocRequestPerSecLimit <location> <number>"),
+  AP_INIT_TAKE2("QS_LocKBytesPerSecLimit", qos_loc_bs_cmd, NULL,
+                RSRC_CONF,
+                "QS_LocKBytesPerSecLimit <location> <number>"),
   /* error document */
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
                 RSRC_CONF,
