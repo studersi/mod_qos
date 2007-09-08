@@ -365,10 +365,10 @@ the slow application to 100.
 </p>
 <h4>HTTP Keep-Alive</h4>
 <p>
-The keep-alive extension to HTTP 1.1 allows persisten TCP connetions for 
+The keep-alive extension to HTTP 1.1 allows persistent TCP connections for 
 multiple request/responses. This accelerate access to the web server due 
-less and optimised network traffic. The disadvantage of these persisten 
-connections is, that server resources are blocked even no data is exechanged 
+less and optimised network traffic. The disadvantage of these persistent 
+connections is, that server resources are blocked even no data is exchanged 
 between client an server. mod_qos allows a server to support keep-alive 
 as long as sufficient connections are free but stopping the keep-alive 
 support when reaching a defined connection threshold: 
@@ -387,7 +387,7 @@ of concurrent connections for a singe IP source address:
 <p>
 If you have to limit the number of requests to an URL, mod_qos can help 
 with that too. <code>QS_LocRequestPerSecLimit /download/mod_qos.so.gz 150</code> 
-limits the number of requests pre second to this URL by adding an 
+limits the number of requests per second to this URL by adding an 
 additional delay to requests to this URL.
 </p>
 </p>
