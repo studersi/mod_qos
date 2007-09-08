@@ -81,6 +81,7 @@ a single IP source address or dynamic keep-alive control.
 <li><a href="#source">Source</a></li>
 <li><a href="#configuration">Configuration</a></li>
 <li><a href="#messages">Log Messages</a></li>
+<li><a href="#usecases">Use Cases</a></li>
 </ul>
 </p>
 <hr>
@@ -333,6 +334,46 @@ mod_qos features a handler showing the current connection and request status.
 </table>
 
 </p>
+
+<a name="usecases">
+<h2>Use Cases</h3>
+<p>
+<h4>Slow Application</h4>
+<p>
+In the case an application is very slow (e.g. at location /ccc), requests wait 
+until a timeout occurs. Due many waiting requests, the number of free TCP 
+connections goes out and the web sever is not able to process other requests 
+to application, e.g. to /aaa or /bbb. mod_qos limits the concurrent requests 
+to an application in order to assure the availability of other resources. Example: 
+<code>QS_LocRequestLimit /ccc 100</code> limits the maximum of requests blocked by 
+the slow application to 100.
+</p>
+<h4>HTTP Keep-Alive</h4>
+<p>
+The keep-alive extension to HTTP 1.1 allows persisten TCP connetions for 
+multiple request/responses. This accelerate access to the web server due 
+less and optimised network traffic. The disadvantage of these persisten 
+connections is, that server resources are blocked even no data is exechanged 
+between client an server. mod_qos allows a server to support keep-alive 
+as long as sufficient connections are free but stopping the keep-alive 
+support when reaching a defined connection threshold: 
+<code>QS_SrvMaxConnClose 600</code>.
+</p>
+<h4>Client Opens Many Concurrent Connections</h4>
+<p>
+A single client may open many TCP connections simultaneously in order to 
+download different content from the web server. So the client gets many 
+connections while other users may not be able accessing the server 
+due no free connections remain for them. mod_qos can limit the number 
+of concurrent connections for a singe IP source address: 
+<code>QS_SrvMaxConnPerIP 50</code>.
+</p>
+<h4>Many Requests to a Single URL</h4>
+<p>
+</p>
+
+</p>
+
 </td></tr>
 </tbody>
 </table>
