@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.17 2007-09-08 20:03:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 3.18 2007-09-08 21:39:25 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -160,7 +160,6 @@ typedef struct qs_acentry_st {
   long req_per_sec;
   long req_per_sec_limit;
   long req_per_sec_block_rate;
-  long req_per_sec_block_counter;
   long bytes;
   long kbytes_per_sec;
   long kbytes_per_sec_limit;
@@ -895,16 +894,16 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                    e->counter);
         ap_rputs("</tr>\n", r);
         ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
-        ap_rprintf(r, "<td>requests/second (block rate)</td>");
-        ap_rprintf(r, "<td>%d (%d%%)</td>",
+        ap_rprintf(r, "<td>requests/second (wait rate)</td>");
+        ap_rprintf(r, "<td>%ld (%ld)</td>",
                    e->req_per_sec_limit == 0 ? -1 : e->req_per_sec_limit,
                    e->req_per_sec_block_rate);
-        ap_rprintf(r, "<td>%d</td>",
+        ap_rprintf(r, "<td>%ld</td>",
                    now > (e->interval + 11) ? 0 : e->req_per_sec);
         ap_rputs("</tr>\n", r);
         ap_rprintf(r, "<td>kbytes/second</td>");
-        ap_rprintf(r, "<td>%d</td>", e->kbytes_per_sec_limit == 0 ? -1 : e->kbytes_per_sec_limit);
-        ap_rprintf(r, "<td>%d</td>",
+        ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit == 0 ? -1 : e->kbytes_per_sec_limit);
+        ap_rprintf(r, "<td>%ld</td>",
                    now > (e->interval + 11) ? 0 : e->kbytes_per_sec);
         ap_rputs("</tr>\n", r);
         e = e->next;
@@ -1184,17 +1183,13 @@ static int qos_header_parser(request_rec * r) {
           error_page = v;
         }
       }
-      rctx->is_vip = qos_is_vip(r, sconf);
+      if(sconf->header_name) {
+        rctx->is_vip = qos_is_vip(r, sconf);
+      }
       rctx->entry = e;
       apr_global_mutex_lock(e->lock);   /* @CRT5 */
       e->counter++;
-      if(e->req_per_sec_block_rate) {
-        e->req_per_sec_block_counter++;
-        req_per_sec_block = e->req_per_sec_block_counter;
-        if(e->req_per_sec_block_counter >= 100) {
-          e->req_per_sec_block_counter = 0;
-        }
-      }
+      req_per_sec_block = e->req_per_sec_block_rate;
       apr_global_mutex_unlock(e->lock); /* @CRT5 */
       
       /*
@@ -1221,48 +1216,17 @@ static int qos_header_parser(request_rec * r) {
       /*
        * QS_LocRequestPerSecLimit enforcement
        */
-      if(e->req_per_sec_block_rate) {
-        if(req_per_sec_block < (e->req_per_sec_block_rate / 2)) {
-          /* sleep */
-          if(rctx->is_vip) {
-            rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
-          } else {
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                          QOS_LOG_PFX"access delayed, rule: %s(%d), "
-                          "req/sec=%d, c=%s",
-                          e->url, e->req_per_sec_limit, e->req_per_sec,
-                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
-            rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
-            sleep(2);
-          }
-        } else if(req_per_sec_block < e->req_per_sec_block_rate) {
-          /* deny */
-          if(rctx->is_vip) {
-            rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
-          } else {
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOS_LOG_PFX"access denied, rule: %s(%d), "
-                          "req/sec=%d, c=%s",
-                          e->url, e->req_per_sec_limit, e->req_per_sec,
-                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
-            rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-            if(error_page) {
-              qos_error_response(r, error_page);
-              return DONE;
-            }
-            return HTTP_INTERNAL_SERVER_ERROR;
-          }
+      if(req_per_sec_block) {
+        if(rctx->is_vip) {
+          rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
         } else {
-          /* short delay for others (100ms) */
-          if(rctx->is_vip) {
-            rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
-          } else {
-            struct timespec delay;
-            rctx->evmsg = apr_pstrcat(r->pool, "l;", rctx->evmsg, NULL);
-            delay.tv_sec  = 0;
-            delay.tv_nsec = 200000000;
-            nanosleep(&delay,NULL);
-          }
+          long sec = req_per_sec_block / 1000;
+          long nsec = req_per_sec_block % 1000;
+          struct timespec delay;
+          rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+          delay.tv_sec  = sec;
+          delay.tv_nsec = nsec * 1000000;
+          nanosleep(&delay,NULL);
         }
       }
     }
@@ -1348,20 +1312,33 @@ static int qos_logger(request_rec * r) {
     e->counter--;
     e->req++;
     e->bytes = e->bytes + r->bytes_sent;
-    if(now > e->interval + 5) {
+    if(now > e->interval + 10) {
       e->req_per_sec = e->req / (now - e->interval);
       e->req = 0;
       e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
       e->bytes = 0;
       e->interval = now;
-      if(e->req_per_sec_limit && (e->req_per_sec > e->req_per_sec_limit)) {
-        e->req_per_sec_block_rate = e->req_per_sec * 100 / e->req_per_sec_limit - 100;
-        if(e->req_per_sec_block_rate > 95) {
-          e->req_per_sec_block_rate = 95;
-        }
-      } else {
-        if(e->req_per_sec_block_rate > 0) {
-          e->req_per_sec_block_rate = e->req_per_sec_block_rate / 2;
+      if(e->req_per_sec_limit) {
+        if(e->req_per_sec > e->req_per_sec_limit) {
+          long factor = e->req_per_sec * 100 / e->req_per_sec_limit - 100;
+          e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                        QOS_LOG_PFX"request rate limit, rule: %s(%ld), req/sec=%ld,"
+                        " delay=%ldms",
+                        e->url, e->req_per_sec_limit,
+                        e->req_per_sec, e->req_per_sec_block_rate);
+        } else if(e->req_per_sec_block_rate > 0) {
+          if(e->req_per_sec_block_rate < 50) {
+            e->req_per_sec_block_rate = 0;
+          } else {
+            long factor = e->req_per_sec_block_rate / 10;
+            e->req_per_sec_block_rate = e->req_per_sec_block_rate - factor;
+          }
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                        QOS_LOG_PFX"request rate limit, rule: %s(%ld), req/sec=%ld,"
+                        " delay=%ldms",
+                        e->url, e->req_per_sec_limit,
+                        e->req_per_sec, e->req_per_sec_block_rate);
         }
       }
     }
@@ -1502,7 +1479,7 @@ static int qos_handler(request_rec * r) {
 	  border: 1px solid;\n\
 	  padding: 0px;\n\
 	  margin: 6px;\n\
-	  width: 500px;\n\
+	  width: 550px;\n\
 	  font-weight: normal;\n\
 	  border-collapse: collapse;\n\
   }\n\

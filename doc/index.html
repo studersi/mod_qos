@@ -71,6 +71,10 @@ without any restrictions when accessing an URL.
 Limitations on the TCP connection level, e.g. the maximum of allowed connections from 
 a single IP source address or dynamic keep-alive control.
 </li>
+<li type=square>
+Limitation of the bandwidth, e.g. the maximum allowed number of requests 
+per second to an URL.
+</li>
 </ul>
 
 </p>
@@ -153,6 +157,14 @@ QS_LocRequestLimit directive. It can also be used to limit the number of concurr
 requests to a virtual host.
 </li>
 <li>
+<code>QS_LocRequestPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
+Defines the allowed number of requests per second to a location. Requests are 
+limited by adding a delay to each requests. By default, no limitations are 
+active for locations. This directive should be used in conjunction with 
+QS_LocRequestLimit only. 
+</li>
+
+<li>
 <code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when 
 a request is denied.
 </li>
@@ -210,7 +222,8 @@ additonal control mechanisms. The following variables may be used:
 <ul>
 <li>
 <code>QS_VipRequest=yes</code><br>
-Allows unrestricted access.
+Allows unrestricted access. Requires the definition of a VIP header 
+using the QS_VipHeaderName directive.
 </li>
 <li>
 <code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
@@ -303,7 +316,8 @@ mod_qos writes messages to Apache's error log when enforcing a rule. The number 
 concurrent requests to a location defined by QS_LocRequestLimit can be logged to the 
 access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
 header is used to log event messages: D=denied, S=pass due an available VIP session, 
-V=create VIP session, K=connection closed (no keep-alive), T=dynamic keep-alive.
+V=create VIP session, K=connection closed (no keep-alive), T=dynamic keep-alive, 
+L=request slow down.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
@@ -338,6 +352,7 @@ mod_qos features a handler showing the current connection and request status.
 <a name="usecases">
 <h2>Use Cases</h3>
 <p>
+The following use cases may give you an idea about how to use mod_qos.
 <h4>Slow Application</h4>
 <p>
 In the case an application is very slow (e.g. at location /ccc), requests wait 
@@ -370,8 +385,11 @@ of concurrent connections for a singe IP source address:
 </p>
 <h4>Many Requests to a Single URL</h4>
 <p>
+If you have to limit the number of requests to an URL, mod_qos can help 
+with that too. <code>QS_LocRequestPerSecLimit /download/mod_qos.so.gz 150</code> 
+limits the number of requests pre second to this URL by adding an 
+additional delay to requests to this URL.
 </p>
-
 </p>
 
 </td></tr>

@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.3 2007-08-22 19:35:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.4 2007-09-08 21:39:25 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -69,6 +69,7 @@ static long m_qos_s = 0;
 static long m_qos_d = 0;
 static long m_qos_k = 0;
 static long m_qos_t = 0;
+static long m_qos_l = 0;
 
 static qs_event_t *m_ip_list = NULL;
 /* output file */
@@ -154,6 +155,7 @@ static void printAndResetStat(char *timeStr) {
 	  "qd;%d;"
 	  "qk;%d;"
 	  "qt;%d;"
+	  "ql;%d;"
 	  ,
 	  timeStr,
           m_line_count/LOG_INTERVAL,
@@ -171,7 +173,8 @@ static void printAndResetStat(char *timeStr) {
 	  m_qos_s,
 	  m_qos_d,
 	  m_qos_k,
-	  m_qos_t
+	  m_qos_t,
+	  m_qos_l
           );
   m_line_count = 0;
   m_byte_count = 0;
@@ -188,6 +191,7 @@ static void printAndResetStat(char *timeStr) {
   m_qos_d = 0;
   m_qos_k = 0;
   m_qos_t = 0;
+  m_qos_l = 0;
   if(!m_offline) {
     fprintf(m_f, "sl;%.2f", av[0]); 
   } else {
@@ -280,6 +284,9 @@ static void updateStat(const char *cstr, char *line) {
     }
     if(strchr(Q, 'T') != NULL) {
       m_qos_t++;
+    }
+    if(strchr(Q, 'L') != NULL) {
+      m_qos_l++;
     }
   }
   if(I != NULL) {
@@ -494,7 +501,7 @@ static void usage(char *cmd) {
   printf("  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
   printf("  - number of mod_qos events within the last minite (qv=create session,\n");
   printf("    qs=session pass, qd=access denied, qk=connection closed, qt=dynamic\n");
-  printf("    keep-alive)\n");
+  printf("    keep-alive, ql=request/response slow down)\n");
   printf("\n");
   printf("Options\n");
   printf("  -f <format_string>\n");
