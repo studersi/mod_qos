@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 3.18 2007-09-08 21:39:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.0 2007-09-08 21:41:43 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1851,7 +1851,10 @@ static const command_rec qos_config_cmds[] = {
                 " Default is defined by the QS_LocRequestLimitDefault directive."),
   AP_INIT_TAKE2("QS_LocRequestPerSecLimit", qos_loc_rs_cmd, NULL,
                 RSRC_CONF,
-                "QS_LocRequestPerSecLimit <location> <number>"),
+                "QS_LocRequestPerSecLimit <location> <number>, defines the allowed"
+                " number of requests per second to a location. Requests are limited"
+                " by adding a delay to each requests. This directive should be used"
+                " in conjunction with QS_LocRequestLimit only."),
 //  AP_INIT_TAKE2("QS_LocKBytesPerSecLimit", qos_loc_bs_cmd, NULL,
 //                RSRC_CONF,
 //                "QS_LocKBytesPerSecLimit <location> <number>"),
