@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.27 2007-09-07 22:08:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.28 2007-09-08 20:03:50 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -168,7 +168,9 @@ Listen                  server1:##QS_PORT_BASE1##
 
    QS_LocRequestLimit         /no           200
    QS_LocRequestLimit         /cgi          200
-   QS_LocRequestPerSecLimit   /cgi          120
+   QS_LocRequestPerSecLimit   /cgi           10
+   QS_LocRequestLimit         /aaa          200
+   QS_LocRequestPerSecLimit   /aaa          100
 
    #QS_SrvMaxConnExcludeIP           192.168.32.
 
