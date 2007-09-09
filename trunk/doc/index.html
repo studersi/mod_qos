@@ -158,12 +158,18 @@ requests to a virtual host.
 </li>
 <li>
 <code>QS_LocRequestPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
-Defines the allowed number of requests per second to a location. Requests are 
-limited by adding a delay to each requests. By default, no limitations are 
-active for locations. This directive should be used in conjunction with 
-QS_LocRequestLimit only. 
+Defines the allowed number of requests per second to a location. The maximum 
+number of requests is limited by adding a delay to each request (linear, each 
+request gets the same delay). By default, no limitation is active. This 
+directive should be used in conjunction with QS_LocRequestLimit only. 
 </li>
-
+<li>
+<code>QS_LocKBytesPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
+Throttles the download bandwidth to the defined kbytes per second. Responses are 
+slowed by adding a delay to each response (non-linear, bigger files get 
+longer delay than smaller ones). By default, no limitation is active. 
+This directive should be used in conjunction with QS_LocRequestLimit only. 
+</li>
 <li>
 <code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when 
 a request is denied.

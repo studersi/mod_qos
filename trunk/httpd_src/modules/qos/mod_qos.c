@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.0 2007-09-08 21:41:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.1 2007-09-09 19:01:39 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -159,10 +159,11 @@ typedef struct qs_acentry_st {
   long req;
   long req_per_sec;
   long req_per_sec_limit;
-  long req_per_sec_block_rate;
+  int req_per_sec_block_rate;
   long bytes;
   long kbytes_per_sec;
   long kbytes_per_sec_limit;
+  int kbytes_per_sec_block_rate;
   struct qs_acentry_st *next;
 } qs_acentry_t;
 
@@ -894,15 +895,17 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                    e->counter);
         ap_rputs("</tr>\n", r);
         ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
-        ap_rprintf(r, "<td>requests/second (wait rate)</td>");
-        ap_rprintf(r, "<td>%ld (%ld)</td>",
-                   e->req_per_sec_limit == 0 ? -1 : e->req_per_sec_limit,
+        ap_rprintf(r, "<td>requests/second (wait rate %dms)</td>",
                    e->req_per_sec_block_rate);
+        ap_rprintf(r, "<td>%ld</td>",
+                   e->req_per_sec_limit == 0 ? -1 : e->req_per_sec_limit);
         ap_rprintf(r, "<td>%ld</td>",
                    now > (e->interval + 11) ? 0 : e->req_per_sec);
         ap_rputs("</tr>\n", r);
-        ap_rprintf(r, "<td>kbytes/second</td>");
-        ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit == 0 ? -1 : e->kbytes_per_sec_limit);
+        ap_rprintf(r, "<td>kbytes/second (wait rate %dms)</td>",
+                   e->kbytes_per_sec_block_rate);
+        ap_rprintf(r, "<td>%ld</td>",
+                   e->kbytes_per_sec_limit == 0 ? -1 : e->kbytes_per_sec_limit);
         ap_rprintf(r, "<td>%ld</td>",
                    now > (e->interval + 11) ? 0 : e->kbytes_per_sec);
         ap_rputs("</tr>\n", r);
@@ -1175,7 +1178,7 @@ static int qos_header_parser(request_rec * r) {
     if(!e) e = qos_getrule_bylocation(r, sconf);
     if(e) {
       qs_req_ctx *rctx = qos_rctx_config_get(r);
-      long req_per_sec_block = 0;
+      int req_per_sec_block = 0;
       const char *error_page = sconf->error_page;
       if(r->subprocess_env) {
         const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
@@ -1220,13 +1223,24 @@ static int qos_header_parser(request_rec * r) {
         if(rctx->is_vip) {
           rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
         } else {
-          long sec = req_per_sec_block / 1000;
-          long nsec = req_per_sec_block % 1000;
+          int sec = req_per_sec_block / 1000;
+          int nsec = req_per_sec_block % 1000;
           struct timespec delay;
           rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
           delay.tv_sec  = sec;
           delay.tv_nsec = nsec * 1000000;
           nanosleep(&delay,NULL);
+        }
+      }
+      /*
+       * QS_LocKBytesPerSecLimit enforcement
+       */
+      if(e->kbytes_per_sec_block_rate) {
+        if(rctx->is_vip) {
+          rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+        } else {
+          rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+          ap_add_output_filter("qos-out-filter-delay", NULL, r, r->connection);
         }
       }
     }
@@ -1253,6 +1267,23 @@ static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
   return rv;
 }
 
+static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb) {
+  request_rec *r = f->r;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qs_req_ctx *rctx = qos_rctx_config_get(r);
+  if(rctx->entry) {
+    int kbytes_per_sec_block = rctx->entry->kbytes_per_sec_block_rate;
+    int sec = kbytes_per_sec_block / 1000;
+    int nsec = kbytes_per_sec_block % 1000;
+    struct timespec delay;
+    rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+    delay.tv_sec  = sec;
+    delay.tv_nsec = nsec * 1000000;
+    nanosleep(&delay,NULL);
+  }
+  return ap_pass_brigade(f->next, bb); 
+}
+
 /**
  * process response:
  * - detects vip header and create session
@@ -1260,7 +1291,6 @@ static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
 static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
-  qs_req_ctx *rctx = qos_rctx_config_get(r);
   if(sconf->header_name) {
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->header_name);
     if(ctrl_h) {
@@ -1278,19 +1308,6 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     }
   }
 
-//  if(rctx) {
-//    qs_acentry_t *e = rctx->entry;
-//    if(e) {
-//      if(e->req_per_sec_limit) {
-//        if(e->req_per_sec > e->req_per_sec_limit) {
-//          struct timespec delay;
-//          delay.tv_sec  = 0;
-//          delay.tv_nsec = 0;
-//          nanosleep(&delay,NULL);
-//        }
-//      }
-//    }
-//  }
   ap_remove_output_filter(f);
   return ap_pass_brigade(f->next, bb); 
 }
@@ -1320,7 +1337,7 @@ static int qos_logger(request_rec * r) {
       e->interval = now;
       if(e->req_per_sec_limit) {
         if(e->req_per_sec > e->req_per_sec_limit) {
-          long factor = e->req_per_sec * 100 / e->req_per_sec_limit - 100;
+          int factor = e->req_per_sec * 100 / e->req_per_sec_limit - 100;
           e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                         QOS_LOG_PFX"request rate limit, rule: %s(%ld), req/sec=%ld,"
@@ -1331,14 +1348,37 @@ static int qos_logger(request_rec * r) {
           if(e->req_per_sec_block_rate < 50) {
             e->req_per_sec_block_rate = 0;
           } else {
-            long factor = e->req_per_sec_block_rate / 10;
+            int factor = e->req_per_sec_block_rate / 10;
             e->req_per_sec_block_rate = e->req_per_sec_block_rate - factor;
           }
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
                         QOS_LOG_PFX"request rate limit, rule: %s(%ld), req/sec=%ld,"
-                        " delay=%ldms",
+                        " delay=%dms",
                         e->url, e->req_per_sec_limit,
                         e->req_per_sec, e->req_per_sec_block_rate);
+        }
+      }
+      if(e->kbytes_per_sec_limit) {
+        if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
+          int factor = e->kbytes_per_sec * 100 / e->kbytes_per_sec_limit - 100;
+          e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                        QOS_LOG_PFX"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
+                        " delay=%ldms",
+                        e->url, e->kbytes_per_sec_limit,
+                        e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
+        } else if(e->kbytes_per_sec_block_rate > 0) {
+          if(e->kbytes_per_sec_block_rate < 50) {
+            e->kbytes_per_sec_block_rate = 0;
+          } else {
+            int factor = e->kbytes_per_sec_block_rate / 10;
+            e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate - factor;
+          }
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                        QOS_LOG_PFX"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
+                        " delay=%dms",
+                        e->url, e->kbytes_per_sec_limit,
+                        e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
         }
       }
     }
@@ -1844,20 +1884,24 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_LocRequestLimitDefault <number>, defines the default for the"
                 " QS_LocRequestLimit and QS_LocRequestLimitMatch directive."),
-  AP_INIT_TAKE2("QS_LocRequestLimitMatch", qos_match_con_cmd, NULL,
-                RSRC_CONF,
-                "QS_LocRequestLimitMatch <regex> <number>, defines the number of"
-                " concurrent requests to the request line pattern."
-                " Default is defined by the QS_LocRequestLimitDefault directive."),
   AP_INIT_TAKE2("QS_LocRequestPerSecLimit", qos_loc_rs_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestPerSecLimit <location> <number>, defines the allowed"
                 " number of requests per second to a location. Requests are limited"
                 " by adding a delay to each requests. This directive should be used"
                 " in conjunction with QS_LocRequestLimit only."),
-//  AP_INIT_TAKE2("QS_LocKBytesPerSecLimit", qos_loc_bs_cmd, NULL,
-//                RSRC_CONF,
-//                "QS_LocKBytesPerSecLimit <location> <number>"),
+  AP_INIT_TAKE2("QS_LocKBytesPerSecLimit", qos_loc_bs_cmd, NULL,
+                RSRC_CONF,
+                "QS_LocKBytesPerSecLimit <location> <number>, defined the allowed"
+                " download bandwidth to the defined kbytes per second. Responses are"
+                "slowed by adding a delay to each response (non-linear, bigger files"
+                " get longer delay than smaller ones). This directive should be used"
+                " in conjunction with QS_LocRequestLimit only."),
+  AP_INIT_TAKE2("QS_LocRequestLimitMatch", qos_match_con_cmd, NULL,
+                RSRC_CONF,
+                "QS_LocRequestLimitMatch <regex> <number>, defines the number of"
+                " concurrent requests to the request line pattern."
+                " Default is defined by the QS_LocRequestLimitDefault directive."),
   /* error document */
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
                 RSRC_CONF,
@@ -1933,6 +1977,7 @@ static void qos_register_hooks(apr_pool_t * p) {
 
   ap_register_input_filter("qos-in-filter", qos_in_filter, NULL, AP_FTYPE_CONNECTION);
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
+  ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
 
 }
