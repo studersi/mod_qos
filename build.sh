@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.10 2007-09-07 22:08:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.11 2007-09-10 19:18:25 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
@@ -52,6 +52,10 @@ cd httpd
 ./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl --enable-status=shared
 make
 strip modules/qos/.libs/mod_qos.so
+if [ $? -ne 0 ]; then
+    echo "ERROR"
+    exit 1
+fi
 cd ..
 
 cd tools

@@ -1,0 +1,53 @@
+#
+# $Id: QS_LocRequestPerSecLimitMatch.txt,v 1.1 2007-09-10 19:18:25 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 100 1000
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+END

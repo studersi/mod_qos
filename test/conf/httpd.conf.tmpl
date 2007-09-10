@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.29 2007-09-09 19:01:39 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.30 2007-09-10 19:18:25 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -51,6 +51,7 @@ MaxKeepAliveRequests    100
 KeepAliveTimeout        5
 
 QS_SrvConnTimeout       3
+#QS_StackSize            262144
 
 Options                 FollowSymLinks Indexes
 DefaultType             text/plain
@@ -173,6 +174,8 @@ Listen                  server1:##QS_PORT_BASE1##
    QS_LocRequestPerSecLimit   /aaa          100
    QS_LocRequestLimit         /bbb          200
    QS_LocKBytesPerSecLimit    /bbb          1000
+   QS_LocRequestLimitMatch    /ccc/.*       200
+   QS_LocRequestPerSecLimitMatch /ccc/.*    100
 
    #QS_SrvMaxConnExcludeIP           192.168.32.
 
