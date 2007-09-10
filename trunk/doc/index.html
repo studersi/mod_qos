@@ -92,7 +92,7 @@ per second to an URL.
 <a name="build">
 <h2>Build</h3>
 <p>
-mod_qos version 3 requires OpenSSL, shared memory and thread support but has no other 
+mod_qos version 4 requires OpenSSL and shared memory support but has no other 
 dependencies to other Apache modules nor any special libraries. It works with Apache 
 version 2.0 and 2.2. 
 Just copy the module into the modules directory of the Apache server's source code and 
@@ -145,6 +145,21 @@ concurrent connection has the highest priority if multiple expressions
 match the request. By default, no limitations are active for locations.
 </li>
 <li>
+<code>QS_LocRequestPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
+Defines the allowed number of requests per second to the request line pattern. 
+Requests are limited by adding a delay to each requests (linear). By default, 
+no limitation is active. This directive should be used in conjunction 
+with QS_LocRequestLimitMatch only.
+</li>
+<li>
+<code>QS_LocKBytesPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
+Defines the allowed download bandwidth to the location matching the 
+defined request line pattern.  Responses are slowed by adding a delay 
+to each response (non-linear, bigger files get longer delay than smaller 
+ones). By default, no limitation is active. This directive should be 
+used in conjunction with QS_LocRequestLimitMatch only. 
+</li>
+<li>
 <code>QS_LocRequestLimit &lt;location&gt; &lt;number&gt;</code><br>
 Defines the number of concurrent requests for the specified location (applied to 
 the parsed path). By default, no limitations are active for locations. Has 
@@ -161,7 +176,8 @@ requests to a virtual host.
 Defines the allowed number of requests per second to a location. The maximum 
 number of requests is limited by adding a delay to each request (linear, each 
 request gets the same delay). By default, no limitation is active. This 
-directive should be used in conjunction with QS_LocRequestLimit only. 
+directive should be used in conjunction with QS_LocRequestLimit only. Has 
+lower priority than QS_LocRequestPerSecLimitMatch.
 </li>
 <li>
 <code>QS_LocKBytesPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
@@ -169,6 +185,7 @@ Throttles the download bandwidth to the defined kbytes per second. Responses are
 slowed by adding a delay to each response (non-linear, bigger files get 
 longer delay than smaller ones). By default, no limitation is active. 
 This directive should be used in conjunction with QS_LocRequestLimit only. 
+Has lower priority than QS_LocKBytesPerSecLimitMatch.
 </li>
 <li>
 <code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when 
@@ -216,6 +233,7 @@ QS_LocRequestLimitDefault                         200
 QS_LocRequestLimitMatch       "^.*\.gif$"         100
 QS_LocRequestLimit            /images             100
 QS_LocRequestLimit            /application        300
+QS_LocKBytesPerSecLimit       /application       2000
 
 QS_VipHeaderName              mod-qos-vip
 QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1

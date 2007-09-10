@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.1 2007-09-09 19:01:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.2 2007-09-10 19:18:25 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -76,7 +76,6 @@ static const char revision[] = "$Id: mod_qos.c,v 4.1 2007-09-09 19:01:39 pbuchbi
 #define QOS_COOKIE_NAME "MODQOS"
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
-#define QS_STACK_SIZE 131072
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 /************************************************************************
@@ -100,13 +99,6 @@ typedef struct {
   qs_conn_state_e status;
 } qos_ifctx_t;
 
-
-/**
- * user space
- */
-typedef struct {
-  int server_start;
-} qos_user_t;
 
 /**
  * ip entry
@@ -175,6 +167,7 @@ typedef struct qs_actable_st {
   apr_shm_t *m;
   char *m_file;
   apr_pool_t *pool;
+  /** process pool is used to create user space data */
   apr_pool_t *ppool;
   /** rule entry list */
   qs_acentry_t *entry;
@@ -186,6 +179,14 @@ typedef struct qs_actable_st {
   /* settings */
   int child_init;
 } qs_actable_t;
+
+/**
+ * user space
+ */
+typedef struct {
+  int server_start;
+  apr_table_t *act_table;
+} qos_user_t;
 
 /**
  * server configuration
@@ -207,7 +208,6 @@ typedef struct {
   int max_conn_per_ip;
   apr_table_t *exclude_ip;
   int connect_timeout;
-  int stack_size;
 #ifdef QS_SIM_IP
   apr_table_t *testip;
 #endif
@@ -435,10 +435,9 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
  */
 static void qos_destroy_act(qs_actable_t *act) {
   qs_acentry_t *e = act->entry;
-  apr_os_thread_t tid = apr_os_thread_current();
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
-               QOS_LOG_PFX"cleanup shared memory: %d bytes [#%d(%d)]",
-               act->size, getpid(), tid);
+               QOS_LOG_PFX"cleanup shared memory: %d bytes #%d",
+               act->size, getpid());
   act->child_init = 0;
   apr_global_mutex_destroy(act->lock);
   while(e) {
@@ -456,21 +455,9 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
   if(v) return v;
   u = (qos_user_t *)apr_pcalloc(ppool, sizeof(qos_user_t));
   u->server_start = 0;
+  u->act_table = apr_table_make(ppool, 2);
   apr_pool_userdata_set(u, QS_USR_SPE, apr_pool_cleanup_null, ppool);
   return u;
-}
-
-/**
- * deletes the act after the server timeout
- */
-static void *qos_clean_thread(apr_thread_t *t ,void *p) {
-  qs_actable_t *act = p;
-  apr_os_thread_t tid = apr_os_thread_current();
-  ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
-               QOS_LOG_PFX"start cleanup thread [#%d(%d)]", getpid(), tid);
-  sleep(act->timeout);
-  qos_destroy_act(act);
-  return 0;
 }
 
 /**
@@ -483,7 +470,7 @@ static int qos_is_graceful(qs_actable_t *act) {
        are an indication, that this is a final server
        stop */
     process_score *ps = ap_get_scoreboard_process(0);
-    if(ps->quiescing) {
+    if(ps && ps->quiescing) {
       return 0;
     }
   }
@@ -497,19 +484,33 @@ static int qos_is_graceful(qs_actable_t *act) {
  * shared memory must not be destroyed before graceful restart has
  * been finished due running requests still need the shared memory
  * till they have finished.
- * try to keep memory leak as lttle as possible...
+ * keep the memory leak as little as possible ...
  */
 static apr_status_t qos_cleanup_shm(void *p) {
   qs_actable_t *act = p;
+  qos_user_t *u = qos_get_user_conf(act->ppool);
+  /* this_generation id is never deleted ... */
+  char *this_generation = apr_psprintf(act->ppool, "%d", ap_my_generation);
+  char *last_generation;
+  int i;
+  apr_table_entry_t *entry;
   if(qos_is_graceful(act)) {
-    apr_thread_t *tid;
-    apr_pool_t *pool;
-    apr_threadattr_t *attr;
-    apr_pool_create(&pool, NULL);
-    apr_threadattr_create(&attr, pool);
-    apr_threadattr_detach_set(attr, 1);
-    apr_threadattr_stacksize_set(attr, QS_STACK_SIZE);
-    apr_thread_create(&tid, attr, qos_clean_thread, act, act->pool);
+    last_generation = apr_psprintf(act->pool, "%d", ap_my_generation-1);
+  } else {
+    last_generation = this_generation;
+  }
+  /* delete acts from the last graceful restart */
+  entry = (apr_table_entry_t *)apr_table_elts(u->act_table)->elts;
+  for(i = 0; i < apr_table_elts(u->act_table)->nelts; i++) {
+    if(strcmp(entry[i].key, last_generation) == 0) {
+      qs_actable_t *a = (qs_actable_t *)entry[i].val;
+      qos_destroy_act(a);
+    }
+  }
+  apr_table_unset(u->act_table, last_generation);
+  if(qos_is_graceful(act)) {
+    /* don't delete this act now, but at next server restart ... */
+    apr_table_addn(u->act_table, this_generation, (char *)act);
   } else {
     qos_destroy_act(act);
   }
@@ -567,6 +568,12 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->url_len = strlen(e->url);
     e->regex = rule->regex;
     e->limit = rule->limit;
+    if(e->limit == 0) {
+      ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s,
+                   QOS_LOG_PFX"request level rule %s has no limitation",
+                   e->url);
+    }
+    e->interval = time(NULL);
     e->req_per_sec_limit = rule->req_per_sec_limit;
     e->kbytes_per_sec_limit = rule->kbytes_per_sec_limit;
     e->counter = 0;
@@ -863,7 +870,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     if(sconf && sconf->act) {
       e = sconf->act->entry;
       while(e) {
-        int percent = e->counter * 100 / e->limit;
+        int percent = e->counter * 100 / (e->limit == 0 ? 1 : e->limit);
         int cr = 255;
         int cg = 255;
         int cb = 255;
@@ -1337,7 +1344,7 @@ static int qos_logger(request_rec * r) {
       e->interval = now;
       if(e->req_per_sec_limit) {
         if(e->req_per_sec > e->req_per_sec_limit) {
-          int factor = e->req_per_sec * 100 / e->req_per_sec_limit - 100;
+          int factor = ((e->req_per_sec * 100) / e->req_per_sec_limit) - 100;
           e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                         QOS_LOG_PFX"request rate limit, rule: %s(%ld), req/sec=%ld,"
@@ -1360,7 +1367,7 @@ static int qos_logger(request_rec * r) {
       }
       if(e->kbytes_per_sec_limit) {
         if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
-          int factor = e->kbytes_per_sec * 100 / e->kbytes_per_sec_limit - 100;
+          int factor = ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) - 100;
           e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                         QOS_LOG_PFX"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
@@ -1567,7 +1574,6 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->error_page = NULL;
   sconf->connect_timeout = -1;
-  sconf->stack_size = QS_STACK_SIZE;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
@@ -1623,7 +1629,6 @@ static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1)) {
     o->connect_timeout = b->connect_timeout;
-    o->stack_size = b->stack_size;
     return o;
   }
   return b;
@@ -1706,6 +1711,64 @@ const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, con
   }
   rule->limit = atoi(limit);
   if(rule->limit == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+#ifdef AP_REGEX_H
+  rule->regex = ap_pregcomp(cmd->pool, match, AP_REG_EXTENDED);
+#else
+  rule->regex = ap_pregcomp(cmd->pool, match, REG_EXTENDED);
+#endif
+  if(rule->regex == NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
+                       cmd->directive->directive, match);
+  }
+  apr_table_setn(sconf->location_t, match, (char *)rule);
+  return NULL;
+}
+
+/**
+ * defines the maximum requests/sec for the matching request line pattern
+ */
+const char *qos_match_rs_cmd(cmd_parms *cmd, void *dcfg, const char *match, const char *limit) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_table_get(sconf->location_t, match);
+  if(rule == NULL) {
+    rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+    rule->url = apr_pstrdup(cmd->pool, match);
+  }
+  rule->req_per_sec_limit = atol(limit);
+  if(rule->req_per_sec_limit == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+#ifdef AP_REGEX_H
+  rule->regex = ap_pregcomp(cmd->pool, match, AP_REG_EXTENDED);
+#else
+  rule->regex = ap_pregcomp(cmd->pool, match, REG_EXTENDED);
+#endif
+  if(rule->regex == NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
+                       cmd->directive->directive, match);
+  }
+  apr_table_setn(sconf->location_t, match, (char *)rule);
+  return NULL;
+}
+
+/**
+ * defines the maximum kbytes/sec for the matching request line pattern
+ */
+const char *qos_match_bs_cmd(cmd_parms *cmd, void *dcfg, const char *match, const char *limit) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_table_get(sconf->location_t, match);
+  if(rule == NULL) {
+    rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+    rule->url = apr_pstrdup(cmd->pool, match);
+  }
+  rule->kbytes_per_sec_limit = atol(limit);
+  if(rule->kbytes_per_sec_limit == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
   }
@@ -1858,21 +1921,6 @@ const char *qos_max_conn_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec
   return NULL;
 }
 
-const char *qos_stack_size_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
-                                                                &qos_module);
-  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-  if (err != NULL) {
-    return err;
-  }
-  sconf->stack_size = atoi(bytes);
-  if(sconf->stack_size < QS_STACK_SIZE) {
-    return apr_psprintf(cmd->pool, "%s: stack size must be greater than %d bytes", 
-                        cmd->directive->directive, QS_STACK_SIZE);
-  }
-  return NULL;
-}
-
 static const command_rec qos_config_cmds[] = {
   /* request limitation per location */
   AP_INIT_TAKE2("QS_LocRequestLimit", qos_loc_con_cmd, NULL,
@@ -1902,6 +1950,20 @@ static const command_rec qos_config_cmds[] = {
                 "QS_LocRequestLimitMatch <regex> <number>, defines the number of"
                 " concurrent requests to the request line pattern."
                 " Default is defined by the QS_LocRequestLimitDefault directive."),
+  AP_INIT_TAKE2("QS_LocRequestPerSecLimitMatch", qos_match_rs_cmd, NULL,
+                RSRC_CONF,
+                "QS_LocRequestPerSecLimitMatch <regex> <number>, defines the allowed"
+                " number of requests per second to the request line pattern."
+                " Requests are limited by adding a delay to each requests."
+                " This directive should be used in conjunction with"
+                " QS_LocRequestLimitMatch only."),
+  AP_INIT_TAKE2("QS_LocKBytesPerSecLimitMatch", qos_match_bs_cmd, NULL,
+                RSRC_CONF,
+                "QS_LocKBytesPerSecLimit <regex> <number>, defined the allowed"
+                " download bandwidth to the defined kbytes per second. Responses are"
+                "slowed by adding a delay to each response (non-linear, bigger files"
+                " get longer delay than smaller ones). This directive should be used"
+                " in conjunction with QS_LocRequestLimitMatch only."),
   /* error document */
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
                 RSRC_CONF,
@@ -1955,10 +2017,6 @@ static const command_rec qos_config_cmds[] = {
                 " a client must send the HTTP request on a new TCP"
                 " connection. Default is the timeout defined by the"
                 " Apache standard Timeout directive."),
-  /* internal settings */
-  AP_INIT_TAKE1("QS_StackSize", qos_stack_size_cmd, NULL,
-                RSRC_CONF,
-                "QS_StackSize <bytes>"),
   NULL,
 };
 
