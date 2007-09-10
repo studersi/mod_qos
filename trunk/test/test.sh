@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.14 2007-09-05 18:39:57 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.15 2007-09-10 20:23:48 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -153,7 +153,21 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-sleep 1
+# -----------------------------------------------------------------
+echo "-- request/sec limit, QS_LocRequestPerSecLimit_5.txt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_LocRequestPerSecLimit_5.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocRequestPerSecLimit_5.txt"
+    exit 1
+fi
+./htt.sh -s ./scripts/QS_LocRequestPerSecLimit_5t.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocRequestPerSecLimit_5t.txt"
+    exit 1
+fi
+
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
