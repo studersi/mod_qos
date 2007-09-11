@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.15 2007-09-10 20:23:48 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.16 2007-09-11 08:38:55 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -49,13 +49,13 @@ echo "-- start `date` --" >>  logs/error_log
 
 # -----------------------------------------------------------------
 echo "-- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_LocRequestLimit_5.txt
+./htt.sh -s ./scripts/QS_LocRequestLimit_5.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_LocRequestLimit_5.txt"
     exit 1
 fi
-../test_tools/src/httest -s ./scripts/QS_LocRequestLimit_DynamicErrorPage.txt
+./htt.sh -s ./scripts/QS_LocRequestLimit_DynamicErrorPage.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_LocRequestLimit_DynamicErrorPage.txt"
@@ -64,7 +64,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- 3 requests with matching regex rule max 2 (overrides location rule), QS_LocRequestLimitMatch_2.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_LocRequestLimitMatch_2.txt
+./htt.sh -s ./scripts/QS_LocRequestLimitMatch_2.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_LocRequestLimitMatch_2.txt"
@@ -73,7 +73,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- vip session, QS_VipHeaderName.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_VipHeaderName.txt
+./htt.sh -s ./scripts/QS_VipHeaderName.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_VipHeaderName.txt"
@@ -82,7 +82,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- vip request, QS_VipRequest.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_VipRequest.txt
+./htt.sh -s ./scripts/QS_VipRequest.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_VipRequest.txt"
@@ -91,7 +91,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- vip request and graceful restart, QS_VipHeaderName_Graceful.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_VipHeaderName_Graceful.txt
+./htt.sh -s ./scripts/QS_VipHeaderName_Graceful.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_VipHeaderName_Graceful.txt"
@@ -100,16 +100,22 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- graceful, QS_Graceful.txt" >> logs/error_log
-../test_tools/src/httest -s ./scripts/QS_Graceful.txt
+./htt.sh -s ./scripts/QS_Graceful.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_Graceful.txt"
     exit 1
 fi
+./htt.sh -s ./scripts/QS_Graceful2.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_Graceful2.txt"
+    exit 1
+fi
 
 # -----------------------------------------------------------------
 echo "-- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
-../test_tools/src/httest -s ./scripts/QS_SrvMaxConn_50.txt
+./htt.sh -s ./scripts/QS_SrvMaxConn_50.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_SrvMaxConn_50.txt"
@@ -118,7 +124,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- connection timeout, QS_SrvConnTimeout.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_SrvConnTimeout.txt
+./htt.sh -s ./scripts/QS_SrvConnTimeout.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_SrvConnTimeout.txt"
@@ -128,7 +134,7 @@ fi
 sleep 1
 # -----------------------------------------------------------------
 echo "-- disable keep alive, QS_SrvMaxConnClose_20.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_SrvMaxConnClose_20.txt
+./htt.sh -s ./scripts/QS_SrvMaxConnClose_20.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_SrvMaxConnClose_20.txt"
@@ -137,19 +143,10 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- dynamic keep alive, QS_KeepAliveTimeout" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/QS_KeepAliveTimeout.txt
+./htt.sh -s ./scripts/QS_KeepAliveTimeout.txt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_KeepAliveTimeout.txt"
-    exit 1
-fi
-
-# -----------------------------------------------------------------
-echo "-- multiple requests in parallel, MultiRequest.txt" >>  logs/error_log
-../test_tools/src/httest -s ./scripts/MultiRequest.txt
-if [ $? -ne 0 ]; then
-    ./ctl.sh stop
-    echo "FAILED MultiRequest.txt"
     exit 1
 fi
 
@@ -168,6 +165,29 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# -----------------------------------------------------------------
+echo "-- kbytes/sec limit, QS_LocKBytesPerSecLimit.txt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_LocKBytesPerSecLimit.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocKBytesPerSecLimit.txt"
+    exit 1
+fi
+./htt.sh -s ./scripts/QS_LocKBytesPerSecLimit_t.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocKBytesPerSecLimit_t.txt"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- multiple requests in parallel, MultiRequest.txt" >>  logs/error_log
+./htt.sh -s ./scripts/MultiRequest.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED MultiRequest.txt"
+    exit 1
+fi
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null

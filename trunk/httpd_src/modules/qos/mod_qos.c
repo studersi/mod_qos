@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.2 2007-09-10 19:18:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.3 2007-09-11 08:38:55 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -178,6 +178,7 @@ typedef struct qs_actable_st {
   unsigned int timeout;
   /* settings */
   int child_init;
+  int generation;
 } qs_actable_t;
 
 /**
@@ -465,17 +466,7 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
  */
 static int qos_is_graceful(qs_actable_t *act) {
   qos_user_t *u = qos_get_user_conf(act->ppool);
-  if(ap_scoreboard_image) {
-    /* available scoreboard and quiescing processes
-       are an indication, that this is a final server
-       stop */
-    process_score *ps = ap_get_scoreboard_process(0);
-    if(ps && ps->quiescing) {
-      return 0;
-    }
-  }
-  if(u->server_start > 1) return 1;
-  /* always cleanup at inital server start */
+  if(ap_my_generation != act->generation) return 1;
   return 0;
 }
 
@@ -1577,6 +1568,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
+  sconf->act->generation = ap_my_generation;
   sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
   sconf->act->timeout = apr_time_sec(s->timeout);

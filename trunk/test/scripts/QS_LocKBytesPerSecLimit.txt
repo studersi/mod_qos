@@ -1,49 +1,44 @@
 #
-# $Id: QS_LocKBytesPerSecLimit.txt,v 1.1 2007-09-09 19:01:39 pbuchbinder Exp $
+# $Id: QS_LocKBytesPerSecLimit.txt,v 1.2 2007-09-11 08:38:55 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
-CLIENT 100 1000
+CLIENT 10 40
 _REQ server1 $QS_PORT_BASE1
 __GET /bbb/index.html HTTP/1.1
-__Host: localhost
+__Host: server1
 __Connection: keep-alive
 __
 _WAIT
-_CLOSE
 
 _REQ server1 $QS_PORT_BASE1
 __GET /bbb/index2.html HTTP/1.1
-__Host: localhost
+__Host: server1
 __Connection: keep-alive
 __
 _WAIT
-_CLOSE
 
 _REQ server1 $QS_PORT_BASE1
 __GET /bbb/index.html HTTP/1.1
-__Host: localhost
+__Host: server1
 __Connection: keep-alive
 __
 _WAIT
-_CLOSE
 
 _REQ server1 $QS_PORT_BASE1
 __GET /bbb/index2.html HTTP/1.1
-__Host: localhost
+__Host: server1
 __Connection: keep-alive
 __
 _WAIT
-_CLOSE
 
 _REQ server1 $QS_PORT_BASE1
 __GET /bbb/index2.html HTTP/1.1
-__Host: localhost
+__Host: server1
 __Connection: keep-alive
 __
 _WAIT
 _CLOSE
-_SLEEP 100
-
+_SLEEP 300
 END
