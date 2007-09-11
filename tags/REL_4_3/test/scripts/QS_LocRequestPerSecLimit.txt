@@ -1,0 +1,53 @@
+#
+# $Id: QS_LocRequestPerSecLimit.txt,v 1.1 2007-09-08 20:03:50 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 100 1000
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+END
