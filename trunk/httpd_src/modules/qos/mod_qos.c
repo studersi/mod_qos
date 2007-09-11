@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.3 2007-09-11 08:38:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.4 2007-09-11 18:39:51 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -892,19 +892,39 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                    cr, cg, cb,
                    e->counter);
         ap_rputs("</tr>\n", r);
+        if(e->req_per_sec_block_rate) {
+          cr = 255;
+          cg = 255;
+          cb = 90;
+        } else {
+          cr = 255;
+          cg = 255;
+          cb = 255;
+        }
         ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
         ap_rprintf(r, "<td>requests/second (wait rate %dms)</td>",
                    e->req_per_sec_block_rate);
         ap_rprintf(r, "<td>%ld</td>",
                    e->req_per_sec_limit == 0 ? -1 : e->req_per_sec_limit);
-        ap_rprintf(r, "<td>%ld</td>",
+        ap_rprintf(r, "<td style=\"background-color: rgb(%d, %d, %d);\">%ld</td>",
+                   cr, cg, cb,
                    now > (e->interval + 11) ? 0 : e->req_per_sec);
         ap_rputs("</tr>\n", r);
+        if(e->kbytes_per_sec_block_rate) {
+          cr = 255;
+          cg = 255;
+          cb = 90;
+        } else {
+          cr = 255;
+          cg = 255;
+          cb = 255;
+        }
         ap_rprintf(r, "<td>kbytes/second (wait rate %dms)</td>",
                    e->kbytes_per_sec_block_rate);
         ap_rprintf(r, "<td>%ld</td>",
                    e->kbytes_per_sec_limit == 0 ? -1 : e->kbytes_per_sec_limit);
-        ap_rprintf(r, "<td>%ld</td>",
+        ap_rprintf(r, "<td style=\"background-color: rgb(%d, %d, %d);\">%ld</td>",
+                   cr, cg, cb,
                    now > (e->interval + 11) ? 0 : e->kbytes_per_sec);
         ap_rputs("</tr>\n", r);
         e = e->next;

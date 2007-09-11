@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.16 2007-09-11 08:38:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.17 2007-09-11 18:39:51 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -177,6 +177,21 @@ fi
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_LocKBytesPerSecLimit_t.txt"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- req/sec limit, QS_LocRequestPerSecLimitMatch.txt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_LocRequestPerSecLimitMatch.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocRequestPerSecLimitMatch.txt"
+    exit 1
+fi
+./htt.sh -s ./scripts/QS_LocRequestPerSecLimitMatch_t.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocRequestPerSecLimitMatch_t.txt"
     exit 1
 fi
 

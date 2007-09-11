@@ -1,10 +1,10 @@
 #
-# $Id: QS_LocRequestPerSecLimitMatch.txt,v 1.1 2007-09-10 19:18:25 pbuchbinder Exp $
+# $Id: QS_LocRequestPerSecLimitMatch.txt,v 1.2 2007-09-11 18:39:51 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
-CLIENT 100 1000
+CLIENT 100 10
 _REQ server1 $QS_PORT_BASE1
 __GET /ccc/index.html HTTP/1.1
 __Host: localhost
