@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.32 2007-09-11 18:39:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.33 2007-09-19 17:03:27 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -52,6 +52,9 @@ KeepAliveTimeout        5
 
 QS_SrvConnTimeout       3
 #QS_StackSize            262144
+<IfDefine real_ip>
+QS_EnableInternalIPSimulation off
+</IfDefine>
 
 Options                 FollowSymLinks Indexes
 DefaultType             text/plain
@@ -133,6 +136,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
    <Location /qos>
        SetHandler qos-viewer
+
+#       QS_DenyRequestLine +select log ".*<select>.*"
    </Location>
 
 </VirtualHost>
