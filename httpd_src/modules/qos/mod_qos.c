@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.4 2007-09-11 18:39:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.5 2007-09-19 17:03:27 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -59,6 +59,7 @@ static const char revision[] = "$Id: mod_qos.c,v 4.4 2007-09-11 18:39:51 pbuchbi
 #include <time.h>
 #include <ap_mpm.h>
 #include <scoreboard.h>
+#include <pcre.h>
 
 /* apr */
 #include <apr_strings.h>
@@ -83,10 +84,31 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
  ***********************************************************************/
 
 typedef enum  {
-  CONN_STATE_NEW,
-  CONN_STATE_SHORT,
-  CONN_STATE_END
+  QS_CONN_STATE_NEW,
+  QS_CONN_STATE_SHORT,
+  QS_CONN_STATE_END
 } qs_conn_state_e;
+
+typedef enum  {
+  QS_REQUEST_LINE,
+  QS_PATH,
+  QS_QUERY
+} qs_rfilter_type_e;
+
+typedef enum  {
+  QS_LOG,
+  QS_DENY
+} qs_rfilter_action_e;
+
+/**
+ */
+typedef struct {
+  pcre *pr;
+  char *text;
+  char *id;
+  qs_rfilter_type_e type;
+  qs_rfilter_action_e action;
+} qos_rfilter_t;
 
 /**
  * in_filter ctx
@@ -189,6 +211,10 @@ typedef struct {
   apr_table_t *act_table;
 } qos_user_t;
 
+typedef struct {
+  apr_table_t *rfilter_table;
+} qos_dir_config;
+
 /**
  * server configuration
  */
@@ -209,8 +235,9 @@ typedef struct {
   int max_conn_per_ip;
   apr_table_t *exclude_ip;
   int connect_timeout;
-#ifdef QS_SIM_IP
+#ifdef QS_INTERNAL_TEST
   apr_table_t *testip;
+  int enable_testip;
 #endif
 } qos_srv_config;
 
@@ -623,9 +650,9 @@ static qs_ip_entry_t *qos_new_ip(qs_actable_t *act) {
 static int qos_add_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
   int num = 0;
   cconf->ip = inet_addr(cconf->c->remote_ip); /* v4 */
-#ifdef QS_SIM_IP
+#ifdef QS_INTERNAL_TEST
   /* use one of the predefined ip addresses */
-  {
+  if(cconf->sconf->enable_testip) {
     char *testid = apr_psprintf(p, "%d", rand()%(QS_SIM_IP_LEN-1));
     const char *testip = apr_table_get(cconf->sconf->testip, testid);
     cconf->ip = inet_addr(testip);
@@ -836,6 +863,10 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
     }
   }
   return 0;
+}
+
+static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
+  return APR_SUCCESS;
 }
 
 /************************************************************************
@@ -1053,13 +1084,13 @@ static int qos_process_connection(conn_rec * c) {
       while(f) {
         if(strcmp(f->frec->name, "qos-in-filter") == 0) {
           qos_ifctx_t *inctx = f->ctx;
-          if(inctx->status == CONN_STATE_NEW) {
+          if(inctx->status == QS_CONN_STATE_NEW) {
             apr_status_t rv = apr_socket_timeout_get(inctx->client_socket, &inctx->at);
             if(rv == APR_SUCCESS) {
               server_rec *sc;
               /* set short timeout */
               apr_socket_timeout_set(inctx->client_socket, inctx->qt);
-              inctx->status = CONN_STATE_SHORT;
+              inctx->status = QS_CONN_STATE_SHORT;
               /* make change "persisten" till we got the whole request
                  line and headers (again, ugly but it works) */
               inctx->server_timeout = c->base_server->timeout;
@@ -1090,9 +1121,16 @@ static int qos_process_connection(conn_rec * c) {
       int i;
       apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->exclude_ip)->elts;
       for(i = 0; i < apr_table_elts(sconf->exclude_ip)->nelts; i++) {
-        if(strncmp(entry[i].key, cconf->c->remote_ip, strlen(entry[i].key)) == 0) {
-          vip = 1;
-          cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
+        if(entry[i].val[0] == 'r') {
+          if(strncmp(entry[i].key, cconf->c->remote_ip, strlen(entry[i].key)) == 0) {
+            vip = 1;
+            cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
+          }
+        } else {
+          if(strcmp(entry[i].key, cconf->c->remote_ip) == 0) {
+            vip = 1;
+            cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
+          }
         }
       }
     }
@@ -1129,7 +1167,7 @@ static int qos_pre_connection(conn_rec * c, void *skt) {
   if(sconf && (sconf->connect_timeout != -1)) {
     qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
     inctx->client_socket = skt;
-    inctx->status = CONN_STATE_NEW;
+    inctx->status = QS_CONN_STATE_NEW;
     inctx->qt = apr_time_from_sec(sconf->connect_timeout);
     ap_add_input_filter("qos-in-filter", inctx, NULL, c);
   }
@@ -1144,10 +1182,10 @@ static int qos_post_read_request(request_rec * r) {
     while(f) {
       if(strcmp(f->frec->name, "qos-in-filter") == 0) {
         qos_ifctx_t *inctx = f->ctx;
-        if(inctx->status == CONN_STATE_SHORT) {
+        if(inctx->status == QS_CONN_STATE_SHORT) {
           /* clear short timeout */
           apr_socket_timeout_set(inctx->client_socket, inctx->at);
-          inctx->status = CONN_STATE_END;
+          inctx->status = QS_CONN_STATE_END;
           r->connection->base_server->timeout = inctx->server_timeout;
         }
         break;
@@ -1167,6 +1205,16 @@ static int qos_header_parser(request_rec * r) {
     qs_acentry_t *e;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_module);
+#ifdef QS_INTERNAL_TEST
+    qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
+                                                                  &qos_module);
+    if(dconf) {
+      apr_status_t rv = qos_per_dir_rules(r, dconf);
+      if(rv != APR_SUCCESS) {
+        return rv;
+      }
+    }
+#endif
 
     /* set dynamic keep alive */
     if(r->subprocess_env) {
@@ -1274,7 +1322,7 @@ static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
                                   apr_off_t nbytes) {
   apr_status_t rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
   qos_ifctx_t *inctx = f->ctx;
-  if((rv == APR_TIMEUP) && (inctx->status == CONN_STATE_SHORT)) {
+  if((rv == APR_TIMEUP) && (inctx->status == QS_CONN_STATE_SHORT)) {
     int qti = apr_time_sec(inctx->qt);
     f->c->base_server->timeout = inctx->server_timeout;
     ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
@@ -1575,6 +1623,49 @@ static void qos_insert_filter(request_rec *r) {
 /************************************************************************
  * directiv handlers 
  ***********************************************************************/
+
+static void *qos_dir_config_create(apr_pool_t *p, char *d) {
+  qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_rfilter_t));
+  dconf->rfilter_table = apr_table_make(p, 1);
+  return dconf;
+}
+
+/**
+ * merges dir config, return value may be NULL(!) if no per dir
+ * rules are available
+ */
+static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
+  qos_dir_config *b = (qos_dir_config *)basev;
+  qos_dir_config *o = (qos_dir_config *)addv;
+  if((apr_table_elts(b->rfilter_table)->nelts == 0) &&
+     (apr_table_elts(o->rfilter_table)->nelts == 0)) {
+    return NULL;
+  } else {
+    qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_rfilter_t));
+    int i;
+    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b->rfilter_table)->elts;
+    dconf->rfilter_table = apr_table_make(p, 1);
+    for(i = 0; i < apr_table_elts(b->rfilter_table)->nelts; ++i) {
+      if(entry[i].key[0] == '+') {
+        apr_table_setn(dconf->rfilter_table, entry[i].key, entry[i].val);
+      }
+    }
+    entry = (apr_table_entry_t *)apr_table_elts(o->rfilter_table)->elts;
+    for(i = 0; i < apr_table_elts(o->rfilter_table)->nelts; ++i) {
+      if(entry[i].key[0] == '+') {
+        apr_table_setn(dconf->rfilter_table, entry[i].key, entry[i].val);
+      }
+    }
+    for(i = 0; i < apr_table_elts(o->rfilter_table)->nelts; ++i) {
+      if(entry[i].key[0] == '-') {
+        char *id = apr_psprintf(p, "+%s", &entry[i].key[1]);
+        apr_table_unset(dconf->rfilter_table, id);
+      }
+    }
+    return dconf;
+  }
+}
+
 static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   qos_srv_config *sconf;
   apr_status_t rv;
@@ -1618,10 +1709,11 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     RAND_bytes(rand, len);
     EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, rand, len, 1, sconf->key, NULL);
   }
-#ifdef QS_SIM_IP
+#ifdef QS_INTERNAL_TEST
   {
     int i;
     sconf->testip = apr_table_make(sconf->pool, QS_SIM_IP_LEN);
+    sconf->enable_testip = 1;
     for(i = 0; i < QS_SIM_IP_LEN; i++) {
       char *qsmi = apr_psprintf(p, "%d.%d.%d.%d", rand()%255, rand()%255, rand()%255, rand()%255);
       apr_table_add(sconf->testip, apr_psprintf(p, "%d", i), qsmi);
@@ -1635,12 +1727,15 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
  * "merges" server configuration: virtual host overwrites global settings (if
  * any rule has been specified)
  */
-static void *qos_srv_config_merge(apr_pool_t * p, void *basev, void *addv) {
+static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_srv_config *b = (qos_srv_config *)basev;
   qos_srv_config *o = (qos_srv_config *)addv;
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1)) {
     o->connect_timeout = b->connect_timeout;
+#ifdef QS_INTERNAL_TEST
+    o->enable_testip = b->enable_testip;
+#endif
     return o;
   }
   return b;
@@ -1914,7 +2009,13 @@ const char *qos_max_conn_ip_cmd(cmd_parms *cmd, void *dcfg, const char *number) 
 const char *qos_max_conn_ex_cmd(cmd_parms *cmd, void *dcfg, const char *addr) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  apr_table_add(sconf->exclude_ip, addr, "e");
+  if(addr[strlen(addr)-1] == '.') {
+    /* address range */
+    apr_table_add(sconf->exclude_ip, addr, "r");
+  } else {
+    /* single ip */
+    apr_table_add(sconf->exclude_ip, addr, "s");
+  }
   return NULL;
 }
 
@@ -1930,6 +2031,63 @@ const char *qos_max_conn_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec
     return apr_psprintf(cmd->pool, "%s: seconds must be a numeric value >0", 
                         cmd->directive->directive);
   }
+  return NULL;
+}
+
+#ifdef QS_INTERNAL_TEST
+/**
+ * generic filter command
+ */
+const char *qos_deny_cmd(cmd_parms *cmd, void *dcfg,
+                         const char *id, const char *action, const char *pcres,
+                         qs_rfilter_type_e type) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  qos_rfilter_t *flt = apr_pcalloc(cmd->pool, sizeof(qos_rfilter_t));
+  const char *errptr = NULL;
+  int erroffset;
+  flt->type = type;
+  if(((id[0] != '+') && (id[0] != '-')) || (strlen(id) < 2)) {
+    return apr_psprintf(cmd->pool, "%s: invalid rule id", 
+                        cmd->directive->directive);
+  }
+  flt->id = apr_pstrdup(cmd->pool, &id[1]);
+  if(strcasecmp(action, "log") == 0) {
+    flt->action = QS_LOG;
+  } else if(strcasecmp(action, "deny") == 0) {
+    flt->action = QS_DENY;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: invalid action", 
+                        cmd->directive->directive);
+  }
+  flt->pr = pcre_compile(pcres, PCRE_DOTALL | PCRE_CASELESS, &errptr, &erroffset, NULL);
+  if(flt->pr == NULL) {
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
+                        " reason: %s", 
+                        cmd->directive->directive,
+                        erroffset, errptr);
+  }
+  apr_pool_cleanup_register(cmd->pool, flt->pr, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  flt->text = apr_pstrdup(cmd->pool, pcres);
+  apr_table_setn(dconf->rfilter_table, id, (char *)flt);
+  return NULL;
+}
+const char *qos_deny_rql_cmd(cmd_parms *cmd, void *dcfg,
+                             const char *id, const char *action, const char *pcres) {
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_REQUEST_LINE);
+}
+const char *qos_deny_path_cmd(cmd_parms *cmd, void *dcfg,
+                              const char *id, const char *action, const char *pcres) {
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_PATH);
+}
+const char *qos_deny_query_cmd(cmd_parms *cmd, void *dcfg,
+                               const char *id, const char *action, const char *pcres) {
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_QUERY);
+}
+#endif
+const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->enable_testip = flag;
   return NULL;
 }
 
@@ -2029,6 +2187,30 @@ static const command_rec qos_config_cmds[] = {
                 " a client must send the HTTP request on a new TCP"
                 " connection. Default is the timeout defined by the"
                 " Apache standard Timeout directive."),
+#ifdef QS_INTERNAL_TEST
+  /* generic request filter */
+  AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
+                ACCESS_CONF,
+                "QS_DenyRequestLine '+'|'-'<id> 'log'|'deny' <pcre>, generic"
+                " request line (path and query) filter used to deny access"
+                " for requests matching the defined expression (pcre)."
+                " '+' adds a new rule while '-' removes a rule for a location."
+                " The action is either 'log' (access is granted but rule"
+                " match is logged) or 'deny' (access is denied)"),
+  AP_INIT_TAKE3("QS_DenyPath", qos_deny_path_cmd, NULL,
+                ACCESS_CONF,
+                "QS_DenyPath, same as QS_DenyRequestLine but applied to the"
+                " path only."),
+  AP_INIT_TAKE3("QS_DenyQuery", qos_deny_path_cmd, NULL,
+                ACCESS_CONF,
+                "QS_DenyQuery, same as QS_DenyRequestLine but applied to the"
+                " query only."),
+#endif
+#ifdef QS_INTERNAL_TEST
+  AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
+                RSRC_CONF,
+               ""),
+#endif
   NULL,
 };
 
@@ -2057,8 +2239,13 @@ static void qos_register_hooks(apr_pool_t * p) {
  ***********************************************************************/
 module AP_MODULE_DECLARE_DATA qos_module ={ 
   STANDARD20_MODULE_STUFF,
-  NULL,                                     /**< dir config creater */
-  NULL,                                     /**< dir merger */
+#ifdef QS_INTERNAL_TEST
+  qos_dir_config_create,                    /**< dir config creater */
+  qos_dir_config_merge,                     /**< dir merger */
+#else
+  NULL,
+  NULL,
+#endif
   qos_srv_config_create,                    /**< server config */
   qos_srv_config_merge,                     /**< server merger */
   qos_config_cmds,                          /**< command table */

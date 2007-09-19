@@ -1,10 +1,15 @@
 #!/bin/sh
 
 COMMAND=$1
+ADDARGS=$2
 case "$COMMAND" in
   start)
          ulimit -c unlimited
-	 ../httpd/httpd -d `pwd`
+	 if [ "$ADDARGS" = "" ]; then
+	    ../httpd/httpd -d `pwd`
+	 else
+	    ../httpd/httpd -d `pwd` -D $ADDARGS
+	 fi
 	 ../httpd/httpd -d `pwd` -f appl_conf/httpd.conf
 	 sleep 1
 	 echo "proxy `cat logs/apache.pid`"
