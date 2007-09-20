@@ -1,0 +1,25 @@
+#
+# $Id: QS_Graceful2.txt,v 1.1 2007-09-11 08:38:55 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT  30 15
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/slow.cgi HTTP/1.1
+__Host: server1
+__Cookie: MODQOS=$COOKIE_VAL
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "long line"
+_WAIT
+_CLOSE
+END
+
+CLIENT
+_SLEEP 4000
+_EXEC ./ctl.sh graceful >/dev/null
+END
+
+
