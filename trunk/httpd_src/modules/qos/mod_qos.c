@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.6 2007-09-20 13:40:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.7 2007-09-20 19:36:40 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -464,8 +464,8 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
 static void qos_destroy_act(qs_actable_t *act) {
   qs_acentry_t *e = act->entry;
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
-               QOS_LOG_PFX"cleanup shared memory: %d bytes #%d",
-               act->size, getpid());
+               QOS_LOG_PFX"cleanup shared memory: %d bytes",
+               act->size);
   act->child_init = 0;
   apr_global_mutex_destroy(act->lock);
   while(e) {
@@ -865,7 +865,88 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
   return 0;
 }
 
+int qos_hex2c(const char *x) {
+  int i, ch;
+  ch = x[0];
+  if (isdigit(ch)) {
+    i = ch - '0';
+  }else if (isupper(ch)) {
+    i = ch - ('A' - 10);
+  } else {
+    i = ch - ('a' - 10);
+  }
+  i <<= 4;
+  
+  ch = x[1];
+  if (isdigit(ch)) {
+    i += ch - '0';
+  } else if (isupper(ch)) {
+    i += ch - ('A' - 10);
+  } else {
+    i += ch - ('a' - 10);
+  }
+  return i;
+}
+
+/* url escaping (%xx) */
+static int qos_unescaping(char *x) {
+  int i, j, ch;
+  if (x[0] == '\0')
+    return 0;
+  for (i = 0, j = 0; x[i] != '\0'; i++, j++) {
+    ch = x[i];
+    if (ch == '%' && isxdigit(x[i + 1]) && isxdigit(x[i + 2])) {
+      ch = qos_hex2c(&x[i + 1]);
+      i += 2;
+    }
+    x[j] = ch;
+  }
+  x[j] = '\0';
+  return j;
+}
+
 static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(dconf->rfilter_table)->elts;
+  int i;
+  char *path = apr_pstrdup(r->pool, r->parsed_uri.path);
+  char *query = NULL;
+  char *request_line = apr_pstrdup(r->pool, r->the_request);
+  int request_line_len;
+  int path_len;
+  int query_len = 0;
+  qos_unescaping(request_line);
+  request_line_len = strlen(request_line);
+  qos_unescaping(path);
+  path_len = strlen(path);
+  if(r->parsed_uri.query) {
+    query = r->parsed_uri.query;
+    qos_unescaping(query);
+    query_len = strlen(query);
+  }
+  
+  for(i = 0; i < apr_table_elts(dconf->rfilter_table)->nelts; i++) {
+    if(entry[i].key[0] == '+') {
+      int ex = -1;
+      qos_rfilter_t *rfilter = (qos_rfilter_t *)entry[i].val;
+      if(rfilter->type == QS_REQUEST_LINE) {
+        ex = pcre_exec(rfilter->pr, NULL, request_line, request_line_len, 0, 0, NULL, 0);
+      } else if(rfilter->type == QS_PATH) {
+        ex = pcre_exec(rfilter->pr, NULL, path, path_len, 0, 0, NULL, 0);
+      } else {
+        ex = pcre_exec(rfilter->pr, NULL, query, query_len, 0, 0, NULL, 0);
+      }
+      if(ex == 0) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOS_LOG_PFX"access denied, rule id: %s (%s), action=%s, c=%s",
+                      rfilter->id,
+                      rfilter->text, rfilter->action == QS_DENY ? "deny" : "log only",
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+        if(rfilter->action == QS_DENY) {
+          return HTTP_FORBIDDEN;
+        }
+      }
+    }
+  }
   return APR_SUCCESS;
 }
 
@@ -1205,16 +1286,27 @@ static int qos_header_parser(request_rec * r) {
     qs_acentry_t *e;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_module);
-#ifdef QS_INTERNAL_TEST
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
     if(dconf) {
       apr_status_t rv = qos_per_dir_rules(r, dconf);
       if(rv != APR_SUCCESS) {
+        const char *error_page = sconf->error_page;
+        qs_req_ctx *rctx = qos_rctx_config_get(r);
+        if(r->subprocess_env) {
+          const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+          if(v) {
+            error_page = v;
+          }
+        }
+        rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+        if(error_page) {
+          qos_error_response(r, error_page);
+          return DONE;
+        }
         return rv;
       }
     }
-#endif
 
     /* set dynamic keep alive */
     if(r->subprocess_env) {
@@ -1345,7 +1437,6 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
     int sec = kbytes_per_sec_block / 1000;
     int nsec = kbytes_per_sec_block % 1000;
     struct timespec delay;
-    //    rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
     delay.tv_sec  = sec;
     delay.tv_nsec = nsec * 1000000;
     nanosleep(&delay,NULL);
@@ -1578,7 +1669,7 @@ static int qos_handler(request_rec * r) {
     return qos_favicon(r);
   }
   ap_set_content_type(r, "text/html");
-  apr_table_set(r->headers_out,"Cache-Control","no-cache");
+  //  apr_table_set(r->headers_out,"Cache-Control","no-cache");
   if(!r->header_only) {
     ap_rputs("<html><head>\n", r);
     ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n", r->parsed_uri.path);
@@ -2046,7 +2137,6 @@ const char *qos_max_conn_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec
   return NULL;
 }
 
-#ifdef QS_INTERNAL_TEST
 /**
  * generic filter command
  */
@@ -2095,7 +2185,7 @@ const char *qos_deny_query_cmd(cmd_parms *cmd, void *dcfg,
                                const char *id, const char *action, const char *pcres) {
   return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_QUERY);
 }
-#endif
+
 const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -2199,13 +2289,12 @@ static const command_rec qos_config_cmds[] = {
                 " a client must send the HTTP request on a new TCP"
                 " connection. Default is the timeout defined by the"
                 " Apache standard Timeout directive."),
-#ifdef QS_INTERNAL_TEST
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
                 ACCESS_CONF,
                 "QS_DenyRequestLine '+'|'-'<id> 'log'|'deny' <pcre>, generic"
-                " request line (path and query) filter used to deny access"
-                " for requests matching the defined expression (pcre)."
+                " request line (method, path, query and protocol) filter used"
+                " to deny access for requests matching the defined expression (pcre)."
                 " '+' adds a new rule while '-' removes a rule for a location."
                 " The action is either 'log' (access is granted but rule"
                 " match is logged) or 'deny' (access is denied)"),
@@ -2217,7 +2306,6 @@ static const command_rec qos_config_cmds[] = {
                 ACCESS_CONF,
                 "QS_DenyQuery, same as QS_DenyRequestLine but applied to the"
                 " query only."),
-#endif
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                 RSRC_CONF,
@@ -2251,13 +2339,8 @@ static void qos_register_hooks(apr_pool_t * p) {
  ***********************************************************************/
 module AP_MODULE_DECLARE_DATA qos_module ={ 
   STANDARD20_MODULE_STUFF,
-#ifdef QS_INTERNAL_TEST
   qos_dir_config_create,                    /**< dir config creater */
   qos_dir_config_merge,                     /**< dir merger */
-#else
-  NULL,
-  NULL,
-#endif
   qos_srv_config_create,                    /**< server config */
   qos_srv_config_merge,                     /**< server merger */
   qos_config_cmds,                          /**< command table */

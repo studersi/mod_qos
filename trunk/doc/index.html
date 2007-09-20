@@ -133,7 +133,6 @@ directive <code>QS_SrvConnTimeout</code> can only be used outside of virtual hos
 configurations.
 </p>
 <h4>Request Level Control</h4>
-<p>
 The module features the following directives to control server access on a per location 
 (URL) level:
 <ul>
@@ -285,6 +284,47 @@ SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.ht
 </td></tr>
 </table>
 
+<h4>Request Level, Generic Filter</h4>
+These filter are defined on a per location level and are used to deny 
+access to resources in general albeit of any server resource availability. 
+New rules are added by defining a rule id prefixed by a '+'. Rules are merged 
+to sub locations. If a rule should not be active for a sub location, the 
+very same rule must be defined but using a '-' prefix at the rule id. 
+The filter rules are implemented as perl compatible regular expressions 
+(pcre) and is applied to the decoded url components (un-escaped characters, 
+e.g. %20 is a space). The action taken for matching rules is either 
+'log' (access is granted but the rule match is logged) or 'deny' 
+(access is denied).
+<ul>
+<li>
+<code>QS_DenyRequestLine '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
+Generic request line (method, path, query, and protocol) filter used to deny access 
+for requests matching the defined expression (pcre). 
+</li>
+<li>
+<code>QS_DenyPath '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
+Generic abs_path (see RFC 2616 secion 3.2.2) filter used to deny access 
+for requests matching the defined expression (pcre). 
+</li>
+<li>
+<code>QS_DenyQuery '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
+Generic query (see RFC 2616 secion 3.2.2) filter used to deny access for 
+requests matching the defined expression (pcre). 
+</li>
+</ul>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Sample configuration:<br>
+<pre>
+QS_ErrorPage    /error-docs/qs_error.html
+&lt;Location /&gt;
+   QS_DenyPath  +admin  deny  ^/application/admin.jsp$
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+
+
 <h4>Connection Level Control</h4>
 The module features the following directives to control server access on a per server 
 (TCP connection) level:
@@ -331,7 +371,6 @@ QS_SrvMaxConnExcludeIP                    192.168.10.
 </td></tr>
 </table>
 
-</p>
 
 <a name="messages">
 <h2>Log Messages</h3>
@@ -347,7 +386,7 @@ concurrent connections to this server.
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
 <pre>
-LogFormat "%h %l %u %t \"%r\" %>s %b %T \"%{User-Agent}i\" %{mod_qos_cr}o %{mod_qos_con}o %{mod_qos_ev}o #%P"
+LogFormat "%h %t \"%r\" %>s %b %T \"%{User-Agent}i\" %{mod_qos_cr}o %{mod_qos_con}o %{mod_qos_ev}o #%P"
 </pre>
 </td></tr>
 </table>
@@ -357,7 +396,7 @@ per minute but also total requests per second and other data.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 <pre>
-TransferLog "| ./bin/qslog -o logs/qs_log -f I....R.B.T.Q"
+TransferLog "| ./bin/qslog -o logs/qs_log -f I..R.B.T.Q"
 </pre>
 </td></tr>
 </table>
