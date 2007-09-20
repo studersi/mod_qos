@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.12 2007-09-19 17:03:26 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.13 2007-09-20 20:44:15 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
@@ -28,7 +28,7 @@
 TOP=`pwd`
 
 #APACHE_VER=2.0.59
-APACHE_VER=2.2.6
+APACHE_VER=2.2.4
 
 echo "build Apache $APACHE_VER"
 if [ ! -d httpd-${APACHE_VER} ]; then
