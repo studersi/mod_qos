@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.5 2007-09-19 17:03:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.6 2007-09-20 13:40:07 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1338,11 +1338,14 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   if(rctx->entry) {
+    /*
+     * QS_LocKBytesPerSecLimit enforcement
+     */
     int kbytes_per_sec_block = rctx->entry->kbytes_per_sec_block_rate;
     int sec = kbytes_per_sec_block / 1000;
     int nsec = kbytes_per_sec_block % 1000;
     struct timespec delay;
-    rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+    //    rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
     delay.tv_sec  = sec;
     delay.tv_nsec = nsec * 1000000;
     nanosleep(&delay,NULL);
@@ -1381,7 +1384,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 /**
  * "free resources" and update stats
  */
-static int qos_logger(request_rec * r) {
+static int qos_logger(request_rec *r) {
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   qs_acentry_t *e = rctx->entry;
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
@@ -1458,6 +1461,15 @@ static int qos_logger(request_rec * r) {
     }
     /* decrement only once */
     ap_set_module_config(r->request_config, &qos_module, NULL);
+  }
+  if(cconf && (cconf->sconf->max_conn != -1)) {
+    char *cc = apr_psprintf(r->pool, "%d", cconf->sconf->act->c->connections);
+    apr_table_set(r->headers_out, "mod_qos_con", cc);
+    apr_table_set(r->err_headers_out, "mod_qos_con", cc);
+    if(r->next) {
+      apr_table_set(r->next->headers_out, "mod_qos_con", cc);
+      apr_table_set(r->next->err_headers_out, "mod_qos_con", cc);
+    }
   }
   if(rctx->evmsg) {
     apr_table_set(r->headers_out, "mod_qos_ev", rctx->evmsg);

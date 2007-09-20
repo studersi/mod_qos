@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.17 2007-09-11 18:39:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.18 2007-09-20 13:40:08 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -44,8 +44,20 @@ ERRORS=0
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
 echo "-- start `date` --" >>  logs/error_log
 # -----------------------------------------------------------------
-./ctl.sh start > /dev/null
+./ctl.sh start real_ip > /dev/null
 (echo "GET /test/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null
+
+# -----------------------------------------------------------------
+echo "-- client opens more than 10 connections, QS_SrvMaxConnPerIP_10.txt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_SrvMaxConnPerIP_10.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_QS_SrvMaxConnPerIP_10.txt"
+    exit 1
+fi
+./ctl.sh stop > /dev/null
+sleep 1
+./ctl.sh start > /dev/null
 
 # -----------------------------------------------------------------
 echo "-- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.txt" >>  logs/error_log

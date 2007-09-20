@@ -341,12 +341,13 @@ concurrent requests to a location defined by QS_LocRequestLimit can be logged to
 access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
 header is used to log event messages: D=denied, S=pass due an available VIP session, 
 V=create VIP session, K=connection closed (no keep-alive), T=dynamic keep-alive, 
-L=request slow down.
+L=request slow down. The <code>mod_qos_con</code> header shows the number of 
+concurrent connections to this server.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
 <pre>
-LogFormat "%h %l %u %t \"%r\" %>s %b %T \"%{User-Agent}i\" %{mod_qos_cr}o %{mod_qos_ev}o #%P"
+LogFormat "%h %l %u %t \"%r\" %>s %b %T \"%{User-Agent}i\" %{mod_qos_cr}o %{mod_qos_con}o %{mod_qos_ev}o #%P"
 </pre>
 </td></tr>
 </table>
