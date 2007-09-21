@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.7 2007-09-20 19:36:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.8 2007-09-21 12:06:14 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -2186,12 +2186,14 @@ const char *qos_deny_query_cmd(cmd_parms *cmd, void *dcfg,
   return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_QUERY);
 }
 
+#ifdef QS_INTERNAL_TEST
 const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->enable_testip = flag;
   return NULL;
 }
+#endif
 
 static const command_rec qos_config_cmds[] = {
   /* request limitation per location */
