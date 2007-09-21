@@ -1,0 +1,33 @@
+#
+# test QS_SrvMaxConnClose directive
+#
+# $Id: QS_SrvMaxConnClose_20.txt,v 1.1 2007-08-26 09:06:33 pbuchbinder Exp $
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT 20 1
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=4 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+
+END
+
+CLIENT 1 1
+_SLEEP 1000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "Connection: close"
+_WAIT
+
+END

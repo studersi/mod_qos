@@ -1,0 +1,26 @@
+#
+# $Id: QS_SrvMaxConnPerIP_10.txt,v 1.1 2007-09-20 13:40:08 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 10 1
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "done"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 1000
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+
+END
