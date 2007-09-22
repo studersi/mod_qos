@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.8 2007-09-21 12:06:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.9 2007-09-22 15:05:05 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -961,14 +961,22 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   if (flags & AP_STATUS_SHORT)
     return OK;
 
-  ap_rputs("<hr>\n", r);
   ap_rprintf(r, "<h2>mod_qos %s</h2>\n", qos_revision(r->pool));
+  if(strcmp(r->handler, "qos-viewer") == 0) {
+    ap_rputs("<table class=\"btable\">\n", r);
+  } else {
+    ap_rputs("<hr>\n", r);
+    ap_rputs("<table border=\"1\">\n", r);
+  }
+  
   while(s) {
     qs_acentry_t *e;
-    ap_rprintf(r, "<h3>%s:%d (%s)</h3>\n",
+    ap_rputs("<tr class=\"rows\">\n", r);
+    ap_rprintf(r, "<td style=\"vertical-align: top;\">%s:%d <br> (%s)</td>\n",
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->addrs->host_port,
                s->is_virtual ? "virtual" : "base");
+    ap_rputs("<td>\n", r);
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
     if(sconf && sconf->act) {
       e = sconf->act->entry;
@@ -988,7 +996,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           cb = 0;
         }
         if(strcmp(r->handler, "qos-viewer") == 0) {
-          ap_rputs("<p><table class=\"btable\">\n", r);
+          ap_rputs("<table class=\"btable\">\n", r);
         } else {
           ap_rputs("<table border=\"1\">\n", r);
         }
@@ -1069,9 +1077,9 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       }
       apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
       if(strcmp(r->handler, "qos-viewer") == 0) {
-        ap_rputs("<p><table class=\"btable\">\n", r);
+        ap_rputs("<table class=\"btable\">\n", r);
       } else {
-        ap_rputs("<p><table border=\"1\">\n", r);
+        ap_rputs("<table border=\"1\">\n", r);
       }
       ap_rputs("<tr class=\"rowt\">"
                "<td style=\"width:85%\">connections</td>"
@@ -1086,12 +1094,12 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                  "<td style=\"background-color: rgb(%d, %d, %d);\">%d</td>\n",
                  i, cr, cg, cb, sconf->act->c->connections);
       ap_rputs("</tr>", r);
-      ap_rputs("</table></p>\n", r);
+      ap_rputs("</table>\n", r);
 
       if(strcmp(r->handler, "qos-viewer") == 0) {
-        ap_rputs("<p><table class=\"btable\">\n", r);
+        ap_rputs("<table class=\"btable\">\n", r);
       } else {
-        ap_rputs("<p><table border=\"1\">\n", r);
+        ap_rputs("<table border=\"1\">\n", r);
       }
       ap_rputs("<tr class=\"rowt\">"
                "<td style=\"width:85%\">settings</td>"
@@ -1112,11 +1120,16 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       ap_rputs("<td style=\"width:85%\">\n", r);
       ap_rprintf(r,"inital connection timeout</td><td>%d</td>\n", sconf->connect_timeout);
       ap_rputs("</tr>", r);
-      ap_rputs("</table></p>\n", r);
+      ap_rputs("</table>\n", r);
     }
     i++;
     s = s->next;
+    ap_rputs("</td></tr>\n", r);
+
   }
+
+  ap_rputs("</table>\n", r);
+
   ap_rputs("<hr>\n", r);
   return OK;
 }
@@ -1694,6 +1707,13 @@ static int qos_handler(request_rec * r) {
   }\n\
   .rowt {\n\
 	  background-color: rgb(230,233,235);\n\
+	  border: 1px solid;\n\
+	  font-weight: bold;\n\
+	  padding: 0px;\n\
+	  margin: 0px;\n\
+  }\n\
+  .rows {\n\
+	  background-color: rgb(240,243,245);\n\
 	  border: 1px solid;\n\
 	  font-weight: bold;\n\
 	  padding: 0px;\n\
