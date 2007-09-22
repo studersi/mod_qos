@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.35 2007-09-20 20:44:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.36 2007-09-22 19:27:52 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -69,6 +69,7 @@ CoreDumpDirectory       ##ROOT##/logs/
 
 TypesConfig             conf/mime.types
 LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
+LoadModule              info_module ##ROOT##/../httpd/modules/generators/.libs/mod_info.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
@@ -91,6 +92,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
+   ProxyPass                  /info !
    ProxyPass                  /qos !
 
    ProxyPass                  /htt http://server1:##QS_PORT_BASE6##/htt
@@ -132,6 +134,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    <Location /status>
        SetHandler server-status
    </Location>
+   <Location /info>
+       SetHandler server-info
+   </Location>
 
    <Location /qos>
        SetHandler qos-viewer
@@ -160,6 +165,7 @@ Listen                  server1:##QS_PORT_BASE1##
 
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
+   ProxyPass                  /info !
    ProxyPass                  /qos !
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
@@ -190,6 +196,9 @@ Listen                  server1:##QS_PORT_BASE1##
 
    <Location /status>
        SetHandler server-status
+   </Location>
+   <Location /info>
+       SetHandler server-info
    </Location>
 
    <Location /qos>
@@ -223,6 +232,7 @@ SSLRandomSeed           startup builtin
 
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
+   ProxyPass                  /info !
    ProxyPass                  /qos !
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
@@ -233,6 +243,9 @@ SSLRandomSeed           startup builtin
 
    <Location /status>
        SetHandler server-status
+   </Location>
+   <Location /info>
+       SetHandler server-info
    </Location>
 
    <Location /qos>
