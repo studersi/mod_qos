@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.36 2007-09-22 19:27:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.37 2007-09-24 18:38:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -142,7 +142,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        SetHandler qos-viewer
 
        QS_DenyRequestLine +restrict deny ".*private.*"
+       QS_DenyRequestLine +special  deny ".*special.*"
        QS_DenyPath        +qos      deny ^/qos/internal.*$
+   </Location>
+   <Location /qos/merged>
+       QS_DenyRequestLine -restrict deny ".*private.*"
    </Location>
 
 </VirtualHost>

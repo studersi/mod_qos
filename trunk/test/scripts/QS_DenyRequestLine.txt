@@ -1,0 +1,38 @@
+#
+# $Id: QS_DenyRequestLine.txt,v 1.1 2007-09-24 18:38:59 pbuchbinder Exp $
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "><h2>mod_qos"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?private HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "custom error"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/merged?private HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "><h2>mod_qos"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/merged?special HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "custom error"
+_WAIT
+
+END
