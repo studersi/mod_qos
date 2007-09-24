@@ -146,15 +146,15 @@ match the request. By default, no limitations are active for locations.
 </li>
 <li>
 <code>QS_LocRequestPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
-Defines the allowed number of requests per second to the request line pattern. 
-Requests are limited by adding a delay to each requests (linear). By default, 
-no limitation is active. This directive should be used in conjunction 
-with QS_LocRequestLimitMatch only.
+Defines the allowed number of requests per second to the uri (path and query) 
+pattern. Requests are limited by adding a delay to each requests (linear). 
+By default, no limitation is active. This directive should be used in 
+conjunction with QS_LocRequestLimitMatch only.
 </li>
 <li>
 <code>QS_LocKBytesPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
 Defines the allowed download bandwidth to the location matching the 
-defined request line pattern.  Responses are slowed by adding a delay 
+defined uri (path and query) pattern.  Responses are slowed by adding a delay 
 to each response (non-linear, bigger files get longer delay than smaller 
 ones). By default, no limitation is active. This directive should be 
 used in conjunction with QS_LocRequestLimitMatch only. 
@@ -286,31 +286,35 @@ SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.ht
 </table>
 
 <h4>Request Level, Generic Filter</h4>
-These filter are defined on a per location level and are used to deny 
+These filter are defined on a per location level and are used to restrict 
 access to resources in general albeit of any server resource availability. 
 New rules are added by defining a rule id prefixed by a '+'. Rules are merged 
 to sub locations. If a rule should not be active for a sub location, the 
 very same rule must be defined but using a '-' prefix at the rule id. 
 The filter rules are implemented as perl compatible regular expressions 
-(pcre) and is applied to the decoded url components (un-escaped characters, 
-e.g. %20 is a space). The action taken for matching rules is either 
-'log' (access is granted but the rule match is logged) or 'deny' 
-(access is denied).
+(pcre) and are applied to the decoded url components (un-escaped characters, 
+e.g. %20 is a space).
 <ul>
 <li>
 <code>QS_DenyRequestLine '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
-Generic request line (method, path, query, and protocol) filter used to deny access 
-for requests matching the defined expression (pcre). 
+Generic request line (method, path, query, and protocol) filter used to 
+deny access for requests matching the defined expression (pcre). The action 
+taken for matching rules is either 'log' (access is granted but the rule 
+match is logged) or 'deny' (access is denied).
 </li>
 <li>
 <code>QS_DenyPath '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
 Generic abs_path (see RFC 2616 secion 3.2.2) filter used to deny access 
-for requests matching the defined expression (pcre). 
+for requests matching the defined expression (pcre). The action taken for 
+matching rules is either 'log' (access is granted but the rule match is 
+logged) or 'deny' (access is denied).
 </li>
 <li>
 <code>QS_DenyQuery '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
 Generic query (see RFC 2616 secion 3.2.2) filter used to deny access for 
-requests matching the defined expression (pcre). 
+requests matching the defined expression (pcre). The action taken for 
+matching rules is either 'log' (access is granted but the rule match 
+is logged) or 'deny' (access is denied).
 </li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -401,7 +405,9 @@ TransferLog "| ./bin/qslog -o logs/qs_log -f I..R.B.T.Q"
 </pre>
 </td></tr>
 </table>
-mod_qos features a handler showing the current connection and request status.
+mod_qos features a handler showing the current connection and request status. 
+Use "ip" in the query string in order to get a list of all concurrent requests 
+on a per client ip address basis, e.g. "/qos?option=ip".
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 <pre>

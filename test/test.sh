@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.18 2007-09-20 13:40:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.19 2007-09-24 18:38:58 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -152,6 +152,17 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SrvMaxConnClose_20.txt"
     exit 1
 fi
+
+# -----------------------------------------------------------------
+echo "-- static filter, QS_DenyRequestLine.txt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_DenyRequestLine.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_DenyRequestLine.txt"
+    exit 1
+fi
+
+
 
 # -----------------------------------------------------------------
 echo "-- dynamic keep alive, QS_KeepAliveTimeout" >>  logs/error_log

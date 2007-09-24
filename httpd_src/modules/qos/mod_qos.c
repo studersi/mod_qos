@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.9 2007-09-22 15:05:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.10 2007-09-24 18:38:58 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -90,9 +90,10 @@ typedef enum  {
 } qs_conn_state_e;
 
 typedef enum  {
-  QS_REQUEST_LINE,
-  QS_PATH,
-  QS_QUERY
+  QS_DENY_REQUEST_LINE,
+  QS_DENY_PATH,
+  QS_DENY_QUERY,
+  QS_PERMIT_URI
 } qs_rfilter_type_e;
 
 typedef enum  {
@@ -624,6 +625,25 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   return APR_SUCCESS;
 }
 
+static void qos_print_ip(request_rec *r, qs_ip_entry_t *ipe) {
+  if(ipe) {
+    unsigned long ip = ipe->ip;
+    int a,b,c,d;
+    a = ip % 256;
+    ip = ip / 256;
+    b = ip % 256;
+    ip = ip / 256;
+    c = ip % 256;
+    ip = ip / 256;
+    d = ip % 256;
+    ap_rputs("<tr class=\"row1\">", r);
+    ap_rputs("<td style=\"width:85%\">", r);
+    ap_rprintf(r, "%d.%d.%d.%d</td><td>%d</td></tr>\n", a,b,c,d, ipe->counter);
+    qos_print_ip(r, ipe->left);
+    qos_print_ip(r, ipe->right);
+  }
+}
+
 
 static void qos_free_ip(qs_actable_t *act, qs_ip_entry_t *ipe) {
   ipe->next = act->c->ip_free;
@@ -914,6 +934,9 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   int request_line_len;
   int path_len;
   int query_len = 0;
+  int permit_rule = 0;
+  int permit_rule_match = 0;
+  int permit_rule_action = QS_DENY;
   qos_unescaping(request_line);
   request_line_len = strlen(request_line);
   qos_unescaping(path);
@@ -926,16 +949,27 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   
   for(i = 0; i < apr_table_elts(dconf->rfilter_table)->nelts; i++) {
     if(entry[i].key[0] == '+') {
+      int deny_rule = 0;
       int ex = -1;
       qos_rfilter_t *rfilter = (qos_rfilter_t *)entry[i].val;
-      if(rfilter->type == QS_REQUEST_LINE) {
+      if(rfilter->type == QS_DENY_REQUEST_LINE) {
+        deny_rule = 1;
         ex = pcre_exec(rfilter->pr, NULL, request_line, request_line_len, 0, 0, NULL, 0);
-      } else if(rfilter->type == QS_PATH) {
+      } else if(rfilter->type == QS_DENY_PATH) {
+        deny_rule = 1;
         ex = pcre_exec(rfilter->pr, NULL, path, path_len, 0, 0, NULL, 0);
-      } else {
+      } else if(rfilter->type == QS_DENY_QUERY) {
+        deny_rule = 1;
         ex = pcre_exec(rfilter->pr, NULL, query, query_len, 0, 0, NULL, 0);
+      } else {
+        permit_rule = 1;
+        ex = pcre_exec(rfilter->pr, NULL, query, query_len, 0, 0, NULL, 0);
+        permit_rule_action = rfilter->action;
+        if(ex == 0) {
+          permit_rule_match = 1; 
+        }
       }
-      if(ex == 0) {
+      if(deny_rule && (ex == 0)) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX"access denied, rule id: %s (%s), action=%s, c=%s",
                       rfilter->id,
@@ -945,6 +979,15 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
           return HTTP_FORBIDDEN;
         }
       }
+    }
+  }
+  if(permit_rule && !permit_rule_match) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX"access denied, no permit rule match, action=%s, c=%s",
+                  permit_rule_action == QS_DENY ? "deny" : "log only",
+                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+    if(permit_rule_action == QS_DENY) {
+      return HTTP_FORBIDDEN;
     }
   }
   return APR_SUCCESS;
@@ -1095,6 +1138,21 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                  i, cr, cg, cb, sconf->act->c->connections);
       ap_rputs("</tr>", r);
       ap_rputs("</table>\n", r);
+
+      if(r->parsed_uri.query && strstr(r->parsed_uri.query, "ip")) {
+        if(strcmp(r->handler, "qos-viewer") == 0) {
+          ap_rputs("<table class=\"btable\">\n", r);
+        } else {
+          ap_rputs("<table border=\"1\">\n", r);
+        }
+        ap_rputs("<tr class=\"rowt\">"
+                 "<td style=\"width:85%\">client ip connections</td>"
+                 "<td>current&nbsp;</td></tr>", r);
+        apr_global_mutex_lock(sconf->act->lock);   /* @CRT8 */
+        qos_print_ip(r, sconf->act->c->ip_tree);
+        apr_global_mutex_unlock(sconf->act->lock); /* @CRT8 */
+        ap_rputs("</table>\n", r);
+      }
 
       if(strcmp(r->handler, "qos-viewer") == 0) {
         ap_rputs("<table class=\"btable\">\n", r);
@@ -2195,15 +2253,19 @@ const char *qos_deny_cmd(cmd_parms *cmd, void *dcfg,
 }
 const char *qos_deny_rql_cmd(cmd_parms *cmd, void *dcfg,
                              const char *id, const char *action, const char *pcres) {
-  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_REQUEST_LINE);
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_REQUEST_LINE);
 }
 const char *qos_deny_path_cmd(cmd_parms *cmd, void *dcfg,
                               const char *id, const char *action, const char *pcres) {
-  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_PATH);
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_PATH);
 }
 const char *qos_deny_query_cmd(cmd_parms *cmd, void *dcfg,
                                const char *id, const char *action, const char *pcres) {
-  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_QUERY);
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_QUERY);
+}
+const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
+                               const char *id, const char *action, const char *pcres) {
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_PERMIT_URI);
 }
 
 #ifdef QS_INTERNAL_TEST
@@ -2242,12 +2304,12 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE2("QS_LocRequestLimitMatch", qos_match_con_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestLimitMatch <regex> <number>, defines the number of"
-                " concurrent requests to the request line pattern."
+                " concurrent requests to the uri (path and query) pattern."
                 " Default is defined by the QS_LocRequestLimitDefault directive."),
   AP_INIT_TAKE2("QS_LocRequestPerSecLimitMatch", qos_match_rs_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestPerSecLimitMatch <regex> <number>, defines the allowed"
-                " number of requests per second to the request line pattern."
+                " number of requests per second to the uri (path and query) pattern."
                 " Requests are limited by adding a delay to each requests."
                 " This directive should be used in conjunction with"
                 " QS_LocRequestLimitMatch only."),
@@ -2324,10 +2386,19 @@ static const command_rec qos_config_cmds[] = {
                 ACCESS_CONF,
                 "QS_DenyPath, same as QS_DenyRequestLine but applied to the"
                 " path only."),
-  AP_INIT_TAKE3("QS_DenyQuery", qos_deny_path_cmd, NULL,
+  AP_INIT_TAKE3("QS_DenyQuery", qos_deny_query_cmd, NULL,
                 ACCESS_CONF,
                 "QS_DenyQuery, same as QS_DenyRequestLine but applied to the"
                 " query only."),
+  AP_INIT_TAKE3("QS_PermitUri", qos_permit_uri_cmd, NULL,
+                ACCESS_CONF,
+                "QS_PermitUri, '+'|'-'<id> 'log'|'deny' <pcre>, generic"
+                " request filter applied to the request uri (path and query)."
+                " Only requests matching at lease one QS_PermitUri pattern are"
+                " allowed. If a QS_PermitUri pattern has been defined an the"
+                " request does not match any, the request is denied albeit of"
+                " any server resource availability (white list). All rules"
+                " must define the same action."),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                 RSRC_CONF,
