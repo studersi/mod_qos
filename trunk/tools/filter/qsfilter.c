@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.7 2007-09-26 20:31:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.8 2007-09-26 20:52:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -62,7 +62,7 @@ static const char revision[] = "$Id: qsfilter.c,v 1.7 2007-09-26 20:31:22 pbuchb
 #define QS_SUB               "!$&'\\(\\)\\*\\+,;="
 
 #define QS_PATH_PCRE         "(/["QS_UNRESERVED"]+)*"
-#define QS_STRICT_PCRE       "(/[a-zA-Z0-9-_]+)*\\.?[a-zA-Z]{0,4}"
+#define QS_STRICT_PCRE       "(/[a-zA-Z0-9-_]+)*[/]?\\.?[a-zA-Z]{0,4}"
 #define QS_STRICT_QUERY_PCRE "([a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)(&[a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)*"
 #define QS_CHAR_PCRE         "["QS_UNRESERVED"]"
 #define QS_CHAR_GEN_PCRE     "["QS_UNRESERVED""QS_GEN"]"
