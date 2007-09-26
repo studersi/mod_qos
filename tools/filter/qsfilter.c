@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.3 2007-09-26 19:50:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.4 2007-09-26 19:53:47 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -333,7 +333,7 @@ int main(int argc, const char * const argv[]) {
     for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
       if(m_verbose)
 	printf("# rule from log line %s\n", entry[i].val);
-      printf("QS_PermitUri +QSF%0.3d %s\n", i, entry[i].key);
+      printf("QS_PermitUri +QSF%0.3d deny \"%s\"\n", i, entry[i].key);
     }
   }
   apr_pool_destroy(pool);
