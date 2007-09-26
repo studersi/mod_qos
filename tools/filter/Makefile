@@ -41,4 +41,3 @@ qsfilter: $(qsfilter_OBJECTS)
 	$(LINK) $(qsfilter_LTFLAGS) $(qsfilter_OBJECTS) $(qsfilter_LDADD)
 
 
-
