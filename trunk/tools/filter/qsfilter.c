@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.6 2007-09-26 20:01:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.7 2007-09-26 20:31:22 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -62,6 +62,8 @@ static const char revision[] = "$Id: qsfilter.c,v 1.6 2007-09-26 20:01:46 pbuchb
 #define QS_SUB               "!$&'\\(\\)\\*\\+,;="
 
 #define QS_PATH_PCRE         "(/["QS_UNRESERVED"]+)*"
+#define QS_STRICT_PCRE       "(/[a-zA-Z0-9-_]+)*\\.?[a-zA-Z]{0,4}"
+#define QS_STRICT_QUERY_PCRE "([a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)(&[a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)*"
 #define QS_CHAR_PCRE         "["QS_UNRESERVED"]"
 #define QS_CHAR_GEN_PCRE     "["QS_UNRESERVED""QS_GEN"]"
 #define QS_CHAR_GENSUB_PCRE  "["QS_UNRESERVED""QS_GEN""QS_SUB"]"
@@ -139,8 +141,8 @@ int qs_getLine(char *s, int n) {
 }
 
 
-static char *qos_build_pattern(apr_pool_t *lpool,
-			       const char *line, const char *base_pattern) {
+static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
+			       const char *base_pattern, const char *strict_pattern) {
   char *rule;
   char *path = apr_pstrdup(lpool, line);
   char *orig = path;
@@ -150,12 +152,19 @@ static char *qos_build_pattern(apr_pool_t *lpool,
   int rc_c, len;
   pcre *pcre_test;
   pcre *pcre_base;
+  pcre *pcre_strict;
   pcre *pcre_char;
   pcre *pcre_char_gen;
   pcre *pcre_char_gensub;
 
+  pcre_strict = pcre_compile(strict_pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  if(pcre_strict == NULL) {
+    fprintf(stderr, "ERROR, could not compile pcre at position %d,"
+	    " reason: %s\n", erroffset, errptr);
+    exit(1);
+  }
 
-  pcre_base = pcre_compile(base_pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);;
+  pcre_base = pcre_compile(base_pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(pcre_base == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
@@ -168,13 +177,13 @@ static char *qos_build_pattern(apr_pool_t *lpool,
 	    " reason: %s\n", erroffset, errptr);
     exit(1);
   }
-  pcre_char_gen = pcre_compile(QS_CHAR_GEN_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);;
+  pcre_char_gen = pcre_compile(QS_CHAR_GEN_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(pcre_char_gen == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
     exit(1);
   }
-  pcre_char_gensub = pcre_compile(QS_CHAR_GENSUB_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);;
+  pcre_char_gensub = pcre_compile(QS_CHAR_GENSUB_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(pcre_char_gensub == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
@@ -183,12 +192,20 @@ static char *qos_build_pattern(apr_pool_t *lpool,
 
   qos_unescaping(path);
   
-  rc_c = pcre_exec(pcre_base, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
-  if((rc_c >= 0) && (ovector[0] == 0)) {
-    rule = apr_psprintf(lpool, "%s", qos_extract(lpool, &path, ovector, &len));
+  rc_c = pcre_exec(pcre_strict, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
+  if((rc_c >= 0) && (ovector[0] == 0) && ((ovector[1] - ovector[0]) == strlen(path))) {
+    int substring_length = ovector[1] - ovector[0];
+    rule = apr_psprintf(lpool, "%s", strict_pattern);
+    path = path + substring_length;
+    if(m_verbose > 1) printf(" strict match\n");
   } else {
-    fprintf(stderr, "ERROR, no valid path: %s\n", path);
-    exit(1);
+    rc_c = pcre_exec(pcre_base, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
+    if((rc_c >= 0) && (ovector[0] == 0)) {
+      rule = apr_psprintf(lpool, "%s", qos_extract(lpool, &path, ovector, &len));
+    } else {
+      fprintf(stderr, "ERROR, no valid path: %s\n", path);
+      exit(1);
+    }
   }
   while(path && path[0]) {
     char *add;
@@ -280,7 +297,7 @@ int main(int argc, const char * const argv[]) {
       exit(1);
     }
     if(parsed_uri.path == NULL) {
-      fprintf(stderr, "WARNING, invalid request %s\n", line);
+      fprintf(stderr, "WARNING, line %d: invalid request %s\n", line_nr, line);
     } else {
       if(m_verbose > 1) {
 	printf("--------------------------------\n");
@@ -288,9 +305,9 @@ int main(int argc, const char * const argv[]) {
 	       parsed_uri.path,
 	       parsed_uri.query == NULL ? "" : parsed_uri.query);
       }
-      rule = qos_build_pattern(lpool, parsed_uri.path, QS_PATH_PCRE);
+      rule = qos_build_pattern(lpool, parsed_uri.path, QS_PATH_PCRE, QS_STRICT_PCRE);
       if(parsed_uri.query) {
-	query_rule = qos_build_pattern(lpool, parsed_uri.query, QS_QUERY_PCRE);
+	query_rule = qos_build_pattern(lpool, parsed_uri.query, QS_QUERY_PCRE, QS_STRICT_QUERY_PCRE);
 	rule = apr_pstrcat(lpool, rule, "\\?", query_rule, NULL);
       }
       {
