@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.10 2007-09-24 18:38:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.11 2007-09-26 19:50:52 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -931,9 +931,11 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   char *path = apr_pstrdup(r->pool, r->parsed_uri.path);
   char *query = NULL;
   char *request_line = apr_pstrdup(r->pool, r->the_request);
+  char *uri = path;
   int request_line_len;
   int path_len;
   int query_len = 0;
+  int uri_len;
   int permit_rule = 0;
   int permit_rule_match = 0;
   int permit_rule_action = QS_DENY;
@@ -941,10 +943,13 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   request_line_len = strlen(request_line);
   qos_unescaping(path);
   path_len = strlen(path);
+  uri_len = path_len;
   if(r->parsed_uri.query) {
     query = r->parsed_uri.query;
     qos_unescaping(query);
     query_len = strlen(query);
+    uri = apr_pstrcat(r->pool, path, "?", query, NULL);
+    uri_len = strlen(uri);
   }
   
   for(i = 0; i < apr_table_elts(dconf->rfilter_table)->nelts; i++) {
@@ -963,7 +968,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
         ex = pcre_exec(rfilter->pr, NULL, query, query_len, 0, 0, NULL, 0);
       } else {
         permit_rule = 1;
-        ex = pcre_exec(rfilter->pr, NULL, query, query_len, 0, 0, NULL, 0);
+        ex = pcre_exec(rfilter->pr, NULL, uri, uri_len, 0, 0, NULL, 0);
         permit_rule_action = rfilter->action;
         if(ex == 0) {
           permit_rule_match = 1; 
@@ -1710,7 +1715,10 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, bs,
                QOS_LOG_PFX"version %s loaded (%d req rules)", rev, rules);
-
+#ifdef QS_INTERNAL_TEST
+  fprintf(stdout, "\033[1mmod_qos TEST BINARY, NOT FOR PRODUCTIVE USE\033[0m\n");
+  fflush(stdout);
+#endif
   APR_OPTIONAL_HOOK(ap, status_hook, qos_ext_status_hook, NULL, NULL, APR_HOOK_MIDDLE);
 
   return DECLINED;

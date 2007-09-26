@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.2 2007-09-26 19:26:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.3 2007-09-26 19:50:52 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -276,43 +276,49 @@ int main(int argc, const char * const argv[]) {
       fprintf(stderr, "ERROR, could parse uri %s\n", line);
       exit(1);
     }
-    if(m_verbose > 1) {
-      printf("--------------------------------\n");
-      printf("ANALYSE: path=%s query=%s\n",
-	     parsed_uri.path,
-	     parsed_uri.query == NULL ? "" : parsed_uri.query);
-    }
-    rule = qos_build_pattern(lpool, parsed_uri.path, QS_PATH_PCRE);
-    if(parsed_uri.query) {
-      query_rule = qos_build_pattern(lpool, parsed_uri.query, QS_QUERY_PCRE);
-      rule = apr_pstrcat(lpool, rule, "\\?", query_rule, NULL);
-    }
-    {
-      const char *prev;
-      const char *errptr = NULL;
-      char *line_test = apr_pstrdup(lpool, line);
-      int erroffset;
-      pcre *pcre_test = pcre_compile(apr_pstrcat(lpool, "^", rule, "$", NULL),
-				     PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
-      if(pcre_test == NULL) {
-	fprintf(stderr, "ERROR, rule <%s> could not compile pcre at position %d,"
-		" reason: %s\n", rule, erroffset, errptr);
-	exit(1);
+    if(parsed_uri.path == NULL) {
+      fprintf(stderr, "WARNING, invalid request %s\n", line);
+    } else {
+      if(m_verbose > 1) {
+	printf("--------------------------------\n");
+	printf("ANALYSE: path=%s query=%s\n",
+	       parsed_uri.path,
+	       parsed_uri.query == NULL ? "" : parsed_uri.query);
       }
-      qos_unescaping(line_test);
-      if(pcre_exec(pcre_test, NULL, line_test, strlen(line_test), 0, 0, NULL, 0) < 0) {
-	fprintf(stderr, "ERRRO, rule does not match!\n");
-	fprintf(stderr, "line %d: %s\n", line_nr, line);
-	fprintf(stderr, "rule: %s\n", rule);
-	exit(1);
-      } else {
-	if(m_verbose > 1)
-	  printf(" RULE: %s\n", rule);
+      rule = qos_build_pattern(lpool, parsed_uri.path, QS_PATH_PCRE);
+      if(parsed_uri.query) {
+	query_rule = qos_build_pattern(lpool, parsed_uri.query, QS_QUERY_PCRE);
+	rule = apr_pstrcat(lpool, rule, "\\?", query_rule, NULL);
       }
-      pcre_free(pcre_test);
-      prev = apr_table_get(rules, rule);
-      if(prev == NULL) {
-	apr_table_add(rules, rule, apr_psprintf(pool, "%d", line_nr));
+      {
+	const char *prev;
+	const char *errptr = NULL;
+	char *line_test = apr_pstrdup(lpool, line);
+	int erroffset;
+	pcre *pcre_test = pcre_compile(apr_pstrcat(lpool, "^", rule, "$", NULL),
+				       PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+	if(pcre_test == NULL) {
+	  fprintf(stderr, "ERROR, rule <%s> could not compile pcre at position %d,"
+		  " reason: %s\n", rule, erroffset, errptr);
+	  exit(1);
+	}
+	qos_unescaping(line_test);
+	if(pcre_exec(pcre_test, NULL, line_test, strlen(line_test), 0, 0, NULL, 0) < 0) {
+	  fprintf(stderr, "ERRRO, rule does not match!\n");
+	  fprintf(stderr, "line %d: %s\n", line_nr, line);
+	  fprintf(stderr, "rule: %s\n", rule);
+	  exit(1);
+	} else {
+	  if(m_verbose > 1)
+	    printf(" RULE: %s\n", rule);
+	}
+	pcre_free(pcre_test);
+	prev = apr_table_get(rules, rule);
+	if(prev == NULL) {
+	  apr_table_add(rules, rule, apr_psprintf(pool, "%d", line_nr));
+	  if(m_verbose > 1)
+	    printf(" ADD: %d\n", apr_table_elts(rules)->nelts);
+	}
       }
     }
     apr_pool_destroy(lpool);
