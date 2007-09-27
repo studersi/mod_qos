@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.4 2007-09-08 21:39:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.5 2007-09-27 06:19:36 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -536,6 +536,7 @@ static void usage(char *cmd) {
   printf("Example for post processing:\n");
   printf("  cat access_log | ./bin/%s -f ..IR.B.T -o ./logs/stat_log -p\n", cmd);
   printf("\n");
+  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
 }
 
