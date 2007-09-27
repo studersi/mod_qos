@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.13 2007-09-27 19:39:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.14 2007-09-27 19:44:14 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -194,9 +194,9 @@ static void usage(char *cmd) {
   printf("     mod_qos configuration file defining QS_DenyRequestLine directives,\n");
   printf("     These rules filter the input data\n");
   printf("  -s <level>\n");
-  printf("     Defines how strict the rules should be (0=high, 1=mid, 2=low, 3=...)\n");
-  printf("     security). Default is 2 which provides a compact and performant\n");
-  printf("     rule set limiting the allowed character set. Level 1 and 0 may be used\n");
+  printf("     Defines how strict the rules should be (0=very high, 1=high, 2=medium,\n");
+  printf("     3=low). Default is 2 which provides a compact and performant rule\n");
+  printf("     set limiting the allowed character set. Level 1 and 0 may be used\n");
   printf("     for selected locations.\n");
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
