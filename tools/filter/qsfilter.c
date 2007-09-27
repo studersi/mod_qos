@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.16 2007-09-27 20:29:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.17 2007-09-27 20:48:51 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -348,7 +348,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
     rc_c = pcre_exec(pcre_base, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
     if((rc_c >= 0) && (ovector[0] == 0)) {
       add = qos_extract(lpool, &path, ovector, &len, "base'");
-      if(m_strict > 1) {
+      if((m_strict > 1) || (type == QS_UT_QUERY)) {
 	rule = apr_psprintf(lpool,"%s%s", rule, base_pattern);
       } else {
 	rule = apr_psprintf(lpool,"%s%s", rule, add);
