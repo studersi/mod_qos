@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.18 2007-09-27 21:10:01 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.19 2007-09-27 21:11:07 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -70,7 +70,7 @@ typedef enum  {
 #define QS_CHAR_PCRE          "["QS_UNRESERVED"]"
 #define QS_CHAR_GEN_PCRE      "["QS_UNRESERVED""QS_GEN"]"
 #define QS_CHAR_GENSUB_PCRE   "["QS_UNRESERVED""QS_GEN""QS_SUB"]"
-#define QS_CHAR_GENSUB_S_PCRE "["QS_UNRESERVED""QS_GEN""QS_SUB"]"
+#define QS_CHAR_GENSUB_S_PCRE "["QS_UNRESERVED""QS_GEN""QS_SUB_S"]"
 
 #define QS_PATH_PCRE          "(/["QS_UNRESERVED"]+)+"
 #define QS_FUZZY_PCRE         "(/[a-zA-Z0-9-_]+)*[/]?\\.?[a-zA-Z]{0,4}"
@@ -380,7 +380,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
 	  } else {
 	    rc_c = pcre_exec(pcre_char_gensub_s, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
 	    if((rc_c >= 0) && (ovector[0] == 0)) {
-	      add = qos_extract(lpool, &path, ovector, &len, "sub");
+	      add = qos_extract(lpool, &path, ovector, &len, "sub'");
 	      slen = len;
 	      if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
 	      rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_GENSUB_S_PCRE, slen);
