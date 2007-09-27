@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.17 2007-09-27 20:48:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.18 2007-09-27 21:10:01 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -62,19 +62,21 @@ typedef enum  {
   QS_UT_QUERY
 } qs_url_type_e;
 
-#define QS_UNRESERVED        "a-zA-Z0-9-\\._~% "
-#define QS_GEN               ":/\\?#\\[\\]@"
-#define QS_SUB               "!$&'\\(\\)\\*\\+,;="
+#define QS_UNRESERVED         "a-zA-Z0-9-\\._~% "
+#define QS_GEN                ":/\\?#\\[\\]@"
+#define QS_SUB                "!$&'\\(\\)\\*\\+,;="
+#define QS_SUB_S              "!$&\\(\\)\\*\\+,;="
 
-#define QS_CHAR_PCRE         "["QS_UNRESERVED"]"
-#define QS_CHAR_GEN_PCRE     "["QS_UNRESERVED""QS_GEN"]"
-#define QS_CHAR_GENSUB_PCRE  "["QS_UNRESERVED""QS_GEN""QS_SUB"]"
+#define QS_CHAR_PCRE          "["QS_UNRESERVED"]"
+#define QS_CHAR_GEN_PCRE      "["QS_UNRESERVED""QS_GEN"]"
+#define QS_CHAR_GENSUB_PCRE   "["QS_UNRESERVED""QS_GEN""QS_SUB"]"
+#define QS_CHAR_GENSUB_S_PCRE "["QS_UNRESERVED""QS_GEN""QS_SUB"]"
 
-#define QS_PATH_PCRE         "(/["QS_UNRESERVED"]+)+"
-#define QS_FUZZY_PCRE        "(/[a-zA-Z0-9-_]+)*[/]?\\.?[a-zA-Z]{0,4}"
+#define QS_PATH_PCRE          "(/["QS_UNRESERVED"]+)+"
+#define QS_FUZZY_PCRE         "(/[a-zA-Z0-9-_]+)*[/]?\\.?[a-zA-Z]{0,4}"
 
-#define QS_QUERY_PCRE        "([&]?["QS_UNRESERVED"]+(=["QS_UNRESERVED"\\$]+)?)+"
-#define QS_FUZZY_QUERY_PCRE  "([a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)(&[a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)*"
+#define QS_QUERY_PCRE         "([&]?["QS_UNRESERVED"]+(=["QS_UNRESERVED"\\$]+)?)+"
+#define QS_FUZZY_QUERY_PCRE   "([a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)(&[a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)*"
 
 #define QS_OVECCOUNT 3
 
@@ -84,6 +86,7 @@ static int m_strict = 2;
 pcre *pcre_char;
 pcre *pcre_char_gen;
 pcre *pcre_char_gensub;
+pcre *pcre_char_gensub_s;
 
 static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
   char *ret = apr_pcalloc(pool, strlen(line) * 2);
@@ -359,30 +362,38 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
 	add = qos_extract(lpool, &path, ovector, &len, "char");
 	slen = len;
 	if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
-	rule = apr_psprintf(lpool,"%s%s{0,%d}", rule, QS_CHAR_PCRE, slen);
+	rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_PCRE, slen);
       } else {
 	rc_c = pcre_exec(pcre_char_gen, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
 	if((rc_c >= 0) && (ovector[0] == 0)) {
 	  add = qos_extract(lpool, &path, ovector, &len, "gen");
 	  slen = len;
 	  if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
-	  rule = apr_psprintf(lpool,"%s%s{0,%d}", rule, QS_CHAR_GEN_PCRE, slen);
+	  rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_GEN_PCRE, slen);
 	} else {
 	  rc_c = pcre_exec(pcre_char_gensub, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
 	  if((rc_c >= 0) && (ovector[0] == 0) && (m_strict > 1)) {
 	    add = qos_extract(lpool, &path, ovector, &len, "sub");
 	    slen = len;
 	    if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
-	    rule = apr_psprintf(lpool,"%s%s{0,%d}", rule, QS_CHAR_GENSUB_PCRE, slen);
+	    rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_GENSUB_PCRE, slen);
 	  } else {
-	    /* special char */
-	    if(m_verbose > 1) printf(" special char: %.*s\n", 1, path);
-	    if(strchr("{}[]()^$.|*+?\"'\\", path[0]) != NULL) {
-	      rule = apr_psprintf(lpool,"%s\\%.*s", rule, 1, path);
+	    rc_c = pcre_exec(pcre_char_gensub_s, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
+	    if((rc_c >= 0) && (ovector[0] == 0)) {
+	      add = qos_extract(lpool, &path, ovector, &len, "sub");
+	      slen = len;
+	      if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
+	      rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_GENSUB_S_PCRE, slen);
 	    } else {
-	      rule = apr_psprintf(lpool,"%s%.*s", rule, 1, path);
+	      /* special char */
+	      if(m_verbose > 1) printf(" special char: %.*s\n", 1, path);
+	      if(strchr("{}[]()^$.|*+?\"'\\", path[0]) != NULL) {
+		rule = apr_psprintf(lpool,"%s\\%.*s", rule, 1, path);
+	      } else {
+		rule = apr_psprintf(lpool,"%s%.*s", rule, 1, path);
+	      }
+	      path++;
 	    }
-	    path++;
 	  }
 	}
       }
@@ -445,9 +456,17 @@ static void qos_init_pcre() {
 	    " reason: %s\n", erroffset, errptr);
     exit(1);
   }
+  pcre_char_gensub_s = pcre_compile(QS_CHAR_GENSUB_S_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  if(pcre_char_gensub_s == NULL) {
+    fprintf(stderr, "ERROR, could not compile pcre at position %d,"
+	    " reason: %s\n", erroffset, errptr);
+    exit(1);
+  }
 }
 
 int main(int argc, const char * const argv[]) {
+  time_t start = time(NULL);
+  time_t end;
   int line_nr = 0;
   int deny_count = 0;
   char line[MAX_LINE];
@@ -587,10 +606,14 @@ int main(int argc, const char * const argv[]) {
   {
     int i;
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+    int duration;
+    end = time(NULL);
+    duration = (end - start) / 60;
     printf("\n# --------------------------------------------------------\n");
     printf("# %d rules from %d access log lines\n", apr_table_elts(rules)->nelts, line_nr);
     printf("#  strict mode: %d\n", m_strict);
     printf("#  filtered lines: %d\n", deny_count);
+    printf("#  duration: %d minutes\n", duration);
     printf("# --------------------------------------------------------\n");
     for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
       printf("QS_PermitUri +QSF%0.3d deny \"%s\"\n", i, entry[i].key);
