@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.12 2007-09-27 18:47:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.13 2007-09-27 19:39:31 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -85,8 +85,23 @@ pcre *pcre_char;
 pcre *pcre_char_gen;
 pcre *pcre_char_gensub;
 
+static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
+  char *ret = apr_pcalloc(pool, strlen(line) * 2);
+  int i = 0;
+  int j = 0;
+  while(line[i]) {
+    if(strchr("{}[]()^$.|*+?\"'\\", line[i]) != NULL) {
+      ret[j] = '\\';
+      j++;
+    }
+    ret[j] = line[i];
+    i++;
+    j++;
+  }
+  return ret;
+}
 
-char *qos_extract(apr_pool_t *pool, char **line, int *ovector, int *len, const char *pn) {
+static char *qos_extract(apr_pool_t *pool, char **line, int *ovector, int *len, const char *pn) {
   char *path = *line;
   char *substring_start = path + ovector[0];
   int substring_length = ovector[1] - ovector[0];
@@ -94,10 +109,10 @@ char *qos_extract(apr_pool_t *pool, char **line, int *ovector, int *len, const c
   *len = substring_length;
   if(m_verbose > 1) printf(" %s, match at %d: %s\n", pn, ovector[0], rule);
   *line = path + substring_length;
-  return rule;
+  return qos_escape_pcre(pool, rule);
 }
 
-int qos_hex2c(const char *x) {
+static int qos_hex2c(const char *x) {
   int i, ch;
   ch = x[0];
   if (isdigit(ch)) {
@@ -181,8 +196,8 @@ static void usage(char *cmd) {
   printf("  -s <level>\n");
   printf("     Defines how strict the rules should be (0=high, 1=mid, 2=low, 3=...)\n");
   printf("     security). Default is 2 which provides a compact and performant\n");
-  printf("     rule set. Level 1 and 0 may be used for selective per location\n");
-  printf("     settings.\n");
+  printf("     rule set limiting the allowed character set. Level 1 and 0 may be used\n");
+  printf("     for selected locations.\n");
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
   printf("     Don't use rules you haven't checked the request data used to\n");
@@ -286,6 +301,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
    * 0, matching pattern (url only), no fuzzy
    * 1, matching pattern (url only) and fuzzy pcre
    * 2, pcre (url and query) and fuzzy pcre
+   * 3, rounded string length
    */
 
   /*
@@ -351,7 +367,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
 	  } else {
 	    /* special char */
 	    if(m_verbose > 1) printf(" special char: %.*s\n", 1, path);
-	    if(strchr("{}^|\"\'\\", path[0]) != NULL) {
+	    if(strchr("{}[]()^$.|*+?\"'\\", path[0]) != NULL) {
 	      rule = apr_psprintf(lpool,"%s\\%.*s", rule, 1, path);
 	    } else {
 	      rule = apr_psprintf(lpool,"%s%.*s", rule, 1, path);
@@ -540,6 +556,17 @@ int main(int argc, const char * const argv[]) {
 	    printf("# %0.3d rule %s\n", apr_table_elts(rules)->nelts, rule);
 	  }
 	  apr_table_addn(rules, apr_pstrdup(pool, rule), (char *)pcre_test);
+	  if(apr_table_elts(rules)->nelts == 500) {
+	    printf("NOTE, found %d rules - you may want to stop further processing ...\n",
+		   apr_table_elts(rules)->nelts);
+	  }
+	  if(apr_table_elts(rules)->nelts == 1000) {
+	    printf("NOTE, found %d rules - you may want to stop further processing ...\n",
+		   apr_table_elts(rules)->nelts);
+	    if(m_strict < 3) {
+	      printf("... or increase the strict level!\n");
+	    }
+	  }
 	}
       }
     }
