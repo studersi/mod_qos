@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.15 2007-09-27 19:52:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.16 2007-09-27 20:29:49 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -189,6 +189,13 @@ static void usage(char *cmd) {
   printf("\n");
   printf("Usage: %s [-c <conf>] [-s 0|1|2|3] [-v 0|1|2]\n", cmd);
   printf("\n");
+  printf("Summary\n");
+  printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
+  printf("compatible regular expressions) which may be used with mod_qos to\n");
+  printf("deny access for suspect request lines. It reads the access log data\n");
+  printf("from stdin and the rules are written to stdout. The input format must\n");
+  printf("contain a single request URI (path and query) on each line.\n");
+  printf("\n");
   printf("Options\n");
   printf("  -c <conf>\n");
   printf("     mod_qos configuration file defining QS_DenyRequestLine directives,\n");
@@ -201,8 +208,11 @@ static void usage(char *cmd) {
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
   printf("     Don't use rules you haven't checked the request data used to\n");
-  printf("     generate it. Level 2 is higly recommended (as long as you don't\n");
+  printf("     generate it! Level 2 is highly recommended (as long as you don't\n");
   printf("     want to check every line of your access log data).\n");
+  printf("\n");
+  printf("Example\n");
+  printf("  cat access_log | awk '{print $7}' | ./%s -s 1 -c httpd.conf\n", cmd);
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   printf("mod_qos, "__DATE__"\n");
@@ -297,9 +307,9 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
   qos_unescaping(path);
   if(m_verbose > 1) printf(" IN %s\n", path);
 
-  /*
-   * 0, matching pattern (url only), no fuzzy
-   * 1, matching pattern (url only) and fuzzy pcre
+  /* strict levels:
+   * 0, matching pattern (url only), no fuzzy, reduced charset
+   * 1, matching pattern (url only) and fuzzy pcre, reduced charset
    * 2, pcre (url and query) and fuzzy pcre
    * 3, rounded string length
    */
@@ -359,7 +369,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
 	  rule = apr_psprintf(lpool,"%s%s{0,%d}", rule, QS_CHAR_GEN_PCRE, slen);
 	} else {
 	  rc_c = pcre_exec(pcre_char_gensub, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
-	  if((rc_c >= 0) && (ovector[0] == 0)) {
+	  if((rc_c >= 0) && (ovector[0] == 0) && (m_strict > 1)) {
 	    add = qos_extract(lpool, &path, ovector, &len, "sub");
 	    slen = len;
 	    if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
