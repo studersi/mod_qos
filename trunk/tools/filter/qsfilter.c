@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.10 2007-09-27 09:58:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.11 2007-09-27 10:54:49 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -374,6 +374,7 @@ int qos_test_for_existing_rule(char *line, apr_table_t *rules) {
 
 int main(int argc, const char * const argv[]) {
   int line_nr = 0;
+  int deny_count = 0;
   char line[MAX_LINE];
   apr_pool_t *pool;
   apr_table_t *rules;
@@ -449,6 +450,7 @@ int main(int argc, const char * const argv[]) {
       if(qos_enforce_blacklist(blacklist, line_test)) {
 	fprintf(stderr, "WARNING: blacklist filter at line %d for %s\n", line_nr, line);
 	deny = 1;
+	deny_count++;
       }
 
       if(!qos_test_for_existing_rule(line_test, rules) && !deny) {
@@ -499,7 +501,8 @@ int main(int argc, const char * const argv[]) {
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
     printf("\n# --------------------------------------------------------\n");
     printf("# %d rules from %d access log lines\n", apr_table_elts(rules)->nelts, line_nr);
-    printf("# strict mode: %d\n", m_strict);
+    printf("#  strict mode: %d\n", m_strict);
+    printf("#  filtered lines: %d\n", deny_count);
     printf("# --------------------------------------------------------\n");
     for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
       printf("QS_PermitUri +QSF%0.3d deny \"%s\"\n", i, entry[i].key);
