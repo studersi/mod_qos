@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.14 2007-09-27 19:44:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.15 2007-09-27 19:52:55 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -205,7 +205,7 @@ static void usage(char *cmd) {
   printf("     want to check every line of your access log data).\n");
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
-  printf("\n");
+  printf("mod_qos, "__DATE__"\n");
   exit(1);
 }
 
@@ -554,6 +554,7 @@ int main(int argc, const char * const argv[]) {
 	  if(m_verbose) {
 	    printf("# ADD line %d: %s\n", line_nr, line);
 	    printf("# %0.3d rule %s\n", apr_table_elts(rules)->nelts, rule);
+	    fflush(stdout);
 	  }
 	  apr_table_addn(rules, apr_pstrdup(pool, rule), (char *)pcre_test);
 	  if(apr_table_elts(rules)->nelts == 500) {
