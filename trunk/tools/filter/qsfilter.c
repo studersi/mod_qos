@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.11 2007-09-27 10:54:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.12 2007-09-27 18:47:44 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -57,31 +57,42 @@ static const char revision[] = "$Id: qsfilter.c,v 1.11 2007-09-27 10:54:49 pbuch
 
 /* reserved: {}[]()^$.|*+?\ */
 
+typedef enum  {
+  QS_UT_PATH,
+  QS_UT_QUERY
+} qs_url_type_e;
+
 #define QS_UNRESERVED        "a-zA-Z0-9-\\._~% "
 #define QS_GEN               ":/\\?#\\[\\]@"
 #define QS_SUB               "!$&'\\(\\)\\*\\+,;="
 
-#define QS_PATH_PCRE         "(/["QS_UNRESERVED"]+)*"
-#define QS_FUZZY_PCRE        "(/[a-zA-Z0-9-_]+)*[/]?\\.?[a-zA-Z]{0,4}"
-#define QS_FUZZY_QUERY_PCRE  "([a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)(&[a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)*"
 #define QS_CHAR_PCRE         "["QS_UNRESERVED"]"
 #define QS_CHAR_GEN_PCRE     "["QS_UNRESERVED""QS_GEN"]"
 #define QS_CHAR_GENSUB_PCRE  "["QS_UNRESERVED""QS_GEN""QS_SUB"]"
+
+#define QS_PATH_PCRE         "(/["QS_UNRESERVED"]+)+"
+#define QS_FUZZY_PCRE        "(/[a-zA-Z0-9-_]+)*[/]?\\.?[a-zA-Z]{0,4}"
+
+#define QS_QUERY_PCRE        "([&]?["QS_UNRESERVED"]+(=["QS_UNRESERVED"\\$]+)?)+"
+#define QS_FUZZY_QUERY_PCRE  "([a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)(&[a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)*"
+
 #define QS_OVECCOUNT 3
 
-#define QS_QUERY_PCRE        "(["QS_UNRESERVED"]+(=["QS_UNRESERVED"]+)?)*"
-
-static int m_verbose = 0;
+static int m_verbose = 1;
 static int m_strict = 2;
 
-char *qos_extract(apr_pool_t *pool, char **line, int *ovector, int *len) {
+pcre *pcre_char;
+pcre *pcre_char_gen;
+pcre *pcre_char_gensub;
+
+
+char *qos_extract(apr_pool_t *pool, char **line, int *ovector, int *len, const char *pn) {
   char *path = *line;
   char *substring_start = path + ovector[0];
   int substring_length = ovector[1] - ovector[0];
   char *rule = apr_psprintf(pool, "%.*s", substring_length, substring_start);
   *len = substring_length;
-  if(m_verbose > 1)
-    printf(" match at %d: %s\n", ovector[0], rule);
+  if(m_verbose > 1) printf(" %s, match at %d: %s\n", pn, ovector[0], rule);
   *line = path + substring_length;
   return rule;
 }
@@ -125,7 +136,7 @@ static int qos_unescaping(char *x) {
   return j;
 }
 
-static int qs_fgetline(char *s, int n, FILE *f) {
+static int qos_fgetline(char *s, int n, FILE *f) {
   register int i = 0;
   while (1) {
     s[i] = (char) fgetc(f);
@@ -140,7 +151,7 @@ static int qs_fgetline(char *s, int n, FILE *f) {
   }
 }
 
-static int qs_getLine(char *s, int n) {
+static int qos_getline(char *s, int n) {
   int i = 0;
   while (1) {
     s[i] = (char)getchar();
@@ -161,16 +172,22 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s [-c <conf>] [-s 0|1|2] [-v 0|1|2]\n", cmd);
+  printf("Usage: %s [-c <conf>] [-s 0|1|2|3] [-v 0|1|2]\n", cmd);
   printf("\n");
   printf("Options\n");
   printf("  -c <conf>\n");
   printf("     mod_qos configuration file defining QS_DenyRequestLine directives,\n");
   printf("     These rules filter the input data\n");
   printf("  -s <level>\n");
-  printf("     Defines how strict the rules should be (0=highest security)\n");
+  printf("     Defines how strict the rules should be (0=high, 1=mid, 2=low, 3=...)\n");
+  printf("     security). Default is 2 which provides a compact and performant\n");
+  printf("     rule set. Level 1 and 0 may be used for selective per location\n");
+  printf("     settings.\n");
   printf("  -v <level>\n");
-  printf("     Verbose mode.\n");
+  printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
+  printf("     Don't use rules you haven't checked the request data used to\n");
+  printf("     generate it. Level 2 is higly recommended (as long as you don't\n");
+  printf("     want to check every line of your access log data).\n");
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   printf("\n");
@@ -184,8 +201,7 @@ static int qos_enforce_blacklist(apr_table_t *rules, const char *line) {
   for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
     pcre *p = (pcre *)entry[i].val;
     if(pcre_exec(p, NULL, line, strlen(line), 0, 0, NULL, 0) == 0) {
-      if(m_verbose > 1)
-	printf(" blacklist match, rule %s\n", entry[i].key);
+      if(m_verbose > 1) printf(" blacklist match, rule %s\n", entry[i].key);
       return 1;
     }
   }
@@ -199,7 +215,7 @@ static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const c
     fprintf(stderr, "ERROR, could not open %s\n", httpdconf);
     exit(1);
   }
-  while(!qs_fgetline(line, sizeof(line), f)) {
+  while(!qos_fgetline(line, sizeof(line), f)) {
     // QS_DenyRequestLine '+'|'-'<id> 'log'|'deny' <pcre>
     char *p = strstr(line, "QS_DenyRequestLine");
     if(p && (strchr(line, '#') == NULL)) {
@@ -236,7 +252,8 @@ static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const c
 }
 
 static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
-			       const char *base_pattern, const char *fuzzy_pattern) {
+			       const char *base_pattern, const char *fuzzy_pattern,
+			       qs_url_type_e type) {
   char *rule;
   char *path = apr_pstrdup(lpool, line);
   char *orig = path;
@@ -247,9 +264,6 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
   pcre *pcre_test;
   pcre *pcre_base;
   pcre *pcre_fuzzy;
-  pcre *pcre_char;
-  pcre *pcre_char_gen;
-  pcre *pcre_char_gensub;
 
   pcre_fuzzy = pcre_compile(fuzzy_pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(pcre_fuzzy == NULL) {
@@ -265,74 +279,90 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
     exit(1);
   }
 
-  pcre_char = pcre_compile(QS_CHAR_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
-  if(pcre_char == NULL) {
-    fprintf(stderr, "ERROR, could not compile pcre at position %d,"
-	    " reason: %s\n", erroffset, errptr);
-    exit(1);
-  }
-  pcre_char_gen = pcre_compile(QS_CHAR_GEN_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
-  if(pcre_char_gen == NULL) {
-    fprintf(stderr, "ERROR, could not compile pcre at position %d,"
-	    " reason: %s\n", erroffset, errptr);
-    exit(1);
-  }
-  pcre_char_gensub = pcre_compile(QS_CHAR_GENSUB_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
-  if(pcre_char_gensub == NULL) {
-    fprintf(stderr, "ERROR, could not compile pcre at position %d,"
-	    " reason: %s\n", erroffset, errptr);
-    exit(1);
-  }
-
   qos_unescaping(path);
-  
+  if(m_verbose > 1) printf(" IN %s\n", path);
+
+  /*
+   * 0, matching pattern (url only), no fuzzy
+   * 1, matching pattern (url only) and fuzzy pcre
+   * 2, pcre (url and query) and fuzzy pcre
+   */
+
+  /*
+   * start either with the fuzzy (takes the pcre) or base pattern (takes the match)
+   */  
   rc_c = pcre_exec(pcre_fuzzy, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
   if(m_strict && (rc_c >= 0) && (ovector[0] == 0) && ((ovector[1] - ovector[0]) == strlen(path))) {
     int substring_length = ovector[1] - ovector[0];
     rule = apr_psprintf(lpool, "%s", fuzzy_pattern);
     path = path + substring_length;
-    if(m_verbose > 1) printf(" fuzzy match\n");
+    if(m_verbose > 1) printf(" strict %d match: %s\n", m_strict, rule);
   } else {
     rc_c = pcre_exec(pcre_base, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
-    if((rc_c >= 0) && (ovector[0] == 0)) {
-      rule = apr_psprintf(lpool, "%s", qos_extract(lpool, &path, ovector, &len));
+    if((rc_c >= 0) && (ovector[0] == 0) && (ovector[1] - ovector[0])) {
+      if((m_strict > 1) || (type == QS_UT_QUERY)) {
+	int substring_length = ovector[1] - ovector[0];
+	rule = apr_psprintf(lpool, "%s", base_pattern);
+	path = path + substring_length;
+	if(m_verbose > 1) printf(" strict %d match: %s\n", m_strict, rule);
+      } else {
+	rule = apr_psprintf(lpool, "%s", qos_extract(lpool, &path, ovector, &len, "base"));
+      }
     } else {
       fprintf(stderr, "ERROR, no valid path: %s\n", path);
       exit(1);
     }
   }
+  /*
+   * iterate through all patterns (base, char, char gen, char gen sub, ..., special)
+   */
   while(path && path[0]) {
-    char *add;
-    rc_c = pcre_exec(pcre_char, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
+    char *add = NULL;
+    int slen;
+    rc_c = pcre_exec(pcre_base, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
     if((rc_c >= 0) && (ovector[0] == 0)) {
-      add = qos_extract(lpool, &path, ovector, &len);
-      rule = apr_psprintf(lpool,"%s%s{%d}", rule, QS_CHAR_PCRE, len);
-    } else {
-      rc_c = pcre_exec(pcre_char_gen, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
-      if((rc_c >= 0) && (ovector[0] == 0)) {
-	add = qos_extract(lpool, &path, ovector, &len);
-	rule = apr_psprintf(lpool,"%s%s{%d}", rule, QS_CHAR_GEN_PCRE, len);
+      add = qos_extract(lpool, &path, ovector, &len, "base'");
+      if(m_strict > 1) {
+	rule = apr_psprintf(lpool,"%s%s", rule, base_pattern);
       } else {
-	rc_c = pcre_exec(pcre_char_gensub, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
+	rule = apr_psprintf(lpool,"%s%s", rule, add);
+      }
+    } else {
+      rc_c = pcre_exec(pcre_char, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
+      if((rc_c >= 0) && (ovector[0] == 0)) {
+	add = qos_extract(lpool, &path, ovector, &len, "char");
+	slen = len;
+	if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
+	rule = apr_psprintf(lpool,"%s%s{0,%d}", rule, QS_CHAR_PCRE, slen);
+      } else {
+	rc_c = pcre_exec(pcre_char_gen, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
 	if((rc_c >= 0) && (ovector[0] == 0)) {
-	  add = qos_extract(lpool, &path, ovector, &len);
-	  rule = apr_psprintf(lpool,"%s%s{0,%d}", rule, QS_CHAR_GENSUB_PCRE, len);
+	  add = qos_extract(lpool, &path, ovector, &len, "gen");
+	  slen = len;
+	  if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
+	  rule = apr_psprintf(lpool,"%s%s{0,%d}", rule, QS_CHAR_GEN_PCRE, slen);
 	} else {
-	  /* special char */
-	  if(m_verbose > 1)
-	    printf(" special char: %.*s\n", 1, path);
-	  if(strchr("{}^|\"\'\\", path[0]) != NULL) {
-	    rule = apr_psprintf(lpool,"%s\\%.*s", rule, 1, path);
+	  rc_c = pcre_exec(pcre_char_gensub, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
+	  if((rc_c >= 0) && (ovector[0] == 0)) {
+	    add = qos_extract(lpool, &path, ovector, &len, "sub");
+	    slen = len;
+	    if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
+	    rule = apr_psprintf(lpool,"%s%s{0,%d}", rule, QS_CHAR_GENSUB_PCRE, slen);
 	  } else {
-	    rule = apr_psprintf(lpool,"%s%.*s", rule, 1, path);
+	    /* special char */
+	    if(m_verbose > 1) printf(" special char: %.*s\n", 1, path);
+	    if(strchr("{}^|\"\'\\", path[0]) != NULL) {
+	      rule = apr_psprintf(lpool,"%s\\%.*s", rule, 1, path);
+	    } else {
+	      rule = apr_psprintf(lpool,"%s%.*s", rule, 1, path);
+	    }
+	    path++;
 	  }
-	  path++;
 	}
       }
     }
   }
-  if(m_verbose > 1)
-    printf(" rule: %s\n", rule);
+  if(m_verbose > 1) printf(" => rule: %s\n", rule);
   /* test */
   pcre_test = pcre_compile(apr_pstrcat(lpool, "^", rule, "$", NULL),
 			   PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
@@ -351,9 +381,6 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
   }
   pcre_free(pcre_test);
   pcre_free(pcre_base);
-  pcre_free(pcre_char);
-  pcre_free(pcre_char_gen);
-  pcre_free(pcre_char_gensub);
   return rule;
 }
 
@@ -364,12 +391,34 @@ int qos_test_for_existing_rule(char *line, apr_table_t *rules) {
   for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
     pcre *p = (pcre *)entry[i].val;
     if(pcre_exec(p, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
-      if(m_verbose > 1)
-	printf(" exsiting rule %s\n", entry[i].key);
+      if(m_verbose > 1)	printf(" exsiting rule %s\n", entry[i].key);
       return 1;
     }
   }
   return 0;
+}
+
+static void qos_init_pcre() {
+  const char *errptr = NULL;
+  int erroffset;
+  pcre_char = pcre_compile(QS_CHAR_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  if(pcre_char == NULL) {
+    fprintf(stderr, "ERROR, could not compile pcre at position %d,"
+	    " reason: %s\n", erroffset, errptr);
+    exit(1);
+  }
+  pcre_char_gen = pcre_compile(QS_CHAR_GEN_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  if(pcre_char_gen == NULL) {
+    fprintf(stderr, "ERROR, could not compile pcre at position %d,"
+	    " reason: %s\n", erroffset, errptr);
+    exit(1);
+  }
+  pcre_char_gensub = pcre_compile(QS_CHAR_GENSUB_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  if(pcre_char_gensub == NULL) {
+    fprintf(stderr, "ERROR, could not compile pcre at position %d,"
+	    " reason: %s\n", erroffset, errptr);
+    exit(1);
+  }
 }
 
 int main(int argc, const char * const argv[]) {
@@ -382,6 +431,7 @@ int main(int argc, const char * const argv[]) {
   char *cmd = strrchr(argv[0], '/');
   const char *httpdconf = NULL;
   apr_app_initialize(&argc, &argv, NULL);
+  qos_init_pcre();
   apr_pool_create(&pool, NULL);
   rules = apr_table_make(pool, 10);
   blacklist = apr_table_make(pool, 10);
@@ -422,7 +472,7 @@ int main(int argc, const char * const argv[]) {
     qos_load_blacklist(pool, blacklist, httpdconf);
   }
 
-  while(qs_getLine(line, sizeof(line))) {
+  while(qos_getline(line, sizeof(line))) {
     char *query_rule;
     char *rule;
     apr_uri_t parsed_uri;
@@ -448,7 +498,7 @@ int main(int argc, const char * const argv[]) {
       qos_unescaping(line_test);
 
       if(qos_enforce_blacklist(blacklist, line_test)) {
-	fprintf(stderr, "WARNING: blacklist filter at line %d for %s\n", line_nr, line);
+	fprintf(stderr, "WARNING: blacklist filter match at line %d for %s\n", line_nr, line);
 	deny = 1;
 	deny_count++;
       }
@@ -458,9 +508,10 @@ int main(int argc, const char * const argv[]) {
 	const char *errptr = NULL;
 	int erroffset;
 	pcre *pcre_test;
-	rule = qos_build_pattern(lpool, parsed_uri.path, QS_PATH_PCRE, QS_FUZZY_PCRE);
+	rule = qos_build_pattern(lpool, parsed_uri.path, QS_PATH_PCRE, QS_FUZZY_PCRE, QS_UT_PATH);
 	if(parsed_uri.query) {
-	  query_rule = qos_build_pattern(lpool, parsed_uri.query, QS_QUERY_PCRE, QS_FUZZY_QUERY_PCRE);
+	  query_rule = qos_build_pattern(lpool, parsed_uri.query, QS_QUERY_PCRE,
+					 QS_FUZZY_QUERY_PCRE, QS_UT_QUERY);
 	  rule = apr_pstrcat(lpool, "^", rule, "\\?", query_rule, "$", NULL);
 	} else {
 	  rule = apr_pstrcat(lpool, "^", rule, "$", NULL);
@@ -479,17 +530,16 @@ int main(int argc, const char * const argv[]) {
 	  fprintf(stderr, "rule: %s\n", rule);
 	  exit(1);
 	} else {
-	  if(m_verbose > 1)
-	    printf(" RULE: %s\n", rule);
+	  if(m_verbose > 1) printf(" RULE: %s\n", rule);
 	}
 	//pcre_free(pcre_test);
 	prev = apr_table_get(rules, rule);
 	if(prev == NULL) {
-	  apr_table_addn(rules, apr_pstrdup(pool, rule), (char *)pcre_test);
 	  if(m_verbose) {
 	    printf("# ADD line %d: %s\n", line_nr, line);
-	    printf("#     rule %s\n", rule);
+	    printf("# %0.3d rule %s\n", apr_table_elts(rules)->nelts, rule);
 	  }
+	  apr_table_addn(rules, apr_pstrdup(pool, rule), (char *)pcre_test);
 	}
       }
     }
