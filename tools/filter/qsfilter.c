@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.20 2007-09-28 20:49:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.21 2007-09-28 21:43:29 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -84,7 +84,7 @@ typedef enum  {
 
 static int m_verbose = 1;
 static int m_strict = 2;
-static int m_base64 = 0;
+static int m_base64 = 5;
 
 pcre *pcre_char;
 pcre *pcre_char_gen;
@@ -204,7 +204,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s [-c <conf>] [-s 0|1|2|3] [-b <num>] [-v 0|1|2]\n", cmd);
+  printf("Usage: %s [-c <conf>] [-s 0|1|2|3|4] [-b <num>] [-v 0|1|2]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
@@ -218,14 +218,14 @@ static void usage(char *cmd) {
   printf("     mod_qos configuration file defining QS_DenyRequestLine directives,\n");
   printf("     These rules filter the input data\n");
   printf("  -s <level>\n");
-  printf("     Defines how strict the rules should be (0=very high, 1=high, 2=medium,\n");
-  printf("     3=low). Default is 2 which provides a compact and performant rule\n");
-  printf("     set limiting the allowed character set. Level 1 and 0 may be used\n");
-  printf("     for selected locations.\n");
+  printf("     Defines how strict the rules should be (0=very high, 1=high, 2=high\n");
+  printf("     to medium, 3=medium, 4=low).\n");
+  printf("     Default is 2 which provides a compact and performant rule set.\n");
   printf("  -b <num>\n");
   printf("     Replaces url pattern by the regular expression when detecting a\n");
   printf("     base64 encoded string. Detecting sensibility is defined by a numeric\n");
-  printf("     value (use 5 and higher).\n");
+  printf("     value. You should use values higher than 5 (default) or 0 to disabley.\n");
+  printf("     this function.\n");
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
   printf("     Don't use rules you haven't checked the request data used to\n");
@@ -330,16 +330,17 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
 
   /* strict levels:
    * 0, matching pattern (url only), no fuzzy, reduced charset
-   * 1, matching pattern (url only) and fuzzy pcre, reduced charset
-   * 2, pcre (url and query) and fuzzy pcre
-   * 3, rounded string length
+   * 1, matching pattern (partial, url only), no fuzzy, reduced charset
+   * 2, matching pattern (url only) and fuzzy pcre, reduced charset
+   * 3, pcre (url and query) and fuzzy pcre
+   * 4, rounded string length
    */
 
   /*
    * start either with the fuzzy (takes the pcre) or base pattern (takes the match)
    */  
   rc_c = pcre_exec(pcre_fuzzy, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
-  if(m_strict && (rc_c >= 0) && (ovector[0] == 0) && ((ovector[1] - ovector[0]) == strlen(path))) {
+  if((m_strict > 1) && (rc_c >= 0) && (ovector[0] == 0) && ((ovector[1] - ovector[0]) == strlen(path))) {
     int substring_length = ovector[1] - ovector[0];
     rule = apr_psprintf(lpool, "%s", fuzzy_pattern);
     path = path + substring_length;
@@ -347,7 +348,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
   } else {
     rc_c = pcre_exec(pcre_base, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
     if((rc_c >= 0) && (ovector[0] == 0) && (ovector[1] - ovector[0])) {
-      if((m_strict > 1) || (type == QS_UT_QUERY)) {
+      if((m_strict > 2) || (type == QS_UT_QUERY)) {
 	int substring_length = ovector[1] - ovector[0];
 	rule = apr_psprintf(lpool, "%s", base_pattern);
 	path = path + substring_length;
@@ -355,6 +356,13 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
       } else {
 	char *b64;
 	rule = apr_psprintf(lpool, "%s", qos_extract(lpool, &path, ovector, &len, "base"));
+	if(m_strict > 1) {
+	  char *end = strrchr(rule, '/');
+	  if(end && (end > rule) && (end < &rule[strlen(rule)-1])) {
+	    end[0] = '\0';
+	    rule = apr_psprintf(lpool, "%s%.*s{1}", rule, strlen(base_pattern)-1, base_pattern);
+	  }
+	}
 	b64 = qos_detect_b64(rule);
 	if(b64 && m_base64) {
 	  /* don't use this pattern match if it contains a base64 string */
@@ -383,7 +391,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
     rc_c = pcre_exec(pcre_base, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
     if((rc_c >= 0) && (ovector[0] == 0)) {
       add = qos_extract(lpool, &path, ovector, &len, "base'");
-      if((m_strict > 1) || (type == QS_UT_QUERY)) {
+      if((m_strict > 2) || (type == QS_UT_QUERY)) {
 	rule = apr_psprintf(lpool,"%s%s", rule, base_pattern);
       } else {
 	if(qos_detect_b64(rule) && m_base64) {
@@ -399,28 +407,28 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
       if((rc_c >= 0) && (ovector[0] == 0)) {
 	add = qos_extract(lpool, &path, ovector, &len, "char");
 	slen = len;
-	if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
+	if(m_strict > 3) slen = ((slen / 10) + 1) * 10;
 	rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_PCRE, slen);
       } else {
 	rc_c = pcre_exec(pcre_char_gen, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
 	if((rc_c >= 0) && (ovector[0] == 0)) {
 	  add = qos_extract(lpool, &path, ovector, &len, "gen");
 	  slen = len;
-	  if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
+	  if(m_strict > 3) slen = ((slen / 10) + 1) * 10;
 	  rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_GEN_PCRE, slen);
 	} else {
 	  rc_c = pcre_exec(pcre_char_gensub, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
-	  if((rc_c >= 0) && (ovector[0] == 0) && (m_strict > 1)) {
+	  if((rc_c >= 0) && (ovector[0] == 0) && (m_strict > 2)) {
 	    add = qos_extract(lpool, &path, ovector, &len, "sub");
 	    slen = len;
-	    if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
+	    if(m_strict > 3) slen = ((slen / 10) + 1) * 10;
 	    rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_GENSUB_PCRE, slen);
 	  } else {
 	    rc_c = pcre_exec(pcre_char_gensub_s, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
 	    if((rc_c >= 0) && (ovector[0] == 0)) {
 	      add = qos_extract(lpool, &path, ovector, &len, "sub'");
 	      slen = len;
-	      if(m_strict > 2) slen = ((slen / 10) + 1) * 10;
+	      if(m_strict > 3) slen = ((slen / 10) + 1) * 10;
 	      rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_GENSUB_S_PCRE, slen);
 	    } else {
 	      /* special char */
@@ -645,7 +653,7 @@ int main(int argc, const char * const argv[]) {
 	  if(apr_table_elts(rules)->nelts == 1000) {
 	    printf("NOTE, found %d rules - you may want to stop further processing ...\n",
 		   apr_table_elts(rules)->nelts);
-	    if(m_strict < 3) {
+	    if(m_strict < 4) {
 	      printf("... or increase the strict level!\n");
 	    }
 	  }
