@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.19 2007-09-27 21:11:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.20 2007-09-28 20:49:52 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -78,15 +78,19 @@ typedef enum  {
 #define QS_QUERY_PCRE         "([&]?["QS_UNRESERVED"]+(=["QS_UNRESERVED"\\$]+)?)+"
 #define QS_FUZZY_QUERY_PCRE   "([a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)(&[a-zA-Z0-9-_]+=[a-zA-Z0-9-_]+)*"
 
+#define QS_B64                "([a-z]+[a-z0-9]*[A-Z]+[A-Z0-9]*)"
+
 #define QS_OVECCOUNT 3
 
 static int m_verbose = 1;
 static int m_strict = 2;
+static int m_base64 = 0;
 
 pcre *pcre_char;
 pcre *pcre_char_gen;
 pcre *pcre_char_gensub;
 pcre *pcre_char_gensub_s;
+pcre *pcre_b64;
 
 static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
   char *ret = apr_pcalloc(pool, strlen(line) * 2);
@@ -102,6 +106,16 @@ static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
     j++;
   }
   return ret;
+}
+
+static char *qos_detect_b64(char *line) {
+  int ovector[QS_OVECCOUNT];
+  int rc_c = pcre_exec(pcre_b64, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
+  if(rc_c >= 0) {
+    if(m_verbose > 1) printf("  B64: %.*s\n", ovector[1] - ovector[0], &line[ovector[0]]);
+    return &line[ovector[0]];
+  }
+  return NULL;
 }
 
 static char *qos_extract(apr_pool_t *pool, char **line, int *ovector, int *len, const char *pn) {
@@ -190,7 +204,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s [-c <conf>] [-s 0|1|2|3] [-v 0|1|2]\n", cmd);
+  printf("Usage: %s [-c <conf>] [-s 0|1|2|3] [-b <num>] [-v 0|1|2]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
@@ -208,6 +222,10 @@ static void usage(char *cmd) {
   printf("     3=low). Default is 2 which provides a compact and performant rule\n");
   printf("     set limiting the allowed character set. Level 1 and 0 may be used\n");
   printf("     for selected locations.\n");
+  printf("  -b <num>\n");
+  printf("     Replaces url pattern by the regular expression when detecting a\n");
+  printf("     base64 encoded string. Detecting sensibility is defined by a numeric\n");
+  printf("     value (use 5 and higher).\n");
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
   printf("     Don't use rules you haven't checked the request data used to\n");
@@ -325,7 +343,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
     int substring_length = ovector[1] - ovector[0];
     rule = apr_psprintf(lpool, "%s", fuzzy_pattern);
     path = path + substring_length;
-    if(m_verbose > 1) printf(" strict %d match: %s\n", m_strict, rule);
+    if(m_verbose > 1) printf(" fuzzy %d match: %s\n", m_strict, rule);
   } else {
     rc_c = pcre_exec(pcre_base, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
     if((rc_c >= 0) && (ovector[0] == 0) && (ovector[1] - ovector[0])) {
@@ -333,9 +351,23 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
 	int substring_length = ovector[1] - ovector[0];
 	rule = apr_psprintf(lpool, "%s", base_pattern);
 	path = path + substring_length;
-	if(m_verbose > 1) printf(" strict %d match: %s\n", m_strict, rule);
+	if(m_verbose > 1) printf(" base %d match: %s\n", m_strict, rule);
       } else {
+	char *b64;
 	rule = apr_psprintf(lpool, "%s", qos_extract(lpool, &path, ovector, &len, "base"));
+	b64 = qos_detect_b64(rule);
+	if(b64 && m_base64) {
+	  /* don't use this pattern match if it contains a base64 string */
+	  printf("# NOTE, base64 detection in string %s\n", rule);
+	  b64[0] = '\0';
+	  if((strlen(rule) > 3) && strrchr(&rule[1], '/')) {
+	    char *sub = strrchr(&rule[1], '/');
+	    sub[0] = '\0';
+	    rule = apr_psprintf(lpool, "%s%s", rule, base_pattern);
+	  } else {
+	    rule = apr_psprintf(lpool, "%s", base_pattern);
+	  }
+	}
       }
     } else {
       fprintf(stderr, "ERROR, no valid path: %s\n", path);
@@ -354,7 +386,13 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
       if((m_strict > 1) || (type == QS_UT_QUERY)) {
 	rule = apr_psprintf(lpool,"%s%s", rule, base_pattern);
       } else {
-	rule = apr_psprintf(lpool,"%s%s", rule, add);
+	if(qos_detect_b64(rule) && m_base64) {
+	  /* don't use this pattern match if it contains a base64 string */
+	  printf("# NOTE, base64 detection in string: %s\n", rule);
+	  rule = apr_psprintf(lpool, "%s%s", rule, base_pattern);
+	} else {
+	  rule = apr_psprintf(lpool,"%s%s", rule, add);
+	}
       }
     } else {
       rc_c = pcre_exec(pcre_char, NULL, path, strlen(path), 0, 0, ovector, QS_OVECCOUNT);
@@ -462,6 +500,16 @@ static void qos_init_pcre() {
 	    " reason: %s\n", erroffset, errptr);
     exit(1);
   }
+  {
+    char buf[1024];
+    sprintf(buf, "%s{%d,}", QS_B64, m_base64);
+    pcre_b64 = pcre_compile(buf, PCRE_DOTALL, &errptr, &erroffset, NULL);
+    if(pcre_b64 == NULL) {
+      fprintf(stderr, "ERROR, could not compile pcre %s at position %d,"
+	      " reason: %s\n", buf, erroffset, errptr);
+      exit(1);
+    }
+  }
 }
 
 int main(int argc, const char * const argv[]) {
@@ -476,7 +524,6 @@ int main(int argc, const char * const argv[]) {
   char *cmd = strrchr(argv[0], '/');
   const char *httpdconf = NULL;
   apr_app_initialize(&argc, &argv, NULL);
-  qos_init_pcre();
   apr_pool_create(&pool, NULL);
   rules = apr_table_make(pool, 10);
   blacklist = apr_table_make(pool, 10);
@@ -502,6 +549,10 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	httpdconf = *(++argv);
       }
+    } else if(strcmp(*argv,"-b") == 0) {
+      if (--argc >= 1) {
+	m_base64 = atoi(*(++argv));
+      }
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd);
     } else if(strcmp(*argv,"-?") == 0) {
@@ -512,6 +563,7 @@ int main(int argc, const char * const argv[]) {
     argc--;
     argv++;
   }
+  qos_init_pcre();
 
   if(httpdconf) {
     qos_load_blacklist(pool, blacklist, httpdconf);
@@ -612,6 +664,7 @@ int main(int argc, const char * const argv[]) {
     printf("\n# --------------------------------------------------------\n");
     printf("# %d rules from %d access log lines\n", apr_table_elts(rules)->nelts, line_nr);
     printf("#  strict mode: %d\n", m_strict);
+    printf("#  base64 detection: %d\n", m_base64);
     printf("#  filtered lines: %d\n", deny_count);
     printf("#  duration: %d minutes\n", duration);
     printf("# --------------------------------------------------------\n");
