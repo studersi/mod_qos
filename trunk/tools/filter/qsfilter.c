@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.22 2007-09-28 21:46:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.23 2007-09-29 20:09:39 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -85,6 +85,7 @@ typedef enum  {
 static int m_verbose = 1;
 static int m_strict = 2;
 static int m_base64 = 5;
+static int m_redundant = 0;
 
 pcre *pcre_char;
 pcre *pcre_char_gen;
@@ -204,19 +205,20 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s [-c <conf>] [-s 0|1|2|3|4] [-b <num>] [-v 0|1|2]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-s 0|1|2|3|4] [-b <num>] [-o] [-v 0|1|2]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
   printf("compatible regular expressions) which may be used with mod_qos to\n");
-  printf("deny access for suspect request lines. It reads the access log data\n");
-  printf("from stdin and the rules are written to stdout. The input format must\n");
+  printf("deny access for suspect request lines. The input format must\n");
   printf("contain a single request URI (path and query) on each line.\n");
   printf("\n");
   printf("Options\n");
-  printf("  -c <conf>\n");
-  printf("     mod_qos configuration file defining QS_DenyRequestLine directives,\n");
-  printf("     These rules filter the input data\n");
+  printf("  -i <path>\n");
+  printf("     Request url (path and query) from the access log (one request per line).\n");
+  printf("  -c <path>\n");
+  printf("     mod_qos configuration file defining QS_DenyRequestLine and\n");
+  printf("     QS_PermitUri directives.\n");
   printf("  -s <level>\n");
   printf("     Defines how strict the rules should be (0=very high, 1=high, 2=high\n");
   printf("     to medium, 3=medium, 4=low).\n");
@@ -226,6 +228,11 @@ static void usage(char *cmd) {
   printf("     base64 encoded string. Detecting sensibility is defined by a numeric\n");
   printf("     value. You should use values higher than 5 (default) or 0 to disabley.\n");
   printf("     this function.\n");
+  printf("  -o\n");
+  printf("     Eliminates redundant rules (takes long time). Default is off.\n");
+  printf("     This feature is only available if the configuratin file (-c)\n");
+  printf("     does not contain any QS_PermitUri directives since this would\n");
+  printf("     eliminate these existing rules.\n");
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
   printf("     Don't use rules you haven't checked the request data used to\n");
@@ -233,7 +240,7 @@ static void usage(char *cmd) {
   printf("     want to check every line of your access log data).\n");
   printf("\n");
   printf("Example\n");
-  printf("  cat access_log | awk '{print $7}' | ./%s -s 1 -c httpd.conf\n", cmd);
+  printf("  ./%s -i log -s 1 -c httpd.conf\n", cmd);
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   printf("mod_qos, "__DATE__"\n");
@@ -254,7 +261,8 @@ static int qos_enforce_blacklist(apr_table_t *rules, const char *line) {
   return 0;
 }
 
-static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const char *httpdconf) {
+static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
+			       const char *httpdconf, const char *command) {
   FILE *f = fopen(httpdconf, "r");
   char line[MAX_LINE];
   if(f == NULL) {
@@ -263,7 +271,7 @@ static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const c
   }
   while(!qos_fgetline(line, sizeof(line), f)) {
     // QS_DenyRequestLine '+'|'-'<id> 'log'|'deny' <pcre>
-    char *p = strstr(line, "QS_DenyRequestLine");
+    char *p = strstr(line, command);
     if(p && (strchr(line, '#') == NULL)) {
       p = strchr(p, ' ');
       if(p) {
@@ -287,7 +295,7 @@ static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const c
 			" reason: %s\n", pattern, erroffset, errptr);
 		exit(1);
 	      }
-	      apr_table_addn(blacklist, pattern, (char *)pcre_test);
+	      apr_table_addn(ruletable, pattern, (char *)pcre_test);
 	    }
 	  }
 	}
@@ -295,6 +303,13 @@ static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const c
     }
   }
   fclose(f);
+}
+
+static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const char *httpdconf) {
+  qos_load_rules(pool, blacklist, httpdconf, "QS_DenyRequestLine");
+}
+static void qos_load_whitelist(apr_pool_t *pool, apr_table_t *rules, const char *httpdconf) {
+  qos_load_rules(pool, rules, httpdconf, "QS_PermitUri");
 }
 
 static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
@@ -520,64 +535,63 @@ static void qos_init_pcre() {
   }
 }
 
-int main(int argc, const char * const argv[]) {
-  time_t start = time(NULL);
-  time_t end;
-  int line_nr = 0;
-  int deny_count = 0;
-  char line[MAX_LINE];
-  apr_pool_t *pool;
-  apr_table_t *rules;
-  apr_table_t *blacklist;
-  char *cmd = strrchr(argv[0], '/');
-  const char *httpdconf = NULL;
-  apr_app_initialize(&argc, &argv, NULL);
-  apr_pool_create(&pool, NULL);
-  rules = apr_table_make(pool, 10);
-  blacklist = apr_table_make(pool, 10);
-  nice(10);
-  if(cmd == NULL) {
-    cmd = (char *)argv[0];
-  } else {
-    cmd++;
-  }
-
-  argc--;
-  argv++;
-  while(argc >= 1) {
-    if(strcmp(*argv,"-v") == 0) {
-      if (--argc >= 1) {
-	m_verbose = atoi(*(++argv));
-      } 
-    } else if(strcmp(*argv,"-s") == 0) {
-      if (--argc >= 1) {
-	m_strict = atoi(*(++argv));
-      }
-    } else if(strcmp(*argv,"-c") == 0) {
-      if (--argc >= 1) {
-	httpdconf = *(++argv);
-      }
-    } else if(strcmp(*argv,"-b") == 0) {
-      if (--argc >= 1) {
-	m_base64 = atoi(*(++argv));
-      }
-    } else if(strcmp(*argv,"-h") == 0) {
-      usage(cmd);
-    } else if(strcmp(*argv,"-?") == 0) {
-      usage(cmd);
-    } else if(strcmp(*argv,"-help") == 0) {
-      usage(cmd);
+static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_table_t *rules_url) {
+  apr_table_t *used = apr_table_make(pool, 1);
+  apr_table_t *not_used = apr_table_make(pool, 1);
+  int j;
+  if(m_verbose) printf("# search for redundant rules (%d/%d) ",
+		       apr_table_elts(rules_url)->nelts,
+		       apr_table_elts(rules)->nelts);
+  for(j = 0; j < apr_table_elts(rules)->nelts; j++) {
+    int l;
+    apr_table_entry_t *linee = (apr_table_entry_t *)apr_table_elts(rules_url)->elts;
+    if(m_verbose) {
+      printf(".");
+      fflush(stdout);
     }
-    argc--;
-    argv++;
+    for(l = 0; l < apr_table_elts(rules_url)->nelts; l++) {
+      char *line = linee[l].key;
+      int i;
+      int match = 0;
+      apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+      for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+	if(i != j) {
+	  pcre *p = (pcre *)entry[i].val;
+	  if(pcre_exec(p, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+	    match = 1;
+	    break;
+	  }
+	}
+      }
+      if(!match) {
+	/* no match, rule j is required */
+	apr_table_add(used, entry[j].key, "+");
+      }
+    }
   }
-  qos_init_pcre();
-
-  if(httpdconf) {
-    qos_load_blacklist(pool, blacklist, httpdconf);
+  if(m_verbose) printf(" done\n");
+  {
+    int i;
+    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+    for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+      if(apr_table_get(used, entry[i].key) == NULL) {
+	if(m_verbose) printf("# DEL rule (not required): %s\n", entry[i].key);
+	apr_table_add(not_used, entry[i].key, "-");
+      }
+    }
+    entry = (apr_table_entry_t *)apr_table_elts(not_used)->elts;
+    for(i = 0; i < apr_table_elts(not_used)->nelts; i++) {
+      apr_table_unset(rules, entry[i].key);
+    }
   }
+}
 
-  while(qos_getline(line, sizeof(line))) {
+static void qos_generate_rules(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
+			       apr_table_t *rules_url, FILE *f, int *dc, int *ln) {
+  int deny_count = *dc;
+  int line_nr = *ln;
+  char line[MAX_LINE];
+  while(!qos_fgetline(line, sizeof(line), f)) {
     char *query_rule;
     char *rule;
     apr_uri_t parsed_uri;
@@ -645,6 +659,7 @@ int main(int argc, const char * const argv[]) {
 	    printf("# %0.3d rule %s\n", apr_table_elts(rules)->nelts, rule);
 	    fflush(stdout);
 	  }
+	  apr_table_add(rules_url, line_test, "unescaped line");
 	  apr_table_addn(rules, apr_pstrdup(pool, rule), (char *)pcre_test);
 	  if(apr_table_elts(rules)->nelts == 500) {
 	    printf("NOTE, found %d rules - you may want to stop further processing ...\n",
@@ -662,6 +677,99 @@ int main(int argc, const char * const argv[]) {
     }
     apr_pool_destroy(lpool);
   }
+  *dc = deny_count;
+  *ln = line_nr;
+}
+
+int main(int argc, const char * const argv[]) {
+  time_t start = time(NULL);
+  time_t end;
+  int deny_count = 0;
+  int line_nr = 0;
+  const char *access_log = NULL;
+  FILE *f;
+  apr_pool_t *pool;
+  apr_table_t *rules;
+  apr_table_t *rules_url;
+  apr_table_t *blacklist;
+  int blacklist_size = 0;
+  int whitelist_size = 0;
+  char *cmd = strrchr(argv[0], '/');
+  const char *httpdconf = NULL;
+  apr_app_initialize(&argc, &argv, NULL);
+  apr_pool_create(&pool, NULL);
+  rules = apr_table_make(pool, 10);
+  rules_url = apr_table_make(pool, 10);
+  blacklist = apr_table_make(pool, 10);
+  nice(10);
+  if(cmd == NULL) {
+    cmd = (char *)argv[0];
+  } else {
+    cmd++;
+  }
+
+  argc--;
+  argv++;
+  while(argc >= 1) {
+    if(strcmp(*argv,"-v") == 0) {
+      if (--argc >= 1) {
+	m_verbose = atoi(*(++argv));
+      } 
+    } else if(strcmp(*argv,"-s") == 0) {
+      if (--argc >= 1) {
+	m_strict = atoi(*(++argv));
+      }
+    } else if(strcmp(*argv,"-c") == 0) {
+      if (--argc >= 1) {
+	httpdconf = *(++argv);
+      }
+    } else if(strcmp(*argv,"-i") == 0) {
+      if (--argc >= 1) {
+	access_log = *(++argv);
+      }
+    } else if(strcmp(*argv,"-b") == 0) {
+      if (--argc >= 1) {
+	m_base64 = atoi(*(++argv));
+      }
+    } else if(strcmp(*argv,"-o") == 0) {
+      m_redundant = 1;
+    } else if(strcmp(*argv,"-h") == 0) {
+      usage(cmd);
+    } else if(strcmp(*argv,"-?") == 0) {
+      usage(cmd);
+    } else if(strcmp(*argv,"-help") == 0) {
+      usage(cmd);
+    }
+    argc--;
+    argv++;
+  }
+  qos_init_pcre();
+
+  if(httpdconf) {
+    qos_load_blacklist(pool, blacklist, httpdconf);
+    blacklist_size = apr_table_elts(blacklist)->nelts;
+    qos_load_whitelist(pool, rules, httpdconf);
+    whitelist_size = apr_table_elts(rules)->nelts;
+  }
+  if(access_log == NULL) usage(cmd);
+  f = fopen(access_log, "r");
+  if(f == NULL) {
+    fprintf(stderr, "ERROR, could not open input file %s\n", access_log);
+    exit(1);
+  }
+  qos_generate_rules(pool, blacklist, rules, rules_url, f, &deny_count, &line_nr);
+  fclose(f);
+  if((whitelist_size == 0) && m_redundant) {
+    int x = 0;
+    int y = 0;
+    // delete useless rules
+    qos_delete_obsolete_rules(pool, rules, rules_url);
+    // ensure, we have not deleted to many!
+    if(m_verbose) printf("# check the result (again)\n");
+    f = fopen(access_log, "r");
+    qos_generate_rules(pool, blacklist, rules, rules_url, f, &x, &y);
+    fclose(f);
+  }
 
   {
     int i;
@@ -674,6 +782,10 @@ int main(int argc, const char * const argv[]) {
     printf("#  strict mode: %d\n", m_strict);
     printf("#  base64 detection: %d\n", m_base64);
     printf("#  filtered lines: %d\n", deny_count);
+    printf("#  source: %s\n", access_log);
+    printf("#  black list (loaded deny rules): %d\n", blacklist_size);
+    printf("#  white list (loaded existing rules): %d\n", whitelist_size);
+    printf("#  redundancy check: %d\n", m_redundant && (whitelist_size == 0));
     printf("#  duration: %d minutes\n", duration);
     printf("# --------------------------------------------------------\n");
     for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
