@@ -45,4 +45,11 @@ if [ ! -d logs ]; then
     mkdir logs
 fi
 
-
+if [ -f ../modsecurity/rules/modsecurity_crs_40_generic_attacks.conf ]; then
+    MSID=0
+    rm -f conf/qos_deny_filter.conf
+    for E in `grep "^SecRule " ../modsecurity/rules/modsecurity_crs_40_generic_attacks.conf | awk '{print $3}' | grep "\"$"`; do
+	echo "QS_DenyRequestLine +MS${MSID} deny $E" >> conf/qos_deny_filter.conf
+	MSID=`expr $MSID + 1`
+    done
+fi
