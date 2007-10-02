@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.19 2007-09-24 18:38:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.20 2007-10-02 13:51:33 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -226,6 +226,12 @@ if [ $? -ne 0 ]; then
     echo "FAILED MultiRequest.txt"
     exit 1
 fi
+
+# -----------------------------------------------------------------
+#cat logs/access_log | awk '{print $7}' > logs/loc.txt
+#cat logs/access1_log | awk '{print $7}' > logs/loc1.txt
+#../tools/filter/qsfilter -s 2 -i logs/loc.txt -o -v 0
+#rm -f logs/loc.txt
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null

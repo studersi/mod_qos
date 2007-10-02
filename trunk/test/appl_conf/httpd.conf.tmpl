@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.4 2007-09-05 19:10:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.5 2007-10-02 13:51:33 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            1
@@ -36,6 +36,7 @@ PidFile                 ##ROOT##/logs/apache1.pid
 CoreDumpDirectory       ##ROOT##/logs/
 
 TypesConfig             conf/mime.types
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE5##
 Listen                  127.0.0.1:##QS_PORT_BASE5##
