@@ -1,10 +1,10 @@
 #
-# $Id: QS_SrvMaxConnPerIP_10.txt,v 1.1 2007-09-20 13:40:08 pbuchbinder Exp $
+# $Id: QS_SrvMaxConnPerIP_10.txt,v 1.2 2007-10-03 18:19:36 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
-CLIENT 10 1
+CLIENT 10
 _REQ server1 $QS_PORT_BASE1
 __GET /cgi100/sleep.cgi?s=2 HTTP/1.1
 __Host: localhost
