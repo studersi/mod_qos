@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.27 2007-10-03 19:45:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.28 2007-10-03 20:27:24 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -231,10 +231,11 @@ static void usage(char *cmd) {
   printf("     Defines how strict the rules should be (0=very high, 1=high, 2=high\n");
   printf("     to medium, 3=medium, 4=low).\n");
   printf("     Default is 2 which provides a compact and performant rule set.\n");
+  printf("     Level 1 is recommended for selected locations.\n");
   printf("  -b <num>\n");
   printf("     Replaces url pattern by the regular expression when detecting a\n");
   printf("     base64 encoded string. Detecting sensibility is defined by a numeric\n");
-  printf("     value. You should use values higher than 5 (default) or 0 to disabley.\n");
+  printf("     value. You should use values higher than 5 (default) or 0 to disable\n");
   printf("     this function.\n");
   printf("  -o\n");
   printf("     Eliminates redundant rules (may take long time but is recommended).\n");
@@ -245,7 +246,7 @@ static void usage(char *cmd) {
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
   printf("     Don't use rules you haven't checked the request data used to\n");
-  printf("     generate it! Level 2 is highly recommended (as long as you don't\n");
+  printf("     generate it! Level 1 is highly recommended (as long as you don't\n");
   printf("     want to check every line of your access log data).\n");
   printf("  -x\n");
   printf("     Enable all \"experimental\" stuff.\n");
