@@ -4,6 +4,8 @@ echo "/app/test" > access_log
 echo "/other" >> access_log
 echo "/m/this?name=val" >> access_log
 echo "/app/mo^\"'re?name=value" >> access_log
+echo "/app/this/cont" >> access_log
+echo "/app/this/cont?name=value" >> access_log
 echo "/app/sp;v1.1%20?show_all" >> access_log
 echo "/app/f/main.do?show=7834639&infoWord=Yes+Go&refN=98876&code=rk1lhTLn266YBx9$$" >> access_log
 echo "/app/sp2/mo.re?name=+\$m?ore&n=b" >> access_log

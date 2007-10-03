@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.20 2007-10-02 13:51:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.21 2007-10-03 18:20:08 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -44,7 +44,7 @@ ERRORS=0
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
 echo "-- start `date` --" >>  logs/error_log
 # -----------------------------------------------------------------
-./ctl.sh start real_ip > /dev/null
+./ctl.sh start -D real_ip > /dev/null
 (echo "GET /test/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null
 
 # -----------------------------------------------------------------
@@ -228,10 +228,11 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-#cat logs/access_log | awk '{print $7}' > logs/loc.txt
-#cat logs/access1_log | awk '{print $7}' > logs/loc1.txt
-#../tools/filter/qsfilter -s 2 -i logs/loc.txt -o -v 0
-#rm -f logs/loc.txt
+cat logs/access1_log | awk '{print $7}' > logs/loc1.txt
+../tools/filter/qsfilter -s 2 -i logs/loc1.txt -o -v 0 -c appl_conf/qos_deny_filter.conf | grep QS_PermitUri > appl_conf/qos_permit_filter.conf
+rm -f logs/loc1.txt
+./ctl.sh stop > /dev/null
+./ctl.sh start -D permit_filter > /dev/null
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
