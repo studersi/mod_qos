@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.26 2007-10-03 19:39:01 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.27 2007-10-03 19:45:21 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -902,6 +902,7 @@ int main(int argc, const char * const argv[]) {
     printf("#    white list (loaded existing rules): %d\n", whitelist_size);
     printf("#    black list (loaded deny rules): %d\n", blacklist_size);
     printf("#    filtered lines: %d\n", deny_count);
+    printf("#  extra mode: %d\n", m_nq);
     printf("#  duration: %d minutes\n", duration);
     printf("# --------------------------------------------------------\n");
     for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
