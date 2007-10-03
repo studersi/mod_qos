@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.25 2007-10-03 18:18:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.26 2007-10-03 19:39:01 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -88,6 +88,7 @@ static int m_verbose = 1;
 static int m_strict = 2;
 static int m_base64 = 5;
 static int m_redundant = 0;
+static int m_nq = 0;
 
 pcre *pcre_char;
 pcre *pcre_char_gen;
@@ -246,6 +247,8 @@ static void usage(char *cmd) {
   printf("     Don't use rules you haven't checked the request data used to\n");
   printf("     generate it! Level 2 is highly recommended (as long as you don't\n");
   printf("     want to check every line of your access log data).\n");
+  printf("  -x\n");
+  printf("     Enable all \"experimental\" stuff.\n");
   printf("\n");
   printf("Example\n");
   printf("  ./%s -i loc.txt -o -s 1 -c httpd.conf\n", cmd);
@@ -662,7 +665,7 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
   if(m_verbose) printf("# search for redundant rules (%d/%d)\n",
 		       apr_table_elts(rules_url)->nelts,
 		       apr_table_elts(rules)->nelts);
-  //  qos_delete_non_query(pool, rules);
+  if(m_nq) qos_delete_non_query(pool, rules);
   if(m_verbose) printf("# ");
   pthread_create(&tid, tha, qos_worker, (void *)wt);
   used = qos_get_used(pool, rules, rules_url, 0, apr_table_elts(rules)->nelts / 2);
@@ -836,6 +839,8 @@ int main(int argc, const char * const argv[]) {
       }
     } else if(strcmp(*argv,"-o") == 0) {
       m_redundant = 1;
+    } else if(strcmp(*argv,"-x") == 0) {
+      m_nq = 1;
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd);
     } else if(strcmp(*argv,"-?") == 0) {
