@@ -1,14 +1,14 @@
 #
 # test QS_VipHeaderName directive
 #
-# $Id: QS_VipRequest.txt,v 1.1 2007-08-26 08:45:44 pbuchbinder Exp $
+# $Id: QS_VipRequest.txt,v 1.2 2007-10-03 18:19:37 pbuchbinder Exp $
 #
 
 
 INCLUDE scripts/ports
 
 # consume all connections ...
-CLIENT 5 1
+CLIENT 5
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=3 HTTP/1.1
 __Host: localhost

@@ -1,5 +1,5 @@
 #
-# $Id: QS_VipHeaderName_Graceful.txt,v 1.1 2007-08-26 10:40:57 pbuchbinder Exp $
+# $Id: QS_VipHeaderName_Graceful.txt,v 1.2 2007-10-03 18:19:37 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -39,7 +39,7 @@ _SLEEP 500
 _EXEC ./ctl.sh graceful >/dev/null
 END
 
-CLIENT 5 1
+CLIENT 5
 _SLEEP 1000
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=5 HTTP/1.1

@@ -1,13 +1,13 @@
 #
 # test QS_SrvMaxConnClose directive
 #
-# $Id: QS_SrvMaxConnClose_20.txt,v 1.1 2007-08-26 09:06:33 pbuchbinder Exp $
+# $Id: QS_SrvMaxConnClose_20.txt,v 1.2 2007-10-03 18:19:36 pbuchbinder Exp $
 #
 
 
 INCLUDE scripts/ports
 
-CLIENT 20 1
+CLIENT 20
 _REQ localhost $QS_PORT_BASE
 __GET /cgi100/sleep.cgi?s=4 HTTP/1.1
 __Host: localhost
@@ -19,7 +19,7 @@ _WAIT
 
 END
 
-CLIENT 1 1
+CLIENT 1
 _SLEEP 1000
 _REQ localhost $QS_PORT_BASE
 __GET /cgi100/sleep.cgi HTTP/1.1

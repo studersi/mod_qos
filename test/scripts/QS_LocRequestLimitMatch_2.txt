@@ -1,13 +1,13 @@
 #
 # test QS_LocRequestLimitMatch directive
 #
-# $Id: QS_LocRequestLimitMatch_2.txt,v 1.1 2007-08-26 08:02:51 pbuchbinder Exp $
+# $Id: QS_LocRequestLimitMatch_2.txt,v 1.2 2007-10-03 18:19:36 pbuchbinder Exp $
 #
 
 
 INCLUDE scripts/ports
 
-CLIENT 2 1
+CLIENT 2
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/image.gif HTTP/1.1
 __Host: localhost
@@ -17,7 +17,7 @@ _WAIT
 
 END
 
-CLIENT 1 1
+CLIENT 1
 _SLEEP 2000
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/image.gif HTTP/1.1

@@ -1,10 +1,11 @@
 #
-# $Id: QS_LocRequestPerSecLimit.txt,v 1.1 2007-09-08 20:03:50 pbuchbinder Exp $
+# $Id: QS_LocRequestPerSecLimit.txt,v 1.2 2007-10-03 18:19:36 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
-CLIENT 100 1000
+CLIENT 100
+_LOOP 1000
 _REQ server1 $QS_PORT_BASE1
 __GET /aaa/index.html HTTP/1.1
 __Host: localhost
@@ -49,5 +50,5 @@ __
 _WAIT
 _CLOSE
 _SLEEP 100
-
+_END LOOP
 END

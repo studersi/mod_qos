@@ -1,10 +1,11 @@
 #
-# $Id: QS_Graceful2.txt,v 1.1 2007-09-11 08:38:55 pbuchbinder Exp $
+# $Id: QS_Graceful2.txt,v 1.2 2007-10-03 18:19:35 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
-CLIENT  30 15
+CLIENT  30
+_LOOP 15
 _REQ server1 $QS_PORT_BASE1
 __GET /cgi/slow.cgi HTTP/1.1
 __Host: server1
@@ -15,6 +16,7 @@ _EXPECT . "200 OK"
 _EXPECT . "long line"
 _WAIT
 _CLOSE
+_END LOOP
 END
 
 CLIENT
