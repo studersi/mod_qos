@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrule.c,v 1.1 2007-10-04 06:28:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrule.c,v 1.2 2007-10-04 19:45:53 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -302,24 +302,45 @@ int qos_test_for_matching_rule(char *line, apr_table_t *rules) {
   return 0;
 }
 
-/* $$$ */
 static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   int hasA = 0;
   int hasD = 0;
+  int hasE = 0;
   int i = 0;
   char *ret = apr_pcalloc(pool, sizeof(line) * 2);
   int reti = 0;
   while(line[i]) {
     int ch = line[i];
-    if(isdigit(ch) && !hasD) {
-      hasD = 1;
-      strcpy(&ret[reti], "0-9");
-      reti = reti + 3;
+    if(isdigit(ch)) {
+      if(!hasD) {
+	hasD = 1;
+	strcpy(&ret[reti], "0-9");
+	reti = reti + 3;
+      }
+    } else if(isalpha(ch)) {
+      if(!hasA) {
+	hasA = 1;
+	strcpy(&ret[reti], "a-zA-Z");
+	reti = reti + 6;
+      }
+    } else if(ch == '\\') {
+      if(!hasE) {
+	hasE = 1;
+	strcpy(&ret[reti], "\\\\");
+	reti = reti + 2;
+      }
+    } else if(strchr(ret, ch) == NULL) {
+      if(strchr("{}[]()^$.|*+?\"'\\", line[i]) != NULL) {
+	ret[reti] = '\\';
+	reti++;
+      }
+      ret[reti] = ch;
+      reti++;
     }
     i++;
   }
-
-  return qos_escape_pcre(pool, ret);
+  if(strlen(ret) == 0) return NULL;
+  return ret;
 }
 
 
@@ -381,6 +402,7 @@ int main(int argc, const char * const argv[]) {
     qos_load_whitelist(pool, rules, httpdconf);
     whitelist_size = apr_table_elts(rules)->nelts;
   }
+  /*
   if(access_log == NULL) usage(cmd);
   f = fopen(access_log, "r");
   if(f == NULL) {
@@ -388,13 +410,14 @@ int main(int argc, const char * const argv[]) {
     exit(1);
   }
   fclose(f);
-
+  */
   /* $$$ */
   {
     char line[MAX_LINE];
     while(qos_getline(line, sizeof(line))) {
       char *pattern = qos_2pcre(pool, line);
-      printf("%s\n", pattern == NULL ? "-" : pattern);
+      printf("I: %s\n", line);
+      printf("R: %s\n", pattern == NULL ? "-" : pattern);
     }
   }
 
