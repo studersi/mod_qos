@@ -8,7 +8,7 @@ DISTCLEAN_TARGETS = apxs apachectl dbmmanage log_server_status \
 
 CLEAN_TARGETS = suexec
 
-PROGRAMS = qsfilter
+PROGRAMS = qsfilter qsrule
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -39,5 +39,10 @@ qsfilter_OBJECTS = qsfilter.lo
 qsfilter_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 qsfilter: $(qsfilter_OBJECTS)
 	$(LINK) $(qsfilter_LTFLAGS) $(qsfilter_OBJECTS) $(qsfilter_LDADD)
+
+qsrule_OBJECTS = qsrule.lo
+qsrule_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+qsrule: $(qsrule_OBJECTS)
+	$(LINK) $(qsrule_LTFLAGS) $(qsrule_OBJECTS) $(qsrule_LDADD)
 
 
