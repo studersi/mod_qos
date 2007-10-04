@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrule.c,v 1.2 2007-10-04 19:45:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrule.c,v 1.3 2007-10-04 20:46:04 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -66,6 +66,8 @@ typedef enum  {
 #define QS_GEN                ":/\\?#\\[\\]@"
 #define QS_SUB                "!$&'\\(\\)\\*\\+,;="
 #define QS_SUB_S              "!$&\\(\\)\\*\\+,;="
+
+#define QS_STRICT_PATH_PCRE   "(/[a-zA-Z0-9-_]+)+[/]?"
 
 #define QS_OVECCOUNT 3
 
@@ -307,7 +309,7 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   int hasD = 0;
   int hasE = 0;
   int i = 0;
-  char *ret = apr_pcalloc(pool, sizeof(line) * 2);
+  char *ret = apr_pcalloc(pool, strlen(line) * 2);
   int reti = 0;
   while(line[i]) {
     int ch = line[i];
@@ -330,7 +332,7 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
 	reti = reti + 2;
       }
     } else if(strchr(ret, ch) == NULL) {
-      if(strchr("{}[]()^$.|*+?\"'\\", line[i]) != NULL) {
+      if(strchr("{}[]()^$.|*+?\"'", ch) != NULL) {
 	ret[reti] = '\\';
 	reti++;
       }
@@ -340,14 +342,39 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
     i++;
   }
   if(strlen(ret) == 0) return NULL;
+  ret[reti] = '\0';
   return ret;
 }
 
+static char *qos_path_only(apr_pool_t *lpool, const char *path) {
+  char *dec = apr_pstrdup(lpool, path);
+  qos_unescaping(dec);
+  return apr_pstrcat(lpool, "[", qos_2pcre(lpool, dec), "]+", NULL);
+}
+
+// <regex>/<exact>
+static char *qos_path(apr_pool_t *lpool, const char *path) {
+  char *first = strchr(path, '/');
+  char *last = strrchr(path, '/');
+  char *rx = "";
+  char *dec;
+  if(first != last) {
+    dec = apr_psprintf(lpool, "%.*s", last - first, first);
+    qos_unescaping(dec);
+    rx = apr_pstrcat(lpool, "[", qos_2pcre(lpool, dec), "]+", NULL);
+  }
+  dec = apr_pstrdup(lpool, last);
+  qos_unescaping(dec);
+  rx = apr_pstrcat(lpool, rx, dec, NULL);
+  return rx;
+}
 
 int main(int argc, const char * const argv[]) {
   apr_table_entry_t *entry;
   time_t start = time(NULL);
   time_t end;
+  char line[MAX_LINE];
+  int line_nr = 0;
   char *time_string;
   int i;
   const char *access_log = NULL;
@@ -402,25 +429,49 @@ int main(int argc, const char * const argv[]) {
     qos_load_whitelist(pool, rules, httpdconf);
     whitelist_size = apr_table_elts(rules)->nelts;
   }
-  /*
+
   if(access_log == NULL) usage(cmd);
   f = fopen(access_log, "r");
   if(f == NULL) {
     fprintf(stderr, "ERROR, could not open input file %s\n", access_log);
     exit(1);
   }
+  
+  while(!qos_fgetline(line, sizeof(line), f)) {
+    apr_uri_t parsed_uri;
+    apr_pool_t *lpool;
+    apr_pool_create(&lpool, NULL);
+    line_nr++;
+    if(apr_uri_parse(pool, line, &parsed_uri) != APR_SUCCESS) {
+      fprintf(stderr, "ERROR, could parse uri %s\n", line);
+      exit(1);
+    }
+    if(parsed_uri.path == NULL || (parsed_uri.path[0] != '/')) {
+      fprintf(stderr, "WARNING, line %d: invalid request %s\n", line_nr, line);
+    } else {
+      char *path = NULL;
+      char *query = NULL;
+      if(m_verbose > 1) printf("ANALYSE: %s\n", line);
+      if(parsed_uri.query) {
+	path = qos_path(lpool, parsed_uri.path);
+      } else {
+	path = qos_path_only(lpool, parsed_uri.path);
+      }
+      if(m_verbose > 1) printf(" path rule: %s\n", path);
+    }
+  }
+
   fclose(f);
-  */
-  /* $$$ */
+
+  /*
   {
-    char line[MAX_LINE];
     while(qos_getline(line, sizeof(line))) {
       char *pattern = qos_2pcre(pool, line);
       printf("I: %s\n", line);
       printf("R: %s\n", pattern == NULL ? "-" : pattern);
     }
   }
-
+  */
 
   end = time(NULL);
   time_string = ctime(&end);
