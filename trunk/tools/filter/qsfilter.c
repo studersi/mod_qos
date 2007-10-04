@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.28 2007-10-03 20:27:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.29 2007-10-04 06:28:56 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -895,15 +895,15 @@ int main(int argc, const char * const argv[]) {
     printf("\n# --------------------------------------------------------\n");
     printf("# %s\n", time_string);
     printf("# %d rules from %d access log lines\n", apr_table_elts(rules)->nelts, line_nr);
+    printf("#  source: %s\n", access_log);
     printf("#  strict mode: %d\n", m_strict);
     printf("#  base64 detection: %d\n", m_base64);
     printf("#  redundancy check: %s\n", (m_redundant && (whitelist_size == 0)) == 1 ? "on" : "off");
-    printf("#  source: %s\n", access_log);
+    printf("#  extra mode: %d\n", m_nq);
     printf("#  rule file: %s\n", httpdconf == NULL ? "-" : httpdconf);
     printf("#    white list (loaded existing rules): %d\n", whitelist_size);
     printf("#    black list (loaded deny rules): %d\n", blacklist_size);
     printf("#    filtered lines: %d\n", deny_count);
-    printf("#  extra mode: %d\n", m_nq);
     printf("#  duration: %d minutes\n", duration);
     printf("# --------------------------------------------------------\n");
     for(i = 0; i < apr_table_elts(rules)->nelts; i++) {

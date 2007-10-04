@@ -328,7 +328,8 @@ Sample configuration:<br>
 <pre>
 QS_ErrorPage    /error-docs/qs_error.html
 &lt;Location /&gt;
-   QS_DenyPath  +admin  deny  ^/application/admin.jsp$
+   QS_DenyPath        +admin     deny "^/application/admin.jsp$"
+   QS_DenyRequestLine +printable deny ".*[\x00-\x19].*"
 &lt;/Location&gt;
 </pre>
 </td></tr>
