@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.29 2007-10-04 06:28:56 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.30 2007-10-05 21:02:06 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -101,18 +101,24 @@ typedef struct {
   pcre_extra *extra;
 } qs_rule_t;
 
-static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
-  char *ret = apr_pcalloc(pool, strlen(line) * 2);
+static char *qos_escape_pcre(apr_pool_t *pool, unsigned char *line) {
   int i = 0;
-  int j = 0;
+  char *ret = apr_pcalloc(pool, strlen(line) * 4);
+  int reti = 0;
   while(line[i]) {
-    if(strchr("{}[]()^$.|*+?\"'\\", line[i]) != NULL) {
-      ret[j] = '\\';
-      j++;
+    if(strchr("{}[]()^$.|*+?\"'", line[i]) != NULL) {
+      ret[reti] = '\\';
+      reti++;
+      ret[reti] = line[i];
+      reti++;
+    } else if((line[i] < ' ') || (line[i]  > '~')) {
+      sprintf(&ret[reti], "\\x%02x", line[i]);
+      reti = reti + 4;
+    } else {
+      ret[reti] = line[i];
+      reti++;
     }
-    ret[j] = line[i];
     i++;
-    j++;
   }
   return ret;
 }
