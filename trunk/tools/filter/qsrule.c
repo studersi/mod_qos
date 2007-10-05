@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrule.c,v 1.3 2007-10-04 20:46:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrule.c,v 1.4 2007-10-05 20:52:18 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -304,40 +304,67 @@ int qos_test_for_matching_rule(char *line, apr_table_t *rules) {
   return 0;
 }
 
-static char *qos_2pcre(apr_pool_t *pool, const char *line) {
+static char *qos_string2pcrehex(apr_pool_t *pool, const unsigned char *line) {
+  int i = 0;
+  char *ret = apr_pcalloc(pool, strlen(line) * 4);
+  int reti = 0;
+  while(line[i]) {
+    if(strchr("{}[]()^$.|*+?\"'", line[i]) != NULL) {
+      ret[reti] = '\\';
+      reti++;
+      ret[reti] = line[i];
+      reti++;
+    } else if((line[i] < ' ') || (line[i]  > '~')) {
+      sprintf(&ret[reti], "\\x%02x", line[i]);
+      reti = reti + 4;
+    } else {
+      ret[reti] = line[i];
+      reti++;
+    }
+    i++;
+  }
+  return ret;
+}
+
+static char *qos_2pcre(apr_pool_t *pool, const unsigned char *line) {
   int hasA = 0;
   int hasD = 0;
   int hasE = 0;
   int i = 0;
-  char *ret = apr_pcalloc(pool, strlen(line) * 2);
+  char *ret = apr_pcalloc(pool, strlen(line) * 6);
   int reti = 0;
   while(line[i]) {
-    int ch = line[i];
-    if(isdigit(ch)) {
+    if(isdigit(line[i])) {
       if(!hasD) {
 	hasD = 1;
 	strcpy(&ret[reti], "0-9");
 	reti = reti + 3;
       }
-    } else if(isalpha(ch)) {
+    } else if(isalpha(line[i])) {
       if(!hasA) {
 	hasA = 1;
 	strcpy(&ret[reti], "a-zA-Z");
 	reti = reti + 6;
       }
-    } else if(ch == '\\') {
+    } else if(line[i] == '\\') {
       if(!hasE) {
 	hasE = 1;
 	strcpy(&ret[reti], "\\\\");
 	reti = reti + 2;
       }
-    } else if(strchr(ret, ch) == NULL) {
-      if(strchr("{}[]()^$.|*+?\"'", ch) != NULL) {
+    } else if(strchr(ret, line[i]) == NULL) {
+      if(strchr("{}[]()^$.|*+?\"'", line[i]) != NULL) {
 	ret[reti] = '\\';
 	reti++;
+	ret[reti] = line[i];
+	reti++;
+      } else if((line[i] < ' ') || (line[i]  > '~')) {
+	sprintf(&ret[reti], "\\x%02x", line[i]);
+	reti = reti + 4;
+      } else {
+	ret[reti] = line[i];
+	reti++;
       }
-      ret[reti] = ch;
-      reti++;
     }
     i++;
   }
@@ -346,14 +373,15 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   return ret;
 }
 
-static char *qos_path_only(apr_pool_t *lpool, const char *path) {
+// <pcre>
+static char *qos_path_pcre(apr_pool_t *lpool, const char *path) {
   char *dec = apr_pstrdup(lpool, path);
   qos_unescaping(dec);
   return apr_pstrcat(lpool, "[", qos_2pcre(lpool, dec), "]+", NULL);
 }
 
-// <regex>/<exact>
-static char *qos_path(apr_pool_t *lpool, const char *path) {
+// <pcre>/<string>
+static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
   char *first = strchr(path, '/');
   char *last = strrchr(path, '/');
   char *rx = "";
@@ -365,7 +393,7 @@ static char *qos_path(apr_pool_t *lpool, const char *path) {
   }
   dec = apr_pstrdup(lpool, last);
   qos_unescaping(dec);
-  rx = apr_pstrcat(lpool, rx, dec, NULL);
+  rx = apr_pstrcat(lpool, rx, qos_string2pcrehex(lpool, dec), NULL);
   return rx;
 }
 
@@ -453,9 +481,9 @@ int main(int argc, const char * const argv[]) {
       char *query = NULL;
       if(m_verbose > 1) printf("ANALYSE: %s\n", line);
       if(parsed_uri.query) {
-	path = qos_path(lpool, parsed_uri.path);
+	path = qos_path_pcre_string(lpool, parsed_uri.path);
       } else {
-	path = qos_path_only(lpool, parsed_uri.path);
+	path = qos_path_pcre(lpool, parsed_uri.path);
       }
       if(m_verbose > 1) printf(" path rule: %s\n", path);
     }
