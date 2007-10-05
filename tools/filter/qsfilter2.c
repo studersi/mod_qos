@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.1 2007-10-05 21:02:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.2 2007-10-05 21:20:12 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -90,21 +90,22 @@ static pcre *qos_pcre_compile(char *pattern) {
   return pcre;
 }
 
-static char *qos_escape_pcre(apr_pool_t *pool, unsigned char *line) {
+static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
   int i = 0;
+  unsigned char *in = (unsigned char *)line;
   char *ret = apr_pcalloc(pool, strlen(line) * 4);
   int reti = 0;
-  while(line[i]) {
-    if(strchr("{}[]()^$.|*+?\"'", line[i]) != NULL) {
+  while(in[i]) {
+    if(strchr("{}[]()^$.|*+?\"'", in[i]) != NULL) {
       ret[reti] = '\\';
       reti++;
-      ret[reti] = line[i];
+      ret[reti] = in[i];
       reti++;
-    } else if((line[i] < ' ') || (line[i]  > '~')) {
-      sprintf(&ret[reti], "\\x%02x", line[i]);
+    } else if((in[i] < ' ') || (in[i]  > '~')) {
+      sprintf(&ret[reti], "\\x%02x", in[i]);
       reti = reti + 4;
     } else {
-      ret[reti] = line[i];
+      ret[reti] = in[i];
       reti++;
     }
     i++;
@@ -310,43 +311,44 @@ int qos_test_for_matching_rule(char *line, apr_table_t *rules) {
   return 0;
 }
 
-static char *qos_2pcre(apr_pool_t *pool, const unsigned char *line) {
+static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   int hasA = 0;
   int hasD = 0;
   int hasE = 0;
   int i = 0;
+  unsigned char *in = (unsigned char *)line;
   char *ret = apr_pcalloc(pool, strlen(line) * 6);
   int reti = 0;
-  while(line[i]) {
-    if(isdigit(line[i])) {
+  while(in[i]) {
+    if(isdigit(in[i])) {
       if(!hasD) {
 	hasD = 1;
 	strcpy(&ret[reti], "0-9");
 	reti = reti + 3;
       }
-    } else if(isalpha(line[i])) {
+    } else if(isalpha(in[i])) {
       if(!hasA) {
 	hasA = 1;
 	strcpy(&ret[reti], "a-zA-Z");
 	reti = reti + 6;
       }
-    } else if(line[i] == '\\') {
+    } else if(in[i] == '\\') {
       if(!hasE) {
 	hasE = 1;
 	strcpy(&ret[reti], "\\\\");
 	reti = reti + 2;
       }
-    } else if(strchr(ret, line[i]) == NULL) {
-      if(strchr("{}[]()^$.|*+?\"'", line[i]) != NULL) {
+    } else if(strchr(ret, in[i]) == NULL) {
+      if(strchr("{}[]()^$.|*+?\"'", in[i]) != NULL) {
 	ret[reti] = '\\';
 	reti++;
-	ret[reti] = line[i];
+	ret[reti] = in[i];
 	reti++;
-      } else if((line[i] < ' ') || (line[i]  > '~')) {
-	sprintf(&ret[reti], "\\x%02x", line[i]);
+      } else if((in[i] < ' ') || (in[i]  > '~')) {
+	sprintf(&ret[reti], "\\x%02x", in[i]);
 	reti = reti + 4;
       } else {
-	ret[reti] = line[i];
+	ret[reti] = in[i];
 	reti++;
       }
     }
