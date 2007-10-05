@@ -12,6 +12,6 @@ echo "/app/sp2ä/mo.reö?name=+\$m?ore&n=b" >> access_log
 echo "/app/test/__JDbhLdSs4dpOhE1LmbspyhEshuV.Ss__/b;XXX=Abc!-22!-33!44!55" >> access_log
 echo "/app/test/__JDbhLdSs4qpOhE1LmbspOhELmbhuV.Ss__/b;XXX=Abc!-22!-33!44!55888888" >> access_log
 
-./qsrule -i access_log $@
+./qsfilter2 -i access_log $@
 
 rm access_log
