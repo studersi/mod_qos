@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.2 2007-10-05 21:20:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.3 2007-10-15 19:04:33 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -68,10 +68,15 @@ typedef enum  {
 #define QS_SUB_S              "!$&\\(\\)\\*\\+,;="
 
 #define QS_STRICT_PATH_PCRE   "(/[a-zA-Z0-9-_]+)+[/]?"
+#define QS_B64                "([a-z]+[a-z0-9]*[A-Z]+[A-Z0-9]*)"
 
 #define QS_OVECCOUNT 3
 
+pcre *pcre_b64;
+
+static int m_base64 = 5;
 static int m_verbose = 1;
+static int m_path_depth = 1;
 
 typedef struct {
   pcre *pcre;
@@ -178,6 +183,19 @@ static int qos_fgetline(char *s, int n, FILE *f) {
   }
 }
 
+static void qos_init_pcre() {
+  const char *errptr = NULL;
+  int erroffset;
+  char buf[1024];
+  sprintf(buf, "%s{%d,}", QS_B64, m_base64);
+  pcre_b64 = pcre_compile(buf, PCRE_DOTALL, &errptr, &erroffset, NULL);
+  if(pcre_b64 == NULL) {
+    fprintf(stderr, "ERROR, could not compile pcre %s at position %d,"
+	    " reason: %s\n", buf, erroffset, errptr);
+    exit(1);
+  }
+}
+
 static int qos_getline(char *s, int n) {
   int i = 0;
   while (1) {
@@ -199,7 +217,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
@@ -213,6 +231,8 @@ static void usage(char *cmd) {
   printf("  -c <path>\n");
   printf("     mod_qos configuration file defining QS_DenyRequestLine and\n");
   printf("     QS_PermitUri directives.\n");
+  printf("  -d <num>\n");
+  printf("     Depth of the path string. Default is 1.\n");
   printf("\n");
   printf("Example\n");
   printf("  ./%s -i loc.txt -c httpd.conf\n", cmd);
@@ -359,27 +379,45 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   return ret;
 }
 
-// <pcre>
+// path to <pcre>
 static char *qos_path_pcre(apr_pool_t *lpool, const char *path) {
   char *dec = apr_pstrdup(lpool, path);
   qos_unescaping(dec);
   return apr_pstrcat(lpool, "[", qos_2pcre(lpool, dec), "]+", NULL);
 }
 
-// <pcre>/<string>
+// path to <pcre>/<string>
 static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
-  char *first = strchr(path, '/');
-  char *last = strrchr(path, '/');
+  int nohandler = 0;
+  char *lpath = apr_pstrdup(lpool, path);
+  char *last;
+  char *str = "";
+  int depth = m_path_depth;
   char *rx = "";
-  char *dec;
-  if(first != last) {
-    dec = apr_psprintf(lpool, "%.*s", last - first, first);
-    qos_unescaping(dec);
-    rx = apr_pstrcat(lpool, "[", qos_2pcre(lpool, dec), "]+", NULL);
+  if(lpath[strlen(lpath)-1] == '/') {
+    lpath[strlen(lpath)-1] = '\0';
+    nohandler = 1;
   }
-  dec = apr_pstrdup(lpool, last);
-  qos_unescaping(dec);
-  rx = apr_pstrcat(lpool, rx, qos_escape_pcre(lpool, dec), NULL);
+  last = strrchr(lpath, '/');
+  // /aber/hallo/du
+  while(last && depth) {
+    str = apr_pstrcat(lpool, last, str, NULL);
+    last[0] = '\0';
+    last = strrchr(lpath, '/');
+    depth--;
+  }
+  if(lpath[0]) {
+    qos_unescaping(lpath);
+    rx = apr_pstrcat(lpool, "[", qos_2pcre(lpool, lpath), "]+", NULL);
+  }
+  if(strlen(str) > 0) {
+    qos_unescaping(str);
+    if(nohandler) {
+      rx = apr_pstrcat(lpool, rx, qos_escape_pcre(lpool, str), "[/]?", NULL);
+    } else {
+      rx = apr_pstrcat(lpool, rx, qos_escape_pcre(lpool, str), NULL);
+    }
+  }
   return rx;
 }
 
@@ -426,6 +464,10 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	access_log = *(++argv);
       }
+    } else if(strcmp(*argv,"-d") == 0) {
+      if (--argc >= 1) {
+	m_path_depth = atoi(*(++argv));
+      }
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd);
     } else if(strcmp(*argv,"-?") == 0) {
@@ -436,6 +478,7 @@ int main(int argc, const char * const argv[]) {
     argc--;
     argv++;
   }
+  qos_init_pcre();
 
   if(httpdconf) {
     qos_load_blacklist(pool, blacklist, httpdconf);
@@ -477,22 +520,13 @@ int main(int argc, const char * const argv[]) {
 
   fclose(f);
 
-  /*
-  {
-    while(qos_getline(line, sizeof(line))) {
-      char *pattern = qos_2pcre(pool, line);
-      printf("I: %s\n", line);
-      printf("R: %s\n", pattern == NULL ? "-" : pattern);
-    }
-  }
-  */
-
   end = time(NULL);
   time_string = ctime(&end);
   time_string[strlen(time_string) - 1] = '\0';
   printf("\n# --------------------------------------------------------\n");
   printf("# %s\n", time_string);
   printf("#  source: %s\n", access_log);
+  printf("#  path depth: %d\n", m_path_depth);
   printf("#  rule file: %s\n", httpdconf == NULL ? "-" : httpdconf);
   printf("#    white list (loaded existing rules): %d\n", whitelist_size);
   printf("#    black list (loaded deny rules): %d\n", blacklist_size);

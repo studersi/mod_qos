@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.21 2007-10-03 18:20:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.22 2007-10-15 19:04:30 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -217,7 +217,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_LocRequestPerSecLimitMatch_t.txt"
     exit 1
 fi
-
+sleep 1
 # -----------------------------------------------------------------
 echo "-- multiple requests in parallel, MultiRequest.txt" >>  logs/error_log
 ./htt.sh -s ./scripts/MultiRequest.txt
@@ -233,6 +233,13 @@ cat logs/access1_log | awk '{print $7}' > logs/loc1.txt
 rm -f logs/loc1.txt
 ./ctl.sh stop > /dev/null
 ./ctl.sh start -D permit_filter > /dev/null
+echo "-- permit filter QS_PermitUri.txt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_PermitUri.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_PermitUri.txt"
+    exit 1
+fi
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
