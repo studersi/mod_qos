@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.4 2007-10-15 19:53:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.5 2007-10-15 20:57:15 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -96,11 +96,11 @@ static pcre *qos_pcre_compile(char *pattern) {
   return pcre;
 }
 
-static char *qos_detect_b64(char *line) {
+static char *qos_detect_b64(char *line, int silent) {
   int ovector[QS_OVECCOUNT];
   int rc_c = pcre_exec(pcre_b64, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
   if(rc_c >= 0) {
-    if(m_verbose > 1) printf("  B64: %.*s\n", ovector[1] - ovector[0], &line[ovector[0]]);
+    if((m_verbose > 1) && !silent) printf("  B64: %.*s\n", ovector[1] - ovector[0], &line[ovector[0]]);
     return &line[ovector[0]];
   }
   return NULL;
@@ -405,6 +405,60 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   return ret;
 }
 
+static char *qos_b64_2pcre(apr_pool_t *pool, const char *line) {
+  char *copy = apr_pstrdup(pool, line);
+  char *b64 = qos_detect_b64(copy, 1);
+  char *st = b64;
+  char *ed = &b64[1];
+  /* $$$ other: '$', '+', '/' resp. '$', '-', '_' */
+  while(st[0] && (isdigit(st[0]) || isalpha(st[0] || st[0] == '$'))) {
+    st--;
+  }
+  st++;
+  st[0] = '\0';
+  while(ed[0] && (isdigit(ed[0]) || isalpha(ed[0]))) {
+    ed++;
+  }
+  return apr_pstrcat(pool, copy, "[a-zA-Z0-9]+", ed, NULL);
+}
+
+
+// query to <string>=<pcre>
+static char *qos_query_string_pcre(apr_pool_t *lpool, const char *path) {
+  char *copy = apr_pstrdup(lpool, path);
+  char *pos = copy;
+  char *ret = "";
+  int isValue = 0;
+  while(copy[0]) {
+    if(copy[0] == '=') {
+      copy[0] = '\0';
+      qos_unescaping(pos);
+      ret = apr_pstrcat(lpool, ret, qos_escape_pcre(lpool, pos), "=", NULL);
+      pos = copy;
+      pos++;
+      isValue = 1;
+    }
+    if(copy[0] == '&') {
+      copy[0] = '\0';
+      qos_unescaping(pos);
+      ret = apr_pstrcat(lpool, ret, "[", qos_2pcre(lpool, pos), "]+&", NULL);
+      pos = copy;
+      pos++;
+      isValue = 0;
+    }
+    copy++;
+  }
+  if(pos != copy) {
+    qos_unescaping(pos);
+    if(isValue) {
+      ret = apr_pstrcat(lpool, ret, "[", qos_2pcre(lpool, pos), "]+", NULL);
+    } else {
+      ret = apr_pstrcat(lpool, ret, pos, NULL);
+    }
+  }
+  return ret;
+}
+
 // path to <pcre>
 static char *qos_path_pcre(apr_pool_t *lpool, const char *path) {
   char *dec = apr_pstrdup(lpool, path);
@@ -426,9 +480,8 @@ static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
   }
   last = strrchr(lpath, '/');
   while(last && depth) {
-    if(m_base64 && qos_detect_b64(last)) {
-      // $$$
-      str = apr_pstrcat(lpool, last, str, NULL);
+    if(m_base64 && qos_detect_b64(last, 0)) {
+      str = apr_pstrcat(lpool, qos_b64_2pcre(lpool, last), str, NULL);
     } else {
       str = apr_pstrcat(lpool, last, str, NULL);
     }
@@ -480,6 +533,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	  if(m_verbose > 1) printf("ANALYSE: %s\n", line);
 	  if(parsed_uri.query) {
 	    path = qos_path_pcre_string(lpool, parsed_uri.path);
+	    query = qos_query_string_pcre(lpool, parsed_uri.query);
 	  } else {
 	    if(pcre_exec(pcre_simple_path, NULL, parsed_uri.path, strlen(parsed_uri.path), 0, 0, NULL, 0) >= 0) {
 	      path = apr_pstrdup(lpool, QS_SIMPLE_PATH_PCRE);

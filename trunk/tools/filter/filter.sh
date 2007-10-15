@@ -2,7 +2,7 @@
 
 echo "/app/test" > access_log
 echo "/other" >> access_log
-echo "/m/this?name=val" >> access_log
+echo "/m/this?name=val&more" >> access_log
 echo "/app/mo^\"'re?name=value" >> access_log
 echo "/app/this/cont" >> access_log
 echo "/app/this/cont?name=value" >> access_log
