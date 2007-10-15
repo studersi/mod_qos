@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.3 2007-10-15 19:04:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.4 2007-10-15 19:53:18 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -67,12 +67,13 @@ typedef enum  {
 #define QS_SUB                "!$&'\\(\\)\\*\\+,;="
 #define QS_SUB_S              "!$&\\(\\)\\*\\+,;="
 
-#define QS_STRICT_PATH_PCRE   "(/[a-zA-Z0-9-_]+)+[/]?"
+#define QS_SIMPLE_PATH_PCRE   "(/[a-zA-Z0-9-_]+)+[/]?\\.?[a-zA-Z]{0,4}"
 #define QS_B64                "([a-z]+[a-z0-9]*[A-Z]+[A-Z0-9]*)"
 
 #define QS_OVECCOUNT 3
 
 pcre *pcre_b64;
+pcre *pcre_simple_path;
 
 static int m_base64 = 5;
 static int m_verbose = 1;
@@ -93,6 +94,16 @@ static pcre *qos_pcre_compile(char *pattern) {
     exit(1);
   }
   return pcre;
+}
+
+static char *qos_detect_b64(char *line) {
+  int ovector[QS_OVECCOUNT];
+  int rc_c = pcre_exec(pcre_b64, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
+  if(rc_c >= 0) {
+    if(m_verbose > 1) printf("  B64: %.*s\n", ovector[1] - ovector[0], &line[ovector[0]]);
+    return &line[ovector[0]];
+  }
+  return NULL;
 }
 
 static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
@@ -188,12 +199,8 @@ static void qos_init_pcre() {
   int erroffset;
   char buf[1024];
   sprintf(buf, "%s{%d,}", QS_B64, m_base64);
-  pcre_b64 = pcre_compile(buf, PCRE_DOTALL, &errptr, &erroffset, NULL);
-  if(pcre_b64 == NULL) {
-    fprintf(stderr, "ERROR, could not compile pcre %s at position %d,"
-	    " reason: %s\n", buf, erroffset, errptr);
-    exit(1);
-  }
+  pcre_b64 = qos_pcre_compile(buf);
+  pcre_simple_path = qos_pcre_compile("^"QS_SIMPLE_PATH_PCRE"$");
 }
 
 static int qos_getline(char *s, int n) {
@@ -217,7 +224,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
@@ -233,6 +240,11 @@ static void usage(char *cmd) {
   printf("     QS_PermitUri directives.\n");
   printf("  -d <num>\n");
   printf("     Depth of the path string. Default is 1.\n");
+  printf("  -b <num>\n");
+  printf("     Replaces url pattern by the regular expression when detecting a\n");
+  printf("     base64 encoded string. Detecting sensibility is defined by a numeric\n");
+  printf("     value. You should use values higher than 5 (default) or 0 to disable\n");
+  printf("     this function.\n");
   printf("\n");
   printf("Example\n");
   printf("  ./%s -i loc.txt -c httpd.conf\n", cmd);
@@ -240,6 +252,20 @@ static void usage(char *cmd) {
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   printf("mod_qos, "__DATE__"\n");
   exit(1);
+}
+
+int qos_test_for_existing_rule(char *line, apr_table_t *rules) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+  if((line == 0) || (strlen(line) == 0)) return 0;
+  for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+    qs_rule_t *rs = (qs_rule_t *)entry[i].val;
+    if(pcre_exec(rs->pcre, rs->extra, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+      if(m_verbose > 1)	printf(" exsiting rule %s\n", entry[i].key);
+      return 1;
+    }
+  }
+  return 0;
 }
 
 static int qos_enforce_blacklist(apr_table_t *rules, const char *line) {
@@ -399,9 +425,13 @@ static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
     nohandler = 1;
   }
   last = strrchr(lpath, '/');
-  // /aber/hallo/du
   while(last && depth) {
-    str = apr_pstrcat(lpool, last, str, NULL);
+    if(m_base64 && qos_detect_b64(last)) {
+      // $$$
+      str = apr_pstrcat(lpool, last, str, NULL);
+    } else {
+      str = apr_pstrcat(lpool, last, str, NULL);
+    }
     last[0] = '\0';
     last = strrchr(lpath, '/');
     depth--;
@@ -421,12 +451,60 @@ static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
   return rx;
 }
 
+static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
+			    FILE *f, int *ln, int *dc) {
+  char line[MAX_LINE];
+  int deny_count = *dc;
+  int line_nr = *ln;
+  while(!qos_fgetline(line, sizeof(line), f)) {
+    apr_uri_t parsed_uri;
+    apr_pool_t *lpool;
+    apr_pool_create(&lpool, NULL);
+    line_nr++;
+    if(apr_uri_parse(pool, line, &parsed_uri) != APR_SUCCESS) {
+      fprintf(stderr, "ERROR, could parse uri %s\n", line);
+      exit(1);
+    }
+    if(parsed_uri.path == NULL || (parsed_uri.path[0] != '/')) {
+      fprintf(stderr, "WARNING, line %d: invalid request %s\n", line_nr, line);
+    } else {
+      char *path = NULL;
+      char *query = NULL;
+      char *copy = apr_pstrdup(lpool, line);
+      qos_unescaping(copy);
+      if(qos_enforce_blacklist(blacklist, copy)) {
+	fprintf(stderr, "WARNING: blacklist filter match at line %d for %s\n", line_nr, line);
+	deny_count++;
+      } else {
+	if(!qos_test_for_existing_rule(copy, rules)) {
+	  if(m_verbose > 1) printf("ANALYSE: %s\n", line);
+	  if(parsed_uri.query) {
+	    path = qos_path_pcre_string(lpool, parsed_uri.path);
+	  } else {
+	    if(pcre_exec(pcre_simple_path, NULL, parsed_uri.path, strlen(parsed_uri.path), 0, 0, NULL, 0) >= 0) {
+	      path = apr_pstrdup(lpool, QS_SIMPLE_PATH_PCRE);
+	    } else {
+	      path = qos_path_pcre(lpool, parsed_uri.path);
+	    }
+	  }
+	  if(m_verbose > 1) {
+	    printf(" path rule: %s\n", path);
+	    if(query) printf(" query rule: %s\n", query);
+	  }
+	}
+      }
+    }
+  }
+  *dc = deny_count;
+  *ln = line_nr;
+}
+
 int main(int argc, const char * const argv[]) {
   apr_table_entry_t *entry;
   time_t start = time(NULL);
   time_t end;
-  char line[MAX_LINE];
   int line_nr = 0;
+  int deny_count = 0;
   char *time_string;
   int i;
   const char *access_log = NULL;
@@ -468,6 +546,10 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	m_path_depth = atoi(*(++argv));
       }
+    } else if(strcmp(*argv,"-b") == 0) {
+      if (--argc >= 1) {
+	m_base64 = atoi(*(++argv));
+      }
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd);
     } else if(strcmp(*argv,"-?") == 0) {
@@ -493,31 +575,8 @@ int main(int argc, const char * const argv[]) {
     fprintf(stderr, "ERROR, could not open input file %s\n", access_log);
     exit(1);
   }
+  qos_process_log(pool, blacklist, rules, f, &line_nr, &deny_count);
   
-  while(!qos_fgetline(line, sizeof(line), f)) {
-    apr_uri_t parsed_uri;
-    apr_pool_t *lpool;
-    apr_pool_create(&lpool, NULL);
-    line_nr++;
-    if(apr_uri_parse(pool, line, &parsed_uri) != APR_SUCCESS) {
-      fprintf(stderr, "ERROR, could parse uri %s\n", line);
-      exit(1);
-    }
-    if(parsed_uri.path == NULL || (parsed_uri.path[0] != '/')) {
-      fprintf(stderr, "WARNING, line %d: invalid request %s\n", line_nr, line);
-    } else {
-      char *path = NULL;
-      char *query = NULL;
-      if(m_verbose > 1) printf("ANALYSE: %s\n", line);
-      if(parsed_uri.query) {
-	path = qos_path_pcre_string(lpool, parsed_uri.path);
-      } else {
-	path = qos_path_pcre(lpool, parsed_uri.path);
-      }
-      if(m_verbose > 1) printf(" path rule: %s\n", path);
-    }
-  }
-
   fclose(f);
 
   end = time(NULL);
@@ -525,11 +584,16 @@ int main(int argc, const char * const argv[]) {
   time_string[strlen(time_string) - 1] = '\0';
   printf("\n# --------------------------------------------------------\n");
   printf("# %s\n", time_string);
+  printf("# %d rules from %d access log lines\n", apr_table_elts(rules)->nelts, line_nr);
   printf("#  source: %s\n", access_log);
   printf("#  path depth: %d\n", m_path_depth);
+  printf("#  base64 detection level: %d\n", m_base64);
   printf("#  rule file: %s\n", httpdconf == NULL ? "-" : httpdconf);
-  printf("#    white list (loaded existing rules): %d\n", whitelist_size);
-  printf("#    black list (loaded deny rules): %d\n", blacklist_size);
+  if(httpdconf) {
+    printf("#    white list (loaded existing rules): %d\n", whitelist_size);
+    printf("#    black list (loaded deny rules): %d\n", blacklist_size);
+    printf("#    black list matches: %d\n", deny_count);
+  }
   printf("#  duration: %d minutes\n", (end - start) / 60);
   printf("# --------------------------------------------------------\n");
 
