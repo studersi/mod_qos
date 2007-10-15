@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.31 2007-10-05 21:20:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.32 2007-10-15 12:18:25 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -481,10 +481,13 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
 	      if(m_strict > 3) slen = ((slen / 10) + 1) * 10;
 	      rule = apr_psprintf(lpool,"%s%s{1,%d}", rule, QS_CHAR_GENSUB_S_PCRE, slen);
 	    } else {
+	      unsigned char *ch = (unsigned char *)path;
 	      /* special char */
 	      if(m_verbose > 1) printf(" special char: %.*s\n", 1, path);
-	      if(strchr("{}[]()^$.|*+?\"'\\", path[0]) != NULL) {
+	      if(strchr("{}[]()^$.|*+?\"'\\", ch[0]) != NULL) {
 		rule = apr_psprintf(lpool,"%s\\%.*s", rule, 1, path);
+	      } else if((ch[0] < ' ') || (ch[0]  > '~')) {
+		rule = apr_psprintf(lpool, "%s\\x%02x", rule, ch[0]);
 	      } else {
 		rule = apr_psprintf(lpool,"%s%.*s", rule, 1, path);
 	      }
