@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.32 2007-10-15 12:18:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.33 2007-10-16 06:12:04 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -509,7 +509,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
   }
   rc_c = pcre_exec(pcre_test, NULL, orig, strlen(orig), 0, 0, ovector, QS_OVECCOUNT);
   if(rc_c < 0) {
-    fprintf(stderr, "ERRRO, rule does not match!\n");
+    fprintf(stderr, "ERROR, rule does not match!\n");
     fprintf(stderr, "line %s\n", line);
     fprintf(stderr, "string: %s\n", orig);
     fprintf(stderr, "rule: %s\n", rule);
