@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.7 2007-10-16 18:57:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.8 2007-10-16 19:30:27 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -78,6 +78,7 @@ pcre *pcre_simple_path;
 static int m_base64 = 5;
 static int m_verbose = 1;
 static int m_path_depth = 1;
+static int m_redundant = 0;
 
 typedef struct {
   pcre *pcre;
@@ -222,7 +223,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-o]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
@@ -243,6 +244,9 @@ static void usage(char *cmd) {
   printf("     base64 encoded string. Detecting sensibility is defined by a numeric\n");
   printf("     value. You should use values higher than 5 (default) or 0 to disable\n");
   printf("     this function.\n");
+  printf("  -o\n");
+  printf("     Eliminates redundant rules. Default is off.\n");
+  printf("     Does not delete existing QS_PermitUri rules loaded by using the option -c.\n");
   printf("\n");
   printf("Example\n");
   printf("  ./%s -i loc.txt -c httpd.conf\n", cmd);
@@ -250,6 +254,90 @@ static void usage(char *cmd) {
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   printf("mod_qos, "__DATE__"\n");
   exit(1);
+}
+
+typedef struct {
+  apr_pool_t *pool;
+  apr_table_t *rules;
+  apr_table_t *rules_url;
+  int from;
+  int to;
+} qs_worker_t;
+
+static apr_table_t *qos_get_used(apr_pool_t *pool, apr_table_t *rules, apr_table_t *rules_url,
+				 int from, int to) {
+  apr_table_t *used = apr_table_make(pool, 1);
+  int j;
+  for(j = from; j < to; j++) {
+    int l;
+    apr_table_entry_t *linee = (apr_table_entry_t *)apr_table_elts(rules_url)->elts;
+    if(m_verbose) {
+      printf("[%d]", j);
+      fflush(stdout);
+    }
+    for(l = 0; l < apr_table_elts(rules_url)->nelts; l++) {
+      char *line = linee[l].key;
+      int i;
+      int match = 0;
+      apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+      for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+	if(i != j) {
+	  qs_rule_t *rs = (qs_rule_t *)entry[i].val;
+	  if(pcre_exec(rs->pcre, rs->extra, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+	    match = 1;
+	    break;
+	  }
+	}
+      }
+      if(!match) {
+	/* no match, rule j is required */
+	apr_table_add(used, entry[j].key, "+");
+      }
+    }
+  }
+  return used;
+}
+
+static void *qos_worker(void *argv) {
+  qs_worker_t *wt = argv;
+  return qos_get_used(wt->pool, wt->rules, wt->rules_url, wt->from, wt->to);
+}
+
+static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_table_t *rules_url) {
+  apr_table_t *not_used = apr_table_make(pool, 1);
+  apr_table_t *used;
+  apr_table_t *used1;
+  pthread_attr_t *tha = NULL;
+  pthread_t tid;
+  qs_worker_t *wt = apr_pcalloc(pool, sizeof(qs_worker_t));
+  wt->pool = pool;
+  wt->rules = rules;
+  wt->rules_url = rules_url;
+  wt->from = apr_table_elts(rules)->nelts / 2;
+  wt->to = apr_table_elts(rules)->nelts;
+  if(m_verbose) printf("# search for redundant rules (%d/%d)\n",
+		       apr_table_elts(rules_url)->nelts,
+		       apr_table_elts(rules)->nelts);
+  if(m_verbose) printf("# ");
+  pthread_create(&tid, tha, qos_worker, (void *)wt);
+  used = qos_get_used(pool, rules, rules_url, 0, apr_table_elts(rules)->nelts / 2);
+  pthread_join(tid, (void *)&used1);
+  if(m_verbose) printf(" done\n");
+  {
+    int i;
+    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+    for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+      if((apr_table_get(used, entry[i].key) == NULL) &&
+	 (apr_table_get(used1, entry[i].key) == NULL)) {
+	if(m_verbose) printf("# DEL rule (not required): %s\n", entry[i].key);
+	apr_table_add(not_used, entry[i].key, "-");
+      }
+    }
+    entry = (apr_table_entry_t *)apr_table_elts(not_used)->elts;
+    for(i = 0; i < apr_table_elts(not_used)->nelts; i++) {
+      apr_table_unset(rules, entry[i].key);
+    }
+  }
 }
 
 int qos_test_for_existing_rule(char *line, apr_table_t *rules) {
@@ -324,7 +412,7 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
 	      rs = apr_palloc(pool, sizeof(qs_rule_t));
 	      rs->pcre = pcre_test;
 	      rs->extra = extra;
-	      apr_table_addn(ruletable, pattern, (char *)rs);
+	      apr_table_setn(ruletable, pattern, (char *)rs);
 	    }
 	  }
 	}
@@ -516,7 +604,7 @@ static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
 }
 
 static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
-			    FILE *f, int *ln, int *dc) {
+			    apr_table_t *rules_url, FILE *f, int *ln, int *dc) {
   char line[MAX_LINE];
   int deny_count = *dc;
   int line_nr = *ln;
@@ -581,6 +669,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	      fprintf(stderr, "rule: %s\n", rule);
 	      exit(1);
 	    }
+	    apr_table_add(rules_url, copy, "unescaped line");
 	    apr_table_setn(rules, rule, (char *)rs);
 	  }
 	}
@@ -605,6 +694,7 @@ int main(int argc, const char * const argv[]) {
   apr_pool_t *pool;
   apr_table_t *rules;
   apr_table_t *blacklist;
+  apr_table_t *rules_url;
   int blacklist_size = 0;
   int whitelist_size = 0;
   char *cmd = strrchr(argv[0], '/');
@@ -613,6 +703,7 @@ int main(int argc, const char * const argv[]) {
   apr_pool_create(&pool, NULL);
   rules = apr_table_make(pool, 10);
   blacklist = apr_table_make(pool, 10);
+  rules_url = apr_table_make(pool, 10);
   nice(10);
   if(cmd == NULL) {
     cmd = (char *)argv[0];
@@ -639,6 +730,8 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	m_path_depth = atoi(*(++argv));
       }
+    } else if(strcmp(*argv,"-o") == 0) {
+      m_redundant = 1;
     } else if(strcmp(*argv,"-b") == 0) {
       if (--argc >= 1) {
 	m_base64 = atoi(*(++argv));
@@ -668,9 +761,26 @@ int main(int argc, const char * const argv[]) {
     fprintf(stderr, "ERROR, could not open input file %s\n", access_log);
     exit(1);
   }
-  qos_process_log(pool, blacklist, rules, f, &line_nr, &deny_count);
-  
+  qos_process_log(pool, blacklist, rules, rules_url, f, &line_nr, &deny_count);
   fclose(f);
+
+  if(m_redundant) {
+    int x = 0;
+    int y = 0;
+    // delete useless rules
+    qos_delete_obsolete_rules(pool, rules, rules_url);
+    // ensure, we have not deleted to many!
+    if(m_verbose) {
+      printf("# check the result (again)\n"); 
+      fflush(stdout);
+    }
+    if(httpdconf) {
+      qos_load_whitelist(pool, rules, httpdconf);
+    }
+    f = fopen(access_log, "r");
+    qos_process_log(pool, blacklist, rules, rules_url, f, &line_nr, &deny_count);
+    fclose(f);
+  }
 
   end = time(NULL);
   time_string = ctime(&end);
@@ -681,6 +791,7 @@ int main(int argc, const char * const argv[]) {
   printf("#  source: %s\n", access_log);
   printf("#  path depth: %d\n", m_path_depth);
   printf("#  base64 detection level: %d\n", m_base64);
+  printf("#  redundancy check: %s\n", m_redundant == 1 ? "on" : "off");
   printf("#  rule file: %s\n", httpdconf == NULL ? "-" : httpdconf);
   if(httpdconf) {
     printf("#    white list (loaded existing rules): %d\n", whitelist_size);
@@ -689,7 +800,7 @@ int main(int argc, const char * const argv[]) {
   }
   printf("#  duration: %d minutes\n", (end - start) / 60);
   printf("# --------------------------------------------------------\n");
-
+  
   entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
   for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
     printf("QS_PermitUri +QSF%0.3d deny \"%s\"\n", i+1, entry[i].key);
