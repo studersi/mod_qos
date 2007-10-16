@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.11 2007-09-26 19:50:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.12 2007-10-16 18:57:17 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -2228,7 +2228,7 @@ const char *qos_max_conn_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec
  */
 const char *qos_deny_cmd(cmd_parms *cmd, void *dcfg,
                          const char *id, const char *action, const char *pcres,
-                         qs_rfilter_type_e type) {
+                         qs_rfilter_type_e type, int options) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
   qos_rfilter_t *flt = apr_pcalloc(cmd->pool, sizeof(qos_rfilter_t));
   const char *errptr = NULL;
@@ -2247,7 +2247,7 @@ const char *qos_deny_cmd(cmd_parms *cmd, void *dcfg,
     return apr_psprintf(cmd->pool, "%s: invalid action", 
                         cmd->directive->directive);
   }
-  flt->pr = pcre_compile(pcres, PCRE_DOTALL | PCRE_CASELESS, &errptr, &erroffset, NULL);
+  flt->pr = pcre_compile(pcres, PCRE_DOTALL | options, &errptr, &erroffset, NULL);
   if(flt->pr == NULL) {
     return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
                         " reason: %s", 
@@ -2261,19 +2261,19 @@ const char *qos_deny_cmd(cmd_parms *cmd, void *dcfg,
 }
 const char *qos_deny_rql_cmd(cmd_parms *cmd, void *dcfg,
                              const char *id, const char *action, const char *pcres) {
-  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_REQUEST_LINE);
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_REQUEST_LINE, PCRE_CASELESS);
 }
 const char *qos_deny_path_cmd(cmd_parms *cmd, void *dcfg,
                               const char *id, const char *action, const char *pcres) {
-  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_PATH);
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_PATH, PCRE_CASELESS);
 }
 const char *qos_deny_query_cmd(cmd_parms *cmd, void *dcfg,
                                const char *id, const char *action, const char *pcres) {
-  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_QUERY);
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_QUERY, PCRE_CASELESS);
 }
 const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
                                const char *id, const char *action, const char *pcres) {
-  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_PERMIT_URI);
+  return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_PERMIT_URI, 0);
 }
 
 #ifdef QS_INTERNAL_TEST
@@ -2406,7 +2406,7 @@ static const command_rec qos_config_cmds[] = {
                 " allowed. If a QS_PermitUri pattern has been defined an the"
                 " request does not match any, the request is denied albeit of"
                 " any server resource availability (white list). All rules"
-                " must define the same action."),
+                " must define the same action. pcre is case sensitve."),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                 RSRC_CONF,

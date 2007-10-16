@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.6 2007-10-16 06:12:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.7 2007-10-16 18:57:18 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -84,10 +84,10 @@ typedef struct {
   pcre_extra *extra;
 } qs_rule_t;
 
-static pcre *qos_pcre_compile(char *pattern) {
+static pcre *qos_pcre_compile(char *pattern, int option) {
   const char *errptr = NULL;
   int erroffset;
-  pcre *pcre = pcre_compile(pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  pcre *pcre = pcre_compile(pattern, PCRE_DOTALL|option, &errptr, &erroffset, NULL);
   if(pcre == NULL) {
     fprintf(stderr, "ERROR, rule <%s> could not compile pcre at position %d,"
 	    " reason: %s\n", pattern, erroffset, errptr);
@@ -195,12 +195,10 @@ static int qos_fgetline(char *s, int n, FILE *f) {
 }
 
 static void qos_init_pcre() {
-  const char *errptr = NULL;
-  int erroffset;
   char buf[1024];
   sprintf(buf, "%s{%d,}", QS_B64, m_base64);
-  pcre_b64 = qos_pcre_compile(buf);
-  pcre_simple_path = qos_pcre_compile("^"QS_SIMPLE_PATH_PCRE"$");
+  pcre_b64 = qos_pcre_compile(buf, 0);
+  pcre_simple_path = qos_pcre_compile("^"QS_SIMPLE_PATH_PCRE"$", 0);
 }
 
 static int qos_getline(char *s, int n) {
@@ -283,7 +281,7 @@ static int qos_enforce_blacklist(apr_table_t *rules, const char *line) {
 }
 
 static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
-			       const char *httpdconf, const char *command) {
+			   const char *httpdconf, const char *command, int option) {
   FILE *f = fopen(httpdconf, "r");
   char line[MAX_LINE];
   if(f == NULL) {
@@ -321,7 +319,7 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
 	      } else {
 		pattern = apr_psprintf(pool, "%.*s", strlen(p), p);
 	      }
-	      pcre_test = qos_pcre_compile(pattern);
+	      pcre_test = qos_pcre_compile(pattern, option);
 	      extra = pcre_study(pcre_test, 0, &errptr);
 	      rs = apr_palloc(pool, sizeof(qs_rule_t));
 	      rs->pcre = pcre_test;
@@ -337,10 +335,10 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
 }
 
 static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const char *httpdconf) {
-  qos_load_rules(pool, blacklist, httpdconf, "QS_DenyRequestLine");
+  qos_load_rules(pool, blacklist, httpdconf, "QS_DenyRequestLine", PCRE_CASELESS);
 }
 static void qos_load_whitelist(apr_pool_t *pool, apr_table_t *rules, const char *httpdconf) {
-  qos_load_rules(pool, rules, httpdconf, "QS_PermitUri");
+  qos_load_rules(pool, rules, httpdconf, "QS_PermitUri", 0);
 }
 
 int qos_test_for_matching_rule(char *line, apr_table_t *rules) {
@@ -449,8 +447,12 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
     }
     if(copy[0] == '&') {
       copy[0] = '\0';
-      qos_unescaping(pos);
-      ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+&", NULL);
+      if(strlen(pos) == 0) {
+	ret = apr_pstrcat(pool, ret, "&", NULL);
+      } else {
+	qos_unescaping(pos);
+	ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+&", NULL);
+      }
       pos = copy;
       pos++;
       isValue = 0;
@@ -535,7 +537,10 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
       char *copy = apr_pstrdup(lpool, line);
       qos_unescaping(copy);
       if(qos_enforce_blacklist(blacklist, copy)) {
-	fprintf(stderr, "WARNING: blacklist filter match at line %d for %s\n", line_nr, line);
+	if(m_verbose > 1) {
+	  fprintf(stderr, "WARNING: blacklist filter match at line %d for %s\n",
+		  line_nr, line);
+	}
 	deny_count++;
       } else {
 	if(!qos_test_for_existing_rule(copy, rules)) {
@@ -562,11 +567,11 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	      rule = apr_pstrcat(pool, rule, "\\?", query, NULL);
 	    }
 	    rule = apr_pstrcat(pool, rule, "$", NULL);
-	    rs->pcre = qos_pcre_compile(rule);
+	    rs->pcre = qos_pcre_compile(rule, 0);
 	    rs->extra = pcre_study(rs->pcre, 0, &errptr);
 	    // don't mind if extra is null
 	    if(m_verbose) {
-	      printf("# ADD from %s\n", line);
+	      printf("# ADD line %d: %s\n", line_nr, line);
 	      printf("# %0.3d %s\n", apr_table_elts(rules)->nelts+1, rule);
 	    }
 	    if(pcre_exec(rs->pcre, rs->extra, copy, strlen(copy), 0, 0, NULL, 0) < 0) {
@@ -576,10 +581,12 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	      fprintf(stderr, "rule: %s\n", rule);
 	      exit(1);
 	    }
+	    apr_table_setn(rules, rule, (char *)rs);
 	  }
 	}
       }
     }
+    apr_pool_destroy(lpool);
   }
   *dc = deny_count;
   *ln = line_nr;

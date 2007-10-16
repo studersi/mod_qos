@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.33 2007-10-16 06:12:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.34 2007-10-16 18:57:18 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -281,7 +281,8 @@ static int qos_enforce_blacklist(apr_table_t *rules, const char *line) {
 }
 
 static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
-			       const char *httpdconf, const char *command) {
+			   const char *httpdconf, const char *command,
+			   int option) {
   FILE *f = fopen(httpdconf, "r");
   char line[MAX_LINE];
   if(f == NULL) {
@@ -320,7 +321,7 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
 	      } else {
 		pattern = apr_psprintf(pool, "%.*s", strlen(p), p);
 	      }
-	      pcre_test = pcre_compile(pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+	      pcre_test = pcre_compile(pattern, PCRE_DOTALL|option, &errptr, &erroffset, NULL);
 	      if(pcre_test == NULL) {
 		fprintf(stderr, "ERROR, rule <%s> could not compile pcre at position %d,"
 			" reason: %s\n", pattern, erroffset, errptr);
@@ -341,10 +342,10 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
 }
 
 static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const char *httpdconf) {
-  qos_load_rules(pool, blacklist, httpdconf, "QS_DenyRequestLine");
+  qos_load_rules(pool, blacklist, httpdconf, "QS_DenyRequestLine", PCRE_CASELESS);
 }
 static void qos_load_whitelist(apr_pool_t *pool, apr_table_t *rules, const char *httpdconf) {
-  qos_load_rules(pool, rules, httpdconf, "QS_PermitUri");
+  qos_load_rules(pool, rules, httpdconf, "QS_PermitUri", 0);
 }
 
 static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
@@ -361,14 +362,14 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
   pcre *pcre_base;
   pcre *pcre_fuzzy;
 
-  pcre_fuzzy = pcre_compile(fuzzy_pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  pcre_fuzzy = pcre_compile(fuzzy_pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(pcre_fuzzy == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
     exit(1);
   }
 
-  pcre_base = pcre_compile(base_pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  pcre_base = pcre_compile(base_pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(pcre_base == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
@@ -501,7 +502,7 @@ static char *qos_build_pattern(apr_pool_t *lpool, const char *line,
   if(m_verbose > 1) printf(" => rule: %s\n", rule);
   /* test */
   pcre_test = pcre_compile(apr_pstrcat(lpool, "^", rule, "$", NULL),
-			   PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+			   PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(pcre_test == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
@@ -537,25 +538,25 @@ int qos_test_for_existing_rule(char *line, apr_table_t *rules) {
 static void qos_init_pcre() {
   const char *errptr = NULL;
   int erroffset;
-  pcre_char = pcre_compile(QS_CHAR_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  pcre_char = pcre_compile(QS_CHAR_PCRE"+", PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(pcre_char == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
     exit(1);
   }
-  pcre_char_gen = pcre_compile(QS_CHAR_GEN_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  pcre_char_gen = pcre_compile(QS_CHAR_GEN_PCRE"+", PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(pcre_char_gen == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
     exit(1);
   }
-  pcre_char_gensub = pcre_compile(QS_CHAR_GENSUB_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  pcre_char_gensub = pcre_compile(QS_CHAR_GENSUB_PCRE"+", PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(pcre_char_gensub == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
     exit(1);
   }
-  pcre_char_gensub_s = pcre_compile(QS_CHAR_GENSUB_S_PCRE"+", PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  pcre_char_gensub_s = pcre_compile(QS_CHAR_GENSUB_S_PCRE"+", PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(pcre_char_gensub_s == NULL) {
     fprintf(stderr, "ERROR, could not compile pcre at position %d,"
 	    " reason: %s\n", erroffset, errptr);
@@ -644,7 +645,7 @@ static void qos_delete_non_query(apr_pool_t *pool, apr_table_t *rules) {
 	  s[strlen(s)-1] = '\0';
 	  new_rule = apr_pstrcat(pool, s, "(\\?"QS_QUERY_PCRE_pre")*$", NULL);
 	  if(m_verbose) printf("<%s>\n", new_rule);
-	  rs->pcre = pcre_compile(new_rule, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+	  rs->pcre = pcre_compile(new_rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
 	  rs->extra = pcre_study(rs->pcre, 0, &errptr);
 	  apr_table_addn(add, new_rule, (char *)rs);
 	}
@@ -748,7 +749,7 @@ static void qos_generate_rules(apr_pool_t *pool, apr_table_t *blacklist, apr_tab
 	} else {
 	  rule = apr_pstrcat(lpool, "^", rule, "$", NULL);
 	}
-	pcre_test = pcre_compile(rule, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+	pcre_test = pcre_compile(rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
 	if(pcre_test == NULL) {
 	  fprintf(stderr, "ERROR, rule <%s> could not compile pcre at position %d,"
 		  " reason: %s\n", rule, erroffset, errptr);
