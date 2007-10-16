@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.8 2007-10-16 19:30:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.9 2007-10-16 20:58:48 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -245,7 +245,7 @@ static void usage(char *cmd) {
   printf("     value. You should use values higher than 5 (default) or 0 to disable\n");
   printf("     this function.\n");
   printf("  -o\n");
-  printf("     Eliminates redundant rules. Default is off.\n");
+  printf("     Eliminates redundant rules. Default is off (but it's recommended to use).\n");
   printf("     Does not delete existing QS_PermitUri rules loaded by using the option -c.\n");
   printf("\n");
   printf("Example\n");
@@ -524,11 +524,17 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   char *pos = copy;
   char *ret = "";
   int isValue = 0;
+  int open = 0;
   while(copy[0]) {
     if(copy[0] == '=') {
       copy[0] = '\0';
       qos_unescaping(pos);
+      if(!open) {
+	ret = apr_pstrcat(pool, ret, "(", NULL);
+	open = 1;
+      }
       ret = apr_pstrcat(pool, ret, qos_escape_pcre(pool, pos), "=", NULL);
+      open = 1;
       pos = copy;
       pos++;
       isValue = 1;
@@ -536,10 +542,18 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
     if(copy[0] == '&') {
       copy[0] = '\0';
       if(strlen(pos) == 0) {
-	ret = apr_pstrcat(pool, ret, "&", NULL);
+	ret = apr_pstrcat(pool, ret, "[&]?", NULL);
+	if(open) {
+	  ret = apr_pstrcat(pool, ret, ")?", NULL);
+	  open = 0;
+	}
       } else {
 	qos_unescaping(pos);
-	ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+&", NULL);
+	ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+[&]?", NULL);
+	if(open) {
+	  ret = apr_pstrcat(pool, ret, ")?", NULL);
+	  open = 0;
+	}
       }
       pos = copy;
       pos++;
@@ -552,8 +566,20 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
     if(isValue) {
       ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+", NULL);
     } else {
+      if(!open) {
+	ret = apr_pstrcat(pool, "(", ret, NULL);
+	open = 1;
+      }
       ret = apr_pstrcat(pool, ret, pos, NULL);
     }
+    if(open) {
+      ret = apr_pstrcat(pool, ret, ")?", NULL);
+      open = 0;
+    }
+  }
+  if(open) {
+    ret = apr_pstrcat(pool, ret, ")?", NULL);
+    open = 0;
   }
   return ret;
 }
