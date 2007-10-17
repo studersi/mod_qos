@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.11 2007-10-17 18:18:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.12 2007-10-17 18:39:28 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -806,7 +806,7 @@ int main(int argc, const char * const argv[]) {
       qos_load_whitelist(pool, rules, httpdconf);
     }
     f = fopen(access_log, "r");
-    qos_process_log(pool, blacklist, rules, rules_url, f, &line_nr, &deny_count);
+    qos_process_log(pool, blacklist, rules, rules_url, f, &x, &y);
     fclose(f);
   }
 
