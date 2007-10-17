@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.13 2007-10-17 19:55:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.14 2007-10-17 20:32:13 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -662,13 +662,21 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	if(!qos_test_for_existing_rule(copy, rules)) {
 	  if(m_verbose > 1) printf("ANALYSE: %s\n", line);
 	  if(parsed_uri.query) {
-	    path = qos_path_pcre_string(lpool, parsed_uri.path);
+	    if(strcmp(parsed_uri.path, "/") == 0) {
+	      path = apr_pstrdup(lpool, "/");
+	    } else {
+	      path = qos_path_pcre_string(lpool, parsed_uri.path);
+	    }
 	    query = qos_query_string_pcre(lpool, parsed_uri.query);
 	  } else {
-	    if(pcre_exec(pcre_simple_path, NULL, parsed_uri.path, strlen(parsed_uri.path), 0, 0, NULL, 0) >= 0) {
-	      path = apr_pstrdup(lpool, QS_SIMPLE_PATH_PCRE);
+	    if(strcmp(parsed_uri.path, "/") == 0) {
+	      path = apr_pstrdup(lpool, "/");
 	    } else {
-	      path = qos_path_pcre(lpool, parsed_uri.path);
+	      if(pcre_exec(pcre_simple_path, NULL, parsed_uri.path, strlen(parsed_uri.path), 0, 0, NULL, 0) >= 0) {
+		path = apr_pstrdup(lpool, QS_SIMPLE_PATH_PCRE);
+	      } else {
+		path = qos_path_pcre(lpool, parsed_uri.path);
+	      }
 	    }
 	  }
 	  if(parsed_uri.fragment) {
@@ -677,9 +685,16 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    fragment = apr_pstrcat(lpool, "[", qos_2pcre(lpool, f), "]+", NULL);
 	  }
 	  if(m_verbose > 1) {
+	    printf(" path:      %s\n", parsed_uri.path);
 	    printf(" path rule: %s\n", path);
-	    if(query) printf(" query rule: %s\n", query);
-	    if(fragment) printf(" fragment rule: %s\n", fragment);
+	    if(query) {
+	      printf(" query:      %s\n", parsed_uri.query);
+	      printf(" query rule: %s\n", query);
+	    }
+	    if(fragment) {
+	      printf(" fragment:      %s\n", parsed_uri.fragment);
+	      printf(" fragment rule: %s\n", fragment);
+	    }
 	  }
 	  {
 	    const char *errptr = NULL;
