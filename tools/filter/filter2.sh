@@ -13,6 +13,8 @@ echo "/app/test/__JDbhLdSs4dpOhE1LmbspyhEshuV.Ss__/b;XXX=Abc!-22!-33!44!55" >> a
 echo "/app/test/__JDbhLdSs4qpOhE1LmbspOhELmbhuV.Ss__/b;XXX=Abc!-22!-33!44!55888888%C3" >> access_log
 echo "/app/test/__JDbhLdSs4qpOhE1kajji78oJa8HLmbsp_-*other?name=value" >> access_log
 echo "/app/test/sub?n=v#u?as" >> access_log
+echo "//app/test/sub?n=http://a.b.c/i.t??" >> access_log
+echo "/?n=n" >> access_log
 
 ./qsfilter2 -i access_log $@
 
