@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.10 2007-10-17 06:22:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.11 2007-10-17 18:18:52 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -502,18 +502,22 @@ static char *qos_b64_2pcre(apr_pool_t *pool, const char *line) {
   char *b64 = qos_detect_b64(copy, 1);
   char *st = b64;
   char *ed = &b64[1];
+  if(m_verbose > 1) printf("  B642pcre: %s", copy);
+  /* reserved: {}[]()^$.|*+?\ */
   /* $$$ other: '$', '+', '/' resp. '$', '-', '_' */
-  while(st[0] && (isdigit(st[0]) || isalpha(st[0]))) {
+#define QS_BX "-_$+!"
+  while(st[0] && (isdigit(st[0]) || isalpha(st[0]) || (strchr(QS_BX, st[0]) != NULL))) {
     st--;
   }
   st++;
   st[0] = '\0';
-  while(ed[0] && (isdigit(ed[0]) || isalpha(ed[0]))) {
+  while(ed[0] && (isdigit(ed[0]) || isalpha(ed[0]) || (strchr(QS_BX, ed[0]) != NULL))) {
     ed++;
   }
+  if(m_verbose > 1) printf(" %s <> %s\n", copy, ed);
   return apr_pstrcat(pool, qos_escape_pcre(pool, copy),
-		     "[a-zA-Z0-9]+",
-		     qos_escape_pcre(pool, ed), NULL);
+		     "[a-zA-Z0-9\\-_\\$\\+!]+",
+		     ed[0] == '\0' ? NULL : qos_escape_pcre(pool, ed), NULL);
 }
 
 
@@ -650,10 +654,8 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
       char *copy = apr_pstrdup(lpool, line);
       qos_unescaping(copy);
       if(qos_enforce_blacklist(blacklist, copy)) {
-	if(m_verbose > 1) {
-	  fprintf(stderr, "WARNING: blacklist filter match at line %d for %s\n",
-		  line_nr, line);
-	}
+	fprintf(stderr, "WARNING: blacklist filter match at line %d for %s\n",
+		line_nr, line);
 	deny_count++;
       } else {
 	if(!qos_test_for_existing_rule(copy, rules)) {
@@ -686,6 +688,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    if(m_verbose) {
 	      printf("# ADD line %d: %s\n", line_nr, line);
 	      printf("# %0.3d %s\n", apr_table_elts(rules)->nelts+1, rule);
+	      fflush(stdout);
 	    }
 	    if(pcre_exec(rs->pcre, rs->extra, copy, strlen(copy), 0, 0, NULL, 0) < 0) {
 	      fprintf(stderr, "ERROR, rule does not match!\n");
