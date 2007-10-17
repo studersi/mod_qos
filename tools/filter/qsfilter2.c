@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.9 2007-10-16 20:58:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.10 2007-10-17 06:22:57 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -78,7 +78,7 @@ pcre *pcre_simple_path;
 static int m_base64 = 5;
 static int m_verbose = 1;
 static int m_path_depth = 1;
-static int m_redundant = 0;
+static int m_redundant = 1;
 
 typedef struct {
   pcre *pcre;
@@ -223,7 +223,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-o]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-n]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
@@ -244,9 +244,8 @@ static void usage(char *cmd) {
   printf("     base64 encoded string. Detecting sensibility is defined by a numeric\n");
   printf("     value. You should use values higher than 5 (default) or 0 to disable\n");
   printf("     this function.\n");
-  printf("  -o\n");
-  printf("     Eliminates redundant rules. Default is off (but it's recommended to use).\n");
-  printf("     Does not delete existing QS_PermitUri rules loaded by using the option -c.\n");
+  printf("  -n\n");
+  printf("     Disables redundant rules elimination.\n");
   printf("\n");
   printf("Example\n");
   printf("  ./%s -i loc.txt -c httpd.conf\n", cmd);
@@ -756,8 +755,8 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	m_path_depth = atoi(*(++argv));
       }
-    } else if(strcmp(*argv,"-o") == 0) {
-      m_redundant = 1;
+    } else if(strcmp(*argv,"-n") == 0) {
+      m_redundant = 0;
     } else if(strcmp(*argv,"-b") == 0) {
       if (--argc >= 1) {
 	m_base64 = atoi(*(++argv));
