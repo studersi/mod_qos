@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.12 2007-10-17 18:39:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.13 2007-10-17 19:55:51 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -651,6 +651,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
     } else {
       char *path = NULL;
       char *query = NULL;
+      char *fragment = NULL;
       char *copy = apr_pstrdup(lpool, line);
       qos_unescaping(copy);
       if(qos_enforce_blacklist(blacklist, copy)) {
@@ -670,9 +671,15 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	      path = qos_path_pcre(lpool, parsed_uri.path);
 	    }
 	  }
+	  if(parsed_uri.fragment) {
+	    char *f = apr_pstrdup(lpool, parsed_uri.fragment);
+	    qos_unescaping(f);
+	    fragment = apr_pstrcat(lpool, "[", qos_2pcre(lpool, f), "]+", NULL);
+	  }
 	  if(m_verbose > 1) {
 	    printf(" path rule: %s\n", path);
 	    if(query) printf(" query rule: %s\n", query);
+	    if(fragment) printf(" fragment rule: %s\n", fragment);
 	  }
 	  {
 	    const char *errptr = NULL;
@@ -680,6 +687,9 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    qs_rule_t *rs = apr_palloc(pool, sizeof(qs_rule_t));
 	    if(query) {
 	      rule = apr_pstrcat(pool, rule, "\\?", query, NULL);
+	    }
+	    if(fragment) {
+	      rule = apr_pstrcat(pool, rule, "#", fragment, NULL);
 	    }
 	    rule = apr_pstrcat(pool, rule, "$", NULL);
 	    rs->pcre = qos_pcre_compile(rule, 0);
