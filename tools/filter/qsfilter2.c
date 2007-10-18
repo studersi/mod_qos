@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.15 2007-10-18 09:15:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.16 2007-10-18 09:25:57 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -80,6 +80,7 @@ static int m_verbose = 1;
 static int m_path_depth = 1;
 static int m_redundant = 1;
 static int m_query_pcre = 0;
+static int m_query_single_pcre = 0;
 static int m_exit_on_error = 0;
 
 typedef struct {
@@ -225,7 +226,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p] [-n] [-e]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s] [-n] [-e]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
@@ -248,6 +249,8 @@ static void usage(char *cmd) {
   printf("     this function.\n");
   printf("  -p\n");
   printf("     Uses pcre for query only.\n");
+  printf("  -s\n");
+  printf("     Uses one single pcre for the whole query string.\n");
   printf("  -n\n");
   printf("     Disables redundant rules elimination.\n");
   printf("  -e\n");
@@ -680,7 +683,13 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    } else {
 	      path = qos_path_pcre_string(lpool, parsed_uri.path);
 	    }
-	    query = qos_query_string_pcre(lpool, parsed_uri.query);
+	    if(m_query_single_pcre) {
+	      char *qc = apr_pstrdup(lpool, parsed_uri.query);
+	      qos_unescaping(qc);
+	      query = apr_pstrcat(lpool, "[", qos_2pcre(lpool, qc), "]+", NULL);
+	    } else {
+	      query = qos_query_string_pcre(lpool, parsed_uri.query);
+	    }
 	  } else {
 	    if(strcmp(parsed_uri.path, "/") == 0) {
 	      path = apr_pstrdup(lpool, "/");
@@ -805,6 +814,8 @@ int main(int argc, const char * const argv[]) {
       }
     } else if(strcmp(*argv,"-p") == 0) {
       m_query_pcre = 1;
+    } else if(strcmp(*argv,"-s") == 0) {
+      m_query_single_pcre = 1;
     } else if(strcmp(*argv,"-e") == 0) {
       m_exit_on_error = 1;
     } else if(strcmp(*argv,"-h") == 0) {
@@ -864,6 +875,7 @@ int main(int argc, const char * const argv[]) {
   printf("#  base64 detection level: %d\n", m_base64);
   printf("#  redundancy check: %s\n", m_redundant == 1 ? "on" : "off");
   printf("#  pcre in query: %s\n", m_query_pcre == 1 ? "yes" : "no");
+  printf("#  single pcre for query: %s\n", m_query_single_pcre == 1 ? "yes" : "no");
   printf("#  exit on error: %s\n", m_exit_on_error == 1 ? "yes" : "no");
   printf("#  rule file: %s\n", httpdconf == NULL ? "-" : httpdconf);
   if(httpdconf) {
