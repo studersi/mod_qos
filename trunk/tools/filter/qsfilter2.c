@@ -24,14 +24,18 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.16 2007-10-18 09:25:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.17 2007-10-18 18:51:45 pbuchbinder Exp $";
 
+/* system */
 #include <stdio.h>
 #include <string.h>
 
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+
+/* OpenSSL  */
+#include <openssl/stack.h>
 
 /* apr */
 #include <pcre.h>
@@ -86,7 +90,15 @@ static int m_exit_on_error = 0;
 typedef struct {
   pcre *pcre;
   pcre_extra *extra;
+  char *rule;
 } qs_rule_t;
+
+
+int STACK_qs_cmp(const char * const *_pA, const char * const *_pB) {
+  qs_rule_t *pA=*(( qs_rule_t **)_pA);
+  qs_rule_t *pB=*(( qs_rule_t **)_pB);
+  return strcmp(pA->rule,pB->rule);
+}
 
 static pcre *qos_pcre_compile(char *pattern, int option) {
   const char *errptr = NULL;
@@ -257,7 +269,7 @@ static void usage(char *cmd) {
   printf("     Exit on error.\n");
   printf("\n");
   printf("Example\n");
-  printf("  ./%s -i loc.txt -c httpd.conf\n", cmd);
+  printf("  ./%s -i loc.txt -c httpd.conf -s -e\n", cmd);
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   printf("mod_qos, "__DATE__"\n");
@@ -885,12 +897,26 @@ int main(int argc, const char * const argv[]) {
   }
   printf("#  duration: %d minutes\n", (end - start) / 60);
   printf("# --------------------------------------------------------\n");
-  
-  entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
-  for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
-    printf("QS_PermitUri +QSF%0.3d deny \"%s\"\n", i+1, entry[i].key);
+
+  {
+    STACK *st = sk_new(STACK_qs_cmp);
+    qs_rule_t *r;
+    int j = 1;
+    entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+    for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+      //  printf("QS_PermitUri +QSF%0.3d deny \"%s\"\n", i+1, entry[i].key);
+      r = apr_pcalloc(pool, sizeof(qs_rule_t));
+      r->rule = entry[i].key;
+      sk_push(st, (char *)r);
+    }
+    sk_sort(st);
+    i = sk_num(st);
+    for(i; i > 0; i--) {
+      r = (qs_rule_t *)sk_value(st, i-1);
+      printf("QS_PermitUri +QSF%0.3d deny \"%s\"\n", j, r->rule);
+      j++;
+    }
   }
   apr_pool_destroy(pool);
-  
   return 0;
 }
