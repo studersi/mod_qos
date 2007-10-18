@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.14 2007-10-17 20:32:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.15 2007-10-18 09:15:46 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -79,6 +79,8 @@ static int m_base64 = 5;
 static int m_verbose = 1;
 static int m_path_depth = 1;
 static int m_redundant = 1;
+static int m_query_pcre = 0;
+static int m_exit_on_error = 0;
 
 typedef struct {
   pcre *pcre;
@@ -223,7 +225,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-n]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p] [-n] [-e]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
@@ -244,8 +246,12 @@ static void usage(char *cmd) {
   printf("     base64 encoded string. Detecting sensibility is defined by a numeric\n");
   printf("     value. You should use values higher than 5 (default) or 0 to disable\n");
   printf("     this function.\n");
+  printf("  -p\n");
+  printf("     Uses pcre for query only.\n");
   printf("  -n\n");
   printf("     Disables redundant rules elimination.\n");
+  printf("  -e\n");
+  printf("     Exit on error.\n");
   printf("\n");
   printf("Example\n");
   printf("  ./%s -i loc.txt -c httpd.conf\n", cmd);
@@ -339,14 +345,14 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
   }
 }
 
-int qos_test_for_existing_rule(char *line, apr_table_t *rules) {
+int qos_test_for_existing_rule(char *line, apr_table_t *rules, int line_nr) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
   if((line == 0) || (strlen(line) == 0)) return 0;
   for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
     qs_rule_t *rs = (qs_rule_t *)entry[i].val;
     if(pcre_exec(rs->pcre, rs->extra, line, strlen(line), 0, 0, NULL, 0) >= 0) {
-      if(m_verbose > 1)	printf(" exsiting rule %s\n", entry[i].key);
+      if(m_verbose > 1)	printf("LINE %d, exiting rule: %s\n", line_nr, entry[i].key);
       return 1;
     }
   }
@@ -504,7 +510,6 @@ static char *qos_b64_2pcre(apr_pool_t *pool, const char *line) {
   char *ed = &b64[1];
   if(m_verbose > 1) printf("  B642pcre: %s", copy);
   /* reserved: {}[]()^$.|*+?\ */
-  /* $$$ other: '$', '+', '/' resp. '$', '-', '_' */
 #define QS_BX "-_$+!"
   while(st[0] && (isdigit(st[0]) || isalpha(st[0]) || (strchr(QS_BX, st[0]) != NULL))) {
     st--;
@@ -521,7 +526,7 @@ static char *qos_b64_2pcre(apr_pool_t *pool, const char *line) {
 }
 
 
-// query to <string>=<pcre>
+// query to <string>=<pcre> or <pcre>=<pcre>
 static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   char *copy = apr_pstrdup(pool, path);
   char *pos = copy;
@@ -536,7 +541,11 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
 	ret = apr_pstrcat(pool, ret, "(", NULL);
 	open = 1;
       }
-      ret = apr_pstrcat(pool, ret, qos_escape_pcre(pool, pos), "=", NULL);
+      if(m_query_pcre) {
+	ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+=", NULL);
+      } else {
+	ret = apr_pstrcat(pool, ret, qos_escape_pcre(pool, pos), "=", NULL);
+      }
       open = 1;
       pos = copy;
       pos++;
@@ -573,7 +582,11 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
 	ret = apr_pstrcat(pool, "(", ret, NULL);
 	open = 1;
       }
-      ret = apr_pstrcat(pool, ret, pos, NULL);
+      if(m_query_pcre) {
+	ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+", NULL);
+      } else {
+	ret = apr_pstrcat(pool, ret, qos_escape_pcre(pool, pos), NULL);
+      }
     }
     if(open) {
       ret = apr_pstrcat(pool, ret, ")?", NULL);
@@ -644,7 +657,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
     line_nr++;
     if(apr_uri_parse(lpool, line, &parsed_uri) != APR_SUCCESS) {
       fprintf(stderr, "ERROR, could parse uri %s\n", line);
-      exit(1);
+      if(m_exit_on_error) exit(1);
     }
     if(parsed_uri.path == NULL || (parsed_uri.path[0] != '/')) {
       fprintf(stderr, "WARNING, line %d: invalid request %s\n", line_nr, line);
@@ -659,8 +672,8 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 		line_nr, line);
 	deny_count++;
       } else {
-	if(!qos_test_for_existing_rule(copy, rules)) {
-	  if(m_verbose > 1) printf("ANALYSE: %s\n", line);
+	if(!qos_test_for_existing_rule(copy, rules, line_nr)) {
+	  if(m_verbose > 1) printf("LINE %d, analyse: %s\n", line_nr, line);
 	  if(parsed_uri.query) {
 	    if(strcmp(parsed_uri.path, "/") == 0) {
 	      path = apr_pstrdup(lpool, "/");
@@ -716,14 +729,15 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	      fflush(stdout);
 	    }
 	    if(pcre_exec(rs->pcre, rs->extra, copy, strlen(copy), 0, 0, NULL, 0) < 0) {
-	      fprintf(stderr, "ERROR, rule does not match!\n");
-	      fprintf(stderr, "line %d: %s\n", line_nr, line);
-	      fprintf(stderr, "string: %s\n", copy);
-	      fprintf(stderr, "rule: %s\n", rule);
-	      exit(1);
+	      fprintf(stderr, "ERROR, rule check failed (did not match)!\n");
+	      fprintf(stderr, " line %d: %s\n", line_nr, line);
+	      fprintf(stderr, " string: %s\n", copy);
+	      fprintf(stderr, " rule: %s\n", rule);
+	      if(m_exit_on_error) exit(1);
+	    } else {
+	      apr_table_add(rules_url, copy, "unescaped line");
+	      apr_table_setn(rules, rule, (char *)rs);
 	    }
-	    apr_table_add(rules_url, copy, "unescaped line");
-	    apr_table_setn(rules, rule, (char *)rs);
 	  }
 	}
       }
@@ -789,6 +803,10 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	m_base64 = atoi(*(++argv));
       }
+    } else if(strcmp(*argv,"-p") == 0) {
+      m_query_pcre = 1;
+    } else if(strcmp(*argv,"-e") == 0) {
+      m_exit_on_error = 1;
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd);
     } else if(strcmp(*argv,"-?") == 0) {
@@ -845,6 +863,8 @@ int main(int argc, const char * const argv[]) {
   printf("#  path depth: %d\n", m_path_depth);
   printf("#  base64 detection level: %d\n", m_base64);
   printf("#  redundancy check: %s\n", m_redundant == 1 ? "on" : "off");
+  printf("#  pcre in query: %s\n", m_query_pcre == 1 ? "yes" : "no");
+  printf("#  exit on error: %s\n", m_exit_on_error == 1 ? "yes" : "no");
   printf("#  rule file: %s\n", httpdconf == NULL ? "-" : httpdconf);
   if(httpdconf) {
     printf("#    white list (loaded existing rules): %d\n", whitelist_size);
