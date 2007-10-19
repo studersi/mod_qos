@@ -4,6 +4,9 @@ echo "/app/test" > access_log
 echo "/other" >> access_log
 echo "/m/this?name=val&more" >> access_log
 echo "/app/mo^\"'re?name=value" >> access_log
+echo "/app/this/cont?n=1&v=2" >> access_log
+echo "/app/this/cont?v=1&n=2" >> access_log
+echo "/app/this/cont" >> access_log
 echo "/app/this/cont" >> access_log
 echo "/app/this/cont?name%c4=value%c3" >> access_log
 echo "/app/this/cont2?name%c4=value%c3" >> access_log

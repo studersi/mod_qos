@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.17 2007-10-18 18:51:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.18 2007-10-19 19:50:44 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -84,6 +84,7 @@ static int m_verbose = 1;
 static int m_path_depth = 1;
 static int m_redundant = 1;
 static int m_query_pcre = 0;
+static int m_query_multi_pcre = 0;
 static int m_query_single_pcre = 0;
 static int m_exit_on_error = 0;
 
@@ -238,7 +239,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s] [-n] [-e]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s|-m] [-n] [-e]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is an access log analyzer used to generate filter rules (perl\n", cmd);
@@ -263,6 +264,8 @@ static void usage(char *cmd) {
   printf("     Uses pcre for query only.\n");
   printf("  -s\n");
   printf("     Uses one single pcre for the whole query string.\n");
+  printf("  -m\n");
+  printf("     Uses one pcre for multipe query values.\n");
   printf("  -n\n");
   printf("     Disables redundant rules elimination.\n");
   printf("  -e\n");
@@ -615,6 +618,52 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   return ret;
 }
 
+// query to <string>|<string>=<pcre>
+static char *qos_multi_query_string_pcre(apr_pool_t *pool, const char *path) {
+  char *copy = apr_pstrdup(pool, path);
+  char *pos = copy;
+  char *string = "";
+  char *query_pcre = "";
+  int isValue = 0;
+  while(copy[0]) {
+    if(copy[0] == '=') {
+      copy[0] = '\0';
+      qos_unescaping(pos);
+      if(strlen(string) > 0) string = apr_pstrcat(pool, string, "|",  NULL);
+      string = apr_pstrcat(pool, string, qos_escape_pcre(pool, pos),  NULL);
+      pos = copy;
+      pos++;
+      isValue = 1;
+    }
+    if(copy[0] == '&') {
+      copy[0] = '\0';
+      if(strlen(pos) != 0) {
+	qos_unescaping(pos);
+	query_pcre = apr_pstrcat(pool, query_pcre, pos,  NULL);
+      }
+      pos = copy;
+      pos++;
+      isValue = 0;
+    }
+    copy++;
+  }
+  if(pos != copy) {
+    qos_unescaping(pos);
+    if(isValue) {
+      query_pcre = apr_pstrcat(pool, query_pcre, pos, NULL);
+    } else {
+      if(strlen(string) > 0) string = apr_pstrcat(pool, string, "|",  NULL);
+      string = apr_pstrcat(pool, string, qos_escape_pcre(pool, pos),  NULL);
+    }
+  }
+  // ((s1|s2)(=[<pcre>]*)*[&]?)*"
+  if(strlen(query_pcre) > 0) {
+    return apr_pstrcat(pool, "((", string, ")(=[", qos_2pcre(pool, query_pcre), "]*)*[&]?)*", NULL);
+  } else {
+    return apr_pstrcat(pool, "(", string, ")*", NULL);
+  }
+}
+
 // path to <pcre>
 static char *qos_path_pcre(apr_pool_t *lpool, const char *path) {
   char *dec = apr_pstrdup(lpool, path);
@@ -700,7 +749,11 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	      qos_unescaping(qc);
 	      query = apr_pstrcat(lpool, "[", qos_2pcre(lpool, qc), "]+", NULL);
 	    } else {
-	      query = qos_query_string_pcre(lpool, parsed_uri.query);
+	      if(!m_query_multi_pcre) {
+		query = qos_query_string_pcre(lpool, parsed_uri.query);
+	      } else {
+		query = qos_multi_query_string_pcre(lpool, parsed_uri.query);
+	      }
 	    }
 	  } else {
 	    if(strcmp(parsed_uri.path, "/") == 0) {
@@ -826,6 +879,8 @@ int main(int argc, const char * const argv[]) {
       }
     } else if(strcmp(*argv,"-p") == 0) {
       m_query_pcre = 1;
+    } else if(strcmp(*argv,"-m") == 0) {
+      m_query_multi_pcre = 1;
     } else if(strcmp(*argv,"-s") == 0) {
       m_query_single_pcre = 1;
     } else if(strcmp(*argv,"-e") == 0) {
@@ -841,6 +896,13 @@ int main(int argc, const char * const argv[]) {
     argv++;
   }
   qos_init_pcre();
+
+  if((m_query_pcre && m_query_multi_pcre) ||
+     (m_query_pcre && m_query_single_pcre) ||
+     (m_query_multi_pcre && m_query_single_pcre)) {
+    fprintf(stderr, "ERROR, option -s,-m or -p can't be used together.\n");
+    exit(1);
+  }
 
   if(httpdconf) {
     qos_load_blacklist(pool, blacklist, httpdconf);
@@ -882,14 +944,15 @@ int main(int argc, const char * const argv[]) {
   printf("\n# --------------------------------------------------------\n");
   printf("# %s\n", time_string);
   printf("# %d rules from %d access log lines\n", apr_table_elts(rules)->nelts, line_nr);
-  printf("#  source: %s\n", access_log);
-  printf("#  path depth: %d\n", m_path_depth);
-  printf("#  base64 detection level: %d\n", m_base64);
-  printf("#  redundancy check: %s\n", m_redundant == 1 ? "on" : "off");
-  printf("#  pcre in query: %s\n", m_query_pcre == 1 ? "yes" : "no");
-  printf("#  single pcre for query: %s\n", m_query_single_pcre == 1 ? "yes" : "no");
-  printf("#  exit on error: %s\n", m_exit_on_error == 1 ? "yes" : "no");
-  printf("#  rule file: %s\n", httpdconf == NULL ? "-" : httpdconf);
+  printf("#  source (-i): %s\n", access_log);
+  printf("#  path depth (-d): %d\n", m_path_depth);
+  printf("#  base64 detection level (-b): %d\n", m_base64);
+  printf("#  redundancy check (-n): %s\n", m_redundant == 1 ? "on" : "off");
+  printf("#  pcre only for query (-p): %s\n", m_query_pcre == 1 ? "yes" : "no");
+  printf("#  one pcre for query value (-m): %s\n", m_query_multi_pcre == 1 ? "yes" : "no");
+  printf("#  single pcre for query (-s): %s\n", m_query_single_pcre == 1 ? "yes" : "no");
+  printf("#  exit on error (-e): %s\n", m_exit_on_error == 1 ? "yes" : "no");
+  printf("#  rule file (-c): %s\n", httpdconf == NULL ? "-" : httpdconf);
   if(httpdconf) {
     printf("#    white list (loaded existing rules): %d\n", whitelist_size);
     printf("#    black list (loaded deny rules): %d\n", blacklist_size);
