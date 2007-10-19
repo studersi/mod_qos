@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.18 2007-10-19 19:50:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.19 2007-10-19 20:04:23 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -272,7 +272,7 @@ static void usage(char *cmd) {
   printf("     Exit on error.\n");
   printf("\n");
   printf("Example\n");
-  printf("  ./%s -i loc.txt -c httpd.conf -s -e\n", cmd);
+  printf("  ./%s -i loc.txt -c httpd.conf -m -e\n", cmd);
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   printf("mod_qos, "__DATE__"\n");
