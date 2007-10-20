@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.19 2007-10-19 20:04:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.20 2007-10-20 08:36:44 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -92,6 +92,10 @@ typedef struct {
   pcre *pcre;
   pcre_extra *extra;
   char *rule;
+  char *path;
+  char *query_m_string;
+  char *query_m_pcre;
+  int fragment;
 } qs_rule_t;
 
 
@@ -326,6 +330,196 @@ static void *qos_worker(void *argv) {
   return qos_get_used(wt->pool, wt->rules, wt->rules_url, wt->from, wt->to);
 }
 
+static char *qos_2pcre(apr_pool_t *pool, const char *line) {
+  int hasA = 0;
+  int hasD = 0;
+  int hasE = 0;
+  int hasB = 0;
+  int i = 0;
+  unsigned char *in = (unsigned char *)line;
+  char *ret = apr_pcalloc(pool, strlen(line) * 6);
+  int reti = 0;
+  while(in[i]) {
+    if(isdigit(in[i])) {
+      if(!hasD) {
+	hasD = 1;
+	strcpy(&ret[reti], "0-9");
+	reti = reti + 3;
+      }
+    } else if(isalpha(in[i])) {
+      if(!hasA) {
+	hasA = 1;
+	strcpy(&ret[reti], "a-zA-Z");
+	reti = reti + 6;
+      }
+    } else if(in[i] == '\\') {
+      if(!hasE) {
+	hasE = 1;
+	strcpy(&ret[reti], "\\\\");
+	reti = reti + 2;
+      }
+    } else if(in[i] == '-') {
+      if(!hasB) {
+	hasB = 1;
+	strcpy(&ret[reti], "\\-");
+	reti = reti + 2;
+      }
+    } else if(strchr(ret, in[i]) == NULL) {
+      if(strchr("{}[]()^$.|*+?\"'", in[i]) != NULL) {
+	ret[reti] = '\\';
+	reti++;
+	ret[reti] = in[i];
+	reti++;
+      } else if((in[i] < ' ') || (in[i]  > '~')) {
+	sprintf(&ret[reti], "\\x%02x", in[i]);
+	reti = reti + 4;
+      } else {
+	ret[reti] = in[i];
+	reti++;
+      }
+    }
+    i++;
+  }
+  if(strlen(ret) == 0) return NULL;
+  ret[reti] = '\0';
+  return ret;
+}
+
+// is already there
+static int qos_checkstr(apr_pool_t *pool, char *r, char *d, char *p) {
+  /*
+   * r = ..|p|..
+   * r = p|...
+   * r = ..|p
+   * r = p
+   */
+  char *check1 = apr_pstrcat(pool, d, p, d, NULL);
+  char *check2 = apr_pstrcat(pool, p, d, NULL);
+  char *check3 = apr_pstrcat(pool, d, p, NULL);
+  
+  if(strstr(r, check1) != NULL) {
+    return 1;
+  }
+  if(strncmp(r, check2, strlen(check2)) == 0) {
+    return 1;
+  }
+  if(strlen(r) > strlen(check3)) {
+    if((strncmp(&r[strlen(r)-strlen(check3)], check3, strlen(check3)) == 0)) {
+      return 1;
+    }
+  }
+  if(strcmp(r, p) == 0) {
+    return 1;
+  }
+ 
+  return 0;
+}
+
+static char *qos_addstr(apr_pool_t *pool, char *o, char *d, char *n) {
+  char *p = apr_pstrdup(pool, n);
+  char *r = o;
+  if(n == NULL) return o;
+  while(p && p[0]) {
+    char *this = p;
+    char *next = strchr(p, d[0]);
+    /* $$$ \| */
+    if(next == NULL) {
+      p = NULL;
+    } else {
+      next[0] = '\0';
+      next++;
+      p = next;
+    }
+    if(!qos_checkstr(pool, r, d, this)) {
+      if(m_verbose) printf("    %s\n", this);
+      r = apr_pstrcat(pool, r, d, this, NULL);
+    }
+  }
+  return r;
+}
+
+
+/* ((s1|s2)(=[<pcre>]*)*[&]?)*" */
+static char *qos_qqs(apr_pool_t *pool, char *string, char *query_pcre) {
+  if(strlen(query_pcre) > 0) {
+    return apr_pstrcat(pool, "((", string, ")(=[", qos_2pcre(pool, query_pcre), "]*)*[&]?)*", NULL);
+  } else {
+    return apr_pstrcat(pool, "(", string, ")*", NULL);
+  }
+}
+
+static void qos_query_optimization(apr_pool_t *pool, apr_table_t *rules) {
+  apr_table_t *delete = apr_table_make(pool, 1);
+  apr_table_t *checked_path = apr_table_make(pool, 1);
+  apr_table_t *new = apr_table_make(pool, 1);
+  int i, j;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+  for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+    char *rule_str = entry[i].key;
+    qs_rule_t *r = (qs_rule_t *)entry[i].val;
+    if(!r->fragment && r->path && (apr_table_get(checked_path, r->path) == NULL)) {
+      int merged = 0;
+      char *query_m_string = r->query_m_string == NULL ? "" : r->query_m_string;
+      char *query_m_pcre = r->query_m_pcre == NULL ? "" : r->query_m_pcre;
+      apr_table_add(checked_path, r->path, "");
+      /* search for rules with the same path and delete them */
+      /* $$$ */
+      if(m_verbose) printf("  search for path %s\n", r->path);
+      for(j = 0; j < apr_table_elts(rules)->nelts; j++) {
+	if(i != j) {
+	  qs_rule_t *n = (qs_rule_t *)entry[j].val;
+	  if(!n->fragment && n->path && (strcmp(r->path, n->path) == 0)) {
+	    /* $$$ */
+	    if(m_verbose) printf("  + %s %s\n", 
+				 n->query_m_string == NULL ? "-" : n->query_m_string,
+				 n->query_m_pcre == NULL ? "-" : n->query_m_pcre);
+	    if(strlen(query_m_string) == 0) {
+	      query_m_string = apr_pstrcat(pool, query_m_string, n->query_m_string, NULL);
+	    } else {
+	      query_m_string = qos_addstr(pool, query_m_string, "|", n->query_m_string);
+	    }
+	    query_m_pcre = apr_pstrcat(pool, query_m_pcre, n->query_m_pcre, NULL);
+	    apr_table_add(delete, entry[j].key, "");
+	    merged = 1;
+	  }
+	}
+      }
+      /* update rule if merged to any */
+      if(merged) {
+	apr_table_add(delete, entry[i].key, "");
+	if(m_verbose) {
+	  printf("# CHANGE: <%s>", rule_str);
+	}
+	{
+	  const char *errptr = NULL;
+	  char *rule = apr_pstrcat(pool, "^", r->path, NULL);
+	  qs_rule_t *rs = apr_palloc(pool, sizeof(qs_rule_t));
+	  if(strlen(query_m_string) > 0) {
+	    rule = apr_pstrcat(pool, rule, "\\?", qos_qqs(pool, query_m_string, query_m_pcre), NULL);
+	  }
+	  rule = apr_pstrcat(pool, rule, "$", NULL);
+	  rs->pcre = qos_pcre_compile(rule, 0);
+	  rs->extra = pcre_study(rs->pcre, 0, &errptr);
+	  rs->path = r->path;
+	  apr_table_setn(new, rule, (char *)rs);
+	  if(m_verbose) {
+	    printf(" to <%s>\n", rule);
+	  }
+	}
+      }
+    }
+  }
+  entry = (apr_table_entry_t *)apr_table_elts(delete)->elts;
+  for(i = 0; i < apr_table_elts(delete)->nelts; i++) {
+    if(m_verbose) printf("# DEL rule: %s\n", entry[i].key);
+    apr_table_unset(rules, entry[i].key);
+  }
+  entry = (apr_table_entry_t *)apr_table_elts(new)->elts;
+  for(i = 0; i < apr_table_elts(new)->nelts; i++) {
+    apr_table_setn(rules, entry[i].key, entry[i].val);
+  }
+}
+
 static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_table_t *rules_url) {
   apr_table_t *not_used = apr_table_make(pool, 1);
   apr_table_t *used;
@@ -333,15 +527,22 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
   pthread_attr_t *tha = NULL;
   pthread_t tid;
   qs_worker_t *wt = apr_pcalloc(pool, sizeof(qs_worker_t));
+
+
+  if(m_query_multi_pcre) {
+    if(m_verbose) printf("# search for redundant rules\n");
+    qos_query_optimization(pool, rules);
+    if(m_verbose) printf("# ");
+  } else {
+    if(m_verbose) printf("# search for redundant rules ");
+  }
+
   wt->pool = pool;
   wt->rules = rules;
   wt->rules_url = rules_url;
   wt->from = apr_table_elts(rules)->nelts / 2;
   wt->to = apr_table_elts(rules)->nelts;
-  if(m_verbose) printf("# search for redundant rules (%d/%d)\n",
-		       apr_table_elts(rules_url)->nelts,
-		       apr_table_elts(rules)->nelts);
-  if(m_verbose) printf("# ");
+
   pthread_create(&tid, tha, qos_worker, (void *)wt);
   used = qos_get_used(pool, rules, rules_url, 0, apr_table_elts(rules)->nelts / 2);
   pthread_join(tid, (void *)&used1);
@@ -466,61 +667,6 @@ int qos_test_for_matching_rule(char *line, apr_table_t *rules) {
   return 0;
 }
 
-static char *qos_2pcre(apr_pool_t *pool, const char *line) {
-  int hasA = 0;
-  int hasD = 0;
-  int hasE = 0;
-  int hasB = 0;
-  int i = 0;
-  unsigned char *in = (unsigned char *)line;
-  char *ret = apr_pcalloc(pool, strlen(line) * 6);
-  int reti = 0;
-  while(in[i]) {
-    if(isdigit(in[i])) {
-      if(!hasD) {
-	hasD = 1;
-	strcpy(&ret[reti], "0-9");
-	reti = reti + 3;
-      }
-    } else if(isalpha(in[i])) {
-      if(!hasA) {
-	hasA = 1;
-	strcpy(&ret[reti], "a-zA-Z");
-	reti = reti + 6;
-      }
-    } else if(in[i] == '\\') {
-      if(!hasE) {
-	hasE = 1;
-	strcpy(&ret[reti], "\\\\");
-	reti = reti + 2;
-      }
-    } else if(in[i] == '-') {
-      if(!hasB) {
-	hasB = 1;
-	strcpy(&ret[reti], "\\-");
-	reti = reti + 2;
-      }
-    } else if(strchr(ret, in[i]) == NULL) {
-      if(strchr("{}[]()^$.|*+?\"'", in[i]) != NULL) {
-	ret[reti] = '\\';
-	reti++;
-	ret[reti] = in[i];
-	reti++;
-      } else if((in[i] < ' ') || (in[i]  > '~')) {
-	sprintf(&ret[reti], "\\x%02x", in[i]);
-	reti = reti + 4;
-      } else {
-	ret[reti] = in[i];
-	reti++;
-      }
-    }
-    i++;
-  }
-  if(strlen(ret) == 0) return NULL;
-  ret[reti] = '\0';
-  return ret;
-}
-
 static char *qos_b64_2pcre(apr_pool_t *pool, const char *line) {
   char *copy = apr_pstrdup(pool, line);
   char *b64 = qos_detect_b64(copy, 1);
@@ -619,7 +765,8 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
 }
 
 // query to <string>|<string>=<pcre>
-static char *qos_multi_query_string_pcre(apr_pool_t *pool, const char *path) {
+static char *qos_multi_query_string_pcre(apr_pool_t *pool, const char *path,
+					 char **query_m_string, char **query_m_pcre) {
   char *copy = apr_pstrdup(pool, path);
   char *pos = copy;
   char *string = "";
@@ -656,12 +803,9 @@ static char *qos_multi_query_string_pcre(apr_pool_t *pool, const char *path) {
       string = apr_pstrcat(pool, string, qos_escape_pcre(pool, pos),  NULL);
     }
   }
-  // ((s1|s2)(=[<pcre>]*)*[&]?)*"
-  if(strlen(query_pcre) > 0) {
-    return apr_pstrcat(pool, "((", string, ")(=[", qos_2pcre(pool, query_pcre), "]*)*[&]?)*", NULL);
-  } else {
-    return apr_pstrcat(pool, "(", string, ")*", NULL);
-  }
+  *query_m_string = string;
+  *query_m_pcre = query_pcre;
+  return qos_qqs(pool, string, query_pcre);
 }
 
 // path to <pcre>
@@ -728,6 +872,8 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
     } else {
       char *path = NULL;
       char *query = NULL;
+      char *query_m_string = NULL;
+      char *query_m_pcre = NULL;
       char *fragment = NULL;
       char *copy = apr_pstrdup(lpool, line);
       qos_unescaping(copy);
@@ -752,7 +898,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	      if(!m_query_multi_pcre) {
 		query = qos_query_string_pcre(lpool, parsed_uri.query);
 	      } else {
-		query = qos_multi_query_string_pcre(lpool, parsed_uri.query);
+		query = qos_multi_query_string_pcre(lpool, parsed_uri.query, &query_m_string, &query_m_pcre);
 	      }
 	    }
 	  } else {
@@ -792,10 +938,16 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    }
 	    if(fragment) {
 	      rule = apr_pstrcat(pool, rule, "#", fragment, NULL);
+	      rs->fragment = 1;
 	    }
 	    rule = apr_pstrcat(pool, rule, "$", NULL);
 	    rs->pcre = qos_pcre_compile(rule, 0);
 	    rs->extra = pcre_study(rs->pcre, 0, &errptr);
+	    rs->path = apr_pstrdup(pool, path);
+	    if(m_query_multi_pcre && !fragment) {
+	      rs->query_m_string = apr_pstrdup(pool, query_m_string);
+	      rs->query_m_pcre = apr_pstrdup(pool, query_m_pcre);
+	    }
 	    // don't mind if extra is null
 	    if(m_verbose) {
 	      printf("# ADD line %d: %s\n", line_nr, line);
