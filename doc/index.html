@@ -321,6 +321,17 @@ requests matching the defined expression (pcre). The action taken for
 matching rules is either 'log' (access is granted but the rule match 
 is logged) or 'deny' (access is denied).
 </li>
+<li>
+<code>QS_PermitUri '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
+Generic uri (path and query) filter implementing a request pattern 
+white list. Only requests matching at least one QS_PermitUri pattern are 
+allowed. If a QS_PermitUri pattern has been defined an the 
+request does not match any rule, the request is denied albeit of 
+any server resource availability (white list). All rules 
+must define the same action. pcre is case sensitve. Use qsfilter2 
+in order to generate white list rules based on existing access log 
+files.
+</li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">

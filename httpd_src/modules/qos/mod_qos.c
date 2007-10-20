@@ -38,7 +38,7 @@
  * Version
  ***********************************************************************/
 
-static const char revision[] = "$Id: mod_qos.c,v 4.12 2007-10-16 18:57:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.13 2007-10-20 12:38:32 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -930,11 +930,13 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   int i;
   char *path = apr_pstrdup(r->pool, r->parsed_uri.path);
   char *query = NULL;
+  char *fragment = NULL;
   char *request_line = apr_pstrdup(r->pool, r->the_request);
   char *uri = path;
   int request_line_len;
   int path_len;
   int query_len = 0;
+  int fragment_len = 0;
   int uri_len;
   int permit_rule = 0;
   int permit_rule_match = 0;
@@ -945,13 +947,20 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   path_len = strlen(path);
   uri_len = path_len;
   if(r->parsed_uri.query) {
-    query = r->parsed_uri.query;
+    query = apr_pstrdup(r->pool, r->parsed_uri.query);
     qos_unescaping(query);
     query_len = strlen(query);
     uri = apr_pstrcat(r->pool, path, "?", query, NULL);
     uri_len = strlen(uri);
   }
-  
+  if(r->parsed_uri.fragment) {
+    fragment = apr_pstrdup(r->pool, r->parsed_uri.fragment);
+    qos_unescaping(fragment);
+    fragment_len = strlen(fragment);
+    uri = apr_pstrcat(r->pool, uri, "#", fragment, NULL);
+    uri_len = strlen(uri);
+  }
+
   for(i = 0; i < apr_table_elts(dconf->rfilter_table)->nelts; i++) {
     if(entry[i].key[0] == '+') {
       int deny_rule = 0;
@@ -2402,9 +2411,9 @@ static const command_rec qos_config_cmds[] = {
                 ACCESS_CONF,
                 "QS_PermitUri, '+'|'-'<id> 'log'|'deny' <pcre>, generic"
                 " request filter applied to the request uri (path and query)."
-                " Only requests matching at lease one QS_PermitUri pattern are"
+                " Only requests matching at least one QS_PermitUri pattern are"
                 " allowed. If a QS_PermitUri pattern has been defined an the"
-                " request does not match any, the request is denied albeit of"
+                " request does not match any rule, the request is denied albeit of"
                 " any server resource availability (white list). All rules"
                 " must define the same action. pcre is case sensitve."),
 #ifdef QS_INTERNAL_TEST
