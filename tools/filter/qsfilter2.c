@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.23 2007-10-20 12:14:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.24 2007-10-20 12:21:06 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -586,8 +586,10 @@ int qos_test_for_existing_rule(char *plain, char *line, apr_table_t *rules, int 
       if(first && (apr_table_get(source_rules, entry[i].key) == NULL)) {
 	apr_table_add(source_rules, entry[i].key, "");
 	apr_table_add(rules_url, line, "");
-	printf("# ADD line %d: %s\n", line_nr, plain);
-	printf("# --- %s\n", entry[i].key);
+	if(m_verbose) {
+	  printf("# ADD line %d: %s\n", line_nr, plain);
+	  printf("# --- %s\n", entry[i].key);
+	}
       }
       if(m_verbose > 1)	printf("LINE %d, exiting rule: %s\n", line_nr, entry[i].key);
       return 1;
