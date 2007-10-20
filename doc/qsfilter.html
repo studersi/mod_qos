@@ -43,7 +43,7 @@
 -->
 <table>
 <tbody>
-<tr><td>&nbsp;</td><td style="vertical-align: bottom;"><h4>mod_qos, qsfilter2</h4></td></tr>
+<tr><td>&nbsp;</td><td style="vertical-align: bottom;"><h2>mod_qos, qsfilter2</h2></td></tr>
 <tr><td>&nbsp;</td><td>
 <p>
 mod_qos implements a request filter validating each request line. The module 
@@ -66,6 +66,9 @@ resources only. It parses existing access log files in order to generate
 request line patterns cover all allowed request URIs.
 </p>
 <img src="qsfilter2_process.gif" alt="qsfilter2 usage, overview">
+
+
+<h4>Data Sources</h4>
 <p>
 Rule generation requires the following input:
 <ul>
@@ -93,16 +96,16 @@ Example input file loc.txt:<br>
 </table>
 <ul>
 <li>
-Predefined rules: qsfilter2 generates rules from access log data 
+Predefined rules (optional): qsfilter2 generates rules from access log data 
 automatically. Manually generated rules may be provided from a separate 
 rule file (each manual rule must be represented by a request URI in 
 the input data in order to make sure not to be deleted by the rule 
-optimisation algorithm of qsfilter2.
+optimisation algorithm of qsfilter2).
 </li>
 </ul>
 <ul>
 <li>
-Blacklist: QS_Deny* rules may be used to filter request lines which 
+Blacklist (optional): QS_Deny* rules may be used to filter request lines which 
 should not be used for whitelist rule generation.
 </li>
 </ul>
@@ -118,9 +121,85 @@ QS_DenyRequestLine +printable deny ".*[\x00-\x19].*"
 </pre>
 </td></tr>
 </table>
-
 </p>
 
+<h4>Output</h4>
+<p>
+The output of qsfilter2 is written to stdout. The output contains the 
+generated QS_PermitUri directives but also information about the 
+source which has been used to generate these rules. It is very 
+important to check the validity of each request line which has 
+been used to calculate the QS_PermitUri rules. Each request line 
+which has been used to generate a new rule is shown in the 
+output prefixed by <code>ADD line &lt;line number&gt;:</code>. These 
+request lines should be stored and reused at any later rule 
+generation (add them to the URI input file). The subsequent line 
+shows the generated rule.
+</p>
+<p>
+At the end of data processing a list of all generated QS_PermitUri 
+rules is shown. These directives may be used withn the configuration 
+file used by mod_qos.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+Example output:<br>
+<pre>
+./qsfilter2 -i loc.txt -c qos_filter.conf -m
+...
+# ADD line 1: /aaa/index.do
+# 003 ^(/[a-zA-Z0-9-_]+)+[/]?\.?[a-zA-Z]{0,4}$
+# ADD line 3: /aaa/view?page=1
+# --- ^[/a-zA-Z0-9]+/view\?(page=[0-9]+)?$
+# ADD line 4: /aaa/edit?document=1
+# 004 ^[/a-zA-Z]+/edit\?((document)(=[0-9]*)*[&]?)*$
+# ADD line 5: /aaa/edit?image=1.jpg
+# 005 ^[/a-zA-Z]+/edit\?((image)(=[0-9\.a-zA-Z]*)*[&]?)*$
+...
+QS_PermitUri +QSF001 deny "^[/a-zA-Z]+/edit\?((document|image)(=[0-9\.a-zA-Z]*)*[&]?)*$"
+QS_PermitUri +QSF002 deny "^[/a-zA-Z0-9]+/view\?(page=[0-9]+)?$"
+QS_PermitUri +QSF003 deny "^(/[a-zA-Z0-9-_]+)+[/]?\.?[a-zA-Z]{0,4}$"
+</pre>
+</td></tr>
+</table>
+</p>
+
+<h4>Options</h4>
+<p>
+qsfilter2 provides multiple command line options to control 
+the rule generation.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+<pre>
+qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-b &lt;num&gt;] [-p|-s|-m] [-n] [-e]
+
+  -i &lt;path&gt;
+     Input file storing the request url (path and query) from 
+     the access log (one request per line).
+  -c &lt;path&gt;
+     mod_qos configuration file defining QS_DenyRequestLine and
+     QS_PermitUri directives.
+  -d &lt;num&gt;
+     Depth (sub locations) of the path string which is defined 
+     as a literal string. Default is 1.
+  -b &lt;num&gt;
+     Replaces url pattern by the regular expression when detecting a
+     base64 encoded string. Detecting sensibility is defined by a numeric
+     value. You should use values higher than 5 (default) or 0 to disable
+     this function.
+  -p
+     Repesents query by pcre only (no literal strings).
+  -s
+     Uses one single pcre for the whole query.
+  -m
+     Uses one pcre for multipe query values (recommended).
+  -n
+     Disables redundant rules elimination.
+  -e
+     Exit on error.
+</pre>
+</td></tr>
+</table>
+</p>
 
 <br>
 <hr>
