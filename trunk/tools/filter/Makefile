@@ -1,12 +1,8 @@
-top_srcdir   = /home/pbu/workspace/mod-qos/httpd
-top_builddir = /home/pbu/workspace/mod-qos/httpd
-srcdir       = /home/pbu/workspace/mod-qos/httpd/support
-builddir     = /home/pbu/workspace/mod-qos/httpd/support
-VPATH        = /home/pbu/workspace/mod-qos/httpd/support
-DISTCLEAN_TARGETS = apxs apachectl dbmmanage log_server_status \
-	logresolve.pl phf_abuse_log.cgi split-logfile envvars-std
-
-CLEAN_TARGETS = suexec
+top_srcdir   = ../../httpd
+top_builddir = ../../httpd
+srcdir       = ../../httpd/support
+builddir     = ../../httpd/support
+VPATH        = ../../httpd/support
 
 PROGRAMS = qsfilter qsfilter2
 TARGETS  = $(PROGRAMS)
