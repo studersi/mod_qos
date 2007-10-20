@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.24 2007-10-20 12:21:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.25 2007-10-20 20:36:09 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -1116,9 +1116,9 @@ int main(int argc, const char * const argv[]) {
   printf("#  exit on error (-e): %s\n", m_exit_on_error == 1 ? "yes" : "no");
   printf("#  rule file (-c): %s\n", httpdconf == NULL ? "-" : httpdconf);
   if(httpdconf) {
-    printf("#    white list (loaded existing rules): %d\n", whitelist_size);
-    printf("#    black list (loaded deny rules): %d\n", blacklist_size);
-    printf("#    black list matches: %d\n", deny_count);
+    printf("#    whitelist (loaded existing rules): %d\n", whitelist_size);
+    printf("#    blacklist (loaded deny rules): %d\n", blacklist_size);
+    printf("#    blacklist matches: %d\n", deny_count);
   }
   printf("#  duration: %d minutes\n", (end - start) / 60);
   printf("# --------------------------------------------------------\n");
