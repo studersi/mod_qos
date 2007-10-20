@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.22 2007-10-20 12:09:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.23 2007-10-20 12:14:48 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -575,7 +575,7 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
   }
 }
 
-int qos_test_for_existing_rule(char *line, apr_table_t *rules, int line_nr,
+int qos_test_for_existing_rule(char *plain, char *line, apr_table_t *rules, int line_nr,
 			       apr_table_t *rules_url, apr_table_t *source_rules, int first) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
@@ -586,7 +586,7 @@ int qos_test_for_existing_rule(char *line, apr_table_t *rules, int line_nr,
       if(first && (apr_table_get(source_rules, entry[i].key) == NULL)) {
 	apr_table_add(source_rules, entry[i].key, "");
 	apr_table_add(rules_url, line, "");
-	printf("# ADD line %d: %s\n", line_nr, line);
+	printf("# ADD line %d: %s\n", line_nr, plain);
 	printf("# --- %s\n", entry[i].key);
       }
       if(m_verbose > 1)	printf("LINE %d, exiting rule: %s\n", line_nr, entry[i].key);
@@ -887,7 +887,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 		line_nr, line);
 	deny_count++;
       } else {
-	if(!qos_test_for_existing_rule(copy, rules, line_nr, rules_url, source_rules, first)) {
+	if(!qos_test_for_existing_rule(line, copy, rules, line_nr, rules_url, source_rules, first)) {
 	  if(m_verbose > 1) printf("LINE %d, analyse: %s\n", line_nr, line);
 	  if(parsed_uri.query) {
 	    if(strcmp(parsed_uri.path, "/") == 0) {
