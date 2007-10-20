@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.21 2007-10-20 09:16:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.22 2007-10-20 12:09:50 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -422,7 +422,19 @@ static char *qos_addstr(apr_pool_t *pool, char *o, char *d, char *n) {
   while(p && p[0]) {
     char *this = p;
     char *next = strchr(p, d[0]);
-    /* $$$ \| */
+
+    /* \| */
+    while(next) {
+      if(next > this) {
+	if(next[-1] == '\\') {
+	  next++;
+	  next = strchr(next, d[0]);
+	} else {
+	  break;
+	}
+      }
+    }
+
     if(next == NULL) {
       p = NULL;
     } else {
@@ -529,7 +541,7 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
 
 
   if(m_query_multi_pcre) {
-    if(m_verbose) printf("# search for redundant rules\n");
+    if(m_verbose) printf("# search for redundant rules ...\n");
     qos_query_optimization(pool, rules);
     if(m_verbose) printf("# ");
   } else {
@@ -563,13 +575,20 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
   }
 }
 
-int qos_test_for_existing_rule(char *line, apr_table_t *rules, int line_nr) {
+int qos_test_for_existing_rule(char *line, apr_table_t *rules, int line_nr,
+			       apr_table_t *rules_url, apr_table_t *source_rules, int first) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
   if((line == 0) || (strlen(line) == 0)) return 0;
   for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
     qs_rule_t *rs = (qs_rule_t *)entry[i].val;
     if(pcre_exec(rs->pcre, rs->extra, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+      if(first && (apr_table_get(source_rules, entry[i].key) == NULL)) {
+	apr_table_add(source_rules, entry[i].key, "");
+	apr_table_add(rules_url, line, "");
+	printf("# ADD line %d: %s\n", line_nr, line);
+	printf("# --- %s\n", entry[i].key);
+      }
       if(m_verbose > 1)	printf("LINE %d, exiting rule: %s\n", line_nr, entry[i].key);
       return 1;
     }
@@ -650,20 +669,6 @@ static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const c
 }
 static void qos_load_whitelist(apr_pool_t *pool, apr_table_t *rules, const char *httpdconf) {
   qos_load_rules(pool, rules, httpdconf, "QS_PermitUri", 0);
-}
-
-int qos_test_for_matching_rule(char *line, apr_table_t *rules) {
-  int i;
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
-  if((line == 0) || (strlen(line) == 0)) return 0;
-  for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
-    qs_rule_t *rs = (qs_rule_t *)entry[i].val;
-    if(pcre_exec(rs->pcre, rs->extra, line, strlen(line), 0, 0, NULL, 0) >= 0) {
-      if(m_verbose > 1)	printf(" exsiting rule %s\n", entry[i].key);
-      return 1;
-    }
-  }
-  return 0;
 }
 
 static char *qos_b64_2pcre(apr_pool_t *pool, const char *line) {
@@ -853,10 +858,11 @@ static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
 }
 
 static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
-			    apr_table_t *rules_url, FILE *f, int *ln, int *dc) {
+			    apr_table_t *rules_url, FILE *f, int *ln, int *dc, int first) {
   char line[MAX_LINE];
   int deny_count = *dc;
   int line_nr = *ln;
+  apr_table_t *source_rules = apr_table_make(pool, 10);
   while(!qos_fgetline(line, sizeof(line), f)) {
     apr_uri_t parsed_uri;
     apr_pool_t *lpool;
@@ -881,7 +887,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 		line_nr, line);
 	deny_count++;
       } else {
-	if(!qos_test_for_existing_rule(copy, rules, line_nr)) {
+	if(!qos_test_for_existing_rule(copy, rules, line_nr, rules_url, source_rules, first)) {
 	  if(m_verbose > 1) printf("LINE %d, analyse: %s\n", line_nr, line);
 	  if(parsed_uri.query) {
 	    if(strcmp(parsed_uri.path, "/") == 0) {
@@ -963,6 +969,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	      if(m_exit_on_error) exit(1);
 	    } else {
 	      apr_table_add(rules_url, copy, "unescaped line");
+	      apr_table_add(source_rules, rule, "");
 	      apr_table_setn(rules, rule, (char *)rs);
 	    }
 	  }
@@ -1070,7 +1077,7 @@ int main(int argc, const char * const argv[]) {
     fprintf(stderr, "ERROR, could not open input file %s\n", access_log);
     exit(1);
   }
-  qos_process_log(pool, blacklist, rules, rules_url, f, &line_nr, &deny_count);
+  qos_process_log(pool, blacklist, rules, rules_url, f, &line_nr, &deny_count, 1);
   fclose(f);
 
   if(m_redundant) {
@@ -1080,14 +1087,14 @@ int main(int argc, const char * const argv[]) {
     qos_delete_obsolete_rules(pool, rules, rules_url);
     // ensure, we have not deleted to many!
     if(m_verbose) {
-      printf("# check the result (again)\n"); 
+      printf("# verfiy new rules ...\n"); 
       fflush(stdout);
     }
-    if(httpdconf) {
-      qos_load_whitelist(pool, rules, httpdconf);
-    }
+    //    if(httpdconf) {
+    //      qos_load_whitelist(pool, rules, httpdconf);
+    //    }
     f = fopen(access_log, "r");
-    qos_process_log(pool, blacklist, rules, rules_url, f, &x, &y);
+    qos_process_log(pool, blacklist, rules, rules_url, f, &x, &y, 0);
     fclose(f);
   }
 
