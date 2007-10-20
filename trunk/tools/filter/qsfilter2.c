@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.20 2007-10-20 08:36:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.21 2007-10-20 09:16:12 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -431,7 +431,6 @@ static char *qos_addstr(apr_pool_t *pool, char *o, char *d, char *n) {
       p = next;
     }
     if(!qos_checkstr(pool, r, d, this)) {
-      if(m_verbose) printf("    %s\n", this);
       r = apr_pstrcat(pool, r, d, this, NULL);
     }
   }
@@ -461,16 +460,15 @@ static void qos_query_optimization(apr_pool_t *pool, apr_table_t *rules) {
       int merged = 0;
       char *query_m_string = r->query_m_string == NULL ? "" : r->query_m_string;
       char *query_m_pcre = r->query_m_pcre == NULL ? "" : r->query_m_pcre;
+      if(m_verbose > 1) printf("  search for path %s (%s)\n", r->path, rule_str);
+      if(m_verbose > 1) printf("  . %s %s\n", query_m_string, query_m_pcre);
       apr_table_add(checked_path, r->path, "");
       /* search for rules with the same path and delete them */
-      /* $$$ */
-      if(m_verbose) printf("  search for path %s\n", r->path);
       for(j = 0; j < apr_table_elts(rules)->nelts; j++) {
 	if(i != j) {
 	  qs_rule_t *n = (qs_rule_t *)entry[j].val;
 	  if(!n->fragment && n->path && (strcmp(r->path, n->path) == 0)) {
-	    /* $$$ */
-	    if(m_verbose) printf("  + %s %s\n", 
+	    if(m_verbose > 1) printf("  + %s %s\n", 
 				 n->query_m_string == NULL ? "-" : n->query_m_string,
 				 n->query_m_pcre == NULL ? "-" : n->query_m_pcre);
 	    if(strlen(query_m_string) == 0) {
@@ -478,6 +476,7 @@ static void qos_query_optimization(apr_pool_t *pool, apr_table_t *rules) {
 	    } else {
 	      query_m_string = qos_addstr(pool, query_m_string, "|", n->query_m_string);
 	    }
+	    if(m_verbose > 1) printf("  > %s\n", query_m_string);
 	    query_m_pcre = apr_pstrcat(pool, query_m_pcre, n->query_m_pcre, NULL);
 	    apr_table_add(delete, entry[j].key, "");
 	    merged = 1;
@@ -939,6 +938,8 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    if(fragment) {
 	      rule = apr_pstrcat(pool, rule, "#", fragment, NULL);
 	      rs->fragment = 1;
+	    } else {
+	      rs->fragment = 0;
 	    }
 	    rule = apr_pstrcat(pool, rule, "$", NULL);
 	    rs->pcre = qos_pcre_compile(rule, 0);
