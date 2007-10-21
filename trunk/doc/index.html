@@ -94,15 +94,15 @@ per second to an URL.
 <p>
 mod_qos version 4 requires OpenSSL and shared memory support but has no other 
 dependencies to other Apache modules nor any special libraries. It works with Apache 
-version 2.0 and 2.2. 
+version 2.0 and 2.2.<br>
 Just copy the module into the modules directory of the Apache server's source code and 
-compile it using the following commands (example using Apache 2.2.4 and mod_qos 4.11):
+compile it using the following commands (example using Apache 2.2.4 and mod_qos 4.15):
 <pre>
 tar xfz httpd-2.2.4.tar.gz
-tar xfz mod_qos-4.11-src.tar.gz
+tar xfz mod_qos-4.15-src.tar.gz
 cd httpd-2.2.4
 mkdir modules/qos
-cp ../mod_qos-4.11/apache2/* modules/qos
+cp ../mod_qos-4.15/apache2/* modules/qos
 ./buildconf
 ./configure --enable-so --enable-qos=shared --enable-ssl
 make
