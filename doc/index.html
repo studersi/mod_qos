@@ -96,22 +96,33 @@ mod_qos version 4 requires OpenSSL and shared memory support but has no other
 dependencies to other Apache modules nor any special libraries. It works with Apache 
 version 2.0 and 2.2.<br>
 Just copy the module into the modules directory of the Apache server's source code and 
-compile it using the following commands (example using Apache 2.2.4 and mod_qos 4.15):
+compile it using the following commands (all examples are using Apache 2.2.4 and 
+mod_qos 4.15):
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
 <pre>
 tar xfz httpd-2.2.4.tar.gz
 tar xfz mod_qos-4.15-src.tar.gz
-cd httpd-2.2.4
+ln -s httpd-2.2.4 httpd
+cd httpd
 mkdir modules/qos
 cp ../mod_qos-4.15/apache2/* modules/qos
 ./buildconf
 ./configure --enable-so --enable-qos=shared --enable-ssl
 make
+cd ..
 </pre>
+</td></tr>
+</table>
 This creates a DSO module, which can be loaded into the Apache server using the 
 following directive:
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
 <pre>
 LoadModule qos_module &lt;path to module&gt;/mod_qos.so
 </pre>
+</td></tr>
+</table>
 </p>
 <p>
 You can also compile the module using apxs alternatively. Your httpd must support 
@@ -119,9 +130,31 @@ dynamically loaded objects (DSO). Verify this by checking the availablility
 of mod_so: The command <code>httpd -l</code> must list the mod_so.c module. 
 The following command compiles the module and installs the mod_qos into the 
 server's modules directory.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
 <pre>
+cd mod_qos-4.15/apache2
 apxs -i -c mod_qos.c
+cd ../..
 </pre>
+</td></tr>
+</table>
+</p>
+<p>
+The support tools may be build using the following commands:
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+<pre>
+cd httpd
+mkdir qsfilter
+cp ../mod_qos-4.15/tools/qsfilter/* qsfilter
+cd qsfilter
+make
+cd ../../mod_qos-4.15/tools
+make
+</pre>
+</td></tr>
+</table>
 </p>
 <a name="source">
 <h2>Source</h3>

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.22 2007-10-15 19:04:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.23 2007-10-21 12:00:07 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -229,7 +229,7 @@ fi
 
 # -----------------------------------------------------------------
 cat logs/access1_log | awk '{print $7}' > logs/loc1.txt
-../tools/filter/qsfilter -s 2 -i logs/loc1.txt -o -v 0 -c appl_conf/qos_deny_filter.conf | grep QS_PermitUri > appl_conf/qos_permit_filter.conf
+../tools/filter/qsfilter2 -i logs/loc1.txt -v 0 -c appl_conf/qos_deny_filter.conf | grep QS_PermitUri > appl_conf/qos_permit_filter.conf
 rm -f logs/loc1.txt
 ./ctl.sh stop > /dev/null
 ./ctl.sh start -D permit_filter > /dev/null
