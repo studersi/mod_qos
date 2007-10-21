@@ -1,0 +1,69 @@
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.6 2007-10-03 18:20:09 pbuchbinder Exp $
+
+ServerName              127.0.0.1
+StartServers            1
+
+MinSpareThreads         5
+MaxSpareThreads         75
+ThreadsPerChild         64
+#MinSpareServers         5
+#MaxSpareServers         10
+
+MaxRequestsPerChild     300000
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/htdocs
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept.lock
+Timeout                 90
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        10
+
+Options                 FollowSymLinks Indexes
+DefaultType             text/plain
+
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T #%P"
+
+LogLevel                info
+ErrorLog                ##ROOT##/logs/error1_log
+TransferLog             ##ROOT##/logs/access1_log
+PidFile                 ##ROOT##/logs/apache1.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+TypesConfig             conf/mime.types
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+
+NameVirtualHost         127.0.0.1:##QS_PORT_BASE5##
+Listen                  127.0.0.1:##QS_PORT_BASE5##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE5##>
+   ServerName           127.0.0.1
+
+   ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
+   ScriptAlias /cgi100/ ##ROOT##/htdocs/cgi/
+   ScriptAlias /login/ ##ROOT##/htdocs/login/
+   <Location />
+        <IfDefine deny_filter>
+        Include conf/qos_deny_filter.conf
+        </IfDefine>
+        <IfDefine permit_filter>
+        Include conf/qos_permit_filter.conf
+        </IfDefine>
+   </Location>
+   <Location /cgi>
+        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Order allow,deny
+        Allow from all
+   </Location>
+   <Location /login>
+        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Order allow,deny
+        Allow from all
+   </Location>
+
+</VirtualHost>
