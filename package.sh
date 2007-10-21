@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.7 2007-10-21 09:45:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.8 2007-10-21 10:39:32 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -49,7 +49,7 @@ rm -rf mod_qos-${VERSION}*
 mkdir -p mod_qos-${VERSION}/doc
 mkdir -p mod_qos-${VERSION}/apache2
 mkdir -p mod_qos-${VERSION}/tools
-mkdir -p mod_qos-${VERSION}/tools/support
+mkdir -p mod_qos-${VERSION}/tools/qsfilter
 
 echo "install documentation"
 cp doc/README.TXT mod_qos-${VERSION}
@@ -69,8 +69,8 @@ cp tools/qs_util.c mod_qos-${VERSION}/tools
 cp tools/qslog.c mod_qos-${VERSION}/tools
 cp tools/qscheck.c mod_qos-${VERSION}/tools
 cp tools/Makefile mod_qos-${VERSION}/tools
-cp tools/filter/qsfilter2.c mod_qos-${VERSION}/tools/support
-cp tools/filter/Makefile mod_qos-${VERSION}/tools/support
+cp tools/filter/qsfilter2.c mod_qos-${VERSION}/tools/qsfilter
+cp tools/filter/Makefile mod_qos-${VERSION}/tools/qsfilter
 
 echo "package: mod_qos-${VERSION}-src.tar.gz"
 tar cf mod_qos-${VERSION}-src.tar --owner root --group bin mod_qos-${VERSION}
