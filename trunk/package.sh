@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.8 2007-10-21 10:39:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.9 2007-10-21 18:02:06 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -38,7 +38,7 @@ echo "build mod_dos version $VERSION distribution package"
 
 TAGV=`echo $VERSION | awk -F'.' '{print "REL_" $1 "_" $2}'`
 echo "check release tag $TAGV ..."
-if [ "`cvs -q diff -r $TAGV`" = "" ]; then
+if [ "`cvs -q diff -r $TAGV 2>&1`" = "" ]; then
     echo ok
 else
     echo "FAILED"
