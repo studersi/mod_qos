@@ -40,5 +40,6 @@ qsfilter: $(qsfilter_OBJECTS)
 qsfilter2_OBJECTS = qsfilter2.lo
 qsfilter2_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 qsfilter2: $(qsfilter2_OBJECTS)
-	$(LINK) $(qsfilter2_LTFLAGS) $(qsfilter2_OBJECTS) $(qsfilter2_LDADD)
+	$(LINK) $(qsfilter2_LTFLAGS) -static $(qsfilter2_OBJECTS) $(qsfilter2_LDADD)
+	strip qsfilter2
 

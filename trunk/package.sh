@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.6 2007-10-20 21:49:39 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.7 2007-10-21 09:45:05 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -68,8 +68,9 @@ cp tools/qs_util.h mod_qos-${VERSION}/tools
 cp tools/qs_util.c mod_qos-${VERSION}/tools
 cp tools/qslog.c mod_qos-${VERSION}/tools
 cp tools/qscheck.c mod_qos-${VERSION}/tools
-#cp tools/filter/qsfilter2.c mod_qos-${VERSION}/tools/support
 cp tools/Makefile mod_qos-${VERSION}/tools
+cp tools/filter/qsfilter2.c mod_qos-${VERSION}/tools/support
+cp tools/filter/Makefile mod_qos-${VERSION}/tools/support
 
 echo "package: mod_qos-${VERSION}-src.tar.gz"
 tar cf mod_qos-${VERSION}-src.tar --owner root --group bin mod_qos-${VERSION}
