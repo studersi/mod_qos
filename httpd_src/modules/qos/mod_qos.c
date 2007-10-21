@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.14 2007-10-20 21:52:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.15 2007-10-21 08:20:53 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1721,8 +1721,11 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     }
     s = s->next;
   }
-  ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, bs,
-               QOS_LOG_PFX"version %s loaded (%d req rules)", rev, rules);
+  {
+    char *vs = apr_psprintf(pconf, "mod_qos/%s", rev);
+    ap_add_version_component(pconf, vs);
+  }
+               
 #ifdef QS_INTERNAL_TEST
   fprintf(stdout, "\033[1mmod_qos TEST BINARY, NOT FOR PRODUCTIVE USE\033[0m\n");
   fflush(stdout);
@@ -2427,12 +2430,13 @@ static const command_rec qos_config_cmds[] = {
  * apache register 
  ***********************************************************************/
 static void qos_register_hooks(apr_pool_t * p) {
-  ap_hook_post_config(qos_post_config, NULL, NULL, APR_HOOK_MIDDLE);
+  static const char *pre[] = { "mod_setenvif.c", NULL };
+  ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
-  ap_hook_post_read_request(qos_post_read_request, NULL, NULL, APR_HOOK_LAST);
-  ap_hook_header_parser(qos_header_parser, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_post_read_request(qos_post_read_request, pre, NULL, APR_HOOK_LAST);
+  ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(qos_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
 
