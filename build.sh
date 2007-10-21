@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.16 2007-10-02 13:51:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.17 2007-10-21 09:45:05 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
@@ -54,7 +54,7 @@ fi
 
 cd httpd
 ./buildconf
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support
 make
 strip modules/qos/.libs/mod_qos.so
 if [ $? -ne 0 ]; then
