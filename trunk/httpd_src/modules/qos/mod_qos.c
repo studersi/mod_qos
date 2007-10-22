@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.15 2007-10-21 08:20:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.16 2007-10-22 07:21:11 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -288,6 +288,15 @@ module AP_MODULE_DECLARE_DATA qos_module;
  * private functions
  ***********************************************************************/
 
+/* returns the request id from mod_unique_id (if available) */
+static const char *qos_unique_id(request_rec *r) {
+  const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
+  if(uid == NULL) {
+    return apr_pstrdup(r->pool, "-");
+  }
+  return uid;
+}
+
 static char *qos_revision(apr_pool_t *p) {
   char *ver = apr_pstrdup(p, &revision[strlen("$Id: mod_qos.c,v ")]);
   char *h = strchr(ver, ' ');
@@ -342,7 +351,8 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
     int dec_len = apr_base64_decode(dec, value);
     if(dec_len == 0) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                    QOS_LOG_PFX"session cookie verification failed, invalid base64 encoding");
+                    QOS_LOG_PFX"session cookie verification failed, "
+                    "invalid base64 encoding, id=%s", qos_unique_id(r));
       return 0;
     }
 
@@ -365,19 +375,22 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
       EVP_CIPHER_CTX_cleanup(&cipher_ctx);
       if(buf_len != sizeof(qos_session_t)) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                      QOS_LOG_PFX"session cookie verification failed, invalid size");
+                      QOS_LOG_PFX"session cookie verification failed, "
+                      "invalid size, id=%s", qos_unique_id(r));
         return 0;
       } else {
         qos_session_t *s = (qos_session_t *)buf;
         s->magic[QOS_MAGIC_LEN] = '\0';
         if(strcmp(qs_magic, s->magic) != 0) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX"session cookie verification failed, invalid magic");
+                        QOS_LOG_PFX"session cookie verification failed, "
+                        "invalid magic, id=%s", qos_unique_id(r));
           return 0;
         }
         if(s->time < time(NULL) - sconf->max_age) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX"session cookie verification failed, expired");
+                        QOS_LOG_PFX"session cookie verification failed, "
+                        "expired, id=%s", qos_unique_id(r));
           return 0;
         }
       }
@@ -389,7 +402,8 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
   failed:
     EVP_CIPHER_CTX_cleanup(&cipher_ctx);
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                  QOS_LOG_PFX"session cookie verification failed, could not decrypt data");
+                  QOS_LOG_PFX"session cookie verification failed, "
+                  "could not decrypt data, id=%s", qos_unique_id(r));
     return 0;
   }
 }
@@ -440,7 +454,7 @@ static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
  failed:
   EVP_CIPHER_CTX_cleanup(&cipher_ctx);
   ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                QOS_LOG_PFX"failed to create session cookie");
+                QOS_LOG_PFX"failed to create session cookie, id=%s", qos_unique_id(r));
 }
 
 /**
@@ -984,10 +998,11 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
       }
       if(deny_rule && (ex == 0)) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX"access denied, rule id: %s (%s), action=%s, c=%s",
+                      QOS_LOG_PFX"access denied, rule id: %s (%s), action=%s, c=%s, id=%s",
                       rfilter->id,
                       rfilter->text, rfilter->action == QS_DENY ? "deny" : "log only",
-                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      qos_unique_id(r));
         if(rfilter->action == QS_DENY) {
           return HTTP_FORBIDDEN;
         }
@@ -996,9 +1011,10 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   }
   if(permit_rule && !permit_rule_match) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX"access denied, no permit rule match, action=%s, c=%s",
+                  QOS_LOG_PFX"access denied, no permit rule match, action=%s, c=%s, id=%s",
                   permit_rule_action == QS_DENY ? "deny" : "log only",
-                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                  qos_unique_id(r));
     if(permit_rule_action == QS_DENY) {
       return HTTP_FORBIDDEN;
     }
@@ -1314,7 +1330,8 @@ static int qos_process_connection(conn_rec * c) {
     if((sconf->max_conn_per_ip != -1) && !vip) {
       if(current > sconf->max_conn_per_ip) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                     QOS_LOG_PFX"access denied, rule: max_ip=%d, concurrent connections=%d, c=%s",
+                     QOS_LOG_PFX"access denied, rule: max_ip=%d, concurrent connections=%d, "
+                     "c=%s",
                      sconf->max_conn_per_ip, current,
                      c->remote_ip == NULL ? "-" : c->remote_ip);
         c->keepalive = AP_CONN_CLOSE;
@@ -1447,9 +1464,11 @@ static int qos_header_parser(request_rec * r) {
         } else {
           /* std user */
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests=%d, c=%s",
+                        QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests=%d, "
+                        "c=%s, id=%s",
                         e->url, e->limit, e->counter,
-                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                        qos_unique_id(r));
           rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
           if(error_page) {
             qos_error_response(r, error_page);
@@ -1560,6 +1579,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
  * "free resources" and update stats
  */
 static int qos_logger(request_rec *r) {
+  const char *uid;
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   qs_acentry_t *e = rctx->entry;
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
@@ -1761,7 +1781,7 @@ static int qos_handler(request_rec * r) {
   ap_set_content_type(r, "text/html");
   //  apr_table_set(r->headers_out,"Cache-Control","no-cache");
   if(!r->header_only) {
-    ap_rputs("<html><head>\n", r);
+    ap_rputs("<html><head><title>mod_qos</title>\n", r);
     ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n", r->parsed_uri.path);
     ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
     ap_rputs("<meta name=\"author\" content=\"Pascal Buchbinder\">\n", r);
