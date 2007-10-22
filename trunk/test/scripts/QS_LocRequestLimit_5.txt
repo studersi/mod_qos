@@ -1,7 +1,7 @@
 #
 # test QS_LocRequestLimit and QS_ErrorPage directive
 #
-# $Id: QS_LocRequestLimit_5.txt,v 1.3 2007-10-03 18:19:36 pbuchbinder Exp $
+# $Id: QS_LocRequestLimit_5.txt,v 1.4 2007-10-22 18:50:26 pbuchbinder Exp $
 #
 
 
@@ -25,6 +25,8 @@ __Host: localhost
 __
 _EXPECT . "500 Internal Server Error"
 _EXPECT . "custom error page"
+_EXPECT . "code=010"
+_EXPECT . "message: request rule"
 _WAIT
 
 END

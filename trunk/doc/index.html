@@ -187,7 +187,7 @@ match the request. By default, no limitations are active for locations.
 Defines the allowed number of requests per second to the uri (path and query) 
 pattern. Requests are limited by adding a delay to each requests (linear). 
 By default, no limitation is active. This directive should be used in 
-conjunction with QS_LocRequestLimitMatch only.
+conjunction with <code>QS_LocRequestLimitMatch</code> only.
 </li>
 <li>
 <code>QS_LocKBytesPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
@@ -195,35 +195,35 @@ Defines the allowed download bandwidth to the location matching the
 defined uri (path and query) pattern.  Responses are slowed by adding a delay 
 to each response (non-linear, bigger files get longer delay than smaller 
 ones). By default, no limitation is active. This directive should be 
-used in conjunction with QS_LocRequestLimitMatch only. 
+used in conjunction with <code>QS_LocRequestLimitMatch</code> only. 
 </li>
 <li>
 <code>QS_LocRequestLimit &lt;location&gt; &lt;number&gt;</code><br>
 Defines the number of concurrent requests for the specified location (applied to 
 the parsed path). By default, no limitations are active for locations. Has 
-lower priority than QS_LocRequestLimitMatch.
+lower priority than <code>QS_LocRequestLimitMatch</code>.
 </li>
 <li>
 <code>QS_LocRequestLimitDefault &lt;number&gt;</code><br>Defines the default limitation 
 for the maximum of concurrent per locations for those locations not defined by any 
-QS_LocRequestLimit directive. It can also be used to limit the number of concurrent 
-requests to a virtual host.
+<code>QS_LocRequestLimit</code> directive. It can also be used to limit the 
+number of concurrent requests to a virtual host.
 </li>
 <li>
 <code>QS_LocRequestPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
 Defines the allowed number of requests per second to a location. The maximum 
 number of requests is limited by adding a delay to each request (linear, each 
 request gets the same delay). By default, no limitation is active. This 
-directive should be used in conjunction with QS_LocRequestLimit only. Has 
-lower priority than QS_LocRequestPerSecLimitMatch.
+directive should be used in conjunction with <code>QS_LocRequestLimit</code> 
+only. Has lower priority than <code>QS_LocRequestPerSecLimitMatch</code>.
 </li>
 <li>
 <code>QS_LocKBytesPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
 Throttles the download bandwidth to the defined kbytes per second. Responses are 
 slowed by adding a delay to each response (non-linear, bigger files get 
 longer delay than smaller ones). By default, no limitation is active. 
-This directive should be used in conjunction with QS_LocRequestLimit only. 
-Has lower priority than QS_LocKBytesPerSecLimitMatch.
+This directive should be used in conjunction with <code>QS_LocRequestLimit</code> 
+only. Has lower priority than <code>QS_LocKBytesPerSecLimitMatch</code>.
 </li>
 <li>
 <code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when 
@@ -285,7 +285,7 @@ additonal control mechanisms. The following variables may be used:
 <li>
 <code>QS_VipRequest=yes</code><br>
 Allows unrestricted access. Requires the definition of a VIP header 
-using the QS_VipHeaderName directive.
+using the <code>QS_VipHeaderName</code> directive.
 </li>
 <li>
 <code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
@@ -294,8 +294,8 @@ KeepAliveTimeout directive settings.
 </li>
 <li>
 <code>QS_ErrorPage=&lt;url&gt;</code><br>
-Defines the error page overriding the sessing made by the QS_ErrorPage 
-directive.
+Defines the error page overriding the sessing made by the 
+<code>QS_ErrorPage</code> directive.
 </li>
 </ul>
 
@@ -357,8 +357,8 @@ is logged) or 'deny' (access is denied).
 <li>
 <code>QS_PermitUri '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
 Generic uri (path and query) filter implementing a request pattern 
-whitelist. Only requests matching at least one QS_PermitUri pattern are 
-allowed. If a QS_PermitUri pattern has been defined an the 
+whitelist. Only requests matching at least one <code>QS_PermitUri</code> 
+pattern are allowed. If a QS_PermitUri pattern has been defined an the 
 request does not match any rule, the request is denied albeit of 
 any server resource availability (whitelist). All rules 
 must define the same action. pcre is case sensitve.
@@ -427,17 +427,53 @@ QS_SrvMaxConnExcludeIP                    192.168.10.
 
 <a name="messages">
 <h2>Log Messages</h3>
+<h4>Error Log</h4>
 <p>
-mod_qos writes messages to Apache's error log when enforcing a rule. The number of 
-concurrent requests to a location defined by QS_LocRequestLimit can be logged to the 
-access log using the <code>mod_qos_cr</code> HTTP header. The <code>mod_qos_ev</code> 
-header is used to log event messages: D=denied, S=pass due an available VIP session, 
-V=create VIP session, K=connection closed (no keep-alive), T=dynamic keep-alive, 
-L=request slow down. The <code>mod_qos_con</code> header shows the number of 
-concurrent connections to this server. mod_qos uses the request id generated by 
-mod_unique_id within error messages. So it might be useful to log the 
-<code>UNIQUE_ID</code> environment variable as well in order to correlate 
-error to access log messages.
+mod_qos writes messages to Apache's error log when enforcing a rule. Each 
+error messages is prefixed by an id: <code>mod_qos(&lt;num&gt;)</code>. These
+error codes are also written to the error notes in order to be processed 
+within error pages using server side includes (SSI).
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBEDF5">
+<pre>
+mod_qos(00x):  initialisation failed
+mod_qos(01x):  request level control event
+mod_qos(02x):  vip session event
+mod_qos(03x):  connection level event
+mod_qos(04x):  generic filter event
+mod_qos(05x):  bandwidth limitation event
+</pre>
+</td></tr>
+</table>
+</p>
+
+<h4>Access Log</h4>
+<p>
+mod_qos adds response headers to the request record which may be added 
+to access log messages (the header is not sent to the client).
+<ul>
+<li>
+<code>mod_qos_ev</code> <br> This header stores mod_qos event messages. A 
+single letter is used to signalize an event: "D"=denied, "S"=pass 
+due an available VIP session, "V"=create VIP session, "K"=connection closed 
+(no keep-alive), "T"=dynamic keep-alive, and "L"=means a request slow down.
+</li>
+<li>
+<code>mod_qos_cr</code> <br> The number of concurrent requests to a 
+location defined by the <code>QS_LocRequestLimit</code> directive.
+</li>
+<li>
+<code>mod_qos_con</code> <br> This header shows the number of 
+concurrent connections to this server.
+</li>
+<li>
+<code>UNIQUE_ID</code> <br> This is a unique request id generated by 
+mod_unique_id. mod_qos uses this id to mark messages written to the 
+error log. So it might be useful to log the <code>UNIQUE_ID</code> 
+environment variable (not header) as well in order to correlate error 
+to access log messages.
+</li>
+</ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
@@ -447,9 +483,15 @@ LogFormat "%h %t \"%r\" %>s %b %T \"%{User-Agent}i\" id=%{UNIQUE_ID}e \
 </pre>
 </td></tr>
 </table>
-The <code>qslog</code> tool, which is part of the support utilities of mod_qos, may be
-used to gather request statistics such as the number of denied requests or new VIP session creations
-per minute but also total requests per second and other data.
+</p>
+<h4>Request Statistics</h4>
+<p>
+The <code>qslog</code> tool, which is part of the support utilities of 
+mod_qos, may be used to gather request statistics from Apache's access 
+log data. This includes data such as the number of denied requests or 
+new VIP session creations per minute but also total requests per second 
+and other data. Refere to the usage text of the <code>qslog</code> utility 
+for further details.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 <pre>
@@ -457,6 +499,10 @@ TransferLog "| ./bin/qslog -o logs/qs_log -f I..R.BT..Q"
 </pre>
 </td></tr>
 </table>
+</p>
+
+<h4>Status Viewer</h4>
+<p>
 mod_qos features a handler showing the current connection and request status. 
 Use "ip" in the query string in order to get a list of all concurrent requests 
 on a per client ip address basis, e.g. "/qos?option=ip".
