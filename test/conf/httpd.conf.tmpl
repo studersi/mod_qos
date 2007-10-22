@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.38 2007-10-04 06:28:59 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.39 2007-10-22 07:21:11 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -58,7 +58,7 @@ QS_EnableInternalIPSimulation off
 Options                 FollowSymLinks Indexes
 DefaultType             text/plain
 
-LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o #%P"
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e #%P"
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
