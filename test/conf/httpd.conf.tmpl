@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.39 2007-10-22 07:21:11 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.40 2007-10-22 18:50:26 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -55,10 +55,14 @@ QS_SrvConnTimeout       3
 QS_EnableInternalIPSimulation off
 </IfDefine>
 
-Options                 FollowSymLinks Indexes
+Options                 FollowSymLinks Indexes Includes
 DefaultType             text/plain
 
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e #%P"
+
+
+AddType text/html .shtml
+AddOutputFilter INCLUDES .shtml
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
@@ -106,7 +110,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    # request level control
    # -----------------------------------------------------------------
 
-   QS_ErrorPage               /error-docs/error.html
+   QS_ErrorPage               /error-docs/error.shtml
 
    QS_LocRequestLimitDefault                 30
    QS_LocRequestLimit         /cgi            5

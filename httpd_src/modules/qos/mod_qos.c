@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.16 2007-10-22 07:21:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.17 2007-10-22 18:50:26 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -69,7 +69,7 @@ static const char revision[] = "$Id: mod_qos.c,v 4.16 2007-10-22 07:21:11 pbuchb
 /************************************************************************
  * defines
  ***********************************************************************/
-#define QOS_LOG_PFX "mod_qos: "
+#define QOS_LOG_PFX(id)  "mod_qos("#id"): "
 #define QOS_RAN 10
 #define QOS_MAGIC_LEN 8
 #define QOS_MAX_AGE "3600"
@@ -289,8 +289,9 @@ module AP_MODULE_DECLARE_DATA qos_module;
  ***********************************************************************/
 
 /* returns the request id from mod_unique_id (if available) */
-static const char *qos_unique_id(request_rec *r) {
+static const char *qos_unique_id(request_rec *r, const char *eid) {
   const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
+  apr_table_set(r->notes, "error-notes", eid);
   if(uid == NULL) {
     return apr_pstrdup(r->pool, "-");
   }
@@ -351,8 +352,8 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
     int dec_len = apr_base64_decode(dec, value);
     if(dec_len == 0) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                    QOS_LOG_PFX"session cookie verification failed, "
-                    "invalid base64 encoding, id=%s", qos_unique_id(r));
+                    QOS_LOG_PFX(020)"session cookie verification failed, "
+                    "invalid base64 encoding, id=%s", qos_unique_id(r, "020"));
       return 0;
     }
 
@@ -375,22 +376,22 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
       EVP_CIPHER_CTX_cleanup(&cipher_ctx);
       if(buf_len != sizeof(qos_session_t)) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                      QOS_LOG_PFX"session cookie verification failed, "
-                      "invalid size, id=%s", qos_unique_id(r));
+                      QOS_LOG_PFX(021)"session cookie verification failed, "
+                      "invalid size, id=%s", qos_unique_id(r, "021"));
         return 0;
       } else {
         qos_session_t *s = (qos_session_t *)buf;
         s->magic[QOS_MAGIC_LEN] = '\0';
         if(strcmp(qs_magic, s->magic) != 0) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX"session cookie verification failed, "
-                        "invalid magic, id=%s", qos_unique_id(r));
+                        QOS_LOG_PFX(022)"session cookie verification failed, "
+                        "invalid magic, id=%s", qos_unique_id(r, "022"));
           return 0;
         }
         if(s->time < time(NULL) - sconf->max_age) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX"session cookie verification failed, "
-                        "expired, id=%s", qos_unique_id(r));
+                        QOS_LOG_PFX(023)"session cookie verification failed, "
+                        "expired, id=%s", qos_unique_id(r, "023"));
           return 0;
         }
       }
@@ -402,8 +403,8 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
   failed:
     EVP_CIPHER_CTX_cleanup(&cipher_ctx);
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                  QOS_LOG_PFX"session cookie verification failed, "
-                  "could not decrypt data, id=%s", qos_unique_id(r));
+                  QOS_LOG_PFX(024)"session cookie verification failed, "
+                  "could not decrypt data, id=%s", qos_unique_id(r, "024"));
     return 0;
   }
 }
@@ -454,7 +455,8 @@ static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
  failed:
   EVP_CIPHER_CTX_cleanup(&cipher_ctx);
   ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                QOS_LOG_PFX"failed to create session cookie, id=%s", qos_unique_id(r));
+                QOS_LOG_PFX(025)"failed to create session cookie, id=%s",
+                qos_unique_id(r, "025"));
 }
 
 /**
@@ -478,7 +480,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
 static void qos_destroy_act(qs_actable_t *act) {
   qs_acentry_t *e = act->entry;
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
-               QOS_LOG_PFX"cleanup shared memory: %d bytes",
+               QOS_LOG_PFX(001)"cleanup shared memory: %d bytes",
                act->size);
   act->child_init = 0;
   apr_global_mutex_destroy(act->lock);
@@ -571,7 +573,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t)));
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
-               QOS_LOG_PFX"%s(%s), create shared memory: %d bytes (r=%d,ip=%d)", 
+               QOS_LOG_PFX(002)"%s(%s), create shared memory: %d bytes (r=%d,ip=%d)", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->is_virtual ? "v" : "b", act->size, rule_entries, max_ip);
   res = apr_shm_create(&act->m, (act->size + 512), act->m_file, act->pool);
@@ -579,7 +581,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX"could not create shared memory: %s", buf);
+                 QOS_LOG_PFX(003)"could not create shared memory: %s", buf);
     return res;
   }
   act->c = apr_shm_baseaddr_get(act->m);
@@ -602,7 +604,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->limit = rule->limit;
     if(e->limit == 0) {
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s,
-                   QOS_LOG_PFX"request level rule %s has no limitation",
+                   QOS_LOG_PFX(004)"request level rule %s has no limitation",
                    e->url);
     }
     e->interval = time(NULL);
@@ -616,7 +618,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
       char buf[MAX_STRING_LEN];
       apr_strerror(res, buf, sizeof(buf));
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX"could create mutex: %s", buf);
+                   QOS_LOG_PFX(005)"could create mutex: %s", buf);
       return res;
     }
     if(i < rule_entries - 1) {
@@ -998,11 +1000,11 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
       }
       if(deny_rule && (ex == 0)) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX"access denied, rule id: %s (%s), action=%s, c=%s, id=%s",
+                      QOS_LOG_PFX(040)"access denied, rule id: %s (%s), action=%s, c=%s, id=%s",
                       rfilter->id,
                       rfilter->text, rfilter->action == QS_DENY ? "deny" : "log only",
                       r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
-                      qos_unique_id(r));
+                      qos_unique_id(r, "040"));
         if(rfilter->action == QS_DENY) {
           return HTTP_FORBIDDEN;
         }
@@ -1011,10 +1013,10 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   }
   if(permit_rule && !permit_rule_match) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX"access denied, no permit rule match, action=%s, c=%s, id=%s",
+                  QOS_LOG_PFX(041)"access denied, no permit rule match, action=%s, c=%s, id=%s",
                   permit_rule_action == QS_DENY ? "deny" : "log only",
                   r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
-                  qos_unique_id(r));
+                  qos_unique_id(r, "041"));
     if(permit_rule_action == QS_DENY) {
       return HTTP_FORBIDDEN;
     }
@@ -1320,7 +1322,8 @@ static int qos_process_connection(conn_rec * c) {
     if((sconf->max_conn != -1) && !vip) {
       if(connections > sconf->max_conn) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                     QOS_LOG_PFX"access denied, rule: max=%d, concurrent connections=%d, c=%s",
+                     QOS_LOG_PFX(030)"access denied, rule: max=%d, concurrent connections=%d, "
+                     "c=%s",
                      sconf->max_conn, connections,
                      c->remote_ip == NULL ? "-" : c->remote_ip);
         c->keepalive = AP_CONN_CLOSE;
@@ -1330,7 +1333,7 @@ static int qos_process_connection(conn_rec * c) {
     if((sconf->max_conn_per_ip != -1) && !vip) {
       if(current > sconf->max_conn_per_ip) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                     QOS_LOG_PFX"access denied, rule: max_ip=%d, concurrent connections=%d, "
+                     QOS_LOG_PFX(031)"access denied, rule: max_ip=%d, concurrent connections=%d, "
                      "c=%s",
                      sconf->max_conn_per_ip, current,
                      c->remote_ip == NULL ? "-" : c->remote_ip);
@@ -1464,11 +1467,11 @@ static int qos_header_parser(request_rec * r) {
         } else {
           /* std user */
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX"access denied, rule: %s(%d), concurrent requests=%d, "
+                        QOS_LOG_PFX(010)"access denied, rule: %s(%d), concurrent requests=%d, "
                         "c=%s, id=%s",
                         e->url, e->limit, e->counter,
                         r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
-                        qos_unique_id(r));
+                        qos_unique_id(r, "010"));
           rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
           if(error_page) {
             qos_error_response(r, error_page);
@@ -1521,7 +1524,7 @@ static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
     int qti = apr_time_sec(inctx->qt);
     f->c->base_server->timeout = inctx->server_timeout;
     ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
-                 QOS_LOG_PFX"connection timeout, rule: %d sec inital timeout, c=%s",
+                 QOS_LOG_PFX(032)"connection timeout, rule: %d sec inital timeout, c=%s",
                  qti,
                  f->c->remote_ip == NULL ? "-" : f->c->remote_ip);
   }
@@ -1604,7 +1607,7 @@ static int qos_logger(request_rec *r) {
           int factor = ((e->req_per_sec * 100) / e->req_per_sec_limit) - 100;
           e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX"request rate limit, rule: %s(%ld), req/sec=%ld,"
+                        QOS_LOG_PFX(050)"request rate limit, rule: %s(%ld), req/sec=%ld,"
                         " delay=%ldms",
                         e->url, e->req_per_sec_limit,
                         e->req_per_sec, e->req_per_sec_block_rate);
@@ -1616,7 +1619,7 @@ static int qos_logger(request_rec *r) {
             e->req_per_sec_block_rate = e->req_per_sec_block_rate - factor;
           }
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                        QOS_LOG_PFX"request rate limit, rule: %s(%ld), req/sec=%ld,"
+                        QOS_LOG_PFX(051)"request rate limit, rule: %s(%ld), req/sec=%ld,"
                         " delay=%dms",
                         e->url, e->req_per_sec_limit,
                         e->req_per_sec, e->req_per_sec_block_rate);
@@ -1627,7 +1630,7 @@ static int qos_logger(request_rec *r) {
           int factor = ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) - 100;
           e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
+                        QOS_LOG_PFX(052)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
                         " delay=%ldms",
                         e->url, e->kbytes_per_sec_limit,
                         e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
@@ -1639,7 +1642,7 @@ static int qos_logger(request_rec *r) {
             e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate - factor;
           }
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                        QOS_LOG_PFX"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
+                        QOS_LOG_PFX(053)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
                         " delay=%dms",
                         e->url, e->kbytes_per_sec_limit,
                         e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
@@ -1911,7 +1914,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     char buf[MAX_STRING_LEN];
     apr_strerror(rv, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX"could create mutex: %s", buf);
+                 QOS_LOG_PFX(006)"could create mutex: %s", buf);
     exit(1);
   }
   sconf->is_virtual = s->is_virtual;
