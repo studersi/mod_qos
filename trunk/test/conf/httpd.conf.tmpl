@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.40 2007-10-22 18:50:26 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.41 2007-10-23 06:54:25 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -57,12 +57,10 @@ QS_EnableInternalIPSimulation off
 
 Options                 FollowSymLinks Indexes Includes
 DefaultType             text/plain
+AddType                 text/html .shtml
+AddOutputFilter         INCLUDES .shtml
 
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e #%P"
-
-
-AddType text/html .shtml
-AddOutputFilter INCLUDES .shtml
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
@@ -105,7 +103,6 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
-
    # -----------------------------------------------------------------
    # request level control
    # -----------------------------------------------------------------
@@ -124,6 +121,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    #QS_SessionCookiePath       /x
    QS_SessionKey              12345678
 
+   # -----------------------------------------------------------------
+   # connection level control
+   # -----------------------------------------------------------------
    QS_SrvMaxConn                             40
    QS_SrvMaxConnClose                        20
    QS_SrvMaxConnPerIP                        10
@@ -145,6 +145,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    <Location /qos>
        SetHandler qos-viewer
 
+       # -------------------------------------------------------------
+       # request level control, generic filter
+       # -------------------------------------------------------------
        QS_DenyRequestLine +restrict  deny ".*private.*"
        QS_DenyRequestLine +special   deny ".*special.*"
        QS_DenyPath        +qos       deny ^/qos/internal.*$
