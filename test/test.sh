@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.23 2007-10-21 12:00:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.24 2007-10-24 17:50:59 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -40,6 +40,8 @@ QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 ./generate.sh
 
 ERRORS=0
+
+rm -f logs/access1_log
 
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
 echo "-- start `date` --" >>  logs/error_log
