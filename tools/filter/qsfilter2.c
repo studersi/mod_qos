@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.27 2007-10-21 08:41:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.28 2007-10-24 19:21:57 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -59,13 +59,12 @@ static const char revision[] = "$Id: qsfilter2.c,v 1.27 2007-10-21 08:41:11 pbuc
 #define CR 13
 #define LF 10
 
-/* reserved: {}[]()^$.|*+?\ */
-
 typedef enum  {
   QS_UT_PATH,
   QS_UT_QUERY
 } qs_url_type_e;
 
+/* reserved (to be escaped): {}[]()^$.|*+?\ */
 #define QS_UNRESERVED         "a-zA-Z0-9-\\._~% "
 #define QS_GEN                ":/\\?#\\[\\]@"
 #define QS_SUB                "!$&'\\(\\)\\*\\+,;="
@@ -79,6 +78,7 @@ typedef enum  {
 pcre *pcre_b64;
 pcre *pcre_simple_path;
 
+/* global variables to store settings */
 static int m_base64 = 5;
 static int m_verbose = 1;
 static int m_path_depth = 1;
@@ -99,12 +99,14 @@ typedef struct {
 } qs_rule_t;
 
 
+/* openssl stack compare function used to sort the rules */
 int STACK_qs_cmp(const char * const *_pA, const char * const *_pB) {
   qs_rule_t *pA=*(( qs_rule_t **)_pA);
   qs_rule_t *pB=*(( qs_rule_t **)_pB);
   return strcmp(pA->rule,pB->rule);
 }
 
+/* compiles a pcre (exit on error) */
 static pcre *qos_pcre_compile(char *pattern, int option) {
   const char *errptr = NULL;
   int erroffset;
@@ -117,6 +119,7 @@ static pcre *qos_pcre_compile(char *pattern, int option) {
   return pcre;
 }
 
+/* tries to detect base64 patterns (mix of upper and lower case characters) */
 static char *qos_detect_b64(char *line, int silent) {
   int ovector[QS_OVECCOUNT];
   int rc_c = pcre_exec(pcre_b64, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
@@ -127,6 +130,7 @@ static char *qos_detect_b64(char *line, int silent) {
   return NULL;
 }
 
+/* escape a string in order to be used withn a pcre */
 static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
   int i = 0;
   unsigned char *in = (unsigned char *)line;
@@ -150,17 +154,7 @@ static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
   return ret;
 }
 
-static char *qos_extract(apr_pool_t *pool, char **line, int *ovector, int *len, const char *pn) {
-  char *path = *line;
-  char *substring_start = path + ovector[0];
-  int substring_length = ovector[1] - ovector[0];
-  char *rule = apr_psprintf(pool, "%.*s", substring_length, substring_start);
-  *len = substring_length;
-  if(m_verbose > 1) printf(" %s, match at %d: %s\n", pn, ovector[0], rule);
-  *line = path + substring_length;
-  return qos_escape_pcre(pool, rule);
-}
-
+/* hellper for url decoding */
 static int qos_hex2c(const char *x) {
   int i, ch;
   ch = x[0];
@@ -184,6 +178,7 @@ static int qos_hex2c(const char *x) {
   return i;
 }
 
+/* url decoding */
 static int qos_unescaping(char *x) {
   int i, j, ch;
   if (x[0] == '\0')
@@ -215,27 +210,12 @@ static int qos_fgetline(char *s, int n, FILE *f) {
   }
 }
 
+/* init global pcre */
 static void qos_init_pcre() {
   char buf[1024];
   sprintf(buf, "%s{%d,}", QS_B64, m_base64);
   pcre_b64 = qos_pcre_compile(buf, 0);
   pcre_simple_path = qos_pcre_compile("^"QS_SIMPLE_PATH_PCRE"$", 0);
-}
-
-static int qos_getline(char *s, int n) {
-  int i = 0;
-  while (1) {
-    s[i] = (char)getchar();
-    if(s[i] == EOF) return 0;
-    if (s[i] == CR) {
-      s[i] = getchar();
-    }
-    if ((s[i] == 0x4) || (s[i] == LF) || (i == (n - 1))) {
-      s[i] = '\0';
-      return 1;
-    }
-    ++i;
-  }
 }
 
 static void usage(char *cmd) {
@@ -355,6 +335,7 @@ static void usage(char *cmd) {
   exit(1);
 }
 
+/* worker struct, used for parallel processing */
 typedef struct {
   apr_pool_t *pool;
   apr_table_t *rules;
@@ -363,6 +344,7 @@ typedef struct {
   int to;
 } qs_worker_t;
 
+/* determines, if a rule is really required */
 static apr_table_t *qos_get_used(apr_pool_t *pool, apr_table_t *rules, apr_table_t *rules_url,
 				 int from, int to) {
   apr_table_t *used = apr_table_make(pool, 1);
@@ -402,6 +384,7 @@ static void *qos_worker(void *argv) {
   return qos_get_used(wt->pool, wt->rules, wt->rules_url, wt->from, wt->to);
 }
 
+/* get the characters used withn the string in order to define a pcre */
 static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   int hasA = 0;
   int hasD = 0;
@@ -457,7 +440,8 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   return ret;
 }
 
-// is already there
+/* check for the pattern "p" in "r" using the delimter "d",
+   returns 1 if it is in the string */
 static int qos_checkstr(apr_pool_t *pool, char *r, char *d, char *p) {
   /*
    * r = ..|p|..
@@ -487,6 +471,8 @@ static int qos_checkstr(apr_pool_t *pool, char *r, char *d, char *p) {
   return 0;
 }
 
+/* add the string "n" to "o" using the delimiter "d" (only if not
+   already available */
 static char *qos_addstr(apr_pool_t *pool, char *o, char *d, char *n) {
   char *p = apr_pstrdup(pool, n);
   char *r = o;
@@ -522,7 +508,7 @@ static char *qos_addstr(apr_pool_t *pool, char *o, char *d, char *n) {
 }
 
 
-/* ((s1|s2)(=[<pcre>]*)*[&]?)*" */
+/* crate a name=pcre string like this: ((s1|s2)(=[<pcre>]*)*[&]?)*" */
 static char *qos_qqs(apr_pool_t *pool, char *string, char *query_pcre) {
   if(strlen(query_pcre) > 0) {
     return apr_pstrcat(pool, "((", string, ")(=[", qos_2pcre(pool, query_pcre), "]*)*[&]?)*", NULL);
@@ -531,6 +517,8 @@ static char *qos_qqs(apr_pool_t *pool, char *string, char *query_pcre) {
   }
 }
 
+/* tries to optimize the rules by merging all query into one single pcre matching
+   all values */
 static void qos_query_optimization(apr_pool_t *pool, apr_table_t *rules) {
   apr_table_t *delete = apr_table_make(pool, 1);
   apr_table_t *checked_path = apr_table_make(pool, 1);
@@ -603,6 +591,7 @@ static void qos_query_optimization(apr_pool_t *pool, apr_table_t *rules) {
   }
 }
 
+/* deletes rules which are not required and merge query name/value pairs */
 static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_table_t *rules_url) {
   apr_table_t *not_used = apr_table_make(pool, 1);
   apr_table_t *used;
@@ -647,8 +636,10 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
   }
 }
 
-int qos_test_for_existing_rule(char *plain, char *line, apr_table_t *rules, int line_nr,
-			       apr_table_t *rules_url, apr_table_t *source_rules, int first) {
+/* test if we need to create a new url (and save line if the rule is used the very
+   first time (rule has been read from the configuration file)) */
+static int qos_test_for_existing_rule(char *plain, char *line, apr_table_t *rules, int line_nr,
+				      apr_table_t *rules_url, apr_table_t *source_rules, int first) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
   if((line == 0) || (strlen(line) == 0)) return 0;
@@ -670,6 +661,7 @@ int qos_test_for_existing_rule(char *plain, char *line, apr_table_t *rules, int 
   return 0;
 }
 
+/* filter lines we don't want to add to the whitelist */
 static int qos_enforce_blacklist(apr_table_t *rules, const char *line) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
@@ -684,6 +676,7 @@ static int qos_enforce_blacklist(apr_table_t *rules, const char *line) {
   return 0;
 }
 
+/* load existing rules */
 static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
 			   const char *httpdconf, const char *command, int option) {
   FILE *f = fopen(httpdconf, "r");
@@ -745,6 +738,7 @@ static void qos_load_whitelist(apr_pool_t *pool, apr_table_t *rules, const char 
   qos_load_rules(pool, rules, httpdconf, "QS_PermitUri", 0);
 }
 
+/* tries to map a base64 string to a pcre */
 static char *qos_b64_2pcre(apr_pool_t *pool, const char *line) {
   char *copy = apr_pstrdup(pool, line);
   char *b64 = qos_detect_b64(copy, 1);
@@ -768,7 +762,7 @@ static char *qos_b64_2pcre(apr_pool_t *pool, const char *line) {
 }
 
 
-// query to <string>=<pcre> or <pcre>=<pcre>
+/* maps a query string to a pairs of <string>=<pcre> or <pcre>=<pcre> */
 static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   char *copy = apr_pstrdup(pool, path);
   char *pos = copy;
@@ -803,7 +797,7 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
 	}
       } else {
 	qos_unescaping(pos);
-	ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+[&]?", NULL);
+	ret = apr_psprintf(pool, "%s[%s]{0,%d}[&]?", ret, qos_2pcre(pool, pos), strlen(pos));
 	if(open) {
 	  ret = apr_pstrcat(pool, ret, ")?", NULL);
 	  open = 0;
@@ -818,7 +812,7 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   if(pos != copy) {
     qos_unescaping(pos);
     if(isValue) {
-      ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+", NULL);
+      ret = apr_psprintf(pool, "%s[%s]{0,%d}", ret, qos_2pcre(pool, pos), strlen(pos));
     } else {
       if(!open) {
 	ret = apr_pstrcat(pool, "(", ret, NULL);
@@ -842,7 +836,8 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   return ret;
 }
 
-// query to <string>|<string>=<pcre>
+/* maps a query string to a list of names and a single pcre for all values:
+   <string>|<string>=<pcre> */
 static char *qos_multi_query_string_pcre(apr_pool_t *pool, const char *path,
 					 char **query_m_string, char **query_m_pcre) {
   char *copy = apr_pstrdup(pool, path);
@@ -886,14 +881,14 @@ static char *qos_multi_query_string_pcre(apr_pool_t *pool, const char *path,
   return qos_qqs(pool, string, query_pcre);
 }
 
-// path to <pcre>
+/* maps a path to a single pcre (don't mind its length) */
 static char *qos_path_pcre(apr_pool_t *lpool, const char *path) {
   char *dec = apr_pstrdup(lpool, path);
   qos_unescaping(dec);
   return apr_pstrcat(lpool, "[", qos_2pcre(lpool, dec), "]+", NULL);
 }
 
-// path to <pcre>/<string>
+/* maps a path to <pcre>/<string> */
 static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
   int nohandler = 0;
   char *lpath = apr_pstrdup(lpool, path);
@@ -931,6 +926,7 @@ static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
   return rx;
 }
 
+/* process the input file line by line */
 static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
 			    apr_table_t *rules_url, FILE *f, int *ln, int *dc, int first) {
   char line[MAX_LINE];
