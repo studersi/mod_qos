@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.6 2007-10-03 18:20:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.7 2007-10-24 17:50:59 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            1
@@ -52,7 +52,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE5##
         Include conf/qos_deny_filter.conf
         </IfDefine>
         <IfDefine permit_filter>
-        Include conf/qos_permit_filter.conf
+        Include appl_conf/qos_permit_filter.conf
         </IfDefine>
    </Location>
    <Location /cgi>
