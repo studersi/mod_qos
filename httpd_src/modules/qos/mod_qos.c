@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.17 2007-10-22 18:50:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.18 2007-10-25 18:15:06 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -213,6 +213,7 @@ typedef struct {
 
 typedef struct {
   apr_table_t *rfilter_table;
+  int inheritoff;
 } qos_dir_config;
 
 /**
@@ -1850,6 +1851,7 @@ static void qos_insert_filter(request_rec *r) {
 static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_rfilter_t));
   dconf->rfilter_table = apr_table_make(p, 1);
+  dconf->inheritoff = 0;
   return dconf;
 }
 
@@ -1860,6 +1862,13 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
 static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_dir_config *b = (qos_dir_config *)basev;
   qos_dir_config *o = (qos_dir_config *)addv;
+  if(o->inheritoff) {
+    if(apr_table_elts(o->rfilter_table)->nelts == 0) {
+      return NULL;
+    } else {
+      return o;
+    }
+  }
   if((apr_table_elts(b->rfilter_table)->nelts == 0) &&
      (apr_table_elts(o->rfilter_table)->nelts == 0)) {
     return NULL;
@@ -2310,6 +2319,13 @@ const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
   return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_PERMIT_URI, 0);
 }
 
+const char *qos_denyinheritoff_cmd(cmd_parms *cmd, void *dcfg) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  dconf->inheritoff = 1;
+  return NULL;
+}
+
+
 #ifdef QS_INTERNAL_TEST
 const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -2441,6 +2457,10 @@ static const command_rec qos_config_cmds[] = {
                 " request does not match any rule, the request is denied albeit of"
                 " any server resource availability (white list). All rules"
                 " must define the same action. pcre is case sensitve."),
+  AP_INIT_NO_ARGS("QS_DenyInheritanceOff", qos_denyinheritoff_cmd, NULL,
+                  ACCESS_CONF,
+                  "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"
+                  " directives to a location."),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                 RSRC_CONF,
