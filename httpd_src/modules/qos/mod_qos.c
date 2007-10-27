@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.18 2007-10-25 18:15:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.19 2007-10-27 21:28:36 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -236,6 +236,7 @@ typedef struct {
   int max_conn_per_ip;
   apr_table_t *exclude_ip;
   int connect_timeout;
+  apr_table_t *hfilter_table;
 #ifdef QS_INTERNAL_TEST
   apr_table_t *testip;
   int enable_testip;
@@ -1025,6 +1026,31 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   return APR_SUCCESS;
 }
 
+static void qos_header_filter(request_rec *r, qos_srv_config *sconf) {
+  apr_table_t *delete = apr_table_make(r->pool, 1);
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(r->headers_in)->elts;
+  for(i = 0; i < apr_table_elts(r->headers_in)->nelts; i++) {
+    pcre *p = (pcre *)apr_table_get(sconf->hfilter_table, entry[i].key);
+    if(p) {
+      if(pcre_exec(p, NULL, entry[i].val, strlen(entry[i].val), 0, 0, NULL, 0) < 0) {
+        apr_table_add(delete, entry[i].key, entry[i].val);
+      }
+    } else {
+      //      apr_table_add(delete, entry[i].key, entry[i].val);
+    }
+  }
+  entry = (apr_table_entry_t *)apr_table_elts(delete)->elts;
+  for(i = 0; i < apr_table_elts(delete)->nelts; i++) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                  QOS_LOG_PFX(042)"drop header \'%s: %s\', c=%s, id=%s",
+                  entry[i].key, entry[i].val,
+                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                  qos_unique_id(r, "042"));
+    apr_table_unset(r->headers_in, entry[i].key);
+  }
+}
+
 /************************************************************************
  * "public"
  ***********************************************************************/
@@ -1411,6 +1437,9 @@ static int qos_header_parser(request_rec * r) {
         }
         return rv;
       }
+    }
+    if(apr_table_elts(sconf->hfilter_table)->nelts > 0) {
+      qos_header_filter(r, sconf);
     }
 
     /* set dynamic keep alive */
@@ -1935,6 +1964,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
+  sconf->hfilter_table = apr_table_make(p, 1);
   {
     int len = EVP_MAX_KEY_LENGTH;
     unsigned char *rand = apr_pcalloc(p, len);
@@ -2325,6 +2355,59 @@ const char *qos_denyinheritoff_cmd(cmd_parms *cmd, void *dcfg) {
   return NULL;
 }
 
+typedef struct {
+  const char* name;
+  const char* pcre;
+} qos_hel_t;
+
+static const qos_hel_t qs_header_rules[] = {
+#define QS_ACCEPT "[a-zA-Z0-0\\-_\\*\\+]+/[a-zA-Z0-0\\-_\\*\\+]+(;[a-zA-Z0-9]+=[0-9]+)?[ ]?(;q=[0-9\\.]+)?"
+  { "accept", "^("QS_ACCEPT"){1}(,[ ]?"QS_ACCEPT")+$" },
+  /*
+  { "Accept-Charset", "" },
+  { "Accept-Encoding", "" },
+  { "Accept-Language", "" },
+  { "Authorization", "" },
+  { "Cookie", "" },
+  { "Expect", "" },
+  { "From", "" },
+  { "Host", "" },
+  { "If-Match", "" },
+  { "If-Modified-Since", "" },
+  { "If-None-Match", "" },
+  { "If-Range", "" },
+  { "If-Unmodified-Since", "" },
+  { "Max-Forwards", "" },
+  { "Proxy-Authorization", "" },
+  { "Range", "" },
+  { "Referer", "" },
+  { "TE", "" },
+  { "User-Agent", "" },
+  */
+  { NULL, NULL }
+};
+
+const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *errptr = NULL;
+  int erroffset;
+  const qos_hel_t* elt;
+  for(elt = qs_header_rules; elt->name != NULL ; ++elt) {
+    pcre *p = pcre_compile(elt->pcre, PCRE_DOTALL, &errptr, &erroffset, NULL);
+    if(p == NULL) {
+      return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
+                          " reason: %s", 
+                          cmd->directive->directive,
+                          elt->name,
+                          erroffset, errptr);
+    }
+    apr_table_setn(sconf->hfilter_table, elt->name, (char *)p);
+    apr_pool_cleanup_register(cmd->pool, p, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  }
+  return NULL;
+}
+
 
 #ifdef QS_INTERNAL_TEST
 const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
@@ -2461,6 +2544,9 @@ static const command_rec qos_config_cmds[] = {
                   ACCESS_CONF,
                   "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"
                   " directives to a location."),
+  AP_INIT_NO_ARGS("QS_HeaderFilter", qos_headerfilter_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_HeaderFilter"),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                 RSRC_CONF,
