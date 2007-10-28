@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.24 2007-10-24 17:50:59 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.25 2007-10-28 19:23:19 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -240,6 +240,15 @@ echo "-- permit filter QS_PermitUri.txt" >>  logs/error_log
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_PermitUri.txt"
+    exit 1
+fi
+
+
+echo "-- header filter, QS_HeaderFilter.txt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_HeaderFilter.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_HeaderFilter.txt"
     exit 1
 fi
 
