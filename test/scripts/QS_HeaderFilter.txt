@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.txt,v 1.4 2007-10-28 20:55:12 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.txt,v 1.5 2007-10-28 21:22:39 pbuchbinder Exp $
 #
 
 
@@ -11,7 +11,8 @@ _REQ localhost $QS_PORT_BASE
 __GET /cgi-local/index.cgi HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
-__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*;q=0.5
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5
+#__Accept: text/html, image/gif, image/jpeg, *; q=.2, */*; q=.2
 __Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
 __Accept-Encoding: gzip,deflate
 __ACCEPT-LANGUAGE: en-us,en;q=0.5
@@ -23,7 +24,7 @@ __X-FORWARDED-HOST: localhost:5960
 __X-FORWARDED-SERVER: 127.0.0.1
 __
 _EXPECT . "200 OK"
-_EXPECT . "HTTP_ACCEPT"
+_EXPECT . "HTTP_ACCEPT:"
 _EXPECT . "HTTP_ACCEPT_CHARSET"
 _EXPECT . "HTTP_ACCEPT_ENCODING"
 _EXPECT . "HTTP_ACCEPT_LANGUAGE"
