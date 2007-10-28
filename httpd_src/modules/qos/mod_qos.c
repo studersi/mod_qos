@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.22 2007-10-28 20:09:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.23 2007-10-28 20:17:39 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -309,7 +309,7 @@ static const qos_hel_t qs_header_rules[] = {
 #define QS_H_ACCEPT_E      "[a-zA-Z0-9\\-\\*]+(;q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_L      "[a-zA-Z\\-\\*]+(;q=[0-9\\.]+)?"
 #define QS_H_CACHE         "no-cache|no-store|max-age=[0-9]+|max-stale(=[0-9]+)?|min-fresh=[0-9]+|no-transform|only-if-chached"
-#define QS_H_CONTENT       "[a-zA-Z0-9\\-\\*]+?"
+#define QS_H_CONTENT       "[a-zA-Z0-9\\-\\*/; =]+?"
 #define QS_H_COOKIE        "["QS_URL_UNRESERVED""QS_URL_GEN""QS_URL_SUB" ]"
 #define QS_H_EXPECT        "[a-zA-Z0-9\\-= ;\\.,]+"
 #define QS_H_FROM          "[a-zA-Z0-9\\-=@;\\.,]+"
@@ -351,7 +351,7 @@ static const qos_hel_t qs_header_rules[] = {
   { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+$" },
   { "X-Forwarded-Host", "^[a-zA-Z0-9\\-_\\.:]+$" },
   { "X-Forwarded-Server", "^[a-zA-Z0-9\\-_\\.:]+$" },
-  { "X-lori-time", "^[0-9]+$" },
+  { "X-lori-time-1", "^[0-9]+$" },
   { NULL, NULL }
 };
 
