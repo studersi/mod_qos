@@ -19,3 +19,8 @@ foreach my $key (sort keys %ENV) {
   }
 }
 
+if($method eq "POST") {
+  my $upload_filehandle = $cgi->upload("filepath");
+  print ". $upload_filehandle\n";
+}
+
