@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.23 2007-10-28 20:17:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.24 2007-10-28 21:22:39 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -304,19 +304,20 @@ static const qos_hel_t qs_header_rules[] = {
 #define QS_URL_SUB         "!$&'\\(\\)\\*\\+,;="
 #define QS_URL             "["QS_URL_UNRESERVED""QS_URL_GEN""QS_URL_SUB"]"
 #define QS_B64_SP          "[a-zA-Z0-9 \\+/\\$=:]"
-#define QS_H_ACCEPT        "[a-zA-Z0-9\\-_\\*\\+]+/[a-zA-Z0-9\\-_\\*\\+]+(;[a-zA-Z0-9]+=[0-9]+)?[ ]?(;q=[0-9\\.]+)?"
-#define QS_H_ACCEPT_C      "[a-zA-Z0-9\\-\\*]+(;q=[0-9\\.]+)?"
-#define QS_H_ACCEPT_E      "[a-zA-Z0-9\\-\\*]+(;q=[0-9\\.]+)?"
-#define QS_H_ACCEPT_L      "[a-zA-Z\\-\\*]+(;q=[0-9\\.]+)?"
+#define QS_H_ACCEPT        "[a-zA-Z0-9\\-_\\*\\+]+/[a-zA-Z0-9\\-_\\*\\+]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9\\.]+)?"
+#define QS_H_ACCEPT_C      "[a-zA-Z0-9\\-\\*]+(;[ ]?q=[0-9\\.]+)?"
+#define QS_H_ACCEPT_E      "[a-zA-Z0-9\\-\\*]+(;[ ]?q=[0-9\\.]+)?"
+#define QS_H_ACCEPT_L      "[a-zA-Z\\-\\*]+(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_CACHE         "no-cache|no-store|max-age=[0-9]+|max-stale(=[0-9]+)?|min-fresh=[0-9]+|no-transform|only-if-chached"
-#define QS_H_CONTENT       "[a-zA-Z0-9\\-\\*/; =]+?"
+#define QS_H_CONTENT       "[a-zA-Z0-9\\-\\*/; =]+"
 #define QS_H_COOKIE        "["QS_URL_UNRESERVED""QS_URL_GEN""QS_URL_SUB" ]"
-#define QS_H_EXPECT        "[a-zA-Z0-9\\-= ;\\.,]+"
-#define QS_H_FROM          "[a-zA-Z0-9\\-=@;\\.,]+"
-#define QS_H_HOST          "[a-zA-Z0-9\\-:\\.]+"
-#define QS_H_IFMATCH       "[a-zA-Z0-9\\-=@;\\.,\\*\"]+"
-#define QS_H_DATE          "[a-zA-Z0-9 :,]+"
-#define QS_H_TE            "[a-zA-Z0-9\\-\\*]+(;q=[0-9\\.]+)?"
+#define QS_H_EXPECT        "[a-zA-Z0-9\\-= ;\\.,]"
+#define QS_H_PRAGMA        "[a-zA-Z0-9\\-= ;\\.,]"
+#define QS_H_FROM          "[a-zA-Z0-9\\-=@;\\.,\\(\\)]"
+#define QS_H_HOST          "[a-zA-Z0-9\\-:\\.]"
+#define QS_H_IFMATCH       "[a-zA-Z0-9\\-=@;\\.,\\*\"]"
+#define QS_H_DATE          "[a-zA-Z0-9 :,]"
+#define QS_H_TE            "[a-zA-Z0-9\\-\\*]+(;[ ]?q=[0-9\\.]+)?"
   { "Accept", "^("QS_H_ACCEPT"){1}(,[ ]?"QS_H_ACCEPT")*$" },
   { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}(,[ ]?"QS_H_ACCEPT_C")*$" },
   { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}(,[ ]?"QS_H_ACCEPT_E")*$" },
@@ -333,21 +334,23 @@ static const qos_hel_t qs_header_rules[] = {
   { "Content-Type", "^("QS_H_CONTENT"){1}(,[ ]?"QS_H_CONTENT")*$" },
   { "Cookie", "^"QS_H_COOKIE"+$" },
   { "Cookie2", "^"QS_H_COOKIE"+$" },
-  { "Expect", "^"QS_H_EXPECT"$" },
-  { "From", "^"QS_H_FROM"$" },
-  { "Host", "^"QS_H_HOST"$" },
-  { "If-Match", "^"QS_H_IFMATCH"$" },
-  { "If-Modified-Since", "^"QS_H_DATE"$" },
-  { "If-None-Match", "^"QS_H_IFMATCH"$" },
-  { "If-Range", "^"QS_H_IFMATCH"$" },
-  { "If-Unmodified-Since", "^"QS_H_DATE"$" },
+  { "Expect", "^"QS_H_EXPECT"+$" },
+  { "From", "^"QS_H_FROM"+$" },
+  { "Host", "^"QS_H_HOST"+$" },
+  { "If-Match", "^"QS_H_IFMATCH"+$" },
+  { "If-Modified-Since", "^"QS_H_DATE"+$" },
+  { "If-None-Match", "^"QS_H_IFMATCH"+$" },
+  { "If-Range", "^"QS_H_IFMATCH"+$" },
+  { "If-Unmodified-Since", "^"QS_H_DATE"+$" },
   { "Keep-Alive", "^[0-9]+$" },
   { "Max-Forwards", "^[0-9]+$" },
   { "Proxy-Authorization", "^"QS_B64_SP"$" },
+  { "Pragma", "^"QS_H_PRAGMA"+$" },
   { "Range", "^"QS_URL"+$" },
   { "Referer", "^"QS_URL"+$" },
   { "TE", "^("QS_H_TE"){1}(,[ ]?"QS_H_TE")*$" },
   { "User-Agent", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$" },
+  { "Via", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$" },
   { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+$" },
   { "X-Forwarded-Host", "^[a-zA-Z0-9\\-_\\.:]+$" },
   { "X-Forwarded-Server", "^[a-zA-Z0-9\\-_\\.:]+$" },
