@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.42 2007-10-25 18:15:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.43 2007-10-28 14:08:11 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -159,6 +159,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    <Location /qos/off>
        QS_DenyInheritanceOff
        QS_DenyRequestLine +restrict deny ".*simple.*"
+   </Location>
+
+   <Location /cgi>
+       QS_HeaderFilter on
    </Location>
 
 </VirtualHost>
