@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.20 2007-10-28 14:08:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.21 2007-10-28 19:23:19 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1043,7 +1043,7 @@ static void qos_header_filter(request_rec *r, qos_srv_config *sconf) {
   }
   entry = (apr_table_entry_t *)apr_table_elts(delete)->elts;
   for(i = 0; i < apr_table_elts(delete)->nelts; i++) {
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                   QOS_LOG_PFX(042)"drop header \'%s: %s\', c=%s, id=%s",
                   entry[i].key, entry[i].val,
                   r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
@@ -2358,48 +2358,65 @@ typedef struct {
   const char* pcre;
 } qos_hel_t;
 
-/* simple header rules allowing "the usual" header formats only */
+/* simple header rules allowing "the usual" header formats only (even drop requests using
+   extensions which are used rarely) */
+/* reserved (to be escaped): {}[]()^$.|*+?\ */
 static const qos_hel_t qs_header_rules[] = {
-#define QS_H_ACCEPT "[a-zA-Z0-0\\-_\\*\\+]+/[a-zA-Z0-0\\-_\\*\\+]+(;[a-zA-Z0-9]+=[0-9]+)?[ ]?(;q=[0-9\\.]+)?"
-  { "Accept", "^("QS_H_ACCEPT"){1}(,[ ]?"QS_H_ACCEPT")+$" },
-  { "Accept-Charset", "^.*$" },
-  { "Accept-Encoding", "^.*$" },
-  { "Accept-Language", "^.*$" },
-  { "Authorization", "^.*$" },
-  { "Allow", "^.*$" },
-  { "Cache-Control", "^.*$" },
-  { "Connection", "^.*$" },
-  { "Content-Encoding", "^.*$" },
-  { "Content-Language", "^.*$" },
-  { "Content-Length", "^.*$" },
-  { "Content-Location", "^.*$" },
-  { "Content-md5", "^.*$" },
+#define QS_URL_UNRESERVED  "a-zA-Z0-9-\\._~% "
+#define QS_URL_GEN         ":/\\?#\\[\\]@"
+#define QS_URL_SUB         "!$&'\\(\\)\\*\\+,;="
+#define QS_URL             "["QS_URL_UNRESERVED""QS_URL_GEN""QS_URL_SUB"]"
+#define QS_B64_SP          "[a-zA-Z0-9 \\+/\\$=:]"
+#define QS_H_ACCEPT        "[a-zA-Z0-9\\-_\\*\\+]+/[a-zA-Z0-9\\-_\\*\\+]+(;[a-zA-Z0-9]+=[0-9]+)?[ ]?(;q=[0-9\\.]+)?"
+#define QS_H_ACCEPT_C      "[a-zA-Z0-9\\-\\*]+(;q=[0-9\\.]+)?"
+#define QS_H_ACCEPT_E      "[a-zA-Z0-9\\-\\*]+(;q=[0-9\\.]+)?"
+#define QS_H_ACCEPT_L      "[a-zA-Z\\-\\*]+(;q=[0-9\\.]+)?"
+#define QS_H_CACHE         "no-cache|no-store|max-age=[0-9]+|max-stale(=[0-9]+)?|min-fresh=[0-9]+|no-transform|only-if-chached"
+#define QS_H_CONTENT       "[a-zA-Z0-9\\-\\*]+?"
+#define QS_H_COOKIE        "["QS_URL_UNRESERVED""QS_URL_GEN""QS_URL_SUB" ]"
+#define QS_H_EXPECT        "[a-zA-Z0-9\\-= ;\\.,]+"
+#define QS_H_FROM          "[a-zA-Z0-9\\-=@;\\.,]+"
+#define QS_H_HOST          "[a-zA-Z0-9\\-:\\.]+"
+#define QS_H_IFMATCH       "[a-zA-Z0-9\\-=@;\\.,\\*]+"
+#define QS_H_DATE          "[a-zA-Z0-9 :,]+"
+#define QS_H_TE            "[a-zA-Z0-9\\-\\*]+(;q=[0-9\\.]+)?"
+  { "Accept", "^("QS_H_ACCEPT"){1}(,[ ]?"QS_H_ACCEPT")*$" },
+  { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}(,[ ]?"QS_H_ACCEPT_C")*$" },
+  { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}(,[ ]?"QS_H_ACCEPT_E")*$" },
+  { "Accept-Language", "^("QS_H_ACCEPT_L"){1}(,[ ]?"QS_H_ACCEPT_L")*$" },
+  { "Authorization", "^"QS_B64_SP"+$" },
+  { "Cache-Control", "^("QS_H_CACHE"){1}(,[ ]?"QS_H_CACHE")*$" },
+  { "Connection", "^[a-zA-Z0-9\\-]+$" },
+  { "Content-Encoding", "^[a-zA-Z0-9\\-]+$" },
+  { "Content-Language", "^[a-zA-Z0-9\\-]+$" },
+  { "Content-Length", "^[0-9]+$" },
+  { "Content-Location", "^"QS_URL"$" },
+  { "Content-md5", "^"QS_B64_SP"$" },
   { "Content-Range", "^.*$" },
-  { "Content-Type", "^.*$" },
-  { "Cookie", "^.*$" },
-  { "Cookie2", "^.*$" },
-  { "Expect", "^.*$" },
-  { "From", "^.*$" },
-  { "Host", "^.*$" },
-  { "If-Match", "^.*$" },
-  { "If-Modified-Since", "^.*$" },
-  { "If-None-Match", "^.*$" },
-  { "If-Range", "^.*$" },
-  { "If-Unmodified-Since", "^.*$" },
-  { "Keep-Alive", "^.*$" },
-  { "Max-Forwards", "^.*$" },
-  { "Proxy-Authorization", "^.*$" },
-  { "Range", "^.*$" },
-  { "Referer", "^.*$" },
-  { "TE", "^.*$" },
-  { "User-Agent", "^.*$" },
-  { "X-Forwarded-For", "^.*$" },
-  { "X-Forwarded-Host", "^.*$" },
-  { "X-Forwarded-Server", "^.*$" },
+  { "Content-Type", "^("QS_H_CONTENT"){1}(,[ ]?"QS_H_CONTENT")*$" },
+  { "Cookie", "^"QS_H_COOKIE"$" },
+  { "Cookie2", "^"QS_H_COOKIE"$" },
+  { "Expect", "^"QS_H_EXPECT"$" },
+  { "From", "^"QS_H_FROM"$" },
+  { "Host", "^"QS_H_HOST"$" },
+  { "If-Match", "^"QS_H_IFMATCH"$" },
+  { "If-Modified-Since", "^"QS_H_DATE"$" },
+  { "If-None-Match", "^"QS_H_IFMATCH"$" },
+  { "If-Range", "^"QS_H_IFMATCH"$" },
+  { "If-Unmodified-Since", "^"QS_H_DATE"$" },
+  { "Max-Forwards", "^[0-9]+$" },
+  { "Proxy-Authorization", "^"QS_B64_SP"$" },
+  { "Range", "^"QS_URL"$" },
+  { "Referer", "^"QS_URL"$" },
+  { "TE", "^("QS_H_TE"){1}(,[ ]?"QS_H_TE")*$" },
+  { "User-Agent", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$" },
+  { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+$" },
+  { "X-Forwarded-Host", "^[a-zA-Z0-9\\-_\\.:]+$" },
+  { "X-Forwarded-Server", "^[a-zA-Z0-9\\-_\\.:]+$" },
   { NULL, NULL }
 };
 
-/* loads the header rules into the server configuration */
+/* loads the default header rules into the server configuration */
 static char *qos_load_headerfilter(cmd_parms *cmd, qos_srv_config *sconf) {
   const char *errptr = NULL;
   int erroffset;
