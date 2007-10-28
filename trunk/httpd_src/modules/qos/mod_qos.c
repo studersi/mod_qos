@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.19 2007-10-27 21:28:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.20 2007-10-28 14:08:11 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -214,6 +214,7 @@ typedef struct {
 typedef struct {
   apr_table_t *rfilter_table;
   int inheritoff;
+  int headerfilter;
 } qos_dir_config;
 
 /**
@@ -1037,7 +1038,7 @@ static void qos_header_filter(request_rec *r, qos_srv_config *sconf) {
         apr_table_add(delete, entry[i].key, entry[i].val);
       }
     } else {
-      //      apr_table_add(delete, entry[i].key, entry[i].val);
+      apr_table_add(delete, entry[i].key, entry[i].val);
     }
   }
   entry = (apr_table_entry_t *)apr_table_elts(delete)->elts;
@@ -1419,7 +1420,7 @@ static int qos_header_parser(request_rec * r) {
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
-    if(dconf) {
+    if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
       apr_status_t rv = qos_per_dir_rules(r, dconf);
       if(rv != APR_SUCCESS) {
         const char *error_page = sconf->error_page;
@@ -1438,7 +1439,7 @@ static int qos_header_parser(request_rec * r) {
         return rv;
       }
     }
-    if(apr_table_elts(sconf->hfilter_table)->nelts > 0) {
+    if(dconf->headerfilter > 0) {
       qos_header_filter(r, sconf);
     }
 
@@ -1881,28 +1882,25 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_rfilter_t));
   dconf->rfilter_table = apr_table_make(p, 1);
   dconf->inheritoff = 0;
+  dconf->headerfilter = -1;
   return dconf;
 }
 
 /**
- * merges dir config, return value may be NULL(!) if no per dir
- * rules are available
+ * merges dir config
  */
 static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_dir_config *b = (qos_dir_config *)basev;
   qos_dir_config *o = (qos_dir_config *)addv;
-  if(o->inheritoff) {
-    if(apr_table_elts(o->rfilter_table)->nelts == 0) {
-      return NULL;
-    } else {
-      return o;
-    }
-  }
-  if((apr_table_elts(b->rfilter_table)->nelts == 0) &&
-     (apr_table_elts(o->rfilter_table)->nelts == 0)) {
-    return NULL;
+  qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_rfilter_t));
+  if(o->headerfilter != -1) {
+    dconf->headerfilter = o->headerfilter;
   } else {
-    qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_rfilter_t));
+    dconf->headerfilter = b->headerfilter;
+  }
+  if(o->inheritoff) {
+    dconf->rfilter_table = o->rfilter_table;
+  } else {
     int i;
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b->rfilter_table)->elts;
     dconf->rfilter_table = apr_table_make(p, 1);
@@ -1923,8 +1921,8 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
         apr_table_unset(dconf->rfilter_table, id);
       }
     }
-    return dconf;
   }
+  return dconf;
 }
 
 static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
@@ -2360,36 +2358,49 @@ typedef struct {
   const char* pcre;
 } qos_hel_t;
 
+/* simple header rules allowing "the usual" header formats only */
 static const qos_hel_t qs_header_rules[] = {
-#define QS_ACCEPT "[a-zA-Z0-0\\-_\\*\\+]+/[a-zA-Z0-0\\-_\\*\\+]+(;[a-zA-Z0-9]+=[0-9]+)?[ ]?(;q=[0-9\\.]+)?"
-  { "accept", "^("QS_ACCEPT"){1}(,[ ]?"QS_ACCEPT")+$" },
-  /*
-  { "Accept-Charset", "" },
-  { "Accept-Encoding", "" },
-  { "Accept-Language", "" },
-  { "Authorization", "" },
-  { "Cookie", "" },
-  { "Expect", "" },
-  { "From", "" },
-  { "Host", "" },
-  { "If-Match", "" },
-  { "If-Modified-Since", "" },
-  { "If-None-Match", "" },
-  { "If-Range", "" },
-  { "If-Unmodified-Since", "" },
-  { "Max-Forwards", "" },
-  { "Proxy-Authorization", "" },
-  { "Range", "" },
-  { "Referer", "" },
-  { "TE", "" },
-  { "User-Agent", "" },
-  */
+#define QS_H_ACCEPT "[a-zA-Z0-0\\-_\\*\\+]+/[a-zA-Z0-0\\-_\\*\\+]+(;[a-zA-Z0-9]+=[0-9]+)?[ ]?(;q=[0-9\\.]+)?"
+  { "Accept", "^("QS_H_ACCEPT"){1}(,[ ]?"QS_H_ACCEPT")+$" },
+  { "Accept-Charset", "^.*$" },
+  { "Accept-Encoding", "^.*$" },
+  { "Accept-Language", "^.*$" },
+  { "Authorization", "^.*$" },
+  { "Allow", "^.*$" },
+  { "Cache-Control", "^.*$" },
+  { "Connection", "^.*$" },
+  { "Content-Encoding", "^.*$" },
+  { "Content-Language", "^.*$" },
+  { "Content-Length", "^.*$" },
+  { "Content-Location", "^.*$" },
+  { "Content-md5", "^.*$" },
+  { "Content-Range", "^.*$" },
+  { "Content-Type", "^.*$" },
+  { "Cookie", "^.*$" },
+  { "Cookie2", "^.*$" },
+  { "Expect", "^.*$" },
+  { "From", "^.*$" },
+  { "Host", "^.*$" },
+  { "If-Match", "^.*$" },
+  { "If-Modified-Since", "^.*$" },
+  { "If-None-Match", "^.*$" },
+  { "If-Range", "^.*$" },
+  { "If-Unmodified-Since", "^.*$" },
+  { "Keep-Alive", "^.*$" },
+  { "Max-Forwards", "^.*$" },
+  { "Proxy-Authorization", "^.*$" },
+  { "Range", "^.*$" },
+  { "Referer", "^.*$" },
+  { "TE", "^.*$" },
+  { "User-Agent", "^.*$" },
+  { "X-Forwarded-For", "^.*$" },
+  { "X-Forwarded-Host", "^.*$" },
+  { "X-Forwarded-Server", "^.*$" },
   { NULL, NULL }
 };
 
-const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
-                                                                &qos_module);
+/* loads the header rules into the server configuration */
+static char *qos_load_headerfilter(cmd_parms *cmd, qos_srv_config *sconf) {
   const char *errptr = NULL;
   int erroffset;
   const qos_hel_t* elt;
@@ -2408,6 +2419,42 @@ const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg) {
   return NULL;
 }
 
+/* enables/disables header filter */
+const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  if(apr_table_elts(sconf->hfilter_table)->nelts == 0) {
+    char *msg = qos_load_headerfilter(cmd, sconf);
+    if(msg != NULL) return msg;
+  }
+  dconf->headerfilter = flag;
+  return NULL;
+}
+
+/* set custom header rules (no merger) */
+const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, const char *header, const char *rule) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *errptr = NULL;
+  int erroffset;
+  pcre *p = NULL;
+  if(apr_table_elts(sconf->hfilter_table)->nelts == 0) {
+    char *msg = qos_load_headerfilter(cmd, sconf);
+    if(msg != NULL) return msg;
+  }
+  p = pcre_compile(rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
+  if(p == NULL) {
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
+                        " reason: %s", 
+                        cmd->directive->directive,
+                        rule,
+                        erroffset, errptr);
+  }
+  apr_table_setn(sconf->hfilter_table, header, (char *)p);
+  apr_pool_cleanup_register(cmd->pool, p, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  return NULL;
+}
 
 #ifdef QS_INTERNAL_TEST
 const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
@@ -2544,12 +2591,15 @@ static const command_rec qos_config_cmds[] = {
                   ACCESS_CONF,
                   "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"
                   " directives to a location."),
-  AP_INIT_NO_ARGS("QS_HeaderFilter", qos_headerfilter_cmd, NULL,
-                  RSRC_CONF,
-                  "QS_HeaderFilter"),
+  AP_INIT_FLAG("QS_HeaderFilter", qos_headerfilter_cmd, NULL,
+               ACCESS_CONF,
+               "QS_HeaderFilter 'on'|'off'"),
+  AP_INIT_TAKE2("QS_HeaderFilterRuke", qos_headerfilter_rule_cmd, NULL,
+                RSRC_CONF,
+                "QS_HeaderFilterRuke <header> <pcre>"),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
-                RSRC_CONF,
+               RSRC_CONF,
                ""),
 #endif
   NULL,
