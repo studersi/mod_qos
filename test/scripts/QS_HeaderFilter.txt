@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.txt,v 1.3 2007-10-28 19:23:19 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.txt,v 1.4 2007-10-28 20:55:12 pbuchbinder Exp $
 #
 
 
@@ -35,6 +35,45 @@ _EXPECT . "HTTP_USER_AGENT"
 _EXPECT . "HTTP_X_FORWARDED_FOR"
 _EXPECT . "HTTP_X_FORWARDED_HOST"
 _EXPECT . "HTTP_X_FORWARDED_SERVER"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.8) Gecko/20071008 Firefox/2.0.0.8
+__Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+__Accept-Language: en-us,en;q=0.5
+__Accept-Encoding: gzip,deflate
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Keep-Alive: 300
+__Connection: keep-alive
+__Referer: http://localhost.server.ch/bin/attach/view?show=all
+__X-lori-time-1: 1193603219265
+__Authorization: Basic Ukhasdhzgasdljsad76jgasHKdnacnQ=
+__Content-Type: multipart/form-data; boundary=---------------------------16009193506174
+__Content-Length: AUTO
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filename"
+__
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filepath"; filename="test pic _=n.JPG"
+__Content-Type: image/jpeg
+__
+__111111
+__-----------------------------16009193506174--
+_EXPECT . " HTTP_ACCEPT"
+_EXPECT . " HTTP_ACCEPT_CHARSET"
+_EXPECT . " HTTP_ACCEPT_ENCODING"
+_EXPECT . " HTTP_ACCEPT_LANGUAGE"
+_EXPECT . " HTTP_CONNECTION"
+_EXPECT . " HTTP_HOST"
+_EXPECT . " HTTP_KEEP_ALIVE"
+_EXPECT . " HTTP_REFERER"
+_EXPECT . " HTTP_USER_AGENT"
+_EXPECT . " HTTP_X_LORI_TIME_1"
+_EXPECT . ". test pic _=n.JPG"
 _WAIT
 
 # drop headers
