@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.25 2007-10-29 07:38:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.26 2007-10-29 19:26:09 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -87,6 +87,11 @@ typedef enum  {
   QS_CONN_STATE_SHORT,
   QS_CONN_STATE_END
 } qs_conn_state_e;
+
+typedef enum  {
+  QS_FLT_ACTION_DROP,
+  QS_FLT_ACTION_DENY
+} qs_flt_action_e;
 
 typedef enum  {
   QS_DENY_REQUEST_LINE,
@@ -283,7 +288,13 @@ typedef struct {
 typedef struct {
   const char* name;
   const char* pcre;
-} qos_hel_t;
+  qs_flt_action_e action;
+} qos_her_t;
+
+typedef struct {
+  pcre *pcre;
+  qs_flt_action_e action;
+} qos_fhlt_r_t;
 
 /************************************************************************
  * globals
@@ -298,13 +309,13 @@ module AP_MODULE_DECLARE_DATA qos_module;
 /* simple header rules allowing "the usual" header formats only (even drop requests using
    extensions which are used rarely) */
 /* reserved (to be escaped): {}[]()^$.|*+?\ */
-static const qos_hel_t qs_header_rules[] = {
+static const qos_her_t qs_header_rules[] = {
 #define QS_URL_UNRESERVED  "a-zA-Z0-9-\\._~% "
 #define QS_URL_GEN         ":/\\?#\\[\\]@"
 #define QS_URL_SUB         "!$&'\\(\\)\\*\\+,;="
 #define QS_URL             "["QS_URL_UNRESERVED""QS_URL_GEN""QS_URL_SUB"]"
 #define QS_B64_SP          "[a-zA-Z0-9 \\+/\\$=:]"
-#define QS_H_ACCEPT        "[a-zA-Z0-9\\-_\\*\\+]+/[a-zA-Z0-9\\-_\\*\\+]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9\\.]+)?"
+#define QS_H_ACCEPT        "[a-zA-Z0-9\\-_\\*\\+]+/[a-zA-Z0-9\\-_\\*\\+\\.]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_C      "[a-zA-Z0-9\\-\\*]+(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_E      "[a-zA-Z0-9\\-\\*]+(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_L      "[a-zA-Z\\-\\*]+(;[ ]?q=[0-9\\.]+)?"
@@ -318,44 +329,44 @@ static const qos_hel_t qs_header_rules[] = {
 #define QS_H_IFMATCH       "[a-zA-Z0-9\\-=@;\\.,\\*\"]"
 #define QS_H_DATE          "[a-zA-Z0-9 :,]"
 #define QS_H_TE            "[a-zA-Z0-9\\-\\*]+(;[ ]?q=[0-9\\.]+)?"
-  { "Accept", "^("QS_H_ACCEPT"){1}(,[ ]?"QS_H_ACCEPT")*$" },
-  { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}(,[ ]?"QS_H_ACCEPT_C")*$" },
-  { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}(,[ ]?"QS_H_ACCEPT_E")*$" },
-  { "Accept-Language", "^("QS_H_ACCEPT_L"){1}(,[ ]?"QS_H_ACCEPT_L")*$" },
-  { "Authorization", "^"QS_B64_SP"+$" },
-  { "Cache-Control", "^("QS_H_CACHE"){1}(,[ ]?"QS_H_CACHE")*$" },
-  { "Connection", "^[a-zA-Z0-9\\-]+$" },
-  { "Content-Encoding", "^[a-zA-Z0-9\\-]+$" },
-  { "Content-Language", "^[a-zA-Z0-9\\-]+$" },
-  { "Content-Length", "^[0-9]+$" },
-  { "Content-Location", "^"QS_URL"+$" },
-  { "Content-md5", "^"QS_B64_SP"$" },
-  { "Content-Range", "^.*$" },
-  { "Content-Type", "^("QS_H_CONTENT"){1}(,[ ]?"QS_H_CONTENT")*$" },
-  { "Cookie", "^"QS_H_COOKIE"+$" },
-  { "Cookie2", "^"QS_H_COOKIE"+$" },
-  { "Expect", "^"QS_H_EXPECT"+$" },
-  { "From", "^"QS_H_FROM"+$" },
-  { "Host", "^"QS_H_HOST"+$" },
-  { "If-Match", "^"QS_H_IFMATCH"+$" },
-  { "If-Modified-Since", "^"QS_H_DATE"+$" },
-  { "If-None-Match", "^"QS_H_IFMATCH"+$" },
-  { "If-Range", "^"QS_H_IFMATCH"+$" },
-  { "If-Unmodified-Since", "^"QS_H_DATE"+$" },
-  { "Keep-Alive", "^[0-9]+$" },
-  { "Max-Forwards", "^[0-9]+$" },
-  { "Proxy-Authorization", "^"QS_B64_SP"$" },
-  { "Pragma", "^"QS_H_PRAGMA"+$" },
-  { "Range", "^"QS_URL"+$" },
-  { "Referer", "^"QS_URL"+$" },
-  { "TE", "^("QS_H_TE"){1}(,[ ]?"QS_H_TE")*$" },
-  { "User-Agent", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$" },
-  { "Via", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$" },
-  { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+$" },
-  { "X-Forwarded-Host", "^[a-zA-Z0-9\\-_\\.:]+$" },
-  { "X-Forwarded-Server", "^[a-zA-Z0-9\\-_\\.:]+$" },
-  { "X-lori-time-1", "^[0-9]+$" },
-  { NULL, NULL }
+  { "Accept", "^("QS_H_ACCEPT"){1}([ ]?,[ ]?"QS_H_ACCEPT")*$", QS_FLT_ACTION_DROP },
+  { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}([ ]?,[ ]?"QS_H_ACCEPT_C")*$", QS_FLT_ACTION_DROP },
+  { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}([ ]?,[ ]?"QS_H_ACCEPT_E")*$", QS_FLT_ACTION_DROP },
+  { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?"QS_H_ACCEPT_L")*$", QS_FLT_ACTION_DROP },
+  { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP },
+  { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?"QS_H_CACHE")*$", QS_FLT_ACTION_DROP },
+  { "Connection", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DROP },
+  { "Content-Encoding", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DENY },
+  { "Content-Language", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DROP },
+  { "Content-Length", "^[0-9]+$", QS_FLT_ACTION_DENY },
+  { "Content-Location", "^"QS_URL"+$", QS_FLT_ACTION_DENY },
+  { "Content-md5", "^"QS_B64_SP"$", QS_FLT_ACTION_DENY },
+  { "Content-Range", "^.*$", QS_FLT_ACTION_DENY },
+  { "Content-Type", "^("QS_H_CONTENT"){1}([ ]?,[ ]?"QS_H_CONTENT")*$", QS_FLT_ACTION_DENY },
+  { "Cookie", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP },
+  { "Cookie2", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP },
+  { "Expect", "^"QS_H_EXPECT"+$", QS_FLT_ACTION_DROP },
+  { "From", "^"QS_H_FROM"+$", QS_FLT_ACTION_DROP },
+  { "Host", "^"QS_H_HOST"+$", QS_FLT_ACTION_DROP },
+  { "If-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP },
+  { "If-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP },
+  { "If-None-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP },
+  { "If-Range", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP },
+  { "If-Unmodified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP },
+  { "Keep-Alive", "^[0-9]+$", QS_FLT_ACTION_DROP },
+  { "Max-Forwards", "^[0-9]+$", QS_FLT_ACTION_DROP },
+  { "Proxy-Authorization", "^"QS_B64_SP"$", QS_FLT_ACTION_DROP },
+  { "Pragma", "^"QS_H_PRAGMA"+$", QS_FLT_ACTION_DROP },
+  { "Range", "^"QS_URL"+$", QS_FLT_ACTION_DROP },
+  { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP },
+  { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?"QS_H_TE")*$", QS_FLT_ACTION_DROP },
+  { "User-Agent", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!=]+$", QS_FLT_ACTION_DROP },
+  { "Via", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP },
+  { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP },
+  { "X-Forwarded-Host", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP },
+  { "X-Forwarded-Server", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP },
+  { "X-lori-time-1", "^[0-9]+$", QS_FLT_ACTION_DROP },
+  { NULL, NULL, 0 }
 };
 
 /**
@@ -364,17 +375,19 @@ static const qos_hel_t qs_header_rules[] = {
 static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table) {
   const char *errptr = NULL;
   int erroffset;
-  const qos_hel_t* elt;
+  const qos_her_t* elt;
   for(elt = qs_header_rules; elt->name != NULL ; ++elt) {
-    pcre *p = pcre_compile(elt->pcre, PCRE_DOTALL, &errptr, &erroffset, NULL);
-    if(p == NULL) {
+    qos_fhlt_r_t *he = apr_pcalloc(pool, sizeof(qos_fhlt_r_t));
+    he->pcre = pcre_compile(elt->pcre, PCRE_DOTALL, &errptr, &erroffset, NULL);
+    he->action = elt->action;
+    if(he->pcre == NULL) {
       return apr_psprintf(pool, "could not compile pcre %s at position %d,"
                           " reason: %s", 
                           elt->name,
                           erroffset, errptr);
     }
-    apr_table_setn(hfilter_table, elt->name, (char *)p);
-    apr_pool_cleanup_register(pool, p, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+    apr_table_setn(hfilter_table, elt->name, (char *)he);
+    apr_pool_cleanup_register(pool, he->pcre, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   }
   return NULL;
 }
@@ -1135,14 +1148,22 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
 /**
  * request header filter, drops headers which are not allowed
  */
-static void qos_header_filter(request_rec *r, qos_srv_config *sconf) {
+static int qos_header_filter(request_rec *r, qos_srv_config *sconf) {
   apr_table_t *delete = apr_table_make(r->pool, 1);
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(r->headers_in)->elts;
   for(i = 0; i < apr_table_elts(r->headers_in)->nelts; i++) {
-    pcre *p = (pcre *)apr_table_get(sconf->hfilter_table, entry[i].key);
-    if(p) {
-      if(pcre_exec(p, NULL, entry[i].val, strlen(entry[i].val), 0, 0, NULL, 0) < 0) {
+    qos_fhlt_r_t *he = (qos_fhlt_r_t *)apr_table_get(sconf->hfilter_table, entry[i].key);
+    if(he) {
+      if(pcre_exec(he->pcre, NULL, entry[i].val, strlen(entry[i].val), 0, 0, NULL, 0) < 0) {
+        if(he->action == QS_FLT_ACTION_DENY) {
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                        QOS_LOG_PFX(043)"deny request with header \'%s: %s\', c=%s, id=%s",
+                        entry[i].key, entry[i].val,
+                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                        qos_unique_id(r, "043"));
+          return HTTP_FORBIDDEN;
+        }
         apr_table_add(delete, entry[i].key, entry[i].val);
       }
     } else {
@@ -1158,6 +1179,7 @@ static void qos_header_filter(request_rec *r, qos_srv_config *sconf) {
                   qos_unique_id(r, "042"));
     apr_table_unset(r->headers_in, entry[i].key);
   }
+  return APR_SUCCESS;
 }
 
 /************************************************************************
@@ -1566,7 +1588,23 @@ static int qos_header_parser(request_rec * r) {
      * QS_RequestHeaderFilter enforcement
      */
     if(dconf->headerfilter > 0) {
-      qos_header_filter(r, sconf);
+      apr_status_t rv = qos_header_filter(r, sconf);
+      if(rv != APR_SUCCESS) {
+        const char *error_page = sconf->error_page;
+        qs_req_ctx *rctx = qos_rctx_config_get(r);
+        if(r->subprocess_env) {
+          const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+          if(v) {
+            error_page = v;
+          }
+        }
+        rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+        if(error_page) {
+          qos_error_response(r, error_page);
+          return DONE;
+        }
+        return rv;
+      }
     }
 
     /* set dynamic keep alive */
@@ -2510,12 +2548,13 @@ const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, int flag) {
 }
 
 /* set custom header rules (global only) */
-const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, const char *header, const char *rule) {
+const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, const char *header,
+                                      const char *rule, const char *action) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *errptr = NULL;
   int erroffset;
-  pcre *p = NULL;
+  qos_fhlt_r_t *he;
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
     return err;
@@ -2524,16 +2563,25 @@ const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, const char *he
     char *msg = qos_load_headerfilter(cmd->pool, sconf->hfilter_table);
     if(msg != NULL) return msg;
   }
-  p = pcre_compile(rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
-  if(p == NULL) {
+  he = apr_pcalloc(cmd->pool, sizeof(qos_fhlt_r_t));
+  he->pcre = pcre_compile(rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
+  if(strcasecmp(action, "deny") == 0) {
+    he->action = QS_FLT_ACTION_DENY;
+  } else if(strcasecmp(action, "deop") == 0) {
+    he->action = QS_FLT_ACTION_DROP;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: incalid action %s",
+                        cmd->directive->directive, action);
+  }
+  if(he->pcre == NULL) {
     return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
                         " reason: %s", 
                         cmd->directive->directive,
                         rule,
                         erroffset, errptr);
   }
-  apr_table_setn(sconf->hfilter_table, header, (char *)p);
-  apr_pool_cleanup_register(cmd->pool, p, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  apr_table_setn(sconf->hfilter_table, header, (char *)he);
+  apr_pool_cleanup_register(cmd->pool, he->pcre, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   return NULL;
 }
 
@@ -2674,10 +2722,17 @@ static const command_rec qos_config_cmds[] = {
                   " directives to a location."),
   AP_INIT_FLAG("QS_RequestHeaderFilter", qos_headerfilter_cmd, NULL,
                ACCESS_CONF,
-               "QS_RequestHeaderFilter 'on'|'off'"),
-  AP_INIT_TAKE2("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
+               "QS_RequestHeaderFilter 'on'|'off', filters request headers by allowing"
+               " only these headers which match the request header rules defined by"
+               " mod_qos. Request headers which do not conform these definitions"
+               " are either dropped or the whole request is denied. Custom"
+               " request headers may be added by the QS_RequestHeaderFilterRule"
+               " directive."),
+  AP_INIT_TAKE3("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
                 RSRC_CONF,
-                "QS_RequestHeaderFilterRule <header> <pcre>"),
+                "QS_RequestHeaderFilterRule <header name> <pcre> <drop|deny>, used"
+                " to add custom header filter rules which override the internal"
+                " filter rules of mod_qos."),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                RSRC_CONF,
