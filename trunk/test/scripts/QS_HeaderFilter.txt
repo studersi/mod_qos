@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.txt,v 1.7 2007-10-29 19:26:12 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.txt,v 1.8 2007-10-29 19:54:45 pbuchbinder Exp $
 #
 
 
@@ -10,7 +10,7 @@ CLIENT
 _REQ localhost $QS_PORT_BASE
 __GET /cgi-local/index.cgi HTTP/1.1
 __Host: localhost
-__Connection: keep-alive
+__Connection: Keep-Alive, TE
 __Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
 __Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
 __Accept-Encoding: gzip,deflate

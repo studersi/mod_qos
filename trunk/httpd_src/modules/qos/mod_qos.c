@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.26 2007-10-29 19:26:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.27 2007-10-29 19:54:44 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -335,7 +335,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?"QS_H_ACCEPT_L")*$", QS_FLT_ACTION_DROP },
   { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP },
   { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?"QS_H_CACHE")*$", QS_FLT_ACTION_DROP },
-  { "Connection", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DROP },
+  { "Connection", "^([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?[teTE]+)?$", QS_FLT_ACTION_DROP },
   { "Content-Encoding", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DENY },
   { "Content-Language", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DROP },
   { "Content-Length", "^[0-9]+$", QS_FLT_ACTION_DENY },
@@ -2730,7 +2730,7 @@ static const command_rec qos_config_cmds[] = {
                " directive."),
   AP_INIT_TAKE3("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
                 RSRC_CONF,
-                "QS_RequestHeaderFilterRule <header name> <pcre> <drop|deny>, used"
+                "QS_RequestHeaderFilterRule <header name> <pcre> 'drop'|'deny', used"
                 " to add custom header filter rules which override the internal"
                 " filter rules of mod_qos."),
 #ifdef QS_INTERNAL_TEST
