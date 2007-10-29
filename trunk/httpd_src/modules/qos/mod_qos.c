@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.27 2007-10-29 19:54:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.28 2007-10-29 21:21:49 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1157,7 +1157,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf) {
     if(he) {
       if(pcre_exec(he->pcre, NULL, entry[i].val, strlen(entry[i].val), 0, 0, NULL, 0) < 0) {
         if(he->action == QS_FLT_ACTION_DENY) {
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                         QOS_LOG_PFX(043)"deny request with header \'%s: %s\', c=%s, id=%s",
                         entry[i].key, entry[i].val,
                         r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
@@ -2567,7 +2567,7 @@ const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, const char *he
   he->pcre = pcre_compile(rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(strcasecmp(action, "deny") == 0) {
     he->action = QS_FLT_ACTION_DENY;
-  } else if(strcasecmp(action, "deop") == 0) {
+  } else if(strcasecmp(action, "drop") == 0) {
     he->action = QS_FLT_ACTION_DROP;
   } else {
     return apr_psprintf(cmd->pool, "%s: incalid action %s",
