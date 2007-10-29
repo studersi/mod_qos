@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.24 2007-10-28 21:22:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.25 2007-10-29 07:38:59 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -358,7 +358,9 @@ static const qos_hel_t qs_header_rules[] = {
   { NULL, NULL }
 };
 
-/* loads the default header rules into the server configuration */
+/**
+ * loads the default header rules into the server configuration (see rules above)
+ */
 static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table) {
   const char *errptr = NULL;
   int erroffset;
@@ -377,7 +379,9 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table)
   return NULL;
 }
 
-/* returns the request id from mod_unique_id (if available) */
+/**
+ * returns the request id from mod_unique_id (if available)
+ */
 static const char *qos_unique_id(request_rec *r, const char *eid) {
   const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
   apr_table_set(r->notes, "error-notes", eid);
@@ -387,6 +391,7 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
   return uid;
 }
 
+/* returns the version number of mod_qos */
 static char *qos_revision(apr_pool_t *p) {
   char *ver = apr_pstrdup(p, &revision[strlen("$Id: mod_qos.c,v ")]);
   char *h = strchr(ver, ' ');
@@ -581,6 +586,9 @@ static void qos_destroy_act(qs_actable_t *act) {
   apr_pool_destroy(act->pool);
 }
 
+/**
+ * returns the persistent configuration (restarts)
+ */
 static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
   void *v;
   qos_user_t *u;
@@ -729,6 +737,9 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   return APR_SUCCESS;
 }
 
+/**
+ * helper for the status viewer (unsigned long to char)
+ */
 static void qos_print_ip(request_rec *r, qs_ip_entry_t *ipe) {
   if(ipe) {
     unsigned long ip = ipe->ip;
@@ -748,7 +759,9 @@ static void qos_print_ip(request_rec *r, qs_ip_entry_t *ipe) {
   }
 }
 
-
+/**
+ * free ip entry and put it into the free list
+ */
 static void qos_free_ip(qs_actable_t *act, qs_ip_entry_t *ipe) {
   ipe->next = act->c->ip_free;
   ipe->left = NULL;
@@ -757,6 +770,9 @@ static void qos_free_ip(qs_actable_t *act, qs_ip_entry_t *ipe) {
   act->c->ip_free = ipe;
 }
 
+/**
+ * get a free ip entry from the free list
+ */
 static qs_ip_entry_t *qos_new_ip(qs_actable_t *act) {
   qs_ip_entry_t *ipe = act->c->ip_free;
   act->c->ip_free = ipe->next;
@@ -1029,6 +1045,9 @@ static int qos_unescaping(char *x) {
   return j;
 }
 
+/**
+ * processes the per location rules QS_Permit* and QS_Deny*
+ */
 static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(dconf->rfilter_table)->elts;
   int i;
@@ -1064,7 +1083,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
     uri = apr_pstrcat(r->pool, uri, "#", fragment, NULL);
     uri_len = strlen(uri);
   }
-
+  /* process black and white list rules in one loop */
   for(i = 0; i < apr_table_elts(dconf->rfilter_table)->nelts; i++) {
     if(entry[i].key[0] == '+') {
       int deny_rule = 0;
@@ -1113,6 +1132,9 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   return APR_SUCCESS;
 }
 
+/**
+ * request header filter, drops headers which are not allowed
+ */
 static void qos_header_filter(request_rec *r, qos_srv_config *sconf) {
   apr_table_t *delete = apr_table_make(r->pool, 1);
   int i;
@@ -1141,6 +1163,10 @@ static void qos_header_filter(request_rec *r, qos_srv_config *sconf) {
 /************************************************************************
  * "public"
  ***********************************************************************/
+
+/**
+ * status viewer, used by internal and mod_status handler
+ */
 static int qos_ext_status_hook(request_rec *r, int flags) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   server_rec *s = sconf->base_server;
@@ -1459,6 +1485,9 @@ static int qos_process_connection(conn_rec * c) {
   return DECLINED;
 }
 
+/**
+ * pre connection, constructs the connection ctx (stores socket ref)
+ */
 static int qos_pre_connection(conn_rec * c, void *skt) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                 &qos_module);
@@ -1473,6 +1502,9 @@ static int qos_pre_connection(conn_rec * c, void *skt) {
   return DECLINED;
 }
 
+/**
+ * all headers has been read, end/update connection level filters
+ */
 static int qos_post_read_request(request_rec * r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
@@ -1506,6 +1538,10 @@ static int qos_header_parser(request_rec * r) {
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
+
+    /* 
+     * QS_Permit* / QS_Deny* enforcement
+     */
     if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
       apr_status_t rv = qos_per_dir_rules(r, dconf);
       if(rv != APR_SUCCESS) {
@@ -1525,6 +1561,10 @@ static int qos_header_parser(request_rec * r) {
         return rv;
       }
     }
+
+    /*
+     * QS_RequestHeaderFilter enforcement
+     */
     if(dconf->headerfilter > 0) {
       qos_header_filter(r, sconf);
     }
@@ -1648,6 +1688,9 @@ static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
   return rv;
 }
 
+/**
+ * output filter adds response delay
+ */
 static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
@@ -1806,6 +1849,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   qs_acentry_t *e = sconf->act->entry;
   if(!sconf->act->child_init) {
     sconf->act->child_init = 1;
+    /* propagate mutex to child process (required for certaing platforms) */
     apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, sconf->act->pool);
     while(e) {
       /* attach to the mutex */
@@ -1973,7 +2017,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
 }
 
 /**
- * merges dir config
+ * merges dir config, inheritoff disables merge of rfilter_table.
  */
 static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_dir_config *b = (qos_dir_config *)basev;
@@ -2072,13 +2116,17 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
 /**
  * "merges" server configuration: virtual host overwrites global settings (if
  * any rule has been specified)
+ * but: header filter table and connection timeouts are always used from
+ * the base server
  */
 static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_srv_config *b = (qos_srv_config *)basev;
   qos_srv_config *o = (qos_srv_config *)addv;
-  if(apr_table_elts(b->location_t)->nelts > 0) {
+  /* base table may contain custom rules */
+  if(apr_table_elts(b->hfilter_table)->nelts > 0) {
     o->hfilter_table = b->hfilter_table;
   }
+  /* location rules or connection limit controls conf merger (see index.html) */
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1)) {
     o->connect_timeout = b->connect_timeout;
@@ -2624,12 +2672,12 @@ static const command_rec qos_config_cmds[] = {
                   ACCESS_CONF,
                   "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"
                   " directives to a location."),
-  AP_INIT_FLAG("QS_HeaderFilter", qos_headerfilter_cmd, NULL,
+  AP_INIT_FLAG("QS_RequestHeaderFilter", qos_headerfilter_cmd, NULL,
                ACCESS_CONF,
-               "QS_HeaderFilter 'on'|'off'"),
-  AP_INIT_TAKE2("QS_HeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
+               "QS_RequestHeaderFilter 'on'|'off'"),
+  AP_INIT_TAKE2("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
                 RSRC_CONF,
-                "QS_HeaderFilterRule <header> <pcre>"),
+                "QS_RequestHeaderFilterRule <header> <pcre>"),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                RSRC_CONF,
