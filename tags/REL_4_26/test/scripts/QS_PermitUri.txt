@@ -1,0 +1,45 @@
+#
+# $Id: QS_PermitUri.txt,v 1.2 2007-10-24 17:50:59 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "aaa index.html"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /aaa/index%20.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "403 Forbidden"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=a HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "403 Forbidden"
+_WAIT
+
+END
