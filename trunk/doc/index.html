@@ -367,6 +367,19 @@ must define the same action. pcre is case sensitve.
 <code>QS_DenyInheritanceOff</code><br>
 Disables inheritance of QS_Deny* and QS_Permit* directives to a location.
 </li>
+<li>
+<code>QS_RequestHeaderFilter 'on'|'off'</code><br>
+Filters request headers by internal validation rules of mod_qos. Suspicious 
+headers are normally dropped (removed from the request). Abnormal content-* 
+headers cause request blocking. Additional rules may be added using the 
+QS_RequestHeaderFilterRule directive.
+</li>
+<li>
+<code>QS_RequestHeaderFilterRule &lt;header name&gt; &lt;pcre&gt; 'drop'|'deny'</code><br>
+Used to add custom request header filter rules, e.g. to override the internal 
+rules (different pcre) or to add additional headers which should be allowed. 
+Definitions are made globaly (outside VirtualHost).
+</li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
@@ -374,6 +387,7 @@ Sample configuration:<br>
 <pre>
 QS_ErrorPage    /error-docs/qs_error.html
 &lt;Location /&gt;
+   QS_RequestHeaderFilter        on
    QS_DenyPath        +admin     deny "^/application/admin.jsp$"
    QS_DenyRequestLine +printable deny ".*[\x00-\x19].*"
 &lt;/Location&gt;
