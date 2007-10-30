@@ -358,34 +358,41 @@ is logged) or 'deny' (access is denied).
 <code>QS_PermitUri '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
 Generic uri (path and query) filter implementing a request pattern 
 whitelist. Only requests matching at least one <code>QS_PermitUri</code> 
-pattern are allowed. If a QS_PermitUri pattern has been defined an the 
-request does not match any rule, the request is denied albeit of 
-any server resource availability (whitelist). All rules 
-must define the same action. pcre is case sensitve.
+pattern are allowed. If a <code>QS_PermitUri</code> pattern has 
+been defined an the request does not match any rule, the request 
+is denied albeit of any server resource availability (whitelist). 
+All rules must define the same action. pcre is case sensitve.
 </li>
 <li>
 <code>QS_DenyInheritanceOff</code><br>
-Disables inheritance of QS_Deny* and QS_Permit* directives to a location.
+Disables inheritance of <code>QS_Deny*</code> and <code>QS_Permit*</code> 
+directives to a location.
 </li>
 <li>
 <code>QS_RequestHeaderFilter 'on'|'off'</code><br>
-Filters request headers by internal validation rules of mod_qos. Suspicious 
+Filters request headers using validation rules provided by mod_qos. Suspicious 
 headers are normally dropped (removed from the request). Abnormal content-* 
 headers cause request blocking. Additional rules may be added using the 
-QS_RequestHeaderFilterRule directive.
+<code>QS_RequestHeaderFilterRule</code> directive.
 </li>
 <li>
 <code>QS_RequestHeaderFilterRule &lt;header name&gt; &lt;pcre&gt; 'drop'|'deny'</code><br>
 Used to add custom request header filter rules, e.g. to override the internal 
 rules (different pcre) or to add additional headers which should be allowed. 
-Definitions are made globaly (outside VirtualHost).
+Definitions are made globaly (outside VirtualHost). A list of all rules 
+is shown at server startup when using <code>LogLevel debug</code>. pcre is 
+case sensitive. The action 'drop' removes a header not matching the pcre, 
+the action 'deny' rejects a request including such a header not matching 
+the pcre.
 </li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
 <pre>
-QS_ErrorPage    /error-docs/qs_error.html
+QS_ErrorPage                     /error-docs/qs_error.html
+QS_RequestHeaderFilterRule       UA-CPU "^[a-zA-Z0-9]+$" drop
+
 &lt;Location /&gt;
    QS_RequestHeaderFilter        on
    QS_DenyPath        +admin     deny "^/application/admin.jsp$"
