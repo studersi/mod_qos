@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.9 2007-10-21 18:02:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.10 2007-10-30 19:39:19 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -54,6 +54,7 @@ mkdir -p mod_qos-${VERSION}/tools/qsfilter
 echo "install documentation"
 cp doc/README.TXT mod_qos-${VERSION}
 cp doc/LICENSE.txt mod_qos-${VERSION}/doc
+cp doc/CHANGES.txt mod_qos-${VERSION}/doc
 cp doc/index.html mod_qos-${VERSION}/doc
 cp doc/mod_qos_s.gif mod_qos-${VERSION}/doc
 cp doc/favicon.ico mod_qos-${VERSION}/doc

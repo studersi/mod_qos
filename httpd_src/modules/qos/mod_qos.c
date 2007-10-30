@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.28 2007-10-29 21:21:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.29 2007-10-30 19:39:19 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -292,6 +292,7 @@ typedef struct {
 } qos_her_t;
 
 typedef struct {
+  char *text;
   pcre *pcre;
   qs_flt_action_e action;
 } qos_fhlt_r_t;
@@ -335,7 +336,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?"QS_H_ACCEPT_L")*$", QS_FLT_ACTION_DROP },
   { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP },
   { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?"QS_H_CACHE")*$", QS_FLT_ACTION_DROP },
-  { "Connection", "^([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?[teTE]+)?$", QS_FLT_ACTION_DROP },
+  { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?[teTE]+)?$", QS_FLT_ACTION_DROP },
   { "Content-Encoding", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DENY },
   { "Content-Language", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DROP },
   { "Content-Length", "^[0-9]+$", QS_FLT_ACTION_DENY },
@@ -378,6 +379,7 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table)
   const qos_her_t* elt;
   for(elt = qs_header_rules; elt->name != NULL ; ++elt) {
     qos_fhlt_r_t *he = apr_pcalloc(pool, sizeof(qos_fhlt_r_t));
+    he->text = apr_pstrdup(pool, elt->pcre);
     he->pcre = pcre_compile(elt->pcre, PCRE_DOTALL, &errptr, &erroffset, NULL);
     he->action = elt->action;
     if(he->pcre == NULL) {
@@ -683,7 +685,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t)));
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
-               QOS_LOG_PFX(002)"%s(%s), create shared memory: %d bytes (r=%d,ip=%d)", 
+               QOS_LOG_PFX(0)"%s(%s), create shared memory: %d bytes (r=%d,ip=%d)", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->is_virtual ? "v" : "b", act->size, rule_entries, max_ip);
   res = apr_shm_create(&act->m, (act->size + 512), act->m_file, act->pool);
@@ -691,7 +693,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(003)"could not create shared memory: %s", buf);
+                 QOS_LOG_PFX(002)"could not create shared memory: %s", buf);
     return res;
   }
   act->c = apr_shm_baseaddr_get(act->m);
@@ -714,7 +716,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->limit = rule->limit;
     if(e->limit == 0) {
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s,
-                   QOS_LOG_PFX(004)"request level rule %s has no limitation",
+                   QOS_LOG_PFX(003)"request level rule %s has no limitation",
                    e->url);
     }
     e->interval = time(NULL);
@@ -728,7 +730,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
       char buf[MAX_STRING_LEN];
       apr_strerror(res, buf, sizeof(buf));
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX(005)"could create mutex: %s", buf);
+                   QOS_LOG_PFX(004)"could create mutex: %s", buf);
       return res;
     }
     if(i < rule_entries - 1) {
@@ -1158,7 +1160,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf) {
       if(pcre_exec(he->pcre, NULL, entry[i].val, strlen(entry[i].val), 0, 0, NULL, 0) < 0) {
         if(he->action == QS_FLT_ACTION_DENY) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX(043)"deny request with header \'%s: %s\', c=%s, id=%s",
+                        QOS_LOG_PFX(043)"access denied, header: \'%s: %s\', c=%s, id=%s",
                         entry[i].key, entry[i].val,
                         r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                         qos_unique_id(r, "043"));
@@ -1173,7 +1175,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf) {
   entry = (apr_table_entry_t *)apr_table_elts(delete)->elts;
   for(i = 0; i < apr_table_elts(delete)->nelts; i++) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                  QOS_LOG_PFX(042)"drop header \'%s: %s\', c=%s, id=%s",
+                  QOS_LOG_PFX(042)"drop header: \'%s: %s\', c=%s, id=%s",
                   entry[i].key, entry[i].val,
                   r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                   qos_unique_id(r, "042"));
@@ -1916,7 +1918,6 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   char *rev = qos_revision(ptemp);
   server_rec *s = bs->next;
-  int rules = 0;
   qos_user_t *u = qos_get_user_conf(s->process->pool);
   u->server_start++;
   sconf->base_server = bs;
@@ -1927,7 +1928,16 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   apr_pool_cleanup_register(sconf->pool, sconf->act,
                             qos_cleanup_shm, apr_pool_cleanup_null);
-  rules = apr_table_elts(sconf->location_t)->nelts;
+  if(u->server_start == 2) {
+    int i;
+    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->hfilter_table)->elts;
+    for(i = 0; i < apr_table_elts(sconf->hfilter_table)->nelts; i++) {
+      qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
+      ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
+                   QOS_LOG_PFX(0)"header filter rule (%s) %s: %s",
+                   he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key, he->text);
+    }
+  }
   while(s) {
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
     sconf->base_server = bs;
@@ -1939,10 +1949,10 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       }
       apr_pool_cleanup_register(sconf->pool, sconf->act,
                                 qos_cleanup_shm, apr_pool_cleanup_null);
-      rules = rules + apr_table_elts(sconf->location_t)->nelts;
     }
     s = s->next;
   }
+
   {
     char *vs = apr_psprintf(pconf, "mod_qos/%s", rev);
     ap_add_version_component(pconf, vs);
@@ -2118,7 +2128,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     char buf[MAX_STRING_LEN];
     apr_strerror(rv, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(006)"could create mutex: %s", buf);
+                 QOS_LOG_PFX(005)"could create mutex: %s", buf);
     exit(1);
   }
   sconf->is_virtual = s->is_virtual;
@@ -2131,6 +2141,15 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_conn_per_ip = -1;
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->hfilter_table = apr_table_make(p, 1);
+  if(!s->is_virtual) {
+    char *msg = qos_load_headerfilter(p, sconf->hfilter_table);
+    if(msg) {
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                   QOS_LOG_PFX(006)"could compile header filter rules: %s", msg);
+      exit(1);
+    }
+  }
+
   {
     int len = EVP_MAX_KEY_LENGTH;
     unsigned char *rand = apr_pcalloc(p, len);
@@ -2161,9 +2180,8 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_srv_config *b = (qos_srv_config *)basev;
   qos_srv_config *o = (qos_srv_config *)addv;
   /* base table may contain custom rules */
-  if(apr_table_elts(b->hfilter_table)->nelts > 0) {
-    o->hfilter_table = b->hfilter_table;
-  }
+  o->hfilter_table = b->hfilter_table;
+
   /* location rules or connection limit controls conf merger (see index.html) */
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1)) {
@@ -2171,13 +2189,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
 #ifdef QS_INTERNAL_TEST
     o->enable_testip = b->enable_testip;
 #endif
-    if(apr_table_elts(o->hfilter_table)->nelts == 0) {
-      qos_load_headerfilter(p, o->hfilter_table);
-    }
     return o;
-  }
-  if(apr_table_elts(b->hfilter_table)->nelts == 0) {
-    qos_load_headerfilter(p, b->hfilter_table);
   }
   return b;
 }
@@ -2539,10 +2551,6 @@ const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  if(apr_table_elts(sconf->hfilter_table)->nelts == 0) {
-    char *msg = qos_load_headerfilter(cmd->pool, sconf->hfilter_table);
-    if(msg != NULL) return msg;
-  }
   dconf->headerfilter = flag;
   return NULL;
 }
@@ -2559,11 +2567,8 @@ const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, const char *he
   if (err != NULL) {
     return err;
   }
-  if(apr_table_elts(sconf->hfilter_table)->nelts == 0) {
-    char *msg = qos_load_headerfilter(cmd->pool, sconf->hfilter_table);
-    if(msg != NULL) return msg;
-  }
   he = apr_pcalloc(cmd->pool, sizeof(qos_fhlt_r_t));
+  he->text = apr_pstrdup(cmd->pool, rule);
   he->pcre = pcre_compile(rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(strcasecmp(action, "deny") == 0) {
     he->action = QS_FLT_ACTION_DENY;
