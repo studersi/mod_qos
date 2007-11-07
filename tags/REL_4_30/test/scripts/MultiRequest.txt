@@ -1,0 +1,85 @@
+#
+# $Id: MultiRequest.txt,v 1.5 2007-10-03 18:19:35 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 50
+_LOOP 10
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /no/index404.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "404 Not Found"
+_WAIT
+
+_SLEEP 100
+_END LOOP
+END
+
+CLIENT
+_SLEEP 10000
+_REQ localhost $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "<!-- 0 -->free ip entries</td><td>4096"
+_EXPECT . "<!-- 0 -->current connections</td><td.*>0"
+_EXPECT . "<!-- 1 -->free ip entries</td><td>4096"
+_EXPECT . "<!-- 1 -->current connections</td><td.*>0"
+_EXPECT . "<!-- 2 -->free ip entries</td><td>4096"
+_EXPECT . "<!-- 2 -->current connections</td><td.*>0"
+_EXPECT . "<!-- 2 -->.*<td>200</td>.*>0</td></tr>"
+_EXPECT . "<!-- 3 -->free ip entries</td><td>4095"
+_EXPECT . "<!-- 3 -->current connections</td><td.*>1"
+_EXPECT . "<!-- 3 -->.*<td>30</td>.*>1</td></tr>"
+_EXPECT . "<!-- 3 -->.*<td>5</td>.*>0</td></tr>"
+_EXPECT . "<!-- 3 -->.*<td>100</td>.*>0</td></tr>"
+_EXPECT . "<!-- 3 -->.*<td>50</td>.*>0</td></tr>"
+_EXPECT . "<!-- 3 -->.*<td>2</td>.*>0</td></tr>"
+_WAIT
+
+END
+
