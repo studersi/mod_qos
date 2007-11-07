@@ -1,4 +1,9 @@
 
+Version 4.30
+
+ - Fixed: segfault at server startup when no virtual host has
+   been configured.       
+
 Version 4.29
 
  - Debug log level lists available request header filter rules.
@@ -76,7 +81,6 @@ Version 3.1
 Version 3.0
 
  - Introduce connection level control (QS_SrvMaxConnClose QS_SrvMaxConn).
-
 
 Version 2.3
 

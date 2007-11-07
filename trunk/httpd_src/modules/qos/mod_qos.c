@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.29 2007-10-30 19:39:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.30 2007-11-07 21:36:07 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1918,7 +1918,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   char *rev = qos_revision(ptemp);
   server_rec *s = bs->next;
-  qos_user_t *u = qos_get_user_conf(s->process->pool);
+  qos_user_t *u = qos_get_user_conf(bs->process->pool);
   u->server_start++;
   sconf->base_server = bs;
   sconf->act->timeout = apr_time_sec(bs->timeout);
