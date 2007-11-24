@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.29 2007-11-24 20:54:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.30 2007-11-24 21:04:00 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -86,6 +86,7 @@ static int m_redundant = 1;
 static int m_query_pcre = 0;
 static int m_query_multi_pcre = 0;
 static int m_query_single_pcre = 0;
+static int m_query_len_pcre = 10;
 static int m_exit_on_error = 0;
 
 typedef struct {
@@ -228,7 +229,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s|-m] [-n] [-e]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s|-m] [-l <len>] [-n] [-e]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf(" mod_qos implements a request filter which validates each request\n");
@@ -283,7 +284,6 @@ static void usage(char *cmd) {
   printf("       # filter unwanted request line patterns:\n");
   printf("       QS_DenyRequestLine +printable deny \".*[\\x00-\\x19].*\"\n");
   printf("\n");
-
   printf("  -d <num>\n");
   printf("     Depth (sub locations) of the path string which is defined as a\n");
   printf("     literal string. Default is 1.\n");
@@ -298,6 +298,9 @@ static void usage(char *cmd) {
   printf("     Uses one single pcre for the whole query string.\n");
   printf("  -m\n");
   printf("     Uses one pcre for multipe query values (recommended mode).\n");
+  printf("  -l <len>\n");
+  printf("     Outsizes the query length by the defined length ({0,size+len}), ");
+  printf("     default is %d.\n", m_query_len_pcre);
   printf("  -n\n");
   printf("     Disables redundant rules elimination.\n");
   printf("  -e\n");
@@ -807,7 +810,7 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
 	}
       } else {
 	qos_unescaping(pos);
-	ret = apr_psprintf(pool, "%s[%s]{0,%d}[&]?", ret, qos_2pcre(pool, pos), strlen(pos));
+	ret = apr_psprintf(pool, "%s[%s]{0,%d}[&]?", ret, qos_2pcre(pool, pos), strlen(pos)+m_query_len_pcre);
 	if(open) {
 	  ret = apr_pstrcat(pool, ret, ")?", NULL);
 	  open = 0;
@@ -822,7 +825,7 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   if(pos != copy) {
     qos_unescaping(pos);
     if(isValue) {
-      ret = apr_psprintf(pool, "%s[%s]{0,%d}[&]?", ret, qos_2pcre(pool, pos), strlen(pos));
+      ret = apr_psprintf(pool, "%s[%s]{0,%d}[&]?", ret, qos_2pcre(pool, pos), strlen(pos)+m_query_len_pcre);
     } else {
       if(!open) {
 	ret = apr_pstrcat(pool, "(", ret, NULL);
@@ -1130,6 +1133,10 @@ int main(int argc, const char * const argv[]) {
       }
     } else if(strcmp(*argv,"-p") == 0) {
       m_query_pcre = 1;
+    } else if(strcmp(*argv,"-l") == 0) {
+      if (--argc >= 1) {
+	m_query_len_pcre = atoi(*(++argv));
+      }
     } else if(strcmp(*argv,"-m") == 0) {
       m_query_multi_pcre = 1;
     } else if(strcmp(*argv,"-s") == 0) {
@@ -1202,6 +1209,7 @@ int main(int argc, const char * const argv[]) {
   printf("#  pcre only for query (-p): %s\n", m_query_pcre == 1 ? "yes" : "no");
   printf("#  one pcre for query value (-m): %s\n", m_query_multi_pcre == 1 ? "yes" : "no");
   printf("#  single pcre for query (-s): %s\n", m_query_single_pcre == 1 ? "yes" : "no");
+  printf("#  query outsize (-l): %d\n", m_query_len_pcre);
   printf("#  exit on error (-e): %s\n", m_exit_on_error == 1 ? "yes" : "no");
   printf("#  rule file (-c): %s\n", httpdconf == NULL ? "-" : httpdconf);
   if(httpdconf) {
