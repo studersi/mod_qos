@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.28 2007-10-24 19:21:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.29 2007-11-24 20:54:54 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -132,6 +132,7 @@ static char *qos_detect_b64(char *line, int silent) {
 
 /* escape a string in order to be used withn a pcre */
 static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
+  char *existing = "";
   int i = 0;
   unsigned char *in = (unsigned char *)line;
   char *ret = apr_pcalloc(pool, strlen(line) * 4);
@@ -143,8 +144,12 @@ static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
       ret[reti] = in[i];
       reti++;
     } else if((in[i] < ' ') || (in[i]  > '~')) {
-      sprintf(&ret[reti], "\\x%02x", in[i]);
-      reti = reti + 4;
+      char *ck = apr_psprintf(pool, "#\\x%02x#", in[i]);
+      if(strstr(existing, ck) == NULL) {
+	sprintf(&ret[reti], "\\x%02x", in[i]);
+	reti = reti + 4;
+	existing = apr_pstrcat(pool, existing, ck, NULL);
+      }
     } else {
       ret[reti] = in[i];
       reti++;
@@ -394,6 +399,7 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   unsigned char *in = (unsigned char *)line;
   char *ret = apr_pcalloc(pool, strlen(line) * 6);
   int reti = 0;
+  char *existing = "";
   while(in[i]) {
     if(isdigit(in[i])) {
       if(!hasD) {
@@ -426,8 +432,12 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
 	ret[reti] = in[i];
 	reti++;
       } else if((in[i] < ' ') || (in[i]  > '~')) {
-	sprintf(&ret[reti], "\\x%02x", in[i]);
-	reti = reti + 4;
+	char *ck = apr_psprintf(pool, "#\\x%02x#", in[i]);
+	if(strstr(existing, ck) == NULL) {
+	  sprintf(&ret[reti], "\\x%02x", in[i]);
+	  reti = reti + 4;
+	  existing = apr_pstrcat(pool, existing, ck, NULL);
+	}
       } else {
 	ret[reti] = in[i];
 	reti++;
@@ -770,7 +780,7 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   int isValue = 0;
   int open = 0;
   while(copy[0]) {
-    if(copy[0] == '=') {
+    if((copy[0] == '=') && (copy[1] != '=')) {
       copy[0] = '\0';
       qos_unescaping(pos);
       if(!open) {
@@ -812,7 +822,7 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   if(pos != copy) {
     qos_unescaping(pos);
     if(isValue) {
-      ret = apr_psprintf(pool, "%s[%s]{0,%d}", ret, qos_2pcre(pool, pos), strlen(pos));
+      ret = apr_psprintf(pool, "%s[%s]{0,%d}[&]?", ret, qos_2pcre(pool, pos), strlen(pos));
     } else {
       if(!open) {
 	ret = apr_pstrcat(pool, "(", ret, NULL);
@@ -833,7 +843,18 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
     ret = apr_pstrcat(pool, ret, ")?", NULL);
     open = 0;
   }
-  return ret;
+  if(m_query_pcre) {
+    return ret;
+  } else {
+    return ret;
+    /* it woud be nice to use:
+     *  ((a=b)?(c=d)?)* 
+     * instead of:
+     *  (a=b)?(c=d)? and (c=d)?(a=b)?
+     * but in this case, two rules are much faster than one
+     * it's better to use the -m option */
+    // return apr_psprintf(pool, "(%s)*", ret);
+  }
 }
 
 /* maps a query string to a list of names and a single pcre for all values:
@@ -846,7 +867,7 @@ static char *qos_multi_query_string_pcre(apr_pool_t *pool, const char *path,
   char *query_pcre = "";
   int isValue = 0;
   while(copy[0]) {
-    if(copy[0] == '=') {
+    if((copy[0] == '=') && (copy[1] != '=')) {
       copy[0] = '\0';
       qos_unescaping(pos);
       if(strlen(string) > 0) string = apr_pstrcat(pool, string, "|",  NULL);
