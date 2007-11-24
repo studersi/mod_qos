@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.30 2007-11-24 21:04:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.31 2007-11-24 21:54:21 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -783,7 +783,7 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   int isValue = 0;
   int open = 0;
   while(copy[0]) {
-    if((copy[0] == '=') && (copy[1] != '=')) {
+    if((copy[0] == '=') && (copy[1] != '=') && !open) {
       copy[0] = '\0';
       qos_unescaping(pos);
       if(!open) {
@@ -958,10 +958,15 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
   int line_nr = *ln;
   apr_table_t *source_rules = apr_table_make(pool, 10);
   while(!qos_fgetline(line, sizeof(line), f)) {
+    int doubleSlash = 0;
     apr_uri_t parsed_uri;
     apr_pool_t *lpool;
     apr_pool_create(&lpool, NULL);
     line_nr++;
+    if((strlen(line) > 1) && line[1] == '/') {
+      doubleSlash = 1;
+      strcpy(line, &line[1]);
+    }
     if(apr_uri_parse(lpool, line, &parsed_uri) != APR_SUCCESS) {
       fprintf(stderr, "ERROR, could parse uri %s\n", line);
       if(m_exit_on_error) exit(1);
@@ -1030,8 +1035,13 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	  }
 	  {
 	    const char *errptr = NULL;
-	    char *rule = apr_pstrcat(pool, "^", path, NULL);
+	    char *rule;
 	    qs_rule_t *rs = apr_palloc(pool, sizeof(qs_rule_t));
+	    if(doubleSlash) {
+	      rule = apr_pstrcat(pool, "^[/]?", path, NULL);
+	    } else {
+	      rule = apr_pstrcat(pool, "^", path, NULL);
+	    }
 	    if(query) {
 	      rule = apr_pstrcat(pool, rule, "\\?", query, NULL);
 	    }
