@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.31 2007-11-24 21:54:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.32 2007-11-26 09:15:37 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -229,7 +229,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s|-m] [-l <len>] [-n] [-e]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s|-m] [-l <len>] [-n] [-e] [-t]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf(" mod_qos implements a request filter which validates each request\n");
@@ -305,6 +305,10 @@ static void usage(char *cmd) {
   printf("     Disables redundant rules elimination.\n");
   printf("  -e\n");
   printf("     Exit on error.\n");
+  printf("  -t\n");
+  printf("     Determines the worst case performance for the generated whitelist\n");
+  printf("     by applying each rule for each request line (output is real time\n");
+  printf("     filter duration per request line in milliseconds).\n");
   printf("\n");
   printf("Output\n");
   printf(" The output of %s is written to stdout. The output\n", cmd);
@@ -856,7 +860,7 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
      *  (a=b)?(c=d)? and (c=d)?(a=b)?
      * but in this case, two rules are much faster than one
      * it's better to use the -m option */
-    // return apr_psprintf(pool, "(%s)*", ret);
+    //return apr_psprintf(pool, "(%s)*", ret);
   }
 }
 
@@ -1086,8 +1090,46 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
   *ln = line_nr;
 }
 
+static void qos_measurement(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules, FILE *f, int *ln) {
+  char line[MAX_LINE];
+  int line_nr = 0;
+  while(!qos_fgetline(line, sizeof(line), f)) {
+    apr_uri_t parsed_uri;
+    apr_pool_t *lpool;
+    apr_pool_create(&lpool, NULL);
+    line_nr++;
+    if((strlen(line) > 1) && line[1] == '/') {
+      strcpy(line, &line[1]);
+    }
+    if(apr_uri_parse(lpool, line, &parsed_uri) != APR_SUCCESS) {
+      fprintf(stderr, "ERROR, could parse uri %s\n", line);
+      if(m_exit_on_error) exit(1);
+    }
+    if(parsed_uri.path == NULL || (parsed_uri.path[0] != '/')) {
+      fprintf(stderr, "WARNING, line %d: invalid request %s\n", line_nr, line);
+    } else {
+      char *path = NULL;
+      char *query = NULL;
+      char *query_m_string = NULL;
+      char *query_m_pcre = NULL;
+      char *fragment = NULL;
+      char *copy = apr_pstrdup(lpool, line);
+      int i;
+      apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+      qos_unescaping(copy);
+      for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+	qs_rule_t *rs = (qs_rule_t *)entry[i].val;
+	pcre_exec(rs->pcre, NULL, copy, strlen(copy), 0, 0, NULL, 0);
+      }
+    }
+    apr_pool_destroy(lpool);
+  }
+  *ln = line_nr;
+}
+
 int main(int argc, const char * const argv[]) {
   apr_table_entry_t *entry;
+  long performance = -1;
   time_t start = time(NULL);
   time_t end;
   int line_nr = 0;
@@ -1153,6 +1195,8 @@ int main(int argc, const char * const argv[]) {
       m_query_single_pcre = 1;
     } else if(strcmp(*argv,"-e") == 0) {
       m_exit_on_error = 1;
+    } else if(strcmp(*argv,"-t") == 0) {
+      performance = 0;
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd);
     } else if(strcmp(*argv,"-?") == 0) {
@@ -1189,7 +1233,7 @@ int main(int argc, const char * const argv[]) {
   fclose(f);
 
   if(m_redundant) {
-    int x = 0;
+    int xl = 0;
     int y = 0;
     // delete useless rules
     qos_delete_obsolete_rules(pool, rules, rules_url);
@@ -1202,7 +1246,20 @@ int main(int argc, const char * const argv[]) {
     //      qos_load_whitelist(pool, rules, httpdconf);
     //    }
     f = fopen(access_log, "r");
-    qos_process_log(pool, blacklist, rules, rules_url, f, &x, &y, 0);
+    qos_process_log(pool, blacklist, rules, rules_url, f, &xl, &y, 0);
+    fclose(f);
+  }
+
+  if(performance == 0) {
+    int lx = 0;
+    apr_time_t tv;
+    time_t lstart = time(NULL);
+    f = fopen(access_log, "r");
+    tv = apr_time_now();
+    qos_measurement(pool, blacklist, rules, f, &lx);
+    tv = apr_time_now() - tv;
+    performance = apr_time_msec(tv) + (apr_time_sec(tv) * 1000);
+    performance = performance / lx;
     fclose(f);
   }
 
@@ -1212,6 +1269,9 @@ int main(int argc, const char * const argv[]) {
   printf("\n# --------------------------------------------------------\n");
   printf("# %s\n", time_string);
   printf("# %d rules from %d access log lines\n", apr_table_elts(rules)->nelts, line_nr);
+  if(performance >= 0) {
+    printf("#  performance index (ms/req): %ld\n", performance);
+  }
   printf("#  source (-i): %s\n", access_log);
   printf("#  path depth (-d): %d\n", m_path_depth);
   printf("#  base64 detection level (-b): %d\n", m_base64);
