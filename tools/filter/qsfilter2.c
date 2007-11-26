@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.32 2007-11-26 09:15:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.33 2007-11-26 09:17:19 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -299,7 +299,7 @@ static void usage(char *cmd) {
   printf("  -m\n");
   printf("     Uses one pcre for multipe query values (recommended mode).\n");
   printf("  -l <len>\n");
-  printf("     Outsizes the query length by the defined length ({0,size+len}), ");
+  printf("     Outsizes the query length by the defined length ({0,size+len}),\n");
   printf("     default is %d.\n", m_query_len_pcre);
   printf("  -n\n");
   printf("     Disables redundant rules elimination.\n");
