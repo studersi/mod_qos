@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.25 2007-10-28 19:23:19 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.26 2007-11-30 21:16:13 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -58,7 +58,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 ./ctl.sh stop > /dev/null
-sleep 1
+sleep 2
 ./ctl.sh start > /dev/null
 
 # -----------------------------------------------------------------
@@ -234,6 +234,7 @@ cat logs/access1_log | awk '{print $7}' > logs/loc1.txt
 ../tools/filter/qsfilter2 -i logs/loc1.txt -v 0 -c appl_conf/qos_deny_filter.conf | grep QS_PermitUri > appl_conf/qos_permit_filter.conf
 rm -f logs/loc1.txt
 ./ctl.sh stop > /dev/null
+sleep 2
 ./ctl.sh start -D permit_filter > /dev/null
 echo "-- permit filter QS_PermitUri.txt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_PermitUri.txt
