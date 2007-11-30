@@ -20,6 +20,12 @@ echo "/app/test/sub?n=v#u?as" >> access_log
 echo "//app/test/?n=http://a.b.c/i.t??" >> access_log
 echo "/?n=n" >> access_log
 echo "/app/test?l=x/\\\\\\\"oM=\\\"javascript:alert(true)\\\"\\\"" >> access_log
+echo "/app/test?n&m=1" >> access_log
+echo "/app/test?n=m&=" >> access_log
+echo "/app/test?&n=m&=" >> access_log
+echo "/app/test?n=&=" >> access_log
+echo "/app/test?n=" >> access_log
+echo "/app/test?=" >> access_log
 
 ./qsfilter2 -e -i access_log $@
 

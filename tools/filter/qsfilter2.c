@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.33 2007-11-26 09:17:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.34 2007-11-30 10:37:37 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -138,6 +138,7 @@ static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
   unsigned char *in = (unsigned char *)line;
   char *ret = apr_pcalloc(pool, strlen(line) * 4);
   int reti = 0;
+  if(strlen(line) == 0) return "";
   while(in[i]) {
     if(strchr("{}[]()^$.|*+?\"'", in[i]) != NULL) {
       ret[reti] = '\\';
@@ -407,6 +408,7 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
   char *ret = apr_pcalloc(pool, strlen(line) * 6);
   int reti = 0;
   char *existing = "";
+  if(strlen(line) == 0) return "";
   while(in[i]) {
     if(isdigit(in[i])) {
       if(!hasD) {
@@ -526,11 +528,20 @@ static char *qos_addstr(apr_pool_t *pool, char *o, char *d, char *n) {
 
 
 /* crate a name=pcre string like this: ((s1|s2)(=[<pcre>]*)*[&]?)*" */
-static char *qos_qqs(apr_pool_t *pool, char *string, char *query_pcre) {
+static char *qos_qqs(apr_pool_t *pool, char *string, char *query_pcre, int singleEq, int hasEq, int startAmp) {
+  char *se = NULL;
+  char *s = "";
+  if(startAmp) s = "[&]?";
+  if(singleEq) {
+    se = "(=[&]?)*";
+  }
   if(strlen(query_pcre) > 0) {
-    return apr_pstrcat(pool, "((", string, ")(=[", qos_2pcre(pool, query_pcre), "]*)*[&]?)*", NULL);
+    return apr_pstrcat(pool, s, "((", string, ")(=[", qos_2pcre(pool, query_pcre), "]*)*[&]?)*", se, NULL);
   } else {
-    return apr_pstrcat(pool, "(", string, ")*", NULL);
+    if(hasEq && !singleEq) {
+      se = "(=[&]?)*";
+    }
+    return apr_pstrcat(pool, s, "((", string, ")[&]?)*", se, NULL);
   }
 }
 
@@ -583,7 +594,7 @@ static void qos_query_optimization(apr_pool_t *pool, apr_table_t *rules) {
 	  char *rule = apr_pstrcat(pool, "^", r->path, NULL);
 	  qs_rule_t *rs = apr_palloc(pool, sizeof(qs_rule_t));
 	  if(strlen(query_m_string) > 0) {
-	    rule = apr_pstrcat(pool, rule, "\\?", qos_qqs(pool, query_m_string, query_m_pcre), NULL);
+	    rule = apr_pstrcat(pool, rule, "\\?", qos_qqs(pool, query_m_string, query_m_pcre, 0, 0, 0), NULL);
 	  }
 	  rule = apr_pstrcat(pool, rule, "$", NULL);
 	  rs->pcre = qos_pcre_compile(rule, 0);
@@ -795,7 +806,11 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
 	open = 1;
       }
       if(m_query_pcre) {
-	ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+=", NULL);
+	if(strlen(pos) > 0) {
+	  ret = apr_pstrcat(pool, ret, "[", qos_2pcre(pool, pos), "]+=", NULL);
+	} else {
+	  ret = apr_pstrcat(pool, ret, "=", NULL);
+	}
       } else {
 	ret = apr_pstrcat(pool, ret, qos_escape_pcre(pool, pos), "=", NULL);
       }
@@ -873,21 +888,38 @@ static char *qos_multi_query_string_pcre(apr_pool_t *pool, const char *path,
   char *string = "";
   char *query_pcre = "";
   int isValue = 0;
+  int singleEq = 0;
+  int hasEq = 0;
+  int startAmp = 0;
+  if(copy[0] == '&') startAmp = 1;
   while(copy[0]) {
-    if((copy[0] == '=') && (copy[1] != '=')) {
+    if(copy[0] == '=') hasEq = 1;
+    if((copy[0] == '=') && (copy[1] != '=') && !isValue) {
       copy[0] = '\0';
       qos_unescaping(pos);
-      if(strlen(string) > 0) string = apr_pstrcat(pool, string, "|",  NULL);
-      string = apr_pstrcat(pool, string, qos_escape_pcre(pool, pos),  NULL);
+      if(strlen(pos) > 0) {
+	if(strlen(string) > 0) string = apr_pstrcat(pool, string, "|",  NULL);
+	string = apr_pstrcat(pool, string, qos_escape_pcre(pool, pos),  NULL);
+      } else {
+	if((copy[1] == '&') || (copy[1] == '\0')) {
+	  singleEq = 1;
+	}
+      }
       pos = copy;
       pos++;
       isValue = 1;
     }
     if(copy[0] == '&') {
       copy[0] = '\0';
-      if(strlen(pos) != 0) {
+      if(!isValue) {
 	qos_unescaping(pos);
-	query_pcre = apr_pstrcat(pool, query_pcre, pos,  NULL);
+	if(strlen(string) > 0) string = apr_pstrcat(pool, string, "|",  NULL);
+	string = apr_pstrcat(pool, string, qos_escape_pcre(pool, pos),  NULL);
+      } else {
+	if(strlen(pos) != 0) {
+	  qos_unescaping(pos);
+	  query_pcre = apr_pstrcat(pool, query_pcre, pos,  NULL);
+	}
       }
       pos = copy;
       pos++;
@@ -906,7 +938,7 @@ static char *qos_multi_query_string_pcre(apr_pool_t *pool, const char *path,
   }
   *query_m_string = string;
   *query_m_pcre = query_pcre;
-  return qos_qqs(pool, string, query_pcre);
+  return qos_qqs(pool, string, query_pcre, singleEq, hasEq, startAmp);
 }
 
 /* maps a path to a single pcre (don't mind its length) */
@@ -1022,8 +1054,12 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	  }
 	  if(parsed_uri.fragment) {
 	    char *f = apr_pstrdup(lpool, parsed_uri.fragment);
-	    qos_unescaping(f);
-	    fragment = apr_pstrcat(lpool, "[", qos_2pcre(lpool, f), "]+", NULL);
+	    if(strlen(f) > 0) {
+	      qos_unescaping(f);
+	      fragment = apr_pstrcat(lpool, "[", qos_2pcre(lpool, f), "]+", NULL);
+	    } else {
+	      fragment = apr_pstrcat(lpool, "", NULL);
+	    }
 	  }
 	  if(m_verbose > 1) {
 	    printf(" path:      %s\n", parsed_uri.path);

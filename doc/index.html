@@ -167,8 +167,9 @@ make
 <p>Configuration is made on a per server basis (except the generic request filter). 
 Commands within a virtual host overwrites the global configuration (requires 
 the definition of a <code>QS_LocRequestLimit</code>, 
-<code>QS_LocRequestLimitDefault</code>, or <code>QS_SrvMaxConn</code> directive). The 
-directive <code>QS_SrvConnTimeout</code> can only be used outside of virtual host 
+<code>QS_LocRequestLimitDefault</code>, <code>QS_SrvMaxConnPerIP</clode> 
+or <code>QS_SrvMaxConn</code> directive).
+The directive <code>QS_SrvConnTimeout</code> can only be used outside of virtual host 
 configurations.
 </p>
 <h4>Request Level Control</h4>
