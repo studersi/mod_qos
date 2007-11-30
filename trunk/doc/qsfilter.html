@@ -55,7 +55,7 @@ deny access for suspect request lines.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 <pre>
-Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-b &lt;num&gt;] [-p|-s|-m] [-n] [-e]
+Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-b &lt;num&gt;] [-p|-s|-m] [-l &lt;len&gt;] [-n] [-e] [-t]
 
 Summary
  mod_qos implements a request filter which validates each request
@@ -124,10 +124,17 @@ Options
      Uses one single pcre for the whole query string.
   -m
      Uses one pcre for multipe query values (recommended mode).
+  -l &lt;len&gt;
+     Outsizes the query length by the defined length ({0,size+len}),
+     default is 10.
   -n
      Disables redundant rules elimination.
   -e
      Exit on error.
+  -t
+     Determines the worst case performance for the generated whitelist
+     by applying each rule for each request line (output is real time
+     filter duration per request line in milliseconds).
 
 Output
  The output of qsfilter2 is written to stdout. The output
