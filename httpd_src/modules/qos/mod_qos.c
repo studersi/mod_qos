@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.30 2007-11-07 21:36:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.31 2007-11-30 21:15:24 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -76,6 +76,10 @@ static const char revision[] = "$Id: mod_qos.c,v 4.30 2007-11-07 21:36:07 pbuchb
 #define QOS_COOKIE_NAME "MODQOS"
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
+/* netmask 255.255.240.0 */
+#define QS_NETMASK 16
+#define QS_NETMASK_MOD (QS_NETMASK * 65536)
+
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 /************************************************************************
@@ -209,13 +213,34 @@ typedef struct qs_actable_st {
 } qs_actable_t;
 
 /**
+ * network table (total connections, vip connections, first update, last update)
+ */
+typedef struct qs_netstat_st {
+  int counter;
+  int vip;
+  time_t first;
+  time_t last;
+} qs_netstat_t;
+
+/**
  * user space
  */
 typedef struct {
   int server_start;
   apr_table_t *act_table;
+
+  /* source ip stat */
+  char *m_file;
+  apr_shm_t *m;
+  char *lock_file;
+  apr_global_mutex_t *lock;
+  int connections;
+  qs_netstat_t *netstat;
 } qos_user_t;
 
+/**
+ * directory config
+ */
 typedef struct {
   apr_table_t *rfilter_table;
   int inheritoff;
@@ -247,6 +272,7 @@ typedef struct {
   apr_table_t *testip;
   int enable_testip;
 #endif
+  int net_prefer;
 } qos_srv_config;
 
 /**
@@ -601,18 +627,68 @@ static void qos_destroy_act(qs_actable_t *act) {
   apr_pool_destroy(act->pool);
 }
 
+static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
+  int elements = (256 * 256 * QS_NETMASK);
+  int size = elements;
+  apr_status_t res;
+  int i;
+  u->m_file = apr_psprintf(ppool, "%s_c.mod_qos",
+                           ap_server_root_relative(ppool, tmpnam(NULL)));
+  size = APR_ALIGN_DEFAULT(size * sizeof(qs_netstat_t));
+  ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
+               QOS_LOG_PFX(0)"create shared memory: %d bytes", size);
+  res = apr_shm_create(&u->m, (size + 512), u->m_file, ppool);
+  if (res != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(res, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
+                 QOS_LOG_PFX(007)"could not create shared memory: %s (%d)", buf, size);
+    return !OK;
+  }
+  u->lock_file = apr_psprintf(ppool, "%s_cl.mod_qos", 
+                              ap_server_root_relative(ppool, tmpnam(NULL)));
+  res = apr_global_mutex_create(&u->lock, u->lock_file, APR_LOCK_DEFAULT, ppool);
+  if (res != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(res, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
+                 QOS_LOG_PFX(008)"could create mutex: %s", buf);
+    return !OK;
+  }
+  u->netstat = apr_shm_baseaddr_get(u->m);
+  for(i = 0; i < elements; i++) {
+    qs_netstat_t *netstat = &u->netstat[i];
+    netstat->counter = 0;
+    netstat->vip = 0;
+    netstat->first = 0;
+    netstat->last = 0;
+  }
+  return OK;
+}
+
 /**
  * returns the persistent configuration (restarts)
  */
-static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
+static qos_user_t *qos_get_user_conf(apr_pool_t *ppool, int net_prefer) {
   void *v;
   qos_user_t *u;
   apr_pool_userdata_get(&v, QS_USR_SPE, ppool);
-  if(v) return v;
+  u = v;
+  if(v) {
+    if(net_prefer && (u->m == NULL)) {
+      /* net_prefer has been introduced by graceful restart */
+      if(qos_init_netstat(ppool, u) != OK) return NULL;
+    }
+    return v;
+  }
   u = (qos_user_t *)apr_pcalloc(ppool, sizeof(qos_user_t));
   u->server_start = 0;
   u->act_table = apr_table_make(ppool, 2);
   apr_pool_userdata_set(u, QS_USR_SPE, apr_pool_cleanup_null, ppool);
+  u->m = NULL;
+  if(net_prefer) {
+    if(qos_init_netstat(ppool, u) != OK) return NULL;
+  }
   return u;
 }
 
@@ -620,7 +696,6 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
  * tells if server is terminating immediately or not
  */
 static int qos_is_graceful(qs_actable_t *act) {
-  qos_user_t *u = qos_get_user_conf(act->ppool);
   if(ap_my_generation != act->generation) return 1;
   return 0;
 }
@@ -634,7 +709,7 @@ static int qos_is_graceful(qs_actable_t *act) {
  */
 static apr_status_t qos_cleanup_shm(void *p) {
   qs_actable_t *act = p;
-  qos_user_t *u = qos_get_user_conf(act->ppool);
+  qos_user_t *u = qos_get_user_conf(act->ppool, 0);
   /* this_generation id is never deleted ... */
   char *this_generation = apr_psprintf(act->ppool, "%d", ap_my_generation);
   char *last_generation;
@@ -693,7 +768,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(002)"could not create shared memory: %s", buf);
+                 QOS_LOG_PFX(002)"could not create shared memory: %s (%d)", buf, act->size);
     return res;
   }
   act->c = apr_shm_baseaddr_get(act->m);
@@ -1396,6 +1471,12 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
  */
 static apr_status_t qos_cleanup_conn(void *p) {
   qs_conn_ctx *cconf = p;
+  if(cconf->sconf->net_prefer) {
+    qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool, 0);
+    apr_global_mutex_lock(u->lock);                   /* @CRT10 */
+    u->connections--;
+    apr_global_mutex_unlock(u->lock);                 /* @CRT10 */
+  }
   if(cconf->sconf->max_conn != -1) {
     apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT3 */
     cconf->sconf->act->c->connections--;
@@ -1451,8 +1532,13 @@ static int qos_process_connection(conn_rec * c) {
         }
       }
     }
-
     /* update data */
+    if(sconf->net_prefer) {
+      qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+      apr_global_mutex_lock(u->lock);                  /* @CRT9 */
+      u->connections++;
+      apr_global_mutex_unlock(u->lock);                /* @CRT9 */
+    }
     if(sconf->max_conn != -1) {
       apr_global_mutex_lock(cconf->sconf->act->lock);  /* @CRT4 */
       cconf->sconf->act->c->connections++;
@@ -1887,6 +1973,10 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   server_rec *s = bs->next;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   qs_acentry_t *e = sconf->act->entry;
+  if(sconf->net_prefer) {
+    qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+    apr_global_mutex_child_init(&u->lock, u->lock_file, sconf->act->ppool);
+  }
   if(!sconf->act->child_init) {
     sconf->act->child_init = 1;
     /* propagate mutex to child process (required for certaing platforms) */
@@ -1918,7 +2008,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   char *rev = qos_revision(ptemp);
   server_rec *s = bs->next;
-  qos_user_t *u = qos_get_user_conf(bs->process->pool);
+  qos_user_t *u = qos_get_user_conf(bs->process->pool, sconf->net_prefer);
+  if(u == NULL) return !OK;
   u->server_start++;
   sconf->base_server = bs;
   sconf->act->timeout = apr_time_sec(bs->timeout);
@@ -2141,6 +2232,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_conn_per_ip = -1;
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->hfilter_table = apr_table_make(p, 1);
+  sconf->net_prefer = 0;
   if(!s->is_virtual) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table);
     if(msg) {
@@ -2181,10 +2273,12 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_srv_config *o = (qos_srv_config *)addv;
   /* base table may contain custom rules */
   o->hfilter_table = b->hfilter_table;
-
+  o->net_prefer = b->net_prefer;
   /* location rules or connection limit controls conf merger (see index.html) */
   if((apr_table_elts(o->location_t)->nelts > 0) ||
-     (o->max_conn != -1)) {
+     (o->max_conn != -1) ||
+     (o->max_conn_per_ip != -1)
+     ) {
     o->connect_timeout = b->connect_timeout;
 #ifdef QS_INTERNAL_TEST
     o->enable_testip = b->enable_testip;
@@ -2411,6 +2505,24 @@ const char *qos_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->header_name = apr_pstrdup(cmd->pool, name);
+  return NULL;
+}
+
+/**
+ * prefer clients from known networks
+ */
+const char *qos_pref_conn_cmd(cmd_parms *cmd, void *dcfg, const char *args) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->net_prefer = atoi(args);
+  if(sconf->net_prefer == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
@@ -2667,6 +2779,10 @@ static const command_rec qos_config_cmds[] = {
                 "QS_VipHeaderName <name>, defines the http header name which is"
                 " used to signalize a very important person (vip)."),
   /* connection limitations */
+  AP_INIT_TAKE1("QS_SrvPreferConn", qos_pref_conn_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvPreferConn <connection threshold>"
+                " "),
   AP_INIT_TAKE1("QS_SrvMaxConn", qos_max_conn_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConn <number>, defines the maximum number of"
