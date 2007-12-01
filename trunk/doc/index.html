@@ -72,6 +72,9 @@ Limitations on the TCP connection level, e.g. the maximum of allowed connections
 a single IP source address or dynamic keep-alive control.
 </li>
 <li type=square>
+Preferes known networks when server runs out of free TCP connections.
+</li>
+<li type=square>
 Limitation of the bandwidth, e.g. the maximum allowed number of requests 
 per second to an URL.
 </li>
@@ -433,6 +436,13 @@ Defines the inital timeout for reading a request from the client from
 a new TCP connection. This parameter is used to drop TCP sessions 
 from very slow clients which do not send the HTTP request data 
 (request line and header) within this timeout.
+</li>
+<li>
+<code>QS_SrvPreferNet</code><br>
+mod_qos prefers "known networks" when server has 
+less than 80% of free TCP connections. Preferred networks 
+have VIP clients, see <code>QS_VipHeaderName</code> directive. 
+Netmask is 255.255.240.0 (each net represents 4096 hosts).
 </li>
 </ul>
 

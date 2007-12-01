@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.32 2007-12-01 12:24:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.33 2007-12-01 21:06:46 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -216,10 +216,10 @@ typedef struct qs_actable_st {
  * network table (total connections, vip connections, first update, last update)
  */
 typedef struct qs_netstat_st {
-  int counter;
-  int is_vip;
-  time_t first;
-  time_t last;
+  //  int counter;
+  int vip;
+  //  time_t first;
+  //  time_t last;
 } qs_netstat_t;
 
 /**
@@ -660,10 +660,10 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
   u->netstat = apr_shm_baseaddr_get(u->m);
   for(i = 0; i < elements; i++) {
     qs_netstat_t *netstat = &u->netstat[i];
-    netstat->counter = 0;
-    netstat->is_vip = 0;
-    netstat->first = 0;
-    netstat->last = 0;
+    //netstat->counter = 0;
+    netstat->vip = 0;
+    //netstat->first = 0;
+    //netstat->last = 0;
   }
   return OK;
 }
@@ -832,8 +832,8 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
 /**
  * returns the network address (mask using QS_NETMASK, e.g. /20)
  */
-static int qos_get_net(conn_rec *c) {
-  unsigned long net = inet_addr(c->remote_ip); /* v4 */
+static int qos_get_net(qs_conn_ctx *cconf) {
+  unsigned long net = cconf->ip; /* v4 */
   net = net % QS_NETMASK_MOD;
   return net;
 }
@@ -1510,6 +1510,14 @@ static apr_status_t qos_cleanup_conn(void *p) {
     qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool, 0);
     apr_global_mutex_lock(u->lock);                   /* @CRT10 */
     u->connections--;
+    if(u->connections < cconf->sconf->net_prefer_limit) {
+      /* no limit reached, allow network learning ... */
+      int net = qos_get_net(cconf);
+      /* 1) ip client in network */
+      if(cconf->is_vip) {
+        u->netstat[net].vip = 1;
+      }
+    }
     apr_global_mutex_unlock(u->lock);                 /* @CRT10 */
   }
   if(cconf->sconf->max_conn != -1) {
@@ -1531,9 +1539,11 @@ static int qos_process_connection(conn_rec * c) {
   int vip = 0;
   if(cconf == NULL) {
     int connections;
+    int net_connections;
     int current;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                   &qos_module);
+    qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
     cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
     cconf->c = c;
     cconf->evmsg = NULL;
@@ -1570,9 +1580,9 @@ static int qos_process_connection(conn_rec * c) {
     }
     /* update data */
     if(sconf->net_prefer) {
-      qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
       apr_global_mutex_lock(u->lock);                  /* @CRT9 */
       u->connections++;
+      net_connections = u->connections;
       apr_global_mutex_unlock(u->lock);                /* @CRT9 */
     }
     if(sconf->max_conn != -1) {
@@ -1629,6 +1639,22 @@ static int qos_process_connection(conn_rec * c) {
                      c->remote_ip == NULL ? "-" : c->remote_ip);
         c->keepalive = AP_CONN_CLOSE;
         return qos_return_error(c);
+      }
+    }
+    if(sconf->net_prefer) {
+      if(net_connections > sconf->net_prefer_limit) {
+        /* enforce */
+        int net = qos_get_net(cconf);
+        if(u->netstat[net].vip == 0) {
+          /* not a vip net */
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                       QOS_LOG_PFX(033)"access denied, rule: prefer=%d, concurrent connections=%d, "
+                       "c=%s",
+                       sconf->net_prefer_limit, net_connections,
+                       c->remote_ip == NULL ? "-" : c->remote_ip);
+          c->keepalive = AP_CONN_CLOSE;
+          return qos_return_error(c);
+        }
       }
     }
   }
@@ -1891,9 +1917,11 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   if(sconf->header_name) {
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->header_name);
     if(ctrl_h) {
+      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       qos_set_session(r, sconf);
       rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
+      cconf->is_vip = 1;
       apr_table_unset(r->headers_out, sconf->header_name);
     }
   }
@@ -2054,6 +2082,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   char *rev = qos_revision(ptemp);
   server_rec *s = bs->next;
   qos_user_t *u;
+  int net_prefer;
+  int net_prefer_limit;
   if(sconf->net_prefer) {
     ap_directive_t *pdir;
     for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
@@ -2067,6 +2097,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       exit(1);
     }
     sconf->net_prefer_limit = sconf->net_prefer * 80 / 100;
+    net_prefer = sconf->net_prefer;
+    net_prefer_limit = sconf->net_prefer_limit;
   }
   u = qos_get_user_conf(bs->process->pool, sconf->net_prefer);
   if(u == NULL) return !OK;
@@ -2094,6 +2126,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
     sconf->base_server = bs;
     sconf->act->timeout = apr_time_sec(s->timeout);
+    sconf->net_prefer = net_prefer;
+    sconf->net_prefer_limit = net_prefer_limit;
     if(sconf->act->timeout == 0) sconf->act->timeout = 300;
     if(sconf->is_virtual) {
       if(qos_init_shm(s, sconf->act, sconf->location_t) != APR_SUCCESS) {
@@ -2836,10 +2870,13 @@ static const command_rec qos_config_cmds[] = {
                 "QS_VipHeaderName <name>, defines the http header name which is"
                 " used to signalize a very important person (vip)."),
   /* connection limitations */
-  AP_INIT_NO_ARGS("QS_SrvPreferConn", qos_pref_conn_cmd, NULL,
+  AP_INIT_NO_ARGS("QS_SrvPreferNet", qos_pref_conn_cmd, NULL,
                   RSRC_CONF,
-                  "QS_SrvPreferConn"
-                  " "),
+                  "QS_SrvPreferNet, prefers known networks when server has"
+                  " less than 80% of free TCP connections. Preferred networks"
+                  " have VIP clients, see QS_VipHeaderName directive. Netmask"
+                  " is 255.255.240.0 (each net represents 4096 hosts)."
+                  " Directive is allowed in global server context only."),
   AP_INIT_TAKE1("QS_SrvMaxConn", qos_max_conn_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConn <number>, defines the maximum number of"
@@ -2867,7 +2904,8 @@ static const command_rec qos_config_cmds[] = {
                 "QS_SrvConnTimeout <seconds>, defines the inital timeout"
                 " a client must send the HTTP request on a new TCP"
                 " connection. Default is the timeout defined by the"
-                " Apache standard Timeout directive."),
+                " Apache standard Timeout directive."
+                " Directive is allowed in global server context only."),
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
                 ACCESS_CONF,
@@ -2910,7 +2948,8 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_RequestHeaderFilterRule <header name> <pcre> 'drop'|'deny', used"
                 " to add custom header filter rules which override the internal"
-                " filter rules of mod_qos."),
+                " filter rules of mod_qos."
+                " Directive is allowed in global server context only."),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                RSRC_CONF,
