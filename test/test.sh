@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.26 2007-11-30 21:16:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.27 2007-12-01 21:06:46 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -250,6 +250,27 @@ echo "-- header filter, QS_HeaderFilter.txt" >>  logs/error_log
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_HeaderFilter.txt"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+./ctl.sh stop > /dev/null
+sleep 2
+./ctl.sh start -D max_clients > /dev/null
+echo "-- header filter, QS_SrvPreferNet.txt" >>  logs/error_log
+QSTART=`grep -c "mod_qos(033)" logs/error_log`
+./htt.sh -s ./scripts/QS_SrvPreferNet.txt 1>/dev/null 2>/dev/null
+sleep 10
+QFIRST=`grep -c "mod_qos(033)" logs/error_log`
+./htt.sh -s ./scripts/QS_SrvPreferNet2.txt 1>/dev/null 2>/dev/null
+sleep 10
+QSECOND=`grep -c "mod_qos(033)" logs/error_log`
+QDIFF1=`expr $QFIRST - $QSTART`
+QDIFF2=`expr $QSECOND - $QFIRST`
+echo "$QDIFF1 $QDIFF2"
+if [ $QDIFF1 -lt $QDIFF2 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_SrvPreferNet.txt"
     exit 1
 fi
 
