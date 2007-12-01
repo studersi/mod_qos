@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.0 2007-12-01 21:13:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.1 2007-12-01 22:10:32 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -2082,8 +2082,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   char *rev = qos_revision(ptemp);
   server_rec *s = bs->next;
   qos_user_t *u;
-  int net_prefer;
-  int net_prefer_limit;
+  int net_prefer = 0;
+  int net_prefer_limit = 0;
   if(sconf->net_prefer) {
     ap_directive_t *pdir;
     for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
