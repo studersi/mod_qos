@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 4.31 2007-11-30 21:15:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 4.32 2007-12-01 12:24:09 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -217,7 +217,7 @@ typedef struct qs_actable_st {
  */
 typedef struct qs_netstat_st {
   int counter;
-  int vip;
+  int is_vip;
   time_t first;
   time_t last;
 } qs_netstat_t;
@@ -273,6 +273,7 @@ typedef struct {
   int enable_testip;
 #endif
   int net_prefer;
+  int net_prefer_limit;
 } qos_srv_config;
 
 /**
@@ -283,6 +284,7 @@ typedef struct {
   conn_rec *c;
   char *evmsg;
   qos_srv_config *sconf;
+  int is_vip;
 } qs_conn_ctx;
 
 /**
@@ -642,7 +644,7 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(007)"could not create shared memory: %s (%d)", buf, size);
+                 QOS_LOG_PFX(002)"could not create shared memory: %s (%d)", buf, size);
     return !OK;
   }
   u->lock_file = apr_psprintf(ppool, "%s_cl.mod_qos", 
@@ -652,14 +654,14 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(008)"could create mutex: %s", buf);
+                 QOS_LOG_PFX(005)"could create mutex: %s", buf);
     return !OK;
   }
   u->netstat = apr_shm_baseaddr_get(u->m);
   for(i = 0; i < elements; i++) {
     qs_netstat_t *netstat = &u->netstat[i];
     netstat->counter = 0;
-    netstat->vip = 0;
+    netstat->is_vip = 0;
     netstat->first = 0;
     netstat->last = 0;
   }
@@ -825,6 +827,15 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     }
   }
   return APR_SUCCESS;
+}
+
+/**
+ * returns the network address (mask using QS_NETMASK, e.g. /20)
+ */
+static int qos_get_net(conn_rec *c) {
+  unsigned long net = inet_addr(c->remote_ip); /* v4 */
+  net = net % QS_NETMASK_MOD;
+  return net;
 }
 
 /**
@@ -1281,7 +1292,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     ap_rputs("<hr>\n", r);
     ap_rputs("<table border=\"1\">\n", r);
   }
-  
+
   while(s) {
     qs_acentry_t *e;
     ap_rputs("<tr class=\"rows\">\n", r);
@@ -1291,6 +1302,30 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                s->is_virtual ? "virtual" : "base");
     ap_rputs("<td>\n", r);
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+
+    if(!s->is_virtual && sconf->net_prefer) {
+      qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+      int hc = -1;
+      if(strcmp(r->handler, "qos-viewer") == 0) {
+        ap_rputs("<table class=\"btable\">\n", r);
+      } else {
+        ap_rputs("<table border=\"1\">\n", r);
+      }
+      ap_rputs("<tr class=\"rowt\">"
+               "<td style=\"width:70%\">host connections&nbsp;</td>"
+               "<td style=\"width:15%\">limit&nbsp;</td>"
+               "<td style=\"width:15%\">current&nbsp;</td>", r);
+      apr_global_mutex_lock(u->lock);                   /* @CRT11 */
+      hc = u->connections;
+      apr_global_mutex_unlock(u->lock);                 /* @CRT11 */
+      ap_rprintf(r, "<tr class=\"row1\">", i);
+      ap_rprintf(r, "<td>max %d</td>", sconf->net_prefer);
+      ap_rprintf(r, "<td>%d</td>", sconf->net_prefer_limit);
+      ap_rprintf(r, "<td>%d</td>", hc);
+      ap_rputs("</tr>\n", r);
+      ap_rputs("</table>\n", r);
+    }
+
     if(sconf && sconf->act) {
       e = sconf->act->entry;
       while(e) {
@@ -1503,6 +1538,7 @@ static int qos_process_connection(conn_rec * c) {
     cconf->c = c;
     cconf->evmsg = NULL;
     cconf->sconf = sconf;
+    cconf->is_vip = 0;
     ap_set_module_config(c->conn_config, &qos_module, cconf);
     apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
 
@@ -1557,11 +1593,15 @@ static int qos_process_connection(conn_rec * c) {
         if(entry[i].val[0] == 'r') {
           if(strncmp(entry[i].key, cconf->c->remote_ip, strlen(entry[i].key)) == 0) {
             vip = 1;
+            /* propagate vip to connection */
+            cconf->is_vip = vip;
             cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
           }
         } else {
           if(strcmp(entry[i].key, cconf->c->remote_ip) == 0) {
             vip = 1;
+            /* propagate vip to connection */
+            cconf->is_vip = vip;
             cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
           }
         }
@@ -1733,6 +1773,11 @@ static int qos_header_parser(request_rec * r) {
       }
       if(sconf->header_name) {
         rctx->is_vip = qos_is_vip(r, sconf);
+        if(rctx->is_vip) {
+          qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                                  &qos_module);
+          if(cconf) cconf->is_vip = 1;
+        }
       }
       rctx->entry = e;
       apr_global_mutex_lock(e->lock);   /* @CRT5 */
@@ -2008,7 +2053,22 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   char *rev = qos_revision(ptemp);
   server_rec *s = bs->next;
-  qos_user_t *u = qos_get_user_conf(bs->process->pool, sconf->net_prefer);
+  qos_user_t *u;
+  if(sconf->net_prefer) {
+    ap_directive_t *pdir;
+    for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
+      if(strcasecmp(pdir->directive, "MaxClients") == 0) {
+        sconf->net_prefer = atoi(pdir->args);
+      }
+    }
+    if(sconf->net_prefer <= 1) {
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                   QOS_LOG_PFX(007)"could not determine MaxClients");
+      exit(1);
+    }
+    sconf->net_prefer_limit = sconf->net_prefer * 80 / 100;
+  }
+  u = qos_get_user_conf(bs->process->pool, sconf->net_prefer);
   if(u == NULL) return !OK;
   u->server_start++;
   sconf->base_server = bs;
@@ -2019,6 +2079,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   apr_pool_cleanup_register(sconf->pool, sconf->act,
                             qos_cleanup_shm, apr_pool_cleanup_null);
+
   if(u->server_start == 2) {
     int i;
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->hfilter_table)->elts;
@@ -2511,18 +2572,14 @@ const char *qos_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
 /**
  * prefer clients from known networks
  */
-const char *qos_pref_conn_cmd(cmd_parms *cmd, void *dcfg, const char *args) {
+const char *qos_pref_conn_cmd(cmd_parms *cmd, void *dcfg) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
     return err;
   }
-  sconf->net_prefer = atoi(args);
-  if(sconf->net_prefer == 0) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
-                        cmd->directive->directive);
-  }
+  sconf->net_prefer = 1;
   return NULL;
 }
 
@@ -2779,10 +2836,10 @@ static const command_rec qos_config_cmds[] = {
                 "QS_VipHeaderName <name>, defines the http header name which is"
                 " used to signalize a very important person (vip)."),
   /* connection limitations */
-  AP_INIT_TAKE1("QS_SrvPreferConn", qos_pref_conn_cmd, NULL,
-                RSRC_CONF,
-                "QS_SrvPreferConn <connection threshold>"
-                " "),
+  AP_INIT_NO_ARGS("QS_SrvPreferConn", qos_pref_conn_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_SrvPreferConn"
+                  " "),
   AP_INIT_TAKE1("QS_SrvMaxConn", qos_max_conn_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConn <number>, defines the maximum number of"
