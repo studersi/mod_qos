@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.34 2007-11-30 10:37:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.35 2007-12-04 20:40:54 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -230,7 +230,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s|-m] [-l <len>] [-n] [-e] [-t]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s|-m] [-l <len>] [-n] [-e] [-t] [-v 0|1|2]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf(" mod_qos implements a request filter which validates each request\n");
@@ -310,6 +310,11 @@ static void usage(char *cmd) {
   printf("     Determines the worst case performance for the generated whitelist\n");
   printf("     by applying each rule for each request line (output is real time\n");
   printf("     filter duration per request line in milliseconds).\n");
+  printf("  -v <level>\n");
+  printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
+  printf("     Don't use rules you haven't checked the request data used to\n");
+  printf("     generate it! Level 1 is highly recommended (as long as you don't\n");
+  printf("     have created the log data using your own web crawler).\n");
   printf("\n");
   printf("Output\n");
   printf(" The output of %s is written to stdout. The output\n", cmd);
