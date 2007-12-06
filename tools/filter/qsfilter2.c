@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.35 2007-12-04 20:40:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.36 2007-12-06 19:10:21 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -72,10 +72,12 @@ typedef enum  {
 
 #define QS_SIMPLE_PATH_PCRE   "(/[a-zA-Z0-9-_]+)+[/]?\\.?[a-zA-Z]{0,4}"
 #define QS_B64                "([a-z]+[a-z0-9]*[A-Z]+[A-Z0-9]*)"
+#define QS_HX                 "([A-F0-9]*[A-F]+[0-9]+[A-F0-9]*)"
 
 #define QS_OVECCOUNT 3
 
 pcre *pcre_b64;
+pcre *pcre_hx;
 pcre *pcre_simple_path;
 
 /* global variables to store settings */
@@ -120,12 +122,19 @@ static pcre *qos_pcre_compile(char *pattern, int option) {
   return pcre;
 }
 
-/* tries to detect base64 patterns (mix of upper and lower case characters) */
+/* tries to detect base64/hex patterns (mix of upper and lower case characters) */
 static char *qos_detect_b64(char *line, int silent) {
   int ovector[QS_OVECCOUNT];
   int rc_c = pcre_exec(pcre_b64, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
   if(rc_c >= 0) {
-    if((m_verbose > 1) && !silent) printf("  B64: %.*s\n", ovector[1] - ovector[0], &line[ovector[0]]);
+    if((m_verbose > 1) && !silent) printf("  B64: %.*s\n",
+					  ovector[1] - ovector[0], &line[ovector[0]]);
+    return &line[ovector[0]];
+  }
+  rc_c = pcre_exec(pcre_hx, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
+  if(rc_c >= 0) {
+    if((m_verbose > 1) && !silent) printf("  HX: %.*s\n",
+					  ovector[1] - ovector[0], &line[ovector[0]]);
     return &line[ovector[0]];
   }
   return NULL;
@@ -222,6 +231,8 @@ static void qos_init_pcre() {
   char buf[1024];
   sprintf(buf, "%s{%d,}", QS_B64, m_base64);
   pcre_b64 = qos_pcre_compile(buf, 0);
+  sprintf(buf, "%s{%d,}", QS_HX, m_base64);
+  pcre_hx = qos_pcre_compile(buf, 0);
   pcre_simple_path = qos_pcre_compile("^"QS_SIMPLE_PATH_PCRE"$", 0);
 }
 
@@ -290,7 +301,7 @@ static void usage(char *cmd) {
   printf("     literal string. Default is 1.\n");
   printf("  -b <num>\n");
   printf("     Replaces url pattern by the regular expression when detecting\n");
-  printf("     a base64 encoded string. Detecting sensibility is defined by a\n");
+  printf("     a base64/hex encoded string. Detecting sensibility is defined by a\n");
   printf("     numeric value. You should use values higher than 5 (default)\n");
   printf("     or 0 to disable this function.\n");
   printf("  -p\n");
