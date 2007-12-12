@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.10 2007-10-30 19:39:19 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.11 2007-12-12 20:48:15 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -42,6 +42,10 @@ if [ "`cvs -q diff -r $TAGV 2>&1`" = "" ]; then
     echo ok
 else
     echo "FAILED"
+    exit 1
+fi
+if [ `grep -c "Version $VERSION" doc/CHANGES.txt` -eq 0 ]; then
+    echo "CHANGES.txt check FAILED"
     exit 1
 fi
 
