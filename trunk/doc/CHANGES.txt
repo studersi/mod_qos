@@ -1,4 +1,18 @@
 
+Version 5.2
+
+ - QS_VipHeaderName creates session cookie only once.
+
+ - VIP has no QS_LocKBytesPerSecLimit/QS_LocKBytesPerSecLimitMatch
+   restrictions.
+
+ - QS_SrvPreferNet triggers for VIP user on response header
+   only.
+
+Version 5.1
+
+ - New directive QS_SrvPreferNet.
+
 Version 4.30
 
  - Fixed: segfault at server startup when no virtual host has

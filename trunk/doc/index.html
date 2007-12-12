@@ -242,7 +242,10 @@ life time and its cookie format:
 <code>QS_VipHeaderName &lt;header name&gt;</code><br>
 Defines a HTTP response header which marks a user as a VIP. mod_qos creates 
 a session for this user by setting a cookie. Whenever an application handler 
-sets this response header, the user gets unlimited access any location.
+sets this response header, the user gets unlimited access to any location. This 
+directive works in conjunction with <code>QS_Loc*</code> and 
+<code>QS_SrvPreferNet</code> directives. See the <code>QS_Session*</code> 
+directives for further session attribute settings.
 </li>
 <li>
 <code>QS_SessionTimeout &lt;seconds&gt;</code><br>
@@ -271,12 +274,21 @@ Sample configuration:<br>
 <pre>
 QS_ErrorPage                  /error-docs/qs_error.html
 
+# stricts max concurrent requests for any location which has no
+# individual rule:
 QS_LocRequestLimitDefault                         200
+
+# limits access to *.gif files to 100 concurrent requests
 QS_LocRequestLimitMatch       "^.*\.gif$"         100
+
+# limits concurrent requests to the locations /images and /application:
 QS_LocRequestLimit            /images             100
 QS_LocRequestLimit            /application        300
-QS_LocKBytesPerSecLimit       /application       2000
+# limits download bandwidth to 5Mbit/sec:
+QS_LocKBytesPerSecLimit       /application        640
 
+# allows the application to nominate VIP users by sending a
+# "mod-qos-vip" HTTP response header:
 QS_VipHeaderName              mod-qos-vip
 QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
 </pre>
@@ -288,8 +300,11 @@ additonal control mechanisms. The following variables may be used:
 <ul>
 <li>
 <code>QS_VipRequest=yes</code><br>
-Allows unrestricted access. Requires the definition of a VIP header 
-using the <code>QS_VipHeaderName</code> directive.
+Disables the pre location restrictions for this request. 
+Requires the definition of a VIP header using the 
+<code>QS_VipHeaderName</code> directive. However, such 
+an event does not create a VIP session. The user has the VIP status 
+only for a single request.
 </li>
 <li>
 <code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
@@ -450,10 +465,16 @@ Netmask is 255.255.240.0 (each net represents 4096 hosts).
 <tr><td bgcolor="#EBEDF5">
 Sample configuration:<br>
 <pre>
+# limits the connections for this virtual host:
 QS_SrvMaxConn                                     800
+
+# allows keep-alive support till the server reaches 600 connections:
 QS_SrvMaxConnClose                                600
+
+# allows max 50 connections from a single ip address:
 QS_SrvMaxConnPerIP                                 50
 
+# disables connection restrictions for certain clients:
 QS_SrvMaxConnExcludeIP                    172.18.3.32
 QS_SrvMaxConnExcludeIP                    192.168.10.
 </pre>

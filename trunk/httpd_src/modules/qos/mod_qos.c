@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.1 2007-12-01 22:10:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.2 2007-12-12 20:48:15 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -76,6 +76,7 @@ static const char revision[] = "$Id: mod_qos.c,v 5.1 2007-12-01 22:10:32 pbuchbi
 #define QOS_COOKIE_NAME "MODQOS"
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
+#define QS_REC_COOKIE "mod_qos::gc"
 /* netmask 255.255.240.0 */
 #define QS_NETMASK 16
 #define QS_NETMASK_MOD (QS_NETMASK * 65536)
@@ -284,7 +285,8 @@ typedef struct {
   conn_rec *c;
   char *evmsg;
   qos_srv_config *sconf;
-  int is_vip;
+  int is_vip;           /* is vip, either by request or by session */
+  int is_vip_by_header; /* received vip header from application */
 } qs_conn_ctx;
 
 /**
@@ -535,6 +537,7 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
     }
 
     /* success */
+    apr_table_set(r->notes, QS_REC_COOKIE, "");
     return 1;
   
   failed:
@@ -1513,8 +1516,8 @@ static apr_status_t qos_cleanup_conn(void *p) {
     if(u->connections < cconf->sconf->net_prefer_limit) {
       /* no limit reached, allow network learning ... */
       int net = qos_get_net(cconf);
-      /* 1) ip client in network */
-      if(cconf->is_vip) {
+      /* 1) ip client in network (nominated by application) */
+      if(cconf->is_vip_by_header) {
         u->netstat[net].vip = 1;
       }
     }
@@ -1549,6 +1552,7 @@ static int qos_process_connection(conn_rec * c) {
     cconf->evmsg = NULL;
     cconf->sconf = sconf;
     cconf->is_vip = 0;
+    cconf->is_vip_by_header = 0;
     ap_set_module_config(c->conn_config, &qos_module, cconf);
     apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
 
@@ -1893,16 +1897,20 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   if(rctx->entry) {
-    /*
-     * QS_LocKBytesPerSecLimit enforcement
-     */
-    int kbytes_per_sec_block = rctx->entry->kbytes_per_sec_block_rate;
-    int sec = kbytes_per_sec_block / 1000;
-    int nsec = kbytes_per_sec_block % 1000;
-    struct timespec delay;
-    delay.tv_sec  = sec;
-    delay.tv_nsec = nsec * 1000000;
-    nanosleep(&delay,NULL);
+    if(rctx->is_vip) {
+      rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+    } else {
+      /*
+       * QS_LocKBytesPerSecLimit enforcement
+       */
+      int kbytes_per_sec_block = rctx->entry->kbytes_per_sec_block_rate;
+      int sec = kbytes_per_sec_block / 1000;
+      int nsec = kbytes_per_sec_block % 1000;
+      struct timespec delay;
+      delay.tv_sec  = sec;
+      delay.tv_nsec = nsec * 1000000;
+      nanosleep(&delay,NULL);
+    }
   }
   return ap_pass_brigade(f->next, bb); 
 }
@@ -1915,13 +1923,15 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   if(sconf->header_name) {
+    /* got a vip header: create new session (if non exists) */
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->header_name);
-    if(ctrl_h) {
+    if(ctrl_h && !apr_table_get(r->notes, QS_REC_COOKIE)) {
       qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       qos_set_session(r, sconf);
       rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
       cconf->is_vip = 1;
+      cconf->is_vip_by_header = 1;
       apr_table_unset(r->headers_out, sconf->header_name);
     }
   }
