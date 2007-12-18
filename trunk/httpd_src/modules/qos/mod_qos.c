@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.2 2007-12-12 20:48:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.3 2007-12-18 20:51:12 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -71,7 +71,6 @@ static const char revision[] = "$Id: mod_qos.c,v 5.2 2007-12-12 20:48:15 pbuchbi
  ***********************************************************************/
 #define QOS_LOG_PFX(id)  "mod_qos("#id"): "
 #define QOS_RAN 10
-#define QOS_MAGIC_LEN 8
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
 #define QS_SIM_IP_LEN 100
@@ -81,6 +80,7 @@ static const char revision[] = "$Id: mod_qos.c,v 5.2 2007-12-12 20:48:15 pbuchbi
 #define QS_NETMASK 16
 #define QS_NETMASK_MOD (QS_NETMASK * 65536)
 
+#define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 /************************************************************************
@@ -520,7 +520,7 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
         return 0;
       } else {
         qos_session_t *s = (qos_session_t *)buf;
-        s->magic[QOS_MAGIC_LEN] = '\0';
+        s->magic[QOS_MAGIC_LEN-1] = '\0';
         if(strcmp(qs_magic, s->magic) != 0) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                         QOS_LOG_PFX(022)"session cookie verification failed, "
@@ -562,7 +562,7 @@ static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
     
   /* payload */
   strcpy(s->magic, qs_magic);
-  s->magic[QOS_MAGIC_LEN] = '\0';
+  s->magic[QOS_MAGIC_LEN-1] = '\0';
   s->time = time(NULL);
   RAND_bytes(s->ran, sizeof(s->ran));
   
@@ -657,7 +657,7 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(005)"could create mutex: %s", buf);
+                 QOS_LOG_PFX(004)"could create u-mutex: %s", buf);
     return !OK;
   }
   u->netstat = apr_shm_baseaddr_get(u->m);
@@ -810,7 +810,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
       char buf[MAX_STRING_LEN];
       apr_strerror(res, buf, sizeof(buf));
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX(004)"could create mutex: %s", buf);
+                   QOS_LOG_PFX(004)"could create e-mutex: %s", buf);
       return res;
     }
     if(i < rule_entries - 1) {
@@ -907,9 +907,11 @@ static int qos_add_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
     qs_ip_entry_t *ipe = cconf->sconf->act->c->ip_tree;
     if(ipe == NULL) {
       ipe = qos_new_ip(cconf->sconf->act);
-      ipe->ip = cconf->ip;
-      ipe->counter = 0;
-      cconf->sconf->act->c->ip_tree = ipe;
+      if(ipe) {
+        ipe->ip = cconf->ip;
+        ipe->counter = 0;
+        cconf->sconf->act->c->ip_tree = ipe;
+      }
     } else {
       qs_ip_entry_t *last;
       while(ipe->ip != cconf->ip) {
@@ -921,18 +923,25 @@ static int qos_add_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
         }
         if(ipe == NULL) {
           ipe = qos_new_ip(cconf->sconf->act);
-          ipe->ip = cconf->ip;
-          if(ipe->ip > last->ip) {
-            last->right = ipe;
-          } else {
-            last->left = ipe;
+          if(ipe) {
+            ipe->ip = cconf->ip;
+            if(ipe->ip > last->ip) {
+              last->right = ipe;
+            } else {
+              last->left = ipe;
+            }
           }
           break;
         }
       }
     }
-    ipe->counter++;
-    num = ipe->counter;
+    if(ipe) {
+      ipe->counter++;
+      num = ipe->counter;
+    } else {
+      ap_log_error(APLOG_MARK, APLOG_WARNING|APLOG_NOERRNO, 0, NULL,
+                   QOS_LOG_PFX(005)"failed to allocate ip entry");
+    }
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
   return num;
@@ -2324,7 +2333,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     char buf[MAX_STRING_LEN];
     apr_strerror(rv, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(005)"could create mutex: %s", buf);
+                 QOS_LOG_PFX(004)"could create a-mutex: %s", buf);
     exit(1);
   }
   sconf->is_virtual = s->is_virtual;
