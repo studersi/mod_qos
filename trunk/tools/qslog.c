@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.5 2007-09-27 06:19:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.6 2007-12-18 19:58:44 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -499,7 +499,7 @@ static void usage(char *cmd) {
   printf("    (<1s,1s,2s,3s,4s,5s,>5)\n");
   printf("  - average system load (sl)\n");
   printf("  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
-  printf("  - number of mod_qos events within the last minite (qv=create session,\n");
+  printf("  - number of mod_qos events within the last minute (qv=create session,\n");
   printf("    qs=session pass, qd=access denied, qk=connection closed, qt=dynamic\n");
   printf("    keep-alive, ql=request/response slow down)\n");
   printf("\n");
@@ -515,7 +515,7 @@ static void usage(char *cmd) {
   printf("     B defines the transferred bytes (%%b)\n");
   printf("     R defines the request line (%%r)\n");
   printf("     I defines the client ip address (%%h)\n");
-  printf("     Q defines the mod_qos_ev event message (%%{mod_qos_ev})\n");
+  printf("     Q defines the mod_qos_ev event message (%%{mod_qos_ev}o)\n");
   printf("  -o <out_file>\n");
   printf("     Specifies the file to store the output to.\n");
   printf("  -p\n");
