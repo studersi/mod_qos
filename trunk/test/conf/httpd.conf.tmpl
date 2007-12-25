@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.47 2007-12-01 21:06:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.48 2007-12-25 22:04:26 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -80,6 +80,7 @@ TypesConfig             conf/mime.types
 LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
 LoadModule              info_module ##ROOT##/../httpd/modules/generators/.libs/mod_info.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+LoadModule              qos_control_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos_control.so
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
 
@@ -103,6 +104,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /status !
    ProxyPass                  /info !
    ProxyPass                  /qos !
+   ProxyPass                  /qos_control !
    ProxyPass                  /cgi-local !
 
    ProxyPass                  /htt http://server1:##QS_PORT_BASE6##/htt
@@ -163,6 +165,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        QS_DenyPath        +qos       deny ^/qos/internal.*$
        QS_DenyRequestLine +printable deny ".*[\x00-\x19].*"
    </Location>
+   <Location /qos_control>
+       SetHandler qos-control
+   </Location>
    <Location /qos/merged>
        QS_DenyRequestLine -restrict deny ".*private.*"
    </Location>
@@ -201,6 +206,7 @@ Listen                  server1:##QS_PORT_BASE1##
    ProxyPass                  /status !
    ProxyPass                  /info !
    ProxyPass                  /qos !
+   ProxyPass                  /qos_control !
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
@@ -238,6 +244,9 @@ Listen                  server1:##QS_PORT_BASE1##
 
    <Location /qos>
        SetHandler qos-viewer
+   </Location>
+   <Location /qos_control>
+       SetHandler qos-control
    </Location>
 
 </VirtualHost>
