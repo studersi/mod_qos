@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.18 2007-10-22 07:21:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.19 2007-12-25 22:04:26 pbuchbinder Exp $
 #
 # Simple build script using apache tar.gz from the 3thrdparty directory
 #
@@ -40,6 +40,7 @@ ln -s httpd-${APACHE_VER} httpd
 rm -rf httpd/modules/qos
 mkdir -p httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/mod_qos.c httpd/modules/qos
+ln -s `pwd`/httpd_src/modules/qos/mod_qos_control.c httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/config.m4 httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/Makefile.in httpd/modules/qos
 
@@ -54,9 +55,14 @@ fi
 
 cd httpd
 ./buildconf
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id
 make
 strip modules/qos/.libs/mod_qos.so
+if [ $? -ne 0 ]; then
+    echo "ERROR"
+    exit 1
+fi
+strip modules/qos/.libs/mod_qos_control.so
 if [ $? -ne 0 ]; then
     echo "ERROR"
     exit 1

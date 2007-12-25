@@ -33,6 +33,10 @@ case "$COMMAND" in
 	   kill -USR1 `cat logs/apache.pid`
          fi
 	 ;;
+  restart)
+    $0 stop
+    sleep 1
+    $0 start
 esac
 
 exit 0
