@@ -31,7 +31,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.5 2007-12-26 20:43:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.6 2007-12-26 20:59:16 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -329,7 +329,7 @@ static const char *qosc_get_conf_value(const char *line, const char *directive) 
   return v;
 }
 
-static void qosc_load_httpdconf(request_rec *r, const char *file, const char *root, STACK *st) {
+static void qosc_load_httpdconf(request_rec *r, const char *file, const char *root, STACK *st, int *errors) {
   FILE *f = fopen(file, "r");
   char line[HUGE_STRING_LEN];
   if(f) {
@@ -355,8 +355,9 @@ static void qosc_load_httpdconf(request_rec *r, const char *file, const char *ro
           char *incfile;
           e[strlen(search)] = '\0';
           incfile = apr_pstrcat(r->pool, base, "/", fl, NULL);
-          qosc_load_httpdconf(r, incfile, root, st);
+          qosc_load_httpdconf(r, incfile, root, st, errors);
         } else {
+          errors++;
           ap_rprintf(r, "Failed to resolve '%s'.<br>\n", ap_escape_html(r->pool, line));
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                         QOSC_LOG_PFX(0)"failed to find included httpd configuration file '%s'",
@@ -378,6 +379,7 @@ static void qosc_load_httpdconf(request_rec *r, const char *file, const char *ro
     }
     fclose(f);
   } else {
+    errors++;
     ap_rprintf(r, "Failed to open '%s'.<br>\n", ap_escape_html(r->pool, file));
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"failed to open httpd configuration file '%s'", file); 
@@ -395,6 +397,7 @@ static void qosc_server_load(request_rec *r, const char *server) {
   char *httpdconf;
   char *root;
   char *p;
+  int errors = 0;
   line[0] = '\0';
   if(!f) {
     ap_rputs("Could not open server settings.", r);
@@ -413,7 +416,7 @@ static void qosc_server_load(request_rec *r, const char *server) {
   if(p) p[0] = '\0';
   sk_push(st, apr_pstrdup(r->pool, line));
 
-  qosc_load_httpdconf(r, httpdconf, root, st);
+  qosc_load_httpdconf(r, httpdconf, root, st, &errors);
   f = fopen(server_conf, "w");
   if(f) {
     int i;
@@ -423,17 +426,21 @@ static void qosc_server_load(request_rec *r, const char *server) {
     }
     fclose(f);
   } else {
+    errors++;
     ap_rprintf(r, "Failed to write '%s'.<br>\n", ap_escape_html(r->pool, server_conf));
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"failed to write to '%s'", server_conf);
   }
   sk_free(st);
+  if(errors == 0) {
+    qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), server, ".do", NULL));
+  }
 }
 
 static void qosc_server(request_rec *r) {
   qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_control_module);
-  const char *server = strrchr(r->parsed_uri.path, '/');
+  const char *server = strrchr(apr_pstrdup(r->pool, r->parsed_uri.path), '/');
   char *server_dir = NULL;
   DIR *dir;
   apr_table_t *qt = qosc_get_query_table(r);
