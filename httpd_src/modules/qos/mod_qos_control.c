@@ -31,7 +31,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.6 2007-12-26 20:59:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.7 2007-12-26 22:05:17 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -73,6 +73,7 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.6 2007-12-26 20:59:16
  ***********************************************************************/
 typedef struct {
   char *path;
+  char *qsfilter2;
 } qosc_srv_config;
 
 /************************************************************************
@@ -186,13 +187,18 @@ static void qosc_css(request_rec *r) {
 	  margin: 0px;\n\
   }\n\
   .rowe {\n\
-          background-color: rgb(210,213,215);\n\
+          background-color: rgb(210,216,220);\n\
 	  vertical-align: top;\n\
           border: 1px solid;\n\
           font-weight: normal;\n\
           padding: 0px;\n\
           margin: 0px;\n\
-  }\n", r);
+  }\n\
+  a:link    { color:black; text-decoration:none; }\n\
+  a:visited { color:black; text-decoration:none; }\n\
+  a:focus   { color:black; text-decoration:underline; }\n\
+  a:hover   { color:black; text-decoration:none; }\n\
+  a:active  { color:black; text-decoration:underline; }\n", r);
 }
 
 static char *qosc_get_path(request_rec *r) {
@@ -437,6 +443,13 @@ static void qosc_server_load(request_rec *r, const char *server) {
   }
 }
 
+static void qosc_server_qsfilter2(request_rec *r, const char *server) {
+  qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_control_module);
+  char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+  char *server_conf = apr_pstrcat(r->pool, server_dir, "/"QOSC_SERVER_CONF, NULL);
+}
+
 static void qosc_server(request_rec *r) {
   qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_control_module);
@@ -446,6 +459,8 @@ static void qosc_server(request_rec *r) {
   apr_table_t *qt = qosc_get_query_table(r);
   const char *location = apr_table_get(qt, "loc");
   const char *action = apr_table_get(qt, "action");
+
+
   if(server) {
     char *serverend = strstr(server, ".do");
     server++;
@@ -469,12 +484,20 @@ static void qosc_server(request_rec *r) {
   if(action && (strcmp(action, "load") == 0)) {
     qosc_server_load(r, server);
   }
+  if(action && (strcmp(action, "qsfilter2") == 0)) {
+    qosc_server_qsfilter2(r, server);
+  }
 }
 
 static void qosc_body(request_rec *r) {
+  qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_control_module);
   if(strstr(r->parsed_uri.path, "/ct.do") != NULL) {
     qosc_create_server(r);
     return;
+  }
+  if(!sconf->qsfilter2) {
+    ap_rputs("No qsfilter2 executable defined.", r);
   }
   qosc_server(r);
   /*
@@ -500,14 +523,19 @@ static void qosc_server_list(request_rec *r) {
       if(de->d_name[0] != '.') {
         char *h = apr_psprintf(r->pool, "/%s.do", de->d_name);
         if(strstr(r->parsed_uri.path, h) != NULL) {
-          ap_rprintf(r, "<tr class=\"rowts\"><td><a style=\"text-decoration: none;\""
-                     " href=\"%s%s.do\">%s</a></td></tr>\n",
+          ap_rprintf(r, "<tr class=\"rowts\"><td>"
+                     "<a href=\"%s%s.do\">%s</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
                      ap_escape_html(r->pool, de->d_name));
-          //   ap_rprintf(r, "<tr class=\"rowts\"><td>%s</td></tr>\n", ap_escape_html(r->pool, de->d_name));
+          ap_rprintf(r, "<tr class=\"row\"><td>"
+                     "&nbsp;<a href=\"%s%s.do?action=qsfilter2\">qsfilter2</a></td></tr>\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+          ap_rprintf(r, "<tr class=\"row\"><td>"
+                     "&nbsp;<a href=\"%s%s.do?action=load\">reload configuration</a></td></tr>\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
         } else {
-          ap_rprintf(r, "<tr class=\"rowt\"><td><a style=\"text-decoration: none;\""
-                     " href=\"%s%s.do\">%s</a></td></tr>\n",
+          ap_rprintf(r, "<tr class=\"rowt\"><td>"
+                     "<a href=\"%s%s.do\">%s</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
                      ap_escape_html(r->pool, de->d_name));
         }
@@ -643,6 +671,7 @@ static void *qosc_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
 static void *qosc_srv_config_create(apr_pool_t *p, server_rec *s) {
   qosc_srv_config *sconf = apr_pcalloc(p, sizeof(qosc_srv_config));
   sconf->path = apr_pstrdup(p, "/var/tmp/qos_control");
+  sconf->qsfilter2 = NULL;
   return sconf;
 }
 
@@ -675,11 +704,40 @@ const char *qosc_wd_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   return NULL;
 }
 
+const char *qosc_filter2_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
+  qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                  &qos_control_module);
+  struct stat attrib;
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  if((strlen(path) < 0) || (path[0] != '/')) {
+    return apr_psprintf(cmd->pool, "%s: invalid path",
+                        cmd->directive->directive);
+  }
+  sconf->qsfilter2 = apr_pstrdup(cmd->pool, path);
+  if(stat(sconf->qsfilter2, &attrib) != 0) {
+    return apr_psprintf(cmd->pool, "%s: invalid path, file not available",
+                        cmd->directive->directive);
+  }
+  if(!(attrib.st_mode & S_IXUSR)) {
+    return apr_psprintf(cmd->pool, "%s: not executable",
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
 static const command_rec qosc_config_cmds[] = {
   AP_INIT_TAKE1("QSC_WorkingDirectory", qosc_wd_cmd, NULL,
                 RSRC_CONF,
                 "QSC_WorkingDirectory <path>, defines the working diretory where qos control"
                 " stores is data. Default is /var/tmp/qos_control."
+                " Directive is allowed in global server context only."),
+  AP_INIT_TAKE1("QSC_Filter2Binary", qosc_filter2_cmd, NULL,
+                RSRC_CONF,
+                "QSC_Filter2Binary <path>, defines the path of the qsfilter2"
+                " binary. Specification is mandatory."
                 " Directive is allowed in global server context only."),
   NULL,
 };
