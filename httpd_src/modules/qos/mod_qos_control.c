@@ -31,7 +31,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.3 2007-12-26 14:33:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.4 2007-12-26 14:45:43 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -479,6 +479,7 @@ static void *qosc_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
 const char *qosc_wd_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                   &qos_control_module);
+  DIR *dir;
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
     return err;
@@ -488,6 +489,15 @@ const char *qosc_wd_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
                         cmd->directive->directive);
   }
   sconf->path = apr_pstrdup(cmd->pool, path);
+  dir = opendir(sconf->path);
+  if(dir) {
+    closedir(dir);
+  } else {
+    if(mkdir(sconf->path, 0750) != 0) {
+      return apr_psprintf(cmd->pool, "%s: could not create directory '%s'",
+                          cmd->directive->directive, path);
+    }
+  }
   return NULL;
 }
 
