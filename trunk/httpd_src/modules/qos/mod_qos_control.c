@@ -31,7 +31,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.4 2007-12-26 14:45:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.5 2007-12-26 20:43:46 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -64,6 +64,9 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.4 2007-12-26 14:45:43
  * defines
  ***********************************************************************/
 #define QOSC_LOG_PFX(id)  "mod_qos_control("#id"): "
+#define QOSC_SERVER_CONF  "server.conf"
+#define QOSCR 13
+#define QOSLF 10
 
 /************************************************************************
  * structures
@@ -104,7 +107,6 @@ int qosc_hex2c(const char *x) {
   return i;
 }
 
-/* url escaping (%xx) */
 static int qosc_unescaping(char *x) {
   int i, j, ch;
   if (x[0] == '\0')
@@ -119,6 +121,21 @@ static int qosc_unescaping(char *x) {
   }
   x[j] = '\0';
   return j;
+}
+
+static int qosc_fgetline(char *s, int n, FILE *f) {
+  register int i = 0;
+  while (1) {
+    s[i] = (char) fgetc(f);
+    if (s[i] == QOSCR) {
+      s[i] = fgetc(f);
+    }
+    if ((s[i] == 0x4) || (s[i] == QOSLF) || (i == (n - 1))) {
+      s[i] = '\0';
+      return (feof(f) ? 1 : 0);
+    }
+    ++i;
+  }
 }
 
 static void qosc_css(request_rec *r) {
@@ -230,10 +247,10 @@ static void qosc_create_server(request_rec *r) {
   if((server == NULL) || (strchr(server, '.') != NULL) ||
      (strchr(server, '/') != NULL) || (strchr(server, '%') != NULL) ||
      (strchr(server, '+') != NULL) || (strcmp(server, "ct") == 0)) {
-    ap_rputs("unknown or invalid server name", r);
+    ap_rputs("Unknown or invalid server name.", r);
   } else {
     if((action == NULL) || ((strcmp(action, "add") != 0) && (strcmp(action, "set") != 0))) {
-      ap_rputs("unknown action", r);
+      ap_rputs("Unknown action.", r);
     } else {
       if(strcmp(action, "set") == 0) {
         char *conf = (char *)apr_table_get(qt, "conf");
@@ -246,15 +263,15 @@ static void qosc_create_server(request_rec *r) {
             char *w = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
             if(mkdir(w, 0750) != 0) {
               ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                            QOSC_LOG_PFX(0)"failed to create directory %s", w); 
-              ap_rprintf(r, "failed to create directory %s", w);
+                            QOSC_LOG_PFX(0)"failed to create directory '%s'", w); 
+              ap_rprintf(r, "Failed to create directory '%s'", w);
               fclose(f);
               f=NULL;
             } else {
-              char *sc = apr_pstrcat(r->pool, w, "/server.conf", NULL);
+              char *sc = apr_pstrcat(r->pool, w, "/"QOSC_SERVER_CONF, NULL);
               FILE *c = fopen(sc, "w");
               if(c) {
-                fprintf(c, "conf=%s", conf);
+                fprintf(c, "conf=%s\n", conf);
                 fclose(c);
               }
             }
@@ -262,11 +279,12 @@ static void qosc_create_server(request_rec *r) {
         }
         if(f == NULL) {
           // failed
-          ap_rprintf(r, "could not open server configuration %s",
+          ap_rprintf(r, "Could not open server configuration '%s'",
                      conf == NULL ? "-" : ap_escape_html(r->pool, conf));
           action = "add";
         } else {
-          qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), server, ".do", NULL));
+          qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), server,
+                                          ".do?action=load", NULL));
           fclose(f);
         }
       }
@@ -284,7 +302,7 @@ static void qosc_create_server(request_rec *r) {
                      ap_escape_html(r->pool, server));
         } else {
           closedir(dir);
-          ap_rprintf(r, "server '%s' already exists",
+          ap_rprintf(r, "Server '%s' already exists.",
                      ap_escape_html(r->pool, server));
         }
       }
@@ -293,12 +311,157 @@ static void qosc_create_server(request_rec *r) {
   
 }
 
+static const char *qosc_get_conf_value(const char *line, const char *directive) {
+  char *v = ap_strcasestr(line, directive);
+  char *c = strchr(line, '#');
+  if(v) {
+    if(v > line) {
+      char *t = v;
+      t--;
+      if((t[0] != ' ') && (t[0] != '\t') && (t[0] != '<')) {
+        return NULL;
+      }
+    }
+    if(c && (c<v)) return NULL;
+    v = &v[strlen(directive)];
+    while((v[0] == ' ') || (v[0] == '\t')) v++;
+  }
+  return v;
+}
+
+static void qosc_load_httpdconf(request_rec *r, const char *file, const char *root, STACK *st) {
+  FILE *f = fopen(file, "r");
+  char line[HUGE_STRING_LEN];
+  if(f) {
+    while(!qosc_fgetline(line, sizeof(line), f)) {
+      const char *inc = qosc_get_conf_value(line, "Include ");
+      const char *host = qosc_get_conf_value(line, "VirtualHost ");
+      const char *loc = qosc_get_conf_value(line, "Location ");
+      if(inc) {
+        /* server MUST use relative includes only!
+         *  root=/etc/apache/conf
+         *  inc=conf/sub.conf
+         */
+        char *search = apr_pstrdup(r->pool, inc);
+        char *fl = strchr(search, '/');
+        char *base = apr_pstrdup(r->pool, root);
+        char *e;
+        if(fl) {
+          fl[0] = '\0';
+          fl++;
+        }
+        e = strstr(base, search);
+        if(e && fl) {
+          char *incfile;
+          e[strlen(search)] = '\0';
+          incfile = apr_pstrcat(r->pool, base, "/", fl, NULL);
+          qosc_load_httpdconf(r, incfile, root, st);
+        } else {
+          ap_rprintf(r, "Failed to resolve '%s'.<br>\n", ap_escape_html(r->pool, line));
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                        QOSC_LOG_PFX(0)"failed to find included httpd configuration file '%s'",
+                        line);
+        }
+      }
+      if(loc) {
+        char *end = (char *)loc;
+        while(end[0] && (end[0] != ' ') && (end[0] != '>') && (end[0] != '\t')) end++;
+        end[0] = '\0';
+        sk_push(st, apr_pstrcat(r->pool, "location=", loc, NULL));
+      }
+      if(host) {
+        char *end = (char *)host;
+        while(end[0] && (end[0] != ' ') && (end[0] != '>') && (end[0] != '\t')) end++;
+        end[0] = '\0';
+        sk_push(st, apr_pstrcat(r->pool, "host=", host, NULL));
+      }
+    }
+    fclose(f);
+  } else {
+    ap_rprintf(r, "Failed to open '%s'.<br>\n", ap_escape_html(r->pool, file));
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"failed to open httpd configuration file '%s'", file); 
+  }
+}
+
+static void qosc_server_load(request_rec *r, const char *server) {
+  qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_control_module);
+  char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+  char *server_conf = apr_pstrcat(r->pool, server_dir, "/"QOSC_SERVER_CONF, NULL);
+  STACK *st = sk_new(NULL);
+  FILE *f = fopen(server_conf, "r");
+  char line[HUGE_STRING_LEN];
+  char *httpdconf;
+  char *root;
+  char *p;
+  line[0] = '\0';
+  if(!f) {
+    ap_rputs("Could not open server settings.", r);
+    return;
+  }
+  qosc_fgetline(line, sizeof(line), f);
+  fclose(f);
+  httpdconf = apr_pstrdup(r->pool, line);
+  if(strncmp(httpdconf, "conf=", strlen("conf=")) != 0) {
+    ap_rputs("Invalid server settings.", r);
+    return;
+  }
+  httpdconf = httpdconf + strlen("conf=");
+  root = apr_pstrdup(r->pool, httpdconf);
+  p = strrchr(root, '/');
+  if(p) p[0] = '\0';
+  sk_push(st, apr_pstrdup(r->pool, line));
+
+  qosc_load_httpdconf(r, httpdconf, root, st);
+  f = fopen(server_conf, "w");
+  if(f) {
+    int i;
+    for(i = 0; i < sk_num(st); i++) {
+      char *l = sk_value(st, i);
+      fprintf(f, "%s\n", l);
+    }
+    fclose(f);
+  } else {
+    ap_rprintf(r, "Failed to write '%s'.<br>\n", ap_escape_html(r->pool, server_conf));
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"failed to write to '%s'", server_conf);
+  }
+  sk_free(st);
+}
+
 static void qosc_server(request_rec *r) {
   qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_control_module);
+  const char *server = strrchr(r->parsed_uri.path, '/');
+  char *server_dir = NULL;
+  DIR *dir;
   apr_table_t *qt = qosc_get_query_table(r);
   const char *location = apr_table_get(qt, "loc");
-  
+  const char *action = apr_table_get(qt, "action");
+  if(server) {
+    char *serverend = strstr(server, ".do");
+    server++;
+    if(serverend == NULL) {
+      ap_rputs("Could not determine server name.<br>", r);
+      ap_rputs("Please choose or create a server.", r);
+      return;
+    }
+    serverend[0] = '\0';
+  } else {
+    ap_rputs("Could not determine server name.<br>", r);
+    ap_rputs("Please choose or create a server.", r);
+    return;
+  }
+  server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+  dir = opendir(server_dir);
+  if(dir == NULL) {
+    ap_rputs("Could not open server directory.", r);
+    return;
+  }
+  if(action && (strcmp(action, "load") == 0)) {
+    qosc_server_load(r, server);
+  }
 }
 
 static void qosc_body(request_rec *r) {
@@ -330,7 +493,11 @@ static void qosc_server_list(request_rec *r) {
       if(de->d_name[0] != '.') {
         char *h = apr_psprintf(r->pool, "/%s.do", de->d_name);
         if(strstr(r->parsed_uri.path, h) != NULL) {
-          ap_rprintf(r, "<tr class=\"rowts\"><td>%s</td></tr>\n", ap_escape_html(r->pool, de->d_name));
+          ap_rprintf(r, "<tr class=\"rowts\"><td><a style=\"text-decoration: none;\""
+                     " href=\"%s%s.do\">%s</a></td></tr>\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
+                     ap_escape_html(r->pool, de->d_name));
+          //   ap_rprintf(r, "<tr class=\"rowts\"><td>%s</td></tr>\n", ap_escape_html(r->pool, de->d_name));
         } else {
           ap_rprintf(r, "<tr class=\"rowt\"><td><a style=\"text-decoration: none;\""
                      " href=\"%s%s.do\">%s</a></td></tr>\n",
@@ -343,7 +510,7 @@ static void qosc_server_list(request_rec *r) {
   } else {
     if(mkdir(sconf->path, 0750) != 0) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                    QOSC_LOG_PFX(0)"failed to create directory %s", sconf->path); 
+                    QOSC_LOG_PFX(0)"failed to create directory '%s'", sconf->path); 
     }
   }
 }
