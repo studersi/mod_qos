@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.50 2007-12-26 20:43:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.51 2007-12-26 22:05:18 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -85,6 +85,7 @@ LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_p
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
 
 QSC_WorkingDirectory    /var/tmp/qosc
+QSC_Filter2Binary       /usr/local/bin/qsfilter2
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
