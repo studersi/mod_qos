@@ -31,7 +31,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.1 2007-12-25 22:04:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.2 2007-12-26 13:39:29 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -81,6 +81,46 @@ module AP_MODULE_DECLARE_DATA qos_control_module;
 /************************************************************************
  * private functions
  ***********************************************************************/
+int qosc_hex2c(const char *x) {
+  int i, ch;
+  ch = x[0];
+  if (isdigit(ch)) {
+    i = ch - '0';
+  }else if (isupper(ch)) {
+    i = ch - ('A' - 10);
+  } else {
+    i = ch - ('a' - 10);
+  }
+  i <<= 4;
+  
+  ch = x[1];
+  if (isdigit(ch)) {
+    i += ch - '0';
+  } else if (isupper(ch)) {
+    i += ch - ('A' - 10);
+  } else {
+    i += ch - ('a' - 10);
+  }
+  return i;
+}
+
+/* url escaping (%xx) */
+static int qosc_unescaping(char *x) {
+  int i, j, ch;
+  if (x[0] == '\0')
+    return 0;
+  for (i = 0, j = 0; x[i] != '\0'; i++, j++) {
+    ch = x[i];
+    if (ch == '%' && isxdigit(x[i + 1]) && isxdigit(x[i + 2])) {
+      ch = qosc_hex2c(&x[i + 1]);
+      i += 2;
+    }
+    x[j] = ch;
+  }
+  x[j] = '\0';
+  return j;
+}
+
 static void qosc_css(request_rec *r) {
    ap_rputs("  body {\n\
 	background-color: white;\n\
@@ -143,9 +183,9 @@ static char *qosc_path(request_rec *r) {
   char *e;
   if(strstr(path, ".do") == NULL) {
     if(path[strlen(path)-1] == '/') {
-      return path;
+      return ap_escape_html(r->pool, path);
     } else {
-      return apr_pstrcat(r->pool, path, "/", NULL);
+      return ap_escape_html(r->pool, apr_pstrcat(r->pool, path, "/", NULL));
     }
   }
   e = strrchr(path, '/');
@@ -154,7 +194,109 @@ static char *qosc_path(request_rec *r) {
   }
   e++;
   e[0] = '\0';
-  return path;
+  return ap_escape_html(r->pool, path);
+}
+
+static apr_table_t *qosc_get_query_table(request_rec *r) {
+  apr_table_t *av = apr_table_make(r->pool, 2);
+  if(r->parsed_uri.query) {
+    const char *q = apr_pstrdup(r->pool, r->parsed_uri.query);
+    while(q && q[0]) {
+      const char *t = ap_getword(r->pool, &q, '&');
+      const char *name = ap_getword(r->pool, &t, '=');
+      const char *value = t;
+      if((strlen(name) > 0) && (strlen(value) > 0)) {
+        apr_table_add(av, name, value);
+      }
+    }
+  }
+  return av;
+}
+
+static void qosc_js_redirect(request_rec *r, const char *path) {
+  ap_rputs("<script type=\"text/javascript\">\n", r);
+  ap_rputs("<!-- \n", r);
+  ap_rprintf(r, "location.replace(\"%s\");", path == NULL ? "" : ap_escape_html(r->pool, path));
+  ap_rputs("//-->\n", r);
+  ap_rputs("</script>\n", r);
+}
+
+static void qosc_create_server(request_rec *r) {
+  apr_table_t *qt = qosc_get_query_table(r);
+  const char *action = apr_table_get(qt, "action");
+  const char *server = apr_table_get(qt, "server");
+  if(server == NULL) {
+    ap_rputs("unknown sever", r);
+  } else {
+    if((action == NULL) || ((strcmp(action, "add") != 0) && (strcmp(action, "set") != 0))) {
+      ap_rputs("unknown action", r);
+    } else {
+      if(strcmp(action, "set") == 0) {
+        char *conf = (char *)apr_table_get(qt, "conf");
+        FILE *f = NULL;
+        if(conf) {
+          conf = apr_pstrdup(r->pool, conf);
+          qosc_unescaping(conf);
+          f = fopen(conf, "r");
+          if(f) {
+            qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                            &qos_control_module);
+            char *w = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+            if(mkdir(w, 0750) != 0) {
+              ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                            QOSC_LOG_PFX(0)"failed to create directory %s", w); 
+              ap_rprintf(r, "failed to create directory %s", w);
+              fclose(f);
+              f=NULL;
+            } else {
+              char *sc = apr_pstrcat(r->pool, w, "/server.conf", NULL);
+              FILE *c = fopen(sc, "w");
+              if(c) {
+                fprintf(c, "conf=%s", conf);
+                fclose(c);
+              }
+            }
+          }
+        }
+        if(f == NULL) {
+          // failed
+          ap_rprintf(r, "could not open server configuration %s",
+                     conf == NULL ? "-" : ap_escape_html(r->pool, conf));
+          action = "add";
+        } else {
+          qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_path(r), server, ".do", NULL));
+          fclose(f);
+        }
+      }
+      if(strcmp(action, "add") == 0) {
+        ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\">\n",
+                   qosc_path(r));
+        ap_rprintf(r, "Specify the server httpd.conf file:\n"
+                   " <input name=\"conf\" value=\"&lt;path&gt;\" type=\"text\">\n"
+                   " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
+                   " <input name=\"action\" value=\"set\" type=\"submit\">\n"
+                   " </form>\n", ap_escape_html(r->pool, server));
+      }
+    }
+  }
+  
+}
+
+static void qosc_body(request_rec *r) {
+  if(strstr(r->parsed_uri.path, "/ct.do") != NULL) {
+    qosc_create_server(r);
+  }
+  /*
+    ap_rputs("      <table class=\"btable\">\n\
+        <tbody>\n\
+          <tr class=\"row\">\n\
+            <td>\n\
+body<br><br>text\
+            </td>\n\
+          </tr>\n\
+        </tbody>\n\
+      </table>\n", r);
+  */
 }
 
 static void qosc_server(request_rec *r) {
@@ -167,16 +309,19 @@ static void qosc_server(request_rec *r) {
       if(de->d_name[0] != '.') {
         char *h = apr_psprintf(r->pool, "/%s.do", de->d_name);
         if(strstr(r->parsed_uri.path, h) != NULL) {
-          ap_rprintf(r, "<tr class=\"rowts\"><td>server1</td></tr>\n", de->d_name);
+          ap_rprintf(r, "<tr class=\"rowts\"><td>%s</td></tr>\n", ap_escape_html(r->pool, de->d_name));
         } else {
-          ap_rprintf(r, "<tr class=\"rowt\"><td>server1</td></tr>\n", de->d_name);
+          ap_rprintf(r, "<tr class=\"rowt\"><td><a style=\"text-decoration: none;\""
+                     " href=\"%s%s.do\">%s</a></td></tr>\n",
+                     qosc_path(r), ap_escape_html(r->pool, de->d_name),
+                     ap_escape_html(r->pool, de->d_name));
         }
       }
     }
   } else {
     if(mkdir(sconf->path, 0750) != 0) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                    QOSC_LOG_PFX(0)"failed to create directory %s\n", sconf->path); 
+                    QOSC_LOG_PFX(0)"failed to create directory %s", sconf->path); 
     }
   }
 }
@@ -216,7 +361,8 @@ static int qosc_handler(request_rec * r) {
   //  apr_table_set(r->headers_out,"Cache-Control","no-cache");
   if(!r->header_only) {
     ap_rputs("<html><head><title>mod_qos control</title>\n", r);
-    ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n", r->parsed_uri.path);
+    ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n",
+               ap_escape_html(r->pool, r->parsed_uri.path));
     ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
     ap_rputs("<meta name=\"author\" content=\"Pascal Buchbinder\">\n", r);
     ap_rputs("<meta http-equiv=\"Pragma\" content=\"no-cache\">\n", r);
@@ -280,16 +426,8 @@ function checkserver ( form ) {\n\
       </td>\n\
       <td >\n", r);
     /* TEXT */
-    ap_rputs("      <table class=\"btable\">\n\
-        <tbody>\n\
-          <tr class=\"row\">\n\
-            <td>\n\
-body<br><br>text\
-            </td>\n\
-          </tr>\n\
-        </tbody>\n\
-      </table>\n\
-      </td>\n\
+    qosc_body(r);
+    ap_rputs("      </td>\n\
     </tr>\n\
   </tbody>\n\
 </table>\n", r);
