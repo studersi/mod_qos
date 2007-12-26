@@ -31,7 +31,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.2 2007-12-26 13:39:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.3 2007-12-26 14:33:49 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -178,7 +178,7 @@ static void qosc_css(request_rec *r) {
   }\n", r);
 }
 
-static char *qosc_path(request_rec *r) {
+static char *qosc_get_path(request_rec *r) {
   char *path = apr_pstrdup(r->pool, r->parsed_uri.path);
   char *e;
   if(strstr(path, ".do") == NULL) {
@@ -222,11 +222,15 @@ static void qosc_js_redirect(request_rec *r, const char *path) {
 }
 
 static void qosc_create_server(request_rec *r) {
+  qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_control_module);
   apr_table_t *qt = qosc_get_query_table(r);
   const char *action = apr_table_get(qt, "action");
   const char *server = apr_table_get(qt, "server");
-  if(server == NULL) {
-    ap_rputs("unknown sever", r);
+  if((server == NULL) || (strchr(server, '.') != NULL) ||
+     (strchr(server, '/') != NULL) || (strchr(server, '%') != NULL) ||
+     (strchr(server, '+') != NULL) || (strcmp(server, "ct") == 0)) {
+    ap_rputs("unknown or invalid server name", r);
   } else {
     if((action == NULL) || ((strcmp(action, "add") != 0) && (strcmp(action, "set") != 0))) {
       ap_rputs("unknown action", r);
@@ -239,8 +243,6 @@ static void qosc_create_server(request_rec *r) {
           qosc_unescaping(conf);
           f = fopen(conf, "r");
           if(f) {
-            qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
-                                                                            &qos_control_module);
             char *w = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
             if(mkdir(w, 0750) != 0) {
               ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -264,28 +266,47 @@ static void qosc_create_server(request_rec *r) {
                      conf == NULL ? "-" : ap_escape_html(r->pool, conf));
           action = "add";
         } else {
-          qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_path(r), server, ".do", NULL));
+          qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), server, ".do", NULL));
           fclose(f);
         }
       }
       if(strcmp(action, "add") == 0) {
-        ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\">\n",
-                   qosc_path(r));
-        ap_rprintf(r, "Specify the server httpd.conf file:\n"
-                   " <input name=\"conf\" value=\"&lt;path&gt;\" type=\"text\">\n"
-                   " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
-                   " <input name=\"action\" value=\"set\" type=\"submit\">\n"
-                   " </form>\n", ap_escape_html(r->pool, server));
+        char *w = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+        DIR *dir = opendir(w);
+        if(!dir){ 
+          ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\">\n",
+                     qosc_get_path(r));
+          ap_rprintf(r, "Specify the server configuration file (httpd.conf) for '%s':<br>\n"
+                     " <input name=\"conf\" value=\"&lt;path&gt;\" type=\"text\">\n"
+                     " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
+                     " <input name=\"action\" value=\"set\" type=\"submit\">\n"
+                     " </form>\n", ap_escape_html(r->pool, server),
+                     ap_escape_html(r->pool, server));
+        } else {
+          closedir(dir);
+          ap_rprintf(r, "server '%s' already exists",
+                     ap_escape_html(r->pool, server));
+        }
       }
     }
   }
   
 }
 
+static void qosc_server(request_rec *r) {
+  qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_control_module);
+  apr_table_t *qt = qosc_get_query_table(r);
+  const char *location = apr_table_get(qt, "loc");
+  
+}
+
 static void qosc_body(request_rec *r) {
   if(strstr(r->parsed_uri.path, "/ct.do") != NULL) {
     qosc_create_server(r);
+    return;
   }
+  qosc_server(r);
   /*
     ap_rputs("      <table class=\"btable\">\n\
         <tbody>\n\
@@ -299,7 +320,7 @@ body<br><br>text\
   */
 }
 
-static void qosc_server(request_rec *r) {
+static void qosc_server_list(request_rec *r) {
   qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_control_module);
   struct dirent *de;
@@ -313,11 +334,12 @@ static void qosc_server(request_rec *r) {
         } else {
           ap_rprintf(r, "<tr class=\"rowt\"><td><a style=\"text-decoration: none;\""
                      " href=\"%s%s.do\">%s</a></td></tr>\n",
-                     qosc_path(r), ap_escape_html(r->pool, de->d_name),
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
                      ap_escape_html(r->pool, de->d_name));
         }
       }
     }
+    closedir(dir);
   } else {
     if(mkdir(sconf->path, 0750) != 0) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -382,6 +404,17 @@ function checkserver ( form ) {\n\
     alert(\"Please define a server name.\" );\n\
     return false;\n\
   }\n\
+  var chkZ = 1;\n\
+  for(i = 0; i < form.server.value.length; ++i)\n\
+    if((form.server.value.charAt(i) < \"0\") ||\n\
+       ((form.server.value.charAt(i) > \"9\") && (form.server.value.charAt(i) < \"a\")) ||\n\
+       (form.server.value.charAt(i) > \"z\")) {\n\
+      chkZ = -1;\n\
+  }\n\
+  if (chkZ == -1) {\n\
+    alert(\"Allowed character set for server name: [0-9a-z].\" );\n\
+    return false;\n\
+  }\n\
   return true;\n\
 }\n\
 //-->\n\
@@ -395,26 +428,11 @@ function checkserver ( form ) {\n\
       <td style=\"width: 230px;\" >\n\
       <table class=\"btable\">\n\
         <tbody>\n", r);
-    qosc_server(r);
-//          <tr class=\"rowt\">
-//            <td>server1</td>
-//          </tr>
-//          <tr class=\"row\">
-//            <td>/twiki</td>
-//          </tr>
-//          <tr class=\"row\">
-//            <td>/twiki</td>
-//          </tr>
-//          <tr class=\"rows\">
-//            <td>/twiki</td>
-//          </tr>
-//          <tr class=\"row\">
-//            <td>/twiki</td>
-//          </tr>
+    qosc_server_list(r);
     ap_rputs("          <tr class=\"rowe\">\n\
             <td>\n", r);
     ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\" onsubmit=\"return checkserver(this);\">\n",
-               qosc_path(r));
+               qosc_get_path(r));
     ap_rputs("Add a new server:\n\
               <input name=\"server\" value=\"\"    type=\"text\">\n\
               <input name=\"action\" value=\"add\" type=\"submit\">\n\
