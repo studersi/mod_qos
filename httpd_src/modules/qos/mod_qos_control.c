@@ -31,7 +31,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.8 2007-12-27 13:51:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.9 2007-12-27 20:50:56 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -70,6 +70,7 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.8 2007-12-27 13:51:38
 #define QOSC_RUNNING      ".qs_running"
 #define QOSCR 13
 #define QOSLF 10
+#define QOSC_REQ          "(OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PROPFIND|PROPPATCH|MKCOL|COPY|MOVE|LOCK|UNLOCK|VERSION-CONTROL|REPORT|CHECKOUT|CHECKIN|UNCHECKOUT|MKWORKSPACE|UPDATE|LABEL|MERGE|BASELINE-CONTROL|MKACTIVITY|ORDERPATCH|ACL|PATCH|SEARCH|BCOPY|BDELETE|BMOVE|BPROPFIND|BPROPPATCH|NOTIFY|POLL|SUBSCRIBE|UNSUBSCRIBE|X-MS-ENUMATTS|RPC_IN_DATA|RPC_OUT_DATA) ([\x20-\x21\x23-\xFF])* HTTP/"
 
 /************************************************************************
  * structures
@@ -151,6 +152,93 @@ static int qosc_fgetline(char *s, int n, FILE *f) {
     }
     ++i;
   }
+}
+
+#ifdef AP_REGEX_H
+static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *name, ap_regex_t *regex) {
+#else
+static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *name, regex_t *regex) {
+#endif
+  const char *type = apr_table_get(r->headers_in, "content-type");
+  char *boundary = strstr(type, "boundary=");
+  int seen_eos = 0;
+  int write = 0;
+  int start = 0;
+  char *disp = apr_psprintf(r->pool, "Content-Disposition: form-data; name=\"%s\"", name);
+
+  //  Content-Type: multipart/form-data; boundary=---------------------------21220929591836800491534788240
+  if(strstr(type, "multipart/form-data") == NULL) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"invalid post (expect multipart/from-data) '%s'", type);
+    return !APR_SUCCESS;
+  }
+  if(boundary == NULL) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"invalid post (no boundary) '%s'", type);
+    return !APR_SUCCESS;
+  }
+  boundary = &boundary[strlen("boundary=")];
+  do {
+    apr_bucket_brigade *bb = apr_brigade_create(r->pool, r->connection->bucket_alloc);
+    apr_status_t rc = ap_get_brigade(r->input_filters, bb, AP_MODE_GETLINE, APR_BLOCK_READ, 0);
+    const char *buf;
+    apr_size_t buf_len;
+    if (rc != APR_SUCCESS) {
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                    QOSC_LOG_PFX(0)"could not read client data");
+      return HTTP_INTERNAL_SERVER_ERROR;
+    }
+    while(!APR_BRIGADE_EMPTY(bb) && !seen_eos) {
+      apr_bucket *bucket = APR_BRIGADE_FIRST(bb);
+      if (APR_BUCKET_IS_EOS(bucket)) {
+        seen_eos = 1;
+      } else if (APR_BUCKET_IS_FLUSH(bucket)) {
+        /* do nothing */
+      } else {
+        rc = apr_bucket_read(bucket, &buf, &buf_len, APR_BLOCK_READ);
+        if (rc != APR_SUCCESS) {
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r, 
+                        QOSC_LOG_PFX(0)"could not read client data");
+          return HTTP_INTERNAL_SERVER_ERROR;
+        } else {
+          char tmp_buf[buf_len+1];
+          sprintf(tmp_buf, "%.*s", buf_len, buf);
+          if(!write && ap_strcasestr(tmp_buf, disp)) {
+            write = 1;
+            start = 0;
+          }
+          if(write) {
+            if(start < 3) {
+              start++;
+            } else {
+              if(strstr(tmp_buf, boundary)) {
+                write = 0;
+                start = 0;
+              } else {
+                ap_regmatch_t ma;
+                if(ap_regexec(regex, tmp_buf, 1, &ma, 0) == 0) {
+                  char m[ma.rm_eo - ma.rm_so + 1];
+                  char *m_start;
+                  char *m_end;
+                  strncpy(m, &tmp_buf[ma.rm_so], ma.rm_eo - ma.rm_so);
+                  m[ma.rm_eo - ma.rm_so] = '\0';
+                  m_start = strchr(m, ' ');
+                  m_start++;
+                  m_end = strrchr(m, ' ');
+                  m_end[0] = '\0';
+                  fprintf(f, "%s\n", m_start);
+                  fflush(f);
+                }
+              }
+            }
+          }
+        }
+      }
+      APR_BUCKET_REMOVE(bucket);
+    }
+    apr_brigade_destroy(bb);
+  } while(!seen_eos);
+  return APR_SUCCESS;
 }
 
 static void qosc_css(request_rec *r) {
@@ -468,12 +556,35 @@ static void qosc_qsfilter2_upload(request_rec *r) {
   const char *action = apr_table_get(qt, "action");
   char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
   char *access_log = apr_pstrcat(r->pool, server_dir, "/"QOSC_ACCESS_LOG, NULL);
-  if((r->method_number != M_POST) || !server || !action) {
+  const char *type = apr_table_get(r->headers_in, "content-type");
+  if((r->method_number != M_POST) || !server || !action || !type) {
     ap_rputs("Invalid request.", r);
     return;
   }
   if(strcmp(action, "upload") == 0) {
     /* receives an access log file */
+    FILE *f = fopen(access_log, "w");
+    if(!f) {
+      ap_rprintf(r, "Failed to write '%s'.<br>\n", ap_escape_html(r->pool, access_log));
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                    QOSC_LOG_PFX(0)"failed to write to '%s'", access_log);
+    } else {
+#ifdef AP_REGEX_H
+      ap_regex_t *regex = ap_pregcomp(r->pool, QOSC_REQ, AP_REG_EXTENDED);
+#else
+      regex_t *regex = ap_pregcomp(r->pool, QOSC_REQ, REG_EXTENDED);
+#endif
+      apr_status_t status;
+      if(regex == NULL) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOSC_LOG_PFX(0)"failed to compile regex '%s'", QOSC_REQ);
+      } else {
+        status = qosc_store_multipart(r, f, "access_log", regex);
+      }
+      fclose(f);
+    }
+    qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), server,
+                                    ".do?action=qsfilter2", NULL));
   } else {
     ap_rputs("Unknown action.", r);
     return;
@@ -488,6 +599,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
   char *access_log = apr_pstrcat(r->pool, server_dir, "/"QOSC_ACCESS_LOG, NULL);
   char *running_file = apr_pstrcat(r->pool, server_dir, "/"QOSC_RUNNING, NULL);
   int inprogress = 0;
+  int accessavailable = 0;
 
   struct stat attrib;
   if(stat(running_file, &attrib) == 0) {
@@ -497,6 +609,13 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
 
   ap_rputs("<tr class=\"row\"><td>\n",r);
   ap_rputs("Use qsfilter2 to generate request line white list rules.<br><br>\n", r);
+  if(stat(access_log, &attrib) == 0) {
+    char tmb[128];
+    struct tm *ptr = localtime(&attrib.st_mtime);
+    strftime(tmb, sizeof(tmb), "%H:%M:%S %d.%m.%Y", ptr);
+    ap_rprintf(r, "Access log data loaded (%s).<br><br>", tmb);
+    accessavailable = 1;
+  }
   ap_rputs("</td></tr>", r);
 
 
@@ -507,7 +626,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
     ap_rprintf(r, "<form action=\"%sqsfilter2.do?server=%s&action=upload\""
                " method=\"post\" enctype=\"multipart/form-data\">\n",
                qosc_get_path(r), ap_escape_html(r->pool, server));
-    ap_rprintf(r, " <input name=\"access_log\" value=\"\" type=\"file\">\n"
+    ap_rprintf(r, " <input name=\"access_log\" value=\"\" type=\"file\" size=\"50\">\n"
                " <input name=\"action\" value=\"upload\" type=\"submit\">\n"
                " </form>\n", ap_escape_html(r->pool, server));
     ap_rputs("</td></tr>", r);
@@ -516,12 +635,16 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
   /* start analysis */
   ap_rputs("<tr class=\"rows\"><td>\n",r);
   if(!inprogress) {
-    ap_rprintf(r, "<form action=\"%sqsfilter2.do\">\n",
-               qosc_get_path(r));
-    ap_rputs("Generate rules:", r);
-    ap_rprintf(r, " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
-               " <input name=\"action\" value=\"start\" type=\"submit\">\n"
-               " </form>\n", ap_escape_html(r->pool, server));
+    if(accessavailable) {
+      ap_rprintf(r, "<form action=\"%sqsfilter2.do\">\n",
+                 qosc_get_path(r));
+      ap_rputs("Generate rules:", r);
+      ap_rprintf(r, " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
+                 " <input name=\"action\" value=\"start\" type=\"submit\">\n"
+                 " </form>\n", ap_escape_html(r->pool, server));
+    } else {
+      ap_rputs("<br>No access log data available.<br><br>", r);
+    }
   } else {
     ap_rputs("<br>Rule generation process is running.<br>Please wait.<br><br>\n", r);
   }
@@ -539,7 +662,6 @@ static void qosc_server(request_rec *r) {
   apr_table_t *qt = qosc_get_query_table(r);
   const char *location = apr_table_get(qt, "loc");
   const char *action = apr_table_get(qt, "action");
-
 
   if(server) {
     char *serverend = strstr(server, ".do");
@@ -563,9 +685,31 @@ static void qosc_server(request_rec *r) {
   }
   if(action && (strcmp(action, "load") == 0)) {
     qosc_server_load(r, server);
-  }
-  if(action && (strcmp(action, "qsfilter2") == 0)) {
+  }else if(action && (strcmp(action, "qsfilter2") == 0)) {
     qosc_server_qsfilter2(r, server);
+  } else {
+    char *server_conf = apr_pstrcat(r->pool, server_dir, "/"QOSC_SERVER_CONF, NULL);
+    FILE *f = fopen(server_conf, "r");
+    if(f) {
+      int hosts = 0;
+      int locations = 0;
+      char *conf = NULL;
+      char line[HUGE_STRING_LEN];
+      while(!qosc_fgetline(line, sizeof(line), f)) {
+        if(strncmp(line, "conf=", strlen("conf=")) == 0) {
+          conf = apr_pstrdup(r->pool, &line[strlen("conf=")]);
+        }
+        if(strncmp(line, "host=", strlen("host=")) == 0) {
+          hosts++;
+        }
+        if(strncmp(line, "location=", strlen("location=")) == 0) {
+          locations++;
+        }
+      }
+      ap_rprintf(r, "Server configuration %s<br>&nbsp;VirtualHosts: %d<br>&nbsp;Locations: %d<br><br>",
+                 conf == NULL ? "-" : conf, hosts, locations);
+      fclose(f);
+    }
   }
 }
 
