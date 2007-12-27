@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.11 2007-12-27 22:24:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.12 2007-12-27 22:36:16 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -88,6 +88,17 @@ module AP_MODULE_DECLARE_DATA qos_control_module;
 /************************************************************************
  * private functions
  ***********************************************************************/
+static char *qosc_revision(apr_pool_t *p) {
+  char *ver = apr_pstrdup(p, strchr(revision, ' '));
+  char *h;
+  ver++;
+  ver =strchr(ver, ' ');
+  ver++;
+  h = strchr(ver, ' ');
+  h[0] = '\0';
+  return ver;
+}
+
 int qosc_hex2c(const char *x) {
   int i, ch;
   ch = x[0];
@@ -1034,6 +1045,13 @@ function checkserver ( form ) {\n\
   return OK;
 }
 
+static int qosc_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
+  char *rev = qosc_revision(ptemp);
+  char *vs = apr_psprintf(pconf, "mod_qos_control/%s", rev);
+  ap_add_version_component(pconf, vs);
+  return DECLINED;
+}
+
 /************************************************************************
  * directiv handlers 
  ***********************************************************************/
@@ -1125,6 +1143,7 @@ static const command_rec qosc_config_cmds[] = {
  ***********************************************************************/
 static void qosc_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", NULL };
+  ap_hook_post_config(qosc_post_config, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(qosc_handler, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
