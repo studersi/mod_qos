@@ -31,7 +31,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.7 2007-12-26 22:05:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.8 2007-12-27 13:51:38 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -56,6 +56,7 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.7 2007-12-26 22:05:17
 
 /* apr */
 #include <apr_strings.h>
+#include <apr_lib.h>
 
 /* additional modules */
 #include "mod_status.h"
@@ -65,6 +66,8 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.7 2007-12-26 22:05:17
  ***********************************************************************/
 #define QOSC_LOG_PFX(id)  "mod_qos_control("#id"): "
 #define QOSC_SERVER_CONF  "server.conf"
+#define QOSC_ACCESS_LOG   ".qs_access_log"
+#define QOSC_RUNNING      ".qs_running"
 #define QOSCR 13
 #define QOSLF 10
 
@@ -124,6 +127,17 @@ static int qosc_unescaping(char *x) {
   return j;
 }
 
+static int qosc_is_alnum(const char *string) {
+  unsigned char *in = (unsigned char *)string;
+  int i = 0;
+  if(in == NULL) return 0;
+  while(in[i]) {
+    if(!apr_isalnum(in[i])) return 0;
+    i++;
+  }
+  return 1;
+}
+
 static int qosc_fgetline(char *s, int n, FILE *f) {
   register int i = 0;
   while (1) {
@@ -174,7 +188,7 @@ static void qosc_css(request_rec *r) {
 	  background-color: rgb(240,243,245);\n\
 	  vertical-align: top;\n\
 	  border: 1px solid;\n\
-	  font-weight: bold;\n\
+	  font-weight: normal;\n\
 	  padding: 0px;\n\
 	  margin: 0px;\n\
   }\n\
@@ -242,6 +256,9 @@ static void qosc_js_redirect(request_rec *r, const char *path) {
   ap_rprintf(r, "location.replace(\"%s\");", path == NULL ? "" : ap_escape_html(r->pool, path));
   ap_rputs("//-->\n", r);
   ap_rputs("</script>\n", r);
+  ap_rputs("You have disabled JavaScript.<br>\n", r);
+  ap_rprintf(r, "Please follow <a href=\"%s\"><b>THIS</b></a> redirect link manually.\n",
+             path == NULL ? "" : ap_escape_html(r->pool, path));
 }
 
 static void qosc_create_server(request_rec *r) {
@@ -250,9 +267,9 @@ static void qosc_create_server(request_rec *r) {
   apr_table_t *qt = qosc_get_query_table(r);
   const char *action = apr_table_get(qt, "action");
   const char *server = apr_table_get(qt, "server");
-  if((server == NULL) || (strchr(server, '.') != NULL) ||
-     (strchr(server, '/') != NULL) || (strchr(server, '%') != NULL) ||
-     (strchr(server, '+') != NULL) || (strcmp(server, "ct") == 0)) {
+  if((server == NULL) || !qosc_is_alnum(server) ||
+     (strcmp(server, "ct") == 0) ||
+     (strcmp(server, "qsfilter2") == 0)) {
     ap_rputs("Unknown or invalid server name.", r);
   } else {
     if((action == NULL) || ((strcmp(action, "add") != 0) && (strcmp(action, "set") != 0))) {
@@ -301,7 +318,7 @@ static void qosc_create_server(request_rec *r) {
           ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\">\n",
                      qosc_get_path(r));
           ap_rprintf(r, "Specify the server configuration file (httpd.conf) for '%s':<br>\n"
-                     " <input name=\"conf\" value=\"&lt;path&gt;\" type=\"text\">\n"
+                     " <input name=\"conf\" value=\"&lt;path&gt;\" type=\"text\" size=\"50\">\n"
                      " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
                      " <input name=\"action\" value=\"set\" type=\"submit\">\n"
                      " </form>\n", ap_escape_html(r->pool, server),
@@ -443,11 +460,74 @@ static void qosc_server_load(request_rec *r, const char *server) {
   }
 }
 
+static void qosc_qsfilter2_upload(request_rec *r) {
+  qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_control_module);
+  apr_table_t *qt = qosc_get_query_table(r);
+  const char *server = apr_table_get(qt, "server");
+  const char *action = apr_table_get(qt, "action");
+  char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+  char *access_log = apr_pstrcat(r->pool, server_dir, "/"QOSC_ACCESS_LOG, NULL);
+  if((r->method_number != M_POST) || !server || !action) {
+    ap_rputs("Invalid request.", r);
+    return;
+  }
+  if(strcmp(action, "upload") == 0) {
+    /* receives an access log file */
+  } else {
+    ap_rputs("Unknown action.", r);
+    return;
+  }
+}
+
 static void qosc_server_qsfilter2(request_rec *r, const char *server) {
   qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_control_module);
   char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
   char *server_conf = apr_pstrcat(r->pool, server_dir, "/"QOSC_SERVER_CONF, NULL);
+  char *access_log = apr_pstrcat(r->pool, server_dir, "/"QOSC_ACCESS_LOG, NULL);
+  char *running_file = apr_pstrcat(r->pool, server_dir, "/"QOSC_RUNNING, NULL);
+  int inprogress = 0;
+
+  struct stat attrib;
+  if(stat(running_file, &attrib) == 0) {
+    inprogress = 1;
+  }
+  ap_rputs("<table class=\"btable\"><tbody>\n",r);
+
+  ap_rputs("<tr class=\"row\"><td>\n",r);
+  ap_rputs("Use qsfilter2 to generate request line white list rules.<br><br>\n", r);
+  ap_rputs("</td></tr>", r);
+
+
+  /* file upload */
+  if(!inprogress) {
+    ap_rputs("<tr class=\"rows\"><td>\n",r);
+    ap_rputs("Upload access log data:", r);
+    ap_rprintf(r, "<form action=\"%sqsfilter2.do?server=%s&action=upload\""
+               " method=\"post\" enctype=\"multipart/form-data\">\n",
+               qosc_get_path(r), ap_escape_html(r->pool, server));
+    ap_rprintf(r, " <input name=\"access_log\" value=\"\" type=\"file\">\n"
+               " <input name=\"action\" value=\"upload\" type=\"submit\">\n"
+               " </form>\n", ap_escape_html(r->pool, server));
+    ap_rputs("</td></tr>", r);
+  }
+
+  /* start analysis */
+  ap_rputs("<tr class=\"rows\"><td>\n",r);
+  if(!inprogress) {
+    ap_rprintf(r, "<form action=\"%sqsfilter2.do\">\n",
+               qosc_get_path(r));
+    ap_rputs("Generate rules:", r);
+    ap_rprintf(r, " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
+               " <input name=\"action\" value=\"start\" type=\"submit\">\n"
+               " </form>\n", ap_escape_html(r->pool, server));
+  } else {
+    ap_rputs("<br>Rule generation process is running.<br>Please wait.<br><br>\n", r);
+  }
+  ap_rputs("</td></tr>", r);
+
+  ap_rputs("</tbody></table>\n", r);
 }
 
 static void qosc_server(request_rec *r) {
@@ -496,21 +576,14 @@ static void qosc_body(request_rec *r) {
     qosc_create_server(r);
     return;
   }
+  if(strstr(r->parsed_uri.path, "/qsfilter2.do") != NULL) {
+    qosc_qsfilter2_upload(r);
+    return;
+  }
   if(!sconf->qsfilter2) {
     ap_rputs("No qsfilter2 executable defined.", r);
   }
   qosc_server(r);
-  /*
-    ap_rputs("      <table class=\"btable\">\n\
-        <tbody>\n\
-          <tr class=\"row\">\n\
-            <td>\n\
-body<br><br>text\
-            </td>\n\
-          </tr>\n\
-        </tbody>\n\
-      </table>\n", r);
-  */
 }
 
 static void qosc_server_list(request_rec *r) {
@@ -599,6 +672,10 @@ static int qosc_handler(request_rec * r) {
 <!--\n\
 function checkserver ( form ) {\n\
   if(form.server.value == \"ct\") {\n\
+    alert(\"Sorry, this is a reserved word. Please choose another server name.\" );\n\
+    return false;\n\
+  }\n\
+  if(form.server.value == \"qsfilter2\") {\n\
     alert(\"Sorry, this is a reserved word. Please choose another server name.\" );\n\
     return false;\n\
   }\n\
