@@ -2,9 +2,8 @@
  */
 
 /**
- * Quality of service module for Apache Web Server.
- *
- * This module is used to manage mod_qos rules.
+ * Configuration tool for mod_qos, a quality of service
+ * module for Apache Web Server.
  *
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
@@ -31,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.10 2007-12-27 22:09:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.11 2007-12-27 22:24:44 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -481,6 +480,7 @@ static void qosc_load_httpdconf(request_rec *r, const char *file, const char *ro
       const char *host = qosc_get_conf_value(line, "VirtualHost ");
       const char *loc = qosc_get_conf_value(line, "Location ");
       const char *tr = qosc_get_conf_value(line, "TransferLog ");
+      const char *permit = qosc_get_conf_value(line, "QS_PermitUri ");
       if(inc) {
         /* server MUST use relative includes only!
          *  root=/etc/apache/conf
@@ -531,6 +531,9 @@ static void qosc_load_httpdconf(request_rec *r, const char *file, const char *ro
           end[0] = '\0';
         }
         sk_push(st, apr_pstrcat(r->pool, "log=", tr, NULL));
+      }
+      if(permit) {
+        sk_push(st, apr_pstrcat(r->pool, "QS_PermitUri=", permit, NULL));
       }
     }
     fclose(f);
@@ -741,6 +744,8 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
     strftime(tmb, sizeof(tmb), "%H:%M:%S %d.%m.%Y", ptr);
     ap_rprintf(r, "Access log data loaded (%s, %d bytes).<br><br>", tmb, attrib.st_size);
     accessavailable = 1;
+  } else {
+    ap_rputs("<br><br>", r);
   }
   ap_rputs("</td></tr>", r);
 
@@ -1002,6 +1007,8 @@ function checkserver ( form ) {\n\
       <table class=\"btable\">\n\
         <tbody>\n", r);
     qosc_server_list(r);
+    ap_rputs("          <tr class=\"row\">\n\
+            <td>&nbsp;</rd></tr>\n", r);
     ap_rputs("          <tr class=\"rowe\">\n\
             <td>\n", r);
     ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\" onsubmit=\"return checkserver(this);\">\n",
