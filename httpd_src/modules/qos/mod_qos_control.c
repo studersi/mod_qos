@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.13 2007-12-28 20:24:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.14 2007-12-28 21:27:02 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -75,8 +75,10 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.13 2007-12-28 20:24:4
  * structures
  ***********************************************************************/
 typedef struct {
+  apr_pool_t *pool;
   char *path;
   char *qsfilter2;
+  char *viewer;
 } qosc_srv_config;
 
 typedef struct {
@@ -1184,12 +1186,14 @@ static int qosc_favicon(request_rec *r) {
  * handler which may be used as an alternative to mod_status
  */
 static int qosc_handler(request_rec * r) {
+  qosc_srv_config *sconf;
   if (strcmp(r->handler, "qos-control") != 0) {
     return DECLINED;
   } 
   if(strstr(r->parsed_uri.path, "favicon.ico") != NULL) {
     return qosc_favicon(r);
   }
+  sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config, &qos_control_module);
   ap_set_content_type(r, "text/html");
   //  apr_table_set(r->headers_out,"Cache-Control","no-cache");
   if(!r->header_only) {
@@ -1255,8 +1259,11 @@ function checkserver ( form ) {\n\
               <input name=\"action\" value=\"add\" type=\"submit\">\n\
             </form>\n\
             </td>\n\
-          </tr>\n\
-        </tbody>\n\
+          </tr>\n",r);
+    if(sconf->viewer) {
+      ap_rprintf(r, "<tr class=\"rowe\">\n<td><a href=\"%s\">mod_qos viewer</a></td>\n</tr>\n", sconf->viewer);
+    }
+    ap_rputs("        </tbody>\n\
       </table>\n\
       </td>\n\
       <td >\n", r);
@@ -1271,10 +1278,33 @@ function checkserver ( form ) {\n\
   return OK;
 }
 
+static void qosc_search_viewer(ap_directive_t * node, server_rec *bs) {
+  ap_directive_t *pdir;
+  for(pdir = node; pdir != NULL; pdir = pdir->next) {
+    if(strcasecmp(pdir->directive, "SetHandler") == 0) {
+      if(strcmp(pdir->args, "qos-viewer") == 0) {
+        if(pdir->parent->args) {
+          qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(bs->module_config,
+                                                                          &qos_control_module);
+          char *c;
+          sconf->viewer = apr_pstrdup(sconf->pool, pdir->parent->args);
+          c = sconf->viewer;
+          while(c[0] && (c[0] != ' ') && (c[0] != '\t') && (c[0] != '>')) c++;
+          c[0] = '\0';
+        }
+      }
+    }
+    if(pdir->first_child != NULL) {
+      qosc_search_viewer(pdir->first_child, bs);
+    }
+  }
+}
+          
 static int qosc_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   char *rev = qosc_revision(ptemp);
   char *vs = apr_psprintf(pconf, "mod_qos_control/%s", rev);
   ap_add_version_component(pconf, vs);
+  qosc_search_viewer(ap_conftree, bs);
   return DECLINED;
 }
 
@@ -1292,8 +1322,10 @@ static void *qosc_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
 
 static void *qosc_srv_config_create(apr_pool_t *p, server_rec *s) {
   qosc_srv_config *sconf = apr_pcalloc(p, sizeof(qosc_srv_config));
+  sconf->pool = p;
   sconf->path = apr_pstrdup(p, "/var/tmp/qos_control");
   sconf->qsfilter2 = NULL;
+  sconf->viewer = NULL;
   return sconf;
 }
 
