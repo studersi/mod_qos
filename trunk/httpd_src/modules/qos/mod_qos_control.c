@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.15 2008-01-02 18:12:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.16 2008-01-03 22:37:46 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -794,6 +794,46 @@ static void qosc_qsfilter2_upload(request_rec *r) {
   }
 }
 
+/* determines the log file name from the QOSC_STATUS file (by line number) */
+static char *qosc_locfile_id2name(request_rec *r, int line_number) {
+  qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_control_module);
+  apr_table_t *qt = qosc_get_query_table(r);
+  const char *server = apr_table_get(qt, "server");
+  char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+  char *status_file = apr_pstrcat(r->pool, server_dir, "/"QOSC_STATUS, NULL);
+  FILE *fs;
+  char *file_name = NULL;
+  if(!server) {
+    return NULL;
+  }
+  if(line_number == 0) {
+    return NULL;
+  }
+  fs = fopen(status_file, "r");
+  if(fs) {
+    int i = 0;
+    char line[HUGE_STRING_LEN];
+    while(!qosc_fgetline(line, sizeof(line), fs)) {
+      if(i == line_number) {
+        char *end = strchr(line, ' ');
+        if(end) {
+          end[0] = '\0';
+          file_name = apr_pstrcat(r->pool, line, ".rep", NULL);
+        }
+        break;
+      }
+      i++;
+    }
+    fclose(fs);
+  } else {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"could not open status file '%s'", status_file);
+    return NULL;
+  }
+  return file_name;
+}
+
 static qosc_append_file(apr_pool_t *pool, const char *dest, const char *source) {
   FILE *ds = fopen(dest, "a");
   FILE *sr = fopen(source, "r");
@@ -982,12 +1022,8 @@ static void qosc_qsfilter2_report(request_rec *r) {
                                                                   &qos_control_module);
   apr_table_t *qt = qosc_get_query_table(r);
   const char *server = apr_table_get(qt, "server");
-  const char *file = apr_table_get(qt, "file");
+  const char *loc = apr_table_get(qt, "loc");
   char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
-  char *status_file = apr_pstrcat(r->pool, server_dir, "/"QOSC_STATUS, NULL);
-  int i = 0;
-  int fid;
-  FILE *fs;
   char *file_name = NULL;
   if(!server) {
     ap_rprintf(r, "Invalid request.");
@@ -995,43 +1031,25 @@ static void qosc_qsfilter2_report(request_rec *r) {
                   QOSC_LOG_PFX(0)"invalid request, no server");
     return;
   }
-  if(!file) {
+  if(!loc) {
     ap_rprintf(r, "Invalid request.");
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOSC_LOG_PFX(0)"invalid request, no file");
+                  QOSC_LOG_PFX(0)"invalid request, no location file");
     return;
   }
-  fid = atoi(file);
-  fs = fopen(status_file, "r");
-  if(fs) {
-    int i = 0;
-    char line[HUGE_STRING_LEN];
-    while(!qosc_fgetline(line, sizeof(line), fs)) {
-      if(i == fid) {
-        char *end = strchr(line, ' ');
-        if(end) {
-          end[0] = '\0';
-          file_name = apr_pstrcat(r->pool, line, ".rep", NULL);
-        }
-      }
-      i++;
-    }
-    fclose(fs);
-  } else {
-    ap_rprintf(r, "Invalid request.");
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOSC_LOG_PFX(0)"invalid request, no status file available");
-    return;
-  }
+  file_name = qosc_locfile_id2name(r, atoi(loc));
   if(file_name) {
     FILE *f = fopen(file_name, "r");
     if(f) {
       char line[HUGE_STRING_LEN];
-      while(!qosc_fgetline(line, sizeof(line), fs)) {
+      while(!qosc_fgetline(line, sizeof(line), f)) {
         ap_rprintf(r, "<code>%s</code><br>\n", ap_escape_html(r->pool, line));
       }        
       fclose(f);
     }
+  } else {
+    ap_rprintf(r, "Invalid request.");
+    return;
   }
 
 }
@@ -1059,7 +1077,7 @@ static void qosc_qsfilter2_import(request_rec *r) {
   if(!file) {
     ap_rprintf(r, "Invalid request.");
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOSC_LOG_PFX(0)"invalid request, no file"); 
+                  QOSC_LOG_PFX(0)"invalid request, no access log file specified"); 
     return;
   }
   logfile = apr_pstrdup(r->pool, file);
@@ -1137,6 +1155,65 @@ static void qosc_qsfilter2(request_rec *r) {
   }
 }
 
+#define QOSC_ALERT_LINE_LEN 120
+static char *qosc_crline(request_rec *r, const char *line) {
+  char *string = "";
+  const char *pos = line;
+  while(pos && pos[0]) {
+    string = apr_pstrcat(r->pool, string, apr_psprintf(r->pool, "%.*s", QOSC_ALERT_LINE_LEN, pos), "\\n", NULL);
+    if(strlen(pos) > QOSC_ALERT_LINE_LEN) {
+      pos = &pos[QOSC_ALERT_LINE_LEN];
+    } else {
+      pos = NULL;
+    }
+  }
+  return string;
+}
+
+static int qosc_report_locations(request_rec *r, const char *server, const char *file,
+                                 apr_table_t *deny, apr_table_t *permit) {
+  int open_lines = 0;
+  FILE *f = fopen(file, "r");
+  if(f) {
+    char line[HUGE_STRING_LEN];
+    while(!qosc_fgetline(line, sizeof(line), f)) {
+      if(strncmp(line, "# ADD line ", strlen("# ADD line ")) == 0) {
+        char *url = &line[strlen("# ADD line ")];
+        char *id = url;
+        url = strstr(url, ": ");
+        url[0] = '\0';
+        url = url+2;
+
+        open_lines++;
+        ap_rputs("<tr class=\"row\">\n",r);
+        ap_rprintf(r, "<td>%s:&nbsp;<a onclick=\"alert('%s')\" >%.*s %s</a></td>\n",
+                   id,
+                   qosc_crline(r, ap_escape_html(r->pool, url)), 60, ap_escape_html(r->pool, url),
+                   strlen(url) > 60 ? "..." : "");
+        ap_rprintf(r, "<td>"
+                   "<form action=\"%sqsfilter2.do\" method=\"get\">"
+                   " <input name=\"action\" value=\"deny\" type=\"submit\">"
+                   " <input name=\"server\" value=\"%s\"   type=\"hidden\">\n"
+                   " <input name=\"url\"    value=\"%s\"   type=\"hidden\">\n"
+                   "</from>"
+                   "<form>"
+                   " <input name=\"action\" value=\"permit\" type=\"submit\">"
+                   " <input name=\"server\" value=\"%s\"   type=\"hidden\">\n"
+                   " <input name=\"url\"    value=\"%s\"   type=\"hidden\">\n"
+                   "</from>"
+                   "</td>\n",
+                   qosc_get_path(r), server, id, server, id);
+        ap_rputs("</tr>\n",r);
+      }
+    }
+    fclose(f);
+  } else {
+    ap_rprintf(r, "failed to open '%s'", ap_escape_html(r->pool, file));
+    return -1;
+  }
+  return open_lines;
+}
+
 static void qosc_server_qsfilter2(request_rec *r, const char *server) {
   qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_control_module);
@@ -1171,7 +1248,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
     ap_rprintf(r, " <input name=\"access_log\" value=\"\" type=\"file\" size=\"50\">\n"
                " <input name=\"action\" value=\"upload\" type=\"submit\">\n"
                " </form>\n", ap_escape_html(r->pool, server));
-    ap_rputs("</td></tr>", r);
+    ap_rputs("</td><td></td></tr>\n", r);
 
     {
       apr_table_t *logt = qosc_read_logfile(r, server_conf);
@@ -1193,7 +1270,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
                      ap_escape_html(r->pool, server));
         }
         
-        ap_rputs("</td></tr>", r);
+        ap_rputs("</td><td></td></tr>\n", r);
       }
     }
   }
@@ -1224,18 +1301,20 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
     }
     ap_rputs("</ul><br>\n", r);
   }
-  ap_rputs("</td></tr>", r);
+  ap_rputs("</td><td></td></tr>\n", r);
 
   /* results */
   if(!inprogress) {
     FILE *fs = fopen(status_file, "r");
     if(fs) {
-      ap_rputs("<tr class=\"rows\"><td>\n",r);
       int i = 0;
       char line[HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), fs)) {
         if(i == 0) {
-          ap_rprintf(r, "Reports (%s):<br>\n", line);
+          ap_rputs("<tr class=\"rowe\"><td>\n",r);
+          ap_rprintf(r, "Results (%s):<br><i>Note: please confirm all requests (deny/permit) and then"
+                     " repeat the rule generation.</i>\n", line);
+          ap_rputs("</td><td></td></tr>\n", r);
         } else {
           char *id = line;
           char *st = strchr(line, ' ');
@@ -1247,7 +1326,8 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
             loc++;
             loc[0] = '\0';
             loc++;
-            ap_rprintf(r, "&nbsp;<a href=\"%sqsfilter2.do?server=%s&action=report&file=%d\">",
+            ap_rputs("<tr class=\"rows\"><td>\n",r);
+            ap_rprintf(r, "<a href=\"%sqsfilter2.do?server=%s&action=report&loc=%d\">",
                        qosc_get_path(r), ap_escape_html(r->pool, server), i);
             if(strcmp(loc, "404") == 0) {
               ap_rprintf(r, "others (404)<a> ");
@@ -1257,14 +1337,14 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
             if(strcmp(st, "0") != 0) {
               ap_rprintf(r, "<a href=\"\">(errors)<a>");
             }
-            ap_rputs("<br>\n", r);
+            ap_rputs("</td><td></td></tr>\n", r);
+            qosc_report_locations(r, server, apr_pstrcat(r->pool, id, ".rep", NULL), NULL, NULL);
           }
         }
         i++;
       }
       fclose(fs);
     }
-    ap_rputs("</td></tr>", r);
   }
 
   ap_rputs("</tbody></table>\n", r);
