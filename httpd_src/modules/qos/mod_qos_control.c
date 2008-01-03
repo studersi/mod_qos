@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.16 2008-01-03 22:37:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.17 2008-01-03 22:43:05 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1193,16 +1193,12 @@ static int qosc_report_locations(request_rec *r, const char *server, const char 
         ap_rprintf(r, "<td>"
                    "<form action=\"%sqsfilter2.do\" method=\"get\">"
                    " <input name=\"action\" value=\"deny\" type=\"submit\">"
-                   " <input name=\"server\" value=\"%s\"   type=\"hidden\">\n"
-                   " <input name=\"url\"    value=\"%s\"   type=\"hidden\">\n"
-                   "</from>"
-                   "<form>"
                    " <input name=\"action\" value=\"permit\" type=\"submit\">"
                    " <input name=\"server\" value=\"%s\"   type=\"hidden\">\n"
                    " <input name=\"url\"    value=\"%s\"   type=\"hidden\">\n"
-                   "</from>"
+                   "</form>"
                    "</td>\n",
-                   qosc_get_path(r), server, id, server, id);
+                   qosc_get_path(r), server, id);
         ap_rputs("</tr>\n",r);
       }
     }
