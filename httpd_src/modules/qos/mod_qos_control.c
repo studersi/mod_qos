@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.18 2008-01-04 14:50:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.19 2008-01-04 22:33:59 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -356,6 +356,19 @@ static void qosc_css(request_rec *r) {
   form      { display: inline;\n", r);
 }
 
+static qosc_append_file(apr_pool_t *pool, const char *dest, const char *source) {
+  FILE *ds = fopen(dest, "a");
+  FILE *sr = fopen(source, "r");
+  if(sr && ds) {
+    char line[HUGE_STRING_LEN];
+    while(!qosc_fgetline(line, sizeof(line), sr)) {
+      fprintf(ds, "%s\n", line);
+    }
+  }
+  if(ds) fclose(ds);
+  if(sr) fclose(sr);
+}
+
 /* get the path of the current request */
 static char *qosc_get_path(request_rec *r) {
   char *path = apr_pstrdup(r->pool, r->parsed_uri.path);
@@ -534,7 +547,7 @@ static void qosc_reopen_locations(apr_table_t *locations, const char *mode) {
 /* loads a list of all locations from the configuration and opens the file containing
    all urls to this location */
 static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
-                                        const char *server_conf, const char *mode) {
+                                        const char *server_conf, int init) {
   FILE *f = fopen(server_conf, "r");
   apr_table_t *locations = apr_table_make(r->pool, 2);
   if(f) {
@@ -546,7 +559,11 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
         l->uri = apr_pstrdup(r->pool, loc);
         l->name = apr_pstrcat(r->pool, server_dir, "/", qosc_url2filename(r->pool, loc), ".loc", NULL);
         if(apr_table_get(locations, loc) == NULL) {
-          l->fd = fopen(l->name, mode);
+          if(init) {
+            l->fd = fopen(l->name, "w");
+          } else {
+            l->fd = fopen(l->name, "r");
+          }
           if(!l->fd) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                           QOSC_LOG_PFX(0)"could not open '%s'", l->name);
@@ -554,6 +571,9 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
             return NULL;
           }
           apr_table_setn(locations, loc, (char *)l);
+          fclose(l->fd);
+          l->fd = 0;
+          qosc_append_file(r->pool, l->name, apr_pstrcat(r->pool, l->name, ".url_permit", NULL));
         }
       }
     }
@@ -563,8 +583,15 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
       qosc_location *l = apr_pcalloc(r->pool, sizeof(qosc_location));
       l->uri = loc;
       l->name = apr_pstrcat(r->pool, server_dir, "/404.loc", NULL);
-      l->fd = fopen(l->name, mode);
+      if(init) {
+        l->fd = fopen(l->name, "w");
+      } else {
+        l->fd = fopen(l->name, "r");
+      }
       apr_table_setn(locations, loc, (char *)l);
+      fclose(l->fd);
+      l->fd = 0;
+      qosc_append_file(r->pool, l->name, apr_pstrcat(r->pool, l->name, ".url_permit", NULL));
     }
     fclose(f);
   } else {
@@ -853,19 +880,6 @@ static char *qosc_locfile_id2name(request_rec *r, int line_number) {
   return file_name;
 }
 
-static qosc_append_file(apr_pool_t *pool, const char *dest, const char *source) {
-  FILE *ds = fopen(dest, "a");
-  FILE *sr = fopen(source, "r");
-  if(sr && ds) {
-    char line[HUGE_STRING_LEN];
-    while(!qosc_fgetline(line, sizeof(line), sr)) {
-      fprintf(ds, "%s\n", line);
-    }
-  }
-  if(ds) fclose(ds);
-  if(sr) fclose(sr);
-}
-
 static int qosc_create_input_configuration(request_rec *r, const char *location) {
   char *dest = apr_pstrcat(r->pool, location, ".conf", NULL);
   FILE *df = fopen(dest, "w");
@@ -920,7 +934,7 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
     }
     fr = fopen(running_file, "a");
     if(fr) {
-      fprintf(fr, ": %d</li>\n", status);
+      fprintf(fr, ": %s</li>\n", status == 0 ? "done" : "failed");
       fflush(fr);
       fclose(fr);
     }
@@ -977,13 +991,13 @@ static void qosc_qsfilter2_start(request_rec *r) {
                   QOSC_LOG_PFX(0)"invalid request, no server");
     return;
   }
-  locations = qosc_read_locations(r, server_dir, server_conf, "w");
+  locations = qosc_read_locations(r, server_dir, server_conf, 1);
   if(locations == NULL) {
     ap_rprintf(r, "Unable to process data.");
   } else {
     FILE *ac;
     ac = fopen(access_log, "r");
-    qosc_close_locations(locations, 0);
+    //    qosc_close_locations(locations, 0);
     if(ac) {
       pid_t pid;
       int status;
@@ -1008,7 +1022,7 @@ static void qosc_qsfilter2_start(request_rec *r) {
           return;
         case 0:
           /* child processing the data */
-          qosc_reopen_locations(locations, "w");
+          qosc_reopen_locations(locations, "a");
           qosc_qsfilter2_sort(r, locations, running_file, access_log);
           qosc_close_locations(locations, 0);
           qosc_qsfilter2_execute(r, locations, running_file, status_file);
@@ -1568,29 +1582,53 @@ static int qosc_favicon(request_rec *r) {
  * handler which may be used as an alternative to mod_status
  */
 static int qosc_handler(request_rec * r) {
-  qosc_srv_config *sconf;
   if (strcmp(r->handler, "qos-control") != 0) {
     return DECLINED;
   } 
   if(strstr(r->parsed_uri.path, "favicon.ico") != NULL) {
     return qosc_favicon(r);
-  }
-  sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config, &qos_control_module);
-  ap_set_content_type(r, "text/html");
-  //  apr_table_set(r->headers_out,"Cache-Control","no-cache");
-  if(!r->header_only) {
-    ap_rputs("<html><head><title>mod_qos control</title>\n", r);
-    ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n",
-               ap_escape_html(r->pool, r->parsed_uri.path));
-    ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
-    ap_rputs("<meta name=\"author\" content=\"Pascal Buchbinder\">\n", r);
-    ap_rputs("<meta http-equiv=\"Pragma\" content=\"no-cache\">\n", r);
-    ap_rputs("<style TYPE=\"text/css\">\n", r);
-    ap_rputs("<!--", r);
-    qosc_css(r);
-    ap_rputs("-->\n", r);
-    ap_rputs("</style>\n", r);
-    ap_rputs("<script language=\"JavaScript\" type=\"text/javascript\">\n\
+  } else {
+    qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                    &qos_control_module);
+    apr_table_t *qt = qosc_get_query_table(r);
+    char *server_dir;
+    char *running_file;
+    char *server = (char *)qosc_get_server(qt);
+    const char *action = apr_table_get(qt, "action");
+    if(!server && (strlen(r->parsed_uri.path) > 4)) {
+      if(strcmp(&r->parsed_uri.path[strlen(r->parsed_uri.path)-3], ".do") == 0) {
+        server = strrchr(r->parsed_uri.path, '/');
+        if(server) {
+          server++;
+          server = apr_pstrdup(r->pool, server);
+          server[strlen(server)-3] = '\0';
+        }
+      }
+    }
+    server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+    running_file = apr_pstrcat(r->pool, server_dir, "/"QOSC_RUNNING, NULL);
+    ap_set_content_type(r, "text/html");
+    //  apr_table_set(r->headers_out,"Cache-Control","no-cache");
+    if(!r->header_only) {
+      ap_rputs("<html><head><title>mod_qos control</title>\n", r);
+      ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n",
+                 ap_escape_html(r->pool, r->parsed_uri.path));
+      ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
+      ap_rputs("<meta name=\"author\" content=\"Pascal Buchbinder\">\n", r);
+      ap_rputs("<meta http-equiv=\"Pragma\" content=\"no-cache\">\n", r);
+      if(server && action && (strcmp(action, "qsfilter2") == 0)) {
+        struct stat attrib;
+        if(stat(running_file, &attrib) == 0) {
+          ap_rprintf(r, "<meta http-equiv=\"refresh\" content=\"5; URL=%s?%s\">",
+                     r->parsed_uri.path, r->parsed_uri.query == NULL ? "" : r->parsed_uri.query);
+        }
+      }
+      ap_rputs("<style TYPE=\"text/css\">\n", r);
+      ap_rputs("<!--", r);
+      qosc_css(r);
+      ap_rputs("-->\n", r);
+      ap_rputs("</style>\n", r);
+      ap_rputs("<script language=\"JavaScript\" type=\"text/javascript\">\n\
 <!--\n\
 function checkserver ( form ) {\n\
   if(form.server.value == \"ct\") {\n\
@@ -1620,44 +1658,45 @@ function checkserver ( form ) {\n\
 }\n\
 //-->\n\
 </script>\n", r);
-    ap_rputs("</head><body>", r);
+      ap_rputs("</head><body>", r);
 
-    ap_rputs("<h2>mod_qos control</h2>\n\
+      ap_rputs("<h2>mod_qos control</h2>\n\
 <table class=\"btable\">\n\
   <tbody>\n\
     <tr class=\"row\">\n\
       <td style=\"width: 230px;\" >\n\
       <table class=\"btable\">\n\
         <tbody>\n", r);
-    qosc_server_list(r);
-    ap_rputs("          <tr class=\"row\">\n\
+      qosc_server_list(r);
+      ap_rputs("          <tr class=\"row\">\n\
             <td>&nbsp;</rd></tr>\n", r);
-    ap_rputs("          <tr class=\"rowe\">\n\
+      ap_rputs("          <tr class=\"rowe\">\n\
             <td>\n", r);
-    ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\" onsubmit=\"return checkserver(this);\">\n",
-               qosc_get_path(r));
-    ap_rputs("Add a new server:\n\
+      ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\" onsubmit=\"return checkserver(this);\">\n",
+                 qosc_get_path(r));
+      ap_rputs("Add a new server:\n\
               <input name=\"server\" value=\"\"    type=\"text\">\n\
               <input name=\"action\" value=\"add\" type=\"submit\">\n\
             </form>\n\
             </td>\n\
           </tr>\n",r);
-    if(sconf->viewer) {
-      ap_rprintf(r, "<tr class=\"rowe\">\n"
-                 "<td><a href=\"%s\">mod_qos viewer</a></td>\n"
-                 "</tr>\n", sconf->viewer);
-    }
-    ap_rputs("        </tbody>\n\
+      if(sconf->viewer) {
+        ap_rprintf(r, "<tr class=\"rowe\">\n"
+                   "<td><a href=\"%s\">mod_qos viewer</a></td>\n"
+                   "</tr>\n", sconf->viewer);
+      }
+      ap_rputs("        </tbody>\n\
       </table>\n\
       </td>\n\
       <td >\n", r);
-    /* TEXT */
-    qosc_body(r);
-    ap_rputs("      </td>\n\
+      /* TEXT */
+      qosc_body(r);
+      ap_rputs("      </td>\n\
     </tr>\n\
   </tbody>\n\
 </table>\n", r);
-    ap_rputs("</body></html>", r);
+      ap_rputs("</body></html>", r);
+    }
   }
   return OK;
 }
