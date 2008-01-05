@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.19 2008-01-04 22:33:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.20 2008-01-05 14:00:48 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -145,6 +145,27 @@ static int qosc_unescaping(char *x) {
   }
   x[j] = '\0';
   return j;
+}
+
+static char *qosc_pcre_escape(apr_pool_t *pool, const char *string) {
+  unsigned char *in = (unsigned char *)string;
+  char *ret = apr_pcalloc(pool, strlen(string) * 4);
+  int i = 0;
+  int reti = 0;
+  while(in[i]) {
+    if(strchr("{}[]()^$.|*+?\"'", in[i]) != NULL) {
+      ret[reti] = '\\';
+      reti++;
+      ret[reti] = in[i];
+      reti++;
+    } else {
+      ret[reti] = in[i];
+      reti++;
+    }
+    i++;
+  }
+  ret[reti] = '\0';
+  return ret;
 }
 
 static int qosc_is_alnum(const char *string) {
@@ -561,6 +582,7 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
         if(apr_table_get(locations, loc) == NULL) {
           if(init) {
             l->fd = fopen(l->name, "w");
+            unlink(apr_pstrcat(r->pool, l->name, ".url_deny_new", NULL));
           } else {
             l->fd = fopen(l->name, "r");
           }
@@ -585,6 +607,7 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
       l->name = apr_pstrcat(r->pool, server_dir, "/404.loc", NULL);
       if(init) {
         l->fd = fopen(l->name, "w");
+        unlink(apr_pstrcat(r->pool, l->name, ".url_deny_new", NULL));
       } else {
         l->fd = fopen(l->name, "r");
       }
@@ -889,8 +912,22 @@ static int qosc_create_input_configuration(request_rec *r, const char *location)
     qosc_append_file(r->pool, dest, apr_pstrcat(r->pool, location, ".permit", NULL));
     // deny rules from server conf
     qosc_append_file(r->pool, dest, apr_pstrcat(r->pool, location, ".deny", NULL));
-    // control rules (blacklist, custom rules) $$$
-    
+    // control rules (blacklist, custom rules)
+    {
+      FILE *f = fopen(apr_pstrcat(r->pool, location, ".url_deny", NULL), "r");
+      if(f) {
+        char line[HUGE_STRING_LEN];
+        df = fopen(dest, "a");
+        while(!qosc_fgetline(line, sizeof(line), f)) {
+          char *data;
+          qosc_unescaping(line);
+          data = qosc_pcre_escape(r->pool, line);
+          fprintf(df, "QS_DenyRequestLine -restrict deny \"%s\"\n", data);
+        }
+        fclose(df);
+        fclose(f);
+      }
+    }
   }
   return 0;
 }
@@ -934,7 +971,7 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
     }
     fr = fopen(running_file, "a");
     if(fr) {
-      fprintf(fr, ": %s</li>\n", status == 0 ? "done" : "failed");
+      fprintf(fr, " - %s</li>\n", status == 0 ? "done" : "failed");
       fflush(fr);
       fclose(fr);
     }
@@ -968,7 +1005,7 @@ static void qosc_qsfilter2_sort(request_rec *r, apr_table_t *locations,
   }
   fr = fopen(running_file, "a");
   if(fr) {
-    fprintf(fr, ": done</li>\n");
+    fprintf(fr, " - done</li>\n");
     fflush(fr);
     fclose(fr);
   }
@@ -1050,13 +1087,14 @@ static void qosc_qsfilter2_start(request_rec *r) {
   return;
 }
 
-static void qosc_qsfilter2_permit(request_rec *r) {
+static void qosc_qsfilter2_permitdeny(request_rec *r) {
   qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_control_module);
   apr_table_t *qt = qosc_get_query_table(r);
   const char *server = qosc_get_server(qt);
   const char *loc = apr_table_get(qt, "loc");
   const char *url = apr_table_get(qt, "url");
+  const char *action = apr_table_get(qt, "action");
   char *file_name = NULL;
   if(!server) {
     ap_rprintf(r, "Invalid request.");
@@ -1088,7 +1126,13 @@ static void qosc_qsfilter2_permit(request_rec *r) {
           FILE *fp;
           // cut .rep
           file_name[strlen(file_name) - 4] = '\0';
-          fp = fopen(apr_pstrcat(r->pool, file_name, ".url_permit", NULL), "a");
+          if(strcmp(action, "permit") == 0) {
+            fp = fopen(apr_pstrcat(r->pool, file_name, ".url_permit", NULL), "a");
+          } else {
+            FILE *fd = fopen(apr_pstrcat(r->pool, file_name, ".url_deny_new", NULL), "w");
+            fclose(fd);
+            fp = fopen(apr_pstrcat(r->pool, file_name, ".url_deny", NULL), "a");
+          }
           if(fp) {
             fprintf(fp, "%s\n", u);
             fclose(fp);
@@ -1240,7 +1284,9 @@ static void qosc_qsfilter2(request_rec *r) {
   } else if(action && (strcmp(action, "report") == 0)) {
     qosc_qsfilter2_report(r);
   } else if(action && (strcmp(action, "permit") == 0)) {
-    qosc_qsfilter2_permit(r);
+    qosc_qsfilter2_permitdeny(r);
+  } else if(action && (strcmp(action, "deny") == 0)) {
+    qosc_qsfilter2_permitdeny(r);
   } else {
     ap_rprintf(r, "Invalid request.");
   }
@@ -1262,7 +1308,7 @@ static char *qosc_crline(request_rec *r, const char *line) {
 }
 
 static int qosc_report_locations(request_rec *r, const char *server,
-                                 int loc, const char *file,
+                                 int loc, const char *location_file, const char *file,
                                  apr_table_t *deny, apr_table_t *permit) {
   int open_lines = 0;
   FILE *f = fopen(file, "r");
@@ -1275,11 +1321,11 @@ static int qosc_report_locations(request_rec *r, const char *server,
         url = strstr(url, ": ");
         url[0] = '\0';
         url = url+2;
-
-        open_lines++;
-        if(apr_table_get(permit, url) == NULL) {
+        if((apr_table_get(permit, url) == NULL) &&
+           (apr_table_get(deny, url) == NULL)) {
           char *encoded = ap_escape_html(r->pool, url);
           char *crl = qosc_crline(r, encoded);
+          open_lines++;
           ap_rputs("<tr class=\"row\">\n",r);
           ap_rprintf(r, "<td>%s:&nbsp;<a onclick=\"alert('%s')\" >%.*s %s</a></td>\n",
                      id,
@@ -1303,6 +1349,20 @@ static int qosc_report_locations(request_rec *r, const char *server,
   } else {
     ap_rprintf(r, "failed to open '%s'", ap_escape_html(r->pool, file));
     return -1;
+  }
+  {
+    struct stat attrib;
+    if(stat(apr_pstrcat(r->pool, location_file, ".url_deny_new", NULL), &attrib) == 0) {
+      ap_rputs("<tr class=\"row\"><td><i>updated black list: requires rule regeneration</i></td>"
+               "<td></td></tr>\n",r);
+    } else {
+      if(open_lines == 0) {
+        ap_rputs("<tr class=\"row\"><td>", r);
+        ap_rprintf(r, "<a href=\"%sqsfilter2.do?server=%s&action=report&loc=%d\"><i>rules$$$</i></a>",
+                   qosc_get_path(r), ap_escape_html(r->pool, server), loc);
+        ap_rputs("</td><td></td></tr>\n",r);
+      }
+    }
   }
   return open_lines;
 }
@@ -1406,7 +1466,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
         if(i == 0) {
           ap_rputs("<tr class=\"rowe\"><td>\n",r);
           ap_rprintf(r, "Results (%s):<br><i>Note: please confirm all requests (deny/permit) and then"
-                     " repeat the rule generation.</i>\n", line);
+                     " repeat the rule generation if necessary.</i>\n", line);
           ap_rputs("</td><td></td></tr>\n", r);
         } else {
           char *id = line;
@@ -1433,7 +1493,8 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
             ap_rputs("</td><td></td></tr>\n", r);
             {
               apr_table_t *permit = qosc_file2table(r->pool, apr_pstrcat(r->pool, id, ".url_permit", NULL));
-              qosc_report_locations(r, server, i, apr_pstrcat(r->pool, id, ".rep", NULL), NULL, permit);
+              apr_table_t *deny = qosc_file2table(r->pool, apr_pstrcat(r->pool, id, ".url_deny", NULL));
+              qosc_report_locations(r, server, i, id, apr_pstrcat(r->pool, id, ".rep", NULL), deny, permit);
             }
           }
         }
@@ -1538,7 +1599,9 @@ static void qosc_server_list(request_rec *r) {
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
                      ap_escape_html(r->pool, de->d_name));
           ap_rprintf(r, "<tr class=\"row\"><td>"
-                     "&nbsp;<a href=\"%s%s.do?action=qsfilter2\">qsfilter2</a></td></tr>\n",
+                     "&nbsp;<a href=\"%s%s.do?action=qsfilter2\" "
+                     "title=\"creates request line white list rules\">"
+                     "qsfilter2</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
           ap_rprintf(r, "<tr class=\"row\"><td>"
                      "&nbsp;<a href=\"%s%s.do?action=load\">reload configuration</a></td></tr>\n",
