@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.21 2008-01-05 20:21:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.22 2008-01-05 20:55:32 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -723,7 +723,7 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
         if(fp) fclose(fp);
         if(fd) fclose(fd);
         filename = qosc_url2filename(r->pool, loc);
-        fp = fopen(apr_pstrcat(r->pool, server_dir, "/", filename, ".loc..permit", NULL), "w");
+        fp = fopen(apr_pstrcat(r->pool, server_dir, "/", filename, ".loc.permit", NULL), "w");
         fd = fopen(apr_pstrcat(r->pool, server_dir, "/", filename, ".loc.deny", NULL), "w");
       }
       if(host) {
@@ -1388,7 +1388,7 @@ static int qosc_report_locations(request_rec *r, const char *server,
           char *crl = qosc_crline(r, encoded);
           open_lines++;
           ap_rputs("<tr class=\"row\">\n",r);
-          ap_rprintf(r, "<td>%s:&nbsp;<a onclick=\"alert('%s')\" >%.*s %s</a></td>\n",
+          ap_rprintf(r, "<td>&nbsp;%s:&nbsp;<a onclick=\"alert('%s')\" >%.*s %s</a></td>\n",
                      id,
                      crl, 60, encoded,
                      strlen(encoded) > 60 ? "..." : "");
@@ -1419,7 +1419,7 @@ static int qosc_report_locations(request_rec *r, const char *server,
     } else {
       if(open_lines == 0) {
         ap_rputs("<tr class=\"row\"><td>", r);
-        ap_rprintf(r, "<form action=\"%sdownload.do\" method=\"get\">\n",
+        ap_rprintf(r, "&nbsp;<form action=\"%sdownload.do\" method=\"get\">\n",
                    qosc_get_path(r));
         ap_rprintf(r, " <input name=\"server\" value=\"%s\" type=\"hidden\">\n",
                    ap_escape_html(r->pool, server));
@@ -1590,7 +1590,9 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
             loc[0] = '\0';
             loc++;
             ap_rputs("<tr class=\"rows\"><td>\n",r);
-            ap_rprintf(r, "<a name=\"%d\" href=\"%sqsfilter2.do?server=%s&action=report&loc=%d\">",
+            //ap_rprintf(r, "<a name=\"%d\" href=\"%sqsfilter2.do?server=%s&action=report&loc=%d\">",
+            ap_rprintf(r, "<a name=\"%d\" title=\"stdout\" "
+                       "href=\"%sdownload.do?server=%s&loc=%d\">",
                        i, qosc_get_path(r), ap_escape_html(r->pool, server), i);
             if(strcmp(loc, "404") == 0) {
               ap_rprintf(r, "others (404)<a> ");
@@ -1598,7 +1600,14 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
               ap_rprintf(r, "%s<a> ", loc);
             }
             if(strcmp(st, "0") != 0) {
-              ap_rprintf(r, "<a href=\"\">(errors)<a>");
+              ap_rprintf(r, "<b>command failed</b> ");
+            }
+            if(stat(apr_pstrcat(r->pool, id, ".err", NULL), &attrib) == 0) {
+              if(attrib.st_size > 0) {
+                ap_rprintf(r, "<a title=\"stderr\" "
+                           "href=\"%sdownload.do?server=%s&loc=%d&type=err\">(errors)</a> ",
+                           qosc_get_path(r), ap_escape_html(r->pool, server), i);
+              }
             }
             ap_rputs("</td><td></td></tr>\n", r);
             {
@@ -1758,6 +1767,7 @@ static int qosc_download(request_rec * r) {
   const char *server = qosc_get_server(qt);
   const char *loc = apr_table_get(qt, "loc");
   const char *filter = apr_table_get(qt, "filter");
+  const char *type = apr_table_get(qt, "type");
   char *file_name = NULL;
   char *server_dir = server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
   ap_set_content_type(r, "text/plain");
@@ -1774,6 +1784,11 @@ static int qosc_download(request_rec * r) {
     return;
   }
   file_name = qosc_locfile_id2name(r, atoi(loc));
+  if(file_name && (strlen(file_name) > 4) && type && (strcmp(type, "err") == 0)) {
+    file_name[strlen(file_name)-3] = 'e';
+    file_name[strlen(file_name)-2] = 'r';
+    file_name[strlen(file_name)-1] = 'r';
+  }
   if(file_name) {
     FILE *f = fopen(file_name, "r");
     if(f) {
