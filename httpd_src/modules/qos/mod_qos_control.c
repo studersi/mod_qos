@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.22 2008-01-05 20:55:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.23 2008-01-05 21:24:05 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1057,12 +1057,13 @@ static void qosc_qsfilter2_start(request_rec *r) {
   } else {
     FILE *ac;
     ac = fopen(access_log, "r");
-    //    qosc_close_locations(locations, 0);
     if(ac) {
       pid_t pid;
       int status;
+      FILE *fr = fopen(running_file, "w");
+      if(fr) fclose(fr);
       /*
-       * well, we seem to be read to start data processing
+       * well, we seem to be ready to start data processing
        * no "return" after this line...
        */
       fclose(ac);
@@ -1098,8 +1099,6 @@ static void qosc_qsfilter2_start(request_rec *r) {
       default:
         /* suppress "long lost child came home!" */
         waitpid(pid, &status, 0);
-        /* parent does not need these open files any longer */
-        qosc_close_locations(locations, 0);
       }
     } else {
       ap_rprintf(r, "Could not open access log data.");
