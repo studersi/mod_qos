@@ -5,7 +5,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007 Pascal Buchbinder
+ * Copyright (C) 2007-2008 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.36 2007-12-06 19:10:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.37 2008-01-07 22:06:33 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -1015,6 +1015,10 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
     apr_pool_t *lpool;
     apr_pool_create(&lpool, NULL);
     line_nr++;
+    if(apr_table_elts(rules)->nelts == 2000) {
+      fprintf(stderr, "ERROR, too many rules\n");
+      if(m_exit_on_error) exit(1);
+    }
     if((strlen(line) > 1) && line[1] == '/') {
       doubleSlash = 1;
       strcpy(line, &line[1]);
