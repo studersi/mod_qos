@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.24 2008-01-07 12:12:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.25 2008-01-07 19:58:59 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -73,6 +73,7 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.24 2008-01-07 12:12:5
 #define QOSC_STATUS       ".qs_status"
 #define QOSCR 13
 #define QOSLF 10
+#define QOSC_HUGE_STRING_LEN 32768
 #define QOSC_REQ          "(OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PROPFIND|PROPPATCH|MKCOL|COPY|MOVE|LOCK|UNLOCK|VERSION-CONTROL|REPORT|CHECKOUT|CHECKIN|UNCHECKOUT|MKWORKSPACE|UPDATE|LABEL|MERGE|BASELINE-CONTROL|MKACTIVITY|ORDERPATCH|ACL|PATCH|SEARCH|BCOPY|BDELETE|BMOVE|BPROPFIND|BPROPPATCH|NOTIFY|POLL|SUBSCRIBE|UNSUBSCRIBE|X-MS-ENUMATTS|RPC_IN_DATA|RPC_OUT_DATA) ([\x20-\x21\x23-\xFF])* HTTP/"
 
 /************************************************************************
@@ -218,7 +219,7 @@ static apr_table_t *qosc_file2table(apr_pool_t *pool, const char *filename) {
   apr_table_t *table = apr_table_make(pool, 2);
   FILE *f = fopen(filename, "r");
   if(f) {
-    char line[HUGE_STRING_LEN];
+    char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), f)) {
       apr_table_add(table, line, "");
     }
@@ -277,10 +278,12 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r, 
                         QOSC_LOG_PFX(0)"could not read client data");
           return HTTP_INTERNAL_SERVER_ERROR;
-        } else {
+        }
+        {
           char tmp_buf[buf_len+1];
+          char *tmp_buf_p = tmp_buf;
           sprintf(tmp_buf, "%.*s", buf_len, buf);
-          if(!write && ap_strcasestr(tmp_buf, disp)) {
+          if(!write && ap_strcasestr(tmp_buf_p, disp)) {
             write = 1;
             start = 0;
           }
@@ -288,19 +291,19 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
             if(start < 3) {
               start++;
             } else {
-              if(strstr(tmp_buf, boundary)) {
+              if(strstr(tmp_buf_p, boundary)) {
                 write = 0;
                 start = 0;
               } else {
                 ap_regmatch_t ma;
-                if(ap_regexec(regex, tmp_buf, 1, &ma, 0) == 0) {
+                if(ap_regexec(regex, tmp_buf_p, 1, &ma, 0) == 0) {
                   char m[ma.rm_eo - ma.rm_so + 1];
                   char *m_start;
                   char *m_end;
-                  strncpy(m, &tmp_buf[ma.rm_so], ma.rm_eo - ma.rm_so);
+                  strncpy(m, &tmp_buf_p[ma.rm_so], ma.rm_eo - ma.rm_so);
                   m[ma.rm_eo - ma.rm_so] = '\0';
                   m_start = strchr(m, ' ');
-                  m_start++;
+                  while(m_start[0] == ' ') m_start++;
                   m_end = strrchr(m, ' ');
                   m_end[0] = '\0';
                   fprintf(f, "%s\n", m_start);
@@ -385,7 +388,7 @@ static qosc_append_file(apr_pool_t *pool, const char *dest, const char *source) 
   FILE *ds = fopen(dest, "a");
   FILE *sr = fopen(source, "r");
   if(sr && ds) {
-    char line[HUGE_STRING_LEN];
+    char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), sr)) {
       fprintf(ds, "%s\n", line);
     }
@@ -582,7 +585,7 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
   FILE *f = fopen(server_conf, "r");
   apr_table_t *locations = apr_table_make(r->pool, 2);
   if(f) {
-    char line[HUGE_STRING_LEN];
+    char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), f)) {
       if(strncmp(line, "location=", strlen("location=")) == 0) {
         char *loc = apr_pstrdup(r->pool, &line[strlen("location=")]);
@@ -656,7 +659,7 @@ static apr_table_t *qosc_read_logfile(request_rec *r, const char *server_conf) {
   FILE *f = fopen(server_conf, "r");
   apr_table_t *logs = apr_table_make(r->pool, 2);
   if(f) {
-    char line[HUGE_STRING_LEN];
+    char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), f)) {
       if(strncmp(line, "log=", strlen("log=")) == 0) {
         char *log = apr_pstrdup(r->pool, &line[strlen("log=")]);
@@ -680,7 +683,7 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
   FILE *f = fopen(file, "r");
   FILE *fp = 0;
   FILE *fd = 0;
-  char line[HUGE_STRING_LEN];
+  char line[QOSC_HUGE_STRING_LEN];
   if(f) {
     while(!qosc_fgetline(line, sizeof(line), f)) {
       const char *inc = qosc_get_conf_value(line, "Include ");
@@ -777,7 +780,7 @@ static void qosc_server_load(request_rec *r, const char *server) {
   char *server_conf = apr_pstrcat(r->pool, server_dir, "/"QOSC_SERVER_CONF, NULL);
   STACK *st = sk_new(NULL);
   FILE *f = fopen(server_conf, "r");
-  char line[HUGE_STRING_LEN];
+  char line[QOSC_HUGE_STRING_LEN];
   char *httpdconf;
   char *root;
   char *p;
@@ -892,7 +895,7 @@ static char *qosc_locfile_id2name(request_rec *r, int line_number) {
   fs = fopen(status_file, "r");
   if(fs) {
     int i = 0;
-    char line[HUGE_STRING_LEN];
+    char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), fs)) {
       if(i == line_number) {
         char *end = strchr(line, ' ');
@@ -926,7 +929,7 @@ static int qosc_create_input_configuration(request_rec *r, const char *location)
     {
       FILE *f = fopen(apr_pstrcat(r->pool, location, ".url_deny", NULL), "r");
       if(f) {
-        char line[HUGE_STRING_LEN];
+        char line[QOSC_HUGE_STRING_LEN];
         df = fopen(dest, "a");
         while(!qosc_fgetline(line, sizeof(line), f)) {
           char *data;
@@ -969,7 +972,7 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
     FILE *fo = fopen(server_options, "r");
     char *query_option = "";
     if(fo) {
-      char line[HUGE_STRING_LEN];
+      char line[QOSC_HUGE_STRING_LEN];
       qosc_fgetline(line, sizeof(line), fo);
       if(strlen(line) > 0) {
         query_option = apr_pstrdup(r->pool, line);
@@ -1009,7 +1012,7 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
 
 static void qosc_qsfilter2_sort(request_rec *r, apr_table_t *locations,
                                 const char *running_file, const char *access_log) {
-  char line[HUGE_STRING_LEN];
+  char line[QOSC_HUGE_STRING_LEN];
   FILE *ac;
   FILE *fr = fopen(running_file, "w");
   if(fr) {
@@ -1180,7 +1183,7 @@ static void qosc_qsfilter2_permitdeny(request_rec *r) {
     FILE *f = fopen(file_name, "r");
     if(f) {
       char *search = apr_pstrcat(r->pool, "# ADD line ", url, ": ", NULL);
-      char line[HUGE_STRING_LEN];
+      char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), f)) {
         if(strncmp(line, search, strlen(search)) == 0) {
           char *u = &line[strlen(search)];
@@ -1235,7 +1238,7 @@ static void qosc_qsfilter2_report(request_rec *r) {
   if(file_name) {
     FILE *f = fopen(file_name, "r");
     if(f) {
-      char line[HUGE_STRING_LEN];
+      char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), f)) {
         ap_rprintf(r, "<code>%s</code><br>\n", ap_escape_html(r->pool, line));
       }        
@@ -1291,7 +1294,7 @@ static void qosc_qsfilter2_import(request_rec *r) {
 #else
       regex_t *regex = ap_pregcomp(r->pool, QOSC_REQ, REG_EXTENDED);
 #endif
-      char line[HUGE_STRING_LEN];
+      char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), f)) {
         ap_regmatch_t ma;
         if(ap_regexec(regex, line, 1, &ma, 0) == 0) {
@@ -1301,7 +1304,7 @@ static void qosc_qsfilter2_import(request_rec *r) {
           strncpy(m, &line[ma.rm_so], ma.rm_eo - ma.rm_so);
           m[ma.rm_eo - ma.rm_so] = '\0';
           m_start = strchr(m, ' ');
-          m_start++;
+          while(m_start[0] == ' ') m_start++;
           m_end = strrchr(m, ' ');
           m_end[0] = '\0';
           fprintf(d, "%s\n", m_start);
@@ -1376,7 +1379,7 @@ static int qosc_report_locations(request_rec *r, const char *server,
   int open_lines = 0;
   FILE *f = fopen(file, "r");
   if(f) {
-    char line[HUGE_STRING_LEN];
+    char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), f)) {
       if(strncmp(line, "# ADD line ", strlen("# ADD line ")) == 0) {
         char *url = &line[strlen("# ADD line ")];
@@ -1474,7 +1477,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
     FILE *f = fopen(server_options, "r");
     char *query_option = "";
     if(f) {
-      char line[HUGE_STRING_LEN];
+      char line[QOSC_HUGE_STRING_LEN];
       qosc_fgetline(line, sizeof(line), f);
       if(strlen(line) > 0) {
         query_option = apr_pstrdup(r->pool, line);
@@ -1558,7 +1561,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
     FILE *fr = fopen(running_file, "r");
     ap_rputs("<br><b>Rule generation process is running.</b><br><br>Status:<ul>\n", r);
     if(fr) {
-      char line[HUGE_STRING_LEN];
+      char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), fr)) {
         ap_rprintf(r, "%s\n", line);
       }
@@ -1573,7 +1576,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
     FILE *fs = fopen(status_file, "r");
     if(fs) {
       int i = 0;
-      char line[HUGE_STRING_LEN];
+      char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), fs)) {
         if(i == 0) {
           ap_rputs("<tr class=\"rowe\"><td>\n",r);
@@ -1669,7 +1672,7 @@ static void qosc_server(request_rec *r) {
       int hosts = 0;
       int locations = 0;
       char *conf = NULL;
-      char line[HUGE_STRING_LEN];
+      char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), f)) {
         if(strncmp(line, "conf=", strlen("conf=")) == 0) {
           conf = apr_pstrdup(r->pool, &line[strlen("conf=")]);
@@ -1794,7 +1797,7 @@ static int qosc_download(request_rec * r) {
   if(file_name) {
     FILE *f = fopen(file_name, "r");
     if(f) {
-      char line[HUGE_STRING_LEN];
+      char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), f)) {
         if(filter) {
           if(strncmp(line, filter, strlen(filter)) == 0) {
