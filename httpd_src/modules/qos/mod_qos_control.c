@@ -30,11 +30,13 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.23 2008-01-05 21:24:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.24 2008-01-07 12:12:51 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
  ***********************************************************************/
+#include <sys/types.h>
+#include <sys/stat.h>
 
 /* mod_qos requires OpenSSL */
 #include <openssl/rand.h>
@@ -961,6 +963,9 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
   for(i = 0; i < apr_table_elts(locations)->nelts; i++) {
     qosc_location *l = (qosc_location *)entry[i].val;
     char *cmd;
+    int status = 0;
+    struct stat attrib;
+    FILE *fr;
     FILE *fo = fopen(server_options, "r");
     char *query_option = "";
     if(fo) {
@@ -977,9 +982,7 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
                        query_option,
                        l->name, l->name,
                        l->name, l->name);
-    int status = 0;
-    struct stat attrib;
-    FILE *fr = fopen(running_file, "a");
+    fr = fopen(running_file, "a");
     if(fr) {
       fprintf(fr, "<li>process %s\n", ap_escape_html(r->pool, l->uri));
       fflush(fr);
@@ -994,7 +997,7 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
     }
     fr = fopen(running_file, "a");
     if(fr) {
-      fprintf(fr, " - %s</li>\n", status == 0 ? "done" : "failed");
+      fprintf(fr, " - %s</li>\n", status == 0 ? "done" : "<b>failed</b>");
       fflush(fr);
       fclose(fr);
     }
