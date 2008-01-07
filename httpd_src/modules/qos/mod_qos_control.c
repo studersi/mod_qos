@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.26 2008-01-07 20:07:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.27 2008-01-07 22:08:01 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -988,7 +988,7 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
       fclose(fo);
     }
     qosc_create_input_configuration(r, l->name);
-    cmd = apr_psprintf(r->pool, "%s %s -i %s -c %s.conf >%s.rep 2>%s.err",
+    cmd = apr_psprintf(r->pool, "%s %s -i %s -c %s.conf -e >%s.rep 2>%s.err",
                        sconf->qsfilter2,
                        query_option,
                        l->name, l->name,
@@ -1588,7 +1588,8 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
       while(!qosc_fgetline(line, sizeof(line), fs)) {
         if(i == 0) {
           ap_rputs("<tr class=\"rowe\"><td>\n",r);
-          ap_rprintf(r, "Results (%s):<br>&nbsp;<i>Note: please confirm all requests (deny/permit) and then"
+          ap_rprintf(r, "Results (%s):<br>&nbsp;<i>Note: please confirm all requests"
+                     " (deny/permit) and then"
                      " repeat the rule generation if necessary.</i>\n", line);
           ap_rputs("</td><td></td></tr>\n", r);
         } else {
@@ -1598,8 +1599,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
             char *loc;
             st[0] = '\0';
             st++;
-            loc = st;
-            loc++;
+            loc = strchr(st, ' ');
             loc[0] = '\0';
             loc++;
             ap_rputs("<tr class=\"rows\"><td>\n",r);
@@ -1618,7 +1618,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
             if(stat(apr_pstrcat(r->pool, id, ".err", NULL), &attrib) == 0) {
               if(attrib.st_size > 0) {
                 ap_rprintf(r, "<a title=\"stderr\" "
-                           "href=\"%sdownload.do?server=%s&loc=%d&type=err\">(errors)</a> ",
+                           "href=\"%sdownload.do?server=%s&loc=%d&type=err\">(stderr)</a> ",
                            qosc_get_path(r), ap_escape_html(r->pool, server), i);
               }
             }
