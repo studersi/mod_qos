@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.25 2008-01-07 19:58:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.26 2008-01-07 20:07:50 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -280,9 +280,16 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
           return HTTP_INTERNAL_SERVER_ERROR;
         }
         {
-          char tmp_buf[buf_len+1];
-          char *tmp_buf_p = tmp_buf;
-          sprintf(tmp_buf, "%.*s", buf_len, buf);
+          apr_pool_t *lpool;
+          char *tmp_buf_p;
+          apr_pool_create(&lpool, r->pool);
+          tmp_buf_p = apr_psprintf(lpool, "%.*s", buf_len, buf);
+          if(strchr(tmp_buf_p, QOSLF) == NULL) {
+            APR_BUCKET_REMOVE(bucket);
+            bucket = APR_BRIGADE_FIRST(bb);
+            apr_bucket_read(bucket, &buf, &buf_len, APR_BLOCK_READ);
+            tmp_buf_p = apr_psprintf(lpool, "%s%.*s", tmp_buf_p, buf_len, buf);
+          }
           if(!write && ap_strcasestr(tmp_buf_p, disp)) {
             write = 1;
             start = 0;
@@ -312,6 +319,7 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
               }
             }
           }
+          apr_pool_destroy(lpool);
         }
       }
       APR_BUCKET_REMOVE(bucket);
