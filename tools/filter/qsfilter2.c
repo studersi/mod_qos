@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.37 2008-01-07 22:06:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.38 2008-01-08 13:25:39 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -526,8 +526,9 @@ static char *qos_addstr(apr_pool_t *pool, char *o, char *d, char *n) {
 	  break;
 	}
       }
+      printf("+");
     }
-
+    printf(".");
     if(next == NULL) {
       p = NULL;
     } else {
@@ -619,6 +620,7 @@ static void qos_query_optimization(apr_pool_t *pool, apr_table_t *rules) {
 	  apr_table_setn(new, rule, (char *)rs);
 	  if(m_verbose) {
 	    printf(" to <%s>\n", rule);
+	    fflush(stdout);
 	  }
 	}
       }
@@ -646,11 +648,17 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
 
 
   if(m_query_multi_pcre) {
-    if(m_verbose) printf("# search for redundant rules ...\n");
+    if(m_verbose) {
+      printf("# search for redundant rules ...\n");
+      fflush(stdout);
+    }
     qos_query_optimization(pool, rules);
     if(m_verbose) printf("# ");
   } else {
-    if(m_verbose) printf("# search for redundant rules ");
+    if(m_verbose) {
+      printf("# search for redundant rules ");
+      fflush(stdout);
+    }
   }
 
   wt->pool = pool;
@@ -1002,6 +1010,90 @@ static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
   return rx;
 }
 
+static int qos_is_alnum(const char *string) {
+  unsigned char *in = (unsigned char *)string;
+  int i = 0;
+  if(in == NULL) return 0;
+  while(in[i]) {
+    if(!apr_isalnum(in[i])) return 0;
+    i++;
+  }
+  return 1;
+}
+
+static void qos_rule_optimization(apr_pool_t *pool, apr_pool_t *lpool, apr_table_t *rules) {
+  int i;
+  apr_table_t *new_rules = apr_table_make(pool, 5);
+  apr_table_t *del_rules = apr_table_make(pool, 5);
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+  for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+    qs_rule_t *rs = (qs_rule_t *)entry[i].val;
+    int hit = 0;
+    int j;
+    for(j = 0; j < apr_table_elts(rules)->nelts; j++) {
+      if(i != j) {
+	qs_rule_t *rsj = (qs_rule_t *)entry[j].val;
+	if(rs->query_m_string && rsj->query_m_string) {
+	  if(strcmp(rs->query_m_string, rsj->query_m_string) == 0) {
+	    if(strlen(entry[i].key) == strlen(entry[j].key)) {
+	      hit++;
+	    }
+	  }
+	  if(hit == 5) {
+	    int s = 0;
+	    int e = 0;
+	    while(entry[i].key[s] && (entry[i].key[s] == entry[j].key[s])) s++;
+	    e = s;
+	    while(entry[i].key[e] &&
+		  ((entry[i].key[e] != entry[j].key[e]) ||
+		   (apr_isalnum(entry[i].key[e]) && apr_isalnum(entry[j].key[e])))) e++;
+	    if((e > s) &&
+	       (s > 14) &&
+	       (e < strlen(entry[i].key)) && 
+	       (strstr(&entry[i].key[e], "\?") != NULL)) {
+	      const char *errptr = NULL;
+	      char *match = apr_psprintf(lpool, "%.*s%.*s",
+					 e-s, &entry[i].key[s],
+					 e-s, &entry[j].key[s]);
+	      if(qos_is_alnum(match)) {
+		char *matchx = apr_psprintf(lpool, "[%s]{%d}", qos_2pcre(lpool, match), e-s);
+		char *new = apr_psprintf(pool, "%.*s%s%s", s, entry[i].key, matchx, &entry[i].key[e]);
+		qs_rule_t *rsn = apr_palloc(pool, sizeof(qs_rule_t));
+		rsn->pcre = qos_pcre_compile(new, 0);
+		rsn->extra = pcre_study(rsn->pcre, 0, &errptr);
+		rsn->path = rs->path;
+		rsn->query_m_string = rs->query_m_string;
+		rsn->query_m_pcre = rs->query_m_pcre;
+		rsn->fragment = rs->fragment;
+		if(m_verbose) {
+		  printf("# CHANGE: <%s> to <%s>\n", entry[i].key, new);
+		  fflush(stdout);
+		}
+		apr_table_setn(new_rules, new, (char *)rsn);
+		apr_table_addn(del_rules, entry[i].key, entry[i].val);
+		apr_table_addn(del_rules, entry[j].key, entry[j].val);
+		if(m_verbose > 1) {
+		  if(m_verbose) printf("  [%s] [%s]\n", entry[i].key, entry[j].key);
+		  if(m_verbose) printf("  [%s] [%s]\n", match, matchx);
+		}
+		break;
+	      }
+	    }
+	  }
+	}
+      }
+    }
+  }
+  entry = (apr_table_entry_t *)apr_table_elts(new_rules)->elts;
+  for(i = 0; i < apr_table_elts(new_rules)->nelts; i++) {
+    apr_table_setn(rules, entry[i].key, entry[i].val);
+  }
+  entry = (apr_table_entry_t *)apr_table_elts(del_rules)->elts;
+  for(i = 0; i < apr_table_elts(del_rules)->nelts; i++) {
+    apr_table_unset(rules, entry[i].key);
+  }
+}
+
 /* process the input file line by line */
 static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
 			    apr_table_t *rules_url, FILE *f, int *ln, int *dc, int first) {
@@ -1009,16 +1101,13 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
   int deny_count = *dc;
   int line_nr = *ln;
   apr_table_t *source_rules = apr_table_make(pool, 10);
+  int rule_optimization = 300;
   while(!qos_fgetline(line, sizeof(line), f)) {
     int doubleSlash = 0;
     apr_uri_t parsed_uri;
     apr_pool_t *lpool;
     apr_pool_create(&lpool, NULL);
     line_nr++;
-    if(apr_table_elts(rules)->nelts == 2000) {
-      fprintf(stderr, "ERROR, too many rules\n");
-      if(m_exit_on_error) exit(1);
-    }
     if((strlen(line) > 1) && line[1] == '/') {
       doubleSlash = 1;
       strcpy(line, &line[1]);
@@ -1118,6 +1207,9 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    if(m_query_multi_pcre && !fragment) {
 	      rs->query_m_string = apr_pstrdup(pool, query_m_string);
 	      rs->query_m_pcre = apr_pstrdup(pool, query_m_pcre);
+	    } else {
+	      rs->query_m_string = NULL;
+	      rs->query_m_pcre = NULL;
 	    }
 	    // don't mind if extra is null
 	    if(m_verbose) {
@@ -1135,6 +1227,21 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	      apr_table_add(rules_url, copy, "unescaped line");
 	      apr_table_add(source_rules, rule, "");
 	      apr_table_setn(rules, rule, (char *)rs);
+	    }
+	    if(apr_table_elts(rules)->nelts == 2000) {
+	      fprintf(stderr, "ERROR, too many rules (limited to max. 2000)\n");
+	      if(m_exit_on_error) exit(1);
+	    }
+	    /* rule optimazion searching for redundant patterns (only in
+	       conjunction with -m, -b and !-n */
+	    if((apr_table_elts(rules)->nelts == rule_optimization) &&
+	       m_redundant &&
+	       m_query_multi_pcre &&
+	       m_base64) {
+	      /* got too many rules, try to find more general rules */
+	      if(m_verbose) printf("# too many rules: start rule optimization ...\n");
+	      qos_rule_optimization(pool, lpool, rules);
+	      rule_optimization = rule_optimization + 300;
 	    }
 	  }
 	}
