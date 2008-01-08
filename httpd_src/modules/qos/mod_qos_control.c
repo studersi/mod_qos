@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.27 2008-01-07 22:08:01 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.28 2008-01-08 20:28:03 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -285,6 +285,7 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
           apr_pool_create(&lpool, r->pool);
           tmp_buf_p = apr_psprintf(lpool, "%.*s", buf_len, buf);
           if(strchr(tmp_buf_p, QOSLF) == NULL) {
+            /* $$$ */
             APR_BUCKET_REMOVE(bucket);
             bucket = APR_BRIGADE_FIRST(bb);
             apr_bucket_read(bucket, &buf, &buf_len, APR_BLOCK_READ);
@@ -302,18 +303,23 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
                 write = 0;
                 start = 0;
               } else {
-                ap_regmatch_t ma;
-                if(ap_regexec(regex, tmp_buf_p, 1, &ma, 0) == 0) {
-                  char m[ma.rm_eo - ma.rm_so + 1];
-                  char *m_start;
-                  char *m_end;
-                  strncpy(m, &tmp_buf_p[ma.rm_so], ma.rm_eo - ma.rm_so);
-                  m[ma.rm_eo - ma.rm_so] = '\0';
-                  m_start = strchr(m, ' ');
-                  while(m_start[0] == ' ') m_start++;
-                  m_end = strrchr(m, ' ');
-                  m_end[0] = '\0';
-                  fprintf(f, "%s\n", m_start);
+                if(regex) {
+                  ap_regmatch_t ma;
+                  if(ap_regexec(regex, tmp_buf_p, 1, &ma, 0) == 0) {
+                    char m[ma.rm_eo - ma.rm_so + 1];
+                    char *m_start;
+                    char *m_end;
+                    strncpy(m, &tmp_buf_p[ma.rm_so], ma.rm_eo - ma.rm_so);
+                    m[ma.rm_eo - ma.rm_so] = '\0';
+                    m_start = strchr(m, ' ');
+                    while(m_start[0] == ' ') m_start++;
+                    m_end = strrchr(m, ' ');
+                    m_end[0] = '\0';
+                    fprintf(f, "%s\n", m_start);
+                    fflush(f);
+                  }
+                } else {
+                  fprintf(f, "%s", tmp_buf_p);
                   fflush(f);
                 }
               }
@@ -498,6 +504,39 @@ static void qosc_create_server(request_rec *r) {
               }
             }
           }
+        } else {
+          if(r->method_number == M_POST) {
+            char *w = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+            if(mkdir(w, 0750) != 0) {
+              ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                            QOSC_LOG_PFX(0)"failed to create directory '%s'", w); 
+              ap_rprintf(r, "Failed to create directory '%s'", w);
+            } else {
+              char *httpdconf = apr_pstrcat(r->pool, w, "/httpd.conf", NULL);
+              f = fopen(httpdconf, "w");
+              if(f) {
+                apr_status_t status = qosc_store_multipart(r, f, "httpd_conf", NULL);
+                if(status != APR_SUCCESS) {
+                  fclose(f);
+                  f=NULL;
+                  unlink(httpdconf);
+                  unlink(w);
+                } else {
+                  char *sc = apr_pstrcat(r->pool, w, "/"QOSC_SERVER_CONF, NULL);
+                  FILE *c = fopen(sc, "w");
+                  if(c) {
+                    fprintf(c, "conf=%s\n", httpdconf);
+                    fclose(c);
+                  }
+                  c = fopen(apr_pstrcat(r->pool, w, "/"QOSC_SERVER_OPTIONS, NULL), "w");
+                  if(c) {
+                    fprintf(c, "-m\n");
+                    fclose(c);
+                  }
+                }
+              }
+            }
+          }
         }
         if(f == NULL) {
           // failed
@@ -513,20 +552,34 @@ static void qosc_create_server(request_rec *r) {
       if(strcmp(action, "add") == 0) {
         char *w = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
         DIR *dir = opendir(w);
+        ap_rputs("<table class=\"btable\"><tbody>\n",r);
         if(!dir){ 
+          ap_rputs("<tr class=\"rows\"><td>\n",r);
           ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\">\n",
                      qosc_get_path(r));
           ap_rprintf(r, "Specify the server configuration file (httpd.conf) for '%s':<br>\n"
-                     " <input name=\"conf\" value=\"&lt;path&gt;\" type=\"text\" size=\"50\">\n"
+                     "&nbsp;<input name=\"conf\" value=\"&lt;path&gt;\" type=\"text\" size=\"50\">\n"
                      " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
                      " <input name=\"action\" value=\"set\" type=\"submit\">\n"
                      " </form>\n", ap_escape_html(r->pool, server),
                      ap_escape_html(r->pool, server));
+          ap_rputs("</td></tr>\n",r);
+          ap_rputs("<tr class=\"rows\"><td>\n",r);
+
+          ap_rputs("Upload a httpd.conf file:<br>", r);
+          ap_rprintf(r, "<form action=\"%sct.do?server=%s&action=set\""
+                     " method=\"post\" enctype=\"multipart/form-data\">\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, server));
+          ap_rprintf(r, "&nbsp;<input name=\"httpd_conf\" value=\"\" type=\"file\" size=\"50\">\n"
+                     " <input name=\"action\" value=\"upload\" type=\"submit\">\n"
+                     " </form>\n", ap_escape_html(r->pool, server));
+          ap_rputs("</td></tr>\n",r);
         } else {
           closedir(dir);
           ap_rprintf(r, "Server '%s' already exists.",
                      ap_escape_html(r->pool, server));
         }
+        ap_rputs("</tbody></table>\n", r);
       }
     }
   }
