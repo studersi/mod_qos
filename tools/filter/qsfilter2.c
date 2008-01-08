@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.39 2008-01-08 13:33:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.40 2008-01-08 19:09:49 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -1097,7 +1097,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
   int deny_count = *dc;
   int line_nr = *ln;
   apr_table_t *source_rules = apr_table_make(pool, 10);
-  int rule_optimization = 300;
+  int rule_optimization = 200;
   while(!qos_fgetline(line, sizeof(line), f)) {
     int doubleSlash = 0;
     apr_uri_t parsed_uri;
@@ -1235,9 +1235,16 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	       m_query_multi_pcre &&
 	       m_base64) {
 	      /* got too many rules, try to find more general rules */
-	      if(m_verbose) printf("# too many rules: start rule optimization ...\n");
+	      if(m_verbose) {
+		printf("# too many rules: start rule optimization ...\n");
+		fflush(stdout);
+	      }
 	      qos_rule_optimization(pool, lpool, rules);
-	      rule_optimization = rule_optimization + 300;
+	      if(m_verbose) {
+		printf("# continue with rule generation\n");
+		fflush(stdout);
+	      }
+	      rule_optimization = rule_optimization + 200;
 	    }
 	  }
 	}
