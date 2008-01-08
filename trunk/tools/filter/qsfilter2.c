@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.41 2008-01-08 19:16:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.42 2008-01-08 20:28:02 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -1032,7 +1032,8 @@ static int qos_is_alnum(const char *string) {
   return 1;
 }
 
-static void qos_rule_optimization(apr_pool_t *pool, apr_pool_t *lpool, apr_table_t *rules) {
+static void qos_rule_optimization(apr_pool_t *pool, apr_pool_t *lpool,
+				  apr_table_t *rules, apr_table_t *special_rules) {
   int i;
   apr_table_t *new_rules = apr_table_make(pool, 5);
   apr_table_t *del_rules = apr_table_make(pool, 5);
@@ -1256,7 +1257,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 		printf("# too many rules: start rule optimization ...\n");
 		fflush(stdout);
 	      }
-	      qos_rule_optimization(pool, lpool, rules);
+	      qos_rule_optimization(pool, lpool, rules, special_rules);
 	      if(m_verbose) {
 		printf("# continue with rule generation\n");
 		fflush(stdout);
