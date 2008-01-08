@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.40 2008-01-08 19:09:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.41 2008-01-08 19:16:38 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -686,7 +686,8 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
 
 /* test if we need to create a new url (and save line if the rule is used the very
    first time (rule has been read from the configuration file)) */
-static int qos_test_for_existing_rule(char *plain, char *line, apr_table_t *rules, int line_nr,
+static int qos_test_for_existing_rule(char *plain, char *line, apr_table_t *rules, 
+				      apr_table_t *special_rules, int line_nr,
 				      apr_table_t *rules_url, apr_table_t *source_rules, int first) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
@@ -697,12 +698,26 @@ static int qos_test_for_existing_rule(char *plain, char *line, apr_table_t *rule
       if(first && (apr_table_get(source_rules, entry[i].key) == NULL)) {
 	apr_table_add(source_rules, entry[i].key, "");
 	apr_table_add(rules_url, line, "");
+	apr_table_setn(special_rules, entry[i].key, (char *)rs);
 	if(m_verbose) {
 	  printf("# ADD line %d: %s\n", line_nr, plain);
 	  printf("# --- %s\n", entry[i].key);
 	}
       }
       if(m_verbose > 1)	printf("LINE %d, exiting rule: %s\n", line_nr, entry[i].key);
+      return 1;
+    }
+  }
+  /* check for special rules */
+  entry = (apr_table_entry_t *)apr_table_elts(special_rules)->elts;
+  for(i = 0; i < apr_table_elts(special_rules)->nelts; i++) {
+    qs_rule_t *rs = (qs_rule_t *)entry[i].val;
+    if(pcre_exec(rs->pcre, rs->extra, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+      if(m_verbose) {
+	printf("# ADD line %d: %s\n", line_nr, plain);
+	printf("# -(S) %s\n", entry[i].key);
+      }
+      apr_table_setn(rules, entry[i].key, (char *)rs);
       return 1;
     }
   }
@@ -1092,7 +1107,8 @@ static void qos_rule_optimization(apr_pool_t *pool, apr_pool_t *lpool, apr_table
 
 /* process the input file line by line */
 static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
-			    apr_table_t *rules_url, FILE *f, int *ln, int *dc, int first) {
+			    apr_table_t *rules_url, apr_table_t *special_rules,
+			    FILE *f, int *ln, int *dc, int first) {
   char line[MAX_LINE];
   int deny_count = *dc;
   int line_nr = *ln;
@@ -1127,7 +1143,8 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 		line_nr, line);
 	deny_count++;
       } else {
-	if(!qos_test_for_existing_rule(line, copy, rules, line_nr, rules_url, source_rules, first)) {
+	if(!qos_test_for_existing_rule(line, copy, rules, special_rules,
+				       line_nr, rules_url, source_rules, first)) {
 	  if(m_verbose > 1) printf("LINE %d, analyse: %s\n", line_nr, line);
 	  if(parsed_uri.query) {
 	    if(strcmp(parsed_uri.path, "/") == 0) {
@@ -1306,6 +1323,7 @@ int main(int argc, const char * const argv[]) {
   FILE *f;
   apr_pool_t *pool;
   apr_table_t *rules;
+  apr_table_t *special_rules;
   apr_table_t *blacklist;
   apr_table_t *rules_url;
   int blacklist_size = 0;
@@ -1315,6 +1333,7 @@ int main(int argc, const char * const argv[]) {
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
   rules = apr_table_make(pool, 10);
+  special_rules = apr_table_make(pool, 10);
   blacklist = apr_table_make(pool, 10);
   rules_url = apr_table_make(pool, 10);
   nice(10);
@@ -1395,7 +1414,7 @@ int main(int argc, const char * const argv[]) {
     fprintf(stderr, "ERROR, could not open input file %s\n", access_log);
     exit(1);
   }
-  qos_process_log(pool, blacklist, rules, rules_url, f, &line_nr, &deny_count, 1);
+  qos_process_log(pool, blacklist, rules, rules_url, special_rules, f, &line_nr, &deny_count, 1);
   fclose(f);
 
   if(m_redundant) {
@@ -1412,7 +1431,7 @@ int main(int argc, const char * const argv[]) {
     //      qos_load_whitelist(pool, rules, httpdconf);
     //    }
     f = fopen(access_log, "r");
-    qos_process_log(pool, blacklist, rules, rules_url, f, &xl, &y, 0);
+    qos_process_log(pool, blacklist, rules, rules_url, special_rules, f, &xl, &y, 0);
     fclose(f);
   }
 
