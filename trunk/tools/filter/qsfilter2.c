@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.38 2008-01-08 13:25:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.39 2008-01-08 13:33:26 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -518,17 +518,13 @@ static char *qos_addstr(apr_pool_t *pool, char *o, char *d, char *n) {
 
     /* \| */
     while(next) {
-      if(next > this) {
-	if(next[-1] == '\\') {
-	  next++;
-	  next = strchr(next, d[0]);
-	} else {
-	  break;
-	}
+      if((next > this) && (next[-1] == '\\')) {
+	next++;
+	next = strchr(next, d[0]);
+      } else {
+	break;
       }
-      printf("+");
     }
-    printf(".");
     if(next == NULL) {
       p = NULL;
     } else {
