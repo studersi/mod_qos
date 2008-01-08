@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.28 2008-01-08 20:28:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.29 2008-01-08 20:51:17 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -172,12 +172,12 @@ static char *qosc_pcre_escape(apr_pool_t *pool, const char *string) {
   return ret;
 }
 
-static int qosc_is_alnum(const char *string) {
+static int qosc_is_alnum_uc(const char *string) {
   unsigned char *in = (unsigned char *)string;
   int i = 0;
   if(in == NULL) return 0;
   while(in[i]) {
-    if(!apr_isalnum(in[i])) return 0;
+    if(!apr_isalnum(in[i]) && (in[i] != '_')) return 0;
     i++;
   }
   return 1;
@@ -185,7 +185,7 @@ static int qosc_is_alnum(const char *string) {
 
 static const char *qosc_get_server(apr_table_t *qt) {
   const char *server = apr_table_get(qt, "server");
-  if(!server || !qosc_is_alnum(server)) return NULL;
+  if(!server || !qosc_is_alnum_uc(server)) return NULL;
   return server;
 }
 
@@ -466,7 +466,7 @@ static void qosc_create_server(request_rec *r) {
   apr_table_t *qt = qosc_get_query_table(r);
   const char *action = apr_table_get(qt, "action");
   const char *server = qosc_get_server(qt);
-  if((server == NULL) || !qosc_is_alnum(server) ||
+  if((server == NULL) || !qosc_is_alnum_uc(server) ||
      (strcmp(server, "ct") == 0) ||
      (strcmp(server, "qsfilter2") == 0) ||
      (strcmp(server, "download") == 0)) {
@@ -1961,10 +1961,12 @@ function checkserver ( form ) {\n\
     if((form.server.value.charAt(i) < \"0\") ||\n\
        ((form.server.value.charAt(i) > \"9\") && (form.server.value.charAt(i) < \"a\")) ||\n\
        (form.server.value.charAt(i) > \"z\")) {\n\
-      chkZ = -1;\n\
+      if(form.server.value.charAt(i) != \"_\") {\n\
+        chkZ = -1;\n\
+      }\n\
   }\n\
   if (chkZ == -1) {\n\
-    alert(\"Allowed character set for server name: [0-9a-z].\" );\n\
+    alert(\"Allowed character set for server name: 0-9, a-z and '_'.\" );\n\
     return false;\n\
   }\n\
   return true;\n\
