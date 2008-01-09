@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.31 2008-01-09 12:31:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.32 2008-01-09 20:37:09 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -74,7 +74,7 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.31 2008-01-09 12:31:3
 #define QOSCR 13
 #define QOSLF 10
 #define QOSC_HUGE_STRING_LEN 32768
-#define QOSC_REQ          "(OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PROPFIND|PROPPATCH|MKCOL|COPY|MOVE|LOCK|UNLOCK|VERSION-CONTROL|REPORT|CHECKOUT|CHECKIN|UNCHECKOUT|MKWORKSPACE|UPDATE|LABEL|MERGE|BASELINE-CONTROL|MKACTIVITY|ORDERPATCH|ACL|PATCH|SEARCH|BCOPY|BDELETE|BMOVE|BPROPFIND|BPROPPATCH|NOTIFY|POLL|SUBSCRIBE|UNSUBSCRIBE|X-MS-ENUMATTS|RPC_IN_DATA|RPC_OUT_DATA) ([\x20-\x21\x23-\xFF])* HTTP/"
+#define QOSC_REQ          "(OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PROPFIND|PROPPATCH|MKCOL|COPY|MOVE|LOCK|UNLOCK|VERSION-CONTROL|REPORT|CHECKOUT|CHECKIN|UNCHECKOUT|MKWORKSPACE|UPDATE|LABEL|MERGE|BASELINE-CONTROL|MKACTIVITY|ORDERPATCH|ACL|PATCH|SEARCH|BCOPY|BDELETE|BMOVE|BPROPFIND|BPROPPATCH|NOTIFY|POLL|SUBSCRIBE|UNSUBSCRIBE|X-MS-ENUMATTS|RPC_IN_DATA|RPC_OUT_DATA) /[\x20-\x21\x23-\xFF]* HTTP/"
 
 /************************************************************************
  * structures
@@ -153,7 +153,7 @@ static int qosc_unescaping(char *x) {
       i += 2;
     }
     if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
-      ch = qos_hex2c(&x[i + 2]);
+      ch = qosc_hex2c(&x[i + 2]);
       i += 3;
     }
     x[j] = ch;
@@ -279,9 +279,9 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
     }
     while(!APR_BRIGADE_EMPTY(bb) && !seen_eos) {
       apr_bucket *bucket = APR_BRIGADE_FIRST(bb);
-      if (APR_BUCKET_IS_EOS(bucket)) {
+      if(APR_BUCKET_IS_EOS(bucket)) {
         seen_eos = 1;
-      } else if (APR_BUCKET_IS_FLUSH(bucket)) {
+      } else if(APR_BUCKET_IS_FLUSH(bucket)) {
         /* do nothing */
       } else {
         rc = apr_bucket_read(bucket, &buf, &buf_len, APR_BLOCK_READ);
@@ -295,12 +295,18 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
           char *tmp_buf_p;
           apr_pool_create(&lpool, r->pool);
           tmp_buf_p = apr_psprintf(lpool, "%.*s", buf_len, buf);
-          if(strchr(tmp_buf_p, QOSLF) == NULL) {
-            /* $$$ */
+          while(strchr(tmp_buf_p, QOSLF) == NULL) {
             APR_BUCKET_REMOVE(bucket);
             bucket = APR_BRIGADE_FIRST(bb);
-            apr_bucket_read(bucket, &buf, &buf_len, APR_BLOCK_READ);
-            tmp_buf_p = apr_psprintf(lpool, "%s%.*s", tmp_buf_p, buf_len, buf);
+            if(APR_BUCKET_IS_EOS(bucket)) {
+              seen_eos = 1;
+            } else if(APR_BUCKET_IS_FLUSH(bucket)) {
+              /* do nothing */
+            } else {
+              apr_bucket_read(bucket, &buf, &buf_len, APR_BLOCK_READ);
+              tmp_buf_p = apr_psprintf(lpool, "%s%.*s", tmp_buf_p, buf_len, buf);
+              if(seen_eos) break;
+            }
           }
           if(!write && ap_strcasestr(tmp_buf_p, disp)) {
             write = 1;
