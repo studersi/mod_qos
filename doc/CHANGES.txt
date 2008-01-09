@@ -1,4 +1,12 @@
 
+Version 5.4
+
+ - Important:
+   QS_PermitUri, QS_Deny*, qsfilter2 apply filter rules against
+   unescaped URLs where %<hex> and \x<hex> (new!) is unescaped.
+   You should regenerate your QS_PermitUri rules using the updated
+   version of the qsfilter2 tool provided by this release.
+
 Version 5.2
 
  - QS_VipHeaderName creates session cookie only once.
