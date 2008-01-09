@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.43 2008-01-09 12:28:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.44 2008-01-09 13:28:09 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -572,6 +572,7 @@ static char *qos_qqs(apr_pool_t *pool, char *string, char *query_pcre, int singl
   } else {
     if(hasEq && !singleEq) {
       se = "(=[&]?)*";
+      return apr_pstrcat(pool, s, "(((", string, ")[&]?)*", se, ")*", NULL);
     }
     return apr_pstrcat(pool, s, "((", string, ")[&]?)*", se, NULL);
   }
@@ -1133,7 +1134,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
   int deny_count = *dc;
   int line_nr = *ln;
   apr_table_t *source_rules = apr_table_make(pool, 10);
-  int rule_optimization = 200;
+  int rule_optimization = 300;
   while(!qos_fgetline(line, sizeof(line), f)) {
     int doubleSlash = 0;
     apr_uri_t parsed_uri;
