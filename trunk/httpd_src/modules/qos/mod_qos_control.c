@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.32 2008-01-09 20:37:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.33 2008-01-09 21:17:25 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1098,7 +1098,6 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
 
 static void qosc_qsfilter2_sort(request_rec *r, apr_table_t *locations,
                                 const char *running_file, const char *access_log) {
-  char line[QOSC_HUGE_STRING_LEN];
   FILE *ac;
   FILE *fr = fopen(running_file, "w");
   if(fr) {
@@ -1107,16 +1106,22 @@ static void qosc_qsfilter2_sort(request_rec *r, apr_table_t *locations,
     fclose(fr);
   }
   ac = fopen(access_log, "r");
-  while(!qosc_fgetline(line, sizeof(line), ac)) {
-    const char *loc = qosc_get_location_match(locations, line);
-    qosc_location *l = (qosc_location *)apr_table_get(locations, loc);
-    if(l == NULL) l = (qosc_location *)apr_table_get(locations, "404");
-    if(l) {
-      fprintf(l->fd, "%s\n", line);
-    } else {
-      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                    QOSC_LOG_PFX(0)"no location found for '%s'", line);
+  if(ac) {
+    char line[QOSC_HUGE_STRING_LEN];
+    while(!qosc_fgetline(line, sizeof(line), ac)) {
+      const char *loc = qosc_get_location_match(locations, line);
+      qosc_location *l = (qosc_location *)apr_table_get(locations, loc);
+      if(l == NULL) l = (qosc_location *)apr_table_get(locations, "404");
+      if(l) {
+        fprintf(l->fd, "%s\n", line);
+      } else {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOSC_LOG_PFX(0)"no location found for '%s'", line);
+      }
     }
+  } else {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"failed to open '%s' (%s)", access_log, strerror(errno));
   }
   fr = fopen(running_file, "a");
   if(fr) {
@@ -1154,11 +1159,11 @@ static void qosc_qsfilter2_start(request_rec *r) {
       int status;
       FILE *fr = fopen(running_file, "w");
       if(fr) fclose(fr);
+      fclose(ac);
       /*
        * well, we seem to be ready to start data processing
        * no "return" after this line...
        */
-      fclose(ac);
       qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), server,
                                       ".do?action=qsfilter2", NULL));
       switch (pid = fork()) {
@@ -1182,7 +1187,8 @@ static void qosc_qsfilter2_start(request_rec *r) {
           status = unlink(running_file);
           if(status != 0) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOSC_LOG_PFX(0)"could remove status file '%s'", running_file);
+                          QOSC_LOG_PFX(0)"could remove status file '%s' (%s)",
+                          running_file, strerror(errno));
           }
           exit(0);
         default:
@@ -1747,6 +1753,7 @@ static void qosc_server(request_rec *r) {
     ap_rputs("Could not open server directory.", r);
     return;
   }
+  closedir(dir);
   if(action && (strcmp(action, "load") == 0)) {
     qosc_server_load(r, server);
   } else if(action && (strcmp(action, "qsfilter2") == 0)) {
