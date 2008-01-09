@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.42 2008-01-08 20:28:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.43 2008-01-09 12:28:54 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -142,29 +142,37 @@ static char *qos_detect_b64(char *line, int silent) {
 
 /* escape a string in order to be used withn a pcre */
 static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
-  char *existing = "";
   int i = 0;
+  unsigned char prev = 0;
   unsigned char *in = (unsigned char *)line;
   char *ret = apr_pcalloc(pool, strlen(line) * 4);
   int reti = 0;
   if(strlen(line) == 0) return "";
   while(in[i]) {
-    if(strchr("{}[]()^$.|*+?\"'", in[i]) != NULL) {
-      ret[reti] = '\\';
-      reti++;
-      ret[reti] = in[i];
-      reti++;
+    if(strchr("{}[]()^$.|*+?\"'\\-", in[i]) != NULL) {
+      if(prev && (prev == '\\')) {
+	/* already escaped */
+	ret[reti] = in[i];
+	reti++;
+      } else if(prev && (in[i] == '\\') && (strchr("{}[]()^$.|*+?\"'\\-", in[i+1]) != NULL)) {
+	/* escape char */
+	ret[reti] = in[i];
+	reti++;
+      } else {
+	ret[reti] = '\\';
+	reti++;
+	ret[reti] = in[i];
+	reti++;
+      }
     } else if((in[i] < ' ') || (in[i]  > '~')) {
       char *ck = apr_psprintf(pool, "#\\x%02x#", in[i]);
-      if(strstr(existing, ck) == NULL) {
-	sprintf(&ret[reti], "\\x%02x", in[i]);
-	reti = reti + 4;
-	existing = apr_pstrcat(pool, existing, ck, NULL);
-      }
+      sprintf(&ret[reti], "\\x%02x", in[i]);
+      reti = reti + 4;
     } else {
       ret[reti] = in[i];
       reti++;
     }
+    prev = in[i];
     i++;
   }
   return ret;
@@ -194,6 +202,13 @@ static int qos_hex2c(const char *x) {
   return i;
 }
 
+static int qos_ishex(char x) {
+  if((x >= '0') && (x <= '9')) return 1;
+  if((x >= 'a') && (x <= 'f')) return 1;
+  if((x >= 'A') && (x <= 'F')) return 1;
+  return 0;
+}
+
 /* url decoding */
 static int qos_unescaping(char *x) {
   int i, j, ch;
@@ -204,6 +219,10 @@ static int qos_unescaping(char *x) {
     if (ch == '%' && isxdigit(x[i + 1]) && isxdigit(x[i + 2])) {
       ch = qos_hex2c(&x[i + 1]);
       i += 2;
+    }
+    if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
+      ch = qos_hex2c(&x[i + 2]);
+      i += 3;
     }
     x[j] = ch;
   }
@@ -997,6 +1016,7 @@ static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
   }
   last = strrchr(lpath, '/');
   while(last && depth) {
+    qos_unescaping(last);
     if(m_base64 && qos_detect_b64(last, 0)) {
       str = apr_pstrcat(lpool, qos_b64_2pcre(lpool, last), str, NULL);
     } else {
@@ -1011,7 +1031,6 @@ static char *qos_path_pcre_string(apr_pool_t *lpool, const char *path) {
     rx = apr_pstrcat(lpool, "[", qos_2pcre(lpool, lpath), "]+", NULL);
   }
   if(strlen(str) > 0) {
-    qos_unescaping(str);
     if(nohandler) {
       rx = apr_pstrcat(lpool, rx, str, "[/]?", NULL);
     } else {
