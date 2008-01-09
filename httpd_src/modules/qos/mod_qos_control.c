@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.29 2008-01-08 20:51:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.30 2008-01-09 07:03:23 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -67,7 +67,7 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.29 2008-01-08 20:51:1
  ***********************************************************************/
 #define QOSC_LOG_PFX(id)  "mod_qos_control("#id"): "
 #define QOSC_SERVER_CONF  "server.conf"
-#define QOSC_SERVER_OPTIONS "server.options"
+#define QOSC_SERVER_OPTIONS "qsfilter2.options"
 #define QOSC_ACCESS_LOG   ".qs_access_log"
 #define QOSC_RUNNING      ".qs_running"
 #define QOSC_STATUS       ".qs_status"
@@ -196,7 +196,7 @@ static char *qosc_url2filename(apr_pool_t *pool, const char *url) {
     if(p[0] == '/') p[0] = '_';
     p++;
   }
-  return u;
+  return apr_pstrcat(pool, "qs/", u, NULL);
 }
 
 static int qosc_fgetline(char *s, int n, FILE *f) {
@@ -493,6 +493,7 @@ static void qosc_create_server(request_rec *r) {
             } else {
               char *sc = apr_pstrcat(r->pool, w, "/"QOSC_SERVER_CONF, NULL);
               FILE *c = fopen(sc, "w");
+              mkdir(apr_pstrcat(r->pool, w, "/qs", NULL), 0750);
               if(c) {
                 fprintf(c, "conf=%s\n", conf);
                 fclose(c);
@@ -513,6 +514,7 @@ static void qosc_create_server(request_rec *r) {
               ap_rprintf(r, "Failed to create directory '%s'", w);
             } else {
               char *httpdconf = apr_pstrcat(r->pool, w, "/httpd.conf", NULL);
+              mkdir(apr_pstrcat(r->pool, w, "/qs", NULL), 0750);
               f = fopen(httpdconf, "w");
               if(f) {
                 apr_status_t status = qosc_store_multipart(r, f, "httpd_conf", NULL);
@@ -678,7 +680,7 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
       char *loc = apr_pstrdup(r->pool, "404");
       qosc_location *l = apr_pcalloc(r->pool, sizeof(qosc_location));
       l->uri = loc;
-      l->name = apr_pstrcat(r->pool, server_dir, "/404.loc", NULL);
+      l->name = apr_pstrcat(r->pool, server_dir, "/qs/404.loc", NULL);
       if(init) {
         l->fd = fopen(l->name, "w");
         unlink(apr_pstrcat(r->pool, l->name, ".url_deny_new", NULL));
@@ -1048,7 +1050,13 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
                        l->name, l->name);
     fr = fopen(running_file, "a");
     if(fr) {
-      fprintf(fr, "<li>process %s\n", ap_escape_html(r->pool, l->uri));
+      /*
+      fprintf(fr, "<li>process <a href=\"%sdownload.do?server=%s&loc=%d\">%s</a>\n",
+              qosc_get_path(r), ap_escape_html(r->pool, server), i,
+              ap_escape_html(r->pool, l->uri));
+      */
+      fprintf(fr, "<li>process %s\n",
+              ap_escape_html(r->pool, l->uri));
       fflush(fr);
       fclose(fr);
     }
