@@ -29,9 +29,11 @@ echo "/app/test?=" >> access_log
 echo "/app/ervlet?action=search&ret=http%3A%2F%2Fserver%2Fapp&name=value&&name=value" >> access_log
 echo "/app/ervlet?other=search&ret=http%3A%2F%2Fserver%2Fapp&name=value&&name=value" >> access_log
 echo "/app/k.x/umlhex\xc3\xbcurl%C3%BC/?Cmd=new" >> access_log
+echo "/o-b/test.php?blah1=&blah2=" >> access_log
 
-#./qsfilter2 -e -i access_log -m
+#./qsfilter2 -e -i access_log -m $@
 #exit 0
+
 ./qsfilter2 -e -i access_log -m > qm2.txt
 diff qm2.txt qm2.txt.ref
 ./qsfilter2 -e -i access_log  > q2.txt
