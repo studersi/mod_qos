@@ -42,15 +42,17 @@
 # 021 ^[/a-zA-Z]+/ervlet\?(action=[a-zA-Z]{0,16}[&]?)?(ret=[a-zA-Z:/]{0,27}[&]?)?(name=[a-zA-Z]{0,15}[&]?)?[&]?(name=[a-zA-Z]{0,15}[&]?)?$
 # ADD line 28: /app/ervlet?other=search&ret=http%3A%2F%2Fserver%2Fapp&name=value&&name=value
 # 022 ^[/a-zA-Z]+/ervlet\?(other=[a-zA-Z]{0,16}[&]?)?(ret=[a-zA-Z:/]{0,27}[&]?)?(name=[a-zA-Z]{0,15}[&]?)?[&]?(name=[a-zA-Z]{0,15}[&]?)?$
-# search for redundant rules [11][12][13][14][15][16][17][18][19][20][21][0][1][2][3][4][5][6][7][8][9][10] done
+# ADD line 29: /app/k.x/umlhex\xc3\xbcurl%C3%BC/?Cmd=new
+# 023 ^[/a-zA-Z\.]+/umlhex\xc3\xbcurl\xc3\xbc[/]?\?(Cmd=[a-zA-Z]{0,13}[&]?)?$
+# search for redundant rules [11][12][13][14][15][16][17][18][19][20][21][22][0][1][2][3][4][5][6][7][8][9][10] done
 # DEL rule (not required): ^(/[a-zA-Z0-9-_]+)+[/]?\.?[a-zA-Z]{0,4}$
 # DEL rule (not required): ^[/a-zA-Z_0-9\.;=!\-]+$
 # DEL rule (not required): ^[/a-zA-Z]+/test\?(n=[a-zA-Z]{0,11}[&]?)?(=)?$
 # verfiy new rules ...
 
 # --------------------------------------------------------
-# Tue Jan  8 13:10:36 2008
-# 19 rules from 28 access log lines
+# Wed Jan  9 12:51:24 2008
+# 20 rules from 29 access log lines
 #  source (-i): access_log
 #  path depth (-d): 1
 #  base64 detection level (-b): 5
@@ -79,6 +81,7 @@ QS_PermitUri +QSF013 deny "^[/a-zA-Z]+/cont\?(name\xc4=[a-zA-Z\xc3]{0,16}[&]?)?$
 QS_PermitUri +QSF014 deny "^[/a-zA-Z]+/cont\?(n=[0-9]{0,11}[&]?)?(v=[0-9]{0,11}[&]?)?$"
 QS_PermitUri +QSF015 deny "^[/a-zA-Z]+/cont2\?(name\xc4=[a-zA-Z\xc3]{0,16}[&]?)?$"
 QS_PermitUri +QSF016 deny "^[/a-zA-Z]+/[a-zA-Z0-9\-_\$\+!]+\*other\?(name=[a-zA-Z]{0,15}[&]?)?$"
-QS_PermitUri +QSF017 deny "^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?(name=[\+\$a-zA-Z\?]{0,17}[&]?)?(n=[a-zA-Z]{0,11}[&]?)?$"
-QS_PermitUri +QSF018 deny "^[/]?[/a-zA-Z]+/test[/]?\?(n=[a-zA-Z:/\.\?]{0,28}[&]?)?$"
-QS_PermitUri +QSF019 deny "^/\?(n=[a-zA-Z]{0,11}[&]?)?$"
+QS_PermitUri +QSF017 deny "^[/a-zA-Z\.]+/umlhex\xc3\xbcurl\xc3\xbc[/]?\?(Cmd=[a-zA-Z]{0,13}[&]?)?$"
+QS_PermitUri +QSF018 deny "^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?(name=[\+\$a-zA-Z\?]{0,17}[&]?)?(n=[a-zA-Z]{0,11}[&]?)?$"
+QS_PermitUri +QSF019 deny "^[/]?[/a-zA-Z]+/test[/]?\?(n=[a-zA-Z:/\.\?]{0,28}[&]?)?$"
+QS_PermitUri +QSF020 deny "^/\?(n=[a-zA-Z]{0,11}[&]?)?$"

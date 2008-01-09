@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.30 2008-01-09 07:03:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.31 2008-01-09 12:31:31 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -135,6 +135,13 @@ int qosc_hex2c(const char *x) {
   return i;
 }
 
+static int qos_ishex(char x) {
+  if((x >= '0') && (x <= '9')) return 1;
+  if((x >= 'a') && (x <= 'f')) return 1;
+  if((x >= 'A') && (x <= 'F')) return 1;
+  return 0;
+}
+
 static int qosc_unescaping(char *x) {
   int i, j, ch;
   if (x[0] == '\0')
@@ -144,6 +151,10 @@ static int qosc_unescaping(char *x) {
     if (ch == '%' && isxdigit(x[i + 1]) && isxdigit(x[i + 2])) {
       ch = qosc_hex2c(&x[i + 1]);
       i += 2;
+    }
+    if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
+      ch = qos_hex2c(&x[i + 2]);
+      i += 3;
     }
     x[j] = ch;
   }

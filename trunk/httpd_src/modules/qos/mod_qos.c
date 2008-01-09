@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.3 2007-12-18 20:51:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.4 2008-01-09 12:31:31 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1141,6 +1141,13 @@ int qos_hex2c(const char *x) {
   return i;
 }
 
+static int qos_ishex(char x) {
+  if((x >= '0') && (x <= '9')) return 1;
+  if((x >= 'a') && (x <= 'f')) return 1;
+  if((x >= 'A') && (x <= 'F')) return 1;
+  return 0;
+}
+
 /* url escaping (%xx) */
 static int qos_unescaping(char *x) {
   int i, j, ch;
@@ -1151,6 +1158,10 @@ static int qos_unescaping(char *x) {
     if (ch == '%' && isxdigit(x[i + 1]) && isxdigit(x[i + 2])) {
       ch = qos_hex2c(&x[i + 1]);
       i += 2;
+    }
+    if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
+      ch = qos_hex2c(&x[i + 2]);
+      i += 3;
     }
     x[j] = ch;
   }

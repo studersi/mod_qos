@@ -40,6 +40,8 @@
 # 020 ^[/a-zA-Z]+/ervlet\?((action|ret|name||name)(=[a-zA-Z:/]*)*[&]?)*$
 # ADD line 28: /app/ervlet?other=search&ret=http%3A%2F%2Fserver%2Fapp&name=value&&name=value
 # 021 ^[/a-zA-Z]+/ervlet\?((other|ret|name||name)(=[a-zA-Z:/]*)*[&]?)*$
+# ADD line 29: /app/k.x/umlhex\xc3\xbcurl%C3%BC/?Cmd=new
+# 022 ^[/a-zA-Z\.]+/umlhex\xc3\xbcurl\xc3\xbc[/]?\?((Cmd)(=[a-zA-Z]*)*[&]?)*$
 # search for redundant rules ...
 # CHANGE: <^[/a-zA-Z]+/cont\?((n|v)(=[0-9]*)*[&]?)*$> to <^[/a-zA-Z]+/cont\?((n|v|name\xc4)(=[0-9a-zA-Z\xc3]*)*[&]?)*$>
 # CHANGE: <^[/a-zA-Z]+/test\?((l)(=[a-zA-Z/\\\"=:\(\)]*)*[&]?)*$> to <^[/a-zA-Z]+/test\?((l|n|m)(=[a-zA-Z/\\\"=:\(\)0-9]*)*[&]?)*$>
@@ -52,16 +54,16 @@
 # DEL rule: ^[/a-zA-Z]+/test\?((l)(=[a-zA-Z/\\\"=:\(\)]*)*[&]?)*$
 # DEL rule: ^[/a-zA-Z]+/ervlet\?((other|ret|name||name)(=[a-zA-Z:/]*)*[&]?)*$
 # DEL rule: ^[/a-zA-Z]+/ervlet\?((action|ret|name||name)(=[a-zA-Z:/]*)*[&]?)*$
-# [8][9][10][11][12][13][14][15][0][1][2][3][4][5][6][7] done
+# [8][9][10][11][12][13][14][15][16][0][1][2][3][4][5][6][7] done
 # verfiy new rules ...
 # ADD line 22: /app/test?n=m&=
-# 017 ^[/a-zA-Z]+/test\?((n)(=[a-zA-Z]*)*[&]?)*(=[&]?)*$
+# 018 ^[/a-zA-Z]+/test\?((n)(=[a-zA-Z]*)*[&]?)*(=[&]?)*$
 # ADD line 23: /app/test?&n=m&=
-# 018 ^[/a-zA-Z]+/test\?[&]?((n)(=[a-zA-Z]*)*[&]?)*(=[&]?)*$
+# 019 ^[/a-zA-Z]+/test\?[&]?((n)(=[a-zA-Z]*)*[&]?)*(=[&]?)*$
 
 # --------------------------------------------------------
-# Tue Jan  8 13:10:36 2008
-# 18 rules from 28 access log lines
+# Wed Jan  9 12:51:24 2008
+# 19 rules from 29 access log lines
 #  source (-i): access_log
 #  path depth (-d): 1
 #  base64 detection level (-b): 5
@@ -88,7 +90,8 @@ QS_PermitUri +QSF011 deny "^[/a-zA-Z]+/ervlet\?((action|ret|name||name|other)(=[
 QS_PermitUri +QSF012 deny "^[/a-zA-Z]+/cont\?((n|v|name\xc4)(=[0-9a-zA-Z\xc3]*)*[&]?)*$"
 QS_PermitUri +QSF013 deny "^[/a-zA-Z]+/cont2\?((name\xc4)(=[a-zA-Z\xc3]*)*[&]?)*$"
 QS_PermitUri +QSF014 deny "^[/a-zA-Z]+/[a-zA-Z0-9\-_\$\+!]+\*other\?((name)(=[a-zA-Z]*)*[&]?)*$"
-QS_PermitUri +QSF015 deny "^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?((name|n)(=[\+\$a-zA-Z\?]*)*[&]?)*$"
-QS_PermitUri +QSF016 deny "^[/]?[/a-zA-Z]+/test[/]?\?((n)(=[a-zA-Z:/\.\?]*)*[&]?)*$"
-QS_PermitUri +QSF017 deny "^/\?((n)(=[a-zA-Z]*)*[&]?)*$"
-QS_PermitUri +QSF018 deny "^(/[a-zA-Z0-9-_]+)+[/]?\.?[a-zA-Z]{0,4}$"
+QS_PermitUri +QSF015 deny "^[/a-zA-Z\.]+/umlhex\xc3\xbcurl\xc3\xbc[/]?\?((Cmd)(=[a-zA-Z]*)*[&]?)*$"
+QS_PermitUri +QSF016 deny "^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?((name|n)(=[\+\$a-zA-Z\?]*)*[&]?)*$"
+QS_PermitUri +QSF017 deny "^[/]?[/a-zA-Z]+/test[/]?\?((n)(=[a-zA-Z:/\.\?]*)*[&]?)*$"
+QS_PermitUri +QSF018 deny "^/\?((n)(=[a-zA-Z]*)*[&]?)*$"
+QS_PermitUri +QSF019 deny "^(/[a-zA-Z0-9-_]+)+[/]?\.?[a-zA-Z]{0,4}$"
