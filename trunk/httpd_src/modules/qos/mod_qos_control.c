@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.33 2008-01-09 21:17:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.34 2008-01-10 20:43:54 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -507,6 +507,7 @@ static void qosc_create_server(request_rec *r) {
               ap_rprintf(r, "Failed to create directory '%s'", w);
               fclose(f);
               f=NULL;
+              return;
             } else {
               char *sc = apr_pstrcat(r->pool, w, "/"QOSC_SERVER_CONF, NULL);
               FILE *c = fopen(sc, "w");
@@ -525,33 +526,37 @@ static void qosc_create_server(request_rec *r) {
         } else {
           if(r->method_number == M_POST) {
             char *w = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
-            if(mkdir(w, 0750) != 0) {
-              ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                            QOSC_LOG_PFX(0)"failed to create directory '%s'", w); 
-              ap_rprintf(r, "Failed to create directory '%s'", w);
-            } else {
-              char *httpdconf = apr_pstrcat(r->pool, w, "/httpd.conf", NULL);
-              mkdir(apr_pstrcat(r->pool, w, "/qs", NULL), 0750);
-              f = fopen(httpdconf, "w");
-              if(f) {
-                apr_status_t status = qosc_store_multipart(r, f, "httpd_conf", NULL);
-                if(status != APR_SUCCESS) {
-                  fclose(f);
-                  f=NULL;
-                  unlink(httpdconf);
-                  unlink(w);
-                } else {
-                  char *sc = apr_pstrcat(r->pool, w, "/"QOSC_SERVER_CONF, NULL);
-                  FILE *c = fopen(sc, "w");
-                  if(c) {
-                    fprintf(c, "conf=%s\n", httpdconf);
-                    fclose(c);
-                  }
-                  c = fopen(apr_pstrcat(r->pool, w, "/"QOSC_SERVER_OPTIONS, NULL), "w");
-                  if(c) {
-                    fprintf(c, "-m\n");
-                    fclose(c);
-                  }
+            struct stat attrib;
+            char *httpdconf;
+            if(stat(w, &attrib) != 0) {
+              if(mkdir(w, 0750) != 0) {
+                ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                              QOSC_LOG_PFX(0)"failed to create directory '%s'", w); 
+                ap_rprintf(r, "Failed to create directory '%s'", w);
+                return;
+              }
+            }
+            httpdconf = apr_pstrcat(r->pool, w, "/httpd.conf", NULL);
+            mkdir(apr_pstrcat(r->pool, w, "/qs", NULL), 0750);
+            f = fopen(httpdconf, "w");
+            if(f) {
+              apr_status_t status = qosc_store_multipart(r, f, "httpd_conf", NULL);
+              if(status != APR_SUCCESS) {
+                fclose(f);
+                f=NULL;
+                unlink(httpdconf);
+                unlink(w);
+              } else {
+                char *sc = apr_pstrcat(r->pool, w, "/"QOSC_SERVER_CONF, NULL);
+                FILE *c = fopen(sc, "w");
+                if(c) {
+                  fprintf(c, "conf=%s\n", httpdconf);
+                  fclose(c);
+                }
+                c = fopen(apr_pstrcat(r->pool, w, "/"QOSC_SERVER_OPTIONS, NULL), "w");
+                if(c) {
+                  fprintf(c, "-m\n");
+                  fclose(c);
                 }
               }
             }
@@ -1077,8 +1082,8 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
       fflush(fr);
       fclose(fr);
     }
-    stat(l->name, &attrib);
-    if(attrib.st_size > 0) {
+    ;
+    if((stat(l->name, &attrib) == 0) && (attrib.st_size > 0)) {
       status = system(cmd);
       if(f) {
         fprintf(f, "%s %d %s\n",l->name, status, l->uri);
@@ -1777,9 +1782,27 @@ static void qosc_server(request_rec *r) {
           locations++;
         }
       }
+      fclose(f);
+      ap_rputs("<table class=\"btable\"><tbody>\n",r);
+      ap_rputs("<tr class=\"rows\"><td>\n",r);
       ap_rprintf(r, "Server configuration %s<br>&nbsp;VirtualHosts: %d<br>&nbsp;Locations: %d<br><br>",
                  conf == NULL ? "-" : conf, hosts, locations);
-      fclose(f);
+      ap_rputs("</td></tr>\n",r);
+
+      f = fopen(apr_pstrcat(r->pool, server_dir, "/httpd.conf", NULL), "r");
+      if(f) {
+        fclose(f);
+        ap_rputs("<tr class=\"rows\"><td>\n",r);
+        ap_rputs("Update the httpd.conf file:<br>", r);
+        ap_rprintf(r, "<form action=\"%sct.do?server=%s&action=set\""
+                   " method=\"post\" enctype=\"multipart/form-data\">\n",
+                   qosc_get_path(r), ap_escape_html(r->pool, server));
+        ap_rprintf(r, "&nbsp;<input name=\"httpd_conf\" value=\"\" type=\"file\" size=\"50\">\n"
+                   " <input name=\"action\" value=\"upload\" type=\"submit\">\n"
+                   " </form>\n", ap_escape_html(r->pool, server));
+        ap_rputs("</td></tr>\n",r);
+        ap_rputs("</tbody></table>\n",r);
+      }
     }
   }
 }
