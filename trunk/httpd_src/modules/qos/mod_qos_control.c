@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.36 2008-01-13 19:17:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.37 2008-01-13 19:27:52 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1642,13 +1642,24 @@ static int qosc_report_locations(request_rec *r, const char *server,
                    " <input name=\"action\" value=\"get rules\" type=\"submit\">\n"
                    " </form>\n");
 
-        ap_rprintf(r, "&nbsp;<form action=\"%sqsfilter2.do\" method=\"get\">\n",
+        ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">\n",
                    qosc_get_path(r));
         ap_rprintf(r, " <input name=\"server\" value=\"%s\" type=\"hidden\">\n",
                    ap_escape_html(r->pool, server));
         ap_rprintf(r, " <input name=\"loc\" value=\"%d\" type=\"hidden\">\n",
                    loc);
-        ap_rprintf(r, " <input name=\"action\" value=\"edit\" type=\"submit\">\n"
+        ap_rprintf(r, " <input title=\"edit the generated rules\""
+                   " name=\"action\" value=\"edit\" type=\"submit\">\n"
+                   " </form>\n");
+
+        ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">\n",
+                   qosc_get_path(r));
+        ap_rprintf(r, " <input name=\"server\" value=\"%s\" type=\"hidden\">\n",
+                   ap_escape_html(r->pool, server));
+        ap_rprintf(r, " <input name=\"loc\" value=\"%d\" type=\"hidden\">\n",
+                   loc);
+        ap_rprintf(r, " <input title=\"stores the rules to the httpd.conf files\""
+                   " name=\"action\" value=\"store\" type=\"submit\">\n"
                    " </form>\n");
 
         ap_rputs("</td><td></td></tr>\n",r);
@@ -1696,7 +1707,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
       fclose(f);
     }
     ap_rputs("<tr class=\"rows\"><td>\n",r);
-    ap_rputs("Options:<br>", r);
+    ap_rputs("qsfilter2 options:<br>", r);
     ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">\n",
                qosc_get_path(r));
     ap_rprintf(r, " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
@@ -1707,8 +1718,8 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
                "   <option %s>pcre only (-p)</option>\n"
                "   <option %s>single pcre (-s)</option>\n"
                " </select>\n"
-               " <br><input type=\"checkbox\" name=\"path\" value=\"-h\" %s>"
-               " disable path only regex (-h)\n"
+               " <br>&nbsp;Disable path only regex (-h)"
+               " <input type=\"checkbox\" name=\"path\" value=\"-h\" %s>\n"
                " <br><input name=\"action\" value=\"save options\" type=\"submit\">\n"
                " </form>\n",
                ap_escape_html(r->pool, server),
@@ -1810,7 +1821,7 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
             loc++;
             ap_rputs("<tr class=\"rows\"><td>\n",r);
             //ap_rprintf(r, "<a name=\"%d\" href=\"%sqsfilter2.do?server=%s&action=report&loc=%d\">",
-            ap_rprintf(r, "<a name=\"%d\" title=\"stdout\" "
+            ap_rprintf(r, "<a name=\"%d\" title=\"stdout (raw qsfilter2 data)\" "
                        "href=\"%sdownload.do?server=%s&loc=%d&type=rep\">",
                        i, qosc_get_path(r), ap_escape_html(r->pool, server), i);
             if(strcmp(loc, "404") == 0) {
