@@ -31,8 +31,10 @@ echo "/app/ervlet?other=search&ret=http%3A%2F%2Fserver%2Fapp&name=value&&name=va
 echo "/app/k.x/umlhex\xc3\xbcurl%C3%BC/?Cmd=new" >> access_log
 echo "/o-b/test.php?blah1=&blah2=" >> access_log
 
-#./qsfilter2 -e -i access_log -m $@
-#exit 0
+if [ -n "$1" ]; then
+    ./qsfilter2 -e -i access_log $@
+    exit 0
+fi
 
 ./qsfilter2 -e -i access_log -m > qm2.txt
 diff qm2.txt qm2.txt.ref
