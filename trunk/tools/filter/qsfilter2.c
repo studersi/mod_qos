@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.44 2008-01-09 13:28:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.45 2008-01-13 09:52:35 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -90,6 +90,7 @@ static int m_query_multi_pcre = 0;
 static int m_query_single_pcre = 0;
 static int m_query_len_pcre = 10;
 static int m_exit_on_error = 0;
+static int m_handler = 0;
 
 typedef struct {
   pcre *pcre;
@@ -260,7 +261,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-p|-s|-m] [-l <len>] [-n] [-e] [-t] [-v 0|1|2]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-h] [-p|-s|-m] [-l <len>] [-n] [-e] [-t] [-v 0|1|2]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf(" mod_qos implements a request filter which validates each request\n");
@@ -323,6 +324,9 @@ static void usage(char *cmd) {
   printf("     a base64/hex encoded string. Detecting sensibility is defined by a\n");
   printf("     numeric value. You should use values higher than 5 (default)\n");
   printf("     or 0 to disable this function.\n");
+  printf("  -h\n");
+  printf("     Always use a string representing the handler name in the path even\n");
+  printf("     the url does not have a query. See also -b option.\n");
   printf("  -p\n");
   printf("     Repesents query by pcre only (no literal strings).\n");
   printf("  -s\n");
@@ -1188,10 +1192,15 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    if(strcmp(parsed_uri.path, "/") == 0) {
 	      path = apr_pstrdup(lpool, "/");
 	    } else {
-	      if(pcre_exec(pcre_simple_path, NULL, parsed_uri.path, strlen(parsed_uri.path), 0, 0, NULL, 0) >= 0) {
-		path = apr_pstrdup(lpool, QS_SIMPLE_PATH_PCRE);
+	      if(m_handler) {
+		path = qos_path_pcre_string(lpool, parsed_uri.path);
 	      } else {
-		path = qos_path_pcre(lpool, parsed_uri.path);
+		if(pcre_exec(pcre_simple_path, NULL, parsed_uri.path,
+			     strlen(parsed_uri.path), 0, 0, NULL, 0) >= 0) {
+		  path = apr_pstrdup(lpool, QS_SIMPLE_PATH_PCRE);
+		} else {
+		  path = qos_path_pcre(lpool, parsed_uri.path);
+		}
 	      }
 	    }
 	  }
@@ -1404,7 +1413,7 @@ int main(int argc, const char * const argv[]) {
     } else if(strcmp(*argv,"-t") == 0) {
       performance = 0;
     } else if(strcmp(*argv,"-h") == 0) {
-      usage(cmd);
+      m_handler = 1;
     } else if(strcmp(*argv,"-?") == 0) {
       usage(cmd);
     } else if(strcmp(*argv,"-help") == 0) {
