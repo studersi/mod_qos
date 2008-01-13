@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.35 2008-01-12 22:12:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.36 2008-01-13 19:17:53 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1230,6 +1230,7 @@ static void qosc_qsfilter2_saveoptions(request_rec *r) {
   apr_table_t *qt = qosc_get_query_table(r);
   const char *server = qosc_get_server(qt);
   const char *query = apr_table_get(qt, "query");
+  const char *path = apr_table_get(qt, "path");
   char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
   char *server_options = apr_pstrcat(r->pool, server_dir, "/"QOSC_SERVER_OPTIONS, NULL);
   FILE *f;
@@ -1247,12 +1248,18 @@ static void qosc_qsfilter2_saveoptions(request_rec *r) {
   }
   f = fopen(server_options, "w");
   if(f) {
+    char *path_option = "";
+    if(path && strstr(path, "-h")) {
+      path_option = apr_pstrdup(r->pool, " -h");
+    }
     if(strstr(query, "-m") != NULL) {
-      fprintf(f, "-m\n");
+      fprintf(f, "-m%s\n", path_option);
     } else  if(strstr(query, "-p") != NULL) {
-      fprintf(f, "-p\n");
+      fprintf(f, "-p%s\n", path_option);
     } else if(strstr(query, "-s") != NULL) {
-      fprintf(f, "-s\n");
+      fprintf(f, "-s%s\n", path_option);
+    } else {
+      fprintf(f, "%s\n", path_option);
     }
     fclose(f);
   }
@@ -1679,12 +1686,12 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
   /* settings */
   if(!inprogress) {
     FILE *f = fopen(server_options, "r");
-    char *query_option = "";
+    char *option = "";
     if(f) {
       char line[QOSC_HUGE_STRING_LEN];
       qosc_fgetline(line, sizeof(line), f);
       if(strlen(line) > 0) {
-        query_option = apr_pstrdup(r->pool, line);
+        option = apr_pstrdup(r->pool, line);
       }
       fclose(f);
     }
@@ -1700,13 +1707,16 @@ static void qosc_server_qsfilter2(request_rec *r, const char *server) {
                "   <option %s>pcre only (-p)</option>\n"
                "   <option %s>single pcre (-s)</option>\n"
                " </select>\n"
-               " <input name=\"action\" value=\"save options\" type=\"submit\">\n"
+               " <br><input type=\"checkbox\" name=\"path\" value=\"-h\" %s>"
+               " disable path only regex (-h)\n"
+               " <br><input name=\"action\" value=\"save options\" type=\"submit\">\n"
                " </form>\n",
                ap_escape_html(r->pool, server),
-               strlen(query_option) == 0 ? "selected" : "",
-               strstr(query_option, "-m") != NULL ? "selected" : "",
-               strstr(query_option, "-p") != NULL ? "selected" : "",
-               strstr(query_option, "-s") != NULL ? "selected" : "");
+               strlen(option) == 0 ? "selected" : "",
+               strstr(option, "-m") != NULL ? "selected=\"selected\"" : "",
+               strstr(option, "-p") != NULL ? "selected=\"selected\"" : "",
+               strstr(option, "-s") != NULL ? "selected=\"selected\"" : "",
+               strstr(option, "-h") != NULL ? "checked=\"checked\"" : "");
     ap_rputs("</td><td></td></tr>\n", r);
   }
 
