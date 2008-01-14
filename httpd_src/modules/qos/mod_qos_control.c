@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.41 2008-01-14 21:16:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.42 2008-01-14 21:34:20 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -261,7 +261,7 @@ static qosc_settings_t *qosc_get_settings(request_rec *r) {
       }
     }
   }
-  if(!server) {
+  if(!server || !qosc_is_alnum_uc(server)) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"could not determine server name");
     return NULL;
