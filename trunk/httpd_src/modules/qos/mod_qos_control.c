@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.37 2008-01-13 19:27:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.38 2008-01-14 07:12:21 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1330,6 +1330,80 @@ static void qosc_qsfilter2_permitdeny(request_rec *r) {
   }
 }
 
+static void qosc_qsfilter2_store(request_rec *r) {
+  qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_control_module);
+  apr_table_t *qt = qosc_get_query_table(r);
+  const char *server = qosc_get_server(qt);
+  const char *loc = apr_table_get(qt, "loc");
+  const char *action = apr_table_get(qt, "action");
+  char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
+  struct stat attrib;
+  char *file_name;
+  char *filter = "QS_PermitUri";
+  apr_table_t *rules = apr_table_make(r->pool, 10);
+  char *location;
+  char *dedicated_rules;
+  if(!server) {
+    ap_rprintf(r, "Invalid request.");
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"invalid request, no server");
+    return;
+  }
+  if(!loc) {
+    ap_rprintf(r, "Invalid request.");
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"invalid request, no location file");
+    return;
+  }
+  if(!action) {
+    ap_rprintf(r, "Invalid request.");
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"invalid request, no action");
+    return;
+  }
+  location = qosc_locfile_id2name(r, atoi(loc));
+  dedicated_rules = apr_pstrcat(r->pool, location, ".rules", NULL);
+  if(stat(dedicated_rules, &attrib) == 0) {
+    file_name = apr_pstrcat(r->pool, location, ".rules", NULL);
+    filter = NULL;
+  } else {
+    file_name = apr_pstrcat(r->pool, location, ".rep", NULL);
+  }
+  if(file_name && file_name[0]) {
+    FILE *f = fopen(file_name, "r");
+    if(f) {
+      char line[QOSC_HUGE_STRING_LEN];
+      while(!qosc_fgetline(line, sizeof(line), f)) {
+        if(filter) {
+          if(strncmp(line, filter, strlen(filter)) == 0) {
+            apr_table_set(rules, line, "");
+          }
+        } else {
+          apr_table_set(rules, line, "");
+        }
+      }        
+        ap_rputs("</textarea>\n", r);
+        ap_rprintf(r, "<br><input name=\"action\" value=\"save\" type=\"submit\">\n"
+                   " </form>\n");
+        fclose(f);
+    } else {
+      ap_rprintf(r, "Could not read rule file.");
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                    QOSC_LOG_PFX(0)"could not open file '%s'", file_name);
+      return;
+    }
+  } else {
+    ap_rprintf(r, "Invalid request.");
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"could determine file name");
+    return;
+  }
+    ap_rprintf(r, "Not yet available.");
+  qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), server,
+                                  ".do?action=qsfilter2#", loc, NULL));
+}
+
 static void qosc_qsfilter2_edit(request_rec *r) {
   qosc_srv_config *sconf = (qosc_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_control_module);
@@ -1559,6 +1633,8 @@ static void qosc_qsfilter2(request_rec *r) {
     qosc_qsfilter2_edit(r);
   } else if(action && (strcmp(action, "save") == 0)) {
     qosc_qsfilter2_edit(r);
+  } else if(action && (strcmp(action, "store") == 0)) {
+    qosc_qsfilter2_store(r);
   } else {
     ap_rprintf(r, "Invalid request.");
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
