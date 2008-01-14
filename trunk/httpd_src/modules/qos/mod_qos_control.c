@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.40 2008-01-14 20:53:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.41 2008-01-14 21:16:46 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -922,6 +922,28 @@ static apr_table_t *qosc_read_logfile(request_rec *r, const char *server_conf) {
 //  return APR_SUCCESS;
 //}
 
+static char *qosc_included_file_path(request_rec *r, const char *root, const char *include) {
+  char *path = NULL;
+  /* server MUST use relative includes only!
+   *  root=/etc/apache/conf
+   *  inc=conf/sub.conf
+   */
+  char *search = apr_pstrdup(r->pool, include);
+  char *fl = strchr(search, '/');
+  char *base = apr_pstrdup(r->pool, root);
+  char *e;
+  if(fl) {
+    fl[0] = '\0';
+    fl++;
+  }
+  e = strstr(base, search);
+  if(e && fl) {
+    e[strlen(search)] = '\0';
+    path = apr_pstrcat(r->pool, base, "/", fl, NULL);
+  }
+  return path;
+}
+
 static void qosc_load_httpdconf(request_rec *r, const char *server_dir, 
                                 const char *file, const char *root, STACK *st, int *errors) {
   FILE *f = fopen(file, "r");
@@ -937,23 +959,8 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
       const char *permit = qosc_get_conf_value(line, "QS_PermitUri ");
       const char *deny = qosc_get_conf_value(line, "QS_DenyRequestLine ");
       if(inc) {
-        /* server MUST use relative includes only!
-         *  root=/etc/apache/conf
-         *  inc=conf/sub.conf
-         */
-        char *search = apr_pstrdup(r->pool, inc);
-        char *fl = strchr(search, '/');
-        char *base = apr_pstrdup(r->pool, root);
-        char *e;
-        if(fl) {
-          fl[0] = '\0';
-          fl++;
-        }
-        e = strstr(base, search);
-        if(e && fl) {
-          char *incfile;
-          e[strlen(search)] = '\0';
-          incfile = apr_pstrcat(r->pool, base, "/", fl, NULL);
+        char *incfile = qosc_included_file_path(r, root, inc);
+        if(incfile) {
           qosc_load_httpdconf(r, server_dir, incfile, root, st, errors);
         } else {
           errors++;
