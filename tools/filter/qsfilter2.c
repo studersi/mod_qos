@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.45 2008-01-13 09:52:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.46 2008-01-14 07:12:22 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -257,11 +257,15 @@ static void qos_init_pcre() {
 }
 
 static void usage(char *cmd) {
+  char space[1024];
+  memset(space, ' ', 1024);
+  space[strlen(cmd)] = '\0';
   printf("\n");
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-b <num>] [-h] [-p|-s|-m] [-l <len>] [-n] [-e] [-t] [-v 0|1|2]\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>] \\\n", cmd);
+  printf("       %s [-p|-s|-m] [-l <len>] [-n] [-e] [-t] [-v 0|1|2]\n", space);
   printf("\n");
   printf("Summary\n");
   printf(" mod_qos implements a request filter which validates each request\n");
@@ -319,14 +323,14 @@ static void usage(char *cmd) {
   printf("  -d <num>\n");
   printf("     Depth (sub locations) of the path string which is defined as a\n");
   printf("     literal string. Default is 1.\n");
+  printf("  -h\n");
+  printf("     Always use a string representing the handler name in the path even\n");
+  printf("     the url does not have a query. See also -d option.\n");
   printf("  -b <num>\n");
   printf("     Replaces url pattern by the regular expression when detecting\n");
   printf("     a base64/hex encoded string. Detecting sensibility is defined by a\n");
   printf("     numeric value. You should use values higher than 5 (default)\n");
   printf("     or 0 to disable this function.\n");
-  printf("  -h\n");
-  printf("     Always use a string representing the handler name in the path even\n");
-  printf("     the url does not have a query. See also -b option.\n");
   printf("  -p\n");
   printf("     Repesents query by pcre only (no literal strings).\n");
   printf("  -s\n");
@@ -1398,12 +1402,12 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	m_base64 = atoi(*(++argv));
       }
-    } else if(strcmp(*argv,"-p") == 0) {
-      m_query_pcre = 1;
     } else if(strcmp(*argv,"-l") == 0) {
       if (--argc >= 1) {
 	m_query_len_pcre = atoi(*(++argv));
       }
+    } else if(strcmp(*argv,"-p") == 0) {
+      m_query_pcre = 1;
     } else if(strcmp(*argv,"-m") == 0) {
       m_query_multi_pcre = 1;
     } else if(strcmp(*argv,"-s") == 0) {
@@ -1489,6 +1493,7 @@ int main(int argc, const char * const argv[]) {
   }
   printf("#  source (-i): %s\n", access_log);
   printf("#  path depth (-d): %d\n", m_path_depth);
+  printf("#  disable path only regex (-h): %s\n", m_handler == 1 ? "yes" : "no");
   printf("#  base64 detection level (-b): %d\n", m_base64);
   printf("#  redundancy check (-n): %s\n", m_redundant == 1 ? "on" : "off");
   printf("#  pcre only for query (-p): %s\n", m_query_pcre == 1 ? "yes" : "no");
