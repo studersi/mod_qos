@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.44 2008-01-15 19:43:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.45 2008-01-15 21:00:16 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1034,7 +1034,7 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
   }
 }
 
-static void qosc_server_load(request_rec *r, qosc_settings_t *settings) {
+static int qosc_server_load(request_rec *r, qosc_settings_t *settings) {
   FILE *f;
   int errors = 0;
   STACK *st = sk_new(NULL);
@@ -1059,9 +1059,7 @@ static void qosc_server_load(request_rec *r, qosc_settings_t *settings) {
                   QOSC_LOG_PFX(0)"failed to write to '%s'", settings->server_conf);
   }
   sk_free(st);
-  if(errors == 0) {
-    qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server, ".do", NULL));
-  }
+  return errors;
 }
 
 /* used to upload an access log file */
@@ -1490,6 +1488,8 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
                   QOSC_LOG_PFX(0)"could determine file name");
     return;
   }
+  ap_rprintf(r, "<br>reload configuration ...<br>");
+  qosc_server_load(r, settings);
   if(!errors) {
     qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
                                     ".do?action=qsfilter2#", loc, NULL));
@@ -1734,8 +1734,8 @@ static int qosc_report_locations(request_rec *r, const char *server,
           ap_rputs("<tr class=\"row\">\n",r);
           ap_rprintf(r, "<td>&nbsp;%s:&nbsp;<a onclick=\"alert('%s')\" >%.*s %s</a></td>\n",
                      id,
-                     crl, 60, encoded,
-                     strlen(encoded) > 60 ? "..." : "");
+                     crl, 55, encoded,
+                     strlen(encoded) > 55 ? "..." : "");
           ap_rprintf(r, "<td>"
                      "<form action=\"%sqsfilter2.do\" method=\"get\">"
                      " <input name=\"action\" value=\"deny\" type=\"submit\">"
@@ -1829,79 +1829,149 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
       }
       fclose(f);
     }
-    ap_rputs("<tr class=\"rows\"><td>\n",r);
-    ap_rputs("qsfilter2 options:<br>", r);
+    ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
+    // ---
+    ap_rputs("<table class=\"btable\"><tbody>\n",r);
+    ap_rputs("  <tr class=\"rowe\">", r);
+    ap_rputs("    <td colspan=\"2\">\n",r);
+    ap_rputs("Options", r);
+    ap_rputs("    </td>\n",r);
+    ap_rputs("  </tr>", r);
+    ap_rputs("  <tr class=\"row\">", r);
+    ap_rputs("    <td style=\"width: 250px;\">", r);
+    ap_rprintf(r, "&nbsp;Query setting");
+    ap_rputs("    </td>", r);
+    ap_rputs("    <td>", r);
     ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">\n",
                qosc_get_path(r));
-    ap_rprintf(r, " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
-               "&nbsp;Query setting"
+    ap_rprintf(r, "<input name=\"server\" value=\"%s\" type=\"hidden\">\n"
                " <select name=\"query\" >\n"
                "   <option %s>standard</option>\n"
                "   <option %s>multivalued (-m)</option>\n"
                "   <option %s>pcre only (-p)</option>\n"
                "   <option %s>single pcre (-s)</option>\n"
-               " </select>\n"
-               " <br>&nbsp;Disable path only regex (-h)"
-               " <input type=\"checkbox\" name=\"path\" value=\"-h\" %s>\n"
-               " <br>&nbsp;<input name=\"action\" value=\"save options\" type=\"submit\">\n"
-               " </form>\n",
+               " </select>\n",
                ap_escape_html(r->pool, settings->server),
                strlen(option) == 0 ? "selected" : "",
                strstr(option, "-m") != NULL ? "selected=\"selected\"" : "",
                strstr(option, "-p") != NULL ? "selected=\"selected\"" : "",
-               strstr(option, "-s") != NULL ? "selected=\"selected\"" : "",
+               strstr(option, "-s") != NULL ? "selected=\"selected\"" : "");
+    ap_rputs("    </td>", r);
+    ap_rputs("  </tr>\n",r);
+    ap_rputs("  <tr class=\"row\">", r);
+    ap_rputs("    <td style=\"width: 250px;\">", r);
+    ap_rprintf(r, "&nbsp;Disable path only regex (-h)");
+    ap_rputs("    </td>", r);
+    ap_rputs("    <td>", r);
+    ap_rprintf(r," <input type=\"checkbox\" name=\"path\" value=\"-h\" %s>\n",
                strstr(option, "-h") != NULL ? "checked=\"checked\"" : "");
-    ap_rputs("</td><td></td></tr>\n", r);
+    ap_rputs("    </td>", r);
+    ap_rputs("  </tr>", r);
+    ap_rputs("  <tr class=\"row\">", r);
+    ap_rputs("    <td style=\"width: 250px;\">", r);
+    ap_rputs("    </td>", r);
+    ap_rputs("    <td>", r);
+    ap_rprintf(r, "<input name=\"action\" value=\"save options\" type=\"submit\"></form>\n");
+    ap_rputs("    </td>", r);
+    ap_rputs("  </tr>", r);
+    ap_rputs("</tbody></table>\n",r);
+    // ---
+    ap_rputs("</td></tr>\n", r);
   }
 
   /* file upload/import */
   if(!inprogress) {
-    ap_rputs("<tr class=\"rows\"><td>\n",r);
-    ap_rputs("Upload access log data:<br>", r);
+    ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
+    // ---
+    ap_rputs("<table class=\"btable\"><tbody>\n",r);
+    ap_rputs("  <tr class=\"rowe\">", r);
+    ap_rputs("    <td colspan=\"2\">\n",r);
+    ap_rputs("Upload access log data", r);
+    ap_rputs("    </td>\n",r);
+    ap_rputs("  </tr>", r);
+    ap_rputs("  <tr class=\"row\">", r);
+    ap_rputs("    <td style=\"width: 250px;\">", r);
+    ap_rprintf(r, "&nbsp;Query setting");
+    ap_rputs("    </td>", r);
+    ap_rputs("    <td>", r);
     ap_rprintf(r, "<form action=\"%sqsfilter2.do?server=%s&action=upload\""
                " method=\"post\" enctype=\"multipart/form-data\">\n",
                qosc_get_path(r), ap_escape_html(r->pool, settings->server));
-    ap_rprintf(r, " <input name=\"access_log\" value=\"\" type=\"file\" size=\"50\">\n"
-               " <input name=\"action\" value=\"upload\" type=\"submit\">\n"
-               " </form>\n", ap_escape_html(r->pool, settings->server));
-    ap_rputs("</td><td></td></tr>\n", r);
+    ap_rprintf(r, "<input name=\"access_log\" value=\"\" type=\"file\" size=\"45\">\n");
+    ap_rputs("    </td>", r);
+    ap_rputs("  </tr>", r);
+    ap_rputs("  <tr class=\"row\">", r);
+    ap_rputs("    <td style=\"width: 250px;\">", r);
+    ap_rputs("    </td>", r);
+    ap_rputs("    <td>", r);
+    ap_rprintf(r, "<input name=\"action\" value=\"upload\" type=\"submit\"></form>\n");
+    ap_rputs("    </td>", r);
+    ap_rputs("  </tr>", r);
+    ap_rputs("</tbody></table>", r);
+    // ---
+    ap_rputs("</td></tr>\n", r);
 
     {
       apr_table_t *logt = qosc_read_logfile(r, settings->server_conf);
       if(apr_table_elts(logt)->nelts > 0) {
         apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(logt)->elts;
         int i;
-        ap_rputs("<tr class=\"rows\"><td>\n",r);
-        ap_rputs("Import access log data:<br>", r);
+        ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
+        // ---
+        ap_rputs("<table class=\"btable\"><tbody>\n",r);
+        ap_rputs("  <tr class=\"rowe\">", r);
+        ap_rputs("    <td colspan=\"2\">\n",r);
+        ap_rputs("Import access log data", r);
+        ap_rputs("    </td>\n",r);
+        ap_rputs("  </tr>", r);
         for(i = 0; i < apr_table_elts(logt)->nelts; i++) {
-          ap_rprintf(r, "&nbsp;<form action=\"%sqsfilter2.do\" method=\"get\">\n",
-                     qosc_get_path(r));
-          ap_rprintf(r, "%s"
-                     " <input name=\"file\" value=\"%s\"    type=\"hidden\">\n"
+          ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">\n", qosc_get_path(r));
+          ap_rputs("  <tr class=\"row\">", r);
+          ap_rputs("    <td style=\"width: 250px;\">", r);
+          ap_rprintf(r, "&nbsp;%s", ap_escape_html(r->pool, entry[i].key));
+          ap_rputs("    </td>", r);
+          ap_rputs("    <td>", r);
+          ap_rprintf(r, " <input name=\"file\" value=\"%s\"    type=\"hidden\">\n"
                      " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
                      " <input name=\"action\" value=\"import\" type=\"submit\">\n"
                      " </form><br>\n",
                      ap_escape_html(r->pool, entry[i].key),
-                     ap_escape_html(r->pool, entry[i].key),
                      ap_escape_html(r->pool, settings->server));
+          ap_rputs("    </td>", r);
+          ap_rputs("  </tr>", r);
         }
-        
-        ap_rputs("</td><td></td></tr>\n", r);
+        ap_rputs("</tbody></table>", r);
+        // ---
+        ap_rputs("</td></tr>\n", r);
       }
     }
   }
 
   /* start analysis */
-  ap_rputs("<tr class=\"rows\"><td>\n",r);
+  ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
   if(!inprogress) {
     if(accessavailable) {
-      ap_rprintf(r, "Access log data loaded (%s, %d bytes).<br>", tmb, attrib.st_size);
+      // ---
+      ap_rputs("<table class=\"btable\"><tbody>\n",r);
+      ap_rputs("  <tr class=\"rowe\">", r);
+      ap_rputs("    <td colspan=\"2\">\n",r);
+      ap_rprintf(r, "Access log data loaded (%s, %d bytes)", tmb, attrib.st_size);
+      ap_rputs("    </td>\n",r);
+      ap_rputs("  </tr>", r);
       ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">\n",
                  qosc_get_path(r));
-      ap_rputs("&nbsp;Generate rules:", r);
+      ap_rputs("  <tr class=\"row\">", r);
+      ap_rputs("    <td style=\"width: 250px;\">", r);
+      ap_rputs("&nbsp;Generate rules", r);
+      ap_rputs("    </td>", r);
+      ap_rputs("    <td>", r);
       ap_rprintf(r, " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
                  " <input name=\"action\" value=\"start\" type=\"submit\">\n"
                  " </form>\n", ap_escape_html(r->pool, settings->server));
+      ap_rputs("    </td>", r);
+      ap_rputs("  </tr>", r);
+      ap_rputs("</tbody></table>", r);
+      // ---
     } else {
       ap_rputs("<br>No access log data available.<br><br>", r);
     }
@@ -1917,7 +1987,7 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
     }
     ap_rputs("</ul><br>\n", r);
   }
-  ap_rputs("</td><td></td></tr>\n", r);
+  ap_rputs("</td></tr>\n", r);
 
   /* results */
   if(!inprogress) {
@@ -1991,7 +2061,10 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
   }
   closedir(dir);
   if(action && (strcmp(action, "load") == 0)) {
-    qosc_server_load(r, settings);
+    int errors = qosc_server_load(r, settings);
+    if(errors == 0) {
+      qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server, ".do", NULL));
+    }
   } else if(action && (strcmp(action, "qsfilter2") == 0)) {
     qosc_server_qsfilter2(r, settings);
   } else {
