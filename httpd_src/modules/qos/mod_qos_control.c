@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.42 2008-01-14 21:34:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.43 2008-01-15 17:43:57 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -854,74 +854,6 @@ static apr_table_t *qosc_read_logfile(request_rec *r, const char *server_conf) {
   return logs;
 }
 
-//static int qosc_insert2location(request_rec *r, const char *server_dir, const char *server_conf,
-//                                apr_table_t *rules, const char *url, const char *filter) {
-//  char *httpdconf = qosc_get_httpd_conf_name(r, settings);
-//  char *root = apr_pstrdup(r->pool, httpdconf);
-//  char *p = strrchr(root, '/');
-//  if(p) p[0] = '\0';
-
-//  char *tmp_file = apr_pstrcat(r->pool, server_conf, ".tmp", NULL);
-//  char *directive = apr_pstrcat(r->pool, filter, " ", NULL);
-//  FILE *in = fopen(server_conf, "r");
-//  FILE *out = fopen(tmp_file, "r");
-//  char line[QOSC_HUGE_STRING_LEN];
-//  if(in) {
-//    while(!qosc_fgetline(line, sizeof(line), f)) {
-//      const char *inc = qosc_get_conf_value(line, "Include ");
-//      const char *loc = qosc_get_conf_value(line, "Location ");
-//      const char *permit = qosc_get_conf_value(line, directive);
-//      if(inc) {
-//        /* server MUST use relative includes only!
-//         *  root=/etc/apache/conf
-//         *  inc=conf/sub.conf
-//         */
-//        char *search = apr_pstrdup(r->pool, inc);
-//        char *fl = strchr(search, '/');
-//        char *base = apr_pstrdup(r->pool, root);
-//        char *e;
-//        if(fl) {
-//          fl[0] = '\0';
-//          fl++;
-//        }
-//        e = strstr(base, search);
-//        if(e && fl) {
-//          char *incfile;
-//          e[strlen(search)] = '\0';
-//          incfile = apr_pstrcat(r->pool, base, "/", fl, NULL);
-//          qosc_insert2location(r, server_dir, incfile, root, st, errors);
-//
-//$$$$$$$$$$$$$$$$$$$$$
-//static int qosc_insert2location(request_rec *r, const char *server_conf,
-//                                apr_table_t *rules, const char *url, const char *filter) {
-//
-//
-//        } else {
-//          errors++;
-//          ap_rprintf(r, "Failed to resolve '%s'.<br>\n", ap_escape_html(r->pool, line));
-//          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-//                        QOSC_LOG_PFX(0)"failed to find included httpd configuration file '%s'",
-//                        line);
-//        }
-//      }
-//      if(loc) {
-//        char *end = (char *)loc;
-//        char *filename;
-//        while(end[0] && (end[0] != ' ') && (end[0] != '>') && (end[0] != '\t')) end++;
-//        end[0] = '\0';
-//      }
-//
-//    }
-//    fclose(in);
-//    fclose(out);
-//  } else {
-//    fclose(out);
-//  }
-//
-//
-//  return APR_SUCCESS;
-//}
-
 static char *qosc_included_file_path(request_rec *r, const char *root, const char *include) {
   char *path = NULL;
   /* server MUST use relative includes only!
@@ -942,6 +874,83 @@ static char *qosc_included_file_path(request_rec *r, const char *root, const cha
     path = apr_pstrcat(r->pool, base, "/", fl, NULL);
   }
   return path;
+}
+
+static int qosc_insert2location(request_rec *r, qosc_settings_t *settings,
+                                const char *httpdconf, const char *root,
+                                apr_table_t *rules, const char *location, const char *filter) {
+
+  char *tmp_file = apr_pstrcat(r->pool, httpdconf, ".tmp", NULL);
+  char *directive = apr_pstrcat(r->pool, filter, " ", NULL);
+  FILE *in = fopen(httpdconf, "r");
+  FILE *out = fopen(tmp_file, "w");
+  int errors = 0;
+  if(in && out) {
+    char line[QOSC_HUGE_STRING_LEN];
+    int found_location = 0;
+    int written = 0;
+    while(!qosc_fgetline(line, sizeof(line), in)) {
+      const char *inc = qosc_get_conf_value(line, "Include ");
+      const char *loc = qosc_get_conf_value(line, "Location ");
+      const char *permit = qosc_get_conf_value(line, directive);
+      if(inc) {
+        char *incfile = qosc_included_file_path(r, root, inc);
+        if(incfile) {
+          errors = errors + qosc_insert2location(r, settings, incfile, root, rules, location, filter);
+        } else {
+          errors++;
+          ap_rprintf(r, "Failed to resolve '%s'.<br>\n", ap_escape_html(r->pool, line));
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                        QOSC_LOG_PFX(0)"failed to find included httpd configuration file '%s'",
+                        line);
+        }
+      } else if(loc) {
+        char *this_location = apr_pstrdup(r->pool, loc);
+        char *end = this_location;
+        while(end[0] && (end[0] != ' ') && (end[0] != '>') && (end[0] != '\t')) end++;
+        end[0] = '\0';
+        fflush(stderr);
+        if(strcmp(this_location, location) == 0) {
+          found_location = 1;
+        } else {
+          found_location = 0;
+          written = 0;
+        }
+      }
+      if(found_location) {
+        /* apply filter and add new directives */
+        if(!loc && !written) {
+          int i;
+          apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
+          for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
+            fprintf(out, "%s\n", entry[i].key);
+          }
+          written = 1;
+        }
+        if(!strstr(line, filter)) {
+          fprintf(out, "%s\n", line);
+        }
+      } else {
+        fprintf(out, "%s\n", line);
+      }
+    }
+    fclose(in);
+    fclose(out);
+    if(!errors) {
+      unlink(httpdconf);
+      rename(tmp_file, httpdconf);
+    }
+  } else {
+    if(in) fclose(in);
+    if(out) fclose(out);
+    ap_rprintf(r, "Failed to open httpd configuration file '%s'.<br>\n",
+               ap_escape_html(r->pool, httpdconf));
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"failed to open httpd configuration file '%s'",
+                  httpdconf);
+    errors++;
+  }
+  return errors;
 }
 
 static void qosc_load_httpdconf(request_rec *r, const char *server_dir, 
@@ -1116,14 +1125,16 @@ static char *qosc_locfile_id2name(request_rec *r, int line_number, int file) {
     char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), fs)) {
       if(i == line_number) {
-        char *end = strchr(line, ' ');
+        file_name = apr_pstrdup(r->pool, line);
+        char *end = strchr(file_name, ' ');
         if(end) {
           end[0] = '\0';
-          file_name = apr_pstrcat(r->pool, line, NULL);
           end++;
           while(end[0] && (end[0] != ' ')) end++;
           while(end[0] && (end[0] == ' ')) end++;
           url = end;
+        } else {
+          return NULL;
         }
         break;
       }
@@ -1423,6 +1434,7 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
   apr_table_t *rules = apr_table_make(r->pool, 10);
   char *location;
   char *dedicated_rules;
+  int errors = 0;
   if(!loc) {
     ap_rprintf(r, "Invalid request.");
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -1458,8 +1470,13 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
         }
       }        
       fclose(f);
-      //      fprintf(stderr, "%s\n", url); fflush(stderr);
-      //      qosc_insert2location(r, server_dir, server_conf, rules, url, filter);
+      {
+        char *httpdconf = qosc_get_httpd_conf_name(r, settings);
+        char *root = apr_pstrdup(r->pool, httpdconf);
+        char *p = strrchr(root, '/');
+        if(p) p[0] = '\0';
+        errors = qosc_insert2location(r, settings, httpdconf, root, rules, url, filter);
+      }
     } else {
       ap_rprintf(r, "Could not read rule file.");
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -1472,11 +1489,10 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
                   QOSC_LOG_PFX(0)"could determine file name");
     return;
   }
-    ap_rprintf(r, "Not yet available.");
-    /*$$$
-  qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
-                                  ".do?action=qsfilter2#", loc, NULL));
-    */
+  if(!errors) {
+    qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
+                                    ".do?action=qsfilter2#", loc, NULL));
+  }
 }
 
 static void qosc_qsfilter2_edit(request_rec *r, qosc_settings_t *settings) {
