@@ -30,20 +30,20 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.49 2008-01-16 20:37:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.50 2008-01-16 20:51:13 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
  ***********************************************************************/
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifdef APR_HAVE_GETRLIMIT
-#include <sys/resource.h>
-#endif
 
 /* mod_qos requires OpenSSL */
 #include <openssl/rand.h>
 #include <openssl/evp.h>
+#ifdef APR_HAVE_GETRLIMIT
+#include <sys/resource.h>
+#endif
 
 /* apache */
 #include <httpd.h>
@@ -89,7 +89,7 @@ typedef struct {
 typedef struct {
   char *name;
   char *uri;
-  FILE *fd;
+  apr_file_t *fd;
 } qosc_location_t;
 
 typedef struct {
@@ -290,17 +290,21 @@ static char *qosc_url2filename(apr_pool_t *pool, const char *url) {
   return apr_pstrcat(pool, "qs/", u, NULL);
 }
 
-static int qosc_fgetline(char *s, int n, FILE *f) {
+static int qosc_fgetline(char *s, int n, apr_file_t *f) {
   register int i = 0;
   s[0] = '\0';
   while (1) {
-    s[i] = (char) fgetc(f);
+    if(apr_file_getc(&s[i], f) != APR_SUCCESS) {
+      s[i] = EOF;
+    }
     if (s[i] == QOSCR) {
-      s[i] = fgetc(f);
+      if(apr_file_getc(&s[i], f) != APR_SUCCESS) {
+        s[i] = EOF;
+      }
     }
     if ((s[i] == 0x4) || (s[i] == QOSLF) || (i == (n - 1))) {
       s[i] = '\0';
-      return (feof(f) ? 1 : 0);
+      return (apr_file_eof(f) == APR_EOF ? 1 : 0);
     }
     ++i;
   }
@@ -308,13 +312,13 @@ static int qosc_fgetline(char *s, int n, FILE *f) {
 
 static apr_table_t *qosc_file2table(apr_pool_t *pool, const char *filename) {
   apr_table_t *table = apr_table_make(pool, 2);
-  FILE *f = fopen(filename, "r");
-  if(f) {
+  apr_file_t *f = NULL;
+  if(apr_file_open(&f, filename, APR_READ, APR_OS_DEFAULT, pool) == APR_SUCCESS) {
     char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), f)) {
       apr_table_add(table, line, "");
     }
-    fclose(f);
+    apr_file_close(f);
   }
   return table;
 }
@@ -323,9 +327,9 @@ static apr_table_t *qosc_file2table(apr_pool_t *pool, const char *filename) {
    only the part with the provided name is stored
    thr regex specifiy which part of each line should be stored */
 #ifdef AP_REGEX_H
-static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *name, ap_regex_t *regex)
+static apr_status_t qosc_store_multipart(request_rec *r, apr_file_t *f, const char *name, ap_regex_t *regex)
 #else
-static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *name, regex_t *regex)
+static apr_status_t qosc_store_multipart(request_rec *r, apr_file_t *f, const char *name, regex_t *regex)
 #endif
 {
   const char *type = apr_table_get(r->headers_in, "content-type");
@@ -414,16 +418,14 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
                     while(m_start[0] == ' ') m_start++;
                     m_end = strrchr(m, ' ');
                     m_end[0] = '\0';
-                    fprintf(f, "%s\n", m_start);
-                    fflush(f);
+                    apr_file_printf(f, "%s\n", m_start);
                   }
                 } else {
                   if(tmp_buf_p[1] && tmp_buf_p[strlen(tmp_buf_p)-2] == QOSCR) {
                     tmp_buf_p[strlen(tmp_buf_p)-2] = QOSLF;
                     tmp_buf_p[strlen(tmp_buf_p)-1] = '\0';
                   }
-                  fprintf(f, "%s", tmp_buf_p);
-                  fflush(f);
+                  apr_file_printf(f, "%s", tmp_buf_p);
                 }
               }
             }
@@ -529,16 +531,18 @@ static void qosc_css(request_rec *r) {
 }
 
 static qosc_append_file(apr_pool_t *pool, const char *dest, const char *source) {
-  FILE *ds = fopen(dest, "a");
-  FILE *sr = fopen(source, "r");
-  if(sr && ds) {
+  apr_file_t *ds = NULL;
+  apr_file_t *sr = NULL;
+  if((apr_file_open(&ds, dest, APR_WRITE|APR_CREATE|APR_APPEND, APR_OS_DEFAULT, pool)
+      == APR_SUCCESS) && 
+     (apr_file_open(&sr, source, APR_READ, APR_OS_DEFAULT, pool) == APR_SUCCESS)) {
     char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), sr)) {
-      fprintf(ds, "%s\n", line);
+      apr_file_printf(ds, "%s\n", line);
     }
   }
-  if(ds) fclose(ds);
-  if(sr) fclose(sr);
+  if(ds) apr_file_close(ds);
+  if(sr) apr_file_close(sr);
 }
 
 /* get the path of the current request */
@@ -587,30 +591,35 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
     } else {
       if(strcmp(action, "set") == 0) {
         char *conf = (char *)apr_table_get(settings->qt, "conf");
-        FILE *f = NULL;
+        apr_file_t *f = NULL;
         if(conf) {
           conf = apr_pstrdup(r->pool, conf);
           qosc_unescaping(conf);
-          f = fopen(conf, "r");
-          if(f) {
+          f;
+          if(apr_file_open(&f, conf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
             if(mkdir(settings->server_dir, 0750) != 0) {
               ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                             QOSC_LOG_PFX(0)"failed to create directory '%s'", settings->server_dir);
               ap_rprintf(r, "Failed to create directory '%s'", settings->server_dir);
-              fclose(f);
+              apr_file_close(f);
               f=NULL;
               return;
             } else {
-              FILE *c = fopen(settings->server_conf, "w");
-              mkdir(qs, 0750);
-              if(c) {
-                fprintf(c, "conf=%s\n", conf);
-                fclose(c);
+              apr_file_t *c = NULL;
+              if(apr_file_open(&c, settings->server_conf,
+                               APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                mkdir(qs, 0750);
+                apr_file_printf(c, "conf=%s\n", conf);
+                apr_file_close(c);
+              } else {
+                ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                              QOSC_LOG_PFX(0)"failed to write configuration '%s'",
+                              settings->server_conf);
               }
-              c = fopen(settings->server_options, "w");
-              if(c) {
-                fprintf(c, "-m\n");
-                fclose(c);
+              if(apr_file_open(&c, settings->server_options,
+                               APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                apr_file_printf(c, "-m\n");
+                apr_file_close(c);
               }
             }
           }
@@ -628,26 +637,26 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
             }
             httpdconf = apr_pstrcat(r->pool, settings->server_dir, "/httpd.conf", NULL);
             mkdir(qs, 0750);
-            f = fopen(httpdconf, "w");
-            if(f) {
+            if(apr_file_open(&f, httpdconf, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
               apr_status_t status = qosc_store_multipart(r, f, "httpd_conf", NULL);
               if(status != APR_SUCCESS) {
-                fclose(f);
+                apr_file_close(f);
                 f=NULL;
                 unlink(httpdconf);
                 unlink(qs);
                 unlink(settings->server_dir);
               } else {
-                FILE *c = fopen(settings->server_conf, "w");
-                mkdir(apr_pstrcat(r->pool, settings->server_conf, "/qs", NULL), 0750);
-                if(c) {
-                  fprintf(c, "conf=%s\n", httpdconf);
-                  fclose(c);
+                apr_file_t *c = NULL;
+                if(apr_file_open(&c, settings->server_conf,
+                                 APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                  mkdir(apr_pstrcat(r->pool, settings->server_conf, "/qs", NULL), 0750);
+                  apr_file_printf(c, "conf=%s\n", httpdconf);
+                  apr_file_close(c);
                 }
-                c = fopen(settings->server_options, "w");
-                if(c) {
-                  fprintf(c, "-m\n");
-                  fclose(c);
+                if(apr_file_open(&c, settings->server_options,
+                                 APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                  apr_file_printf(c, "-m\n");
+                  apr_file_close(c);
                 }
               }
             }
@@ -661,7 +670,7 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
         } else {
           qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
                                           ".do?action=load", NULL));
-          fclose(f);
+          apr_file_close(f);
         }
       }
       if(strcmp(action, "add") == 0) {
@@ -733,8 +742,8 @@ static void qosc_close_locations(apr_table_t *locations, int delete) {
   for(i = 0; i < apr_table_elts(locations)->nelts; i++) {
     qosc_location_t *l = (qosc_location_t *)entry[i].val;
     if(l->fd) {
-      fclose(l->fd);
-      l->fd = 0;
+      apr_file_close(l->fd);
+      l->fd = NULL;
     }
     if(delete) {
       unlink(l->name);
@@ -742,13 +751,17 @@ static void qosc_close_locations(apr_table_t *locations, int delete) {
   }
 }
 
-static void qosc_reopen_locations(apr_table_t *locations, const char *mode) {
+static void qosc_reopen_locations(apr_pool_t *pool, apr_table_t *locations, apr_int32_t mode) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(locations)->elts;
   for(i = 0; i < apr_table_elts(locations)->nelts; i++) {
     qosc_location_t *l = (qosc_location_t *)entry[i].val;
-    if(l->fd == 0) {
-      l->fd = fopen(l->name, mode);
+    if(l->fd == NULL) {
+      if(apr_file_open(&l->fd, l->name, mode, APR_OS_DEFAULT, pool) != APR_SUCCESS) {
+        qosc_log(pool, "failed to open '%s' (%s)",
+                 l->name, strerror(errno));
+        l->fd = NULL;
+      }
     }
   }
 }
@@ -757,9 +770,9 @@ static void qosc_reopen_locations(apr_table_t *locations, const char *mode) {
    all urls to this location */
 static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
                                         const char *server_conf, int init) {
-  FILE *f = fopen(server_conf, "r");
+  apr_file_t *f = NULL;
   apr_table_t *locations = apr_table_make(r->pool, 2);
-  if(f) {
+  if(apr_file_open(&f, server_conf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), f)) {
       if(strncmp(line, "location=", strlen("location=")) == 0) {
@@ -769,12 +782,16 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
         l->name = apr_pstrcat(r->pool, server_dir, "/", qosc_url2filename(r->pool, loc), ".loc", NULL);
         if(apr_table_get(locations, loc) == NULL) {
           if(init) {
-            l->fd = fopen(l->name, "w");
+            if(apr_file_open(&l->fd, l->name, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
+              l->fd = NULL;
+            }
             unlink(apr_pstrcat(r->pool, l->name, ".url_deny_new", NULL));
             unlink(apr_pstrcat(r->pool, l->name, ".rules", NULL));
             unlink(apr_pstrcat(r->pool, l->name, ".rep", NULL));
           } else {
-            l->fd = fopen(l->name, "r");
+            if(apr_file_open(&l->fd, l->name, APR_READ, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
+              l->fd = NULL;
+            }
           }
           if(!l->fd) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -783,8 +800,8 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
             return NULL;
           }
           apr_table_setn(locations, loc, (char *)l);
-          fclose(l->fd);
-          l->fd = 0;
+          apr_file_close(l->fd);
+          l->fd = NULL;
           qosc_append_file(r->pool, l->name, apr_pstrcat(r->pool, l->name, ".url_permit", NULL));
         }
       }
@@ -796,17 +813,17 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
       l->uri = loc;
       l->name = apr_pstrcat(r->pool, server_dir, "/qs/404.loc", NULL);
       if(init) {
-        l->fd = fopen(l->name, "w");
+        apr_file_open(&l->fd, l->name, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool);
         unlink(apr_pstrcat(r->pool, l->name, ".url_deny_new", NULL));
       } else {
-        l->fd = fopen(l->name, "r");
+        apr_file_open(&l->fd, l->name, APR_READ, APR_OS_DEFAULT, r->pool);
       }
       apr_table_setn(locations, loc, (char *)l);
-      fclose(l->fd);
-      l->fd = 0;
+      apr_file_close(l->fd);
+      l->fd = NULL;
       qosc_append_file(r->pool, l->name, apr_pstrcat(r->pool, l->name, ".url_permit", NULL));
     }
-    fclose(f);
+    apr_file_close(f);
   } else {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"could not open server configuration '%s'", server_conf);
@@ -832,9 +849,9 @@ static const char *qosc_get_location_match(apr_table_t *locations, const char *u
 
 /* returns the httpd.conf path */
 static char *qosc_get_httpd_conf_name(request_rec *r, qosc_settings_t *settings) {
-  FILE *f = fopen(settings->server_conf, "r");
+  apr_file_t *f = NULL;
   char *httpdconf = NULL;
-  if(f) {
+  if(apr_file_open(&f, settings->server_conf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     char line[QOSC_HUGE_STRING_LEN];
     line[0] = '\0';
     qosc_fgetline(line, sizeof(line), f);
@@ -851,7 +868,7 @@ static char *qosc_get_httpd_conf_name(request_rec *r, qosc_settings_t *settings)
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOSC_LOG_PFX(0)"invalid server settings");
     }
-    fclose(f);
+    apr_file_close(f);
   } else {  
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"failed to open configuration file '%s'", settings->server_conf);
@@ -862,21 +879,21 @@ static char *qosc_get_httpd_conf_name(request_rec *r, qosc_settings_t *settings)
 /* returns a list of log files defined by configuration (httpd.conf) which
    are available on this server (local fs) */
 static apr_table_t *qosc_read_logfile(request_rec *r, const char *server_conf) {
-  FILE *f = fopen(server_conf, "r");
+  apr_file_t *f = NULL;
   apr_table_t *logs = apr_table_make(r->pool, 2);
-  if(f) {
+  if(apr_file_open(&f, server_conf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), f)) {
       if(strncmp(line, "log=", strlen("log=")) == 0) {
         char *log = apr_pstrdup(r->pool, &line[strlen("log=")]);
-        FILE *l = fopen(log, "r");
-        if(l) {
+        apr_file_t *l = NULL;
+        if(apr_file_open(&l, log, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
           apr_table_set(logs, log, "");
-          fclose(l);
+          apr_file_close(l);
         }
       }
     }
-    fclose(f);
+    apr_file_close(f);
   } else {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"could not open server configuration");
@@ -912,10 +929,11 @@ static int qosc_insert2location(request_rec *r, qosc_settings_t *settings,
 
   char *tmp_file = apr_pstrcat(r->pool, httpdconf, ".tmp", NULL);
   char *directive = apr_pstrcat(r->pool, filter, " ", NULL);
-  FILE *in = fopen(httpdconf, "r");
-  FILE *out = fopen(tmp_file, "w");
+  apr_file_t *in = NULL;
+  apr_file_t *out = NULL;
   int errors = 0;
-  if(in && out) {
+  if((apr_file_open(&in, httpdconf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) &&
+     (apr_file_open(&out, tmp_file, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS)) {
     char line[QOSC_HUGE_STRING_LEN];
     int found_location = 0;
     int written = 0;
@@ -939,7 +957,6 @@ static int qosc_insert2location(request_rec *r, qosc_settings_t *settings,
         char *end = this_location;
         while(end[0] && (end[0] != ' ') && (end[0] != '>') && (end[0] != '\t')) end++;
         end[0] = '\0';
-        fflush(stderr);
         if(strcmp(this_location, location) == 0) {
           found_location = 1;
         } else {
@@ -953,27 +970,27 @@ static int qosc_insert2location(request_rec *r, qosc_settings_t *settings,
           int i;
           apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
           for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
-            fprintf(out, "%s\n", entry[i].key);
+            apr_file_printf(out, "%s\n", entry[i].key);
           }
           written = 1;
         }
         if(!strstr(line, filter)) {
-          fprintf(out, "%s\n", line);
+          apr_file_printf(out, "%s\n", line);
         }
       } else {
-        fprintf(out, "%s\n", line);
+        apr_file_printf(out, "%s\n", line);
       }
     }
-    fclose(in);
-    fclose(out);
+    apr_file_close(in);
+    apr_file_close(out);
     if(!errors) {
       unlink(httpdconf);
       ap_rprintf(r, "%s updated\n", ap_escape_html(r->pool, httpdconf));
       rename(tmp_file, httpdconf);
     }
   } else {
-    if(in) fclose(in);
-    if(out) fclose(out);
+    if(in) apr_file_close(in);
+    if(out) apr_file_close(out);
     ap_rprintf(r, "Failed to open httpd configuration file '%s'.<br>\n",
                ap_escape_html(r->pool, httpdconf));
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -986,11 +1003,11 @@ static int qosc_insert2location(request_rec *r, qosc_settings_t *settings,
 
 static void qosc_load_httpdconf(request_rec *r, const char *server_dir, 
                                 const char *file, const char *root, STACK *st, int *errors) {
-  FILE *f = fopen(file, "r");
-  FILE *fp = 0;
-  FILE *fd = 0;
+  apr_file_t *f = NULL;
+  apr_file_t *fp = NULL;
+  apr_file_t *fd = NULL;
   char line[QOSC_HUGE_STRING_LEN];
-  if(f) {
+  if(apr_file_open(&f, file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     while(!qosc_fgetline(line, sizeof(line), f)) {
       const char *inc = qosc_get_conf_value(line, "Include ");
       const char *host = qosc_get_conf_value(line, "VirtualHost ");
@@ -1016,11 +1033,13 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
         while(end[0] && (end[0] != ' ') && (end[0] != '>') && (end[0] != '\t')) end++;
         end[0] = '\0';
         sk_push(st, apr_pstrcat(r->pool, "location=", loc, NULL));
-        if(fp) fclose(fp);
-        if(fd) fclose(fd);
+        if(fp) apr_file_close(fp);
+        if(fd) apr_file_close(fd);
         filename = qosc_url2filename(r->pool, loc);
-        fp = fopen(apr_pstrcat(r->pool, server_dir, "/", filename, ".loc.permit", NULL), "w");
-        fd = fopen(apr_pstrcat(r->pool, server_dir, "/", filename, ".loc.deny", NULL), "w");
+        if(apr_file_open(&fp, apr_pstrcat(r->pool, server_dir, "/", filename, ".loc.permit", NULL),
+                         APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) fp = NULL;
+        if(apr_file_open(&fd, apr_pstrcat(r->pool, server_dir, "/", filename, ".loc.deny", NULL),
+                         APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) fd = NULL;
       }
       if(host) {
         char *end = (char *)host;
@@ -1043,19 +1062,19 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
       if(permit) {
         sk_push(st, apr_pstrcat(r->pool, "QS_PermitUri=", permit, NULL));
         if(fp) {
-          fprintf(fp, "QS_PermitUri %s\n", permit);
+          apr_file_printf(fp, "QS_PermitUri %s\n", permit);
         }
       }
       if(deny) {
         sk_push(st, apr_pstrcat(r->pool, "QS_DenyRequestLine=", deny, NULL));
         if(fd) {
-          fprintf(fd, "QS_DenyRequestLine %s\n", deny);
+          apr_file_printf(fd, "QS_DenyRequestLine %s\n", deny);
         }
       }
     }
-    fclose(f);
-    if(fp) fclose(fp);
-    if(fd) fclose(fd);
+    apr_file_close(f);
+    if(fp) apr_file_close(fp);
+    if(fd) apr_file_close(fd);
   } else {
     errors++;
     ap_rprintf(r, "Failed to open '%s'.<br>\n", ap_escape_html(r->pool, file));
@@ -1065,27 +1084,26 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
 }
 
 static int qosc_server_load(request_rec *r, qosc_settings_t *settings) {
-  FILE *f;
+  apr_file_t *f = NULL;
   int errors = 0;
   STACK *st = sk_new(NULL);
   char *httpdconf = qosc_get_httpd_conf_name(r, settings);
   char *root = apr_pstrdup(r->pool, httpdconf == NULL ? "" : httpdconf);
   char *p = strrchr(root, '/');
   if(!httpdconf) {
-    ap_rprintf(r, "Could not read server configuration");
+    ap_rprintf(r, "Could not determine configuration file");
     return 1;
   }
   if(p) p[0] = '\0';
   sk_push(st, apr_pstrcat(r->pool, "conf=", httpdconf, NULL));
   qosc_load_httpdconf(r, settings->server_dir, httpdconf, root, st, &errors);
-  f = fopen(settings->server_conf, "w");
-  if(f) {
+  if(apr_file_open(&f, settings->server_conf, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     int i;
     for(i = 0; i < sk_num(st); i++) {
       char *l = sk_value(st, i);
-      fprintf(f, "%s\n", l);
+      apr_file_printf(f, "%s\n", l);
     }
-    fclose(f);
+    apr_file_close(f);
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
                   QOSC_LOG_PFX(0)"configuration loaded from '%s'", httpdconf);
   } else {
@@ -1108,8 +1126,8 @@ static void qosc_qsfilter2_upload(request_rec *r, qosc_settings_t *settings) {
   }
   if(strcmp(action, "upload") == 0) {
     /* receives an access log file */
-    FILE *f = fopen(settings->access_log, "w");
-    if(!f) {
+    apr_file_t *f = NULL;
+    if(apr_file_open(&f, settings->access_log, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
       ap_rprintf(r, "Failed to write '%s'.<br>\n", ap_escape_html(r->pool, settings->access_log));
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                     QOSC_LOG_PFX(0)"failed to write to '%s'", settings->access_log);
@@ -1127,7 +1145,7 @@ static void qosc_qsfilter2_upload(request_rec *r, qosc_settings_t *settings) {
         status = qosc_store_multipart(r, f, "access_log", regex);
         unlink(settings->status_file);
       }
-      fclose(f);
+      apr_file_close(f);
     }
     qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
                                     ".do?action=qsfilter2", NULL));
@@ -1145,7 +1163,7 @@ static char *qosc_locfile_id2name(request_rec *r, int line_number, int file) {
   const char *server = qosc_get_server(qt);
   char *server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
   char *status_file = apr_pstrcat(r->pool, server_dir, "/"QOSC_STATUS, NULL);
-  FILE *fs;
+  apr_file_t *fs = NULL;
   char *file_name = NULL;
   char *url = NULL;
   if(!server) {
@@ -1154,8 +1172,7 @@ static char *qosc_locfile_id2name(request_rec *r, int line_number, int file) {
   if(line_number == 0) {
     return NULL;
   }
-  fs = fopen(status_file, "r");
-  if(fs) {
+  if(apr_file_open(&fs, status_file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     int i = 0;
     char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), fs)) {
@@ -1176,7 +1193,7 @@ static char *qosc_locfile_id2name(request_rec *r, int line_number, int file) {
       }
       i++;
     }
-    fclose(fs);
+    apr_file_close(fs);
   } else {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"could not open status file '%s'", status_file);
@@ -1190,27 +1207,30 @@ static char *qosc_locfile_id2name(request_rec *r, int line_number, int file) {
 
 static int qosc_create_input_configuration(request_rec *r, const char *location) {
   char *dest = apr_pstrcat(r->pool, location, ".conf", NULL);
-  FILE *df = fopen(dest, "w");
-  if(df) {
-    fclose(df);
+  apr_file_t *df = NULL;
+  if(apr_file_open(&df, dest, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+    apr_file_close(df);
     // permit rules from server conf
     qosc_append_file(r->pool, dest, apr_pstrcat(r->pool, location, ".permit", NULL));
     // deny rules from server conf
     qosc_append_file(r->pool, dest, apr_pstrcat(r->pool, location, ".deny", NULL));
     // control rules (blacklist, custom rules)
     {
-      FILE *f = fopen(apr_pstrcat(r->pool, location, ".url_deny", NULL), "r");
-      if(f) {
+      apr_file_t *f = NULL;
+      if(apr_file_open(&f, apr_pstrcat(r->pool, location, ".url_deny", NULL),
+                       APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
         char line[QOSC_HUGE_STRING_LEN];
-        df = fopen(dest, "a");
-        while(!qosc_fgetline(line, sizeof(line), f)) {
-          char *data;
-          qosc_unescaping(line);
-          data = qosc_pcre_escape(r->pool, line);
-          fprintf(df, "QS_DenyRequestLine -restrict deny \"%s\"\n", data);
+        if(apr_file_open(&df, dest, APR_WRITE|APR_CREATE|APR_APPEND,
+                         APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+          while(!qosc_fgetline(line, sizeof(line), f)) {
+            char *data;
+            qosc_unescaping(line);
+            data = qosc_pcre_escape(r->pool, line);
+            apr_file_printf(df, "QS_DenyRequestLine -restrict deny \"%s\"\n", data);
+          }
+          apr_file_close(df);
+          apr_file_close(f);
         }
-        fclose(df);
-        fclose(f);
       }
     }
   }
@@ -1227,29 +1247,29 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
   char *server_options = apr_pstrcat(r->pool, server_dir, "/"QOSC_SERVER_OPTIONS, NULL);
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(locations)->elts;
-  FILE *f = fopen(status_file, "w");
+  apr_file_t *f = NULL;
   time_t now = time(NULL);
   char tmb[128];
   struct tm *ptr = localtime(&now);
   strftime(tmb, sizeof(tmb), "%H:%M:%S %d.%m.%Y", ptr);
-  if(f) {
-    fprintf(f, "%s\n", tmb);
+  if(apr_file_open(&f, status_file, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+    apr_file_printf(f, "%s\n", tmb);
   }
   for(i = 0; i < apr_table_elts(locations)->nelts; i++) {
     qosc_location_t *l = (qosc_location_t *)entry[i].val;
     char *cmd;
     int status = 0;
     struct stat attrib;
-    FILE *fr;
-    FILE *fo = fopen(server_options, "r");
+    apr_file_t *fr = NULL;
+    apr_file_t *fo = NULL;
     char *query_option = "";
-    if(fo) {
+    if(apr_file_open(&fo, server_options, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
       char line[QOSC_HUGE_STRING_LEN];
       qosc_fgetline(line, sizeof(line), fo);
       if(strlen(line) > 0) {
         query_option = apr_pstrdup(r->pool, line);
       }
-      fclose(fo);
+      apr_file_close(fo);
     }
     qosc_create_input_configuration(r, l->name);
     cmd = apr_psprintf(r->pool, "%s %s -i %s -c %s.conf -e >%s.rep 2>%s.err",
@@ -1257,49 +1277,48 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
                        query_option,
                        l->name, l->name,
                        l->name, l->name);
-    fr = fopen(running_file, "a");
-    if(fr) {
-      fprintf(fr, "<li>process %s\n",
+    if(apr_file_open(&fr, running_file, APR_WRITE|APR_CREATE|APR_APPEND,
+                     APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+      apr_file_printf(fr, "<li>process %s\n",
               ap_escape_html(r->pool, l->uri));
-      fflush(fr);
-      fclose(fr);
+      apr_file_close(fr);
     }
     if((stat(l->name, &attrib) == 0) && (attrib.st_size > 0)) {
       status = system(cmd);
       if(f) {
-        fprintf(f, "%s %d %s\n",l->name, status, l->uri);
+        apr_file_printf(f, "%s %d %s\n",l->name, status, l->uri);
       }
     }
-    fr = fopen(running_file, "a");
-    if(fr) {
-      fprintf(fr, " - %s</li>\n", status == 0 ? "done" : "<b>failed</b>");
-      fflush(fr);
-      fclose(fr);
+    if(apr_file_open(&fr, running_file, APR_WRITE|APR_CREATE|APR_APPEND,
+                     APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+      apr_file_printf(fr, " - %s</li>\n", status == 0 ? "done" : "<b>failed</b>");
+      apr_file_close(fr);
+      fr = NULL;
     }
   }
   if(f) {
-    fclose(f);
+    apr_file_close(f);
+    f = NULL;
   }
 }
 
 static void qosc_qsfilter2_sort(request_rec *r, apr_table_t *locations,
                                 const char *running_file, const char *access_log) {
-  FILE *ac;
-  FILE *fr = fopen(running_file, "w");
-  if(fr) {
-    fprintf(fr, "<li>sort access log data\n");
-    fflush(fr);
-    fclose(fr);
+  apr_file_t *ac = NULL;
+  apr_file_t *fr = NULL;
+  if(apr_file_open(&fr, running_file, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+    apr_file_printf(fr, "<li>sort access log data\n");
+    apr_file_close(fr);
+    fr = NULL;
   }
-  ac = fopen(access_log, "r");
-  if(ac) {
+  if(apr_file_open(&ac, access_log, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), ac)) {
       const char *loc = qosc_get_location_match(locations, line);
       qosc_location_t *l = (qosc_location_t *)apr_table_get(locations, loc);
       if(l == NULL) l = (qosc_location_t *)apr_table_get(locations, "404");
-      if(l) {
-        fprintf(l->fd, "%s\n", line);
+      if(l && l->fd) {
+        apr_file_printf(l->fd, "%s\n", line);
       } else {
         qosc_log(r->pool, "no location found for '%s'", line);
       }
@@ -1307,11 +1326,11 @@ static void qosc_qsfilter2_sort(request_rec *r, apr_table_t *locations,
   } else {
     qosc_log(r->pool, "failed to open '%s' (%s)", access_log, strerror(errno));
   }
-  fr = fopen(running_file, "a");
-  if(fr) {
-    fprintf(fr, " - done</li>\n");
-    fflush(fr);
-    fclose(fr);
+  if(apr_file_open(&fr, running_file, APR_WRITE|APR_CREATE|APR_APPEND,
+                   APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+    apr_file_printf(fr, " - done</li>\n");
+    apr_file_close(fr);
+    fr = NULL;
   }
 }
 
@@ -1325,8 +1344,12 @@ static void qosc_qsfilter2_start(request_rec *r, qosc_settings_t *settings) {
       int i;
       pid_t pid;
       int status;
-      FILE *fr = fopen(settings->running_file, "w");
-      if(fr) fclose(fr);
+      apr_file_t *fr = NULL;
+      if(apr_file_open(&fr, settings->running_file,
+                       APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+        apr_file_close(fr);
+        fr = NULL;
+      }
       /*
        * well, we seem to be ready to start data processing
        * no "return" after this line...
@@ -1351,7 +1374,7 @@ static void qosc_qsfilter2_start(request_rec *r, qosc_settings_t *settings) {
             /* $$$ */
             close(i);
           }
-          qosc_reopen_locations(locations, "a");
+          qosc_reopen_locations(r->pool, locations, APR_WRITE|APR_CREATE|APR_APPEND);
           qosc_qsfilter2_sort(r, locations, settings->running_file, settings->access_log);
           qosc_close_locations(locations, 0);
           qosc_qsfilter2_execute(r, locations, settings->running_file, settings->status_file);
@@ -1380,29 +1403,30 @@ static void qosc_qsfilter2_start(request_rec *r, qosc_settings_t *settings) {
 static void qosc_qsfilter2_saveoptions(request_rec *r, qosc_settings_t *settings) {
   const char *query = apr_table_get(settings->qt, "query");
   const char *path = apr_table_get(settings->qt, "path");
-  FILE *f;
+  apr_file_t *f = NULL;
   if(!query) {
     ap_rprintf(r, "Invalid request.");
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"invalid request, no query parameter");
     return;
   }
-  f = fopen(settings->server_options, "w");
-  if(f) {
+  if(apr_file_open(&f, settings->server_options,
+                   APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     char *path_option = "";
     if(path && strstr(path, "-h")) {
       path_option = apr_pstrdup(r->pool, " -h");
     }
     if(strstr(query, "-m") != NULL) {
-      fprintf(f, "-m%s\n", path_option);
+      apr_file_printf(f, "-m%s\n", path_option);
     } else  if(strstr(query, "-p") != NULL) {
-      fprintf(f, "-p%s\n", path_option);
+      apr_file_printf(f, "-p%s\n", path_option);
     } else if(strstr(query, "-s") != NULL) {
-      fprintf(f, "-s%s\n", path_option);
+      apr_file_printf(f, "-s%s\n", path_option);
     } else {
-      fprintf(f, "%s\n", path_option);
+      apr_file_printf(f, "%s\n", path_option);
     }
-    fclose(f);
+    apr_file_close(f);
+    f = NULL;
   }
   qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
                                   ".do?action=qsfilter2", NULL));
@@ -1427,33 +1451,50 @@ static void qosc_qsfilter2_permitdeny(request_rec *r, qosc_settings_t *settings)
   }
   file_name = apr_pstrcat(r->pool, qosc_locfile_id2name(r, atoi(loc), 1), ".rep", NULL);
   if(file_name && file_name[0]) {
-    FILE *f = fopen(file_name, "r");
-    if(f) {
+    apr_file_t *f = NULL;
+    if(apr_file_open(&f, file_name, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
       char *search = apr_pstrcat(r->pool, "# ADD line ", url, ": ", NULL);
       char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), f)) {
         if(strncmp(line, search, strlen(search)) == 0) {
           char *u = &line[strlen(search)];
-          FILE *fp;
+          apr_file_t *fp = NULL;
           // cut .rep
           file_name[strlen(file_name) - 4] = '\0';
           if(strcmp(action, "permit") == 0) {
-            fp = fopen(apr_pstrcat(r->pool, file_name, ".url_permit", NULL), "a");
+            if(apr_file_open(&fp, apr_pstrcat(r->pool, file_name, ".url_permit", NULL),
+                             APR_WRITE|APR_CREATE|APR_APPEND,
+                             APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
+              fp = NULL;
+            }
           } else {
-            FILE *fd = fopen(apr_pstrcat(r->pool, file_name, ".url_deny_new", NULL), "w");
-            fclose(fd);
-            fp = fopen(apr_pstrcat(r->pool, file_name, ".url_deny", NULL), "a");
+            apr_file_t *fd = NULL;
+            if(apr_file_open(&fd, apr_pstrcat(r->pool, file_name, ".url_deny_new", NULL),
+                             APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+              apr_file_close(fd);
+              fd = NULL;
+            }
+            if(apr_file_open(&fp, apr_pstrcat(r->pool, file_name, ".url_deny", NULL),
+                             APR_WRITE|APR_CREATE|APR_APPEND,
+                             APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
+              fp == NULL;
+            }
           }
           if(fp) {
-            fprintf(fp, "%s\n", u);
-            fclose(fp);
+            apr_file_printf(fp, "%s\n", u);
+            apr_file_close(fp);
+            fp = NULL;
+          } else {
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                          QOSC_LOG_PFX(0)"could not %s '%s'", action, u);
           }
           qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
                                           ".do?action=qsfilter2#", loc, NULL));
           break;
         }
       }
-      fclose(f);
+      apr_file_close(f);
+      f = NULL;
     }
   } else {
     ap_rprintf(r, "Invalid request.");
@@ -1492,8 +1533,8 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
     file_name = apr_pstrcat(r->pool, location, ".rep", NULL);
   }
   if(file_name && file_name[0]) {
-    FILE *f = fopen(file_name, "r");
-    if(f) {
+    apr_file_t *f = NULL;
+    if(apr_file_open(&f, file_name, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
       char line[QOSC_HUGE_STRING_LEN];
       char *url = qosc_locfile_id2name(r, atoi(loc), 0);
       while(!qosc_fgetline(line, sizeof(line), f)) {
@@ -1505,13 +1546,14 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
           apr_table_set(rules, line, "");
         }
       }        
-      fclose(f);
+      apr_file_close(f);
+      f = NULL;
       {
         char *httpdconf = qosc_get_httpd_conf_name(r, settings);
         char *root = apr_pstrdup(r->pool, httpdconf == NULL ? "" : httpdconf);
         char *p = strrchr(root, '/');
         if(!httpdconf) {
-          ap_rprintf(r, "Could not read server configuration");
+          ap_rprintf(r, "Could not determine configuration file");
           return;
         }
         if(p) p[0] = '\0';
@@ -1565,8 +1607,8 @@ static void qosc_qsfilter2_edit(request_rec *r, qosc_settings_t *settings) {
       file_name = apr_pstrcat(r->pool, location, ".rep", NULL);
     }
     if(file_name && file_name[0]) {
-      FILE *f = fopen(file_name, "r");
-      if(f) {
+      apr_file_t *f = NULL;
+      if(apr_file_open(&f, file_name, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
         char line[QOSC_HUGE_STRING_LEN];
         ap_rprintf(r, "&nbsp;<form action=\"%sqsfilter2.do?action=save&loc=%s&server=%s\" "
                    "method=\"post\" enctype=\"multipart/form-data\">\n",
@@ -1588,15 +1630,17 @@ static void qosc_qsfilter2_edit(request_rec *r, qosc_settings_t *settings) {
         ap_rputs("</textarea>\n", r);
         ap_rprintf(r, "<br><input name=\"action\" value=\"save\" type=\"submit\">\n"
                    " </form>\n");
-        fclose(f);
+        apr_file_close(f);
+        f = NULL;
       }
     }
   } else if((strcmp(action, "save") == 0) && (r->method_number == M_POST)) {
     char *file_name = apr_pstrcat(r->pool, qosc_locfile_id2name(r, atoi(loc), 1), ".rules", NULL);
-    FILE *f = fopen(file_name, "w");
-    if(f) {
+    apr_file_t *f = NULL;
+    if(apr_file_open(&f, file_name, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
       apr_status_t status = qosc_store_multipart(r, f, "rules", NULL);
-      fclose(f);
+      apr_file_close(f);
+      f = NULL;
       qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
                                       ".do?action=qsfilter2#", loc, NULL));
     } else {
@@ -1623,13 +1667,14 @@ static void qosc_qsfilter2_report(request_rec *r, qosc_settings_t *settings) {
   }
   file_name = apr_pstrcat(r->pool, qosc_locfile_id2name(r, atoi(loc), 1), ".rep", NULL);
   if(file_name && file_name[0]) {
-    FILE *f = fopen(file_name, "r");
-    if(f) {
+    apr_file_t *f = NULL;
+    if(apr_file_open(&f, file_name, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
       char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), f)) {
         ap_rprintf(r, "<code>%s</code><br>\n", ap_escape_html(r->pool, line));
       }        
-      fclose(f);
+      apr_file_close(f);
+      f = NULL;
     }
   } else {
     ap_rprintf(r, "Invalid request.");
@@ -1643,7 +1688,7 @@ static void qosc_qsfilter2_import(request_rec *r, qosc_settings_t *settings) {
   const char *file = apr_table_get(settings->qt, "file");
   apr_table_t *logt = qosc_read_logfile(r, settings->server_conf);
   char *logfile;
-  FILE *f;
+  apr_file_t *f = NULL;
   if(!file) {
     ap_rprintf(r, "Invalid request.");
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -1658,10 +1703,10 @@ static void qosc_qsfilter2_import(request_rec *r, qosc_settings_t *settings) {
                   QOSC_LOG_PFX(0)"invalid request, unknown log file");
     return;
   }
-  f = fopen(logfile, "r");
-  if(f) {
-    FILE *d = fopen(settings->access_log, "w");
-    if(d) {
+  if(apr_file_open(&f, logfile, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+    apr_file_t *d = NULL;
+    if(apr_file_open(&d, settings->access_log,
+                     APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
 #ifdef AP_REGEX_H
       ap_regex_t *regex = ap_pregcomp(r->pool, QOSC_REQ, AP_REG_EXTENDED);
 #else
@@ -1680,20 +1725,22 @@ static void qosc_qsfilter2_import(request_rec *r, qosc_settings_t *settings) {
           while(m_start[0] == ' ') m_start++;
           m_end = strrchr(m, ' ');
           m_end[0] = '\0';
-          fprintf(d, "%s\n", m_start);
-          fflush(d);
+          apr_file_printf(d, "%s\n", m_start);
         }
       }
       unlink(settings->status_file);
-      fclose(d);
+      apr_file_close(d);
+      d = NULL;
     } else {
       ap_rprintf(r, "Could not write log file.");
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                     QOSC_LOG_PFX(0)"could not write log file '%s'", settings->access_log);
-      fclose(f);
+      apr_file_close(f);
+      f = NULL;
       return;
     }
-    fclose(f);
+    apr_file_close(f);
+    f = NULL;
   } else {
     ap_rprintf(r, "Could not read input.");
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -1757,8 +1804,8 @@ static int qosc_report_locations(request_rec *r, const char *server,
                                  int loc, const char *location_file, const char *file,
                                  apr_table_t *deny, apr_table_t *permit) {
   int open_lines = 0;
-  FILE *f = fopen(file, "r");
-  if(f) {
+  apr_file_t *f = NULL;
+  if(apr_file_open(&f, file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), f)) {
       if(strncmp(line, "# ADD line ", strlen("# ADD line ")) == 0) {
@@ -1791,7 +1838,8 @@ static int qosc_report_locations(request_rec *r, const char *server,
         }
       }
     }
-    fclose(f);
+    apr_file_close(f);
+    f  = NULL;
   } else {
     ap_rprintf(r, "failed to open '%s'", ap_escape_html(r->pool, file));
     return -1;
@@ -1860,15 +1908,16 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
 
   /* settings */
   if(!inprogress) {
-    FILE *f = fopen(settings->server_options, "r");
+    apr_file_t *f = NULL;
     char *option = "";
-    if(f) {
+    if(apr_file_open(&f, settings->server_options, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
       char line[QOSC_HUGE_STRING_LEN];
       qosc_fgetline(line, sizeof(line), f);
       if(strlen(line) > 0) {
         option = apr_pstrdup(r->pool, line);
       }
-      fclose(f);
+      apr_file_close(f);
+      f = NULL;
     }
     ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
     // ---
@@ -1987,14 +2036,15 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
       ap_rputs("<br>No access log data available.<br><br>", r);
     }
   } else {
-    FILE *fr = fopen(settings->running_file, "r");
+    apr_file_t *fr = NULL;
     ap_rputs("<br><b>Rule generation process is running.</b><br><br>Status:<ul>\n", r);
-    if(fr) {
+    if(apr_file_open(&fr, settings->running_file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
       char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), fr)) {
         ap_rprintf(r, "%s\n", line);
       }
-      fclose(fr);
+      apr_file_close(fr);
+      fr = NULL;
     }
     ap_rputs("</ul><br>\n", r);
   }
@@ -2002,8 +2052,8 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
 
   /* results */
   if(!inprogress) {
-    FILE *fs = fopen(settings->status_file, "r");
-    if(fs) {
+    apr_file_t *fs = NULL;
+    if(apr_file_open(&fs, settings->status_file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
       int i = 0;
       char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), fs)) {
@@ -2039,7 +2089,8 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
             if(stat(apr_pstrcat(r->pool, id, ".err", NULL), &attrib) == 0) {
               if(attrib.st_size > 0) {
                 ap_rprintf(r, "<a title=\"stderr\" "
-                           "href=\"%sdownload.do?server=%s&loc=%d&type=err\">(stderr)</a> ",
+                           "href=\"%sdownload.do?server=%s&loc=%d&action=get+err&type=err\">"
+                           "(stderr)</a> ",
                            qosc_get_path(r), ap_escape_html(r->pool, settings->server), i);
               }
             }
@@ -2054,7 +2105,8 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
         }
         i++;
       }
-      fclose(fs);
+      apr_file_close(fs);
+      fs = NULL;
     }
   }
   ap_rputs("</tbody></table>\n", r);
@@ -2079,8 +2131,8 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
   } else if(action && (strcmp(action, "qsfilter2") == 0)) {
     qosc_server_qsfilter2(r, settings);
   } else {
-    FILE *f = fopen(settings->server_conf, "r");
-    if(f) {
+    apr_file_t *f = NULL;
+    if(apr_file_open(&f, settings->server_conf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
       int hosts = 0;
       int locations = 0;
       char *conf = NULL;
@@ -2097,7 +2149,8 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
           locations++;
         }
       }
-      fclose(f);
+      apr_file_close(f);
+      f = NULL;
       ap_rputs("<table class=\"btable\"><tbody>\n",r);
       ap_rputs("<tr class=\"rows\"><td>\n",r);
       ap_rprintf(r, "Server configuration %s"
@@ -2121,9 +2174,9 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
 #endif
       ap_rputs("</td></tr>\n",r);
 
-      f = fopen(local_file, "r");
-      if(f) {
-        fclose(f);
+      if(apr_file_open(&f, local_file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+        apr_file_close(f);
+        f = NULL;
         ap_rputs("<tr class=\"rows\"><td>\n",r);
         ap_rputs("Update the httpd.conf file:<br>", r);
         ap_rprintf(r, "<form action=\"%sct.do?server=%s&action=set\""
@@ -2236,7 +2289,8 @@ static int qosc_download(request_rec * r) {
     return OK;
   }
   if((strcmp(action, "get+rules") == 0) ||
-     (strcmp(action, "get+raw") == 0)) {
+     (strcmp(action, "get+raw") == 0) ||
+     (strcmp(action, "get+err") == 0)) {
     if(!loc) {
       ap_rprintf(r, "Invalid request.");
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -2262,8 +2316,8 @@ static int qosc_download(request_rec * r) {
       }
     }
     if(file_name && file_name[0]) {
-      FILE *f = fopen(file_name, "r");
-      if(f) {
+      apr_file_t *f = NULL;
+      if(apr_file_open(&f, file_name, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
         char line[QOSC_HUGE_STRING_LEN];
         while(!qosc_fgetline(line, sizeof(line), f)) {
           if(filter) {
@@ -2274,7 +2328,8 @@ static int qosc_download(request_rec * r) {
             ap_rprintf(r, "%s\n", line);
           }
         }      
-        fclose(f);
+        apr_file_close(f);
+        f = NULL;
       } else {
         ap_rprintf(r, "Invalid request.");
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -2292,20 +2347,21 @@ static int qosc_download(request_rec * r) {
     if(settings) {
       char *httpdconf = qosc_get_httpd_conf_name(r, settings);
       if(httpdconf) {
-        FILE *f = fopen(httpdconf, "r");
-        if(f) {
+        apr_file_t *f = NULL;
+        if(apr_file_open(&f, httpdconf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
           char line[QOSC_HUGE_STRING_LEN];
           while(!qosc_fgetline(line, sizeof(line), f)) {
             ap_rprintf(r, "%s\n", line);
           }
-          fclose(f);
+          apr_file_close(f);
+          f = NULL;
         } else {
           ap_rprintf(r, "Could not open file.");
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                         QOSC_LOG_PFX(0)"could not open file '%s'", httpdconf);
         }
       } else {
-        ap_rprintf(r, "Could not read server configuration");
+        ap_rprintf(r, "Could not read server configuration.");
       }
     } else {
       ap_rprintf(r, "Invalid request.");
