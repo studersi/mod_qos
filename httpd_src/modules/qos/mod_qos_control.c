@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.50 2008-01-16 20:51:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.51 2008-01-16 20:59:17 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -607,7 +607,8 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
             } else {
               apr_file_t *c = NULL;
               if(apr_file_open(&c, settings->server_conf,
-                               APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                               APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                               APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
                 mkdir(qs, 0750);
                 apr_file_printf(c, "conf=%s\n", conf);
                 apr_file_close(c);
@@ -617,7 +618,8 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
                               settings->server_conf);
               }
               if(apr_file_open(&c, settings->server_options,
-                               APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                               APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                               APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
                 apr_file_printf(c, "-m\n");
                 apr_file_close(c);
               }
@@ -637,7 +639,8 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
             }
             httpdconf = apr_pstrcat(r->pool, settings->server_dir, "/httpd.conf", NULL);
             mkdir(qs, 0750);
-            if(apr_file_open(&f, httpdconf, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+            if(apr_file_open(&f, httpdconf, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                             APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
               apr_status_t status = qosc_store_multipart(r, f, "httpd_conf", NULL);
               if(status != APR_SUCCESS) {
                 apr_file_close(f);
@@ -648,13 +651,15 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
               } else {
                 apr_file_t *c = NULL;
                 if(apr_file_open(&c, settings->server_conf,
-                                 APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                                 APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                                 APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
                   mkdir(apr_pstrcat(r->pool, settings->server_conf, "/qs", NULL), 0750);
                   apr_file_printf(c, "conf=%s\n", httpdconf);
                   apr_file_close(c);
                 }
                 if(apr_file_open(&c, settings->server_options,
-                                 APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                                 APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                                 APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
                   apr_file_printf(c, "-m\n");
                   apr_file_close(c);
                 }
@@ -782,7 +787,8 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
         l->name = apr_pstrcat(r->pool, server_dir, "/", qosc_url2filename(r->pool, loc), ".loc", NULL);
         if(apr_table_get(locations, loc) == NULL) {
           if(init) {
-            if(apr_file_open(&l->fd, l->name, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
+            if(apr_file_open(&l->fd, l->name, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                             APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
               l->fd = NULL;
             }
             unlink(apr_pstrcat(r->pool, l->name, ".url_deny_new", NULL));
@@ -813,7 +819,8 @@ static apr_table_t *qosc_read_locations(request_rec *r, const char *server_dir,
       l->uri = loc;
       l->name = apr_pstrcat(r->pool, server_dir, "/qs/404.loc", NULL);
       if(init) {
-        apr_file_open(&l->fd, l->name, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool);
+        apr_file_open(&l->fd, l->name, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                      APR_OS_DEFAULT, r->pool);
         unlink(apr_pstrcat(r->pool, l->name, ".url_deny_new", NULL));
       } else {
         apr_file_open(&l->fd, l->name, APR_READ, APR_OS_DEFAULT, r->pool);
@@ -933,7 +940,8 @@ static int qosc_insert2location(request_rec *r, qosc_settings_t *settings,
   apr_file_t *out = NULL;
   int errors = 0;
   if((apr_file_open(&in, httpdconf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) &&
-     (apr_file_open(&out, tmp_file, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS)) {
+     (apr_file_open(&out, tmp_file, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                    APR_OS_DEFAULT, r->pool) == APR_SUCCESS)) {
     char line[QOSC_HUGE_STRING_LEN];
     int found_location = 0;
     int written = 0;
@@ -1037,9 +1045,11 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
         if(fd) apr_file_close(fd);
         filename = qosc_url2filename(r->pool, loc);
         if(apr_file_open(&fp, apr_pstrcat(r->pool, server_dir, "/", filename, ".loc.permit", NULL),
-                         APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) fp = NULL;
+                         APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                         APR_OS_DEFAULT, r->pool) != APR_SUCCESS) fp = NULL;
         if(apr_file_open(&fd, apr_pstrcat(r->pool, server_dir, "/", filename, ".loc.deny", NULL),
-                         APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) fd = NULL;
+                         APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                         APR_OS_DEFAULT, r->pool) != APR_SUCCESS) fd = NULL;
       }
       if(host) {
         char *end = (char *)host;
@@ -1097,7 +1107,8 @@ static int qosc_server_load(request_rec *r, qosc_settings_t *settings) {
   if(p) p[0] = '\0';
   sk_push(st, apr_pstrcat(r->pool, "conf=", httpdconf, NULL));
   qosc_load_httpdconf(r, settings->server_dir, httpdconf, root, st, &errors);
-  if(apr_file_open(&f, settings->server_conf, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+  if(apr_file_open(&f, settings->server_conf, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                   APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     int i;
     for(i = 0; i < sk_num(st); i++) {
       char *l = sk_value(st, i);
@@ -1127,7 +1138,8 @@ static void qosc_qsfilter2_upload(request_rec *r, qosc_settings_t *settings) {
   if(strcmp(action, "upload") == 0) {
     /* receives an access log file */
     apr_file_t *f = NULL;
-    if(apr_file_open(&f, settings->access_log, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
+    if(apr_file_open(&f, settings->access_log, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                     APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
       ap_rprintf(r, "Failed to write '%s'.<br>\n", ap_escape_html(r->pool, settings->access_log));
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                     QOSC_LOG_PFX(0)"failed to write to '%s'", settings->access_log);
@@ -1208,7 +1220,8 @@ static char *qosc_locfile_id2name(request_rec *r, int line_number, int file) {
 static int qosc_create_input_configuration(request_rec *r, const char *location) {
   char *dest = apr_pstrcat(r->pool, location, ".conf", NULL);
   apr_file_t *df = NULL;
-  if(apr_file_open(&df, dest, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+  if(apr_file_open(&df, dest, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                   APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     apr_file_close(df);
     // permit rules from server conf
     qosc_append_file(r->pool, dest, apr_pstrcat(r->pool, location, ".permit", NULL));
@@ -1252,7 +1265,8 @@ static void qosc_qsfilter2_execute(request_rec *r, apr_table_t *locations,
   char tmb[128];
   struct tm *ptr = localtime(&now);
   strftime(tmb, sizeof(tmb), "%H:%M:%S %d.%m.%Y", ptr);
-  if(apr_file_open(&f, status_file, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+  if(apr_file_open(&f, status_file, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                   APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     apr_file_printf(f, "%s\n", tmb);
   }
   for(i = 0; i < apr_table_elts(locations)->nelts; i++) {
@@ -1306,7 +1320,8 @@ static void qosc_qsfilter2_sort(request_rec *r, apr_table_t *locations,
                                 const char *running_file, const char *access_log) {
   apr_file_t *ac = NULL;
   apr_file_t *fr = NULL;
-  if(apr_file_open(&fr, running_file, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+  if(apr_file_open(&fr, running_file, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                   APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     apr_file_printf(fr, "<li>sort access log data\n");
     apr_file_close(fr);
     fr = NULL;
@@ -1346,7 +1361,8 @@ static void qosc_qsfilter2_start(request_rec *r, qosc_settings_t *settings) {
       int status;
       apr_file_t *fr = NULL;
       if(apr_file_open(&fr, settings->running_file,
-                       APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                       APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                       APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
         apr_file_close(fr);
         fr = NULL;
       }
@@ -1411,7 +1427,8 @@ static void qosc_qsfilter2_saveoptions(request_rec *r, qosc_settings_t *settings
     return;
   }
   if(apr_file_open(&f, settings->server_options,
-                   APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                   APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                   APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     char *path_option = "";
     if(path && strstr(path, "-h")) {
       path_option = apr_pstrdup(r->pool, " -h");
@@ -1470,7 +1487,8 @@ static void qosc_qsfilter2_permitdeny(request_rec *r, qosc_settings_t *settings)
           } else {
             apr_file_t *fd = NULL;
             if(apr_file_open(&fd, apr_pstrcat(r->pool, file_name, ".url_deny_new", NULL),
-                             APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                             APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                             APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
               apr_file_close(fd);
               fd = NULL;
             }
@@ -1706,7 +1724,8 @@ static void qosc_qsfilter2_import(request_rec *r, qosc_settings_t *settings) {
   if(apr_file_open(&f, logfile, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     apr_file_t *d = NULL;
     if(apr_file_open(&d, settings->access_log,
-                     APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+                     APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                     APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
 #ifdef AP_REGEX_H
       ap_regex_t *regex = ap_pregcomp(r->pool, QOSC_REQ, AP_REG_EXTENDED);
 #else
