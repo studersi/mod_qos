@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.47 2008-01-16 07:09:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.48 2008-01-16 09:06:27 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -402,7 +402,7 @@ static apr_status_t qosc_store_multipart(request_rec *r, FILE *f, const char *na
                 if(regex) {
                   ap_regmatch_t ma;
                   if(ap_regexec(regex, tmp_buf_p, 1, &ma, 0) == 0) {
-                    char m[ma.rm_eo - ma.rm_so + 1];
+                    char *m = apr_pcalloc(lpool, ma.rm_eo - ma.rm_so + 1);
                     char *m_start;
                     char *m_end;
                     strncpy(m, &tmp_buf_p[ma.rm_so], ma.rm_eo - ma.rm_so);
@@ -1153,8 +1153,9 @@ static char *qosc_locfile_id2name(request_rec *r, int line_number, int file) {
     char line[QOSC_HUGE_STRING_LEN];
     while(!qosc_fgetline(line, sizeof(line), fs)) {
       if(i == line_number) {
+        char *end;
         file_name = apr_pstrdup(r->pool, line);
-        char *end = strchr(file_name, ' ');
+        end = strchr(file_name, ' ');
         if(end) {
           end[0] = '\0';
           end++;
@@ -1656,10 +1657,10 @@ static void qosc_qsfilter2_import(request_rec *r, qosc_settings_t *settings) {
       regex_t *regex = ap_pregcomp(r->pool, QOSC_REQ, REG_EXTENDED);
 #endif
       char line[QOSC_HUGE_STRING_LEN];
+      char m[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), f)) {
         ap_regmatch_t ma;
         if(ap_regexec(regex, line, 1, &ma, 0) == 0) {
-          char m[ma.rm_eo - ma.rm_so + 1];
           char *m_start;
           char *m_end;
           strncpy(m, &line[ma.rm_so], ma.rm_eo - ma.rm_so);
