@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.46 2008-01-15 21:55:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.47 2008-01-16 07:09:15 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1079,6 +1079,8 @@ static int qosc_server_load(request_rec *r, qosc_settings_t *settings) {
       fprintf(f, "%s\n", l);
     }
     fclose(f);
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                  QOSC_LOG_PFX(0)"configuration loaded from '%s'", httpdconf);
   } else {
     errors++;
     ap_rprintf(r, "Failed to write '%s'.<br>\n", ap_escape_html(r->pool, settings->server_conf));
@@ -1904,7 +1906,6 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
     ap_rputs("Upload access log data", r);
     qosc_table_body_title_end(r);
     qosc_table_body_cell_start(r);
-    ap_rprintf(r, "&nbsp;Query setting");
     qosc_table_body_cell_middle(r);
     ap_rprintf(r, "<form action=\"%sqsfilter2.do?server=%s&action=upload\""
                " method=\"post\" enctype=\"multipart/form-data\">\n",
@@ -1926,29 +1927,24 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
         int i;
         ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
         // ---
-        ap_rputs("<table class=\"btable\"><tbody>\n",r);
-        ap_rputs("  <tr class=\"rowe\">", r);
-        ap_rputs("    <td colspan=\"2\">\n",r);
+        qosc_table_body_start(r);
+        qosc_table_body_title_start(r);
         ap_rputs("Import access log data", r);
-        ap_rputs("    </td>\n",r);
-        ap_rputs("  </tr>", r);
+        qosc_table_body_title_end(r);
         for(i = 0; i < apr_table_elts(logt)->nelts; i++) {
           ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">\n", qosc_get_path(r));
-          ap_rputs("  <tr class=\"row\">", r);
-          ap_rputs("    <td style=\"width: 250px;\">", r);
+          qosc_table_body_cell_start(r);
           ap_rprintf(r, "&nbsp;%s", ap_escape_html(r->pool, entry[i].key));
-          ap_rputs("    </td>", r);
-          ap_rputs("    <td>", r);
+          qosc_table_body_cell_middle(r);
           ap_rprintf(r, " <input name=\"file\" value=\"%s\"    type=\"hidden\">\n"
                      " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
                      " <input name=\"action\" value=\"import\" type=\"submit\">\n"
                      " </form><br>\n",
                      ap_escape_html(r->pool, entry[i].key),
                      ap_escape_html(r->pool, settings->server));
-          ap_rputs("    </td>", r);
-          ap_rputs("  </tr>", r);
+          qosc_table_body_cell_end(r);
         }
-        ap_rputs("</tbody></table>", r);
+        qosc_table_body_end(r);
         // ---
         ap_rputs("</td></tr>\n", r);
       }
@@ -1960,25 +1956,20 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
   if(!inprogress) {
     if(accessavailable) {
       // ---
-      ap_rputs("<table class=\"btable\"><tbody>\n",r);
-      ap_rputs("  <tr class=\"rowe\">", r);
-      ap_rputs("    <td colspan=\"2\">\n",r);
+      qosc_table_body_start(r);
+      qosc_table_body_title_start(r);
       ap_rprintf(r, "Access log data loaded (%s, %d bytes)", tmb, attrib.st_size);
-      ap_rputs("    </td>\n",r);
-      ap_rputs("  </tr>", r);
+      qosc_table_body_title_end(r);
       ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">\n",
                  qosc_get_path(r));
-      ap_rputs("  <tr class=\"row\">", r);
-      ap_rputs("    <td style=\"width: 250px;\">", r);
+      qosc_table_body_cell_start(r);
       ap_rputs("&nbsp;Generate rules", r);
-      ap_rputs("    </td>", r);
-      ap_rputs("    <td>", r);
+      qosc_table_body_cell_middle(r);
       ap_rprintf(r, " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
                  " <input name=\"action\" value=\"start\" type=\"submit\">\n"
                  " </form>\n", ap_escape_html(r->pool, settings->server));
-      ap_rputs("    </td>", r);
-      ap_rputs("  </tr>", r);
-      ap_rputs("</tbody></table>", r);
+      qosc_table_body_cell_end(r);
+      qosc_table_body_end(r);
       // ---
     } else {
       ap_rputs("<br>No access log data available.<br><br>", r);
@@ -2119,7 +2110,7 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
 
 
         ap_rputs("<tr class=\"rows\"><td>\n",r);
-        ap_rputs("Download the httpd.conf file:<br>", r);
+        ap_rputs("Download the httpd.conf file.<br>", r);
         ap_rprintf(r, "<form action=\"%sdownload.do?server=%s&action=download\""
                    " method=\"get\"\n",
                    qosc_get_path(r), ap_escape_html(r->pool, settings->server));
@@ -2128,6 +2119,16 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
                    " </form>\n", ap_escape_html(r->pool, settings->server));
         ap_rputs("</td></tr>\n",r);
         ap_rputs("</tbody></table>\n",r);
+      } else {
+
+
+        ap_rputs("<tr class=\"rows\"><td>\n",r);
+        ap_rputs("Reload the configuration file.<br>", r);
+        ap_rprintf(r, "<form action=\"%s%s.do?action=load\" method=\"get\">\n",
+                   qosc_get_path(r), ap_escape_html(r->pool, settings->server));
+        ap_rprintf(r, "&nbsp;<input name=\"action\" value=\"load\" type=\"submit\">\n"
+                   " </form>\n", ap_escape_html(r->pool, settings->server));
+        ap_rputs("</td></tr>\n",r);
       }
     }
   }
@@ -2166,12 +2167,6 @@ static void qosc_server_list(request_rec *r, qosc_settings_t *settings) {
                      "&nbsp;<a href=\"%s%s.do?action=qsfilter2\" "
                      "title=\"creates request line white list rules\">"
                      "qsfilter2</a></td></tr>\n",
-                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
-          ap_rprintf(r, "<tr class=\"row\"><td>"
-                     "&nbsp;<a href=\"%s%s.do?action=load\" "
-                     "title=\"reloads the server configuration from the specified file\" >"
-                     "reload configuration"
-                     "</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
         } else {
           ap_rprintf(r, "<tr class=\"rowt\"><td>"
