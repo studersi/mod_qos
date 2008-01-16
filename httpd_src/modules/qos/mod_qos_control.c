@@ -30,13 +30,16 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.48 2008-01-16 09:06:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.49 2008-01-16 20:37:57 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
  ***********************************************************************/
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef APR_HAVE_GETRLIMIT
+#include <sys/resource.h>
+#endif
 
 /* mod_qos requires OpenSSL */
 #include <openssl/rand.h>
@@ -1066,8 +1069,12 @@ static int qosc_server_load(request_rec *r, qosc_settings_t *settings) {
   int errors = 0;
   STACK *st = sk_new(NULL);
   char *httpdconf = qosc_get_httpd_conf_name(r, settings);
-  char *root = apr_pstrdup(r->pool, httpdconf);
+  char *root = apr_pstrdup(r->pool, httpdconf == NULL ? "" : httpdconf);
   char *p = strrchr(root, '/');
+  if(!httpdconf) {
+    ap_rprintf(r, "Could not read server configuration");
+    return 1;
+  }
   if(p) p[0] = '\0';
   sk_push(st, apr_pstrcat(r->pool, "conf=", httpdconf, NULL));
   qosc_load_httpdconf(r, settings->server_dir, httpdconf, root, st, &errors);
@@ -1501,8 +1508,12 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
       fclose(f);
       {
         char *httpdconf = qosc_get_httpd_conf_name(r, settings);
-        char *root = apr_pstrdup(r->pool, httpdconf);
+        char *root = apr_pstrdup(r->pool, httpdconf == NULL ? "" : httpdconf);
         char *p = strrchr(root, '/');
+        if(!httpdconf) {
+          ap_rprintf(r, "Could not read server configuration");
+          return;
+        }
         if(p) p[0] = '\0';
         errors = qosc_insert2location(r, settings, httpdconf, root, rules, url, filter);
       }
@@ -2094,6 +2105,20 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
                  "<br>&nbsp;Locations: %d<br><br>",
                  conf == NULL ? "-" : conf,
                  hosts, locations);
+#ifdef APR_HAVE_GETRLIMIT
+      {
+        struct rlimit rlp;
+        getrlimit(RLIMIT_NOFILE, &rlp);
+        if((locations > 20) && (rlp.rlim_cur < (locations - 20))) {
+          ap_rprintf(r, "<b>Warning:</b><br>Too many locations for the current"
+                     " open file limitations of this server (%d). Use \"ulimit\""
+                     " to increase the maximum open file handler.<br>", rlp.rlim_cur);
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                        QOSC_LOG_PFX(0)"too many locations: %d, ulimit=%d",
+                        locations, rlp.rlim_cur); 
+        }
+      }
+#endif
       ap_rputs("</td></tr>\n",r);
 
       f = fopen(local_file, "r");
@@ -2208,7 +2233,7 @@ static int qosc_download(request_rec * r) {
     ap_rprintf(r, "Invalid request.");
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"invalid request, no action");
-    return;
+    return OK;
   }
   if((strcmp(action, "get+rules") == 0) ||
      (strcmp(action, "get+raw") == 0)) {
@@ -2216,7 +2241,7 @@ static int qosc_download(request_rec * r) {
       ap_rprintf(r, "Invalid request.");
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                     QOSC_LOG_PFX(0)"invalid request, no location file");
-      return;
+      return OK;
     }
     file_name = qosc_locfile_id2name(r, atoi(loc), 1);
     if(file_name && file_name[0]) {
@@ -2254,13 +2279,13 @@ static int qosc_download(request_rec * r) {
         ap_rprintf(r, "Invalid request.");
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOSC_LOG_PFX(0)"invalid request, could not open %s", file_name);
-        return;
+        return OK;
       }
     } else {
       ap_rprintf(r, "Invalid request.");
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                     QOSC_LOG_PFX(0)"invalid request, could not determine file name");
-      return;
+      return OK;
     }
   } else if(strcmp(action, "download") == 0) {
     qosc_settings_t *settings = qosc_get_settings(r);
@@ -2279,6 +2304,8 @@ static int qosc_download(request_rec * r) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                         QOSC_LOG_PFX(0)"could not open file '%s'", httpdconf);
         }
+      } else {
+        ap_rprintf(r, "Could not read server configuration");
       }
     } else {
       ap_rprintf(r, "Invalid request.");
@@ -2287,7 +2314,7 @@ static int qosc_download(request_rec * r) {
     ap_rprintf(r, "Invalid request.");
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOSC_LOG_PFX(0)"invalid request, unknown action");
-    return;
+    return OK;
   }
   return OK;
 }
