@@ -25,10 +25,11 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.6 2007-12-18 19:58:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.7 2008-01-17 21:02:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -123,6 +124,27 @@ static char *cutNext(char **line) {
   return c;
 }
 
+static void getFreeMem(char *buf) {
+  FILE *f = fopen("/proc/meminfo", "r");
+  buf[0] = '\0';
+  if(f) {
+    char line[MAX_LINE];
+    while(!qs_getLinef(line, sizeof(line), f)) {
+      if(strncmp(line, "MemFree: ", 9) == 0) {
+	char *c = &line[9];
+	char *e;
+	while(c[0] && ((c[0] == ' ') || (c[0] == '\t'))) c++;
+	e = c;
+	while(e[0] && (e[0] != ' ')) e++;
+	e[0] = '\0';
+	strcpy(buf, c);
+	break;
+      }
+    }
+    fclose(f);
+  }
+}
+
 /* value names in csv output */
 #define NRS "r/s"
 #define NBS "b/s"
@@ -134,8 +156,12 @@ static char *cutNext(char **line) {
  */
 static void printAndResetStat(char *timeStr) {
   double av[1];
+  char mem[256];
   if(!m_offline) {
     getloadavg(av, 1);
+    getFreeMem(mem);
+  } else {
+    mem[0] = '\0';
   }
   qs_csLock();
   fprintf(m_f, "%s;"
@@ -193,9 +219,10 @@ static void printAndResetStat(char *timeStr) {
   m_qos_t = 0;
   m_qos_l = 0;
   if(!m_offline) {
-    fprintf(m_f, "sl;%.2f", av[0]); 
+    fprintf(m_f, "sl;%.2f;m;%s",
+	    av[0], mem[0] ? mem : "-");
   } else {
-    fprintf(m_f, "sl;-");
+    fprintf(m_f, "sl;-;m;-");
   }
   fprintf(m_f, "\n");
   qs_csUnLock();
@@ -498,6 +525,7 @@ static void usage(char *cmd) {
   printf("  - distribution of response durations within the last minute\n");
   printf("    (<1s,1s,2s,3s,4s,5s,>5)\n");
   printf("  - average system load (sl)\n");
+  printf("  - free memory (m) (not available for all platforms)\n");
   printf("  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
   printf("  - number of mod_qos events within the last minute (qv=create session,\n");
   printf("    qs=session pass, qd=access denied, qk=connection closed, qt=dynamic\n");
