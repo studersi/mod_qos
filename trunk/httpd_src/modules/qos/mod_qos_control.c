@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.51 2008-01-16 20:59:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.52 2008-01-17 21:02:44 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -477,6 +477,7 @@ static void qosc_css(request_rec *r) {
 	  background-color: white;\n\
 	  width: 98%;\n\
 	  border: 1px solid;\n\
+          border-color: black;\n\
 	  padding: 0px;\n\
 	  margin: 6px;\n\
 	  font-weight: normal;\n\
@@ -486,6 +487,7 @@ static void qosc_css(request_rec *r) {
 	  background-color: rgb(230,233,235);\n\
 	  vertical-align: top;\n\
 	  border: 1px solid;\n\
+          border-color: black;\n\
 	  font-weight: bold;\n\
 	  padding: 0px;\n\
 	  margin: 0px;\n\
@@ -494,6 +496,7 @@ static void qosc_css(request_rec *r) {
 	  background-color: rgb(230,233,235);\n\
 	  vertical-align: top;\n\
 	  border: 1px solid;\n\
+          border-color: black;\n\
 	  font-weight: normal;\n\
 	  padding: 0px;\n\
 	  margin: 0px;\n\
@@ -502,6 +505,7 @@ static void qosc_css(request_rec *r) {
 	  background-color: rgb(240,243,245);\n\
 	  vertical-align: top;\n\
 	  border: 1px solid;\n\
+          border-color: black;\n\
 	  font-weight: normal;\n\
 	  padding: 0px;\n\
 	  margin: 0px;\n\
@@ -510,6 +514,7 @@ static void qosc_css(request_rec *r) {
 	  background-color: white;\n\
 	  vertical-align: top;\n\
 	  border: 1px solid;\n\
+          border-color: black;\n\
 	  font-weight: normal;\n\
 	  padding: 0px;\n\
 	  margin: 0px;\n\
@@ -518,6 +523,7 @@ static void qosc_css(request_rec *r) {
           background-color: rgb(210,216,220);\n\
 	  vertical-align: top;\n\
           border: 1px solid;\n\
+          border-color: black;\n\
           font-weight: normal;\n\
           padding: 0px;\n\
           margin: 0px;\n\
@@ -1449,9 +1455,26 @@ static void qosc_qsfilter2_saveoptions(request_rec *r, qosc_settings_t *settings
                                   ".do?action=qsfilter2", NULL));
 }
 
+/* read relevant urls from report */
+static apr_table_t *qosc_rep2urllist(request_rec *r, apr_file_t *f) {
+  apr_table_t *urls = apr_table_make(r->pool, 10);
+  char line[QOSC_HUGE_STRING_LEN];
+  while(!qosc_fgetline(line, sizeof(line), f)) {
+    if(strncmp(line, "# ADD line ", strlen("# ADD line ")) == 0) {
+      char *u = &line[strlen("# ADD line ")];
+      char *url = strchr(u, ':');
+      if(url) {
+        url[0] = '\0';
+        url = url+2;
+        apr_table_add(urls, u, url);
+      }
+    }
+  }
+  return urls;
+}
+
 static void qosc_qsfilter2_permitdeny(request_rec *r, qosc_settings_t *settings) {
   const char *loc = apr_table_get(settings->qt, "loc");
-  const char *url = apr_table_get(settings->qt, "url");
   const char *action = apr_table_get(settings->qt, "action");
   char *file_name = NULL;
   if(!loc) {
@@ -1460,64 +1483,73 @@ static void qosc_qsfilter2_permitdeny(request_rec *r, qosc_settings_t *settings)
                   QOSC_LOG_PFX(0)"invalid request, no location file");
     return;
   }
-  if(!url) {
-    ap_rprintf(r, "Invalid request.");
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOSC_LOG_PFX(0)"invalid request, no url number");
-    return;
-  }
   file_name = apr_pstrcat(r->pool, qosc_locfile_id2name(r, atoi(loc), 1), ".rep", NULL);
   if(file_name && file_name[0]) {
     apr_file_t *f = NULL;
     if(apr_file_open(&f, file_name, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
-      char *search = apr_pstrcat(r->pool, "# ADD line ", url, ": ", NULL);
-      char line[QOSC_HUGE_STRING_LEN];
-      while(!qosc_fgetline(line, sizeof(line), f)) {
-        if(strncmp(line, search, strlen(search)) == 0) {
-          char *u = &line[strlen(search)];
-          apr_file_t *fp = NULL;
-          // cut .rep
-          file_name[strlen(file_name) - 4] = '\0';
-          if(strcmp(action, "permit") == 0) {
-            if(apr_file_open(&fp, apr_pstrcat(r->pool, file_name, ".url_permit", NULL),
-                             APR_WRITE|APR_CREATE|APR_APPEND,
-                             APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
-              fp = NULL;
-            }
-          } else {
-            apr_file_t *fd = NULL;
-            if(apr_file_open(&fd, apr_pstrcat(r->pool, file_name, ".url_deny_new", NULL),
-                             APR_WRITE|APR_CREATE|APR_TRUNCATE,
-                             APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
-              apr_file_close(fd);
-              fd = NULL;
-            }
-            if(apr_file_open(&fp, apr_pstrcat(r->pool, file_name, ".url_deny", NULL),
-                             APR_WRITE|APR_CREATE|APR_APPEND,
-                             APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
-              fp == NULL;
-            }
-          }
-          if(fp) {
-            apr_file_printf(fp, "%s\n", u);
-            apr_file_close(fp);
-            fp = NULL;
-          } else {
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOSC_LOG_PFX(0)"could not %s '%s'", action, u);
-          }
-          qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
-                                          ".do?action=qsfilter2#", loc, NULL));
-          break;
-        }
-      }
+      apr_file_t *fd = NULL;
+      apr_file_t *fp = NULL;
+      apr_table_t *urls = qosc_rep2urllist(r, f);
       apr_file_close(f);
       f = NULL;
+      // cut .rep
+      file_name[strlen(file_name) - 4] = '\0';
+      if(apr_file_open(&fp, apr_pstrcat(r->pool, file_name, ".url_permit", NULL),
+                       APR_WRITE|APR_CREATE|APR_APPEND,
+                       APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
+        fp = NULL;
+      }
+      if(apr_file_open(&fd, apr_pstrcat(r->pool, file_name, ".url_deny", NULL),
+                       APR_WRITE|APR_CREATE|APR_APPEND,
+                       APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
+        fd = NULL;
+      }
+      if(fp && fd) {
+        int deny = 0;
+        int i;
+        apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(settings->qt)->elts;
+        for(i = 0; i < apr_table_elts(settings->qt)->nelts; i++) {
+          const char *url = apr_table_get(urls, entry[i].key);
+          if(url) {
+            if(strcmp(entry[i].val, "permit") == 0) {
+              apr_file_printf(fp, "%s\n", url);
+            }
+            if(strcmp(entry[i].val, "deny") == 0) {
+              apr_file_printf(fd, "%s\n", url);
+              deny = 1;
+            }
+          }
+        }
+        if(deny) {
+          apr_file_t *fn = NULL;
+          if(apr_file_open(&fn, apr_pstrcat(r->pool, file_name, ".url_deny_new", NULL),
+                           APR_WRITE|APR_CREATE|APR_TRUNCATE,
+                           APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+            apr_file_close(fn);
+          }
+        }
+        apr_file_close(fp);
+        apr_file_close(fd);
+      } else {
+        ap_rprintf(r, "Failed to write data.");
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOSC_LOG_PFX(0)"could not write permit/deny files");
+        return;
+      }
+    } else {
+      ap_rprintf(r, "Invalid request.");
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                    QOSC_LOG_PFX(0)"could not open report '%s'", file_name);
+      return;
     }
   } else {
     ap_rprintf(r, "Invalid request.");
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOSC_LOG_PFX(0)"could not determine file name");
     return;
   }
+  qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
+                                  ".do?action=qsfilter2#", loc, NULL));
 }
 
 static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
@@ -1785,9 +1817,7 @@ static void qosc_qsfilter2(request_rec *r, qosc_settings_t *settings) {
     qosc_qsfilter2_start(r, settings);
   } else if(action && (strcmp(action, "report") == 0)) {
     qosc_qsfilter2_report(r, settings);
-  } else if(action && (strcmp(action, "permit") == 0)) {
-    qosc_qsfilter2_permitdeny(r, settings);
-  } else if(action && (strcmp(action, "deny") == 0)) {
+  } else if(action && (strcmp(action, "submit") == 0)) {
     qosc_qsfilter2_permitdeny(r, settings);
   } else if(action && (strcmp(action, "save+options") == 0)) {
     qosc_qsfilter2_saveoptions(r, settings);
@@ -1826,6 +1856,9 @@ static int qosc_report_locations(request_rec *r, const char *server,
   apr_file_t *f = NULL;
   if(apr_file_open(&f, file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     char line[QOSC_HUGE_STRING_LEN];
+    ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">"
+               " <input name=\"server\" value=\"%s\" type=\"hidden\">\n",
+               qosc_get_path(r), server);
     while(!qosc_fgetline(line, sizeof(line), f)) {
       if(strncmp(line, "# ADD line ", strlen("# ADD line ")) == 0) {
         char *url = &line[strlen("# ADD line ")];
@@ -1839,24 +1872,31 @@ static int qosc_report_locations(request_rec *r, const char *server,
           char *crl = qosc_crline(r, encoded);
           open_lines++;
           ap_rputs("<tr class=\"row\">\n",r);
-          ap_rprintf(r, "<td>&nbsp;%s:&nbsp;<a onclick=\"alert('%s')\" >%.*s %s</a></td>\n",
-                     id,
-                     crl, 55, encoded,
-                     strlen(encoded) > 55 ? "..." : "");
-          ap_rprintf(r, "<td>"
-                     "<form action=\"%sqsfilter2.do\" method=\"get\">"
-                     " <input name=\"action\" value=\"deny\" type=\"submit\">"
-                     " <input name=\"action\" value=\"permit\" type=\"submit\">"
-                     " <input name=\"server\" value=\"%s\"   type=\"hidden\">\n"
-                     " <input name=\"loc\"    value=\"%d\"   type=\"hidden\">\n"
-                     " <input name=\"url\"    value=\"%s\"   type=\"hidden\">\n"
-                     "</form>"
-                     "</td>\n",
-                     qosc_get_path(r), server, loc, id);
-          ap_rputs("</tr>\n",r);
+          if(open_lines > 10) {
+            ap_rputs("<td colspan=\"2\">&nbsp;<i>more ...</i></td>\n",r);
+            break;
+          } else {
+            ap_rprintf(r, "<td>&nbsp;%s:&nbsp;<a onclick=\"alert('%s')\" >%.*s %s</a></td>\n",
+                       id,
+                       crl, 55, encoded,
+                       strlen(encoded) > 55 ? "..." : "");
+            ap_rprintf(r, "<td><input name=\"%s\" value=\"deny\" type=\"radio\">deny"
+                       "&nbsp;<input name=\"%s\" value=\"permit\" type=\"radio\">permit"
+                       "</td>\n",
+                       id, id);
+            ap_rputs("</tr>\n",r);
+          }
         }
       }
     }
+    if(open_lines) {
+      ap_rputs("<tr><td></td>\n",r);
+      ap_rputs("<td>\n",r);
+      ap_rprintf(r, "<input name=\"action\" value=\"submit\" type=\"submit\">\n"
+                 "<input name=\"loc\" value=\"%d\"   type=\"hidden\">\n", loc);
+      ap_rputs("</td></tr>\n",r);
+    }
+    ap_rputs("</form>\n",r);
     apr_file_close(f);
     f  = NULL;
   } else {
@@ -2113,7 +2153,7 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
                            qosc_get_path(r), ap_escape_html(r->pool, settings->server), i);
               }
             }
-            ap_rputs("</td><td></td></tr>\n", r);
+            ap_rputs("</td><td style=\"width: 130px;\"></td></tr>\n", r);
             {
               apr_table_t *permit = qosc_file2table(r->pool, apr_pstrcat(r->pool, id, ".url_permit", NULL));
               apr_table_t *deny = qosc_file2table(r->pool, apr_pstrcat(r->pool, id, ".url_deny", NULL));
@@ -2181,7 +2221,7 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
       {
         struct rlimit rlp;
         getrlimit(RLIMIT_NOFILE, &rlp);
-        if((locations > 20) && (rlp.rlim_cur < (locations - 20))) {
+        if((rlp.rlim_cur + 20) < locations) {
           ap_rprintf(r, "<b>Warning:</b><br>Too many locations for the current"
                      " open file limitations of this server (%d). Use \"ulimit\""
                      " to increase the maximum open file handler.<br>", rlp.rlim_cur);
