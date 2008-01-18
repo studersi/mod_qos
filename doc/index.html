@@ -184,13 +184,14 @@ Commands within a virtual host overwrites the global configuration (requires
 the definition of a <code>QS_LocRequestLimit</code>, 
 <code>QS_LocRequestLimitDefault</code>, <code>QS_SrvMaxConnPerIP</code> 
 or <code>QS_SrvMaxConn</code> directive).
-The directive <code>QS_SrvConnTimeout</code> can only be used outside of virtual host 
+The directives <code>QS_SrvConnTimeout</code>, <code>QS_SrvPreferNet</code>, and
+<code>QS_RequestHeaderFilterRule</code> may only be used outside of virtual host 
 configurations.
 </p>
 <a name="requestlevelcontrol">
 <h4>Request Level Control</h4>
 The module features the following directives to control server access on a per location 
-(URL) level:
+(URL) level.
 <ul>
 <li>
 <code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
@@ -438,7 +439,8 @@ QS_RequestHeaderFilterRule       UA-CPU "^[a-zA-Z0-9]+$" drop
 <a name="connectionlevelcontrol">
 <h4>Connection Level Control</h4>
 The module features the following directives to control server access on a per server 
-(TCP connection) level:
+(TCP connection) level. These directives must only be used in the global server context 
+and for port based virtual hosts (don't use them for name based virtual hosts).
 <ul>
 <li>
 <code>QS_SrvMaxConn &lt;number&gt;</code><br>
