@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.52 2008-01-17 21:02:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.53 2008-01-18 15:19:50 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -225,6 +225,9 @@ static const char *qosc_get_server(apr_table_t *qt) {
   return server;
 }
 
+/**
+ * returns list of all query name=value pairs
+ */
 static apr_table_t *qosc_get_query_table(request_rec *r) {
   apr_table_t *av = apr_table_make(r->pool, 2);
   if(r->parsed_uri.query) {
@@ -588,7 +591,9 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
   const char *action = apr_table_get(settings->qt, "action");
   const char *qs = apr_pstrcat(r->pool, settings->server_dir, "/qs", NULL);
   if((strcmp(settings->server, "ct") == 0) ||
+     (strcmp(settings->server, "request") == 0) ||
      (strcmp(settings->server, "qsfilter2") == 0) ||
+     (strcmp(settings->server, "connection") == 0) ||
      (strcmp(settings->server, "download") == 0)) {
     ap_rputs("Invalid server name.", r);
   } else {
@@ -2117,11 +2122,11 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
       char line[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), fs)) {
         if(i == 0) {
-          ap_rputs("<tr class=\"rowe\"><td>\n",r);
+          ap_rputs("<tr class=\"rowe\"><td colspan=\"2\">\n",r);
           ap_rprintf(r, "Results (%s):<br>&nbsp;<i>Note: please confirm all requests"
                      " (deny/permit) and then"
                      " repeat the rule generation if necessary.</i>\n", line);
-          ap_rputs("</td><td></td></tr>\n", r);
+          ap_rputs("</td></tr>\n", r);
         } else {
           char *id = line;
           char *st = strchr(line, ' ');
@@ -2287,10 +2292,14 @@ static void qosc_body(request_rec *r, qosc_settings_t *settings) {
   qosc_server(r, settings);
 }
 
-static void qosc_server_list(request_rec *r, qosc_settings_t *settings) {
+static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
   qosc_srv_config_t *sconf = (qosc_srv_config_t*)ap_get_module_config(r->server->module_config,
                                                                   &qos_control_module);
   DIR *dir = opendir(sconf->path);
+  const char *action = NULL;
+  if(settings) {
+    action = apr_table_get(settings->qt, "action");
+  }
   if(dir) {
     struct dirent *de;
     while((de = readdir(dir)) != 0) {
@@ -2301,10 +2310,38 @@ static void qosc_server_list(request_rec *r, qosc_settings_t *settings) {
                      "<a href=\"%s%s.do\">%s</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
                      ap_escape_html(r->pool, de->d_name));
-          ap_rprintf(r, "<tr class=\"row\"><td>"
-                     "&nbsp;<a href=\"%s%s.do?action=qsfilter2\" "
+          // --
+          if(strstr(r->parsed_uri.path, "/request.do") ||
+             (action && (strcmp(action, "request.do") == 0))) {
+            ap_rputs("<tr class=\"rows\"><td>", r);
+          } else {
+            ap_rputs("<tr class=\"row\"><td>", r);
+          }
+          ap_rprintf(r, "&nbsp;<a href=\"%s%s.do?action=request.do\" "
+                     "title=\"manages request level control directives\">"
+                     "request level</a></td></tr>\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+          // --
+          if(strstr(r->parsed_uri.path, "/qsfilter2.do") ||
+             (action && (strcmp(action, "qsfilter2") == 0))) {
+            ap_rputs("<tr class=\"rows\"><td>", r);
+          } else {
+            ap_rputs("<tr class=\"row\"><td>", r);
+          }
+          ap_rprintf(r, "&nbsp;<a href=\"%s%s.do?action=qsfilter2\" "
                      "title=\"creates request line white list rules\">"
                      "qsfilter2</a></td></tr>\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+          // --
+          if(strstr(r->parsed_uri.path, "/connection.do") ||
+             (action && (strcmp(action, "connection.do") == 0))) {
+            ap_rputs("<tr class=\"rows\"><td>", r);
+          } else {
+            ap_rputs("<tr class=\"row\"><td>", r);
+          }
+          ap_rprintf(r, "&nbsp;<a href=\"%s%s.do?action=connection.do\" "
+                     "title=\"manages connection level control directives\">"
+                     "connection level</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
         } else {
           ap_rprintf(r, "<tr class=\"rowt\"><td>"
@@ -2463,7 +2500,15 @@ function checkserver ( form ) {\n\
     alert(\"Sorry, this is a reserved word. Please choose another server name.\" );\n\
     return false;\n\
   }\n\
+  if(form.server.value == \"request\") {\n\
+    alert(\"Sorry, this is a reserved word. Please choose another server name.\" );\n\
+    return false;\n\
+  }\n\
   if(form.server.value == \"qsfilter2\") {\n\
+    alert(\"Sorry, this is a reserved word. Please choose another server name.\" );\n\
+    return false;\n\
+  }\n\
+  if(form.server.value == \"connection\") {\n\
     alert(\"Sorry, this is a reserved word. Please choose another server name.\" );\n\
     return false;\n\
   }\n\
@@ -2537,7 +2582,7 @@ static int qosc_handler(request_rec * r) {
       <td style=\"width: 230px;\" >\n\
       <table class=\"btable\">\n\
         <tbody>\n", r);
-      qosc_server_list(r, settings);
+      qosc_nav_list(r, settings);
       ap_rputs("          <tr class=\"row\">\n\
             <td>&nbsp;</rd></tr>\n", r);
       ap_rputs("          <tr class=\"rowe\">\n\
@@ -2552,7 +2597,7 @@ static int qosc_handler(request_rec * r) {
           </tr>\n",r);
       if(sconf->viewer) {
         ap_rprintf(r, "<tr class=\"rowe\">\n"
-                   "<td><a href=\"%s?option=ip\">mod_qos viewer</a></td>\n"
+                   "<td><a href=\"%s\">mod_qos viewer</a></td>\n"
                    "</tr>\n", sconf->viewer);
       }
       ap_rputs("        </tbody>\n\
