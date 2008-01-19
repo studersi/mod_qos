@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.56 2008-01-19 18:20:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.57 2008-01-19 21:01:17 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1739,7 +1739,7 @@ static void qosc_qsfilter2_edit(request_rec *r, qosc_settings_t *settings) {
                    qosc_get_path(r), loc, settings->server);
         ap_rprintf(r, " <input name=\"server\" value=\"%s\" type=\"hidden\">\n",
                    ap_escape_html(r->pool, settings->server));
-        ap_rprintf(r, " <input name=\"loc\" value=\"%d\" type=\"hidden\">\n",
+        ap_rprintf(r, " <input name=\"loc\" value=\"%s\" type=\"hidden\">\n",
                    loc);
         ap_rputs("<textarea name=\"rules\" cols=\"90\" rows=\"20\">", r);
         while(!qosc_fgetline(line, sizeof(line), f)) {
