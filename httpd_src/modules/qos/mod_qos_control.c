@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.55 2008-01-19 17:32:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.56 2008-01-19 18:20:07 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1234,8 +1234,9 @@ static void qosc_qsfilter2_upload(request_rec *r, qosc_settings_t *settings) {
       }
       apr_file_close(f);
     }
-    qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
-                                    ".do?action=qsfilter2", NULL));
+    qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r),
+                                    "qsfilter2.do?server=", settings->server,
+                                    NULL));
   } else {
     ap_rputs("Unknown action.", r);
     return;
@@ -1445,8 +1446,9 @@ static void qosc_qsfilter2_start(request_rec *r, qosc_settings_t *settings) {
        * well, we seem to be ready to start data processing
        * no "return" after this line...
        */
-      qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
-                                      ".do?action=qsfilter2", NULL));
+      qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r),
+                                      "qsfilter2.do?server=", settings->server,
+                                      NULL));
       switch (pid = fork()) {
       case -1:
         ap_log_rerror(APLOG_MARK, APLOG_ERR|APLOG_NOERRNO, 0, r,
@@ -1520,8 +1522,9 @@ static void qosc_qsfilter2_saveoptions(request_rec *r, qosc_settings_t *settings
     apr_file_close(f);
     f = NULL;
   }
-  qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
-                                  ".do?action=qsfilter2", NULL));
+  qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r),
+                                  "qsfilter2.do?server=", settings->server,
+                                  NULL));
 }
 
 /* read relevant urls from report */
@@ -1617,8 +1620,9 @@ static void qosc_qsfilter2_permitdeny(request_rec *r, qosc_settings_t *settings)
                   QOSC_LOG_PFX(0)"could not determine file name");
     return;
   }
-  qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
-                                  ".do?action=qsfilter2#", loc, NULL));
+  qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r),
+                                  "qsfilter2.do?server=", settings->server,
+                                  "#", loc, NULL));
 }
 
 static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
@@ -1693,8 +1697,9 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
   ap_rprintf(r, "<br>reload configuration ...<br>");
   qosc_server_load(r, settings);
   if(!errors) {
-    qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
-                                    ".do?action=qsfilter2#", loc, NULL));
+    qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r),
+                                    "qsfilter2.do?server=", settings->server,
+                                    "#", loc, NULL));
   }
 }
 
@@ -1760,8 +1765,9 @@ static void qosc_qsfilter2_edit(request_rec *r, qosc_settings_t *settings) {
       apr_status_t status = qosc_store_multipart(r, f, "rules", NULL);
       apr_file_close(f);
       f = NULL;
-      qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
-                                      ".do?action=qsfilter2#", loc, NULL));
+      qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r),
+                                      "qsfilter2.do?server=", settings->server,
+                                      "#", loc, NULL));
     } else {
       ap_rprintf(r, "Could not write data.");
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -1867,40 +1873,9 @@ static void qosc_qsfilter2_import(request_rec *r, qosc_settings_t *settings) {
                   QOSC_LOG_PFX(0)"could not read input '%s'", logfile);
     return;
   }
-  qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r), settings->server,
-                                  ".do?action=qsfilter2", NULL));
-}
-
-/* qsfilter actions
-   upload: get a file from the client
-   import: get a file from local fs
-   start: process the data
-*/
-static void qosc_qsfilter2(request_rec *r, qosc_settings_t *settings) {
-  const char *action = apr_table_get(settings->qt, "action");
-  if(action && (strcmp(action, "upload") == 0)) {
-    qosc_qsfilter2_upload(r, settings);
-  } else if(action && (strcmp(action, "import") == 0)) {
-    qosc_qsfilter2_import(r, settings);
-  } else if(action && (strcmp(action, "start") == 0)) {
-    qosc_qsfilter2_start(r, settings);
-  } else if(action && (strcmp(action, "report") == 0)) {
-    qosc_qsfilter2_report(r, settings);
-  } else if(action && (strcmp(action, "submit") == 0)) {
-    qosc_qsfilter2_permitdeny(r, settings);
-  } else if(action && (strcmp(action, "save+options") == 0)) {
-    qosc_qsfilter2_saveoptions(r, settings);
-  } else if(action && (strcmp(action, "edit") == 0)) {
-    qosc_qsfilter2_edit(r, settings);
-  } else if(action && (strcmp(action, "save") == 0)) {
-    qosc_qsfilter2_edit(r, settings);
-  } else if(action && (strcmp(action, "store") == 0)) {
-    qosc_qsfilter2_store(r, settings);
-  } else {
-    ap_rprintf(r, "Invalid request.");
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOSC_LOG_PFX(0)"unknown action");
-  }
+  qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r),
+                                  "qsfilter2.do?server=", settings->server,
+                                  NULL));
 }
 
 #define QOSC_ALERT_LINE_LEN 120
@@ -2240,6 +2215,36 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
   ap_rputs("</tbody></table>\n", r);
 }
 
+/* qsfilter actions
+   upload: get a file from the client
+   import: get a file from local fs
+   start: process the data
+*/
+static void qosc_qsfilter2(request_rec *r, qosc_settings_t *settings) {
+  const char *action = apr_table_get(settings->qt, "action");
+  if(action && (strcmp(action, "upload") == 0)) {
+    qosc_qsfilter2_upload(r, settings);
+  } else if(action && (strcmp(action, "import") == 0)) {
+    qosc_qsfilter2_import(r, settings);
+  } else if(action && (strcmp(action, "start") == 0)) {
+    qosc_qsfilter2_start(r, settings);
+  } else if(action && (strcmp(action, "report") == 0)) {
+    qosc_qsfilter2_report(r, settings);
+  } else if(action && (strcmp(action, "submit") == 0)) {
+    qosc_qsfilter2_permitdeny(r, settings);
+  } else if(action && (strcmp(action, "save+options") == 0)) {
+    qosc_qsfilter2_saveoptions(r, settings);
+  } else if(action && (strcmp(action, "edit") == 0)) {
+    qosc_qsfilter2_edit(r, settings);
+  } else if(action && (strcmp(action, "save") == 0)) {
+    qosc_qsfilter2_edit(r, settings);
+  } else if(action && (strcmp(action, "store") == 0)) {
+    qosc_qsfilter2_store(r, settings);
+  } else {
+    qosc_server_qsfilter2(r, settings);
+  }
+}
+
 /* server main window */
 static void qosc_server(request_rec *r, qosc_settings_t *settings) {
   DIR *dir;
@@ -2461,7 +2466,7 @@ static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
           } else {
             ap_rputs("<tr class=\"row\"><td>", r);
           }
-          ap_rprintf(r, "&nbsp;<a href=\"%s%s.do?action=qsfilter2\" "
+          ap_rprintf(r, "&nbsp;<a href=\"%sqsfilter2.do?server=%s\" "
                      "title=\"creates request line white list rules\">"
                      "qsfilter2</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
@@ -2691,7 +2696,7 @@ static int qosc_handler(request_rec * r) {
       ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
       ap_rputs("<meta name=\"author\" content=\"Pascal Buchbinder\">\n", r);
       ap_rputs("<meta http-equiv=\"Pragma\" content=\"no-cache\">\n", r);
-      if(settings && action && (strcmp(action, "qsfilter2") == 0)) {
+      if(settings && strstr(r->parsed_uri.path, "/qsfilter2.do")) {
         struct stat attrib;
         if(stat(settings->running_file, &attrib) == 0) {
           ap_rprintf(r, "<meta http-equiv=\"refresh\" content=\"5; URL=%s?%s\">",

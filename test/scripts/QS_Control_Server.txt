@@ -1,0 +1,86 @@
+#
+# $Id: QS_Control_Server.txt,v 1.1 2008-01-19 18:20:07 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "Please choose or create a server."
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control/ct.do?server=server1&action=add HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "Specify the server configuration"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control/ct.do?conf=$QS_HOME_ENC%2Fconf%2Fhttpd.conf&server=server1&action=set HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control/server1.do?action=load HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control/server1.do HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "VirtualHosts"
+_EXPECT . "Locations"
+_EXPECT . "Reload the configuration"
+_WAIT
+
+_CLOSE
+
+
+_REQ localhost $QS_PORT_BASE6
+__GET /check HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "AS1"
+_EXPECT . "QS_DenyRequestLine"
+_EXPECT . "location=/qos_control"
+_EXPECT . "host=server1"
+
+_WAIT
+
+_EXEC rm -r /var/tmp/qosc/server1/
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+_PIPE
+_EXEC cat /var/tmp/qosc/server1/server.conf
+__
+
+END
+
