@@ -22,6 +22,9 @@ echo "SET QS_PORT_BASE2=$QS_PORT_BASE2" >> scripts/ports
 echo "SET QS_PORT_BASE3=$QS_PORT_BASE3" >> scripts/ports
 echo "SET QS_PORT_BASE5=$QS_PORT_BASE5" >> scripts/ports
 echo "SET QS_PORT_BASE6=$QS_PORT_BASE6" >> scripts/ports
+echo "SET QS_HOME=`pwd`" >> scripts/ports
+echo "SET QS_HOME_ENC=`pwd | sed s:/:%2F:g`" >> scripts/ports
+
 
 sed <conf/httpd.conf.tmpl >conf/httpd.conf \
     -e "s;##ROOT##;$ROOT;g" \
