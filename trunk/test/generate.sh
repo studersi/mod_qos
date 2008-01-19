@@ -44,6 +44,8 @@ sed <appl_conf/httpd.conf.tmpl >appl_conf/httpd.conf \
     -e "s;##QS_PORT_BASE2##;$QS_PORT_BASE2;g" \
     -e "s;##QS_PORT_BASE5##;$QS_PORT_BASE5;g"
 
+cp conf/qos_viewer.conf.tmpl conf/qos_viewer.conf
+
 if [ ! -d logs ]; then
     mkdir logs
 fi
