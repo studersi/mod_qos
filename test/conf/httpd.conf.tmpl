@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.51 2007-12-26 22:05:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.52 2008-01-19 23:15:40 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -232,12 +232,7 @@ Listen                  server1:##QS_PORT_BASE1##
        SetHandler server-info
    </Location>
 
-   <Location /qos>
-       SetHandler qos-viewer
-   </Location>
-   <Location /qos_control>
-       SetHandler qos-control
-   </Location>
+   Include 	  conf/qos_viewer.conf
 
 </VirtualHost>
 
