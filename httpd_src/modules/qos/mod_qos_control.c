@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.54 2008-01-19 14:37:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.55 2008-01-19 17:32:04 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -115,38 +115,39 @@ typedef struct {
   const char *dir;
   qosc_type_e type;
   int args;
+  int flag;
   const char *note;
 } qosc_elt_t;
 
 static const qosc_elt_t qosc_elts[] = {
-  { "QS_LocRequestLimit", QSC_REQ_TYPE, 2, "" },
-  { "QS_LocRequestLimitDefault", QSC_REQ_TYPE, 1, "" },
-  { "QS_LocRequestPerSecLimit", QSC_REQ_TYPE, 2, "" },
-  { "QS_LocKBytesPerSecLimit", QSC_REQ_TYPE, 2, "" },
-  { "QS_LocRequestLimitMatch", QSC_REQ_TYPE, 2, "" },
-  { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, 2, "" },
-  { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, 2, "" },
-  { "QS_ErrorPage", QSC_REQ_TYPE, 1, "" },
-  { "QS_SessionCookieName", QSC_REQ_TYPE, 1, "" },
-  { "QS_SessionCookiePath", QSC_REQ_TYPE, 1, "" },
-  { "QS_SessionTimeout", QSC_REQ_TYPE, 1, "" },
-  { "QS_SessionKey", QSC_REQ_TYPE, 1, "" },
-  { "QS_VipHeaderName", QSC_REQ_TYPE, 1, "" },
-  { "QS_SrvPreferNet", QSC_REQ_TYPE, 0, "" },
-  { "QS_SrvMaxConn", QSC_REQ_TYPE, 1, "" },
-  { "QS_SrvMaxConnClose", QSC_REQ_TYPE, 1, "" },
-  { "QS_SrvMaxConnPerIP", QSC_REQ_TYPE, 1, "" },
-  { "QS_SrvMaxConnExcludeIP", QSC_REQ_TYPE, 1, "" },
-  { "QS_SrvMaxConnTimeout", QSC_REQ_TYPE, 1, "" },
-  { "QS_SrvConnTimeout", QSC_REQ_TYPE, 1, "" },
-  { "QS_DenyRequestLine", QSC_REQ_TYPE, 3, "" },
-  { "QS_DenyPath", QSC_REQ_TYPE, 3, "" },
-  { "QS_DenyQuery", QSC_REQ_TYPE, 3, "" },
-  { "QS_PermitUri", QSC_REQ_TYPE, 3, "" },
-  { "QS_DenyInheritanceOff", QSC_REQ_TYPE, 0, "" },
-  { "QS_RequestHeaderFilter", QSC_REQ_TYPE, 1, "" },
-  { "QS_RequestHeaderFilterRule", QSC_REQ_TYPE, 3, "" },
-  { NULL, 0, 0, NULL }
+  { "QS_LocRequestLimit", QSC_REQ_TYPE, 2, RSRC_CONF, "" },
+  { "QS_LocRequestLimitDefault", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_LocRequestPerSecLimit", QSC_REQ_TYPE, 2, RSRC_CONF, "" },
+  { "QS_LocKBytesPerSecLimit", QSC_REQ_TYPE, 2, RSRC_CONF, "" },
+  { "QS_LocRequestLimitMatch", QSC_REQ_TYPE, 2, RSRC_CONF, "" },
+  { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, 2, RSRC_CONF, "" },
+  { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, 2, RSRC_CONF, "" },
+  { "QS_ErrorPage", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SessionCookieName", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SessionCookiePath", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SessionTimeout", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SessionKey", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_VipHeaderName", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvPreferNet", QSC_REQ_TYPE, 0, RSRC_CONF, "" },
+  { "QS_SrvMaxConn", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvMaxConnClose", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvMaxConnPerIP", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvMaxConnExcludeIP", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvMaxConnTimeout", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvConnTimeout", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
+  { "QS_DenyRequestLine", QSC_REQ_TYPE, 3, ACCESS_CONF, "" },
+  { "QS_DenyPath", QSC_REQ_TYPE, 3, ACCESS_CONF, "" },
+  { "QS_DenyQuery", QSC_REQ_TYPE, 3, ACCESS_CONF, "" },
+  { "QS_PermitUri", QSC_REQ_TYPE, 3, ACCESS_CONF, "" },
+  { "QS_DenyInheritanceOff", QSC_REQ_TYPE, ACCESS_CONF, 0, "" },
+  { "QS_RequestHeaderFilter", QSC_REQ_TYPE, 1, ACCESS_CONF, "" },
+  { "QS_RequestHeaderFilterRule", QSC_REQ_TYPE, 3, RSRC_CONF, "" },
+  { NULL, 0, 0, 0, NULL }
 };
 
 /************************************************************************
@@ -1078,6 +1079,7 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
   apr_file_t *fp = NULL;
   apr_file_t *fd = NULL;
   char line[QOSC_HUGE_STRING_LEN];
+  char cmd[QOSC_HUGE_STRING_LEN];
   if(apr_file_open(&f, file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     while(!qosc_fgetline(line, sizeof(line), f)) {
       const char *inc = qosc_get_conf_value(line, "Include ");
@@ -1088,9 +1090,8 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
       const char *deny = qosc_get_conf_value(line, "QS_DenyRequestLine ");
       const char *format = qosc_get_conf_value(line, "LogFormat ");
       if(format) {
-        char *qslog = qosc_get_qslog_string(r->pool, line);
-      }
-      if(inc) {
+        // $$$ char *qslog = qosc_get_qslog_string(r->pool, line);
+      } else if(inc) {
         char *incfile = qosc_included_file_path(r, root, inc);
         if(incfile) {
           qosc_load_httpdconf(r, server_dir, incfile, root, st, errors);
@@ -1101,8 +1102,7 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
                         QOSC_LOG_PFX(0)"failed to find included httpd configuration file '%s'",
                         line);
         }
-      }
-      if(loc) {
+      } else if(loc) {
         char *end = (char *)loc;
         char *filename;
         while(end[0] && (end[0] != ' ') && (end[0] != '>') && (end[0] != '\t')) end++;
@@ -1117,14 +1117,12 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
         if(apr_file_open(&fd, apr_pstrcat(r->pool, server_dir, "/", filename, ".loc.deny", NULL),
                          APR_WRITE|APR_CREATE|APR_TRUNCATE,
                          APR_OS_DEFAULT, r->pool) != APR_SUCCESS) fd = NULL;
-      }
-      if(host) {
+      } else if(host) {
         char *end = (char *)host;
         while(end[0] && (end[0] != ' ') && (end[0] != '>') && (end[0] != '\t')) end++;
         end[0] = '\0';
         sk_push(st, apr_pstrcat(r->pool, "host=", host, NULL));
-      }
-      if(tr) {
+      } else if(tr) {
         if(strchr(tr, '|')) {
           char *end;
           tr = strchr(tr, '|');
@@ -1135,17 +1133,27 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
           end[0] = '\0';
         }
         sk_push(st, apr_pstrcat(r->pool, "log=", tr, NULL));
-      }
-      if(permit) {
+      } else if(permit) {
         sk_push(st, apr_pstrcat(r->pool, "QS_PermitUri=", permit, NULL));
         if(fp) {
           apr_file_printf(fp, "QS_PermitUri %s\n", permit);
         }
-      }
-      if(deny) {
+      } else if(deny) {
         sk_push(st, apr_pstrcat(r->pool, "QS_DenyRequestLine=", deny, NULL));
         if(fd) {
           apr_file_printf(fd, "QS_DenyRequestLine %s\n", deny);
+        }
+      } else {
+        const qosc_elt_t *elt;
+        for(elt = qosc_elts; elt->dir != NULL ; ++elt) {
+          const char *found;
+          strcpy(cmd, elt->dir);
+          cmd[strlen(elt->dir)] = ' ';
+          cmd[strlen(elt->dir)+1] = '\0';
+          found = qosc_get_conf_value(line, cmd);
+          if(found) {
+            sk_push(st, apr_pstrcat(r->pool, elt->dir, "=", found, NULL));
+          }
         }
       }
     }
