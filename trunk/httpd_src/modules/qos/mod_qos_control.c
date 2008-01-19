@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.57 2008-01-19 21:01:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.58 2008-01-19 23:15:40 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -1082,6 +1082,7 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
   char cmd[QOSC_HUGE_STRING_LEN];
   if(apr_file_open(&f, file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     while(!qosc_fgetline(line, sizeof(line), f)) {
+      const char *maxc = qosc_get_conf_value(line, "MaxClients ");
       const char *inc = qosc_get_conf_value(line, "Include ");
       const char *host = qosc_get_conf_value(line, "VirtualHost ");
       const char *loc = qosc_get_conf_value(line, "Location ");
@@ -1102,6 +1103,8 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
                         QOSC_LOG_PFX(0)"failed to find included httpd configuration file '%s'",
                         line);
         }
+      } else if(maxc) {
+        sk_push(st, apr_pstrcat(r->pool, "MaxClients=", maxc, NULL));
       } else if(loc) {
         char *end = (char *)loc;
         char *filename;
