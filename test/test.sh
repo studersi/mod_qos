@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.27 2007-12-01 21:06:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.28 2008-01-19 19:56:44 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -271,6 +271,15 @@ echo "$QDIFF1 $QDIFF2"
 if [ $QDIFF1 -lt $QDIFF2 ]; then
     ./ctl.sh stop
     echo "FAILED QS_SrvPreferNet.txt"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- mod_qos_control, QS_Control_Server.txt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_Control_Server.txt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_Control_Server.txt"
     exit 1
 fi
 
