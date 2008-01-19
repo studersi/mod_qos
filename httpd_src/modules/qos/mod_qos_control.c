@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.53 2008-01-18 15:19:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.54 2008-01-19 14:37:11 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -103,6 +103,51 @@ typedef struct {
   qosc_srv_config_t *sconf;
   apr_table_t *qt;
 } qosc_settings_t;
+
+typedef enum  {
+  QSC_CON_TYPE,
+  QSC_REQ_TYPE,
+  QSC_FLT_TYPE,
+  QSC_OTHER_TYPE
+} qosc_type_e;
+
+typedef struct {
+  const char *dir;
+  qosc_type_e type;
+  int args;
+  const char *note;
+} qosc_elt_t;
+
+static const qosc_elt_t qosc_elts[] = {
+  { "QS_LocRequestLimit", QSC_REQ_TYPE, 2, "" },
+  { "QS_LocRequestLimitDefault", QSC_REQ_TYPE, 1, "" },
+  { "QS_LocRequestPerSecLimit", QSC_REQ_TYPE, 2, "" },
+  { "QS_LocKBytesPerSecLimit", QSC_REQ_TYPE, 2, "" },
+  { "QS_LocRequestLimitMatch", QSC_REQ_TYPE, 2, "" },
+  { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, 2, "" },
+  { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, 2, "" },
+  { "QS_ErrorPage", QSC_REQ_TYPE, 1, "" },
+  { "QS_SessionCookieName", QSC_REQ_TYPE, 1, "" },
+  { "QS_SessionCookiePath", QSC_REQ_TYPE, 1, "" },
+  { "QS_SessionTimeout", QSC_REQ_TYPE, 1, "" },
+  { "QS_SessionKey", QSC_REQ_TYPE, 1, "" },
+  { "QS_VipHeaderName", QSC_REQ_TYPE, 1, "" },
+  { "QS_SrvPreferNet", QSC_REQ_TYPE, 0, "" },
+  { "QS_SrvMaxConn", QSC_REQ_TYPE, 1, "" },
+  { "QS_SrvMaxConnClose", QSC_REQ_TYPE, 1, "" },
+  { "QS_SrvMaxConnPerIP", QSC_REQ_TYPE, 1, "" },
+  { "QS_SrvMaxConnExcludeIP", QSC_REQ_TYPE, 1, "" },
+  { "QS_SrvMaxConnTimeout", QSC_REQ_TYPE, 1, "" },
+  { "QS_SrvConnTimeout", QSC_REQ_TYPE, 1, "" },
+  { "QS_DenyRequestLine", QSC_REQ_TYPE, 3, "" },
+  { "QS_DenyPath", QSC_REQ_TYPE, 3, "" },
+  { "QS_DenyQuery", QSC_REQ_TYPE, 3, "" },
+  { "QS_PermitUri", QSC_REQ_TYPE, 3, "" },
+  { "QS_DenyInheritanceOff", QSC_REQ_TYPE, 0, "" },
+  { "QS_RequestHeaderFilter", QSC_REQ_TYPE, 1, "" },
+  { "QS_RequestHeaderFilterRule", QSC_REQ_TYPE, 3, "" },
+  { NULL, 0, 0, NULL }
+};
 
 /************************************************************************
  * globals
@@ -458,6 +503,10 @@ static void qosc_table_body_cell_start(request_rec *r) {
   ap_rputs("  <tr class=\"row\">\n", r);
   ap_rputs("    <td style=\"width: 250px;\">\n", r);
 }
+static void qosc_table_body_cell_single(request_rec *r) {
+  ap_rputs("  <tr class=\"row\">\n", r);
+  ap_rputs("    <td colspan=\"2\">\n", r);
+}
 static void qosc_table_body_cell_middle(request_rec *r) {
   ap_rputs("    </td>\n", r);
   ap_rputs("    <td>\n", r);
@@ -472,59 +521,59 @@ static void qosc_table_body_end(request_rec *r) {
 
 static void qosc_css(request_rec *r) {
    ap_rputs("  body {\n\
-	background-color: white;\n\
-	color: black;\n\
-	font-family: arial, helvetica, verdana, sans-serif;\n\
+        background-color: white;\n\
+        color: black;\n\
+        font-family: arial, helvetica, verdana, sans-serif;\n\
   }\n\
   .btable{\n\
-	  background-color: white;\n\
-	  width: 98%;\n\
-	  border: 1px solid;\n\
+          background-color: white;\n\
+          width: 98%;\n\
+          border: 1px solid;\n\
           border-color: black;\n\
-	  padding: 0px;\n\
-	  margin: 6px;\n\
-	  font-weight: normal;\n\
-	  border-collapse: collapse;\n\
+          padding: 0px;\n\
+          margin: 6px;\n\
+          font-weight: normal;\n\
+          border-collapse: collapse;\n\
   }\n\
   .rowts {\n\
-	  background-color: rgb(230,233,235);\n\
-	  vertical-align: top;\n\
-	  border: 1px solid;\n\
+          background-color: rgb(230,233,235);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
           border-color: black;\n\
-	  font-weight: bold;\n\
-	  padding: 0px;\n\
-	  margin: 0px;\n\
+          font-weight: bold;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
   }\n\
   .rowt {\n\
-	  background-color: rgb(230,233,235);\n\
-	  vertical-align: top;\n\
-	  border: 1px solid;\n\
+          background-color: rgb(230,233,235);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
           border-color: black;\n\
-	  font-weight: normal;\n\
-	  padding: 0px;\n\
-	  margin: 0px;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
   }\n\
   .rows {\n\
-	  background-color: rgb(240,243,245);\n\
-	  vertical-align: top;\n\
-	  border: 1px solid;\n\
+          background-color: rgb(240,243,245);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
           border-color: black;\n\
-	  font-weight: normal;\n\
-	  padding: 0px;\n\
-	  margin: 0px;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
   }\n\
   .row  {\n\
-	  background-color: white;\n\
-	  vertical-align: top;\n\
-	  border: 1px solid;\n\
+          background-color: white;\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
           border-color: black;\n\
-	  font-weight: normal;\n\
-	  padding: 0px;\n\
-	  margin: 0px;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
   }\n\
   .rowe {\n\
           background-color: rgb(210,216,220);\n\
-	  vertical-align: top;\n\
+          vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
           font-weight: normal;\n\
@@ -1019,6 +1068,9 @@ static int qosc_insert2location(request_rec *r, qosc_settings_t *settings,
   }
   return errors;
 }
+static char *qosc_get_qslog_string(apr_pool_t *pool, char *line) {
+  return apr_pstrdup(pool, "");
+}
 
 static void qosc_load_httpdconf(request_rec *r, const char *server_dir, 
                                 const char *file, const char *root, STACK *st, int *errors) {
@@ -1034,6 +1086,10 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
       const char *tr = qosc_get_conf_value(line, "TransferLog ");
       const char *permit = qosc_get_conf_value(line, "QS_PermitUri ");
       const char *deny = qosc_get_conf_value(line, "QS_DenyRequestLine ");
+      const char *format = qosc_get_conf_value(line, "LogFormat ");
+      if(format) {
+        char *qslog = qosc_get_qslog_string(r->pool, line);
+      }
       if(inc) {
         char *incfile = qosc_included_file_path(r, root, inc);
         if(incfile) {
@@ -2202,6 +2258,11 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
       char *conf = NULL;
       char line[QOSC_HUGE_STRING_LEN];
       char *local_file = apr_pstrcat(r->pool, settings->server_dir, "/httpd.conf", NULL);
+      struct stat attrib;
+      int inprogress = 0;
+      if(stat(settings->running_file, &attrib) == 0) {
+        inprogress = 1;
+      }
       while(!qosc_fgetline(line, sizeof(line), f)) {
         if(strncmp(line, "conf=", strlen("conf=")) == 0) {
           conf = apr_pstrdup(r->pool, &line[strlen("conf=")]);
@@ -2216,65 +2277,121 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
       apr_file_close(f);
       f = NULL;
       ap_rputs("<table class=\"btable\"><tbody>\n",r);
-      ap_rputs("<tr class=\"rows\"><td>\n",r);
-      ap_rprintf(r, "Server configuration %s"
-                 "<br>&nbsp;VirtualHosts: %d"
-                 "<br>&nbsp;Locations: %d<br><br>",
-                 conf == NULL ? "-" : conf,
-                 hosts, locations);
+      ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
+      //--
+      qosc_table_body_start(r);
+      qosc_table_body_title_start(r);
+      ap_rprintf(r, "Server configuration");
+      qosc_table_body_title_end(r);
+      qosc_table_body_cell_start(r);
+      ap_rprintf(r, "&nbsp;%s", conf == NULL ? "-" : conf);
+      qosc_table_body_cell_middle(r);
+      qosc_table_body_cell_end(r);
+      qosc_table_body_cell_start(r);
+      ap_rprintf(r, "&nbsp;VirtualHosts: %d", hosts);
+      qosc_table_body_cell_middle(r);
+      qosc_table_body_cell_end(r);
+      qosc_table_body_cell_start(r);
+      ap_rprintf(r, "&nbsp;Locations: %d", locations);
+      qosc_table_body_cell_middle(r);
+      qosc_table_body_cell_end(r);
+      qosc_table_body_end(r);
+      //--
+      ap_rputs("</tr></td>\n",r);
+
 #ifdef APR_HAVE_GETRLIMIT
       {
         struct rlimit rlp;
         getrlimit(RLIMIT_NOFILE, &rlp);
         if((rlp.rlim_cur + 20) < locations) {
+          ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
+          qosc_table_body_start(r);
+          qosc_table_body_cell_single(r);
           ap_rprintf(r, "<b>Warning:</b><br>Too many locations for the current"
                      " open file limitations of this server (%d). Use \"ulimit\""
                      " to increase the maximum open file handler.<br>", rlp.rlim_cur);
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                         QOSC_LOG_PFX(0)"too many locations: %d, ulimit=%d",
                         locations, rlp.rlim_cur); 
+          qosc_table_body_cell_end(r);
+          qosc_table_body_end(r);
+          ap_rputs("</tr></td>\n",r);
         }
       }
 #endif
-      ap_rputs("</td></tr>\n",r);
 
       if(apr_file_open(&f, local_file, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
         apr_file_close(f);
         f = NULL;
-        ap_rputs("<tr class=\"rows\"><td>\n",r);
-        ap_rputs("Update the httpd.conf file:<br>", r);
+        ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
+        // --
+        qosc_table_body_start(r);
+        qosc_table_body_title_start(r);
+        ap_rputs("Update the httpd.conf file", r);
+        qosc_table_body_title_end(r);
+        qosc_table_body_cell_start(r);
+        qosc_table_body_cell_middle(r);
         ap_rprintf(r, "<form action=\"%sct.do?server=%s&action=set\""
                    " method=\"post\" enctype=\"multipart/form-data\">\n",
                    qosc_get_path(r), ap_escape_html(r->pool, settings->server));
-        ap_rprintf(r, "&nbsp;<input name=\"httpd_conf\" value=\"\" type=\"file\" size=\"50\">\n"
-                   " <input name=\"action\" value=\"upload\" type=\"submit\">\n"
-                   " </form>\n", ap_escape_html(r->pool, settings->server));
+        ap_rprintf(r, "<input name=\"httpd_conf\" value=\"\" type=\"file\" size=\"50\">\n");
+        qosc_table_body_cell_end(r);
+        qosc_table_body_cell_start(r);
+        qosc_table_body_cell_middle(r);
+        ap_rprintf(r, "<input name=\"action\" value=\"upload\" type=\"submit\">\n"
+                   " </form>\n");
+        qosc_table_body_cell_end(r);
+        qosc_table_body_end(r);
+        // --
         ap_rputs("</td></tr>\n",r);
 
-
-        ap_rputs("<tr class=\"rows\"><td>\n",r);
-        ap_rputs("Download the httpd.conf file.<br>", r);
+        ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
+        // --
+        qosc_table_body_start(r);
+        qosc_table_body_title_start(r);
+        ap_rputs("Download the httpd.conf file", r);
+        qosc_table_body_title_end(r);
+        qosc_table_body_cell_start(r);
+        qosc_table_body_cell_middle(r);
         ap_rprintf(r, "<form action=\"%sdownload.do?server=%s&action=download\""
                    " method=\"get\"\n",
                    qosc_get_path(r), ap_escape_html(r->pool, settings->server));
-        ap_rprintf(r, " <input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
-                   " &nbsp;<input name=\"action\" value=\"download\" type=\"submit\">\n"
-                   " </form>\n", ap_escape_html(r->pool, settings->server));
+        ap_rprintf(r, "<input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
+                   "<input name=\"action\" value=\"download\" type=\"submit\">\n"
+                   "</form>\n", ap_escape_html(r->pool, settings->server));
+        qosc_table_body_cell_end(r);
+        qosc_table_body_end(r);
+        //--
         ap_rputs("</td></tr>\n",r);
         ap_rputs("</tbody></table>\n",r);
       } else {
-
-
         ap_rputs("<tr class=\"rows\"><td>\n",r);
-        ap_rputs("Reload the configuration file.<br>", r);
+        //--
+        qosc_table_body_start(r);
+        qosc_table_body_title_start(r);
+        ap_rputs("Reload the configuration file", r);
+        qosc_table_body_cell_start(r);
+        qosc_table_body_cell_middle(r);
         ap_rprintf(r, "<form action=\"%s%s.do?action=load\" method=\"get\">\n",
                    qosc_get_path(r), ap_escape_html(r->pool, settings->server));
         ap_rprintf(r, "&nbsp;<input name=\"action\" value=\"load\" type=\"submit\">\n"
                    " </form>\n", ap_escape_html(r->pool, settings->server));
+        qosc_table_body_cell_end(r);
+        qosc_table_body_end(r);
+        //--
         ap_rputs("</td></tr>\n",r);
+        
       }
     }
   }
+}
+
+static void qosc_request(request_rec *r, qosc_settings_t *settings) {
+  ap_rputs("Not yet available.", r);
+}
+
+static void qosc_connection(request_rec *r, qosc_settings_t *settings) {
+  ap_rputs("Not yet available.", r);
 }
 
 static void qosc_body(request_rec *r, qosc_settings_t *settings) {
@@ -2282,8 +2399,16 @@ static void qosc_body(request_rec *r, qosc_settings_t *settings) {
     qosc_create_server(r, settings);
     return;
   }
+  if(strstr(r->parsed_uri.path, "/request.do") != NULL) {
+    qosc_request(r, settings);
+    return;
+  }
   if(strstr(r->parsed_uri.path, "/qsfilter2.do") != NULL) {
     qosc_qsfilter2(r, settings);
+    return;
+  }
+  if(strstr(r->parsed_uri.path, "/connection.do") != NULL) {
+    qosc_connection(r, settings);
     return;
   }
   if(!settings->sconf->qsfilter2) {
@@ -2317,7 +2442,7 @@ static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
           } else {
             ap_rputs("<tr class=\"row\"><td>", r);
           }
-          ap_rprintf(r, "&nbsp;<a href=\"%s%s.do?action=request.do\" "
+          ap_rprintf(r, "&nbsp;<a href=\"%srequest.do?server=%s\" "
                      "title=\"manages request level control directives\">"
                      "request level</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
@@ -2339,7 +2464,7 @@ static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
           } else {
             ap_rputs("<tr class=\"row\"><td>", r);
           }
-          ap_rprintf(r, "&nbsp;<a href=\"%s%s.do?action=connection.do\" "
+          ap_rprintf(r, "&nbsp;<a href=\"%sconnection.do?server=%s\" "
                      "title=\"manages connection level control directives\">"
                      "connection level</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
