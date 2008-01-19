@@ -1,11 +1,10 @@
 #
-# $Id: QS_Control_Server.txt,v 1.2 2008-01-19 21:01:18 pbuchbinder Exp $
+# $Id: QS_Control_Server.txt,v 1.3 2008-01-19 21:47:49 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
 CLIENT
-_EXEC cp conf/qos_viewer.conf conf/qos_viewer.conf.copy
 
 _REQ localhost $QS_PORT_BASE
 __GET /qos_control HTTP/1.1
@@ -176,6 +175,8 @@ __Connection: keep-alive
 __
 _EXPECT . "200 OK"
 _EXPECT . "verfiy new rules"
+_EXPECT . "QSF001"
+_EXPECT . "QSF002"
 _EXPECT . "2 rules from 3 access log lines"
 _WAIT
 
@@ -304,6 +305,7 @@ _EXPECT . "200 OK"
 _EXPECT . "0,144"
 _EXPECT . "QSF001"
 _EXPECT . "QSF002"
+_EXPECT . "2 rules from 5 access log lines"
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
@@ -318,8 +320,53 @@ _EXPECT . "QSF001"
 _EXPECT . "QSF002"
 _WAIT
 
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control/download.do?server=server1&loc=1&action=get+err&type=err HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "WARNING"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control/qsfilter2.do?file=$QS_HOME_ENC%2Flogs%2Faccess_log&server=server1&action=import HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control/qsfilter2.do?server=server1&action=start HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 3000
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control/qsfilter2.do?server=server1 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH Body "/qos_control/download.do.server=server1.loc=(.*)&type=rep&action=get.raw.>/qos/merged" MERGED
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos_control/download.do?server=server1&loc=$MERGED&type=rep&action=get+raw HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "2 rules from"
+_WAIT
+
 ###################################################################################
-_EXEC mv conf/qos_viewer.conf.copy conf/qos_viewer.conf
+_EXEC cp conf/qos_viewer.conf.tmpl conf/qos_viewer.conf
 _EXEC rm -r /var/tmp/qosc/server1/
 
 END
