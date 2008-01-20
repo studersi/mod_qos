@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.59 2008-01-20 21:26:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.60 2008-01-20 21:52:25 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -294,7 +294,7 @@ static apr_table_t *qosc_get_query_table(request_rec *r) {
 static const qosc_elt_t *qosc_get_directive(const char *dir) {
   const qosc_elt_t *elt;
   for(elt = qosc_elts; elt->dir != NULL ; ++elt) {
-    if(strcmp(elt->dir, dir) == 0) {
+    if(strcasecmp(elt->dir, dir) == 0) {
       return elt;
     }
   }
@@ -2419,7 +2419,8 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
   }
 }
 
-static void qosc_directive_list(request_rec *r, qosc_settings_t *settings, qosc_type_e type) {
+static void qosc_directive_list(request_rec *r, qosc_settings_t *settings,
+                                qosc_type_e type, int location) {
   //  $$$
   apr_file_t *f = NULL;
   char line[QOSC_HUGE_STRING_LEN];
@@ -2438,6 +2439,10 @@ static void qosc_directive_list(request_rec *r, qosc_settings_t *settings, qosc_
         ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
         ap_rprintf(r, "%s<br>\n", &line[strlen("host=")]);
         qosc_table_body_start(r);
+      } if(location && (strncmp(line, "location=", strlen("locaton=")) == 0)) {
+        qosc_table_body_title_start(r);
+        ap_rprintf(r, "%s<br>\n", &line[strlen("location=")]);
+        qosc_table_body_title_end(r);
       } else {
         char *value = strchr(line, '=');
         if(value) {
@@ -2449,7 +2454,7 @@ static void qosc_directive_list(request_rec *r, qosc_settings_t *settings, qosc_
             // qosc_table_body_cell_single(r);
             qosc_table_body_cell_start(r);
             //            ap_rprintf(r, "%s\n", ap_escape_html(r->pool, elt->note));
-            ap_rprintf(r, "%s\n", ap_escape_html(r->pool, line));
+            ap_rprintf(r, "&nbsp;%s\n", ap_escape_html(r->pool, line));
             qosc_table_body_cell_middle(r);
             ap_rprintf(r, "%s\n", ap_escape_html(r->pool, value));
             qosc_table_body_cell_end(r);
@@ -2463,21 +2468,16 @@ static void qosc_directive_list(request_rec *r, qosc_settings_t *settings, qosc_
 }
 
 static void qosc_request(request_rec *r, qosc_settings_t *settings) {
-  ap_rputs("Not yet available.", r);
-  qosc_directive_list(r, settings, QSC_REQ_TYPE);
+  qosc_directive_list(r, settings, QSC_REQ_TYPE, 0);
 }
-
 static void qosc_connection(request_rec *r, qosc_settings_t *settings) {
-  ap_rputs("Not yet available.", r);
-  qosc_directive_list(r, settings, QSC_CON_TYPE);
+  qosc_directive_list(r, settings, QSC_CON_TYPE, 0);
 }
 static void qosc_filter(request_rec *r, qosc_settings_t *settings) {
-  ap_rputs("Not yet available.", r);
-  qosc_directive_list(r, settings, QSC_FLT_TYPE);
+  qosc_directive_list(r, settings, QSC_FLT_TYPE, 1);
 }
 static void qosc_module(request_rec *r, qosc_settings_t *settings) {
-  ap_rputs("Not yet available.", r);
-  qosc_directive_list(r, settings, QSC_MOD_TYPE);
+  qosc_directive_list(r, settings, QSC_MOD_TYPE, 0);
 }
 
 static void qosc_body(request_rec *r, qosc_settings_t *settings) {
