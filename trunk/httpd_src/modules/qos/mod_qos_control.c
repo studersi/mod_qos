@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.58 2008-01-19 23:15:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.59 2008-01-20 21:26:04 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -108,6 +108,7 @@ typedef enum  {
   QSC_CON_TYPE,
   QSC_REQ_TYPE,
   QSC_FLT_TYPE,
+  QSC_MOD_TYPE,
   QSC_OTHER_TYPE
 } qosc_type_e;
 
@@ -127,26 +128,26 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_LocRequestLimitMatch", QSC_REQ_TYPE, 2, RSRC_CONF, "" },
   { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, 2, RSRC_CONF, "" },
   { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, 2, RSRC_CONF, "" },
-  { "QS_ErrorPage", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SessionCookieName", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SessionCookiePath", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SessionTimeout", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SessionKey", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_VipHeaderName", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SrvPreferNet", QSC_REQ_TYPE, 0, RSRC_CONF, "" },
-  { "QS_SrvMaxConn", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SrvMaxConnClose", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SrvMaxConnPerIP", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SrvMaxConnExcludeIP", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SrvMaxConnTimeout", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_SrvConnTimeout", QSC_REQ_TYPE, 1, RSRC_CONF, "" },
-  { "QS_DenyRequestLine", QSC_REQ_TYPE, 3, ACCESS_CONF, "" },
-  { "QS_DenyPath", QSC_REQ_TYPE, 3, ACCESS_CONF, "" },
-  { "QS_DenyQuery", QSC_REQ_TYPE, 3, ACCESS_CONF, "" },
-  { "QS_PermitUri", QSC_REQ_TYPE, 3, ACCESS_CONF, "" },
-  { "QS_DenyInheritanceOff", QSC_REQ_TYPE, ACCESS_CONF, 0, "" },
-  { "QS_RequestHeaderFilter", QSC_REQ_TYPE, 1, ACCESS_CONF, "" },
-  { "QS_RequestHeaderFilterRule", QSC_REQ_TYPE, 3, RSRC_CONF, "" },
+  { "QS_ErrorPage", QSC_MOD_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SessionCookieName", QSC_MOD_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SessionCookiePath", QSC_MOD_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SessionTimeout", QSC_MOD_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SessionKey", QSC_MOD_TYPE, 1, RSRC_CONF, "" },
+  { "QS_VipHeaderName", QSC_MOD_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvPreferNet", QSC_CON_TYPE, 0, RSRC_CONF, "" },
+  { "QS_SrvMaxConn", QSC_CON_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvMaxConnClose", QSC_CON_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvMaxConnPerIP", QSC_CON_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvMaxConnExcludeIP", QSC_CON_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvMaxConnTimeout", QSC_CON_TYPE, 1, RSRC_CONF, "" },
+  { "QS_SrvConnTimeout", QSC_CON_TYPE, 1, RSRC_CONF, "" },
+  { "QS_DenyRequestLine", QSC_FLT_TYPE, 3, ACCESS_CONF, "" },
+  { "QS_DenyPath", QSC_FLT_TYPE, 3, ACCESS_CONF, "" },
+  { "QS_DenyQuery", QSC_FLT_TYPE, 3, ACCESS_CONF, "" },
+  { "QS_PermitUri", QSC_FLT_TYPE, 3, ACCESS_CONF, "" },
+  { "QS_DenyInheritanceOff", QSC_FLT_TYPE, 0, ACCESS_CONF, "" },
+  { "QS_RequestHeaderFilter", QSC_FLT_TYPE, 1, ACCESS_CONF, "" },
+  { "QS_RequestHeaderFilterRule", QSC_FLT_TYPE, 3, RSRC_CONF, "" },
   { NULL, 0, 0, 0, NULL }
 };
 
@@ -289,6 +290,16 @@ static apr_table_t *qosc_get_query_table(request_rec *r) {
   }
   return av;
 }
+
+static const qosc_elt_t *qosc_get_directive(const char *dir) {
+  const qosc_elt_t *elt;
+  for(elt = qosc_elts; elt->dir != NULL ; ++elt) {
+    if(strcmp(elt->dir, dir) == 0) {
+      return elt;
+    }
+  }
+  return NULL;
+}   
 
 /* server settings or NULL, if server unknown */
 static qosc_settings_t *qosc_get_settings(request_rec *r) {
@@ -514,7 +525,7 @@ static void qosc_table_body_cell_middle(request_rec *r) {
 }
 static void qosc_table_body_cell_end(request_rec *r) {
   ap_rputs("    </td>\n", r);
-  ap_rputs("  <tr>\n", r);
+  ap_rputs("  </tr>\n", r);
 }
 static void qosc_table_body_end(request_rec *r) {
   ap_rputs("</tbody></table>\n",r);
@@ -643,6 +654,8 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
   if((strcmp(settings->server, "ct") == 0) ||
      (strcmp(settings->server, "request") == 0) ||
      (strcmp(settings->server, "qsfilter2") == 0) ||
+     (strcmp(settings->server, "filter") == 0) ||
+     (strcmp(settings->server, "module") == 0) ||
      (strcmp(settings->server, "connection") == 0) ||
      (strcmp(settings->server, "download") == 0)) {
     ap_rputs("Invalid server name.", r);
@@ -1151,8 +1164,12 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
         for(elt = qosc_elts; elt->dir != NULL ; ++elt) {
           const char *found;
           strcpy(cmd, elt->dir);
-          cmd[strlen(elt->dir)] = ' ';
-          cmd[strlen(elt->dir)+1] = '\0';
+          if(elt->args == 0) {
+            cmd[strlen(elt->dir)] = '\0';
+          } else {
+            cmd[strlen(elt->dir)] = ' ';
+            cmd[strlen(elt->dir)+1] = '\0';
+          }
           found = qosc_get_conf_value(line, cmd);
           if(found) {
             sk_push(st, apr_pstrcat(r->pool, elt->dir, "=", found, NULL));
@@ -2402,12 +2419,65 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
   }
 }
 
+static void qosc_directive_list(request_rec *r, qosc_settings_t *settings, qosc_type_e type) {
+  //  $$$
+  apr_file_t *f = NULL;
+  char line[QOSC_HUGE_STRING_LEN];
+
+  ap_rputs("<table class=\"btable\"><tbody>\n",r);
+  ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
+  ap_rputs("Base server\n", r);
+  qosc_table_body_start(r);
+
+  if(apr_file_open(&f, settings->server_conf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
+    while(!qosc_fgetline(line, sizeof(line), f)) {
+      if(strncmp(line, "host=", strlen("host=")) == 0) {
+        qosc_table_body_end(r);
+        ap_rputs("</tr></table>\n", r);
+        ap_rputs("<table class=\"btable\"><tbody>\n",r);
+        ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
+        ap_rprintf(r, "%s<br>\n", &line[strlen("host=")]);
+        qosc_table_body_start(r);
+      } else {
+        char *value = strchr(line, '=');
+        if(value) {
+          const qosc_elt_t *elt;
+          value[0] = '\0';
+          elt = qosc_get_directive(line);
+          if(elt && (elt->type == type)) {
+            value++;
+            // qosc_table_body_cell_single(r);
+            qosc_table_body_cell_start(r);
+            //            ap_rprintf(r, "%s\n", ap_escape_html(r->pool, elt->note));
+            ap_rprintf(r, "%s\n", ap_escape_html(r->pool, line));
+            qosc_table_body_cell_middle(r);
+            ap_rprintf(r, "%s\n", ap_escape_html(r->pool, value));
+            qosc_table_body_cell_end(r);
+          }
+        }
+      }
+    }
+  }
+  qosc_table_body_end(r);
+  ap_rputs("</tr></table>\n", r);
+}
+
 static void qosc_request(request_rec *r, qosc_settings_t *settings) {
   ap_rputs("Not yet available.", r);
+  qosc_directive_list(r, settings, QSC_REQ_TYPE);
 }
 
 static void qosc_connection(request_rec *r, qosc_settings_t *settings) {
   ap_rputs("Not yet available.", r);
+  qosc_directive_list(r, settings, QSC_CON_TYPE);
+}
+static void qosc_filter(request_rec *r, qosc_settings_t *settings) {
+  ap_rputs("Not yet available.", r);
+  qosc_directive_list(r, settings, QSC_FLT_TYPE);
+}
+static void qosc_module(request_rec *r, qosc_settings_t *settings) {
+  ap_rputs("Not yet available.", r);
+  qosc_directive_list(r, settings, QSC_MOD_TYPE);
 }
 
 static void qosc_body(request_rec *r, qosc_settings_t *settings) {
@@ -2419,12 +2489,20 @@ static void qosc_body(request_rec *r, qosc_settings_t *settings) {
     qosc_request(r, settings);
     return;
   }
+  if(strstr(r->parsed_uri.path, "/connection.do") != NULL) {
+    qosc_connection(r, settings);
+    return;
+  }
+  if(strstr(r->parsed_uri.path, "/filter.do") != NULL) {
+    qosc_filter(r, settings);
+    return;
+  }
   if(strstr(r->parsed_uri.path, "/qsfilter2.do") != NULL) {
     qosc_qsfilter2(r, settings);
     return;
   }
-  if(strstr(r->parsed_uri.path, "/connection.do") != NULL) {
-    qosc_connection(r, settings);
+  if(strstr(r->parsed_uri.path, "/module.do") != NULL) {
+    qosc_module(r, settings);
     return;
   }
   if(!settings->sconf->qsfilter2) {
@@ -2451,7 +2529,7 @@ static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
                      "<a href=\"%s%s.do\">%s</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
                      ap_escape_html(r->pool, de->d_name));
-          // --
+
           if(strstr(r->parsed_uri.path, "/request.do") ||
              (action && (strcmp(action, "request.do") == 0))) {
             ap_rputs("<tr class=\"rows\"><td>", r);
@@ -2462,18 +2540,7 @@ static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
                      "title=\"manages request level control directives\">"
                      "request level</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
-          // --
-          if(strstr(r->parsed_uri.path, "/qsfilter2.do") ||
-             (action && (strcmp(action, "qsfilter2") == 0))) {
-            ap_rputs("<tr class=\"rows\"><td>", r);
-          } else {
-            ap_rputs("<tr class=\"row\"><td>", r);
-          }
-          ap_rprintf(r, "&nbsp;<a href=\"%sqsfilter2.do?server=%s\" "
-                     "title=\"creates request line white list rules\">"
-                     "qsfilter2</a></td></tr>\n",
-                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
-          // --
+
           if(strstr(r->parsed_uri.path, "/connection.do") ||
              (action && (strcmp(action, "connection.do") == 0))) {
             ap_rputs("<tr class=\"rows\"><td>", r);
@@ -2483,6 +2550,38 @@ static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
           ap_rprintf(r, "&nbsp;<a href=\"%sconnection.do?server=%s\" "
                      "title=\"manages connection level control directives\">"
                      "connection level</a></td></tr>\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+
+          if(strstr(r->parsed_uri.path, "/filter.do")) {
+            ap_rputs("<tr class=\"rows\"><td>", r);
+          } else {
+            ap_rputs("<tr class=\"row\"><td>", r);
+          }
+          ap_rprintf(r, "&nbsp;<a href=\"%sfilter.do?server=%s\" "
+                     "title=\"manages generic filter directives\">"
+                     "filter</a></td></tr>\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+
+          if(strstr(r->parsed_uri.path, "/module.do") ||
+             (action && (strcmp(action, "module") == 0))) {
+            ap_rputs("<tr class=\"rows\"><td>", r);
+          } else {
+            ap_rputs("<tr class=\"row\"><td>", r);
+          }
+          ap_rprintf(r, "&nbsp;<a href=\"%smodule.do?server=%s\" "
+                     "title=\"manages the module configuration\">"
+                     "module</a></td></tr>\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+
+          if(strstr(r->parsed_uri.path, "/qsfilter2.do") ||
+             (action && (strcmp(action, "qsfilter2") == 0))) {
+            ap_rputs("<tr class=\"rows\"><td>", r);
+          } else {
+            ap_rputs("<tr class=\"row\"><td>", r);
+          }
+          ap_rprintf(r, "&nbsp;<a href=\"%sqsfilter2.do?server=%s\" "
+                     "title=\"creates request line white list rules\">"
+                     "qsfilter2</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
         } else {
           ap_rprintf(r, "<tr class=\"rowt\"><td>"
@@ -2646,6 +2745,14 @@ function checkserver ( form ) {\n\
     return false;\n\
   }\n\
   if(form.server.value == \"qsfilter2\") {\n\
+    alert(\"Sorry, this is a reserved word. Please choose another server name.\" );\n\
+    return false;\n\
+  }\n\
+  if(form.server.value == \"module\") {\n\
+    alert(\"Sorry, this is a reserved word. Please choose another server name.\" );\n\
+    return false;\n\
+  }\n\
+  if(form.server.value == \"filter\") {\n\
     alert(\"Sorry, this is a reserved word. Please choose another server name.\" );\n\
     return false;\n\
   }\n\

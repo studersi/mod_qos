@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.46 2008-01-14 07:12:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.47 2008-01-20 21:26:04 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -264,7 +264,7 @@ static void usage(char *cmd) {
   printf("Utility to generate mod_qos request line rules out from\n");
   printf("existing access log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>] \\\n", cmd);
+  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", cmd);
   printf("       %s [-p|-s|-m] [-l <len>] [-n] [-e] [-t] [-v 0|1|2]\n", space);
   printf("\n");
   printf("Summary\n");

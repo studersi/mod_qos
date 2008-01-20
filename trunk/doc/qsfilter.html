@@ -23,7 +23,7 @@
 
  See http://sourceforge.net/projects/mod-qos/ for further details.
 
- Copyright (C) 2007 Pascal Buchbinder
+ Copyright (C) 2007-2008 Pascal Buchbinder
 
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
@@ -55,7 +55,7 @@ deny access for suspect request lines.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBEDF5">
 <pre>
-Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-b &lt;num&gt;] [-p|-s|-m] [-l &lt;len&gt;] [-n] [-e] [-t]
+Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-h] [-b &lt;num&gt;] [-p|-s|-m] [-l &lt;len&gt;] [-n] [-e] [-t]
 
 Summary
  mod_qos implements a request filter which validates each request
@@ -113,10 +113,13 @@ Options
   -d &lt;num&gt;
      Depth (sub locations) of the path string which is defined as a
      literal string. Default is 1.
+  -h
+     Always use a string representing the handler name in the path even
+     the url does not have a query. See also -d option.
   -b &lt;num&gt;
      Replaces url pattern by the regular expression when detecting
-     a base64 encoded string. Detecting sensibility is defined by a
-     numeric value. You should use values higher than 5 (default)
+     a base64/hex encoded string. Detecting sensibility is defined by
+     a numeric value. You should use values higher than 5 (default)
      or 0 to disable this function.
   -p
      Repesents query by pcre only (no literal strings).
@@ -174,6 +177,6 @@ Sample Usage and Output
 <br>
 <hr>
 <a href="http://sourceforge.net/projects/mod-qos/"><img align="right" src="http://sflogo.sourceforge.net/sflogo.php?group_id=196697&amp;type=1" width="88" height="31" border="0" alt="mod_qos at SourceForge.net" /></a>
-<SMALL><SMALL>&copy; 2007, Pascal Buchbinder</SMALL></SMALL>
+<SMALL><SMALL>&copy; 2007-2008, Pascal Buchbinder</SMALL></SMALL>
 </body>
 </html>
