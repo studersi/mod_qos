@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.61 2008-01-21 20:46:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.62 2008-01-21 20:58:13 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -2730,7 +2730,7 @@ static void qosc_new_session(request_rec *r) {
   len = apr_base64_encode(sconf->session->id, ran, sizeof(ran));
   sconf->session->id[len] = '\0';
   apr_table_add(r->headers_out, "Set-Cookie",
-                apr_psprintf(r->pool, QOSC_COOKIE"%s; path=%s; max-age=600",
+                apr_psprintf(r->pool, QOSC_COOKIE"%s; path=%s;",
                              sconf->session->id,
                              qosc_get_path(r)));
   if(r->user) {
@@ -2800,6 +2800,8 @@ static int qosc_session_check(request_rec *r) {
         if(end) end[0] = '\0';
         if(strcmp(id, sconf->session->id) != 0) {
           goto failed;
+        } else {
+          sconf->session->time = time(NULL);
         }
       } else {
         goto failed;
