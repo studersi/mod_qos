@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.60 2008-01-20 21:52:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.61 2008-01-21 20:46:35 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -65,6 +65,7 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.60 2008-01-20 21:52:2
 /************************************************************************
  * defines
  ***********************************************************************/
+#define QOSC_COOKIE       "qoscs="
 #define QOSC_LOG_PFX(id)  "mod_qos_control("#id"): "
 #define QOSC_SERVER_CONF  "server.conf"
 #define QOSC_SERVER_OPTIONS "qsfilter2.options"
@@ -80,10 +81,20 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.60 2008-01-20 21:52:2
  * structures
  ***********************************************************************/
 typedef struct {
+  char id[64];
+  char user[64];
+  time_t time;
+} qosc_session_t;
+
+typedef struct {
   apr_pool_t *pool;
   char *path;
   char *qsfilter2;
   char *viewer;
+  apr_shm_t *m;
+  apr_global_mutex_t *lock;
+  char *lock_file;
+  qosc_session_t *session;
 } qosc_srv_config_t;
 
 typedef struct {
@@ -2421,7 +2432,6 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
 
 static void qosc_directive_list(request_rec *r, qosc_settings_t *settings,
                                 qosc_type_e type, int location) {
-  //  $$$
   apr_file_t *f = NULL;
   char line[QOSC_HUGE_STRING_LEN];
 
@@ -2711,6 +2721,102 @@ static int qosc_download(request_rec * r) {
   return OK;
 }
 
+static void qosc_new_session(request_rec *r) {
+  qosc_srv_config_t *sconf = (qosc_srv_config_t*)ap_get_module_config(r->server->module_config,
+                                                                      &qos_control_module);
+  int len;
+  unsigned char ran[16];
+  RAND_bytes(ran, sizeof(ran));
+  len = apr_base64_encode(sconf->session->id, ran, sizeof(ran));
+  sconf->session->id[len] = '\0';
+  apr_table_add(r->headers_out, "Set-Cookie",
+                apr_psprintf(r->pool, QOSC_COOKIE"%s; path=%s; max-age=600",
+                             sconf->session->id,
+                             qosc_get_path(r)));
+  if(r->user) {
+    strncpy(sconf->session->user, r->user, strlen(r->user));
+    sconf->session->user[strlen(r->user)] = '\0';
+  } else {
+    sconf->session->user[0] = '\0';
+  }
+  sconf->session->time = time(NULL);
+  ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                QOSC_LOG_PFX(0)"new session '%s'",
+                sconf->session->user[0] ? sconf->session->user : "anonymous");
+}
+
+static int qosc_locked_session(request_rec *r, qosc_srv_config_t *sconf) {
+  int expiration = 600 - (time(NULL) - sconf->session->time) + 1;
+  ap_set_content_type(r, "text/html");
+  apr_table_set(r->headers_out,"Cache-Control","no-cache");
+  ap_rputs("<html><head><title>mod_qos control</title>\n", r);
+  ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n",
+             ap_escape_html(r->pool, r->parsed_uri.path));
+  ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
+  ap_rputs("<meta name=\"author\" content=\"Pascal Buchbinder\">\n", r);
+  ap_rputs("<meta http-equiv=\"Pragma\" content=\"no-cache\">\n", r);
+  ap_rprintf(r, "<meta http-equiv=\"refresh\" content=\"%d; URL=%s?%s\">",
+             5,
+             r->parsed_uri.path, r->parsed_uri.query == NULL ? "" : r->parsed_uri.query);
+  ap_rputs("<style TYPE=\"text/css\">\n", r);
+  ap_rputs("<!--", r);
+  qosc_css(r);
+  ap_rputs("-->\n", r);
+  ap_rputs("</style>\n", r);
+  ap_rputs("</head><body>", r);
+  ap_rprintf(r, "<p>mod_qos control is locked by another user: %s</p>\n",
+             sconf->session->user[0] ? sconf->session->user : "anonymous");
+  ap_rprintf(r, "<p>The session expires in %d seconds.</p>",
+             expiration);
+  ap_rputs("You my destroy the existing session if required: ", r);
+  ap_rprintf(r, "<form action=\"%s\" method=\"get\">",
+             r->parsed_uri.path);
+  ap_rputs("<input name=\"action\" value=\"unlock\" type=\"submit\"></form>", r);
+  ap_rputs("</body></html>", r);
+  return !APR_SUCCESS;
+}
+
+static int qosc_session_check(request_rec *r) {
+  qosc_srv_config_t *sconf = (qosc_srv_config_t*)ap_get_module_config(r->server->module_config,
+                                                                      &qos_control_module);
+  apr_global_mutex_lock(sconf->lock);
+  if(!sconf->session->id[0]) {
+    qosc_new_session(r);
+  } else if(sconf->session->time < (time(NULL) - 600)) {
+    qosc_new_session(r);
+  } else if(r->parsed_uri.query && strstr(r->parsed_uri.query, "action=unlock")) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                  QOSC_LOG_PFX(0)"unlock session '%s'",
+                  sconf->session->user[0] ? sconf->session->user : "anonymous");
+    qosc_new_session(r);
+  } else {
+    const char *cookie = apr_table_get(r->headers_in, "cookie");
+    if(cookie) {
+      char *id = strstr(cookie, QOSC_COOKIE);
+      if(id) {
+        char *end;
+        id = apr_pstrdup(r->pool, &id[strlen(QOSC_COOKIE)]);
+        end = strchr(id, ';');
+        if(end) end[0] = '\0';
+        if(strcmp(id, sconf->session->id) != 0) {
+          goto failed;
+        }
+      } else {
+        goto failed;
+      }
+    } else {
+      goto failed;
+    }
+  }
+  apr_global_mutex_unlock(sconf->lock);
+  return APR_SUCCESS;
+
+ failed:
+  apr_global_mutex_unlock(sconf->lock);
+  return qosc_locked_session(r, sconf);
+
+}
+
 /************************************************************************
  * "public"
  ***********************************************************************/
@@ -2782,12 +2888,12 @@ function checkserver ( form ) {\n\
 //-->\n", r);
 }
 
-
-
 static int qosc_handler(request_rec * r) {
   if (strcmp(r->handler, "qos-control") != 0) {
     return DECLINED;
-  } else  if(strstr(r->parsed_uri.path, "/favicon.ico") != NULL) {
+  } else if(qosc_session_check(r) != APR_SUCCESS) {
+    return OK;
+  } else if(strstr(r->parsed_uri.path, "/favicon.ico") != NULL) {
     return qosc_favicon(r);
   } else if(strstr(r->parsed_uri.path, "/download.do") != NULL) {
     return qosc_download(r);
@@ -2845,9 +2951,14 @@ static int qosc_handler(request_rec * r) {
           </tr>\n",r);
       if(sconf->viewer) {
         ap_rprintf(r, "<tr class=\"rowe\">\n"
-                   "<td><a href=\"%s\">mod_qos viewer</a></td>\n"
+                   "<td><a target=\"_blank\" "
+                   "href=\"%s\">mod_qos viewer</a></td>\n"
                    "</tr>\n", sconf->viewer);
       }
+      ap_rprintf(r, "<tr class=\"rowe\">\n"
+                 "<td><a target=\"_blank\" "
+                 "href=\"http://mod-qos.sourceforge.net\">Online documentation</a></td>\n"
+                 "</tr>\n");
       ap_rputs("        </tbody>\n\
       </table>\n\
       </td>\n\
@@ -2889,12 +3000,57 @@ static void qosc_search_viewer(ap_directive_t * node, server_rec *bs) {
     }
   }
 }
-          
-static int qosc_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
+
+static apr_status_t qosc_cleanup_shm(void *p) {
+  qosc_srv_config_t *sconf = p;
+  apr_global_mutex_destroy(sconf->lock);
+  apr_shm_destroy(sconf->m);
+}
+
+static void qosc_init_shm(apr_pool_t *pool, server_rec *s) {
+  apr_status_t status;
+  qosc_srv_config_t *sconf = (qosc_srv_config_t*)ap_get_module_config(s->module_config,
+                                                                      &qos_control_module);
+  char *file = apr_psprintf(pool, "%s_m.mod_qosc",
+                            ap_server_root_relative(pool, tmpnam(NULL)));
+  apr_size_t size = APR_ALIGN_DEFAULT(sizeof(qosc_session_t));
+  if((status = apr_shm_create(&sconf->m, (size + 512), file, pool)) != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(status, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                 QOSC_LOG_PFX(0)"could not create shared memory: %s (%d)", buf, size);
+    exit(1);
+  }
+  sconf->session = apr_shm_baseaddr_get(sconf->m);
+  sconf->session->id[0] = '\0';
+  sconf->session->user[0] = '\0';
+  sconf->lock_file = apr_psprintf(pool, "%s_l.mod_qosc",
+                      ap_server_root_relative(pool, tmpnam(NULL)));
+  if((status = apr_global_mutex_create(&sconf->lock, sconf->lock_file, APR_LOCK_DEFAULT, pool))
+     != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(status, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                 QOSC_LOG_PFX(0)"could not create mutex: %s (%d)", buf, size);
+    exit(1);
+  }
+  apr_pool_cleanup_register(pool, sconf, qosc_cleanup_shm, apr_pool_cleanup_null);
+
+}
+
+static void qosc_child_init(apr_pool_t *p, server_rec *bs) {
+  qosc_srv_config_t *sconf = (qosc_srv_config_t*)ap_get_module_config(bs->module_config,
+                                                                      &qos_control_module);
+  apr_global_mutex_child_init(&sconf->lock, sconf->lock_file, p);
+}
+
+static int qosc_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp,
+                            server_rec *bs) {
   char *rev = qosc_revision(ptemp);
   char *vs = apr_psprintf(pconf, "mod_qos_control/%s", rev);
   ap_add_version_component(pconf, vs);
   qosc_search_viewer(ap_conftree, bs);
+  qosc_init_shm(pconf, bs);
   return DECLINED;
 }
 
@@ -2983,6 +3139,7 @@ static void qosc_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", NULL };
   ap_hook_post_config(qosc_post_config, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(qosc_handler, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_child_init(qosc_child_init, NULL, NULL, APR_HOOK_MIDDLE);
 }
 
 /************************************************************************
