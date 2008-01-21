@@ -15,7 +15,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007 Pascal Buchbinder
+ * Copyright (C) 2007-2008 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.4 2008-01-09 12:31:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.5 2008-01-21 20:47:20 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -438,8 +438,12 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
 
 /* returns the version number of mod_qos */
 static char *qos_revision(apr_pool_t *p) {
-  char *ver = apr_pstrdup(p, &revision[strlen("$Id: mod_qos.c,v ")]);
-  char *h = strchr(ver, ' ');
+  char *ver = apr_pstrdup(p, strchr(revision, ' '));
+  char *h;
+  ver++;
+  ver =strchr(ver, ' ');
+  ver++;
+  h = strchr(ver, ' ');
   h[0] = '\0';
   return ver;
 }
@@ -1308,7 +1312,21 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   if (flags & AP_STATUS_SHORT)
     return OK;
 
-  ap_rprintf(r, "<h2>mod_qos %s</h2>\n", qos_revision(r->pool));
+  ap_rprintf(r, "<h2>mod_qos %s</h2>\n", ap_escape_html(r->pool, qos_revision(r->pool)));
+
+  if(!r->parsed_uri.query ||
+     (r->parsed_uri.query && !strstr(r->parsed_uri.query, "ip")) ) {
+    ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n"
+               "<input name=\"option\" value=\"show client ip\" type=\"submit\">\n"
+               "</form>\n",
+               ap_escape_html(r->pool, r->parsed_uri.path));
+  } else {
+    ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n"
+               "<input name=\"option\" value=\"hide client connections\" type=\"submit\">\n"
+               "</form>\n",
+               ap_escape_html(r->pool, r->parsed_uri.path));
+  }
+
   if(strcmp(r->handler, "qos-viewer") == 0) {
     ap_rputs("<table class=\"btable\">\n", r);
   } else {
@@ -2217,39 +2235,41 @@ static int qos_handler(request_rec * r) {
     ap_rputs("<style TYPE=\"text/css\">\n", r);
     ap_rputs("<!--", r);
     ap_rputs("  body {\n\
-	background-color: white;\n\
-	color: black;\n\
-	font-family: arial, helvetica, verdana, sans-serif;\n\
+        background-color: white;\n\
+        color: black;\n\
+        font-family: arial, helvetica, verdana, sans-serif;\n\
   }\n\
   .btable{\n\
-	  background-color: white;\n\
-	  border: 1px solid;\n\
-	  padding: 0px;\n\
-	  margin: 6px;\n\
-	  width: 550px;\n\
-	  font-weight: normal;\n\
-	  border-collapse: collapse;\n\
+          background-color: white;\n\
+          border: 1px solid;\n\
+          padding: 0px;\n\
+          margin: 6px;\n\
+          width: 550px;\n\
+          font-weight: normal;\n\
+          border-collapse: collapse;\n\
   }\n\
   .rowt {\n\
-	  background-color: rgb(230,233,235);\n\
-	  border: 1px solid;\n\
-	  font-weight: bold;\n\
-	  padding: 0px;\n\
-	  margin: 0px;\n\
+          background-color: rgb(210,216,220);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
+          border-color: black;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
   }\n\
   .rows {\n\
-	  background-color: rgb(240,243,245);\n\
-	  border: 1px solid;\n\
-	  font-weight: bold;\n\
-	  padding: 0px;\n\
-	  margin: 0px;\n\
+          background-color: rgb(240,243,245);\n\
+          border: 1px solid;\n\
+          font-weight: bold;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
   }\n\
   .row1 {\n\
-	  background-color: white;\n\
-	  border: 1px solid;\n\
-	  font-weight: normal;\n\
-	  padding: 0px;\n\
-	  margin: 0px;\n\
+          background-color: white;\n\
+          border: 1px solid;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
   }\n\
 ", r);
     ap_rputs("-->\n", r);
@@ -3006,6 +3026,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
   ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
+  //ap_hook_insert_error_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
 
 }
 
