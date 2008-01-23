@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.63 2008-01-22 20:47:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.64 2008-01-23 19:48:16 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -130,6 +130,7 @@ typedef struct {
   int flag;
   int multivalue;
   const char *note;
+  const char *init;
 } qosc_elt_t;
 
 //#define ACCESS_CONF 64       /**< *.conf inside <Directory> or <Location> */
@@ -137,33 +138,35 @@ typedef struct {
 //#define  GLOBAL_ONLY            (NOT_IN_VIRTUALHOST|NOT_IN_LIMIT|NOT_IN_DIR_LOC_FILE) 
 
 static const qosc_elt_t qosc_elts[] = {
-  { "QS_LocRequestLimitDefault", QSC_REQ_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_LocRequestLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "" },
-  { "QS_LocRequestPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "" },
-  { "QS_LocKBytesPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "" },
-  { "QS_LocRequestLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "" },
-  { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "" },
-  { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "" },
-  { "QS_ErrorPage", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_VipHeaderName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_SessionCookieName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_SessionCookiePath", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_SessionTimeout", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_SessionKey", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_SrvMaxConn", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_SrvMaxConnClose", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_SrvMaxConnPerIP", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_SrvMaxConnExcludeIP", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "" },
-  { "QS_SrvConnTimeout", QSC_CON_TYPE, TAKE1, GLOBAL_ONLY|RSRC_CONF, 0, "" },
-  { "QS_SrvPreferNet", QSC_CON_TYPE, NO_ARGS, GLOBAL_ONLY|RSRC_CONF, 0, "" },
-  { "QS_DenyInheritanceOff", QSC_FLT_TYPE, NO_ARGS, ACCESS_CONF, 0, "" },
-  { "QS_DenyRequestLine", QSC_FLT_TYPE, TAKE3, ACCESS_CONF, 1, "" },
-  { "QS_DenyPath", QSC_FLT_TYPE, TAKE3, ACCESS_CONF, 1, "" },
-  { "QS_DenyQuery", QSC_FLT_TYPE, TAKE3, ACCESS_CONF, 1, "" },
-  { "QS_PermitUri", QSC_FLT_TYPE, TAKE3, ACCESS_CONF, 1, "" },
-  { "QS_RequestHeaderFilter", QSC_FLT_TYPE, FLAG, ACCESS_CONF, 0, "" },
-  { "QS_RequestHeaderFilterRule", QSC_FLT_TYPE, TAKE3, GLOBAL_ONLY|RSRC_CONF, 1, "" },
-  { NULL, 0, 0, 0, 0, NULL }
+  { "QS_LocRequestLimitDefault", QSC_REQ_TYPE, TAKE1, RSRC_CONF, 0, "", "100" },
+  { "QS_LocRequestLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "100" },
+  { "QS_LocRequestPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "100" },
+  { "QS_LocKBytesPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "1200" },
+  { "QS_LocRequestLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "100" },
+  { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "100" },
+  { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "1200" },
+  { "QS_ErrorPage", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/error-docs/403.html" },
+  { "QS_VipHeaderName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "mod-qos-vip" },
+  { "QS_SessionCookieName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "modqos" },
+  { "QS_SessionCookiePath", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/" },
+  { "QS_SessionTimeout", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "3600" },
+  { "QS_SessionKey", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "12345" },
+  { "QS_SrvMaxConn", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "", "900" },
+  { "QS_SrvMaxConnClose", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "", "700" },
+  { "QS_SrvMaxConnPerIP", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "", "40" },
+  { "QS_SrvMaxConnExcludeIP", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "", "192.168." },
+  { "QS_SrvConnTimeout", QSC_CON_TYPE, TAKE1, GLOBAL_ONLY|RSRC_CONF, 0, "", "3" },
+  { "QS_SrvPreferNet", QSC_CON_TYPE, NO_ARGS, GLOBAL_ONLY|RSRC_CONF, 0, "", "" },
+  { "QS_DenyInheritanceOff", QSC_FLT_TYPE, NO_ARGS, ACCESS_CONF, 0, "", "" },
+  { "QS_DenyRequestLine", QSC_FLT_TYPE, TAKE3, ACCESS_CONF, 1, "", "+sample deny \"pattern\"" },
+  { "QS_DenyPath", QSC_FLT_TYPE, TAKE3, ACCESS_CONF, 1, "", "+sample deny \"pattern\"" },
+  { "QS_DenyQuery", QSC_FLT_TYPE, TAKE3, ACCESS_CONF, 1, "", "+sample deny \"pattern\"" },
+  { "QS_PermitUri", QSC_FLT_TYPE, TAKE3, ACCESS_CONF, 1, "",
+    "QS_PermitUri +sample deny \"^pattern$\"" },
+  { "QS_RequestHeaderFilter", QSC_FLT_TYPE, FLAG, ACCESS_CONF, 0, "", "on" },
+  { "QS_RequestHeaderFilterRule", QSC_FLT_TYPE, TAKE3, GLOBAL_ONLY|RSRC_CONF, 1, "",
+    "header \"^pattern$\" drop" },
+  { NULL, 0, 0, 0, 0, NULL, NULL }
 };
 
 /************************************************************************
@@ -537,6 +540,10 @@ static void qosc_table_body_title_end(request_rec *r) {
   ap_rputs("    </td>\n",r);
   ap_rputs("  </tr>\n", r);
 }
+static void qosc_table_body_title2_start(request_rec *r) {
+  ap_rputs("  <tr class=\"rowe2\">\n", r);
+  ap_rputs("    <td colspan=\"2\">\n",r);
+}
 static void qosc_table_body_cell_start(request_rec *r) {
   ap_rputs("  <tr class=\"row\">\n", r);
   ap_rputs("    <td style=\"width: 250px;\">\n", r);
@@ -611,6 +618,15 @@ static void qosc_css(request_rec *r) {
   }\n\
   .rowe {\n\
           background-color: rgb(210,216,220);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
+          border-color: black;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
+  }\n\
+  .rowe2 {\n\
+          background-color: rgb(195,200,205);\n\
           vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
@@ -2455,26 +2471,48 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
   }
 }
 
+static void qosc_print_input_value_fields(request_rec *r, const qosc_elt_t *elt, char *value) {
+  char *v = apr_pstrdup(r->pool, value);
+  if((elt->args & TAKE1) || (elt->args & FLAG)) {
+    ap_rprintf(r, "<input name=\"v0\" value=\"%s\">", ap_escape_html(r->pool, v));
+  } else if(elt->args & TAKE2) {
+    char *e = strchr(v, ' ');
+    if(e) {
+      e[0] = '\0';
+      e++;
+      while(e[0] && (e[0] == ' ')) e++;
+      ap_rprintf(r, "<input name=\"v0\" value=\"%s\">", ap_escape_html(r->pool, v));
+      ap_rprintf(r, "<input name=\"v1\" value=\"%s\">", ap_escape_html(r->pool, e));
+    }
+  } else if(elt->args & TAKE3) {
+    if(strcasecmp(elt->dir, "QS_RequestHeaderFilterRule") == 0) {
+    } else {
+      ap_rprintf(r, "<input name=\"v0\" value=\"%s\">", ap_escape_html(r->pool, value));
+    }
+  }
+}
+
 static void qosc_print_input_value(request_rec *r, qosc_settings_t *settings,
                                    const qosc_elt_t *elt, char *value, int nr) {
   ap_rprintf(r, "<form action=\"%s\" method=\"get\">",
              r->parsed_uri.path);
   ap_rprintf(r, "<input name=\"line\" value=\"%d\" type=\"hidden\">", nr);
   ap_rprintf(r, "<input name=\"server\" value=\"%s\" type=\"hidden\">", settings->server);
-  ap_rprintf(r, "<input name=\"v1\" value=\"%s\">", ap_escape_html(r->pool, value));
+  qosc_print_input_value_fields(r, elt, value);
   ap_rputs("<input name=\"action\" value=\"update\" type=\"submit\">", r);
   ap_rputs("<input name=\"action\" value=\"delete\" type=\"submit\">", r);
   ap_rputs("</form>\n", r);
 }
-
+/* $$$ */
 static void qosc_print_add(request_rec *r, qosc_settings_t *settings, qosc_type_e type,
                            apr_table_t *existing, int is_base, int is_server,
-                           int is_location) {
+                           int is_location, int nr) {
   const qosc_elt_t *elt;
   if((type == QSC_FLT_TYPE) && is_server && !is_base) return;
   qosc_table_body_cell_single(r);
   ap_rprintf(r, "<form action=\"%s\" method=\"get\">",
              r->parsed_uri.path);
+  ap_rprintf(r, "<input name=\"line\" value=\"%d\" type=\"hidden\">", nr);
   ap_rprintf(r, "<input name=\"server\" value=\"%s\" type=\"hidden\">\n"
              " <select name=\"query\" >\n",
              settings->server);
@@ -2507,32 +2545,36 @@ static void qosc_directive_list(request_rec *r, qosc_settings_t *settings,
   int is_location = 0;
   apr_table_t *existing = apr_table_make(r->pool, 1);
   ap_rputs("<table class=\"btable\"><tbody>\n",r);
-  ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
-  ap_rputs("Base server\n", r);
+  ap_rputs("<tr class=\"rows\"><td>\n",r);
   qosc_table_body_start(r);
+  qosc_table_body_title_start(r);
+  ap_rputs("Base server\n", r);
+  qosc_table_body_title_end(r);
 
   if(apr_file_open(&f, settings->server_conf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
     while(!qosc_fgetline(line, sizeof(line), f)) {
       nr++;
       ap_rprintf(r, "<a name=\"%d\"></a>", nr);
       if(strncmp(line, "host=", strlen("host=")) == 0) {
-        qosc_print_add(r, settings, type, existing, is_base, is_server, is_location);
+        qosc_print_add(r, settings, type, existing, is_base, is_server, is_location, nr);
         is_base = 0;
         is_server = 1;
         is_location = 0;
         qosc_table_body_end(r);
         existing = apr_table_make(r->pool, 1);
-        ap_rputs("</tr></table>\n", r);
+        ap_rputs("</td></tr></table>\n", r);
         ap_rputs("<table class=\"btable\"><tbody>\n",r);
-        ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
-        ap_rprintf(r, "%s<br>\n", &line[strlen("host=")]);
+        ap_rputs("<tr class=\"rows\"><td>\n",r);
         qosc_table_body_start(r);
+        qosc_table_body_title_start(r);
+        ap_rprintf(r, "%s\n", &line[strlen("host=")]);
+        qosc_table_body_title_end(r);
       } if(location && (strncmp(line, "location=", strlen("locaton=")) == 0)) {
-        qosc_print_add(r, settings, type, existing, is_base, is_server, is_location);
+        qosc_print_add(r, settings, type, existing, is_base, is_server, is_location, nr);
         is_server = 0;
         is_location = 1;
-        qosc_table_body_title_start(r);
-        ap_rprintf(r, "%s<br>\n", &line[strlen("location=")]);
+        qosc_table_body_title2_start(r);
+        ap_rprintf(r, "%s\n", &line[strlen("location=")]);
         qosc_table_body_title_end(r);
         existing = apr_table_make(r->pool, 1);
       } else {
@@ -2556,7 +2598,7 @@ static void qosc_directive_list(request_rec *r, qosc_settings_t *settings,
       }
     }
   }
-  qosc_print_add(r, settings, type, existing, is_base, is_server, is_location);
+  qosc_print_add(r, settings, type, existing, is_base, is_server, is_location, nr);
   qosc_table_body_end(r);
   ap_rputs("</tr></table>\n", r);
 }
