@@ -1,7 +1,7 @@
 #
 # test QS_KeepAliveTimeout
 #
-# $Id: QS_KeepAliveTimeout.txt,v 1.2 2007-08-26 07:58:42 pbuchbinder Exp $
+# $Id: QS_KeepAliveTimeout.htt,v 1.1 2008-01-24 15:25:54 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports

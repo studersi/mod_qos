@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvMaxConnPerIP_10.txt,v 1.2 2007-10-03 18:19:36 pbuchbinder Exp $
+# $Id: QS_SrvMaxConnPerIP_10.htt,v 1.1 2008-01-24 15:26:02 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
