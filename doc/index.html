@@ -13,6 +13,11 @@
 	font-weight: normal;
 	text-align: left;
   }
+  a:link    { color: rgb(95,10,15); }
+  a:visited { color:black; text-decoration:none; }
+  a:focus   { color:black; text-decoration:underline; }
+  a:hover   { color:black; text-decoration:none; }
+  a:active  { color:black; text-decoration:underline; }
 -->
 </style>
 </head>
@@ -114,7 +119,7 @@ Just copy the module into the modules directory of the Apache server's source co
 compile it using the following commands (all examples are using Apache 2.2.4 and 
 mod_qos 4.15):
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 <pre>
 tar xfz httpd-2.2.4.tar.gz
 tar xfz mod_qos-4.15-src.tar.gz
@@ -132,7 +137,7 @@ cd ..
 This creates a DSO module, which can be loaded into the Apache server using the 
 following directive:
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 <pre>
 LoadModule qos_module &lt;path to module&gt;/mod_qos.so
 </pre>
@@ -146,7 +151,7 @@ of mod_so: The command <code>httpd -l</code> must list the mod_so.c module.
 The following command compiles the module and installs the mod_qos into the 
 server's modules directory.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 <pre>
 cd mod_qos-4.15/apache2
 apxs -i -c mod_qos.c
@@ -158,7 +163,7 @@ cd ../..
 <p>
 The support tools may be build using the following commands:
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 <pre>
 cd httpd
 mkdir qsfilter
@@ -283,7 +288,7 @@ a random key is used which changes every server restart.
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 Sample configuration:<br>
 <pre>
 QS_ErrorPage                  /error-docs/qs_error.html
@@ -333,7 +338,7 @@ Defines the error page overriding the sessing made by the
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 Sample variable usage:<br>
 <pre>
 # unlimited access for curl clients:
@@ -421,7 +426,7 @@ the pcre.
 </li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 Sample configuration:<br>
 <pre>
 QS_ErrorPage                     /error-docs/qs_error.html
@@ -478,7 +483,7 @@ Netmask is 255.255.240.0 (each net represents 4096 hosts).
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 Sample configuration:<br>
 <pre>
 # limits the connections for this virtual host:
@@ -508,7 +513,7 @@ error messages is prefixed by an id: <code>mod_qos(&lt;number&gt;)</code>. These
 error codes (number only) are also written to the error notes in order 
 to be processed within error pages using server side includes (SSI).
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 <pre>
 mod_qos(00x):  initialisation event
 mod_qos(01x):  request level control event
@@ -550,7 +555,7 @@ to access log messages.
 </li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 Sample configuration:<br>
 <pre>
 LogFormat "%h %t \"%r\" %>s %b %T \"%{User-Agent}i\" id=%{UNIQUE_ID}e \
@@ -569,7 +574,7 @@ new VIP session creations per minute but also total requests per second
 and other data. Refere to the usage text of the <code>qslog</code> utility 
 for further details.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 <pre>
 TransferLog "| ./bin/qslog -o logs/qs_log -f I..R.BT..Q"
 </pre>
@@ -584,7 +589,7 @@ mod_qos features a handler showing the current connection and request status.
 Use "ip" in the query string in order to get a list of all concurrent requests 
 on a per client ip address basis, e.g. "/qos?option=ip".
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBEDF5">
+<tr><td bgcolor="#EBE5E0">
 <pre>
 &lt;Location /qos&gt;
    SetHandler qos-viewer
