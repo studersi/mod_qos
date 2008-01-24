@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.65 2008-01-24 21:42:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.66 2008-01-24 21:44:22 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -3143,7 +3143,7 @@ static int qosc_locked_session(request_rec *r, qosc_srv_config_t *sconf) {
   int expiration = 600 - (time(NULL) - sconf->session->time) + 1;
   ap_set_content_type(r, "text/html");
   apr_table_set(r->headers_out,"Cache-Control","no-cache");
-  ap_rputs("<html><head><title>mod_qos control</title>\n", r);
+  ap_rputs("<html><head><title>mod_qos control - locked</title>\n", r);
   ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n",
              ap_escape_html(r->pool, r->parsed_uri.path));
   ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
