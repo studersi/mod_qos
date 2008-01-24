@@ -1,12 +1,12 @@
 #
-# $Id: QS_LocKBytesPerSecLimit_t.txt,v 1.1 2007-09-11 08:38:56 pbuchbinder Exp $
+# $Id: QS_LocRequestPerSecLimitMatch_t.htt,v 1.1 2008-01-24 15:25:58 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
 CLIENT
 _REQ server1 $QS_PORT_BASE1
-__GET /aaa/index.html HTTP/1.1
+__GET /ccc/index.html HTTP/1.1
 __Host: localhost
 __User-Agent: monitor
 __Connection: keep-alive
@@ -19,7 +19,7 @@ __Host: localhost
 __User-Agent: monitor
 __Connection: keep-alive
 __
-_EXPECT . ".*kbytes.second .wait rate [0-9]{2,3}ms.</td><td>1000</td>
+_EXPECT . ".*requests.second .wait rate [0-9]{2,3}ms.</td><td>75</td>
 _WAIT
 
 

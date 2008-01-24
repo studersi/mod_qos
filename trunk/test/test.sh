@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.28 2008-01-19 19:56:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.29 2008-01-24 15:25:48 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -50,11 +50,11 @@ echo "-- start `date` --" >>  logs/error_log
 (echo "GET /test/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null
 
 # -----------------------------------------------------------------
-echo "-- client opens more than 10 connections, QS_SrvMaxConnPerIP_10.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_SrvMaxConnPerIP_10.txt
+echo "-- client opens more than 10 connections, QS_SrvMaxConnPerIP_10.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_SrvMaxConnPerIP_10.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_QS_SrvMaxConnPerIP_10.txt"
+    echo "FAILED QS_QS_SrvMaxConnPerIP_10.htt"
     exit 1
 fi
 ./ctl.sh stop > /dev/null
@@ -62,105 +62,105 @@ sleep 2
 ./ctl.sh start > /dev/null
 
 # -----------------------------------------------------------------
-echo "-- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_LocRequestLimit_5.txt
+echo "-- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_LocRequestLimit_5.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_LocRequestLimit_5.txt"
+    echo "FAILED QS_LocRequestLimit_5.htt"
     exit 1
 fi
-./htt.sh -s ./scripts/QS_LocRequestLimit_DynamicErrorPage.txt
+./htt.sh -s ./scripts/QS_LocRequestLimit_DynamicErrorPage.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_LocRequestLimit_DynamicErrorPage.txt"
-    exit 1
-fi
-
-# -----------------------------------------------------------------
-echo "-- 3 requests with matching regex rule max 2 (overrides location rule), QS_LocRequestLimitMatch_2.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_LocRequestLimitMatch_2.txt
-if [ $? -ne 0 ]; then
-    ./ctl.sh stop
-    echo "FAILED QS_LocRequestLimitMatch_2.txt"
+    echo "FAILED QS_LocRequestLimit_DynamicErrorPage.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- vip session, QS_VipHeaderName.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_VipHeaderName.txt
+echo "-- 3 requests with matching regex rule max 2 (overrides location rule), QS_LocRequestLimitMatch_2.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_LocRequestLimitMatch_2.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_VipHeaderName.txt"
+    echo "FAILED QS_LocRequestLimitMatch_2.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- vip request, QS_VipRequest.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_VipRequest.txt
+echo "-- vip session, QS_VipHeaderName.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_VipHeaderName.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_VipRequest.txt"
+    echo "FAILED QS_VipHeaderName.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- vip request and graceful restart, QS_VipHeaderName_Graceful.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_VipHeaderName_Graceful.txt
+echo "-- vip request, QS_VipRequest.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_VipRequest.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_VipHeaderName_Graceful.txt"
+    echo "FAILED QS_VipRequest.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- graceful, QS_Graceful.txt" >> logs/error_log
-./htt.sh -s ./scripts/QS_Graceful.txt
+echo "-- vip request and graceful restart, QS_VipHeaderName_Graceful.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_VipHeaderName_Graceful.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_Graceful.txt"
+    echo "FAILED QS_VipHeaderName_Graceful.htt"
     exit 1
 fi
-./htt.sh -s ./scripts/QS_Graceful2.txt
+
+# -----------------------------------------------------------------
+echo "-- graceful, QS_Graceful.htt" >> logs/error_log
+./htt.sh -s ./scripts/QS_Graceful.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_Graceful2.txt"
+    echo "FAILED QS_Graceful.htt"
+    exit 1
+fi
+./htt.sh -s ./scripts/QS_Graceful2.htt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_Graceful2.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
 echo "-- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
-./htt.sh -s ./scripts/QS_SrvMaxConn_50.txt
+./htt.sh -s ./scripts/QS_SrvMaxConn_50.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_SrvMaxConn_50.txt"
+    echo "FAILED QS_SrvMaxConn_50.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- connection timeout, QS_SrvConnTimeout.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_SrvConnTimeout.txt
+echo "-- connection timeout, QS_SrvConnTimeout.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_SrvConnTimeout.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_SrvConnTimeout.txt"
+    echo "FAILED QS_SrvConnTimeout.htt"
     exit 1
 fi
 
 sleep 1
 # -----------------------------------------------------------------
-echo "-- disable keep alive, QS_SrvMaxConnClose_20.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_SrvMaxConnClose_20.txt
+echo "-- disable keep alive, QS_SrvMaxConnClose_20.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_SrvMaxConnClose_20.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_SrvMaxConnClose_20.txt"
+    echo "FAILED QS_SrvMaxConnClose_20.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- static filter, QS_DenyRequestLine.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_DenyRequestLine.txt
+echo "-- static filter, QS_DenyRequestLine.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_DenyRequestLine.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_DenyRequestLine.txt"
+    echo "FAILED QS_DenyRequestLine.htt"
     exit 1
 fi
 
@@ -168,88 +168,88 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- dynamic keep alive, QS_KeepAliveTimeout" >>  logs/error_log
-./htt.sh -s ./scripts/QS_KeepAliveTimeout.txt
+./htt.sh -s ./scripts/QS_KeepAliveTimeout.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_KeepAliveTimeout.txt"
+    echo "FAILED QS_KeepAliveTimeout.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- request/sec limit, QS_LocRequestPerSecLimit_5.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_LocRequestPerSecLimit_5.txt
+echo "-- request/sec limit, QS_LocRequestPerSecLimit_5.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_LocRequestPerSecLimit_5.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_LocRequestPerSecLimit_5.txt"
+    echo "FAILED QS_LocRequestPerSecLimit_5.htt"
     exit 1
 fi
-./htt.sh -s ./scripts/QS_LocRequestPerSecLimit_5t.txt
+./htt.sh -s ./scripts/QS_LocRequestPerSecLimit_5t.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_LocRequestPerSecLimit_5t.txt"
-    exit 1
-fi
-
-# -----------------------------------------------------------------
-echo "-- kbytes/sec limit, QS_LocKBytesPerSecLimit.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_LocKBytesPerSecLimit.txt
-if [ $? -ne 0 ]; then
-    ./ctl.sh stop
-    echo "FAILED QS_LocKBytesPerSecLimit.txt"
-    exit 1
-fi
-./htt.sh -s ./scripts/QS_LocKBytesPerSecLimit_t.txt
-if [ $? -ne 0 ]; then
-    ./ctl.sh stop
-    echo "FAILED QS_LocKBytesPerSecLimit_t.txt"
+    echo "FAILED QS_LocRequestPerSecLimit_5t.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- req/sec limit, QS_LocRequestPerSecLimitMatch.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_LocRequestPerSecLimitMatch.txt
+echo "-- kbytes/sec limit, QS_LocKBytesPerSecLimit.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_LocKBytesPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_LocRequestPerSecLimitMatch.txt"
+    echo "FAILED QS_LocKBytesPerSecLimit.htt"
     exit 1
 fi
-./htt.sh -s ./scripts/QS_LocRequestPerSecLimitMatch_t.txt
+./htt.sh -s ./scripts/QS_LocKBytesPerSecLimit_t.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_LocRequestPerSecLimitMatch_t.txt"
+    echo "FAILED QS_LocKBytesPerSecLimit_t.htt"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- req/sec limit, QS_LocRequestPerSecLimitMatch.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_LocRequestPerSecLimitMatch.htt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocRequestPerSecLimitMatch.htt"
+    exit 1
+fi
+./htt.sh -s ./scripts/QS_LocRequestPerSecLimitMatch_t.htt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocRequestPerSecLimitMatch_t.htt"
     exit 1
 fi
 sleep 1
 # -----------------------------------------------------------------
-echo "-- multiple requests in parallel, MultiRequest.txt" >>  logs/error_log
-./htt.sh -s ./scripts/MultiRequest.txt
+echo "-- multiple requests in parallel, MultiRequest.htt" >>  logs/error_log
+./htt.sh -s ./scripts/MultiRequest.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED MultiRequest.txt"
+    echo "FAILED MultiRequest.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-cat logs/access1_log | awk '{print $7}' > logs/loc1.txt
-../tools/filter/qsfilter2 -i logs/loc1.txt -v 0 -c appl_conf/qos_deny_filter.conf | grep QS_PermitUri > appl_conf/qos_permit_filter.conf
-rm -f logs/loc1.txt
+cat logs/access1_log | awk '{print $7}' > logs/loc1.htt
+../tools/filter/qsfilter2 -i logs/loc1.htt -v 0 -c appl_conf/qos_deny_filter.conf | grep QS_PermitUri > appl_conf/qos_permit_filter.conf
+rm -f logs/loc1.htt
 ./ctl.sh stop > /dev/null
 sleep 2
 ./ctl.sh start -D permit_filter > /dev/null
-echo "-- permit filter QS_PermitUri.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_PermitUri.txt
+echo "-- permit filter QS_PermitUri.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_PermitUri.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_PermitUri.txt"
+    echo "FAILED QS_PermitUri.htt"
     exit 1
 fi
 
 
-echo "-- header filter, QS_HeaderFilter.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_HeaderFilter.txt
+echo "-- header filter, QS_HeaderFilter.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_HeaderFilter.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_HeaderFilter.txt"
+    echo "FAILED QS_HeaderFilter.htt"
     exit 1
 fi
 
@@ -257,12 +257,12 @@ fi
 ./ctl.sh stop > /dev/null
 sleep 2
 ./ctl.sh start -D max_clients > /dev/null
-echo "-- header filter, QS_SrvPreferNet.txt" >>  logs/error_log
+echo "-- header filter, QS_SrvPreferNet.htt" >>  logs/error_log
 QSTART=`grep -c "mod_qos(033)" logs/error_log`
-./htt.sh -s ./scripts/QS_SrvPreferNet.txt 1>/dev/null 2>/dev/null
+./htt.sh -s ./scripts/QS_SrvPreferNet.htt 1>/dev/null 2>/dev/null
 sleep 10
 QFIRST=`grep -c "mod_qos(033)" logs/error_log`
-./htt.sh -s ./scripts/QS_SrvPreferNet2.txt 1>/dev/null 2>/dev/null
+./htt.sh -s ./scripts/QS_SrvPreferNet2.htt 1>/dev/null 2>/dev/null
 sleep 10
 QSECOND=`grep -c "mod_qos(033)" logs/error_log`
 QDIFF1=`expr $QFIRST - $QSTART`
@@ -270,16 +270,16 @@ QDIFF2=`expr $QSECOND - $QFIRST`
 echo "$QDIFF1 $QDIFF2"
 if [ $QDIFF1 -lt $QDIFF2 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_SrvPreferNet.txt"
+    echo "FAILED QS_SrvPreferNet.htt"
     exit 1
 fi
 
 # -----------------------------------------------------------------
-echo "-- mod_qos_control, QS_Control_Server.txt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_Control_Server.txt
+echo "-- mod_qos_control, QS_Control_Server.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_Control_Server.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
-    echo "FAILED QS_Control_Server.txt"
+    echo "FAILED QS_Control_Server.htt"
     exit 1
 fi
 

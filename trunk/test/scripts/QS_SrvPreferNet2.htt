@@ -1,10 +1,10 @@
 #
-# $Id: QS_SrvPreferNet.txt,v 1.1 2007-12-01 21:06:47 pbuchbinder Exp $
+# $Id: QS_SrvPreferNet2.htt,v 1.1 2008-01-24 15:26:09 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
-CLIENT 10
+CLIENT 30
 _REQ server1 $QS_PORT_BASE1
 __GET /login/vip.cgi HTTP/1.1
 __Host: localhost
