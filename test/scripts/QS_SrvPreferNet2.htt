@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvPreferNet2.htt,v 1.1 2008-01-24 15:26:09 pbuchbinder Exp $
+# $Id: QS_SrvPreferNet2.htt,v 1.2 2008-01-28 19:51:34 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -22,7 +22,6 @@ __GET /cgi/sleep.cgi HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
-_EXPECT . "200 OK"
 _WAIT
 
 _SLEEP 100

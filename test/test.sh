@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.29 2008-01-24 15:25:48 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.30 2008-01-28 19:51:33 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -42,7 +42,7 @@ QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 ERRORS=0
 
 rm -f logs/access1_log
-
+rm -rf /var/tmp/qosc/server1
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
 echo "-- start `date` --" >>  logs/error_log
 # -----------------------------------------------------------------
@@ -222,6 +222,7 @@ fi
 sleep 1
 # -----------------------------------------------------------------
 echo "-- multiple requests in parallel, MultiRequest.htt" >>  logs/error_log
+./htt.sh -s ./scripts/MultiRequest_p.htt &
 ./htt.sh -s ./scripts/MultiRequest.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
@@ -259,10 +260,11 @@ sleep 2
 ./ctl.sh start -D max_clients > /dev/null
 echo "-- header filter, QS_SrvPreferNet.htt" >>  logs/error_log
 QSTART=`grep -c "mod_qos(033)" logs/error_log`
-./htt.sh -s ./scripts/QS_SrvPreferNet.htt 1>/dev/null 2>/dev/null
+echo "run ./scripts/QS_SrvPreferNet.htt"
+./htt.sh -s ./scripts/QS_SrvPreferNet.htt 2>/dev/null 1>/dev/null
 sleep 10
 QFIRST=`grep -c "mod_qos(033)" logs/error_log`
-./htt.sh -s ./scripts/QS_SrvPreferNet2.htt 1>/dev/null 2>/dev/null
+./htt.sh -s ./scripts/QS_SrvPreferNet2.htt 2>/dev/null 1>/dev/null
 sleep 10
 QSECOND=`grep -c "mod_qos(033)" logs/error_log`
 QDIFF1=`expr $QFIRST - $QSTART`
