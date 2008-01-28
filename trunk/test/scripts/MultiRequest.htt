@@ -1,5 +1,5 @@
 #
-# $Id: MultiRequest.htt,v 1.1 2008-01-24 15:25:49 pbuchbinder Exp $
+# $Id: MultiRequest.htt,v 1.2 2008-01-28 19:51:33 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -65,20 +65,19 @@ __GET /qos HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
-_EXPECT . "<!-- 0 -->free ip entries</td><td>4096"
-_EXPECT . "<!-- 0 -->current connections</td><td.*>0"
-_EXPECT . "<!-- 1 -->free ip entries</td><td>4096"
-_EXPECT . "<!-- 1 -->current connections</td><td.*>0"
-_EXPECT . "<!-- 2 -->free ip entries</td><td>4096"
-_EXPECT . "<!-- 2 -->current connections</td><td.*>0"
-_EXPECT . "<!-- 2 -->.*<td>200</td>.*>0</td></tr>"
-_EXPECT . "<!-- 3 -->free ip entries</td><td>4095"
-_EXPECT . "<!-- 3 -->current connections</td><td.*>1"
-_EXPECT . "<!-- 3 -->.*<td>30</td>.*>1</td></tr>"
-_EXPECT . "<!-- 3 -->.*<td>5</td>.*>0</td></tr>"
-_EXPECT . "<!-- 3 -->.*<td>100</td>.*>0</td></tr>"
-_EXPECT . "<!-- 3 -->.*<td>50</td>.*>0</td></tr>"
-_EXPECT . "<!-- 3 -->.*<td>2</td>.*>0</td></tr>"
+_EXPECT . "<!--0-->.*free ip entries.*4096"
+_EXPECT . "<!--0-->.*current connections.*colspan=.3.>0</td>"
+_EXPECT . "<!--2-->.*free ip entries.*4096"
+_EXPECT . "<!--2-->.*current connections.*colspan=.3.>0</td>"
+_EXPECT . "<!--3-->.*free ip entries.*4096"
+_EXPECT . "<!--3-->.*current connections.*colspan=.3.>0</td>"
+_EXPECT . "<!--4-->.*free ip entries.*4095"
+_EXPECT . "<!--4-->.*current connections.*colspan=.3.>1</td>"
+_EXPECT . "<!--4-->.*<td>30</td><td >1</td>"
+_EXPECT . "<!--4-->.*<td>5</td><td >0</td>"
+_EXPECT . "<!--4-->.*<td>100</td><td >0</td>"
+_EXPECT . "<!--4-->.*<td>50</td><td >0</td>"
+_EXPECT . "<!--4-->.*<td>2</td><td >0</td>"
 _WAIT
 
 END

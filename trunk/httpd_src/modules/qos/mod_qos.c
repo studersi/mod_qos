@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.5 2008-01-21 20:47:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.6 2008-01-28 19:51:33 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -800,7 +800,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->limit = rule->limit;
     if(e->limit == 0) {
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s,
-                   QOS_LOG_PFX(003)"request level rule %s has no limitation",
+                   QOS_LOG_PFX(003)"request level rule %s has no concurrent request limitations",
                    e->url);
     }
     e->interval = time(NULL);
@@ -848,7 +848,7 @@ static int qos_get_net(qs_conn_ctx *cconf) {
 /**
  * helper for the status viewer (unsigned long to char)
  */
-static void qos_print_ip(request_rec *r, qs_ip_entry_t *ipe) {
+static void qos_collect_ip(request_rec *r, qs_ip_entry_t *ipe, apr_table_t *entries) {
   if(ipe) {
     unsigned long ip = ipe->ip;
     int a,b,c,d;
@@ -859,11 +859,10 @@ static void qos_print_ip(request_rec *r, qs_ip_entry_t *ipe) {
     c = ip % 256;
     ip = ip / 256;
     d = ip % 256;
-    ap_rputs("<tr class=\"row1\">", r);
-    ap_rputs("<td style=\"width:85%\">", r);
-    ap_rprintf(r, "%d.%d.%d.%d</td><td>%d</td></tr>\n", a,b,c,d, ipe->counter);
-    qos_print_ip(r, ipe->left);
-    qos_print_ip(r, ipe->right);
+    apr_table_addn(entries, apr_psprintf(r->pool, "%d.%d.%d.%d</td><td colspan=\"3\">%d",
+                                         a,b,c,d, ipe->counter), "");
+    qos_collect_ip(r, ipe->left, entries);
+    qos_collect_ip(r, ipe->right, entries);
   }
 }
 
@@ -1305,15 +1304,17 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf) {
  * status viewer, used by internal and mod_status handler
  */
 static int qos_ext_status_hook(request_rec *r, int flags) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                &qos_module);
   server_rec *s = sconf->base_server;
   int i = 0;
   time_t now = time(NULL);
+  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config,
+                                                                 &qos_module);
   if (flags & AP_STATUS_SHORT)
     return OK;
 
   ap_rprintf(r, "<h2>mod_qos %s</h2>\n", ap_escape_html(r->pool, qos_revision(r->pool)));
-
   if(!r->parsed_uri.query ||
      (r->parsed_uri.query && !strstr(r->parsed_uri.query, "ip")) ) {
     ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n"
@@ -1328,213 +1329,215 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   }
 
   if(strcmp(r->handler, "qos-viewer") == 0) {
-    ap_rputs("<table class=\"btable\">\n", r);
+    ap_rputs("<table class=\"btable\"><tbody>\n", r);
+    ap_rputs(" <tr class=\"row\"><td>\n", r);
   } else {
     ap_rputs("<hr>\n", r);
-    ap_rputs("<table border=\"1\">\n", r);
+    ap_rputs("<table border=\"1\"><tbody>\n", r);
+    ap_rputs(" <tr><td>\n", r);
   }
-
   while(s) {
     qs_acentry_t *e;
-    ap_rputs("<tr class=\"rows\">\n", r);
-    ap_rprintf(r, "<td style=\"vertical-align: top;\">%s:%d <br> (%s)</td>\n",
+    if(strcmp(r->handler, "qos-viewer") == 0) {
+      ap_rputs("<table border=\"0\" cellpadding=\"2\" "
+               "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
+    } else {
+      ap_rputs("<table border=\"1\" cellpadding=\"2\" "
+               "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
+    }
+    ap_rputs("<tr class=\"rowe\">\n", r);
+    ap_rprintf(r, "<td colspan=\"9\">%s:%d (%s)</td>\n",
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->addrs->host_port,
                s->is_virtual ? "virtual" : "base");
-    ap_rputs("<td>\n", r);
+    ap_rputs("</td></tr>\n", r);
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
 
-    if(!s->is_virtual && sconf->net_prefer) {
-      qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
-      int hc = -1;
-      if(strcmp(r->handler, "qos-viewer") == 0) {
-        ap_rputs("<table class=\"btable\">\n", r);
-      } else {
-        ap_rputs("<table border=\"1\">\n", r);
-      }
-      ap_rputs("<tr class=\"rowt\">"
-               "<td style=\"width:70%\">host connections&nbsp;</td>"
-               "<td style=\"width:15%\">limit&nbsp;</td>"
-               "<td style=\"width:15%\">current&nbsp;</td>", r);
-      apr_global_mutex_lock(u->lock);                   /* @CRT11 */
-      hc = u->connections;
-      apr_global_mutex_unlock(u->lock);                 /* @CRT11 */
-      ap_rprintf(r, "<tr class=\"row1\">", i);
-      ap_rprintf(r, "<td>max %d</td>", sconf->net_prefer);
-      ap_rprintf(r, "<td>%d</td>", sconf->net_prefer_limit);
-      ap_rprintf(r, "<td>%d</td>", hc);
-      ap_rputs("</tr>\n", r);
-      ap_rputs("</table>\n", r);
-    }
-
-    if(sconf && sconf->act) {
-      e = sconf->act->entry;
-      while(e) {
-        int percent = e->counter * 100 / (e->limit == 0 ? 1 : e->limit);
-        int cr = 255;
-        int cg = 255;
-        int cb = 255;
-        if(percent > 70) {
-          cr = 255;
-          cg = 255;
-          cb = 90;
-        }
-        if(percent > 95) {
-          cr = 255;
-          cg = 0;
-          cb = 0;
-        }
-        if(strcmp(r->handler, "qos-viewer") == 0) {
-          ap_rputs("<table class=\"btable\">\n", r);
-        } else {
-          ap_rputs("<table border=\"1\">\n", r);
-        }
-        ap_rprintf(r, "<tr class=\"rowt\">"
-                   "<td style=\"width:70%\">rule:&nbsp;%s&nbsp;</td>"
-                   "<td style=\"width:15%\">limit&nbsp;</td>"
-                   "<td style=\"width:15%\">current&nbsp;</td>"
-                   "</tr>\n", e->url);
-        ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
-        ap_rprintf(r, "<td>concurrent requests</td>");
-        ap_rprintf(r, "<td>%d</td>", e->limit == 0 ? -1 : e->limit);
-        ap_rprintf(r, "<td style=\"background-color: rgb(%d, %d, %d);\">%d</td>",
-                   cr, cg, cb,
-                   e->counter);
-        ap_rputs("</tr>\n", r);
-        if(e->req_per_sec_block_rate) {
-          cr = 255;
-          cg = 255;
-          cb = 90;
-        } else {
-          cr = 255;
-          cg = 255;
-          cb = 255;
-        }
-        ap_rprintf(r, "<!-- %d --><tr class=\"row1\">", i);
-        ap_rprintf(r, "<td>requests/second (wait rate %dms)</td>",
-                   e->req_per_sec_block_rate);
-        ap_rprintf(r, "<td>%ld</td>",
-                   e->req_per_sec_limit == 0 ? -1 : e->req_per_sec_limit);
-        ap_rprintf(r, "<td style=\"background-color: rgb(%d, %d, %d);\">%ld</td>",
-                   cr, cg, cb,
-                   now > (e->interval + 11) ? 0 : e->req_per_sec);
-        ap_rputs("</tr>\n", r);
-        if(e->kbytes_per_sec_block_rate) {
-          cr = 255;
-          cg = 255;
-          cb = 90;
-        } else {
-          cr = 255;
-          cg = 255;
-          cb = 255;
-        }
-        ap_rprintf(r, "<td>kbytes/second (wait rate %dms)</td>",
-                   e->kbytes_per_sec_block_rate);
-        ap_rprintf(r, "<td>%ld</td>",
-                   e->kbytes_per_sec_limit == 0 ? -1 : e->kbytes_per_sec_limit);
-        ap_rprintf(r, "<td style=\"background-color: rgb(%d, %d, %d);\">%ld</td>",
-                   cr, cg, cb,
-                   now > (e->interval + 11) ? 0 : e->kbytes_per_sec);
-        ap_rputs("</tr>\n", r);
-        e = e->next;
-        ap_rputs("</table>\n", r);
-      }
-    }
-    if(sconf) {
-      qs_ip_entry_t *f;
-      int c = 0;
-      int cr = 255;
-      int cg = 255;
-      int cb = 255;
-      if((sconf->max_conn_close > 0) &&
-         (sconf->act->c->connections >= sconf->max_conn_close)) {
-        cr = 255;
-        cg = 255;
-        cb = 90;
-      }
-      if((sconf->max_conn > 0) &&
-         (sconf->act->c->connections >= sconf->max_conn)) {
-        cr = 255;
-        cg = 0;
-        cb = 0;
-      }
-      apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
-      f = sconf->act->c->ip_free;
-      while(f) {
-        c++;
-        f = f->next;
-      }
-      apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
-      if(strcmp(r->handler, "qos-viewer") == 0) {
-        ap_rputs("<table class=\"btable\">\n", r);
-      } else {
-        ap_rputs("<table border=\"1\">\n", r);
-      }
-      ap_rputs("<tr class=\"rowt\">"
-               "<td style=\"width:85%\">connections</td>"
-               "<td>current&nbsp;</td></tr>\n", r);
-      ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:85%\">\n", r);
-      ap_rprintf(r,"<!-- %d -->free ip entries</td><td>%d</td>\n", i, c);
-      ap_rputs("</tr>", r);
-      ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:85%\">\n", r);
-      ap_rprintf(r,"<!-- %d -->current connections</td>"
-                 "<td style=\"background-color: rgb(%d, %d, %d);\">%d</td>\n",
-                 i, cr, cg, cb, sconf->act->c->connections);
-      ap_rputs("</tr>", r);
-      ap_rputs("</table>\n", r);
-
-      if(r->parsed_uri.query && strstr(r->parsed_uri.query, "ip")) {
-        if(strcmp(r->handler, "qos-viewer") == 0) {
-          ap_rputs("<table class=\"btable\">\n", r);
-        } else {
-          ap_rputs("<table border=\"1\">\n", r);
-        }
+    if((sconf == bsconf) && s->is_virtual) {
+      ap_rputs("<tr class=\"rowss\">"
+               "<td colspan=\"9\"><i>uses base server settings</i></td></tr>\n", r);
+    } else {
+      /* max host connections */
+      if(!s->is_virtual && sconf->net_prefer) {
+        qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+        int hc = -1;
         ap_rputs("<tr class=\"rowt\">"
-                 "<td style=\"width:85%\">client ip connections</td>"
-                 "<td>current&nbsp;</td></tr>", r);
-        apr_global_mutex_lock(sconf->act->lock);   /* @CRT8 */
-        qos_print_ip(r, sconf->act->c->ip_tree);
-        apr_global_mutex_unlock(sconf->act->lock); /* @CRT8 */
-        ap_rputs("</table>\n", r);
+                 "<td colspan=\"6\">preferred networks</td>"
+                 "<td >max</td>"
+                 "<td >limit&nbsp;</td>"
+                 "<td >current&nbsp;</td>", r);
+        ap_rputs("</tr>\n", r);
+        apr_global_mutex_lock(u->lock);                   /* @CRT11 */
+        hc = u->connections;
+        apr_global_mutex_unlock(u->lock);                 /* @CRT11 */
+        ap_rprintf(r, "<!--%d--><tr class=\"rowss\">", i);
+        ap_rprintf(r, "<td colspan=\"6\">host connections</td>");
+        ap_rprintf(r, "<td >%d</td>", sconf->net_prefer);
+        ap_rprintf(r, "<td >%d</td>", sconf->net_prefer_limit);
+        ap_rprintf(r, "<td >%d</td>", hc);
+        ap_rputs("</tr>\n", r);
       }
+      /* request level */
+      if(sconf && sconf->act) {
+        e = sconf->act->entry;
+        if(e) {
+          ap_rputs("<tr class=\"rowt\">"
+                   "<td colspan=\"1\">location</td>"
+                   "<td colspan=\"2\">concurrent requests</td>"
+                   "<td colspan=\"3\">requests/second</td>"
+                   "<td colspan=\"3\">kbytes/second</td>", r);
+          ap_rputs("</tr>\n", r);
+          ap_rputs("<tr class=\"rowt\">"
+                   "<td ></td>"
+                   "<td >limit</td>"
+                   "<td >current</td>"
+                   "<td >wait rate</td>"
+                   "<td >limit</td>"
+                   "<td >current</td>"
+                   "<td >wait rate</td>"
+                   "<td >limit</td>"
+                   "<td >current</td>", r);
+          ap_rputs("</tr>\n", r);
+        }
+        while(e) {
+          char *red = "style=\"background-color: rgb(240,133,135);\"";
+          ap_rputs("<tr class=\"rowss\">", r);
+          ap_rprintf(r, "<!--%d--><td>%s</td>", i, e->url);
+          if(e->limit == 0) {
+            ap_rprintf(r, "<td>-</td>");
+            ap_rprintf(r, "<td>-</td>");
+          } else {
+            ap_rprintf(r, "<td>%d</td>", e->limit);
+            ap_rprintf(r, "<td %s>%d</td>",
+                       ((e->counter * 100) / e->limit) > 70 ? red : "",
+                       e->counter);
+          }
+          if(e->req_per_sec_limit == 0) {
+            ap_rprintf(r, "<td>-</td>");
+            ap_rprintf(r, "<td>-</td>");
+            ap_rprintf(r, "<td>-</td>");
+          } else {
+            ap_rprintf(r, "<td %s>%d&nbsp;ms</td>",
+                       e->req_per_sec_block_rate ? red : "",
+                       e->req_per_sec_block_rate);
+            ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
+            ap_rprintf(r, "<td %s>%ld</td>",
+                       ((e->req_per_sec * 100) / e->req_per_sec_limit) > 70 ? red : "",
+                       now > (e->interval + 11) ? 0 : e->req_per_sec);
+          }
+          if(e->kbytes_per_sec_limit == 0) {
+            ap_rprintf(r, "<td>-</td>");
+            ap_rprintf(r, "<td>-</td>");
+            ap_rprintf(r, "<td>-</td>");
+          } else {
+            ap_rprintf(r, "<td %s>%d&nbsp;ms</td>",
+                       e->kbytes_per_sec_block_rate ? red : "",
+                       e->kbytes_per_sec_block_rate);
+          ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit);
+          ap_rprintf(r, "<td %s>%ld</td>",
+                     ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 70 ? red : "",
+                     now > (e->interval + 11) ? 0 : e->kbytes_per_sec);
+          }
+          ap_rputs("</tr>\n", r);
+          e = e->next;
+        }
+      }
+      /* connection level */
+      if(sconf) {
+        qs_ip_entry_t *f;
+        int c = 0;
+        apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
+        f = sconf->act->c->ip_free;
+        while(f) {
+          c++;
+          f = f->next;
+        }
+        apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
+        
+        ap_rputs("<tr class=\"rowt\">"
+                 "<td colspan=\"9\">connections</td>", r);
+        ap_rputs("</tr>\n", r);
+        ap_rprintf(r, "<tr class=\"rowss\">"
+                   "<!--%d--><td colspan=\"6\">free ip entries</td>"
+                   "<td colspan=\"3\">%d</td></tr>\n", i, c);
+        ap_rprintf(r, "<tr class=\"rowss\">"
+                   "<!--%d--><td colspan=\"6\">current connections</td>"
+                   "<td colspan=\"3\">%d</td></tr>\n", i, sconf->act->c->connections);
+        
+        if(r->parsed_uri.query && strstr(r->parsed_uri.query, "ip")) {
+          if(sconf->act->c->connections) {
+            apr_table_t *entries = apr_table_make(r->pool, 10);
+            int j;
+            apr_table_entry_t *entry;
+            ap_rputs("<tr class=\"rowt\">"
+                     "<td colspan=\"6\">client ip connections</td>"
+                     "<td colspan=\"3\">current&nbsp;</td>", r);
+            ap_rputs("</tr>\n", r);
+            apr_global_mutex_lock(sconf->act->lock);   /* @CRT8 */
+            qos_collect_ip(r, sconf->act->c->ip_tree, entries);
+            apr_global_mutex_unlock(sconf->act->lock); /* @CRT8 */
+            entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
+            for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
+              ap_rputs("<tr class=\"rowss\">", r);
+              ap_rputs("<td colspan=\"6\">", r);
+              ap_rprintf(r, "%s</td></tr>\n", entry[j].key);
+            }
+          }
+        }
 
-      if(strcmp(r->handler, "qos-viewer") == 0) {
-        ap_rputs("<table class=\"btable\">\n", r);
-      } else {
-        ap_rputs("<table border=\"1\">\n", r);
+        ap_rputs("<tr class=\"rowt\">"
+                 "<td colspan=\"9\">connection settings</td>", r);
+        ap_rputs("</tr>\n", r);
+        ap_rprintf(r, "<tr class=\"rowss\">"
+                   "<td colspan=\"6\">max connections</td>");
+        if(sconf->max_conn == -1) {
+          ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
+        } else {
+          ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn);
+        }
+        ap_rprintf(r, "<tr class=\"rowss\">"
+                   "<td colspan=\"6\">max connections with keep-alive</td>");
+        if(sconf->max_conn_close == -1) {
+          ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
+        } else {
+          ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn_close);
+        }
+        ap_rprintf(r, "<tr class=\"rowss\">"
+                   "<td colspan=\"6\">max connections per client ip</td>");
+        if(sconf->max_conn_per_ip == -1) {
+          ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
+        } else {
+          ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn_per_ip);
+        }
+        ap_rprintf(r, "<tr class=\"rowss\">"
+                   "<td colspan=\"6\">inital connection timeout</td>");
+        if(sconf->connect_timeout == -1) {
+          ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
+        } else {
+          ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->connect_timeout);
+        }
       }
-      ap_rputs("<tr class=\"rowt\">"
-               "<td style=\"width:85%\">settings</td>"
-               "<td>limit&nbsp;</td></tr>\n", r);
-      ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:85%\">\n", r);
-      ap_rprintf(r,"max connections</td><td>%d</td>\n", sconf->max_conn);
-      ap_rputs("</tr>", r);
-      ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:85%\">\n", r);
-      ap_rprintf(r,"max connections with keep-alive</td><td>%d</td>\n", sconf->max_conn_close);
-      ap_rputs("</tr>", r);
-      ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:85%\">\n", r);
-      ap_rprintf(r,"max connections per client</td><td>%d</td>\n", sconf->max_conn_per_ip);
-      ap_rputs("</tr>", r);
-      ap_rputs("<tr class=\"row1\">\n", r);
-      ap_rputs("<td style=\"width:85%\">\n", r);
-      ap_rprintf(r,"inital connection timeout</td><td>%d</td>\n", sconf->connect_timeout);
-      ap_rputs("</tr>", r);
-      ap_rputs("</table>\n", r);
     }
+    ap_rprintf(r, "<tr class=\"row\">"
+               "<td style=\"width:28%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "</tr>");
     i++;
     s = s->next;
-    ap_rputs("</td></tr>\n", r);
-
+    ap_rputs("</tbody></table>\n", r);
   }
-
-  ap_rputs("</table>\n", r);
-
-  ap_rputs("<hr>\n", r);
+  ap_rputs(" </td></tr>\n", r);
+  ap_rputs("</tbody></table>\n", r);
+  if(strcmp(r->handler, "qos-viewer") != 0) {
+    ap_rputs("<hr>\n", r);
+  }
   return OK;
 }
 
@@ -2235,7 +2238,7 @@ static int qos_handler(request_rec * r) {
     ap_rputs("<style TYPE=\"text/css\">\n", r);
     ap_rputs("<!--", r);
     ap_rputs("  body {\n\
-        background-color: white;\n\
+        background-color: rgb(250,248,246);;\n\
         color: black;\n\
         font-family: arial, helvetica, verdana, sans-serif;\n\
   }\n\
@@ -2244,12 +2247,21 @@ static int qos_handler(request_rec * r) {
           border: 1px solid;\n\
           padding: 0px;\n\
           margin: 6px;\n\
-          width: 550px;\n\
+          width: 750px;\n\
           font-weight: normal;\n\
           border-collapse: collapse;\n\
   }\n\
+  .rowts {\n\
+          background-color: rgb(165,150,158);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
+          border-color: black;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
+  }\n\
   .rowt {\n\
-          background-color: rgb(210,216,220);\n\
+          background-color: rgb(220,210,215);\n\
           vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
@@ -2258,20 +2270,60 @@ static int qos_handler(request_rec * r) {
           margin: 0px;\n\
   }\n\
   .rows {\n\
-          background-color: rgb(240,243,245);\n\
+          background-color: rgb(230,223,225);\n\
+          vertical-align: top;\n\
           border: 1px solid;\n\
-          font-weight: bold;\n\
-          padding: 0px;\n\
-          margin: 0px;\n\
-  }\n\
-  .row1 {\n\
-          background-color: white;\n\
-          border: 1px solid;\n\
+          border-color: black;\n\
           font-weight: normal;\n\
           padding: 0px;\n\
           margin: 0px;\n\
   }\n\
-", r);
+  .rowss {\n\
+          background-color: rgb(240,233,235);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
+          border-color: black;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
+  }\n\
+  .row  {\n\
+          background-color: white;\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
+          border-color: black;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
+  }\n\
+  .row2  {\n\
+          background-color: rgb(240,233,235);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
+          border-color: black;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
+  }\n\
+  .rowe {\n\
+          background-color: rgb(200,186,190);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
+          border-color: black;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
+  }\n\
+  .rowe2 {\n\
+          background-color: rgb(185,175,177);\n\
+          vertical-align: top;\n\
+          border: 1px solid;\n\
+          border-color: black;\n\
+          font-weight: normal;\n\
+          padding: 0px;\n\
+          margin: 0px;\n\
+  }\n\
+  form      { display: inline; }\n", r);
     ap_rputs("-->\n", r);
     ap_rputs("</style>\n", r);
     ap_rputs("</head><body>", r);
