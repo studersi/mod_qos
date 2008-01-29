@@ -1,3 +1,13 @@
+Version 5.7
+
+ - Important:
+   QS_PermitUri, QS_Deny*, qsfilter2 apply filter rules against
+   unescaped URLs where %<hex>, \x<hex> and + (new!) is unescaped.
+   You should regenerate your QS_PermitUri rules using the updated
+   version of the qsfilter2 tool provided by this release.
+
+ - Very first release of mod_qos_control.
+
 Version 5.6
 
  - New status viewer implementation.

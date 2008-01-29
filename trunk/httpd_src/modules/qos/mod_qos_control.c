@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 2.66 2008-01-24 21:44:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 2.67 2008-01-29 20:09:37 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -49,6 +49,7 @@ static const char revision[] = "$Id: mod_qos_control.c,v 2.66 2008-01-24 21:44:2
 #include <httpd.h>
 #include <http_protocol.h>
 #include <http_main.h>
+#define CORE_PRIVATE
 #include <http_config.h>
 #include <http_connection.h>
 #include <http_log.h>
@@ -138,8 +139,10 @@ typedef struct {
 //#define  GLOBAL_ONLY            (NOT_IN_VIRTUALHOST|NOT_IN_LIMIT|NOT_IN_DIR_LOC_FILE) 
 
 static const qosc_elt_t qosc_elts[] = {
-  { "QS_LocRequestLimitDefault", QSC_REQ_TYPE, TAKE1, RSRC_CONF, 0, "", "100" },
-  { "QS_LocRequestLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 100" },
+  { "QS_LocRequestLimitDefault", QSC_REQ_TYPE, TAKE1, RSRC_CONF, 0,
+    "defines the number of concurrent requests to a location", "100" },
+  { "QS_LocRequestLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1,
+    "defines the number of concurrent requests to a location", "/new 100" },
   { "QS_LocRequestPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 100" },
   { "QS_LocKBytesPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 1200" },
   { "QS_LocRequestLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 100" },
@@ -242,8 +245,7 @@ static int qosc_unescaping(char *x) {
     if (ch == '%' && isxdigit(x[i + 1]) && isxdigit(x[i + 2])) {
       ch = qosc_hex2c(&x[i + 1]);
       i += 2;
-    }
-    if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
+    } else if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
       ch = qosc_hex2c(&x[i + 2]);
       i += 3;
     }
@@ -1432,6 +1434,7 @@ static int qosc_server_load(request_rec *r, qosc_settings_t *settings) {
   char *httpdconf = qosc_get_httpd_conf_name(r, settings);
   char *root = apr_pstrdup(r->pool, httpdconf == NULL ? "" : httpdconf);
   char *p = strrchr(root, '/');
+  ap_rprintf(r, "<br>Reload configuration ...<br>");
   if(!httpdconf) {
     ap_rprintf(r, "Could not determine configuration file.<br>");
     return 1;
@@ -1904,6 +1907,7 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
                   QOSC_LOG_PFX(0)"invalid request, no action");
     return;
   }
+  ap_rprintf(r, "<br>Write configuration ...<br>");
   location = qosc_locfile_id2name(r, atoi(loc), 1);
   dedicated_rules = apr_pstrcat(r->pool, location, ".rules", NULL);
   if(stat(dedicated_rules, &attrib) == 0) {
@@ -1951,7 +1955,6 @@ static void qosc_qsfilter2_store(request_rec *r, qosc_settings_t *settings) {
                   QOSC_LOG_PFX(0)"could determine file name (location)");
     return;
   }
-  ap_rprintf(r, "<br>reload configuration ...<br>");
   qosc_server_load(r, settings);
   if(!errors) {
     qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r),
@@ -2135,17 +2138,25 @@ static void qosc_qsfilter2_import(request_rec *r, qosc_settings_t *settings) {
                                   NULL));
 }
 
+/** add CR and replaces ' by ` */
 #define QOSC_ALERT_LINE_LEN 120
 static char *qosc_crline(request_rec *r, const char *line) {
   char *string = "";
   const char *pos = line;
+  char *n;
   while(pos && pos[0]) {
-    string = apr_pstrcat(r->pool, string, apr_psprintf(r->pool, "%.*s", QOSC_ALERT_LINE_LEN, pos), "\\n", NULL);
+    string = apr_pstrcat(r->pool, string,
+                         apr_psprintf(r->pool, "%.*s", QOSC_ALERT_LINE_LEN, pos), "\\n", NULL);
     if(strlen(pos) > QOSC_ALERT_LINE_LEN) {
       pos = &pos[QOSC_ALERT_LINE_LEN];
     } else {
       pos = NULL;
     }
+  }
+  n = string;
+  while(n && n[0]) {
+    if(n[0] == '\'') n[0] = '`';
+    n++;
   }
   return string;
 }
@@ -2758,6 +2769,32 @@ static void qosc_print_add(request_rec *r, qosc_settings_t *settings, qosc_type_
   qosc_table_body_cell_end(r);
 }
 
+static char *qosc_get_dir_note(request_rec *r, const qosc_elt_t *elt) {
+  module *modp = NULL;
+  for(modp = ap_top_module; modp; modp = modp->next) {
+    if(strcmp(modp->name, "mod_qos.c") == 0) {
+      const command_rec *cmd = modp->cmds;
+      while(cmd) {
+        if(cmd->name) {
+          if(strcmp(cmd->name, elt->dir) == 0) {
+            char *msg = apr_pstrdup(r->pool, cmd->errmsg);
+            char *m = msg;
+            while(m && m[0]) {
+              if(m[0] == '\'') m[0] = '`';
+              m++;
+            }
+            return msg;
+          }
+        } else {
+          return apr_pstrdup(r->pool, "no help text available: command not found");
+        }
+        cmd++;
+      }
+    }
+  }
+  return apr_pstrdup(r->pool, "no help text available: mod_qos is no loaded");
+}
+
 static void qosc_directive_list(request_rec *r, qosc_settings_t *settings,
                                 qosc_type_e type, int location) {
   int nr = 0;
@@ -2807,12 +2844,14 @@ static void qosc_directive_list(request_rec *r, qosc_settings_t *settings,
           value[0] = '\0';
           elt = qosc_get_directive(line);
           if(elt && (elt->type == type)) {
+            char *note = qosc_get_dir_note(r, elt);
             value++;
             apr_table_add(existing, line, "");
-            // qosc_table_body_cell_single(r);
             qosc_table_body_cell_start(r);
-            // ap_rprintf(r, "%s\n", ap_escape_html(r->pool, elt->note));
-            ap_rprintf(r, "&nbsp;%s\n", ap_escape_html(r->pool, line));
+            ap_rprintf(r, "&nbsp;<a onclick=\"alert('%s')\" title=\"%s\">%s</a>\n",
+                       note ? ap_escape_html(r->pool, note) : "",
+                       note ? ap_escape_html(r->pool, note) : "",
+                       ap_escape_html(r->pool, line));
             qosc_table_body_cell_middle(r);
             qosc_print_input_value(r, settings, elt, value, nr);
             qosc_table_body_cell_end(r);
@@ -2839,6 +2878,7 @@ static void qosc_process_dir_update(request_rec *r, qosc_settings_t *settings) {
       return;
     }
     if(p) p[0] = '\0';
+    ap_rprintf(r, "<br>Start configuration update: '%s.'<br>", httpdconf);
     errors = qosc_update_line(r, settings, httpdconf, root, &current_line);
     qosc_server_load(r, settings);
     if(!errors) {
@@ -2933,50 +2973,63 @@ static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
                      "<a href=\"%s%s.do\">%s</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
                      ap_escape_html(r->pool, de->d_name));
-
+          
           if(strstr(r->parsed_uri.path, "/request.do") ||
-             (action && (strcmp(action, "request.do") == 0))) {
+             strstr(r->parsed_uri.path, "/connection.do") ||
+             strstr(r->parsed_uri.path, "/filter.do") ||
+             strstr(r->parsed_uri.path, "/module.do")) {
+
             ap_rputs("<tr class=\"rows\"><td>", r);
+            ap_rprintf(r, "&nbsp;<a href=\"%s%s.do\" "
+                       "title=\"edit configuration\">"
+                       "edit</a></td></tr>\n",
+                       qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+
+            if(strstr(r->parsed_uri.path, "/request.do")) {
+              ap_rputs("<tr class=\"rows\"><td>", r);
+            } else {
+              ap_rputs("<tr class=\"rowss\"><td>", r);
+            }
+            ap_rprintf(r, "&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"%srequest.do?server=%s\" "
+                       "title=\"manages request level control directives\">"
+                       "request level</a></td></tr>\n",
+                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+            if(strstr(r->parsed_uri.path, "/connection.do")) {
+              ap_rputs("<tr class=\"rows\"><td>", r);
+            } else {
+              ap_rputs("<tr class=\"rowss\"><td>", r);
+            }
+            ap_rprintf(r, "&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"%sconnection.do?server=%s\" "
+                       "title=\"manages connection level control directives\">"
+                       "connection level</a></td></tr>\n",
+                       qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+            
+            if(strstr(r->parsed_uri.path, "/filter.do")) {
+              ap_rputs("<tr class=\"rows\"><td>", r);
+            } else {
+              ap_rputs("<tr class=\"rowss\"><td>", r);
+            }
+            ap_rprintf(r, "&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"%sfilter.do?server=%s\" "
+                       "title=\"manages generic filter directives\">"
+                       "filter</a></td></tr>\n",
+                       qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
+            
+            if(strstr(r->parsed_uri.path, "/module.do")) {
+              ap_rputs("<tr class=\"rows\"><td>", r);
+            } else {
+              ap_rputs("<tr class=\"rowss\"><td>", r);
+            }
+            ap_rprintf(r, "&nbsp;&nbsp;&nbsp;&nbsp;<a href=\"%smodule.do?server=%s\" "
+                       "title=\"manages the module configuration\">"
+                       "module</a></td></tr>\n",
+                       qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
           } else {
             ap_rputs("<tr class=\"rowss\"><td>", r);
+            ap_rprintf(r, "&nbsp;<a href=\"%srequest.do?server=%s\" "
+                       "title=\"edit configuration\">"
+                       "edit</a></td></tr>\n",
+                       qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
           }
-          ap_rprintf(r, "&nbsp;<a href=\"%srequest.do?server=%s\" "
-                     "title=\"manages request level control directives\">"
-                     "request level</a></td></tr>\n",
-                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
-
-          if(strstr(r->parsed_uri.path, "/connection.do") ||
-             (action && (strcmp(action, "connection.do") == 0))) {
-            ap_rputs("<tr class=\"rows\"><td>", r);
-          } else {
-            ap_rputs("<tr class=\"rowss\"><td>", r);
-          }
-          ap_rprintf(r, "&nbsp;<a href=\"%sconnection.do?server=%s\" "
-                     "title=\"manages connection level control directives\">"
-                     "connection level</a></td></tr>\n",
-                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
-
-          if(strstr(r->parsed_uri.path, "/filter.do")) {
-            ap_rputs("<tr class=\"rows\"><td>", r);
-          } else {
-            ap_rputs("<tr class=\"rowss\"><td>", r);
-          }
-          ap_rprintf(r, "&nbsp;<a href=\"%sfilter.do?server=%s\" "
-                     "title=\"manages generic filter directives\">"
-                     "filter</a></td></tr>\n",
-                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
-
-          if(strstr(r->parsed_uri.path, "/module.do") ||
-             (action && (strcmp(action, "module") == 0))) {
-            ap_rputs("<tr class=\"rows\"><td>", r);
-          } else {
-            ap_rputs("<tr class=\"rowss\"><td>", r);
-          }
-          ap_rprintf(r, "&nbsp;<a href=\"%smodule.do?server=%s\" "
-                     "title=\"manages the module configuration\">"
-                     "module</a></td></tr>\n",
-                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
-
           if(strstr(r->parsed_uri.path, "/qsfilter2.do") ||
              (action && (strcmp(action, "qsfilter2") == 0))) {
             ap_rputs("<tr class=\"rows\"><td>", r);
@@ -3346,7 +3399,7 @@ static int qosc_handler(request_rec * r) {
             <td>\n", r);
       ap_rprintf(r, "<form action=\"%sct.do\" method=\"get\" onsubmit=\"return checkserver(this);\">\n",
                  qosc_get_path(r));
-      ap_rputs("Add a new server:\n\
+      ap_rputs("add a new server:\n\
               <input name=\"server\" value=\"\"    type=\"text\">\n\
               <input name=\"action\" value=\"add\" type=\"submit\">\n\
             </form>\n\
@@ -3360,7 +3413,7 @@ static int qosc_handler(request_rec * r) {
       }
       ap_rprintf(r, "<tr class=\"rowe\">\n"
                  "<td><a target=\"_blank\" "
-                 "href=\"http://mod-qos.sourceforge.net\">Online documentation</a></td>\n"
+                 "href=\"http://mod-qos.sourceforge.net\">online documentation</a></td>\n"
                  "</tr>\n");
       ap_rputs("        </tbody>\n\
       </table>\n\
