@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.6 2008-01-28 19:51:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.7 2008-01-29 20:09:37 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -993,28 +993,30 @@ static void qos_remove_ip(qs_conn_ctx *cconf) {
         right = 0;
       }
     }
-    ipe->counter--;
-    if(ipe->counter == 0) {
-      if(last == NULL) {
-        if(ipe->right) {
-          cconf->sconf->act->c->ip_tree = ipe->right;
-          re = ipe->left;
+    if(ipe) {
+      ipe->counter--;
+      if(ipe->counter == 0) {
+        if(last == NULL) {
+          if(ipe->right) {
+            cconf->sconf->act->c->ip_tree = ipe->right;
+            re = ipe->left;
+          } else {
+            cconf->sconf->act->c->ip_tree = ipe->left;
+            re = ipe->right;
+          }
+          last = cconf->sconf->act->c->ip_tree;
         } else {
-          cconf->sconf->act->c->ip_tree = ipe->left;
-          re = ipe->right;
-        }
-        last = cconf->sconf->act->c->ip_tree;
-      } else {
-        if(right) {
-          last->right = ipe->right;
-          re = ipe->left;
-        } else {
-          last->left = ipe->right;
-          re = ipe->left;
-        }
+          if(right) {
+            last->right = ipe->right;
+            re = ipe->left;
+          } else {
+            last->left = ipe->right;
+            re = ipe->left;
+          }
       }
-      qos_free_ip(cconf->sconf->act, ipe);
-      if(last && re) qos_insert_ip(last, re);
+        qos_free_ip(cconf->sconf->act, ipe);
+        if(last && re) qos_insert_ip(last, re);
+      }
     }
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT2 */
@@ -1161,10 +1163,11 @@ static int qos_unescaping(char *x) {
     if (ch == '%' && isxdigit(x[i + 1]) && isxdigit(x[i + 2])) {
       ch = qos_hex2c(&x[i + 1]);
       i += 2;
-    }
-    if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
+    } else if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
       ch = qos_hex2c(&x[i + 2]);
       i += 3;
+    } else if (ch == '+') {
+      ch = ' ';
     }
     x[j] = ch;
   }
@@ -1553,7 +1556,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
   if(cconf->sconf->net_prefer) {
     qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool, 0);
     apr_global_mutex_lock(u->lock);                   /* @CRT10 */
-    u->connections--;
+    if(u->connections) u->connections--;
     if(u->connections < cconf->sconf->net_prefer_limit) {
       /* no limit reached, allow network learning ... */
       int net = qos_get_net(cconf);
@@ -1566,7 +1569,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
   }
   if(cconf->sconf->max_conn != -1) {
     apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT3 */
-    cconf->sconf->act->c->connections--;
+    if(cconf->sconf->act->c->connections) cconf->sconf->act->c->connections--;
     apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT3 */
   }
   if(cconf->sconf->max_conn_per_ip != -1) {
@@ -2003,7 +2006,7 @@ static int qos_logger(request_rec *r) {
     time_t now = time(NULL);
     char *h = apr_psprintf(r->pool, "%d", e->counter);
     apr_global_mutex_lock(e->lock);   /* @CRT6 */
-    e->counter--;
+    if(e->counter) e->counter--;
     e->req++;
     e->bytes = e->bytes + r->bytes_sent;
     if(now > e->interval + 10) {
@@ -2923,7 +2926,7 @@ static const command_rec qos_config_cmds[] = {
                 " in conjunction with QS_LocRequestLimit only."),
   AP_INIT_TAKE2("QS_LocKBytesPerSecLimit", qos_loc_bs_cmd, NULL,
                 RSRC_CONF,
-                "QS_LocKBytesPerSecLimit <location> <number>, defined the allowed"
+                "QS_LocKBytesPerSecLimit <location> <kbytes>, defined the allowed"
                 " download bandwidth to the defined kbytes per second. Responses are"
                 "slowed by adding a delay to each response (non-linear, bigger files"
                 " get longer delay than smaller ones). This directive should be used"
@@ -2942,7 +2945,7 @@ static const command_rec qos_config_cmds[] = {
                 " QS_LocRequestLimitMatch only."),
   AP_INIT_TAKE2("QS_LocKBytesPerSecLimitMatch", qos_match_bs_cmd, NULL,
                 RSRC_CONF,
-                "QS_LocKBytesPerSecLimit <regex> <number>, defined the allowed"
+                "QS_LocKBytesPerSecLimit <regex> <kbytes>, defined the allowed"
                 " download bandwidth to the defined kbytes per second. Responses are"
                 "slowed by adding a delay to each response (non-linear, bigger files"
                 " get longer delay than smaller ones). This directive should be used"

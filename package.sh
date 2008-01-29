@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.13 2007-12-26 13:39:29 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.14 2008-01-29 20:09:36 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -65,7 +65,8 @@ cp doc/favicon.ico mod_qos-${VERSION}/doc
 
 echo "install source"
 cp httpd_src/modules/qos/mod_qos.c mod_qos-${VERSION}/apache2
-grep -v "qos_control" httpd_src/modules/qos/config.m4 > mod_qos-${VERSION}/apache2/config.m4
+cp httpd_src/modules/qos/mod_qos_control.c mod_qos-${VERSION}/apache2
+cp httpd_src/modules/qos/config.m4 > mod_qos-${VERSION}/apache2
 cp httpd_src/modules/qos/Makefile.in mod_qos-${VERSION}/apache2
 
 echo "tools"

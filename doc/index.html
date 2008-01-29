@@ -105,6 +105,7 @@ per second to an URL.
 <li><a href="#requeststatistics">Request Statistics</a></li>
 <li><a href="#statusviewer">Status Viewer</a></li>
 </ul>
+<li><a href="#gui">User Interface</a></li>
 <li><a href="#usecases">Use Cases</a></li>
 </ul>
 </p>
@@ -155,6 +156,7 @@ server's modules directory.
 <pre>
 cd mod_qos-4.15/apache2
 apxs -i -c mod_qos.c
+apxs -i -c mod_qos_control.c
 cd ../..
 </pre>
 </td></tr>
@@ -593,6 +595,40 @@ on a per client ip address basis, e.g. "/qos?option=ip".
 <pre>
 &lt;Location /qos&gt;
    SetHandler qos-viewer
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+
+</p>
+
+<a name="gui">
+<h2>User Interface</h3>
+<p>
+mod_qos features a graphical user interface (web application) which may be 
+used to manage directives and to generate generic filter rules using the 
+<code><a href="qsfilter.html">qsfilter2</a></code> utility. 
+It is provided as an additional Apache module which is loaded into 
+the server (usually a separate Apache instance which has write access to the main 
+server's configuration files. The qos-control handler specifies the location under 
+which the GUI is accessible.
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+<pre>
+LoadModule qos_control_module &lt;path to module&gt;/mod_qos_control.so
+LoadModule qos_module         &lt;path to module&gt;/mod_qos.so
+
+# this is the working directory where the GUI stores its metadata to
+QSC_WorkingDirectory    /var/tmp/qosc
+
+# you must specify the location of the qsfilter2 utility which is used
+# to generate generic request filer rules based on access log files
+QSC_Filter2Binary       /usr/local/bin/qsfilter2
+
+# the location/url where the GUI is accessible
+&lt;Location /qos_control&gt;
+   SetHandler qos-control
 &lt;/Location&gt;
 </pre>
 </td></tr>
