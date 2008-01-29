@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.14 2008-01-29 20:09:36 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.15 2008-01-29 20:23:26 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -62,6 +62,8 @@ cp doc/CHANGES.txt mod_qos-${VERSION}/doc
 sed <doc/index.html >mod_qos-${VERSION}/doc/index.html -e "s/4.15/${VERSION}/g"
 cp doc/mod_qos_s.gif mod_qos-${VERSION}/doc
 cp doc/favicon.ico mod_qos-${VERSION}/doc
+cp doc/qsfilter.html mod_qos-${VERSION}/doc
+cp doc/qsfilter2_process.gif mod_qos-${VERSION}/doc
 
 echo "install source"
 cp httpd_src/modules/qos/mod_qos.c mod_qos-${VERSION}/apache2
