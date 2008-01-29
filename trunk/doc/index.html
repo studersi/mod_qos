@@ -402,7 +402,9 @@ whitelist. Only requests matching at least one <code>QS_PermitUri</code>
 pattern are allowed. If a <code>QS_PermitUri</code> pattern has 
 been defined an the request does not match any rule, the request 
 is denied albeit of any server resource availability (whitelist). 
-All rules must define the same action. pcre is case sensitve.
+All rules must define the same action. pcre is case sensitve. 
+You may use the <code><a href="qsfilter.html">qsfilter2</a></code> 
+utility to generate rules based on access log files.
 </li>
 <li>
 <code>QS_DenyInheritanceOff</code><br>
