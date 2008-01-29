@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.15 2008-01-29 20:23:26 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.16 2008-01-29 21:09:19 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -68,7 +68,7 @@ cp doc/qsfilter2_process.gif mod_qos-${VERSION}/doc
 echo "install source"
 cp httpd_src/modules/qos/mod_qos.c mod_qos-${VERSION}/apache2
 cp httpd_src/modules/qos/mod_qos_control.c mod_qos-${VERSION}/apache2
-cp httpd_src/modules/qos/config.m4 > mod_qos-${VERSION}/apache2
+cp httpd_src/modules/qos/config.m4 mod_qos-${VERSION}/apache2
 cp httpd_src/modules/qos/Makefile.in mod_qos-${VERSION}/apache2
 
 echo "tools"
