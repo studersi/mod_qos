@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.1 2008-01-30 19:28:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.2 2008-01-30 20:49:32 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -515,7 +515,11 @@ static apr_status_t qosc_store_multipart(request_rec *r, apr_file_t *f, const ch
                 start = 0;
               } else {
                 if(regex) {
+#ifdef AP_REGEX_H
                   ap_regmatch_t ma;
+#else
+                  regmatch_t ma;
+#endif
                   if(ap_regexec(regex, tmp_buf_p, 1, &ma, 0) == 0) {
                     char *m = apr_pcalloc(lpool, ma.rm_eo - ma.rm_so + 1);
                     char *m_start;
@@ -2155,7 +2159,11 @@ static void qosc_qsfilter2_import(request_rec *r, qosc_settings_t *settings) {
       char line[QOSC_HUGE_STRING_LEN];
       char m[QOSC_HUGE_STRING_LEN];
       while(!qosc_fgetline(line, sizeof(line), f)) {
+#ifdef AP_REGEX_H
         ap_regmatch_t ma;
+#else
+        regmatch_t ma;
+#endif
         if(ap_regexec(regex, line, 1, &ma, 0) == 0) {
           char *m_start;
           char *m_end;
