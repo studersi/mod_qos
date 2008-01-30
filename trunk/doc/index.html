@@ -83,6 +83,9 @@ Preferes known networks when server runs out of free TCP connections.
 Limitation of the bandwidth, e.g. the maximum allowed number of requests 
 per second to an URL.
 </li>
+<li type=square>
+Generic request line and header filter.
+</li>
 </ul>
 
 </p>
@@ -571,12 +574,13 @@ LogFormat "%h %t \"%r\" %>s %b %T \"%{User-Agent}i\" id=%{UNIQUE_ID}e \
 <a name="requeststatistics">
 <h4>Request Statistics</h4>
 <p>
-The <code>qslog</code> tool, which is part of the support utilities of 
-mod_qos, may be used to gather request statistics from Apache's access 
-log data. This includes data such as the number of denied requests or 
-new VIP session creations per minute but also total requests per second 
-and other data. Refere to the usage text of the <code>qslog</code> utility 
-for further details.
+The <code><a href="qslog.html">qslog</a></code> tool, which is part of 
+the support utilities of mod_qos, may be used to gather request 
+statistics from Apache's access log data. This includes data such 
+as the number of denied requests or new VIP session creations per 
+minute but also total requests per second and other data. Refere 
+to the usage text of the <code><a href="qslog.html">qslog</a></code> 
+utility for further details.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
