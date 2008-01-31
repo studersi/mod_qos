@@ -1,7 +1,7 @@
 
 CFLAGS=
 
-all: qslog qscheck
+all: qslog
 
 BASE_OBJECTS = qs_util.o
 
@@ -12,13 +12,9 @@ qslog: qslog.c $(BASE_OBJECTS)
 	cc $(CFLAGS) -I. $(BASE_OBJECTS) -o qslog qslog.c -lpthread
 	strip qslog
 
-qscheck: qscheck.c $(BASE_OBJECTS)
-	cc $(CFLAGS) -o qscheck qscheck.c
-	strip qscheck
-
-#qsbench: qsbench.c $(BASE_OBJECTS)
-#	cc $(CFLAGS) -I. $(BASE_OBJECTS) -o qsbench qsbench.c -lpthread
-#	strip qsbench
+#qscheck: qscheck.c $(BASE_OBJECTS)
+#	cc $(CFLAGS) -o qscheck qscheck.c
+#	strip qscheck
 
 clean:
 	rm -f *.o qslog

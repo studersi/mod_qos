@@ -1,6 +1,7 @@
 #!/bin/sh
+# -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.17 2008-01-31 08:42:45 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.18 2008-01-31 20:12:03 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -38,24 +39,24 @@ C_VERSION=`grep "char g_revision" httpd_src/modules/qos/mod_qos_control.c | awk 
 F_VERSION=`grep "char g_revision" tools/filter/qsfilter2.c | awk '{print $6}' | awk -F'"' '{print $2}'`
 echo "build mod_dos version $VERSION distribution package"
 if [ "$VERSION" != "$C_VERSION" -o "$VERSION" != "$F_VERSION" ]; then
-    echo "FAILED, wrong version!"
-    echo " mod_qos: $VERSION"
-    echo " mod_control: $C_VERSION"
-    echo " qsfilter2: $F_VERSION"
-    exit 1
+  echo "FAILED, wrong version!"
+  echo " mod_qos: $VERSION"
+  echo " mod_control: $C_VERSION"
+  echo " qsfilter2: $F_VERSION"
+  exit 1
 fi
 
 TAGV=`echo $VERSION | awk -F'.' '{print "REL_" $1 "_" $2}'`
 echo "check release tag $TAGV ..."
 if [ "`cvs -q diff -r $TAGV 2>&1`" = "" ]; then
-    echo ok
+  echo ok
 else
-    echo "FAILED"
-    exit 1
+  echo "FAILED"
+  exit 1
 fi
 if [ `grep -c "Version $VERSION" doc/CHANGES.txt` -eq 0 ]; then
-    echo "CHANGES.txt check FAILED"
-    exit 1
+  echo "CHANGES.txt check FAILED"
+  exit 1
 fi
 
 rm -rf mod_qos-${VERSION}*
@@ -84,7 +85,6 @@ echo "tools"
 cp tools/qs_util.h mod_qos-${VERSION}/tools
 cp tools/qs_util.c mod_qos-${VERSION}/tools
 cp tools/qslog.c mod_qos-${VERSION}/tools
-cp tools/qscheck.c mod_qos-${VERSION}/tools
 cp tools/Makefile mod_qos-${VERSION}/tools
 cp tools/filter/qsfilter2.c mod_qos-${VERSION}/tools/qsfilter
 cp tools/filter/Makefile mod_qos-${VERSION}/tools/qsfilter
