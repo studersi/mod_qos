@@ -1,13 +1,14 @@
 #!/bin/sh
+# -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.19 2007-12-25 22:04:26 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.20 2008-01-31 20:12:03 pbuchbinder Exp $
 #
-# Simple build script using apache tar.gz from the 3thrdparty directory
+# Simple build script using apache and libpng tar.gz from the 3thrdparty directory
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007 Pascal Buchbinder
+# Copyright (C) 2007-2008 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -32,10 +33,21 @@ APACHE_VER=2.2.4
 
 echo "build Apache $APACHE_VER"
 if [ ! -d httpd-${APACHE_VER} ]; then
-    gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
+  gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
 fi
 rm -f httpd
 ln -s httpd-${APACHE_VER} httpd
+
+#PNG=1.2.5
+#if [ ! -d libpng-${PNG} ]; then
+#  gzip -c -d ./3thrdparty/libpng-${PNG}.tar.gz | tar xf -
+#fi
+#rm -f libpng
+#ln -s libpng-${PNG} libpng
+#cd libpng
+#./configure --disable-shared
+#make
+#cd ..
 
 rm -rf httpd/modules/qos
 mkdir -p httpd/modules/qos
@@ -45,12 +57,12 @@ ln -s `pwd`/httpd_src/modules/qos/config.m4 httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/Makefile.in httpd/modules/qos
 
 if [ "$1" = "release" ]; then
-    echo "release binary"
-    CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256"
-    export CFLAGS 
+  echo "release binary"
+  CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256"
+  export CFLAGS 
 else
-    CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g"
-    export CFLAGS 
+  CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g"
+  export CFLAGS 
 fi
 
 cd httpd
@@ -59,13 +71,13 @@ cd httpd
 make
 strip modules/qos/.libs/mod_qos.so
 if [ $? -ne 0 ]; then
-    echo "ERROR"
-    exit 1
+  echo "ERROR"
+  exit 1
 fi
 strip modules/qos/.libs/mod_qos_control.so
 if [ $? -ne 0 ]; then
-    echo "ERROR"
-    exit 1
+  echo "ERROR"
+  exit 1
 fi
 cd ..
 
@@ -77,9 +89,8 @@ make
 cd ../..
 
 if [ -f ./3thrdparty/modsecurity-apache_2.1.1.tar.gz ]; then
-    tar xfz ./3thrdparty/modsecurity-apache_2.1.1.tar.gz modsecurity-apache_2.1.1/rules/modsecurity_crs_40_generic_attacks.conf
-    ln -s modsecurity-apache_2.1.1 modsecurity
+  tar xfz ./3thrdparty/modsecurity-apache_2.1.1.tar.gz modsecurity-apache_2.1.1/rules/modsecurity_crs_40_generic_attacks.conf
+  ln -s modsecurity-apache_2.1.1 modsecurity
 fi
 
 echo "END"
-
