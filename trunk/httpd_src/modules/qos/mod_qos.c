@@ -37,7 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.7 2008-01-29 20:09:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.8 2008-01-31 08:42:45 pbuchbinder Exp $";
+static const char g_revision[] = "5.8";
 
 /************************************************************************
  * Includes
@@ -438,14 +439,7 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
 
 /* returns the version number of mod_qos */
 static char *qos_revision(apr_pool_t *p) {
-  char *ver = apr_pstrdup(p, strchr(revision, ' '));
-  char *h;
-  ver++;
-  ver =strchr(ver, ' ');
-  ver++;
-  h = strchr(ver, ' ');
-  h[0] = '\0';
-  return ver;
+  return apr_pstrdup(p, g_revision);
 }
 
 /**
@@ -848,10 +842,11 @@ static int qos_get_net(qs_conn_ctx *cconf) {
 /**
  * helper for the status viewer (unsigned long to char)
  */
-static void qos_collect_ip(request_rec *r, qs_ip_entry_t *ipe, apr_table_t *entries) {
+static void qos_collect_ip(request_rec *r, qs_ip_entry_t *ipe, apr_table_t *entries, int limit) {
   if(ipe) {
     unsigned long ip = ipe->ip;
     int a,b,c,d;
+    char *red = "style=\"background-color: rgb(240,133,135);\"";
     a = ip % 256;
     ip = ip / 256;
     b = ip % 256;
@@ -859,10 +854,12 @@ static void qos_collect_ip(request_rec *r, qs_ip_entry_t *ipe, apr_table_t *entr
     c = ip % 256;
     ip = ip / 256;
     d = ip % 256;
-    apr_table_addn(entries, apr_psprintf(r->pool, "%d.%d.%d.%d</td><td colspan=\"3\">%d",
-                                         a,b,c,d, ipe->counter), "");
-    qos_collect_ip(r, ipe->left, entries);
-    qos_collect_ip(r, ipe->right, entries);
+    apr_table_addn(entries, apr_psprintf(r->pool, "%d.%d.%d.%d</td><td %s colspan=\"3\">%d",
+                                         a,b,c,d,
+                                         ((limit != -1) && ipe->counter >= limit) ? red : "",
+                                         ipe->counter), "");
+    qos_collect_ip(r, ipe->left, entries, limit);
+    qos_collect_ip(r, ipe->right, entries, limit);
   }
 }
 
@@ -1318,6 +1315,9 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     return OK;
 
   ap_rprintf(r, "<h2>mod_qos %s</h2>\n", ap_escape_html(r->pool, qos_revision(r->pool)));
+#ifdef QS_INTERNAL_TEST
+  ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE</p>\n", r);
+#endif
   if(!r->parsed_uri.query ||
      (r->parsed_uri.query && !strstr(r->parsed_uri.query, "ip")) ) {
     ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n"
@@ -1447,6 +1447,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       }
       /* connection level */
       if(sconf) {
+        char *red = "style=\"background-color: rgb(240,133,135);\"";
         qs_ip_entry_t *f;
         int c = 0;
         apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
@@ -1465,7 +1466,12 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                    "<td colspan=\"3\">%d</td></tr>\n", i, c);
         ap_rprintf(r, "<tr class=\"rowss\">"
                    "<!--%d--><td colspan=\"6\">current connections</td>"
-                   "<td colspan=\"3\">%d</td></tr>\n", i, sconf->act->c->connections);
+                   "<td %s colspan=\"3\">%d</td></tr>\n", i,
+                   ( ( (sconf->max_conn_close != -1) &&
+                       (sconf->act->c->connections >= sconf->max_conn_close) )  ||
+                     ( (sconf->max_conn != -1) &&
+                       (sconf->act->c->connections >= sconf->max_conn) ) ) ? red : "",
+                   sconf->act->c->connections);
         
         if(r->parsed_uri.query && strstr(r->parsed_uri.query, "ip")) {
           if(sconf->act->c->connections) {
@@ -1477,7 +1483,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                      "<td colspan=\"3\">current&nbsp;</td>", r);
             ap_rputs("</tr>\n", r);
             apr_global_mutex_lock(sconf->act->lock);   /* @CRT8 */
-            qos_collect_ip(r, sconf->act->c->ip_tree, entries);
+            qos_collect_ip(r, sconf->act->c->ip_tree, entries, sconf->max_conn_per_ip);
             apr_global_mutex_unlock(sconf->act->lock); /* @CRT8 */
             entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
             for(j = 0; j < apr_table_elts(entries)->nelts; j++) {

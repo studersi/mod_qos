@@ -15,9 +15,9 @@
 # ADD line 11: /app/sp;v1.1%20?show_all
 # 008 ^[/a-zA-Z]+/sp;v1\.1 \?(show_all)?$
 # ADD line 12: /app/f/main.do?show=7834639&infoWord=Yes+Go&refN=98876&code=rk1lhTLn266YBx9$$
-# 009 ^[/a-zA-Z]+/main\.do\?(show=[0-9]{0,17}[&]?)?(infoWord=[a-zA-Z\+]{0,16}[&]?)?(refN=[0-9]{0,15}[&]?)?(code=[a-zA-Z0-9\$]{0,27}[&]?)?$
+# 009 ^[/a-zA-Z]+/main\.do\?(show=[0-9]{0,17}[&]?)?(infoWord=[a-zA-Z ]{0,16}[&]?)?(refN=[0-9]{0,15}[&]?)?(code=[a-zA-Z0-9\$]{0,27}[&]?)?$
 # ADD line 13: /app/sp2ä/mo.reö?name=+$m?ore&n=b
-# 010 ^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?(name=[\+\$a-zA-Z\?]{0,17}[&]?)?(n=[a-zA-Z]{0,11}[&]?)?$
+# 010 ^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?(name=[ \$a-zA-Z\?]{0,17}[&]?)?(n=[a-zA-Z]{0,11}[&]?)?$
 # ADD line 14: /app/test/__JDbhLdSs4dpOhE1LmbspyhEshuV.Ss__/b;XXX=Abc!-22!-33!44!55
 # 011 ^[/a-zA-Z_0-9\.;=!\-]+$
 # ADD line 15: /app/test/__JDbhLdSs4qpOhE1LmbspOhELmbhuV.Ss__/b;XXX=Abc!-22!-33!44!55888888%C3
@@ -53,10 +53,12 @@
 # verfiy new rules ...
 
 # --------------------------------------------------------
-# Wed Jan  9 13:39:27 2008
+# Thu Jan 31 07:23:54 2008
 # 21 rules from 30 access log lines
+#  version: 5.8
 #  source (-i): access_log
 #  path depth (-d): 1
+#  disable path only regex (-h): no
 #  base64 detection level (-b): 5
 #  redundancy check (-n): on
 #  pcre only for query (-p): no
@@ -75,7 +77,7 @@ QS_PermitUri +QSF005 deny "^[/a-zA-Z]+/test\?(l=[a-zA-Z/\\\"=:\(\)]{0,47}[&]?)?$
 QS_PermitUri +QSF006 deny "^[/a-zA-Z]+/sub\?(n=[a-zA-Z]{0,11}[&]?)?#[a-zA-Z\?]+$"
 QS_PermitUri +QSF007 deny "^[/a-zA-Z]+/sp;v1\.1 \?(show_all)?$"
 QS_PermitUri +QSF008 deny "^[/a-zA-Z]+/mo\^\"\'re\?(name=[a-zA-Z]{0,15}[&]?)?$"
-QS_PermitUri +QSF009 deny "^[/a-zA-Z]+/main\.do\?(show=[0-9]{0,17}[&]?)?(infoWord=[a-zA-Z\+]{0,16}[&]?)?(refN=[0-9]{0,15}[&]?)?(code=[a-zA-Z0-9\$]{0,27}[&]?)?$"
+QS_PermitUri +QSF009 deny "^[/a-zA-Z]+/main\.do\?(show=[0-9]{0,17}[&]?)?(infoWord=[a-zA-Z ]{0,16}[&]?)?(refN=[0-9]{0,15}[&]?)?(code=[a-zA-Z0-9\$]{0,27}[&]?)?$"
 QS_PermitUri +QSF010 deny "^[/a-zA-Z]+/ervlet\?(other=[a-zA-Z]{0,16}[&]?)?(ret=[a-zA-Z:/]{0,27}[&]?)?(name=[a-zA-Z]{0,15}[&]?)?[&]?(name=[a-zA-Z]{0,15}[&]?)?$"
 QS_PermitUri +QSF011 deny "^[/a-zA-Z]+/ervlet\?(action=[a-zA-Z]{0,16}[&]?)?(ret=[a-zA-Z:/]{0,27}[&]?)?(name=[a-zA-Z]{0,15}[&]?)?[&]?(name=[a-zA-Z]{0,15}[&]?)?$"
 QS_PermitUri +QSF012 deny "^[/a-zA-Z]+/cont\?(v=[0-9]{0,11}[&]?)?(n=[0-9]{0,11}[&]?)?$"
@@ -85,6 +87,6 @@ QS_PermitUri +QSF015 deny "^[/a-zA-Z]+/cont2\?(name\xc4=[a-zA-Z\xc3]{0,16}[&]?)?
 QS_PermitUri +QSF016 deny "^[/a-zA-Z]+/[a-zA-Z0-9\-_\$\+!]+\*other\?(name=[a-zA-Z]{0,15}[&]?)?$"
 QS_PermitUri +QSF017 deny "^[/a-zA-Z\.]+/umlhex\xc3\xbcurl\xc3\xbc[/]?\?(Cmd=[a-zA-Z]{0,13}[&]?)?$"
 QS_PermitUri +QSF018 deny "^[/a-zA-Z\-]+/test\.php\?(blah1=[&]?)?(blah2=)?$"
-QS_PermitUri +QSF019 deny "^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?(name=[\+\$a-zA-Z\?]{0,17}[&]?)?(n=[a-zA-Z]{0,11}[&]?)?$"
+QS_PermitUri +QSF019 deny "^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?(name=[ \$a-zA-Z\?]{0,17}[&]?)?(n=[a-zA-Z]{0,11}[&]?)?$"
 QS_PermitUri +QSF020 deny "^[/]?[/a-zA-Z]+/test[/]?\?(n=[a-zA-Z:/\.\?]{0,28}[&]?)?$"
 QS_PermitUri +QSF021 deny "^/\?(n=[a-zA-Z]{0,11}[&]?)?$"

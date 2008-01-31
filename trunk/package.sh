@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.16 2008-01-29 21:09:19 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.17 2008-01-31 08:42:45 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -14,7 +14,7 @@
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007 Pascal Buchbinder
+# Copyright (C) 2007-2008 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -33,8 +33,17 @@
 #
 
 TOP=`pwd`
-VERSION=`grep mod_qos.c,v httpd_src/modules/qos/mod_qos.c | awk '{print $8}'`
+VERSION=`grep "char g_revision" httpd_src/modules/qos/mod_qos.c | awk '{print $6}' | awk -F'"' '{print $2}'`
+C_VERSION=`grep "char g_revision" httpd_src/modules/qos/mod_qos_control.c | awk '{print $6}' | awk -F'"' '{print $2}'`
+F_VERSION=`grep "char g_revision" tools/filter/qsfilter2.c | awk '{print $6}' | awk -F'"' '{print $2}'`
 echo "build mod_dos version $VERSION distribution package"
+if [ "$VERSION" != "$C_VERSION" -o "$VERSION" != "$F_VERSION" ]; then
+    echo "FAILED, wrong version!"
+    echo " mod_qos: $VERSION"
+    echo " mod_control: $C_VERSION"
+    echo " qsfilter2: $F_VERSION"
+    exit 1
+fi
 
 TAGV=`echo $VERSION | awk -F'.' '{print "REL_" $1 "_" $2}'`
 echo "check release tag $TAGV ..."

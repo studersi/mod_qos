@@ -30,7 +30,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.2 2008-01-30 20:49:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.3 2008-01-31 08:42:45 pbuchbinder Exp $";
+static const char g_revision[] = "5.8";
 
 /************************************************************************
  * Includes
@@ -182,14 +183,7 @@ module AP_MODULE_DECLARE_DATA qos_control_module;
  * private functions
  ***********************************************************************/
 static char *qosc_revision(apr_pool_t *p) {
-  char *ver = apr_pstrdup(p, strchr(revision, ' '));
-  char *h;
-  ver++;
-  ver =strchr(ver, ' ');
-  ver++;
-  h = strchr(ver, ' ');
-  h[0] = '\0';
-  return ver;
+  return apr_pstrdup(p, g_revision);
 }
 
 static void qosc_log(apr_pool_t *pool, char *fmt, ...) {
@@ -3447,8 +3441,9 @@ static int qosc_handler(request_rec * r) {
       ap_rputs("</script>\n", r);
       ap_rputs("</head><body>", r);
 
-      ap_rputs("<h2>mod_qos control</h2>\n\
-<table class=\"btable\">\n\
+      ap_rprintf(r, "<h2>mod_qos control %s</h2>\n",
+                 ap_escape_html(r->pool, qosc_revision(r->pool)));
+      ap_rputs("<table class=\"btable\">\n\
   <tbody>\n\
     <tr class=\"row\">\n\
       <td style=\"width: 230px;\" >\n", r);
