@@ -1,0 +1,140 @@
+Version 5.8
+
+ - Minor improvements in status viewer.
+
+ - 5.7 did not compile with Apache 2.0 (ap_regex).
+
+Version 5.7
+
+ - Important:
+   QS_PermitUri, QS_Deny*, qsfilter2 apply filter rules against
+   unescaped URLs where %<hex>, \x<hex> and + (new!) is unescaped.
+   You should regenerate your QS_PermitUri rules using the updated
+   version of the qsfilter2 tool provided by this release.
+
+ - Very first release of mod_qos_control.
+
+Version 5.6
+
+ - New status viewer implementation.
+
+Version 5.4
+
+ - Important:
+   QS_PermitUri, QS_Deny*, qsfilter2 apply filter rules against
+   unescaped URLs where %<hex> and \x<hex> (new!) is unescaped.
+   You should regenerate your QS_PermitUri rules using the updated
+   version of the qsfilter2 tool provided by this release.
+
+Version 5.2
+
+ - QS_VipHeaderName creates session cookie only once.
+
+ - VIP has no QS_LocKBytesPerSecLimit/QS_LocKBytesPerSecLimitMatch
+   restrictions.
+
+ - QS_SrvPreferNet triggers for VIP user on response header
+   only.
+
+Version 5.1
+
+ - New directive QS_SrvPreferNet.
+
+Version 4.30
+
+ - Fixed: segfault at server startup when no virtual host has
+   been configured.       
+
+Version 4.29
+
+ - Debug log level lists available request header filter rules.
+
+Version 4.28
+
+ - Introduce request header filter.
+
+Version 4.18
+
+ - Introduce log message numbers and SSI support for error pages.
+
+ - Add new directive QS_DenyInheritanceOff
+
+ - Add qsfilter2, a tool to generate request URI white list rules.
+
+ - Use mod_unique_id to tag error messages.
+
+Version 4.13
+
+ - QS_PermitUri uses case sensitive pcre.
+
+Version 4.11
+
+ - Add new directive QS_PermitUri.
+
+Version 4.8
+
+ - Introduce generic request filtering (QS_Deny* directive).
+
+Version 4.3
+
+ - New handling of graceful server restart.
+
+Version 4.2
+
+ - QS_LocKBytesPerSecLimitMatch, QS_LocRequestPerSecLimitMatch
+
+Version 4.1
+
+ - QS_LocKBytesPerSecLimit
+
+Version 4.0
+
+ - Introduce request/response throttling.
+
+Version 3.12
+
+ - Update to mod_qos viewer (status handler).
+
+Version 3.10
+
+ - Dynamic error page definition using setenvif.
+
+Version 3.12
+
+ - Introduce mod_qos viewer (status handler).
+
+Version 3.5
+
+ - QS_KeepAliveTimeout
+
+Version 3.4
+
+ - QS_SrvConnTimeout
+
+Version 3.2
+
+ - QS_SrvMaxConnTimeout
+
+Version 3.1
+
+ - QS_SrvMaxConnExcludeIP
+
+Version 3.0
+
+ - Introduce connection level control (QS_SrvMaxConnClose QS_SrvMaxConn).
+
+Version 2.3
+
+ - VIP detection.
+
+Version 2.2
+
+ - qslog utility.
+
+Version 2.0
+
+ - New implementation of location based request limitation.
+
+Version 1.3
+
+ - Initial version (scoreboard based request limitation).
