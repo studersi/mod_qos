@@ -181,13 +181,13 @@ make
 </td></tr>
 </table>
 </p>
-<a name="source">
+<a name="source"></a>
 <h2>Source</h3>
 <p>
 <a href="../apache2">mod_qos</a> is available for Apache version 2.0 and 2.2.
 </p>
 
-<a name="configuration">
+<a name="configuration"></a>
 <h2>Configuration</h3>
 <p>Configuration is made on a per server basis (except the generic request filter). 
 Commands within a virtual host overwrites the global configuration (requires 
@@ -198,7 +198,7 @@ The directives <code>QS_SrvConnTimeout</code>, <code>QS_SrvPreferNet</code>, and
 <code>QS_RequestHeaderFilterRule</code> may only be used outside of virtual host 
 configurations.
 </p>
-<a name="requestlevelcontrol">
+<a name="requestlevelcontrol"></a>
 <h4>Request Level Control</h4>
 The module features the following directives to control server access on a per location 
 (URL) level.
@@ -366,7 +366,7 @@ SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.ht
 </td></tr>
 </table>
 
-<a name="filter">
+<a name="filter"></a>
 <h4>Request Level, Generic Filter</h4>
 These filter are defined on a per location level and are used to restrict 
 access to resources in general albeit of any server resource availability. 
@@ -448,7 +448,7 @@ QS_RequestHeaderFilterRule       UA-CPU "^[a-zA-Z0-9]+$" drop
 </td></tr>
 </table>
 
-<a name="connectionlevelcontrol">
+<a name="connectionlevelcontrol"></a>
 <h4>Connection Level Control</h4>
 The module features the following directives to control server access on a per server 
 (TCP connection) level. These directives must only be used in the global server context 
@@ -510,9 +510,9 @@ QS_SrvMaxConnExcludeIP                    192.168.10.
 </table>
 
 
-<a name="messages">
+<a name="messages"></a>
 <h2>Log Messages</h3>
-<a name="errorlog">
+<a name="errorlog"></a>
 <h4>Error Log</h4>
 <p>
 mod_qos writes messages to Apache's error log when enforcing a rule. Each 
@@ -533,7 +533,7 @@ mod_qos(05x):  bandwidth limitation event
 </table>
 </p>
 
-<a name="accesslog">
+<a name="accesslog"></a>
 <h4>Access Log</h4>
 <p>
 mod_qos adds response headers to the request record which may be added 
@@ -571,7 +571,7 @@ LogFormat "%h %t \"%r\" %>s %b %T \"%{User-Agent}i\" id=%{UNIQUE_ID}e \
 </td></tr>
 </table>
 </p>
-<a name="requeststatistics">
+<a name="requeststatistics"></a>
 <h4>Request Statistics</h4>
 <p>
 The <code><a href="qslog.html">qslog</a></code> tool, which is part of 
@@ -590,7 +590,7 @@ TransferLog "| ./bin/qslog -o logs/qs_log -f I..R.BT..Q"
 </table>
 </p>
 
-<a name="statusviewer">
+<a name="statusviewer"></a>
 <h4>Status Viewer</h4>
 <p>
 mod_qos features a handler showing the current connection and request status. 
@@ -608,7 +608,7 @@ on a per client ip address basis, e.g. "/qos?option=ip".
 
 </p>
 
-<a name="gui">
+<a name="gui"></a>
 <h2>User Interface</h3>
 <p>
 mod_qos features a graphical user interface (web application) which may be 
@@ -642,7 +642,7 @@ QSC_Filter2Binary       /usr/local/bin/qsfilter2
 
 </p>
 
-<a name="usecases">
+<a name="usecases"></a>
 <h2>Use Cases</h3>
 <p>
 The following use cases may give you an idea about how to use mod_qos.
