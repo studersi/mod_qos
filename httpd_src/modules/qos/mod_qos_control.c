@@ -30,8 +30,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.3 2008-01-31 08:42:45 pbuchbinder Exp $";
-static const char g_revision[] = "5.8";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.4 2008-02-07 19:28:07 pbuchbinder Exp $";
+static const char g_revision[] = "5.9";
 
 /************************************************************************
  * Includes
@@ -2688,7 +2688,7 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
         qosc_table_body_cell_start(r);
         qosc_table_body_cell_middle(r);
         ap_rprintf(r, "<form action=\"%sdownload.do?server=%s&action=download\""
-                   " method=\"get\"\n",
+                   " method=\"get\">\n",
                    qosc_get_path(r), ap_escape_html(r->pool, settings->server));
         ap_rprintf(r, "<input name=\"server\" value=\"%s\"    type=\"hidden\">\n"
                    "<input name=\"action\" value=\"download\" type=\"submit\">\n"
