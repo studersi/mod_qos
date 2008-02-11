@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.20 2008-01-31 20:12:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.21 2008-02-11 19:54:58 pbuchbinder Exp $
 #
 # Simple build script using apache and libpng tar.gz from the 3thrdparty directory
 #
@@ -67,7 +67,7 @@ fi
 
 cd httpd
 ./buildconf
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id -prefix=/var/tmp/bqos
 make
 strip modules/qos/.libs/mod_qos.so
 if [ $? -ne 0 ]; then
@@ -90,7 +90,9 @@ cd ../..
 
 if [ -f ./3thrdparty/modsecurity-apache_2.1.1.tar.gz ]; then
   tar xfz ./3thrdparty/modsecurity-apache_2.1.1.tar.gz modsecurity-apache_2.1.1/rules/modsecurity_crs_40_generic_attacks.conf
-  ln -s modsecurity-apache_2.1.1 modsecurity
+  if [ ! -s modsecurity ]; then
+    ln -s modsecurity-apache_2.1.1 modsecurity
+  fi
 fi
 
 echo "END"
