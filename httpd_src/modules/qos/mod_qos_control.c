@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.4 2008-02-07 19:28:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.5 2008-02-11 19:54:58 pbuchbinder Exp $";
 static const char g_revision[] = "5.9";
 
 /************************************************************************
@@ -1808,6 +1808,7 @@ static void qosc_qsfilter2_start(request_rec *r, qosc_settings_t *settings) {
 static void qosc_qsfilter2_saveoptions(request_rec *r, qosc_settings_t *settings) {
   const char *query = apr_table_get(settings->qt, "query");
   const char *path = apr_table_get(settings->qt, "path");
+  const char *depth = apr_table_get(settings->qt, "depth");
   apr_file_t *f = NULL;
   if(!query) {
     ap_rprintf(r, "Invalid request.");
@@ -1821,6 +1822,11 @@ static void qosc_qsfilter2_saveoptions(request_rec *r, qosc_settings_t *settings
     char *path_option = "";
     if(path && strstr(path, "-h")) {
       path_option = apr_pstrdup(r->pool, " -h");
+    }
+    if(depth) {
+      int dp = atoi(depth);
+      path_option = apr_pstrcat(r->pool, path_option, " -d ",
+                                apr_psprintf(r->pool, "%d", dp), NULL);
     }
     if(strstr(query, "-m") != NULL) {
       apr_file_printf(f, "-m%s\n", path_option);
@@ -2352,6 +2358,7 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
     qosc_table_body_title_start(r);
     ap_rputs("Options", r);
     qosc_table_body_title_end(r);
+
     qosc_table_body_cell_start(r);
     ap_rprintf(r, "&nbsp;Query setting");
     qosc_table_body_cell_middle(r);
@@ -2370,12 +2377,40 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
                strstr(option, "-p") != NULL ? "selected=\"selected\"" : "",
                strstr(option, "-s") != NULL ? "selected=\"selected\"" : "");
     qosc_table_body_cell_end(r);
+
     qosc_table_body_cell_start(r);
     ap_rprintf(r, "&nbsp;Disable path only regex (-h)");
     qosc_table_body_cell_middle(r);
     ap_rprintf(r," <input type=\"checkbox\" name=\"path\" value=\"-h\" %s>\n",
                strstr(option, "-h") != NULL ? "checked=\"checked\"" : "");
     qosc_table_body_cell_end(r);
+
+    qosc_table_body_cell_start(r);
+    ap_rprintf(r, "&nbsp;Path string depth (-d)");
+    qosc_table_body_cell_middle(r);
+    ap_rprintf(r," <select name=\"depth\" >\n");
+    {
+      int i;
+      int d = 1;
+      char *o = strstr(option, "-d ");
+      if(o) {
+        char *oo;
+        o = apr_pstrdup(r->pool, &o[strlen("-d ")]);
+        while(o && (o[0] == ' ')) o++;
+        oo = o;
+        while((oo[0] != ' ') && oo[0]) oo++;
+        oo[0] = '\0';
+        d = atoi(o);
+      }
+      for(i = 0; i <= 20; i++) {
+        ap_rprintf(r,"   <option %s>%d</option>\n",
+                   i == d ? "selected=\"selected\"" : "", i);
+      }
+    }
+    ap_rprintf(r," </select>\n");
+    qosc_table_body_cell_end(r);
+
+
     qosc_table_body_cell_start(r);
     qosc_table_body_cell_middle(r);
     ap_rprintf(r, "<input name=\"action\" value=\"save options\" type=\"submit\"></form>\n");
