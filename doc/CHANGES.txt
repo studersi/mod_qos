@@ -1,3 +1,7 @@
+Version 5.9
+
+ - mod_qos_control features additional qsfilter2 settings.
+
 Version 5.8
 
  - Minor improvements in status viewer.
