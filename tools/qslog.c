@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.8 2008-01-31 08:42:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.9 2008-02-12 20:47:54 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -442,6 +442,9 @@ static void readStdinOffline(const char *cstr) {
     }
     if(unitTime == l_time) {
       updateStat(cstr, line);
+    } if(l_time < unitTime) {
+      /* leap in time... */
+      updateStat(cstr, line);
     } else {
       if(!m_verbose) {
 	fprintf(stdout, ".");
@@ -454,22 +457,6 @@ static void readStdinOffline(const char *cstr) {
 	qs_setTime(unitTime * 60);;
       }
       updateStat(cstr, line);
-    }
-    if(l_time < unitTime) {
-      sprintf(buf,"%s %.2d:%.2d:00", m_date_str, unitTime/60, unitTime%60);
-      printAndResetStat(buf);
-
-      /* => counting may fail if date changes unecpected
-       *    in the log since we currently process
-       *    only minutes and hours  */
-      fprintf(m_f, "leap in time ---------------\n");
-      /* reset user counter */
-      qs_setTime(99999 * 60);
-      qs_GCEvent(&m_ip_list);
-
-      /* continue */
-      unitTime = l_time;
-      qs_setTime(unitTime);
     }
   }
 }
