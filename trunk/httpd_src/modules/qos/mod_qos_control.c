@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.5 2008-02-11 19:54:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.6 2008-02-12 21:15:36 pbuchbinder Exp $";
 static const char g_revision[] = "5.9";
 
 /************************************************************************
@@ -3132,10 +3132,15 @@ static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
                      "qsfilter2</a></td></tr>\n",
                      qosc_get_path(r), ap_escape_html(r->pool, de->d_name));
         } else {
-          ap_rprintf(r, "<tr class=\"rowt\"><td>"
-                     "<a href=\"%s%s.do\">%s</a></td></tr>\n",
-                     qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
-                     ap_escape_html(r->pool, de->d_name));
+          char *scf = apr_pstrcat(r->pool, sconf->path, "/",
+                                  de->d_name, "/", QOSC_SERVER_CONF, NULL);
+          struct stat attrib;
+          if(stat(scf, &attrib) == 0) {
+            ap_rprintf(r, "<tr class=\"rowt\"><td>"
+                       "<a href=\"%s%s.do\">%s</a></td></tr>\n",
+                       qosc_get_path(r), ap_escape_html(r->pool, de->d_name),
+                       ap_escape_html(r->pool, de->d_name));
+          }
         }
       }
     }
