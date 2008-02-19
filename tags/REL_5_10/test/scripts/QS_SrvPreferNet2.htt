@@ -1,0 +1,29 @@
+#
+# $Id: QS_SrvPreferNet2.htt,v 1.2 2008-01-28 19:51:34 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 30
+_REQ server1 $QS_PORT_BASE1
+__GET /login/vip.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+END
+
+CLIENT 60
+_SLEEP 1000
+_LOOP 2
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+
+_SLEEP 100
+_END LOOP
+END
