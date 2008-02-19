@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.10 2008-02-19 19:47:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.11 2008-02-19 20:35:47 pbuchbinder Exp $";
 static const char g_revision[] = "5.10";
 
 /************************************************************************
@@ -166,7 +166,7 @@ typedef struct {
  */
 typedef struct qs_acentry_st {
   int id;
-  char *lock_file;
+  /** pointer to lock of the actable */
   apr_global_mutex_t *lock;
   /** location rules */
   char *url;
@@ -203,9 +203,10 @@ typedef struct qs_actable_st {
   apr_pool_t *ppool;
   /** rule entry list */
   qs_acentry_t *entry;
-  /** ip/conn data */
+  /** mutex */
   char *lock_file;
   apr_global_mutex_t *lock;
+  /** ip/conn data */
   qs_conn_t *c;
   unsigned int timeout;
   /* settings */
@@ -229,7 +230,6 @@ typedef struct qs_netstat_st {
 typedef struct {
   int server_start;
   apr_table_t *act_table;
-
   /* source ip stat */
   char *m_file;
   apr_shm_t *m;
@@ -621,10 +621,9 @@ static void qos_destroy_act(qs_actable_t *act) {
                act->size);
   act->child_init = 0;
   apr_global_mutex_destroy(act->lock);
-  while(e) {
-    apr_global_mutex_destroy(e->lock);
-    e = e->next;
-  }
+  //  while(e) {
+  //    e = e->next;
+  //  }
   apr_shm_destroy(act->m);
   apr_pool_destroy(act->pool);
 }
@@ -800,16 +799,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->req_per_sec_limit = rule->req_per_sec_limit;
     e->kbytes_per_sec_limit = rule->kbytes_per_sec_limit;
     e->counter = 0;
-    e->lock_file = apr_psprintf(act->pool, "%s_e%d.mod_qos", 
-                                ap_server_root_relative(act->pool, tmpnam(NULL)), i);
-    res = apr_global_mutex_create(&e->lock, e->lock_file, APR_LOCK_DEFAULT, act->pool);
-    if (res != APR_SUCCESS) {
-      char buf[MAX_STRING_LEN];
-      apr_strerror(res, buf, sizeof(buf));
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX(004)"could create e-mutex: %s", buf);
-      return res;
-    }
+    e->lock = act->lock;
     if(i < rule_entries - 1) {
       e = e->next;
     } else {
@@ -2114,20 +2104,17 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
     sconf->act->child_init = 1;
     /* propagate mutex to child process (required for certaing platforms) */
     apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, sconf->act->pool);
-    while(e) {
-      /* attach to the mutex */
-      apr_global_mutex_child_init(&e->lock, e->lock_file, sconf->act->pool);
-      e = e->next;
-    }
+    // while(e) {
+    //   e = e->next;
+    // }
     while(s) {
       sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
       if(sconf->is_virtual) {
         apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, sconf->act->pool);
         e = sconf->act->entry;
-        while(e) {
-          apr_global_mutex_child_init(&e->lock, e->lock_file, sconf->act->pool);
-          e = e->next;
-        }
+        // while(e) {
+        //   e = e->next;
+        // }
       }
       s = s->next;
     }
