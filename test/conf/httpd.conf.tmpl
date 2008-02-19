@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.53 2008-01-28 19:51:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.54 2008-02-19 11:45:55 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -110,8 +110,15 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /qos_control !
    ProxyPass                  /cgi-local !
 
-   ProxyPass                  /htt http://server1:##QS_PORT_BASE6##/htt
-   ProxyPassReverse           /htt http://server1:##QS_PORT_BASE6##/htt
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+   ProxyPass                  /app/a http://localhost:##QS_PORT_BASE6##/app/a
+   ProxyPassReverse           /app/a http://localhost:##QS_PORT_BASE6##/app/a
+   ProxyPass                  /app/b http://localhost:##QS_PORT_BASE6##/app/b
+   ProxyPassReverse           /app/b http://localhost:##QS_PORT_BASE6##/app/b
+   ProxyPass                  /app/c http://localhost:##QS_PORT_BASE6##/app/c
+   ProxyPassReverse           /app/c http://localhost:##QS_PORT_BASE6##/app/c
 
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
