@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.54 2008-02-19 11:45:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.55 2008-02-19 18:56:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -119,6 +119,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPassReverse           /app/b http://localhost:##QS_PORT_BASE6##/app/b
    ProxyPass                  /app/c http://localhost:##QS_PORT_BASE6##/app/c
    ProxyPassReverse           /app/c http://localhost:##QS_PORT_BASE6##/app/c
+   ProxyPass                  /app/d http://localhost:##QS_PORT_BASE6##/app/d
+   ProxyPassReverse           /app/d http://localhost:##QS_PORT_BASE6##/app/d
 
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
@@ -136,6 +138,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_LocRequestLimit         /cgi100       100
    QS_LocRequestLimit         /test          50
    QS_LocRequestLimitMatch    "^.*\.gif$"     2
+
+   QS_LocRequestLimitMatch    "^(/app/a/|/app/b/|/app/c/).*$" 1
+   QS_LocRequestLimitMatch    "^/app/d/.*$"                   1
 
    QS_VipHeaderName           mod-qos-vip
    QS_SessionTimeout          3

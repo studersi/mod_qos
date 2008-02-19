@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.30 2008-01-28 19:51:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.31 2008-02-19 18:56:58 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -82,6 +82,19 @@ echo "-- 3 requests with matching regex rule max 2 (overrides location rule), QS
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_LocRequestLimitMatch_2.htt"
+    exit 1
+fi
+# one rule for multiple loctions
+./htt.sh -s ./scripts/QS_LocRequestLimitMatch.htt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocRequestLimitMatch.htt"
+    exit 1
+fi
+./htt.sh -s ./scripts/QS_LocRequestLimitMatch_3.htt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_LocRequestLimitMatch_3.htt"
     exit 1
 fi
 

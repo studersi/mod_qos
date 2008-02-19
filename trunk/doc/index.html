@@ -298,16 +298,20 @@ QS_ErrorPage                  /error-docs/qs_error.html
 
 # stricts max concurrent requests for any location which has no
 # individual rule:
-QS_LocRequestLimitDefault                         200
+QS_LocRequestLimitDefault                              200
 
 # limits access to *.gif files to 100 concurrent requests
-QS_LocRequestLimitMatch       "^.*\.gif$"         100
+QS_LocRequestLimitMatch       "^.*\.gif$"              100
 
-# limits concurrent requests to the locations /images and /application:
-QS_LocRequestLimit            /images             100
-QS_LocRequestLimit            /application        300
+# limits concurrent requests to the locations /images and /app/a:
+QS_LocRequestLimit            /images                  100
+QS_LocRequestLimit            /app/a                   300
 # limits download bandwidth to 5Mbit/sec:
-QS_LocKBytesPerSecLimit       /application        640
+QS_LocKBytesPerSecLimit       /app/a                   640
+
+# two locations (/app/b and /app/c) representing a single application:
+QS_LocRequestLimitMatch       "^(/app/b/|/app/c/).*$"  300
+
 
 # allows the application to nominate VIP users by sending a
 # "mod-qos-vip" HTTP response header:
@@ -348,7 +352,7 @@ Sample variable usage:<br>
 BrowserMatch                  "curl"              QS_VipRequest=yes
 
 # allows unlimited access to a single resource:
-SetEnvIf     Request_URI /application/start.html  QS_VipRequest=yes
+SetEnvIf     Request_URI /app/start.html          QS_VipRequest=yes
 
 # allows unlimited access from a specified source address
 # or source address range:
@@ -439,7 +443,7 @@ QS_RequestHeaderFilterRule       UA-CPU "^[a-zA-Z0-9]+$" drop
 
 &lt;Location /&gt;
    QS_RequestHeaderFilter        on
-   QS_DenyPath        +admin     deny "^/application/admin.jsp$"
+   QS_DenyPath        +admin     deny "^/app/admin.jsp$"
    QS_DenyRequestLine +printable deny ".*[\x00-\x19].*"
 &lt;/Location&gt;
 </pre>
