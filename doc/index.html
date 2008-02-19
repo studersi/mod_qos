@@ -296,7 +296,7 @@ Sample configuration:<br>
 <pre>
 QS_ErrorPage                  /error-docs/qs_error.html
 
-# stricts max concurrent requests for any location which has no
+# restricts max concurrent requests for any location which has no
 # individual rule:
 QS_LocRequestLimitDefault                              200
 
@@ -618,7 +618,7 @@ used to manage directives and to generate generic filter rules using the
 <code><a href="qsfilter.html">qsfilter2</a></code> utility. 
 It is provided as an additional Apache module which is loaded into 
 the server (usually a separate Apache instance which has write access to the main 
-server's configuration files. The qos-control handler specifies the location under 
+server's configuration files). The qos-control handler specifies the location under 
 which the GUI is accessible.
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
