@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.56 2008-02-19 19:47:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.57 2008-02-19 20:35:47 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -149,6 +149,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    #QS_SessionCookieName       mm
    #QS_SessionCookiePath       /x
    QS_SessionKey              12345678
+
+   # load additional rules
+   Include conf/lrl.conf
 
    # -----------------------------------------------------------------
    # connection level control

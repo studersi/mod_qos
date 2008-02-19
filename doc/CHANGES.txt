@@ -1,3 +1,8 @@
+Version 5.10
+
+ - Rules do not use individual mutex any longer. This allows
+   an unlimted number of rules.
+
 Version 5.9
 
  - mod_qos_control features additional qsfilter2 settings.
