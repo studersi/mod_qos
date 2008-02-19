@@ -1,5 +1,5 @@
 #
-# $Id: MultiRequest.htt,v 1.2 2008-01-28 19:51:33 pbuchbinder Exp $
+# $Id: MultiRequest.htt,v 1.3 2008-02-19 19:54:21 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -56,6 +56,18 @@ _WAIT
 
 _SLEEP 100
 _END LOOP
+END
+
+CLIENT
+_SLEEP 1200
+_REQ localhost $QS_PORT_BASE
+__GET /qos?ip HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "<!--4-->"
+_WAIT
+_CLOSE
 END
 
 CLIENT
