@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.9 2008-02-07 19:28:06 pbuchbinder Exp $";
-static const char g_revision[] = "5.9";
+static const char revision[] = "$Id: mod_qos.c,v 5.10 2008-02-19 19:47:37 pbuchbinder Exp $";
+static const char g_revision[] = "5.10";
 
 /************************************************************************
  * Includes
@@ -131,7 +131,6 @@ typedef struct {
   apr_interval_time_t server_timeout;
   qs_conn_state_e status;
 } qos_ifctx_t;
-
 
 /**
  * ip entry
@@ -1923,11 +1922,12 @@ static int qos_header_parser(request_rec * r) {
 /**
  * input filter, used to log timeout event
  */
-static apr_status_t qos_in_filter(ap_filter_t * f, apr_bucket_brigade * bb,
+static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
                                   ap_input_mode_t mode, apr_read_type_e block,
                                   apr_off_t nbytes) {
-  apr_status_t rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
+  apr_status_t rv;
   qos_ifctx_t *inctx = f->ctx;
+  rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
   if((rv == APR_TIMEUP) && (inctx->status == QS_CONN_STATE_SHORT)) {
     int qti = apr_time_sec(inctx->qt);
     f->c->base_server->timeout = inctx->server_timeout;

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.31 2008-02-19 18:56:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.32 2008-02-19 19:47:38 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -155,6 +155,12 @@ echo "-- connection timeout, QS_SrvConnTimeout.htt" >>  logs/error_log
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_SrvConnTimeout.htt"
+    exit 1
+fi
+./htt.sh -s ./scripts/QS_SrvConnTimeout_body.htt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_SrvConnTimeout_body.htt"
     exit 1
 fi
 
