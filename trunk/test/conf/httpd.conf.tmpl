@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.55 2008-02-19 18:56:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.56 2008-02-19 19:47:38 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -124,6 +124,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+   ProxyReceiveBufferSize     1024
 
    ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi-local/
 
