@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.32 2008-02-19 19:47:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.33 2008-02-19 19:54:21 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -241,7 +241,6 @@ fi
 sleep 1
 # -----------------------------------------------------------------
 echo "-- multiple requests in parallel, MultiRequest.htt" >>  logs/error_log
-./htt.sh -s ./scripts/MultiRequest_p.htt &
 ./htt.sh -s ./scripts/MultiRequest.htt
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
