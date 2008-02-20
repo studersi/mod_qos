@@ -4,7 +4,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007 Pascal Buchbinder
+ * Copyright (C) 2007-2008 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

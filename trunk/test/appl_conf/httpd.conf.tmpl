@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.7 2007-10-24 17:50:59 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.8 2008-02-20 20:17:21 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            1
@@ -30,8 +30,8 @@ DefaultType             text/plain
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T #%P"
 
 LogLevel                info
-ErrorLog                ##ROOT##/logs/error1_log
-TransferLog             ##ROOT##/logs/access1_log
+ErrorLog                "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/error1_log -z -g 4 -s 600 -f"
+TransferLog             "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 600 -f"
 PidFile                 ##ROOT##/logs/apache1.pid
 CoreDumpDirectory       ##ROOT##/logs/
 

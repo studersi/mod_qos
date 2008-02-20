@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.18 2008-01-31 20:12:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.19 2008-02-20 20:16:05 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -85,7 +85,7 @@ echo "tools"
 cp tools/qs_util.h mod_qos-${VERSION}/tools
 cp tools/qs_util.c mod_qos-${VERSION}/tools
 cp tools/qslog.c mod_qos-${VERSION}/tools
-cp tools/Makefile mod_qos-${VERSION}/tools
+cp tools/Makefile.tmpl mod_qos-${VERSION}/tools/Makefile
 cp tools/filter/qsfilter2.c mod_qos-${VERSION}/tools/qsfilter
 cp tools/filter/Makefile mod_qos-${VERSION}/tools/qsfilter
 
