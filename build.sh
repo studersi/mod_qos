@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.22 2008-02-27 19:21:35 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.23 2008-02-27 21:10:06 pbuchbinder Exp $
 #
 # Simple build script using apache and libpng tar.gz from the 3thrdparty directory
 #
@@ -61,7 +61,7 @@ if [ "$1" = "release" ]; then
   CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256"
   export CFLAGS 
 else
-  CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g"
+  CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g -Wall"
   export CFLAGS 
 fi
 

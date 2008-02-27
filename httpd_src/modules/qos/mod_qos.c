@@ -37,12 +37,15 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.12 2008-02-19 20:57:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.13 2008-02-27 21:10:06 pbuchbinder Exp $";
 static const char g_revision[] = "5.11";
 
 /************************************************************************
  * Includes
  ***********************************************************************/
+/* std */
+#include <ctype.h>
+#include <time.h>
 
 /* mod_qos requires OpenSSL */
 #include <openssl/rand.h>
@@ -50,19 +53,20 @@ static const char g_revision[] = "5.11";
 
 /* apache */
 #include <httpd.h>
-#include <http_protocol.h>
 #include <http_main.h>
-#include <http_config.h>
+#include <http_protocol.h>
+#include <http_request.h>
 #include <http_connection.h>
+#include <http_config.h>
 #include <http_log.h>
 #include <util_filter.h>
-#include <time.h>
 #include <ap_mpm.h>
 #include <scoreboard.h>
 #include <pcre.h>
 
 /* apr */
 #include <apr_strings.h>
+#include <apr_base64.h>
 
 /* additional modules */
 #include "mod_status.h"
@@ -615,7 +619,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
  * destroy shared memory and mutexes
  */
 static void qos_destroy_act(qs_actable_t *act) {
-  qs_acentry_t *e = act->entry;
+  //  qs_acentry_t *e = act->entry;
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
                QOS_LOG_PFX(001)"cleanup shared memory: %d bytes",
                act->size);
@@ -1710,7 +1714,6 @@ static int qos_process_connection(conn_rec * c) {
 static int qos_pre_connection(conn_rec * c, void *skt) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                 &qos_module);
-  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
   if(sconf && (sconf->connect_timeout != -1)) {
     qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
     inctx->client_socket = skt;
@@ -1934,7 +1937,6 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
  */
 static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   if(rctx->entry) {
     if(rctx->is_vip) {
@@ -1991,7 +1993,6 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
  * "free resources" and update stats
  */
 static int qos_logger(request_rec *r) {
-  const char *uid;
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   qs_acentry_t *e = rctx->entry;
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
@@ -2017,7 +2018,7 @@ static int qos_logger(request_rec *r) {
           e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                         QOS_LOG_PFX(050)"request rate limit, rule: %s(%ld), req/sec=%ld,"
-                        " delay=%ldms",
+                        " delay=%dms",
                         e->url, e->req_per_sec_limit,
                         e->req_per_sec, e->req_per_sec_block_rate);
         } else if(e->req_per_sec_block_rate > 0) {
@@ -2040,7 +2041,7 @@ static int qos_logger(request_rec *r) {
           e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                         QOS_LOG_PFX(052)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
-                        " delay=%ldms",
+                        " delay=%dms",
                         e->url, e->kbytes_per_sec_limit,
                         e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
         } else if(e->kbytes_per_sec_block_rate > 0) {
@@ -2636,8 +2637,6 @@ const char *qos_match_bs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
  * sets the default limitation of cuncurrent requests
  */
 const char *qos_loc_con_def_cmd(cmd_parms *cmd, void *dcfg, const char *limit) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
-                                                                &qos_module);
   return qos_loc_con_cmd(cmd, dcfg, "/", limit);
 }
 
@@ -2850,8 +2849,6 @@ const char *qos_denyinheritoff_cmd(cmd_parms *cmd, void *dcfg) {
 /* enables/disables header filter */
 const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
-                                                                &qos_module);
   dconf->headerfilter = flag;
   return NULL;
 }
@@ -3053,7 +3050,7 @@ static const command_rec qos_config_cmds[] = {
                RSRC_CONF,
                ""),
 #endif
-  NULL,
+  { NULL }
 };
 
 /************************************************************************
