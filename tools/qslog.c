@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.10 2008-02-27 19:20:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.11 2008-02-27 22:09:40 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -55,7 +55,7 @@ static const char revision[] = "$Id: qslog.c,v 2.10 2008-02-27 19:20:51 pbuchbin
  * global stat counter
  * ---------------------------------- */
 static long m_line_count = 0;
-static long m_byte_count = 0;
+static long long m_byte_count = 0;
 static long m_duration_count = 0;
 static long m_duration_0 = 0;
 static long m_duration_1 = 0;
@@ -166,7 +166,7 @@ static void printAndResetStat(char *timeStr) {
   qs_csLock();
   fprintf(m_f, "%s;"
           NRS";%ld;"
-          NBS";%ld;"
+          NBS";%lld;"
           NAV";%ld;"
           "<1s;%ld;"
           "1s;%ld;"
