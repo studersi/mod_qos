@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.58 2008-02-20 20:17:21 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.59 2008-02-27 21:10:07 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -70,7 +70,7 @@ AddOutputFilter         INCLUDES .shtml
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e #%P"
 
 LogLevel                warn
-ErrorLog                "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 600 -f"
+ErrorLog                "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 3600 -f"
 TransferLog             "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 600 -f"
 TransferLog             "|##ROOT##/../tools/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
 PidFile                 ##ROOT##/logs/apache.pid

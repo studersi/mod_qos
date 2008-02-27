@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.8 2008-02-19 20:57:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.9 2008-02-27 21:10:06 pbuchbinder Exp $";
 static const char g_revision[] = "5.11";
 
 /************************************************************************
@@ -38,6 +38,8 @@ static const char g_revision[] = "5.11";
  ***********************************************************************/
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <time.h>
 
 /* mod_qos requires OpenSSL */
 #include <openssl/rand.h>
@@ -55,7 +57,6 @@ static const char g_revision[] = "5.11";
 #include <http_connection.h>
 #include <http_log.h>
 #include <util_filter.h>
-#include <time.h>
 #include <ap_mpm.h>
 #include <scoreboard.h>
 #include <pcre.h>
@@ -63,6 +64,7 @@ static const char g_revision[] = "5.11";
 /* apr */
 #include <apr_strings.h>
 #include <apr_lib.h>
+#include <apr_base64.h>
 
 /************************************************************************
  * defines
@@ -340,7 +342,7 @@ static qosc_settings_t *qosc_get_settings(request_rec *r) {
         server[strlen(server)-3] = '\0';
         settings->server_dir = apr_pstrcat(r->pool, sconf->path, "/", server, NULL);
         if(stat(settings->server_dir, &attrib) != 0) {
-          server == NULL;
+          server = NULL;
         }
       }
     }
@@ -684,7 +686,7 @@ static void qosc_css(request_rec *r) {
 /**
  * appends the data (line by line) from file source to the file dest
  */
-static qosc_append_file(apr_pool_t *pool, const char *dest, const char *source) {
+static void qosc_append_file(apr_pool_t *pool, const char *dest, const char *source) {
   apr_file_t *ds = NULL;
   apr_file_t *sr = NULL;
   if((apr_file_open(&ds, dest, APR_WRITE|APR_CREATE|APR_APPEND, APR_OS_DEFAULT, pool)
@@ -763,7 +765,6 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
         if(conf) {
           conf = apr_pstrdup(r->pool, conf);
           qosc_unescaping(conf);
-          f;
           if(apr_file_open(&f, conf, APR_READ, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
             if(mkdir(settings->server_dir, 0750) != 0) {
               ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -871,7 +872,7 @@ static void qosc_create_server(request_rec *r, qosc_settings_t *settings) {
                      qosc_get_path(r), ap_escape_html(r->pool, settings->server));
           ap_rprintf(r, "&nbsp;<input name=\"httpd_conf\" value=\"\" type=\"file\" size=\"50\">\n"
                      " <input name=\"action\" value=\"upload\" type=\"submit\">\n"
-                     " </form>\n", ap_escape_html(r->pool, settings->server));
+                     " </form>\n");
           ap_rputs("</td></tr>\n",r);
         } else {
           closedir(dir);
@@ -1133,7 +1134,6 @@ static int qosc_insert2location(request_rec *r, qosc_settings_t *settings,
                                 const char *httpdconf, const char *root,
                                 apr_table_t *rules, const char *location, const char *filter) {
   char *tmp_file = apr_pstrcat(r->pool, httpdconf, ".tmp", NULL);
-  char *directive = apr_pstrcat(r->pool, filter, " ", NULL);
   apr_file_t *in = NULL;
   apr_file_t *out = NULL;
   int errors = 0;
@@ -1146,7 +1146,6 @@ static int qosc_insert2location(request_rec *r, qosc_settings_t *settings,
     while(!qosc_fgetline(line, sizeof(line), in)) {
       const char *inc = qosc_get_conf_value(r->pool, line, "Include ");
       const char *loc = qosc_get_conf_value(r->pool,line, "Location ");
-      const char *permit = qosc_get_conf_value(r->pool, line, directive);
       if(inc) {
         char *incfile = qosc_included_file_path(r, root, inc);
         if(incfile) {
@@ -1355,9 +1354,9 @@ static int qosc_update_line(request_rec *r, qosc_settings_t *settings,
  * determines the qslog format string
  * not yet implemented ...
  */
-static char *qosc_get_qslog_string(apr_pool_t *pool, char *line) {
-  return apr_pstrdup(pool, "");
-}
+//static char *qosc_get_qslog_string(apr_pool_t *pool, char *line) {
+//  return apr_pstrdup(pool, "");
+//}
 
 /**
  * loads the httpd.conf file (only relevant directives are processed)
@@ -1865,7 +1864,6 @@ static apr_table_t *qosc_rep2urllist(request_rec *r, apr_file_t *f) {
 
 static void qosc_qsfilter2_permitdeny(request_rec *r, qosc_settings_t *settings) {
   const char *loc = apr_table_get(settings->qt, "loc");
-  const char *action = apr_table_get(settings->qt, "action");
   char *file_name = NULL;
   if(!loc) {
     ap_rprintf(r, "Invalid request.");
@@ -2080,7 +2078,7 @@ static void qosc_qsfilter2_edit(request_rec *r, qosc_settings_t *settings) {
     char *file_name = apr_pstrcat(r->pool, qosc_locfile_id2name(r, atoi(loc), 1), ".rules", NULL);
     apr_file_t *f = NULL;
     if(apr_file_open(&f, file_name, APR_WRITE|APR_CREATE, APR_OS_DEFAULT, r->pool) == APR_SUCCESS) {
-      apr_status_t status = qosc_store_multipart(r, f, "rules", NULL);
+      qosc_store_multipart(r, f, "rules", NULL);
       apr_file_close(f);
       f = NULL;
       qosc_js_redirect(r, apr_pstrcat(r->pool, qosc_get_path(r),
@@ -2607,7 +2605,6 @@ static void qosc_qsfilter2(request_rec *r, qosc_settings_t *settings) {
 /* server main window */
 static void qosc_server(request_rec *r, qosc_settings_t *settings) {
   DIR *dir;
-  const char *location = apr_table_get(settings->qt, "loc");
   const char *action = apr_table_get(settings->qt, "action");
   dir = opendir(settings->server_dir);
   if(dir == NULL) {
@@ -2744,7 +2741,7 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
         ap_rprintf(r, "<form action=\"%s%s.do?action=load\" method=\"get\">\n",
                    qosc_get_path(r), ap_escape_html(r->pool, settings->server));
         ap_rprintf(r, "&nbsp;<input name=\"action\" value=\"load\" type=\"submit\">\n"
-                   " </form>\n", ap_escape_html(r->pool, settings->server));
+                   " </form>\n");
         qosc_table_body_cell_end(r);
         qosc_table_body_end(r);
         //--
@@ -3058,7 +3055,6 @@ static void qosc_nav_list(request_rec *r, qosc_settings_t *settings) {
     struct dirent *de;
     while((de = readdir(dir)) != 0) {
       if(de->d_name[0] != '.') {
-        char *h = apr_psprintf(r->pool, "/%s.do", de->d_name);
         if(settings && (strcmp(settings->server, de->d_name) == 0)) {
           ap_rprintf(r, "<tr class=\"rowts\"><td>"
                      "<a href=\"%s%s.do\">%s</a></td></tr>\n",
@@ -3446,8 +3442,6 @@ static int qosc_handler(request_rec * r) {
     qosc_srv_config_t *sconf = (qosc_srv_config_t*)ap_get_module_config(r->server->module_config,
                                                                         &qos_control_module);
     qosc_settings_t *settings = qosc_get_settings(r);
-    apr_table_t *qt = qosc_get_query_table(r);
-    const char *action = apr_table_get(qt, "action");
     ap_set_content_type(r, "text/html");
     apr_table_set(r->headers_out,"Cache-Control","no-cache");
     if(!r->header_only) {
@@ -3558,6 +3552,7 @@ static apr_status_t qosc_cleanup_shm(void *p) {
   qosc_srv_config_t *sconf = p;
   apr_global_mutex_destroy(sconf->lock);
   apr_shm_destroy(sconf->m);
+  return APR_SUCCESS;
 }
 
 static void qosc_init_shm(apr_pool_t *pool, server_rec *s) {
@@ -3682,7 +3677,7 @@ static const command_rec qosc_config_cmds[] = {
                 "QSC_Filter2Binary <path>, defines the path of the qsfilter2"
                 " binary. Specification is mandatory."
                 " Directive is allowed in global server context only."),
-  NULL,
+  { NULL }
 };
 
 /************************************************************************
