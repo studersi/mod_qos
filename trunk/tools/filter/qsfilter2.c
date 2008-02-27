@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.52 2008-02-19 20:57:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.53 2008-02-27 21:15:53 pbuchbinder Exp $";
 static const char g_revision[] = "5.11";
 
 /* system */
@@ -167,7 +167,6 @@ static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
 	reti++;
       }
     } else if((in[i] < ' ') || (in[i]  > '~')) {
-      char *ck = apr_psprintf(pool, "#\\x%02x#", in[i]);
       sprintf(&ret[reti], "\\x%02x", in[i]);
       reti = reti + 4;
     } else {
@@ -803,7 +802,7 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
 	      pcre *pcre_test;
 	      pcre_extra *extra;
 	      qs_rule_t *rs;
-	      if(p[0] = '"') {
+	      if(p[0] == '"') {
 		pattern = apr_psprintf(pool, "%.*s", strlen(p)-2, &p[1]);
 	      } else {
 		pattern = apr_psprintf(pool, "%.*s", strlen(p), p);
@@ -1262,7 +1261,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    // don't mind if extra is null
 	    if(m_verbose) {
 	      printf("# ADD line %d: %s\n", line_nr, line);
-	      printf("# %0.3d %s\n", apr_table_elts(rules)->nelts+1, rule);
+	      printf("# %.3d %s\n", apr_table_elts(rules)->nelts+1, rule);
 	      fflush(stdout);
 	    }
 	    if(pcre_exec(rs->pcre, rs->extra, copy, strlen(copy), 0, 0, NULL, 0) < 0) {
@@ -1326,11 +1325,6 @@ static void qos_measurement(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
     if(parsed_uri.path == NULL || (parsed_uri.path[0] != '/')) {
       fprintf(stderr, "WARNING, line %d: invalid request %s\n", line_nr, line);
     } else {
-      char *path = NULL;
-      char *query = NULL;
-      char *query_m_string = NULL;
-      char *query_m_pcre = NULL;
-      char *fragment = NULL;
       char *copy = apr_pstrdup(lpool, line);
       int i;
       apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
@@ -1473,7 +1467,6 @@ int main(int argc, const char * const argv[]) {
   if(performance == 0) {
     int lx = 0;
     apr_time_t tv;
-    time_t lstart = time(NULL);
     f = fopen(access_log, "r");
     tv = apr_time_now();
     qos_measurement(pool, blacklist, rules, f, &lx);
@@ -1509,7 +1502,7 @@ int main(int argc, const char * const argv[]) {
     printf("#    blacklist (loaded deny rules): %d\n", blacklist_size);
     printf("#    blacklist matches: %d\n", deny_count);
   }
-  printf("#  duration: %d minutes\n", (end - start) / 60);
+  printf("#  duration: %ld minutes\n", (end - start) / 60);
   printf("# --------------------------------------------------------\n");
 
   {
@@ -1525,9 +1518,9 @@ int main(int argc, const char * const argv[]) {
     }
     sk_sort(st);
     i = sk_num(st);
-    for(i; i > 0; i--) {
+    for(; i > 0; i--) {
       r = (qs_rule_t *)sk_value(st, i-1);
-      printf("QS_PermitUri +QSF%0.3d deny \"%s\"\n", j, r->rule);
+      printf("QS_PermitUri +QSF%.3d deny \"%s\"\n", j, r->rule);
       j++;
     }
   }
