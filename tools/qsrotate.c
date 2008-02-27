@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 2.1 2008-02-20 20:15:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 2.2 2008-02-27 19:20:51 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -63,6 +63,7 @@ static int m_generations = -1;
 static char *m_file_name = NULL;
 static long m_messages = 0;
 static char *m_cmd = NULL;
+static int m_compress = 0;
 
 static void usage(char *cmd) {
   printf("\n");
@@ -222,10 +223,10 @@ static void rotate(const char *cmd, const char *file_name, long *messages) {
     }
   } else {
     *messages = 0;
-    if(compress || (m_generations != -1)) {
+    if(m_compress || (m_generations != -1)) {
       signal(SIGCHLD,sigchild);
       if(fork() == 0) {
-	if(compress) {
+	if(m_compress) {
 	  compressThread(cmd, arch);
 	}
 	if(m_generations != -1) {
@@ -255,11 +256,10 @@ static void *forcedRotationThread(void *argv) {
 int main(int argc, char **argv) {
   char *username = NULL;
 
-  char buf[BUFSIZE], buf2[HUGE_STR];
+  char buf[BUFSIZE];
   int nRead, nWrite;
   time_t now;
 
-  int compress = 0;
   pthread_attr_t *tha = NULL;
   pthread_t tid;
 
@@ -289,7 +289,7 @@ int main(int argc, char **argv) {
 	m_generations = atoi(*(++argv));
       } 
     } else if(strcmp(*argv,"-z") == 0) {
-      compress = 1;
+      m_compress = 1;
     } else if(strcmp(*argv,"-f") == 0) {
       m_force_rotation = 1;
     }

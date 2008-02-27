@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.9 2008-02-12 20:47:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.10 2008-02-27 19:20:51 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -176,12 +176,12 @@ static void printAndResetStat(char *timeStr) {
           "5s;%ld;"
           ">5s;%ld;"
 	  "ip;%ld;"
-	  "qv;%d;"
-	  "qs;%d;"
-	  "qd;%d;"
-	  "qk;%d;"
-	  "qt;%d;"
-	  "ql;%d;"
+	  "qv;%ld;"
+	  "qs;%ld;"
+	  "qd;%ld;"
+	  "qk;%ld;"
+	  "qt;%ld;"
+	  "ql;%ld;"
 	  ,
 	  timeStr,
           m_line_count/LOG_INTERVAL,
@@ -451,7 +451,7 @@ static void readStdinOffline(const char *cstr) {
 	fflush(stdout);
       }
       while(l_time > unitTime) {
-	sprintf(buf,"%s %.2d:%.2d:00", m_date_str, unitTime/60, unitTime%60);
+	sprintf(buf,"%s %.2ld:%.2ld:00", m_date_str, unitTime/60, unitTime%60);
 	printAndResetStat(buf);
 	unitTime++;
 	qs_setTime(unitTime * 60);;
@@ -469,13 +469,9 @@ static void *loggerThread(void *argv) {
   char buf[1024];
   while(1) {
     struct tm *ptr;
-    time_t tm;
-    int sec = 0;
-    tm = time(NULL);
-    ptr = localtime(&tm);
-    strftime(buf, sizeof(buf), "%S", ptr);
-    sec = atoi(buf);
-    sleep(LOG_INTERVAL - sec);
+    time_t tm = time(NULL);
+    time_t w = tm / LOG_INTERVAL * LOG_INTERVAL + LOG_INTERVAL;
+    sleep(w - tm);
 
     tm = time(NULL);
     ptr = localtime(&tm);

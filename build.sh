@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.21 2008-02-11 19:54:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.22 2008-02-27 19:21:35 pbuchbinder Exp $
 #
 # Simple build script using apache and libpng tar.gz from the 3thrdparty directory
 #
@@ -29,7 +29,7 @@
 TOP=`pwd`
 
 #APACHE_VER=2.0.59
-APACHE_VER=2.2.4
+APACHE_VER=2.2.8
 
 echo "build Apache $APACHE_VER"
 if [ ! -d httpd-${APACHE_VER} ]; then
@@ -67,7 +67,7 @@ fi
 
 cd httpd
 ./buildconf
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id -prefix=/var/tmp/bqos
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id
 make
 strip modules/qos/.libs/mod_qos.so
 if [ $? -ne 0 ]; then
