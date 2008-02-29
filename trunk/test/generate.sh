@@ -15,6 +15,7 @@ QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 QS_PORT_BASE3=`expr $QS_PORT_BASE + 3`
 QS_PORT_BASE5=`expr $QS_PORT_BASE + 5`
 QS_PORT_BASE6=`expr $QS_PORT_BASE + 6`
+QS_PORT_BASE8=`expr $QS_PORT_BASE + 8`
 
 echo "SET QS_PORT_BASE=$QS_PORT_BASE"   >  scripts/ports
 echo "SET QS_PORT_BASE1=$QS_PORT_BASE1" >> scripts/ports
@@ -22,6 +23,7 @@ echo "SET QS_PORT_BASE2=$QS_PORT_BASE2" >> scripts/ports
 echo "SET QS_PORT_BASE3=$QS_PORT_BASE3" >> scripts/ports
 echo "SET QS_PORT_BASE5=$QS_PORT_BASE5" >> scripts/ports
 echo "SET QS_PORT_BASE6=$QS_PORT_BASE6" >> scripts/ports
+echo "SET QS_PORT_BASE8=$QS_PORT_BASE8" >> scripts/ports
 echo "SET QS_HOME=`pwd`" >> scripts/ports
 echo "SET QS_HOME_ENC=`pwd | sed s:/:%2F:g`" >> scripts/ports
 
@@ -34,7 +36,8 @@ sed <conf/httpd.conf.tmpl >conf/httpd.conf \
     -e "s;##QS_PORT_BASE2##;$QS_PORT_BASE2;g" \
     -e "s;##QS_PORT_BASE3##;$QS_PORT_BASE3;g" \
     -e "s;##QS_PORT_BASE5##;$QS_PORT_BASE5;g" \
-    -e "s;##QS_PORT_BASE6##;$QS_PORT_BASE6;g"
+    -e "s;##QS_PORT_BASE6##;$QS_PORT_BASE6;g" \
+    -e "s;##QS_PORT_BASE8##;$QS_PORT_BASE8;g"
 
 sed <appl_conf/httpd.conf.tmpl >appl_conf/httpd.conf \
     -e "s;##ROOT##;$ROOT;g" \
@@ -42,7 +45,8 @@ sed <appl_conf/httpd.conf.tmpl >appl_conf/httpd.conf \
     -e "s;##QS_PORT_BASE##;$QS_PORT_BASE;g" \
     -e "s;##QS_PORT_BASE1##;$QS_PORT_BASE1;g" \
     -e "s;##QS_PORT_BASE2##;$QS_PORT_BASE2;g" \
-    -e "s;##QS_PORT_BASE5##;$QS_PORT_BASE5;g"
+    -e "s;##QS_PORT_BASE5##;$QS_PORT_BASE5;g" \
+    -e "s;##QS_PORT_BASE8##;$QS_PORT_BASE8;g"
 
 cp conf/qos_viewer.conf.tmpl conf/qos_viewer.conf
 
