@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.13 2008-02-27 21:10:06 pbuchbinder Exp $";
-static const char g_revision[] = "5.11";
+static const char revision[] = "$Id: mod_qos.c,v 5.14 2008-02-29 20:53:52 pbuchbinder Exp $";
+static const char g_revision[] = "5.12";
 
 /************************************************************************
  * Includes
@@ -46,6 +46,7 @@ static const char g_revision[] = "5.11";
 /* std */
 #include <ctype.h>
 #include <time.h>
+#include <arpa/inet.h>
 
 /* mod_qos requires OpenSSL */
 #include <openssl/rand.h>
@@ -1289,6 +1290,23 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf) {
   return APR_SUCCESS;
 }
 
+/** add <br> */
+#define QOS_ALERT_LINE_LEN 80
+static char *qos_crline(request_rec *r, const char *line) {
+  char *string = "";
+  const char *pos = line;
+  while(pos && pos[0]) {
+    string = apr_pstrcat(r->pool, string,
+                         apr_psprintf(r->pool, "%.*s", QOS_ALERT_LINE_LEN, pos), "<br>", NULL);
+    if(strlen(pos) > QOS_ALERT_LINE_LEN) {
+      pos = &pos[QOS_ALERT_LINE_LEN];
+    } else {
+      pos = NULL;
+    }
+  }
+  return string;
+}
+
 /************************************************************************
  * "public"
  ***********************************************************************/
@@ -1343,7 +1361,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     }
     ap_rputs("<tr class=\"rowe\">\n", r);
     ap_rprintf(r, "<td colspan=\"9\">%s:%d (%s)</td>\n",
-               s->server_hostname == NULL ? "-" : s->server_hostname,
+               s->server_hostname == NULL ? "-" : ap_escape_html(r->pool, s->server_hostname),
                s->addrs->host_port,
                s->is_virtual ? "virtual" : "base");
     ap_rputs("</td></tr>\n", r);
@@ -1398,7 +1416,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         while(e) {
           char *red = "style=\"background-color: rgb(240,133,135);\"";
           ap_rputs("<tr class=\"rowss\">", r);
-          ap_rprintf(r, "<!--%d--><td>%s</td>", i, e->url);
+          ap_rprintf(r, "<!--%d--><td>%s</td>", i, qos_crline(r, ap_escape_html(r->pool, e->url)));
           if(e->limit == 0) {
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
@@ -1482,7 +1500,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
             for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
               ap_rputs("<tr class=\"rowss\">", r);
               ap_rputs("<td colspan=\"6\">", r);
-              ap_rprintf(r, "%s</td></tr>\n", entry[j].key);
+              ap_rprintf(r, "%s</td></tr>\n", ap_escape_html(r->pool, entry[j].key));
             }
           }
         }
