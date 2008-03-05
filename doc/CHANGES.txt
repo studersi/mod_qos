@@ -1,3 +1,7 @@
+Version 5.12
+
+ - Status viewer uses nicetitles to show long rule strings.
+
 Version 5.11
 
  - Minor internal code changes.
