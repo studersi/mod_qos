@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.15 2008-03-05 20:25:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.16 2008-03-05 20:43:59 pbuchbinder Exp $";
 static const char g_revision[] = "5.12";
 
 /************************************************************************
@@ -1291,7 +1291,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf) {
 }
 
 /** add <br> */
-#define QOS_ALERT_LINE_LEN 110
+#define QOS_ALERT_LINE_LEN 115
 static char *qos_crline(request_rec *r, const char *line) {
   char *string = "";
   const char *pos = line;
@@ -1374,7 +1374,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
 
     if((sconf == bsconf) && s->is_virtual) {
-      ap_rputs("<tr class=\"rowss\">"
+      ap_rputs("<tr class=\"rows\">"
                "<td colspan=\"9\"><i>uses base server settings</i></td></tr>\n", r);
     } else {
       /* max host connections */
@@ -1390,7 +1390,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         apr_global_mutex_lock(u->lock);                   /* @CRT11 */
         hc = u->connections;
         apr_global_mutex_unlock(u->lock);                 /* @CRT11 */
-        ap_rprintf(r, "<!--%d--><tr class=\"rowss\">", i);
+        ap_rprintf(r, "<!--%d--><tr class=\"rows\">", i);
         ap_rprintf(r, "<td colspan=\"6\">host connections</td>");
         ap_rprintf(r, "<td >%d</td>", sconf->net_prefer);
         ap_rprintf(r, "<td >%d</td>", sconf->net_prefer_limit);
@@ -1422,10 +1422,10 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         while(e) {
           char *red = "style=\"background-color: rgb(240,133,135);\"";
           char *a = ap_escape_html(r->pool, e->url);
-          ap_rputs("<tr class=\"rowss\">", r);
+          ap_rputs("<tr class=\"rows\">", r);
           ap_rprintf(r, "<!--%d--><td><a title=\"%s\">%.*s%s</a></td>", i,
                      qos_crline(r, a),
-                     40, a, strlen(a) > 39  ? "..." : "");
+                     65, a, strlen(a) > 49  ? "..." : "");
           if(e->limit == 0) {
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
@@ -1481,10 +1481,10 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         ap_rputs("<tr class=\"rowt\">"
                  "<td colspan=\"9\">connections</td>", r);
         ap_rputs("</tr>\n", r);
-        ap_rprintf(r, "<tr class=\"rowss\">"
+        ap_rprintf(r, "<tr class=\"rows\">"
                    "<!--%d--><td colspan=\"6\">free ip entries</td>"
                    "<td colspan=\"3\">%d</td></tr>\n", i, c);
-        ap_rprintf(r, "<tr class=\"rowss\">"
+        ap_rprintf(r, "<tr class=\"rows\">"
                    "<!--%d--><td colspan=\"6\">current connections</td>"
                    "<td %s colspan=\"3\">%d</td></tr>\n", i,
                    ( ( (sconf->max_conn_close != -1) &&
@@ -1507,7 +1507,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
             apr_global_mutex_unlock(sconf->act->lock); /* @CRT8 */
             entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
             for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
-              ap_rputs("<tr class=\"rowss\">", r);
+              ap_rputs("<tr class=\"rows\">", r);
               ap_rputs("<td colspan=\"6\">", r);
               ap_rprintf(r, "%s</td></tr>\n", ap_escape_html(r->pool, entry[j].key));
             }
@@ -1517,28 +1517,28 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         ap_rputs("<tr class=\"rowt\">"
                  "<td colspan=\"9\">connection settings</td>", r);
         ap_rputs("</tr>\n", r);
-        ap_rprintf(r, "<tr class=\"rowss\">"
+        ap_rprintf(r, "<tr class=\"rows\">"
                    "<td colspan=\"6\">max connections</td>");
         if(sconf->max_conn == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
         } else {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn);
         }
-        ap_rprintf(r, "<tr class=\"rowss\">"
+        ap_rprintf(r, "<tr class=\"rows\">"
                    "<td colspan=\"6\">max connections with keep-alive</td>");
         if(sconf->max_conn_close == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
         } else {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn_close);
         }
-        ap_rprintf(r, "<tr class=\"rowss\">"
+        ap_rprintf(r, "<tr class=\"rows\">"
                    "<td colspan=\"6\">max connections per client ip</td>");
         if(sconf->max_conn_per_ip == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
         } else {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn_per_ip);
         }
-        ap_rprintf(r, "<tr class=\"rowss\">"
+        ap_rprintf(r, "<tr class=\"rows\">"
                    "<td colspan=\"6\">inital connection timeout</td>");
         if(sconf->connect_timeout == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
@@ -2262,16 +2262,14 @@ static int qos_handler(request_rec * r) {
     ap_rputs("<style TYPE=\"text/css\">\n", r);
     ap_rputs("<!--", r);
     ap_rputs("  body {\n\
-        background-color: rgb(250,248,246);;\n\
-        color: black;\n\
-        font-family: arial, helvetica, verdana, sans-serif;\n\
-  }\n\
+          background-color: rgb(250,248,246);\n\
+          color: black;\n\
+          font-family: arial, helvetica, verdana, sans-serif;\n\
+   }\n\
   .btable{\n\
           background-color: white;\n\
-          border: 1px solid;\n\
-          padding: 0px;\n\
-          margin: 6px;\n\
-          width: 750px;\n\
+          border: 1px solid; padding: 0px;\n\
+          margin: 6px; width: 920px;\n\
           font-weight: normal;\n\
           border-collapse: collapse;\n\
   }\n\
@@ -2294,16 +2292,7 @@ static int qos_handler(request_rec * r) {
           margin: 0px;\n\
   }\n\
   .rows {\n\
-          background-color: rgb(230,223,225);\n\
-          vertical-align: top;\n\
-          border: 1px solid;\n\
-          border-color: black;\n\
-          font-weight: normal;\n\
-          padding: 0px;\n\
-          margin: 0px;\n\
-  }\n\
-  .rowss {\n\
-          background-color: rgb(240,233,235);\n\
+          background-color: rgb(235,228,230);\n\
           vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
@@ -2347,7 +2336,7 @@ static int qos_handler(request_rec * r) {
           padding: 0px;\n\
           margin: 0px;\n\
   }\n\
-  div.nicetitle { background-color: #DFDADA; color: #000000; font-size: 1em; left: 0; padding: 4px; position: absolute; text-align: left; top: 0; width: 20em; z-index: 20; }\n\
+  div.nicetitle { background-color: rgb(220,210,215); color: #000000; font-size: 1em; left: 0; padding: 4px; position: absolute; text-align: left; top: 0; width: 20em; z-index: 20; }\n\
   div.nicetitle p { margin: 0; padding: 0 3px; }\n\
   div.nicetitle p.destination { font-size: 0.8em; padding-top: 3px; text-align: left; }\n\
   div.nicetitle p span.accesskey { color: #ffff00; }\n\
