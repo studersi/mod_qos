@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.14 2008-02-29 20:53:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.15 2008-03-05 20:25:10 pbuchbinder Exp $";
 static const char g_revision[] = "5.12";
 
 /************************************************************************
@@ -63,9 +63,9 @@ static const char g_revision[] = "5.12";
 #include <util_filter.h>
 #include <ap_mpm.h>
 #include <scoreboard.h>
-#include <pcre.h>
 
-/* apr */
+/* apr / scrlib */
+#include <pcre.h>
 #include <apr_strings.h>
 #include <apr_base64.h>
 
@@ -1291,18 +1291,24 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf) {
 }
 
 /** add <br> */
-#define QOS_ALERT_LINE_LEN 80
+#define QOS_ALERT_LINE_LEN 110
 static char *qos_crline(request_rec *r, const char *line) {
   char *string = "";
   const char *pos = line;
+  char *n;
   while(pos && pos[0]) {
     string = apr_pstrcat(r->pool, string,
-                         apr_psprintf(r->pool, "%.*s", QOS_ALERT_LINE_LEN, pos), "<br>", NULL);
+                         apr_psprintf(r->pool, "%.*s", QOS_ALERT_LINE_LEN, pos), "\n", NULL);
     if(strlen(pos) > QOS_ALERT_LINE_LEN) {
       pos = &pos[QOS_ALERT_LINE_LEN];
     } else {
       pos = NULL;
     }
+  }
+  n = string;
+  while(n && n[0]) {
+    if(n[0] == '\'') n[0] = '`';
+    n++;
   }
   return string;
 }
@@ -1415,8 +1421,11 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         }
         while(e) {
           char *red = "style=\"background-color: rgb(240,133,135);\"";
+          char *a = ap_escape_html(r->pool, e->url);
           ap_rputs("<tr class=\"rowss\">", r);
-          ap_rprintf(r, "<!--%d--><td>%s</td>", i, qos_crline(r, ap_escape_html(r->pool, e->url)));
+          ap_rprintf(r, "<!--%d--><td><a title=\"%s\">%.*s%s</a></td>", i,
+                     qos_crline(r, a),
+                     40, a, strlen(a) > 39  ? "..." : "");
           if(e->limit == 0) {
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
@@ -2338,10 +2347,166 @@ static int qos_handler(request_rec * r) {
           padding: 0px;\n\
           margin: 0px;\n\
   }\n\
+  div.nicetitle { background-color: #DFDADA; color: #000000; font-size: 1em; left: 0; padding: 4px; position: absolute; text-align: left; top: 0; width: 20em; z-index: 20; }\n\
+  div.nicetitle p { margin: 0; padding: 0 3px; }\n\
+  div.nicetitle p.destination { font-size: 0.8em; padding-top: 3px; text-align: left; }\n\
+  div.nicetitle p span.accesskey { color: #ffff00; }\n\
   form      { display: inline; }\n", r);
     ap_rputs("-->\n", r);
     ap_rputs("</style>\n", r);
-    ap_rputs("</head><body>", r);
+    ap_rputs("<script language=\"JavaScript\" type=\"text/javascript\">\n", r);
+    ap_rputs("<!--\n", r);
+    ap_rputs("var XHTMLNS = \"http://www.w3.org/1999/xhtml\";\n", r);
+    ap_rputs("var CURRENT_NICE_TITLE;\n", r);
+    ap_rputs("var browser = new Browser();\n", r);
+    ap_rputs("function makeNiceTitles() {\n", r);
+    ap_rputs("    if(!document.createElement || !document.getElementsByTagName) return;\n", r);
+    ap_rputs("    if(!document.createElementNS) {\n", r);
+    ap_rputs("        document.createElementNS = function(ns,elt) {\n", r);
+    ap_rputs("            return document.createElement(elt);\n", r);
+    ap_rputs("        }\n", r);
+    ap_rputs("    }\n", r);
+    ap_rputs("    var td = document.getElementsByTagName(\"a\");\n", r);
+    ap_rputs("    for (var ti=0;ti<td.length;ti++) {\n", r);
+    ap_rputs("        var lnk = td[ti];\n", r);
+    ap_rputs("        lnk.setAttribute(\"nicetitle\",lnk.title);\n", r);
+    ap_rputs("        lnk.removeAttribute(\"title\");\n", r);
+    ap_rputs("        addEvent(lnk,\"mouseover\",showNiceTitle);\n", r);
+    ap_rputs("        addEvent(lnk,\"mouseout\",hideNiceTitle);\n", r);
+    ap_rputs("        addEvent(lnk,\"focus\",showNiceTitle);\n", r);
+    ap_rputs("        addEvent(lnk,\"blur\",hideNiceTitle);\n", r);
+    ap_rputs("	}\n", r);
+    ap_rputs("}\n", r);
+    ap_rputs("function findPosition( oLink ) {\n", r);
+    ap_rputs("  if( oLink.offsetParent ) {\n", r);
+    ap_rputs("    for( var posX = 0, posY = 0; oLink.offsetParent; oLink = oLink.offsetParent ) {\n", r);
+    ap_rputs("      posX += oLink.offsetLeft;\n", r);
+    ap_rputs("      posY += oLink.offsetTop;\n", r);
+    ap_rputs("    }\n", r);
+    ap_rputs("    return [ posX, posY ];\n", r);
+    ap_rputs("  } else {\n", r);
+    ap_rputs("    return [ oLink.x, oLink.y ];\n", r);
+    ap_rputs("  }\n", r);
+    ap_rputs("}\n", r);
+    ap_rputs("function showNiceTitle(e) {\n", r);
+    ap_rputs("    if(CURRENT_NICE_TITLE) hideNiceTitle(CURRENT_NICE_TITLE);\n", r);
+    ap_rputs("    if(!document.getElementsByTagName) return;\n", r);
+    ap_rputs("    if(window.event && window.event.srcElement) {\n", r);
+    ap_rputs("        lnk = window.event.srcElement\n", r);
+    ap_rputs("    } else if(e && e.target) {\n", r);
+    ap_rputs("        lnk = e.target\n", r);
+    ap_rputs("    }\n", r);
+    ap_rputs("    if(!lnk) return;\n", r);
+    ap_rputs("    if(!lnk) return;\n", r);
+    ap_rputs("    nicetitle = lnk.getAttribute(\"nicetitle\");\n", r);
+    ap_rputs("    var d = document.createElementNS(XHTMLNS,\"div\");\n", r);
+    ap_rputs("    d.className = \"nicetitle\";\n", r);
+    ap_rputs("    tnt = document.createTextNode(nicetitle);\n", r);
+    ap_rputs("    pat = document.createElementNS(XHTMLNS,\"p\");\n", r);
+    ap_rputs("    pat.className = \"titletext\";\n", r);
+    ap_rputs("    pat.appendChild(tnt);\n", r);
+    ap_rputs("    d.appendChild(pat);\n", r);
+    ap_rputs("    STD_WIDTH = 300;\n", r);
+    ap_rputs("    if(lnk.href) {\n", r);
+    ap_rputs("        h = lnk.href.length;\n", r);
+    ap_rputs("    } else { h = nicetitle.length; }\n", r);
+    ap_rputs("    if(nicetitle.length) {\n", r);
+    ap_rputs("      t = nicetitle.length;\n", r);
+    ap_rputs("    }\n", r);
+    ap_rputs("    h_pixels = h*6; t_pixels = t*10;\n", r);
+    ap_rputs("    if(h_pixels > STD_WIDTH) {\n", r);
+    ap_rputs("        w = h_pixels;\n", r);
+    ap_rputs("    } else if((STD_WIDTH>t_pixels) && (t_pixels>h_pixels)) {\n", r);
+    ap_rputs("        w = t_pixels;\n", r);
+    ap_rputs("    } else if((STD_WIDTH>t_pixels) && (h_pixels>t_pixels)) {\n", r);
+    ap_rputs("        w = h_pixels;\n", r);
+    ap_rputs("    } else {\n", r);
+    ap_rputs("        w = STD_WIDTH;\n", r);
+    ap_rputs("    }\n", r);
+    ap_rputs("    d.style.width = w + 'px';    \n", r);
+    ap_rputs("    mpos = findPosition(lnk);\n", r);
+    ap_rputs("    mx = mpos[0];\n", r);
+    ap_rputs("    my = mpos[1];\n", r);
+    ap_rputs("    d.style.left = (mx+15) + 'px';\n", r);
+    ap_rputs("    d.style.top = (my+35) + 'px';\n", r);
+    ap_rputs("    if(window.innerWidth && ((mx+w) > window.innerWidth)) {\n", r);
+    ap_rputs("        d.style.left = (window.innerWidth - w - 25) + \"px\";\n", r);
+    ap_rputs("    }\n", r);
+    ap_rputs("    if(document.body.scrollWidth && ((mx+w) > document.body.scrollWidth)) {\n", r);
+    ap_rputs("        d.style.left = (document.body.scrollWidth - w - 25) + \"px\";\n", r);
+    ap_rputs("    }\n", r);
+    ap_rputs("    document.getElementsByTagName(\"body\")[0].appendChild(d);\n", r);
+    ap_rputs("    CURRENT_NICE_TITLE = d;\n", r);
+    ap_rputs("}\n", r);
+    ap_rputs("function hideNiceTitle(e) {\n", r);
+    ap_rputs("    if(!document.getElementsByTagName) return;\n", r);
+    ap_rputs("    if(CURRENT_NICE_TITLE) {\n", r);
+    ap_rputs("        document.getElementsByTagName(\"body\")[0].removeChild(CURRENT_NICE_TITLE);\n", r);
+    ap_rputs("        CURRENT_NICE_TITLE = null;\n", r);
+    ap_rputs("    }\n", r);
+    ap_rputs("}\n", r);
+    ap_rputs("function addEvent(obj, evType, fn){\n", r);
+    ap_rputs("  if(obj.addEventListener) {\n", r);
+    ap_rputs("    obj.addEventListener(evType, fn, false);\n", r);
+    ap_rputs("    return true;\n", r);
+    ap_rputs("  } else if(obj.attachEvent){\n", r);
+    ap_rputs("	var r = obj.attachEvent(\"on\"+evType, fn);\n", r);
+    ap_rputs("    return r;\n", r);
+    ap_rputs("  } else {\n", r);
+    ap_rputs("	return false;\n", r);
+    ap_rputs("  }\n", r);
+    ap_rputs("}\n", r);
+    ap_rputs("function getParent(el, pTagName) {\n", r);
+    ap_rputs("	if(el == null) return null;\n", r);
+    ap_rputs("	else if(el.nodeType == 1 && el.tagName.toLowerCase() == pTagName.toLowerCase())	// Gecko bug, supposed to be uppercase\n", r);
+    ap_rputs("		return el;\n", r);
+    ap_rputs("	else\n", r);
+    ap_rputs("		return getParent(el.parentNode, pTagName);\n", r);
+    ap_rputs("}\n", r);
+    ap_rputs("function getMousePosition(event) {\n", r);
+    ap_rputs("  if(browser.isIE) {\n", r);
+    ap_rputs("    x = window.event.clientX + document.documentElement.scrollLeft\n", r);
+    ap_rputs("      + document.body.scrollLeft;\n", r);
+    ap_rputs("    y = window.event.clientY + document.documentElement.scrollTop\n", r);
+    ap_rputs("      + document.body.scrollTop;\n", r);
+    ap_rputs("  }\n", r);
+    ap_rputs("  if(browser.isNS) {\n", r);
+    ap_rputs("    x = event.clientX + window.scrollX;\n", r);
+    ap_rputs("    y = event.clientY + window.scrollY;\n", r);
+    ap_rputs("  }\n", r);
+    ap_rputs("  return [x,y];\n", r);
+    ap_rputs("}\n", r);
+    ap_rputs("function Browser() {\n", r);
+    ap_rputs("  var ua, s, i;\n", r);
+    ap_rputs("  this.isIE    = false;\n", r);
+    ap_rputs("  this.isNS    = false;\n", r);
+    ap_rputs("  this.version = null;\n", r);
+    ap_rputs("  ua = navigator.userAgent;\n", r);
+    ap_rputs("  s = \"MSIE\";\n", r);
+    ap_rputs("  if((i = ua.indexOf(s)) >= 0) {\n", r);
+    ap_rputs("    this.isIE = true;\n", r);
+    ap_rputs("    this.version = parseFloat(ua.substr(i + s.length));\n", r);
+    ap_rputs("    return;\n", r);
+    ap_rputs("  }\n", r);
+    ap_rputs("  s = \"Netscape6/\";\n", r);
+    ap_rputs("  if((i = ua.indexOf(s)) >= 0) {\n", r);
+    ap_rputs("    this.isNS = true;\n", r);
+    ap_rputs("    this.version = parseFloat(ua.substr(i + s.length));\n", r);
+    ap_rputs("    return;\n", r);
+    ap_rputs("  }\n", r);
+    ap_rputs("  s = \"Gecko\";\n", r);
+    ap_rputs("  if((i = ua.indexOf(s)) >= 0) {\n", r);
+    ap_rputs("    this.isNS = true;\n", r);
+    ap_rputs("    this.version = 6.1;\n", r);
+    ap_rputs("    return;\n", r);
+    ap_rputs("  }\n", r);
+    ap_rputs("}\n", r);
+    ap_rputs("window.onload = function(e) {\n", r);
+    ap_rputs("makeNiceTitles();\n", r);
+    ap_rputs("}\n", r);
+    ap_rputs("-->\n", r);
+    ap_rputs("</script>\n", r);
+    ap_rputs("</head><body>\n", r);
     qos_ext_status_hook(r, 0);
     ap_rputs("</body></html>", r);
   }
