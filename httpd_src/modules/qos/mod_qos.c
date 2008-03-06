@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.16 2008-03-05 20:43:59 pbuchbinder Exp $";
-static const char g_revision[] = "5.12";
+static const char revision[] = "$Id: mod_qos.c,v 5.17 2008-03-06 07:36:54 pbuchbinder Exp $";
+static const char g_revision[] = "5.13";
 
 /************************************************************************
  * Includes
@@ -1297,11 +1297,13 @@ static char *qos_crline(request_rec *r, const char *line) {
   const char *pos = line;
   char *n;
   while(pos && pos[0]) {
-    string = apr_pstrcat(r->pool, string,
-                         apr_psprintf(r->pool, "%.*s", QOS_ALERT_LINE_LEN, pos), "\n", NULL);
-    if(strlen(pos) > QOS_ALERT_LINE_LEN) {
+    int len = strlen(pos);
+    if(len > QOS_ALERT_LINE_LEN) {
+      string = apr_pstrcat(r->pool, string,
+                           apr_psprintf(r->pool, "%.*s", QOS_ALERT_LINE_LEN, pos), "\n", NULL);
       pos = &pos[QOS_ALERT_LINE_LEN];
     } else {
+      string = apr_pstrcat(r->pool, string, pos, NULL);
       pos = NULL;
     }
   }
@@ -1423,7 +1425,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           char *red = "style=\"background-color: rgb(240,133,135);\"";
           char *a = ap_escape_html(r->pool, e->url);
           ap_rputs("<tr class=\"rows\">", r);
-          ap_rprintf(r, "<!--%d--><td><a title=\"%s\">%.*s%s</a></td>", i,
+          ap_rprintf(r, "<!--%d--><td><a title='%s'>%.*s%s</a></td>", i,
                      qos_crline(r, a),
                      65, a, strlen(a) > 49  ? "..." : "");
           if(e->limit == 0) {
