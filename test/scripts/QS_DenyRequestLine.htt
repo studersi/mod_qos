@@ -1,5 +1,5 @@
 #
-# $Id: QS_DenyRequestLine.htt,v 1.1 2008-01-24 15:25:52 pbuchbinder Exp $
+# $Id: QS_DenyRequestLine.htt,v 1.2 2008-03-06 07:15:35 pbuchbinder Exp $
 #
 
 
@@ -10,7 +10,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /qos HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "><h2>mod_qos"
+_EXPECT . "<h2>mod_qos"
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
@@ -25,7 +25,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /qos/merged?private HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "><h2>mod_qos"
+_EXPECT . "<h2>mod_qos"
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
