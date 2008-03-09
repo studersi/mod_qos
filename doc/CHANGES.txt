@@ -1,3 +1,7 @@
+Version 5.14
+
+ - Remove nicetitles from status viewer.
+
 Version 5.13
 
  - Again, minor status viewer changes.
