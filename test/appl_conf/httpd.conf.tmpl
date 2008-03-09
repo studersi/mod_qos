@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.10 2008-02-29 20:53:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.11 2008-03-09 08:40:59 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 StartServers            1
@@ -80,7 +80,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE8##
 <VirtualHost 127.0.0.1:##QS_PORT_BASE8##>
    ServerName           127.0.0.1
 
-   QS_LocRequestLimitMatch    "^(/appl/tooollllllooooonnnnnnnnggggggggggggg/a/|/appl/tooollllllooooonnnnnnnnggggggggggggg/b/|/appl/tooollllllooooonnnnnnnnggggggggggggg/c/).*$"  1
+   QS_LocRequestLimitMatch    "^(/appl/multiple/a/|/appl/multiple/b/|/appl/multiple/c/|/appl/multiple/d/|/appl/multiple/e/|/appl/multiple/f/|/appl/multiple/g/|/appl/multiple/h/|/appl/multiple/i/|/appl/multiple/k/|/appl/multiple/l/|/appl/multiple/m/|/appl/multiple/n/|/appl/multiple/o/).*$"  1
+   QS_LocRequestLimitMatch    "^(/appl/multiple/p/|/appl/multiple/q/|/appl/multiple/r/|/appl/multiple/s/|/appl/multiple/t/|/appl/multiple/u/).*$"  1
    QS_LocRequestLimitMatch    "^(/appl/a/|/appl/b/|/appl/c/).*$"  1
    QS_LocRequestLimitMatch    "^/appl/d/.*$"                      1
    QS_LocRequestLimitMatch    "^/appl/e/.*$"                      1
