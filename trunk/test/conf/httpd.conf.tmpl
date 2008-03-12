@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.60 2008-02-29 19:54:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.61 2008-03-12 20:26:30 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -146,6 +146,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_LocRequestLimitMatch    "^(/app/a/|/app/b/|/app/c/).*$" 1
    QS_LocRequestLimitMatch    "^/app/d/.*$"                   1
    QS_LocRequestLimitMatch    "^/app/e/.*$"                   1
+
+   BrowserMatch                "slurp"                        QS_Cond=spider
+   QS_CondLocRequestLimitMatch "^/cgi.*$"     2               spider
 
    QS_VipHeaderName           mod-qos-vip
    QS_SessionTimeout          3
