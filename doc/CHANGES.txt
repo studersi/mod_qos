@@ -1,3 +1,8 @@
+Version 5.15
+
+ - New directive QS_CondLocRequestLimitMatch allows conditional
+   request level rules.
+
 Version 5.14
 
  - Remove nicetitles from status viewer.

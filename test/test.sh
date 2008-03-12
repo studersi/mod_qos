@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.35 2008-03-05 20:51:43 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.36 2008-03-12 20:26:30 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -95,6 +95,15 @@ fi
 if [ $? -ne 0 ]; then
     ./ctl.sh stop
     echo "FAILED QS_LocRequestLimitMatch_3.htt"
+    exit 1
+fi
+
+# -----------------------------------------------------------------
+echo "-- conditional rule QS_CondLocRequestLimitMatch.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_CondLocRequestLimitMatch.htt
+if [ $? -ne 0 ]; then
+    ./ctl.sh stop
+    echo "FAILED QS_CondLocRequestLimitMatch.htt"
     exit 1
 fi
 

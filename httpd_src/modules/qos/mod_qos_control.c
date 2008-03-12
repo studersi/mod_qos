@@ -30,8 +30,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.12 2008-03-09 08:44:18 pbuchbinder Exp $";
-static const char g_revision[] = "5.14";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.13 2008-03-12 20:26:29 pbuchbinder Exp $";
+static const char g_revision[] = "5.15";
 
 /************************************************************************
  * Includes
@@ -149,6 +149,7 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_LocRequestPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 100" },
   { "QS_LocKBytesPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 1200" },
   { "QS_LocRequestLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 100" },
+  { "QS_CondLocRequestLimitMatch", QSC_REQ_TYPE, TAKE3, RSRC_CONF, 1, "", "/new 100 pattern" },
   { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 100" },
   { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 1200" },
   { "QS_ErrorPage", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/error-docs/403.html" },
