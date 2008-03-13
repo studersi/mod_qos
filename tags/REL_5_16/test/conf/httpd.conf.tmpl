@@ -1,0 +1,310 @@
+#
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.61 2008-03-12 20:26:30 pbuchbinder Exp $
+#
+# mod_qos test configuration using mod_proxy
+#
+# See http://sourceforge.net/projects/mod-qos/ for further
+# details about mod_qos.
+#
+# Copyright (C) 2007 Pascal Buchbinder
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301, USA.
+#
+
+ServerName              127.0.0.1
+StartServers            1
+
+ServerLimit             16
+MinSpareThreads         5
+MaxSpareThreads         75
+ThreadsPerChild         64
+#MinSpareServers         5
+#MaxSpareServers         10
+
+<IfDefine !max_clients>
+MaxClients              896
+</IfDefine>
+<IfDefine max_clients>
+MaxClients              64
+</IfDefine>
+MaxRequestsPerChild     0
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/htdocs
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept.lock
+Timeout                 90
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        5
+
+QS_SrvPreferNet
+QS_SrvConnTimeout       3
+<IfDefine real_ip>
+QS_EnableInternalIPSimulation off
+</IfDefine>
+QS_RequestHeaderFilterRule myheader "^static_content$" deny
+
+Options                 FollowSymLinks Indexes Includes
+DefaultType             text/plain
+AddType                 text/html .shtml
+AddOutputFilter         INCLUDES .shtml
+
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e #%P"
+
+LogLevel                warn
+ErrorLog                "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 3600 -f"
+TransferLog             "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 600 -f"
+TransferLog             "|##ROOT##/../tools/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
+PidFile                 ##ROOT##/logs/apache.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+TypesConfig             conf/mime.types
+LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
+LoadModule              info_module ##ROOT##/../httpd/modules/generators/.libs/mod_info.so
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+LoadModule              qos_control_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos_control.so
+LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
+LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
+
+QSC_WorkingDirectory    /var/tmp/qosc
+QSC_Filter2Binary       /usr/local/bin/qsfilter2
+
+NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
+Listen                  127.0.0.1:##QS_PORT_BASE##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE##>
+   ServerName                 127.0.0.1
+
+   # -----------------------------------------------------------------
+   # sample configuration using mod_proxy
+   # -----------------------------------------------------------------
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /info !
+   ProxyPass                  /qos !
+   ProxyPass                  /qos_control !
+   ProxyPass                  /cgi-local !
+
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+   ProxyPass                  /app/a http://localhost:##QS_PORT_BASE6##/app/a
+   ProxyPassReverse           /app/a http://localhost:##QS_PORT_BASE6##/app/a
+   ProxyPass                  /app/b http://localhost:##QS_PORT_BASE6##/app/b
+   ProxyPassReverse           /app/b http://localhost:##QS_PORT_BASE6##/app/b
+   ProxyPass                  /app/c http://localhost:##QS_PORT_BASE6##/app/c
+   ProxyPassReverse           /app/c http://localhost:##QS_PORT_BASE6##/app/c
+   ProxyPass                  /app/d http://localhost:##QS_PORT_BASE6##/app/d
+   ProxyPassReverse           /app/d http://localhost:##QS_PORT_BASE6##/app/d
+   ProxyPass                  /app/e http://localhost:9999/app/e
+   ProxyPassReverse           /app/e http://localhost:9999/app/e
+
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
+   ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+   ProxyReceiveBufferSize     1024
+
+   ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi-local/
+
+   # -----------------------------------------------------------------
+   # request level control
+   # -----------------------------------------------------------------
+
+   QS_ErrorPage               /error-docs/error.shtml
+
+   QS_LocRequestLimitDefault                 30
+   QS_LocRequestLimit         /cgi            5
+   QS_LocRequestLimit         /cgi100       100
+   QS_LocRequestLimit         /test          50
+   QS_LocRequestLimitMatch    "^.*\.gif$"     2
+
+   QS_LocRequestLimitMatch    "^(/app/a/|/app/b/|/app/c/).*$" 1
+   QS_LocRequestLimitMatch    "^/app/d/.*$"                   1
+   QS_LocRequestLimitMatch    "^/app/e/.*$"                   1
+
+   BrowserMatch                "slurp"                        QS_Cond=spider
+   QS_CondLocRequestLimitMatch "^/cgi.*$"     2               spider
+
+   QS_VipHeaderName           mod-qos-vip
+   QS_SessionTimeout          3
+   #QS_SessionCookieName       mm
+   #QS_SessionCookiePath       /x
+   QS_SessionKey              12345678
+
+   # -----------------------------------------------------------------
+   # connection level control
+   # -----------------------------------------------------------------
+   QS_SrvMaxConn                             40
+   QS_SrvMaxConnClose                        20
+   QS_SrvMaxConnPerIP                        10
+
+   BrowserMatch "pass"                       QS_VipRequest=yes
+   SetEnvIf     Request_URI /cgi/index2.cgi  QS_VipRequest=yes
+   #SetEnvIf     Remote_Addr 127.0.0.1       QS_VipRequest=yes
+   <Directory /error-docs>
+      SetHandler              default
+   </Directory>
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
+   <Location /info>
+       SetHandler server-info
+   </Location>
+
+   Include 	  conf/qos_viewer.conf
+   <Location /qos/merged>
+       QS_DenyRequestLine -restrict deny ".*private.*"
+   </Location>
+   <Location /qos/off>
+       QS_DenyInheritanceOff
+       QS_DenyRequestLine +restrict deny ".*simple.*"
+   </Location>
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+
+       QS_RequestHeaderFilter on
+   </Location>
+
+</VirtualHost>
+
+NameVirtualHost         server1:##QS_PORT_BASE1##
+Listen                  server1:##QS_PORT_BASE1##
+
+<VirtualHost server1:##QS_PORT_BASE1##>
+   ServerName                 server1
+
+   # -----------------------------------------------------------------
+   # sample configuration using mod_proxy
+   # -----------------------------------------------------------------
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /info !
+   ProxyPass                  /qos !
+   ProxyPass                  /qos_control !
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
+   ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+   # -----------------------------------------------------------------
+   # connection level control
+   # -----------------------------------------------------------------
+
+   QS_SrvMaxConn                            800
+   QS_SrvMaxConnClose                       600
+   QS_SrvMaxConnPerIP                        10
+
+   QS_LocRequestLimit         /no           200
+   QS_LocRequestLimit         /cgi          200
+   QS_LocRequestLimit         /aaa          200
+   QS_LocRequestPerSecLimit   /aaa          100
+   QS_LocRequestLimit         /bbb          200
+   QS_LocKBytesPerSecLimit    /bbb          1000
+   QS_LocRequestLimitMatch    /ccc/.*       200
+   QS_LocRequestPerSecLimitMatch /ccc/.*     75
+   QS_LocKBytesPerSecLimit    /ddd/ddd/ddd/ddd 1000
+
+   QS_VipHeaderName           mod-qos-vip
+   #QS_SrvMaxConnExcludeIP           192.168.32.
+
+   BrowserMatch "(MSIE 5\.)"  QS_KeepAliveTimeout=7
+   <Directory /error-docs>
+      SetHandler              default
+   </Directory>
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
+   <Location /info>
+       SetHandler server-info
+   </Location>
+
+   Include 	  conf/qos_viewer.conf
+
+</VirtualHost>
+
+NameVirtualHost         server1:##QS_PORT_BASE2##
+Listen                  server1:##QS_PORT_BASE2##
+
+SSLCipherSuite          RC4-MD5:EXP-RC4-MD5
+SSLSessionCacheTimeout  864000
+SSLProtocol             all
+SSLMutex                file:##ROOT##/logs/ssl_mutex
+SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
+SSLRandomSeed           startup builtin
+
+<VirtualHost server1:##QS_PORT_BASE2##>
+   SSLCertificateKeyFile  ssl/key.pem
+   SSLCertificateFile     ssl/cert.pem
+   SSLVerifyDepth         10
+   SSLEngine on
+   ServerName             server1
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /info !
+   ProxyPass                  /qos !
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
+   ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+   QS_ErrorPage               /error-docs/error.html
+   SetEnvIf   Host (.*):.*    QS_ErrorPage=/error-docs/$1.html
+   QS_LocRequestLimit         /cgi            5
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
+   <Location /info>
+       SetHandler server-info
+   </Location>
+
+   <Location /qos>
+       SetHandler qos-viewer
+   </Location>
+
+</VirtualHost>
+
+<VirtualHost localhost:##QS_PORT_BASE2##>
+   ServerName             servernamebased
+</VirtualHost>
+
