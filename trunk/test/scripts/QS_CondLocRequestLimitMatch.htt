@@ -1,5 +1,5 @@
 #
-# $Id: QS_CondLocRequestLimitMatch.htt,v 1.1 2008-03-12 20:26:31 pbuchbinder Exp $
+# $Id: QS_CondLocRequestLimitMatch.htt,v 1.2 2008-03-13 07:55:36 pbuchbinder Exp $
 #
 
 
@@ -17,9 +17,33 @@ _WAIT
 END
 
 CLIENT
-_SLEEP 500
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=4 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+# conditional rule
+CLIENT
+_SLEEP 500
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__User-Agent: Yahoo! slurp
+__
+_EXPECT . "custom error page"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 1000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=3 HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla
 __
@@ -33,15 +57,15 @@ _SLEEP 1000
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=3 HTTP/1.1
 __Host: localhost
-__User-Agent: Yahoo! slurp
+__User-Agent: Mozilla
 __
-_EXPECT . "custom error page"
+_EXPECT . "200 OK"
 _WAIT
 
 END
 
 CLIENT
-_SLEEP 1500
+_SLEEP 1000
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=3 HTTP/1.1
 __Host: localhost
@@ -52,3 +76,15 @@ _WAIT
 
 END
 
+# standard rule
+CLIENT
+_SLEEP 1500
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "custom error page"
+_WAIT
+
+END

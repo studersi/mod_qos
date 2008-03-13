@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.21 2008-03-12 21:07:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.22 2008-03-13 07:55:36 pbuchbinder Exp $";
 static const char g_revision[] = "5.16";
 
 /************************************************************************
@@ -1470,8 +1470,9 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         while(e) {
           char *red = "style=\"background-color: rgb(240,133,135);\"";
           ap_rputs("<tr class=\"rows\">", r);
-          ap_rprintf(r, "<!--%d--><td>%s</a></td>", i,
-                     ap_escape_html(r->pool, qos_crline(r, e->url)));
+          ap_rprintf(r, "<!--%d--><td>%s%s</a></td>", i,
+                     ap_escape_html(r->pool, qos_crline(r, e->url)),
+                     e->condition == NULL ? "" : " <small>(conditional)</small>");
           if(e->limit == 0) {
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
@@ -2615,7 +2616,7 @@ const char *qos_loc_con_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const c
   }
   rule->regex = NULL;
   rule->condition = NULL;
-  apr_table_setn(sconf->location_t, loc, (char *)rule);
+  apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, loc), (char *)rule);
   return NULL;
 }
 
@@ -2637,7 +2638,7 @@ const char *qos_loc_rs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const ch
   }
   rule->regex = NULL;
   rule->condition = NULL;
-  apr_table_setn(sconf->location_t, loc, (char *)rule);
+  apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, loc), (char *)rule);
   return NULL;
 }
 
@@ -2659,7 +2660,7 @@ const char *qos_loc_bs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const ch
   }
   rule->regex = NULL;
   rule->condition = NULL;
-  apr_table_setn(sconf->location_t, loc, (char *)rule);
+  apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, loc), (char *)rule);
   return NULL;
 }
 
@@ -2690,7 +2691,7 @@ const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, con
                        cmd->directive->directive, match);
   }
   rule->condition = NULL;
-  apr_table_setn(sconf->location_t, match, (char *)rule);
+  apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, match), (char *)rule);
   return NULL;
 }
 
@@ -2702,11 +2703,8 @@ const char *qos_cond_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match
                                    const char *limit, const char *pattern) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  qs_rule_ctx_t *rule = (qs_rule_ctx_t *)apr_table_get(sconf->location_t, match);
-  if(rule == NULL) {
-    rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
-    rule->url = apr_pstrdup(cmd->pool, match);
-  }
+  qs_rule_ctx_t *rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+  rule->url = apr_pstrdup(cmd->pool, match);
   rule->limit = atoi(limit);
   if(rule->limit == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
@@ -2727,7 +2725,7 @@ const char *qos_cond_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match
     return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
                        cmd->directive->directive, pattern);
   }
-  apr_table_setn(sconf->location_t, match, (char *)rule);
+  apr_table_setn(sconf->location_t, apr_pstrcat(cmd->pool, match, "##conditional##", NULL), (char *)rule);
   return NULL;
 }
 
@@ -2757,7 +2755,7 @@ const char *qos_match_rs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
                        cmd->directive->directive, match);
   }
   rule->condition = NULL;
-  apr_table_setn(sconf->location_t, match, (char *)rule);
+  apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, match), (char *)rule);
   return NULL;
 }
 
@@ -2787,7 +2785,7 @@ const char *qos_match_bs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
                        cmd->directive->directive, match);
   }
   rule->condition = NULL;
-  apr_table_setn(sconf->location_t, match, (char *)rule);
+  apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, match), (char *)rule);
   return NULL;
 }
 
