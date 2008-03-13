@@ -1,3 +1,7 @@
+Version 5.16
+
+ - Mark QS_CondLocRequestLimitMatch in status viewer.
+
 Version 5.15
 
  - New directive QS_CondLocRequestLimitMatch allows conditional
