@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.24 2008-03-15 18:33:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.25 2008-03-15 22:29:08 pbuchbinder Exp $";
 static const char g_revision[] = "5.17";
 
 /************************************************************************
@@ -176,6 +176,7 @@ typedef struct qs_acentry_st {
   /** location rules */
   char *url;
   int url_len;
+  char *event;
 #ifdef AP_REGEX_H
   ap_regex_t *regex;
   ap_regex_t *condition;
@@ -210,6 +211,7 @@ typedef struct qs_actable_st {
   apr_pool_t *ppool;
   /** rule entry list */
   qs_acentry_t *entry;
+  int has_events;
   /** mutex */
   char *lock_file;
   apr_global_mutex_t *lock;
@@ -311,6 +313,7 @@ typedef struct {
  */
 typedef struct {
   char *url;
+  char *event;
   int limit;
 #ifdef AP_REGEX_H
   /* apache 2.2 */
@@ -808,6 +811,10 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->id = i;
     e->url = rule->url;
     e->url_len = strlen(e->url);
+    e->event = rule->event;
+    if(e->event) {
+      act->has_events++;
+    }
     e->regex = rule->regex;
     e->condition = rule->condition;
     e->limit = rule->limit;
@@ -1072,7 +1079,7 @@ static qs_acentry_t *qos_getrule_byregex(request_rec *r, qos_srv_config *sconf) 
   qs_acentry_t *e = act->entry;
   int limit = -1;
   while(e) {
-    if((e->regex != NULL) && (e->condition == NULL)) {
+    if((e->event == NULL) && (e->regex != NULL) && (e->condition == NULL)) {
       if((limit == -1) || (e->limit < limit)) {
         if(ap_regexec(e->regex, r->unparsed_uri, 0, NULL, 0) == 0) {
           if(limit == -1) {
@@ -1099,7 +1106,7 @@ static qs_acentry_t *qos_getcondrule_byregex(request_rec *r, qos_srv_config *sco
   qs_acentry_t *e = act->entry;
   int limit = -1;
   while(e) {
-    if((e->regex != NULL) && (e->condition != NULL)) {
+    if((e->event == NULL) && (e->regex != NULL) && (e->condition != NULL)) {
       if((limit == -1) || (e->limit < limit)) {
         if(ap_regexec(e->regex, r->unparsed_uri, 0, NULL, 0) == 0) {
           if(limit == -1) {
@@ -1126,7 +1133,7 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sco
   qs_acentry_t *e = act->entry;
   int match_len = 0;
   while(e) {
-    if(e->regex == NULL) {
+    if((e->event == NULL) && (e->regex == NULL)) {
       /* per location limitation */
       if(e->url && (strncmp(e->url, r->parsed_uri.path, e->url_len) == 0)) {
         /* best match */
@@ -1369,6 +1376,169 @@ static char *qos_crline(request_rec *r, const char *line) {
     }
   }
   return string;
+}
+
+/**
+ * calculates the rec/sec block rate
+ */
+static void qos_cal_req_sec(request_rec *r, qs_acentry_t *e) {
+  if(e->req_per_sec > e->req_per_sec_limit) {
+    int factor = ((e->req_per_sec * 100) / e->req_per_sec_limit) - 100;
+    e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                  QOS_LOG_PFX(050)"request rate limit, rule: %s(%ld), req/sec=%ld,"
+                  " delay=%dms",
+                  e->url, e->req_per_sec_limit,
+                  e->req_per_sec, e->req_per_sec_block_rate);
+  } else if(e->req_per_sec_block_rate > 0) {
+    if(e->req_per_sec_block_rate < 50) {
+      e->req_per_sec_block_rate = 0;
+    } else {
+      int factor = e->req_per_sec_block_rate / 5;
+      e->req_per_sec_block_rate = e->req_per_sec_block_rate - factor;
+    }
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                  QOS_LOG_PFX(051)"request rate limit, rule: %s(%ld), req/sec=%ld,"
+                  " delay=%dms",
+                  e->url, e->req_per_sec_limit,
+                  e->req_per_sec, e->req_per_sec_block_rate);
+  }
+}
+
+/* 
+ * QS_Permit* / QS_Deny* enforcement
+ */
+static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
+  if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
+    apr_status_t rv = qos_per_dir_rules(r, dconf);
+    if(rv != APR_SUCCESS) {
+      const char *error_page = sconf->error_page;
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      if(r->subprocess_env) {
+        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+        if(v) {
+          error_page = v;
+        }
+      }
+      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+      if(error_page) {
+        qos_error_response(r, error_page);
+          return DONE;
+      }
+      return rv;
+    }
+  }
+  return DECLINED;
+}
+
+/*
+ * QS_RequestHeaderFilter enforcement
+ */
+static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
+  if(dconf->headerfilter > 0) {
+    apr_status_t rv = qos_header_filter(r, sconf);
+    if(rv != APR_SUCCESS) {
+      const char *error_page = sconf->error_page;
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      if(r->subprocess_env) {
+        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+        if(v) {
+          error_page = v;
+        }
+      }
+      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+      if(error_page) {
+        qos_error_response(r, error_page);
+        return DONE;
+      }
+      return rv;
+      }
+  }
+  return DECLINED;
+}
+
+/* 
+ * Dynamic keep alive
+ */
+static void qos_hp_keepalive(request_rec *r) {
+  if(r->subprocess_env) {
+    const char *v = apr_table_get(r->subprocess_env, "QS_KeepAliveTimeout");
+    if(v) {
+      int ka = atoi(v);
+      if(ka > 0) {
+        /* well, at least it works ... */
+        qs_req_ctx *rctx = qos_rctx_config_get(r);
+        apr_interval_time_t kat = apr_time_from_sec(ka);
+        server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+        server_rec *sc = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+        rctx->evmsg = apr_pstrcat(r->pool, "T;", rctx->evmsg, NULL);
+        memcpy(sr, r->server, sizeof(server_rec));
+        memcpy(sc, r->connection->base_server, sizeof(server_rec));
+        r->server = sr;
+        r->server->keep_alive_timeout = kat;
+        r->connection->base_server = sc;
+        r->connection->base_server->keep_alive_timeout = kat;
+      }
+    }
+  }
+}
+
+static void qos_lg_event_update(request_rec *r, time_t *t) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                &qos_module);
+  qs_actable_t *act = sconf->act;
+  if(act->has_events) {
+    time_t now = time(NULL);
+    *t = now;
+    qs_acentry_t *e = act->entry;
+    if(e) {
+      apr_global_mutex_lock(act->lock);   /* @CRT13 */
+      while(e) {
+        if(e->event) {
+          if(apr_table_get(r->subprocess_env, e->event)) {
+            e->req++;
+            if(now > e->interval + 10) {
+              e->req_per_sec = e->req / (now - e->interval);
+              e->req = 0;
+              e->interval = now;
+              qos_cal_req_sec(r, e);
+            }
+          }
+        }
+        e = e->next;
+      }
+      apr_global_mutex_unlock(act->lock);   /* @CRT13 */
+    }
+  }
+}
+
+/*
+ * QS_EventPerSecLimit
+ * returns the max req_per_sec_block_rate
+ */
+static int qos_hp_event_count(request_rec *r) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                &qos_module);
+  qs_actable_t *act = sconf->act;
+  int req_per_sec_block = 0;
+  if(act->has_events) {
+    qs_acentry_t *e = act->entry;
+    if(e) {
+      apr_global_mutex_lock(act->lock);   /* @CRT12 */
+      while(e) {
+        if(e->event) {
+          if(apr_table_get(r->subprocess_env, e->event)) {
+            if(e->req_per_sec_block_rate > req_per_sec_block) {
+              req_per_sec_block = e->req_per_sec_block_rate;
+            }
+          }
+        }
+        e = e->next;
+      }
+      apr_global_mutex_unlock(act->lock); /* @CRT12 */
+    }
+  }
+  return req_per_sec_block;
 }
 
 /************************************************************************
@@ -1838,6 +2008,8 @@ static int qos_post_read_request(request_rec * r) {
 static int qos_header_parser(request_rec * r) {
   /* apply rules only to main request (avoid filtering of error documents) */
   if(ap_is_initial_req(r)) {
+    int req_per_sec_block = 0;
+    int status;
     qs_acentry_t *e;
     qs_acentry_t *e_cond;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
@@ -1848,72 +2020,29 @@ static int qos_header_parser(request_rec * r) {
     /* 
      * QS_Permit* / QS_Deny* enforcement
      */
-    if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
-      apr_status_t rv = qos_per_dir_rules(r, dconf);
-      if(rv != APR_SUCCESS) {
-        const char *error_page = sconf->error_page;
-        qs_req_ctx *rctx = qos_rctx_config_get(r);
-        if(r->subprocess_env) {
-          const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-          if(v) {
-            error_page = v;
-          }
-        }
-        rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-        if(error_page) {
-          qos_error_response(r, error_page);
-          return DONE;
-        }
-        return rv;
-      }
+    status = qos_hp_filter(r, sconf, dconf);
+    if(status != DECLINED) {
+      return status;
     }
 
     /*
      * QS_RequestHeaderFilter enforcement
      */
-    if(dconf->headerfilter > 0) {
-      apr_status_t rv = qos_header_filter(r, sconf);
-      if(rv != APR_SUCCESS) {
-        const char *error_page = sconf->error_page;
-        qs_req_ctx *rctx = qos_rctx_config_get(r);
-        if(r->subprocess_env) {
-          const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-          if(v) {
-            error_page = v;
-          }
-        }
-        rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-        if(error_page) {
-          qos_error_response(r, error_page);
-          return DONE;
-        }
-        return rv;
-      }
+    status = qos_hp_header_filter(r, sconf, dconf);
+    if(status != DECLINED) {
+      return status;
     }
 
     /* 
      * Dynamic keep alive
      */
-    if(r->subprocess_env) {
-      const char *v = apr_table_get(r->subprocess_env, "QS_KeepAliveTimeout");
-      if(v) {
-        int ka = atoi(v);
-        if(ka > 0) {
-          /* well, at least it works ... */
-          qs_req_ctx *rctx = qos_rctx_config_get(r);
-          apr_interval_time_t kat = apr_time_from_sec(ka);
-          server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
-          server_rec *sc = apr_pcalloc(r->connection->pool, sizeof(server_rec));
-          rctx->evmsg = apr_pstrcat(r->pool, "T;", rctx->evmsg, NULL);
-          memcpy(sr, r->server, sizeof(server_rec));
-          memcpy(sc, r->connection->base_server, sizeof(server_rec));
-          r->server = sr;
-          r->server->keep_alive_timeout = kat;
-          r->connection->base_server = sc;
-          r->connection->base_server->keep_alive_timeout = kat;
-        }
-      }
-    }
+    qos_hp_keepalive(r);
+
+    
+    /*
+     * QS_EventPerSecLimit
+     */
+    req_per_sec_block = qos_hp_event_count(r);
     
     /* get rule with conditional enforcement */
     e_cond = qos_getcondrule_byregex(r, sconf);
@@ -1923,7 +2052,6 @@ static int qos_header_parser(request_rec * r) {
     if(!e) e = qos_getrule_bylocation(r, sconf);
     if(e || e_cond) {
       qs_req_ctx *rctx = qos_rctx_config_get(r);
-      int req_per_sec_block = 0;
       const char *error_page = sconf->error_page;
       if(r->subprocess_env) {
         const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
@@ -1931,7 +2059,7 @@ static int qos_header_parser(request_rec * r) {
           error_page = v;
         }
       }
-      if(sconf->header_name) {
+      if(sconf->header_name && !rctx->is_vip) {
         rctx->is_vip = qos_is_vip(r, sconf);
         if(rctx->is_vip) {
           qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
@@ -1948,7 +2076,10 @@ static int qos_header_parser(request_rec * r) {
         }
         if(e) {
           e->counter++;
-          req_per_sec_block = e->req_per_sec_block_rate;
+          if(e->req_per_sec_block_rate > req_per_sec_block) {
+            /* update req_per_sec_block if event restriction has returned worse block rate */
+            req_per_sec_block = e->req_per_sec_block_rate;
+          }
         }
         apr_global_mutex_unlock(e->lock); /* @CRT5 */
       }
@@ -1991,6 +2122,8 @@ static int qos_header_parser(request_rec * r) {
             delay.tv_sec  = sec;
             delay.tv_nsec = nsec * 1000000;
             nanosleep(&delay,NULL);
+            /* don't wait more than once */
+            req_per_sec_block = 0;
           }
         }
         /*
@@ -2038,6 +2171,21 @@ static int qos_header_parser(request_rec * r) {
         }
       }
     }
+
+    /*
+     * QS_EventPerSecLimit
+     */
+    if(req_per_sec_block) {
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      int sec = req_per_sec_block / 1000;
+      int nsec = req_per_sec_block % 1000;
+      struct timespec delay;
+      rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+      delay.tv_sec  = sec;
+      delay.tv_nsec = nsec * 1000000;
+      nanosleep(&delay,NULL);
+    }
+
   }
   return DECLINED;
 }
@@ -2127,11 +2275,15 @@ static int qos_logger(request_rec *r) {
   qs_acentry_t *e = rctx->entry;
   qs_acentry_t *e_cond = rctx->entry_cond;
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+  time_t now = 0;
   if(cconf && cconf->evmsg) {
     rctx->evmsg = apr_pstrcat(r->pool, cconf->evmsg, rctx->evmsg, NULL);
   }
+  qos_lg_event_update(r, &now);
   if(e || e_cond) {
-    time_t now = time(NULL);
+    if(!now) {
+      now = time(NULL);
+    }
     char *h = apr_psprintf(r->pool, "%d", e->counter);
     apr_global_mutex_lock(e->lock);   /* @CRT6 */
     if(e_cond) {
@@ -2148,27 +2300,7 @@ static int qos_logger(request_rec *r) {
         e->bytes = 0;
         e->interval = now;
         if(e->req_per_sec_limit) {
-          if(e->req_per_sec > e->req_per_sec_limit) {
-            int factor = ((e->req_per_sec * 100) / e->req_per_sec_limit) - 100;
-            e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                          QOS_LOG_PFX(050)"request rate limit, rule: %s(%ld), req/sec=%ld,"
-                          " delay=%dms",
-                          e->url, e->req_per_sec_limit,
-                          e->req_per_sec, e->req_per_sec_block_rate);
-          } else if(e->req_per_sec_block_rate > 0) {
-            if(e->req_per_sec_block_rate < 50) {
-              e->req_per_sec_block_rate = 0;
-            } else {
-              int factor = e->req_per_sec_block_rate / 10;
-              e->req_per_sec_block_rate = e->req_per_sec_block_rate - factor;
-            }
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                          QOS_LOG_PFX(051)"request rate limit, rule: %s(%ld), req/sec=%ld,"
-                          " delay=%dms",
-                          e->url, e->req_per_sec_limit,
-                          e->req_per_sec, e->req_per_sec_block_rate);
-          }
+          qos_cal_req_sec(r, e);
         }
         if(e->kbytes_per_sec_limit) {
           if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
@@ -2524,6 +2656,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
   sconf->act->timeout = apr_time_sec(s->timeout);
+  sconf->act->has_events = 0;
   sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
                                        ap_server_root_relative(sconf->act->pool, tmpnam(NULL)));
   rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
@@ -2617,6 +2750,7 @@ const char *qos_loc_con_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const c
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
   }
+  rule->event = NULL;
   rule->regex = NULL;
   rule->condition = NULL;
   apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, loc), (char *)rule);
@@ -2639,6 +2773,7 @@ const char *qos_loc_rs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const ch
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
   }
+  rule->event = NULL;
   rule->regex = NULL;
   rule->condition = NULL;
   apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, loc), (char *)rule);
@@ -2661,6 +2796,7 @@ const char *qos_loc_bs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const ch
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
   }
+  rule->event = NULL;
   rule->regex = NULL;
   rule->condition = NULL;
   apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, loc), (char *)rule);
@@ -2693,6 +2829,7 @@ const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, con
     return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
                        cmd->directive->directive, match);
   }
+  rule->event = NULL;
   rule->condition = NULL;
   apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, match), (char *)rule);
   return NULL;
@@ -2728,6 +2865,7 @@ const char *qos_cond_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match
     return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
                        cmd->directive->directive, pattern);
   }
+  rule->event = NULL;
   apr_table_setn(sconf->location_t, apr_pstrcat(cmd->pool, match, "##conditional##", NULL), (char *)rule);
   return NULL;
 }
@@ -2757,6 +2895,7 @@ const char *qos_match_rs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
     return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
                        cmd->directive->directive, match);
   }
+  rule->event = NULL;
   rule->condition = NULL;
   apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, match), (char *)rule);
   return NULL;
@@ -2787,6 +2926,7 @@ const char *qos_match_bs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
     return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
                        cmd->directive->directive, match);
   }
+  rule->event = NULL;
   rule->condition = NULL;
   apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, match), (char *)rule);
   return NULL;
@@ -2797,6 +2937,31 @@ const char *qos_match_bs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
  */
 const char *qos_loc_con_def_cmd(cmd_parms *cmd, void *dcfg, const char *limit) {
   return qos_loc_con_cmd(cmd, dcfg, "/", limit);
+}
+
+/**
+ * defines the maximum requests/sec for the matching variable.
+ */
+const char *qos_event_rs_cmd(cmd_parms *cmd, void *dcfg, const char *event, const char *limit) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qs_rule_ctx_t *rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+  rule->url = apr_pstrcat(cmd->pool, "var=[", event, "]", NULL);
+  rule->req_per_sec_limit = atol(limit);
+  if(rule->req_per_sec_limit == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  rule->event = apr_pstrdup(cmd->pool, event);
+  rule->regex = NULL;
+  rule->condition = NULL;
+  apr_table_setn(sconf->location_t, rule->url, (char *)rule);
+  return NULL;
+}
+
+const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, const char *v2,
+                                   const char *a3) {
+  return NULL;
 }
 
 /**
@@ -3167,6 +3332,17 @@ static const command_rec qos_config_cmds[] = {
                 " connection. Default is the timeout defined by the"
                 " Apache standard Timeout directive."
                 " Directive is allowed in global server context only."),
+  /* event */
+  AP_INIT_TAKE2("QS_EventPerSecLimit", qos_event_rs_cmd, NULL,
+                RSRC_CONF,
+                "QS_EventPerSecLimit <variable> <number>, defines the allowed"
+                " number of requests, having the specified variable set,"
+                " per second. Requests are limited"
+                " by adding a delay to each requests."),
+  AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetEnvIf <variable1> <variable1> <variable=value>,"
+                " defines the new variable if variable1 AND variable2 are set."),
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
                 ACCESS_CONF,
