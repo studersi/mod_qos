@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.22 2008-03-13 07:55:36 pbuchbinder Exp $";
-static const char g_revision[] = "5.16";
+static const char revision[] = "$Id: mod_qos.c,v 5.23 2008-03-15 18:22:33 pbuchbinder Exp $";
+static const char g_revision[] = "5.17";
 
 /************************************************************************
  * Includes
@@ -1932,15 +1932,15 @@ static int qos_header_parser(request_rec * r) {
       }
       rctx->entry_cond = e_cond;
       rctx->entry = e;
-      if(e_cond) {
-        apr_global_mutex_lock(e_cond->lock);   /* @CRT13 */
-        e_cond->counter++;
-        apr_global_mutex_unlock(e_cond->lock); /* @CRT13 */
-      }
-      if(e) {
+      if(e || e_cond) {
         apr_global_mutex_lock(e->lock);   /* @CRT5 */
-        e->counter++;
-        req_per_sec_block = e->req_per_sec_block_rate;
+        if(e_cond) {
+          e_cond->counter++;
+        }
+        if(e) {
+          e->counter++;
+          req_per_sec_block = e->req_per_sec_block_rate;
+        }
         apr_global_mutex_unlock(e->lock); /* @CRT5 */
       }
         
@@ -1998,7 +1998,7 @@ static int qos_header_parser(request_rec * r) {
       }
       if(e_cond) {
         /*
-         * QS_CondLocRequestLimitMatch $$$
+         * QS_CondLocRequestLimitMatch
          */
         if(e_cond->limit && (e_cond->counter > e_cond->limit)) {
           /* check condition */
@@ -2121,68 +2121,68 @@ static int qos_logger(request_rec *r) {
   if(cconf && cconf->evmsg) {
     rctx->evmsg = apr_pstrcat(r->pool, cconf->evmsg, rctx->evmsg, NULL);
   }
-  if(e_cond) {
-    apr_global_mutex_lock(e_cond->lock);   /* @CRT12 */
-    if(e_cond->counter) e_cond->counter--;
-    apr_global_mutex_unlock(e_cond->lock); /* @CRT12 */
-  }
-  if(e) {
+  if(e || e_cond) {
     time_t now = time(NULL);
     char *h = apr_psprintf(r->pool, "%d", e->counter);
     apr_global_mutex_lock(e->lock);   /* @CRT6 */
-    if(e->counter) e->counter--;
-    e->req++;
-    e->bytes = e->bytes + r->bytes_sent;
-    if(now > e->interval + 10) {
-      e->req_per_sec = e->req / (now - e->interval);
-      e->req = 0;
-      e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
-      e->bytes = 0;
-      e->interval = now;
-      if(e->req_per_sec_limit) {
-        if(e->req_per_sec > e->req_per_sec_limit) {
-          int factor = ((e->req_per_sec * 100) / e->req_per_sec_limit) - 100;
-          e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX(050)"request rate limit, rule: %s(%ld), req/sec=%ld,"
-                        " delay=%dms",
-                        e->url, e->req_per_sec_limit,
-                        e->req_per_sec, e->req_per_sec_block_rate);
-        } else if(e->req_per_sec_block_rate > 0) {
-          if(e->req_per_sec_block_rate < 50) {
-            e->req_per_sec_block_rate = 0;
-          } else {
-            int factor = e->req_per_sec_block_rate / 10;
-            e->req_per_sec_block_rate = e->req_per_sec_block_rate - factor;
+    if(e_cond) {
+      if(e_cond->counter) e_cond->counter--;
+    }
+    if(e) {
+      if(e->counter) e->counter--;
+      e->req++;
+      e->bytes = e->bytes + r->bytes_sent;
+      if(now > e->interval + 10) {
+        e->req_per_sec = e->req / (now - e->interval);
+        e->req = 0;
+        e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
+        e->bytes = 0;
+        e->interval = now;
+        if(e->req_per_sec_limit) {
+          if(e->req_per_sec > e->req_per_sec_limit) {
+            int factor = ((e->req_per_sec * 100) / e->req_per_sec_limit) - 100;
+            e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                          QOS_LOG_PFX(050)"request rate limit, rule: %s(%ld), req/sec=%ld,"
+                          " delay=%dms",
+                          e->url, e->req_per_sec_limit,
+                          e->req_per_sec, e->req_per_sec_block_rate);
+          } else if(e->req_per_sec_block_rate > 0) {
+            if(e->req_per_sec_block_rate < 50) {
+              e->req_per_sec_block_rate = 0;
+            } else {
+              int factor = e->req_per_sec_block_rate / 10;
+              e->req_per_sec_block_rate = e->req_per_sec_block_rate - factor;
+            }
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                          QOS_LOG_PFX(051)"request rate limit, rule: %s(%ld), req/sec=%ld,"
+                          " delay=%dms",
+                          e->url, e->req_per_sec_limit,
+                          e->req_per_sec, e->req_per_sec_block_rate);
           }
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                        QOS_LOG_PFX(051)"request rate limit, rule: %s(%ld), req/sec=%ld,"
-                        " delay=%dms",
-                        e->url, e->req_per_sec_limit,
-                        e->req_per_sec, e->req_per_sec_block_rate);
         }
-      }
-      if(e->kbytes_per_sec_limit) {
-        if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
-          int factor = ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) - 100;
-          e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX(052)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
-                        " delay=%dms",
-                        e->url, e->kbytes_per_sec_limit,
-                        e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
-        } else if(e->kbytes_per_sec_block_rate > 0) {
-          if(e->kbytes_per_sec_block_rate < 50) {
-            e->kbytes_per_sec_block_rate = 0;
-          } else {
-            int factor = e->kbytes_per_sec_block_rate / 10;
-            e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate - factor;
+        if(e->kbytes_per_sec_limit) {
+          if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
+            int factor = ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) - 100;
+            e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                          QOS_LOG_PFX(052)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
+                          " delay=%dms",
+                          e->url, e->kbytes_per_sec_limit,
+                          e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
+          } else if(e->kbytes_per_sec_block_rate > 0) {
+            if(e->kbytes_per_sec_block_rate < 50) {
+              e->kbytes_per_sec_block_rate = 0;
+            } else {
+              int factor = e->kbytes_per_sec_block_rate / 10;
+              e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate - factor;
+            }
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                          QOS_LOG_PFX(053)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
+                          " delay=%dms",
+                          e->url, e->kbytes_per_sec_limit,
+                          e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
           }
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                        QOS_LOG_PFX(053)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
-                        " delay=%dms",
-                        e->url, e->kbytes_per_sec_limit,
-                        e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
         }
       }
     }
