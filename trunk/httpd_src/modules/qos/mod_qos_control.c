@@ -30,8 +30,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.14 2008-03-12 21:07:59 pbuchbinder Exp $";
-static const char g_revision[] = "5.16";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.15 2008-03-15 18:33:47 pbuchbinder Exp $";
+static const char g_revision[] = "5.17";
 
 /************************************************************************
  * Includes
@@ -2670,7 +2670,7 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
       {
         struct rlimit rlp;
         getrlimit(RLIMIT_NOFILE, &rlp);
-        if((rlp.rlim_cur + 20) < locations) {
+        if(locations > (rlp.rlim_cur - 20)) {
           ap_rputs("<tr class=\"rows\"><td colspan=\"2\">\n",r);
           qosc_table_body_start(r);
           qosc_table_body_cell_single(r);
