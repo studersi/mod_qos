@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.23 2008-03-15 18:22:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.24 2008-03-15 18:33:46 pbuchbinder Exp $";
 static const char g_revision[] = "5.17";
 
 /************************************************************************
@@ -626,17 +626,24 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
  * destroy shared memory and mutexes
  */
 static void qos_destroy_act(qs_actable_t *act) {
-  //  qs_acentry_t *e = act->entry;
   ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
                QOS_LOG_PFX(001)"cleanup shared memory: %d bytes",
                act->size);
   act->child_init = 0;
   apr_global_mutex_destroy(act->lock);
-  //  while(e) {
-  //    e = e->next;
-  //  }
   apr_shm_destroy(act->m);
   apr_pool_destroy(act->pool);
+}
+
+static apr_status_t qos_destroy_netstat(void *p) {
+  qos_user_t *u = p;
+  if(u->lock) {
+    apr_global_mutex_destroy(u->lock);
+  }
+  if(u->m) {
+    apr_shm_destroy(u->m);
+  }
+  return APR_SUCCESS;
 }
 
 static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
@@ -675,6 +682,7 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     //netstat->first = 0;
     //netstat->last = 0;
   }
+  apr_pool_cleanup_register(ppool, u, qos_destroy_netstat, apr_pool_cleanup_null);
   return OK;
 }
 
@@ -698,6 +706,7 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool, int net_prefer) {
   u->act_table = apr_table_make(ppool, 2);
   apr_pool_userdata_set(u, QS_USR_SPE, apr_pool_cleanup_null, ppool);
   u->m = NULL;
+  u->lock = NULL;
   if(net_prefer) {
     if(qos_init_netstat(ppool, u) != OK) return NULL;
   }
@@ -2232,17 +2241,11 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
     sconf->act->child_init = 1;
     /* propagate mutex to child process (required for certaing platforms) */
     apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, sconf->act->pool);
-    // while(e) {
-    //   e = e->next;
-    // }
     while(s) {
       sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
       if(sconf->is_virtual) {
         apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, sconf->act->pool);
         e = sconf->act->entry;
-        // while(e) {
-        //   e = e->next;
-        // }
       }
       s = s->next;
     }
