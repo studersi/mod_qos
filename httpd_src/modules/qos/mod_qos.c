@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.27 2008-03-16 21:17:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.28 2008-03-16 22:05:55 pbuchbinder Exp $";
 static const char g_revision[] = "5.17";
 
 /************************************************************************
@@ -1513,8 +1513,8 @@ static void qos_lg_event_update(request_rec *r, time_t *t) {
   qs_actable_t *act = sconf->act;
   if(act->has_events) {
     time_t now = time(NULL);
-    *t = now;
     qs_acentry_t *e = act->entry;
+    *t = now;
     if(e) {
       apr_global_mutex_lock(act->lock);   /* @CRT13 */
       while(e) {
@@ -2309,10 +2309,10 @@ static int qos_logger(request_rec *r) {
   }
   qos_lg_event_update(r, &now);
   if(e || e_cond) {
+    char *h = apr_psprintf(r->pool, "%d", e->counter);
     if(!now) {
       now = time(NULL);
     }
-    char *h = apr_psprintf(r->pool, "%d", e->counter);
     apr_global_mutex_lock(e->lock);   /* @CRT6 */
     if(e_cond) {
       if(e_cond->counter) e_cond->counter--;
@@ -2492,7 +2492,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
 }
 
 /**
- * to amuse ...
+ * mod_qos
  */
 static int qos_favicon(request_rec *r) {
   int i;
