@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.15 2008-03-15 18:33:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.16 2008-03-16 20:19:44 pbuchbinder Exp $";
 static const char g_revision[] = "5.17";
 
 /************************************************************************
@@ -152,6 +152,7 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_CondLocRequestLimitMatch", QSC_REQ_TYPE, TAKE3, RSRC_CONF, 1, "", "/new 100 pattern" },
   { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 100" },
   { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 1200" },
+  { "QS_EventPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "event 100" },
   { "QS_ErrorPage", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/error-docs/403.html" },
   { "QS_VipHeaderName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "mod-qos-vip" },
   { "QS_SessionCookieName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "modqos" },

@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.25 2008-03-15 22:29:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.26 2008-03-16 20:19:44 pbuchbinder Exp $";
 static const char g_revision[] = "5.17";
 
 /************************************************************************
@@ -1495,7 +1495,8 @@ static void qos_lg_event_update(request_rec *r, time_t *t) {
       apr_global_mutex_lock(act->lock);   /* @CRT13 */
       while(e) {
         if(e->event) {
-          if(apr_table_get(r->subprocess_env, e->event)) {
+          if(((e->event[0] != '!') && apr_table_get(r->subprocess_env, e->event)) ||
+             ((e->event[0] == '!') && !apr_table_get(r->subprocess_env, &e->event[1]))) {
             e->req++;
             if(now > e->interval + 10) {
               e->req_per_sec = e->req / (now - e->interval);
@@ -1527,7 +1528,8 @@ static int qos_hp_event_count(request_rec *r) {
       apr_global_mutex_lock(act->lock);   /* @CRT12 */
       while(e) {
         if(e->event) {
-          if(apr_table_get(r->subprocess_env, e->event)) {
+          if(((e->event[0] != '!') && apr_table_get(r->subprocess_env, e->event)) ||
+             ((e->event[0] == '!') && !apr_table_get(r->subprocess_env, &e->event[1]))) {
             if(e->req_per_sec_block_rate > req_per_sec_block) {
               req_per_sec_block = e->req_per_sec_block_rate;
             }
@@ -2961,6 +2963,7 @@ const char *qos_event_rs_cmd(cmd_parms *cmd, void *dcfg, const char *event, cons
 
 const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, const char *v2,
                                    const char *a3) {
+  /* $$$ */
   return NULL;
 }
 
