@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.26 2008-03-16 20:19:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.27 2008-03-16 21:17:43 pbuchbinder Exp $";
 static const char g_revision[] = "5.17";
 
 /************************************************************************
@@ -116,7 +116,15 @@ typedef enum  {
   QS_DENY
 } qs_rfilter_action_e;
 
+typedef struct {
+  char *variable1;
+  char *variable2;
+  char *name;
+  char *value;
+} qos_setenvif_t;
+
 /**
+ * generic request filter
  */
 typedef struct {
   pcre *pr;
@@ -267,6 +275,7 @@ typedef struct {
   qs_actable_t *act;
   const char *error_page;
   apr_table_t *location_t;
+  apr_table_t *setenvif_t;
   char *cookie_name;
   char *cookie_path;
   int max_age;
@@ -1431,6 +1440,21 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
   return DECLINED;
 }
 
+/**
+ * QS_SetEnvIf
+ */
+static void qos_hp_setenvif(request_rec *r, qos_srv_config *sconf) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvif_t)->elts;
+  for(i = 0; i < apr_table_elts(sconf->setenvif_t)->nelts; i++) {
+    qos_setenvif_t *setenvif = (qos_setenvif_t *)entry[i].val;
+    if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
+       apr_table_get(r->subprocess_env, setenvif->variable2)) {
+      apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+    }
+  }
+}
+
 /*
  * QS_RequestHeaderFilter enforcement
  */
@@ -2018,6 +2042,8 @@ static int qos_header_parser(request_rec * r) {
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
+
+    qos_hp_setenvif(r, sconf);
 
     /* 
      * QS_Permit* / QS_Deny* enforcement
@@ -2649,6 +2675,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf =(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
   sconf->pool = p;
   sconf->location_t = apr_table_make(sconf->pool, 2);
+  sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->error_page = NULL;
   sconf->connect_timeout = -1;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
@@ -2963,7 +2990,20 @@ const char *qos_event_rs_cmd(cmd_parms *cmd, void *dcfg, const char *event, cons
 
 const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, const char *v2,
                                    const char *a3) {
-  /* $$$ */
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qos_setenvif_t *setenvif = apr_pcalloc(cmd->pool, sizeof(qos_setenvif_t));
+  setenvif->variable1 = apr_pstrdup(cmd->pool, v1);
+  setenvif->variable2 = apr_pstrdup(cmd->pool, v2);
+  setenvif->name = apr_pstrdup(cmd->pool, a3);
+  setenvif->value = strchr(setenvif->name, '=');
+  if(setenvif->value == NULL) {
+    return apr_psprintf(cmd->pool, "%s: new variable must have the format <name>=<value>",
+                        cmd->directive->directive);
+  }
+  setenvif->value[0] = '\0';
+  setenvif->value++;
+  apr_table_setn(sconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
   return NULL;
 }
 

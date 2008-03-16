@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.63 2008-03-16 20:19:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.64 2008-03-16 21:17:43 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -313,7 +313,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE9##
 <VirtualHost 127.0.0.1:##QS_PORT_BASE9##>
    ServerName             127.0.0.1
 
-   BrowserMatch               "event"                         qsmin=limit
+   BrowserMatch               "event"                           qsmin=limit
    QS_EventPerSecLimit        !qsmin          5
+
+   SetEnvIf                   Request_URI     "/aaa/index.html" qsvar2
+   QS_SetEnvIf                qsmin           qsvar2            multi=true
+   QS_EventPerSecLimit        multi           5
 
 </VirtualHost>
