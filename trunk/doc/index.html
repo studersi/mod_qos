@@ -435,6 +435,19 @@ variable list. This is used to combine multiple variables to a new event type.
 </li>
 </ul>
 
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+Sample of event rules:<br>
+<pre>
+# mark clients comming from the internal network:
+SetEnvIf     Remote_Addr "^192\.168\."            QS_Intra
+
+# limits the request rate for external clients:
+QS_EventPerSecLimit      !QS_Intra                100
+</pre>
+</td></tr>
+</table>
+
 <a name="filter"></a>
 <h3>Request Level, Generic Filter</h3>
 These filter are defined on a per location level and are used to restrict 
