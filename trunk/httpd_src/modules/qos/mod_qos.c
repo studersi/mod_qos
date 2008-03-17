@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.30 2008-03-17 08:38:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.31 2008-03-17 19:12:16 pbuchbinder Exp $";
 static const char g_revision[] = "5.17";
 
 /************************************************************************
@@ -637,6 +637,24 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
 }
 
 /**
+ * frees shared mem and lock at server shutdown
+ */
+static apr_status_t qos_destroy_netstat(void *p) {
+  qos_user_t *u = p;
+  if(u->server_start > 1) {
+    if(u->lock) {
+      apr_global_mutex_destroy(u->lock);
+      u->lock = NULL;
+    }
+    if(u->m) {
+      apr_shm_destroy(u->m);
+      u->m = NULL;
+    }
+  }
+  return APR_SUCCESS;
+}
+
+/**
  * destroy shared memory and mutexes
  */
 static void qos_destroy_act(qs_actable_t *act) {
@@ -647,17 +665,6 @@ static void qos_destroy_act(qs_actable_t *act) {
   apr_global_mutex_destroy(act->lock);
   apr_shm_destroy(act->m);
   apr_pool_destroy(act->pool);
-}
-
-static apr_status_t qos_destroy_netstat(void *p) {
-  qos_user_t *u = p;
-  if(u->lock) {
-    apr_global_mutex_destroy(u->lock);
-  }
-  if(u->m) {
-    apr_shm_destroy(u->m);
-  }
-  return APR_SUCCESS;
 }
 
 static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
@@ -698,7 +705,9 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     //netstat->first = 0;
     //netstat->last = 0;
   }
-  apr_pool_cleanup_register(ppool, u, qos_destroy_netstat, apr_pool_cleanup_null);
+  /* note: we can't register qos_destroy_netstat() to the process pool since
+   *       mod_qos may be loaded as a DSO module which gets unloaded before
+   *       the process pool is deleted */
   return OK;
 }
 
@@ -770,6 +779,7 @@ static apr_status_t qos_cleanup_shm(void *p) {
     /* don't delete this act now, but at next server restart ... */
     apr_table_addn(u->act_table, this_generation, (char *)act);
   } else {
+    qos_destroy_netstat(u);
     qos_destroy_act(act);
   }
   return APR_SUCCESS;
