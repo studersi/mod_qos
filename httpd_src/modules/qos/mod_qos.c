@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.28 2008-03-16 22:05:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.29 2008-03-17 07:36:30 pbuchbinder Exp $";
 static const char g_revision[] = "5.17";
 
 /************************************************************************
@@ -85,6 +85,8 @@ static const char g_revision[] = "5.17";
 /* netmask 255.255.240.0 */
 #define QS_NETMASK 16
 #define QS_NETMASK_MOD (QS_NETMASK * 65536)
+
+#define QS_MAX_DELAY 5000
 
 #define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
@@ -1394,16 +1396,20 @@ static void qos_cal_req_sec(request_rec *r, qs_acentry_t *e) {
   if(e->req_per_sec > e->req_per_sec_limit) {
     int factor = ((e->req_per_sec * 100) / e->req_per_sec_limit) - 100;
     e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
+    if(e->req_per_sec_block_rate > QS_MAX_DELAY) {
+      e->req_per_sec_block_rate = QS_MAX_DELAY;
+    }
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                   QOS_LOG_PFX(050)"request rate limit, rule: %s(%ld), req/sec=%ld,"
-                  " delay=%dms",
+                  " delay=%dms%s",
                   e->url, e->req_per_sec_limit,
-                  e->req_per_sec, e->req_per_sec_block_rate);
+                  e->req_per_sec, e->req_per_sec_block_rate,
+                  e->req_per_sec_block_rate == QS_MAX_DELAY ? " (max)" : "");
   } else if(e->req_per_sec_block_rate > 0) {
     if(e->req_per_sec_block_rate < 50) {
       e->req_per_sec_block_rate = 0;
     } else {
-      int factor = e->req_per_sec_block_rate / 5;
+      int factor = e->req_per_sec_block_rate / 6;
       e->req_per_sec_block_rate = e->req_per_sec_block_rate - factor;
     }
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
@@ -2334,16 +2340,20 @@ static int qos_logger(request_rec *r) {
           if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
             int factor = ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) - 100;
             e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
+            if(e->kbytes_per_sec_block_rate > QS_MAX_DELAY) {
+              e->kbytes_per_sec_block_rate = QS_MAX_DELAY;
+            }
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                           QOS_LOG_PFX(052)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
-                          " delay=%dms",
+                          " delay=%dms%s",
                           e->url, e->kbytes_per_sec_limit,
-                          e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
+                          e->kbytes_per_sec, e->kbytes_per_sec_block_rate,
+                          e->kbytes_per_sec_block_rate == QS_MAX_DELAY ? " (max)" : "");
           } else if(e->kbytes_per_sec_block_rate > 0) {
             if(e->kbytes_per_sec_block_rate < 50) {
               e->kbytes_per_sec_block_rate = 0;
             } else {
-              int factor = e->kbytes_per_sec_block_rate / 10;
+              int factor = e->kbytes_per_sec_block_rate / 6;
               e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate - factor;
             }
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
