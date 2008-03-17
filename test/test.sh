@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.40 2008-03-17 08:38:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.41 2008-03-17 19:35:22 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -41,6 +41,7 @@ QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 
 ERRORS=0
 
+# delete the access log file since it is used to generate permit rules
 rm -f logs/access1_log
 rm -rf /var/tmp/qosc/server1
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
@@ -257,6 +258,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED MultiRequest.htt"
 fi
+sleep 1
 
 # -----------------------------------------------------------------
 cat logs/access1_log | awk '{print $7}' > logs/loc1.htt
@@ -265,7 +267,9 @@ rm -f logs/loc1.htt
 ./ctl.sh stop > /dev/null
 sleep 2
 ./ctl.sh start -D permit_filter > /dev/null
+sleep 1
 echo "-- permit filter QS_PermitUri.htt" >>  logs/error_log
+echo "-- permit filter QS_PermitUri.htt" >>  logs/error1_log
 ./htt.sh -s ./scripts/QS_PermitUri.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -312,7 +316,6 @@ echo "-- mod_qos_control, QS_Control_Server.htt" >>  logs/error_log
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_Control_Server.htt"
-    rm -rf /var/tmp/qosc/server1/
 fi
 
 # -----------------------------------------------------------------
