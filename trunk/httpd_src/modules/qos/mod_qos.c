@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.29 2008-03-17 07:36:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.30 2008-03-17 08:38:22 pbuchbinder Exp $";
 static const char g_revision[] = "5.17";
 
 /************************************************************************
@@ -676,6 +676,7 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
                  QOS_LOG_PFX(002)"could not create shared memory: %s (%d)", buf, size);
+    u->m = NULL;
     return !OK;
   }
   u->lock_file = apr_psprintf(ppool, "%s_cl.mod_qos", 
@@ -686,6 +687,7 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
                  QOS_LOG_PFX(004)"could create u-mutex: %s", buf);
+    u->lock = NULL;
     return !OK;
   }
   u->netstat = apr_shm_baseaddr_get(u->m);

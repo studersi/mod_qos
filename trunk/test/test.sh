@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.39 2008-03-16 21:17:43 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.40 2008-03-17 08:38:22 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -320,6 +320,12 @@ fi
 
 if [ $ERRORS -ne 0 ]; then
     echo "ERROR: end with $ERRORS errors"
+    exit 1
+fi
+
+CFS=`find . -name "*core*"`
+if [ "$CFS" != "" ]; then
+    echo "ERROR: found core file"
     exit 1
 fi
 
