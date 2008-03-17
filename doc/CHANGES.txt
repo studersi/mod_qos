@@ -6,6 +6,8 @@ Version 5.17
  - New directive QS_SetEnvIf allows combination of multiple
    environment variables.
 
+ - Fix sem/shm leak when using QS_SrvPreferNet.
+
 Version 5.16
 
  - Mark QS_CondLocRequestLimitMatch in status viewer.
