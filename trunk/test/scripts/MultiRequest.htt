@@ -1,5 +1,5 @@
 #
-# $Id: MultiRequest.htt,v 1.4 2008-03-13 07:55:36 pbuchbinder Exp $
+# $Id: MultiRequest.htt,v 1.5 2008-03-17 19:35:23 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -91,6 +91,41 @@ _EXPECT . "<!--4-->.*<td>100</td><td >0</td>"
 _EXPECT . "<!--4-->.*<td>50</td><td >0</td>"
 _EXPECT . "<!--4-->.*<td>2</td><td >0</td>"
 _EXPECT . "<!--4-->.*conditional.*<td>2</td>.*>0</td>"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "aaa index.html"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "aaa index.html"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "aaa index.html"
 _WAIT
 
 END
