@@ -2,4 +2,7 @@
 all: stack
 
 stack: stack.c
-	cc -o $@ $<
+	cc -Wall -g -o $@ $<
+
+clean:
+	rm *.o stack
