@@ -69,8 +69,18 @@ The current release of the module implements control mechanisms for:
 The maximum number of concurrent requests to a location (URL) or virtual host.
 </li>
 <li type=square>
+Limitation of the bandwidth such as the maximum allowed number of requests 
+per second to an URL or the maximum of downloaded kbytes per second.
+</li>
+<li type=square>
+Limits the number of request events per second.
+</li>
+<li type=square>
 It can also "detect" very important persons (VIP) which may access the web server 
-without any restrictions when accessing an URL.
+without or with less restrictions.
+</li>
+<li type=square>
+Generic request line and header filter.
 </li>
 <li type=square>
 Limitations on the TCP connection level, e.g. the maximum of allowed connections from 
@@ -78,13 +88,6 @@ a single IP source address or dynamic keep-alive control.
 </li>
 <li type=square>
 Preferes known networks when server runs out of free TCP connections.
-</li>
-<li type=square>
-Limitation of the bandwidth, e.g. the maximum allowed number of requests 
-per second to an URL.
-</li>
-<li type=square>
-Generic request line and header filter.
 </li>
 </ul>
 
@@ -101,6 +104,7 @@ Generic request line and header filter.
 <li><a href="#eventcontrol">Events</a></li>
 <li><a href="#filter">Request Level, Generic Filter</a></li>
 <li><a href="#connectionlevelcontrol">Connection Level Control</a></li>
+<li><a href="#clientlevelcontrol">Client Level Control</a></li>
 </ul>
 <li><a href="#messages">Log Messages</a></li>
 <ul>
@@ -587,6 +591,39 @@ QS_SrvMaxConnPerIP                                 50
 # disables connection restrictions for certain clients:
 QS_SrvMaxConnExcludeIP                    172.18.3.32
 QS_SrvMaxConnExcludeIP                    192.168.10.
+</pre>
+</td></tr>
+</table>
+
+<a name="clientlevelcontrol"></a>
+<h3>Client Level Control</h3>
+Client level control rules are applied per client (IP source address). 
+These directives must only be used in the global server context. 
+<ul>
+<li>
+<code>QS_ClientEntries &lt;number&gt;</code><br>
+Defines the number of individual clients managed by mod_qos. 
+Default are 50'000 concurrent IP addresses. Each client requires 
+about 36 bytes of shared memory (on a 32bit system).
+</li>
+<li>
+<code>QS_ClientEventPerSecLimit &lt;number&gt;</code><br>
+</li>
+<li>
+<code>QS_ClientPrefer</code><br>
+Allows access to VIP clients only when the server has 
+less than 80% of free TCP connections (similar to 
+<code>QS_SrvPreferNet</code> but for individual IP source 
+addresses. Use <code>QS_VipHeaderName</code> directive 
+in order to identify VIP clients.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+Sample configuration:<br>
+<pre>
+
 </pre>
 </td></tr>
 </table>

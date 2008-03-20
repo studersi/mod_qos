@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.5 2008-03-20 20:17:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.6 2008-03-20 21:53:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +35,12 @@ static const char revision[] = "$Id: stack.c,v 1.5 2008-03-20 20:17:03 pbuchbind
 typedef struct {
   unsigned long ip;
   time_t time;
+
+  char vip;
+  time_t interval;
+  long req;
+  long req_per_sec;
+  int req_per_sec_block_rate;
 } qos_s_entry_t;
 
 typedef struct {
@@ -125,7 +131,7 @@ static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA) {
 }
 
 int main(int argc, char **argv) {
-  int size = 1000000;
+  int size = 50000;
   qos_s_entry_t new;
   qos_s_t *s = qoss_new(size);
   qos_s_entry_t **e = NULL;
@@ -134,7 +140,7 @@ int main(int argc, char **argv) {
   struct timeval tv;
   long long start;
 
-  printf(">%d %d\n", s->msize, s->max);
+  printf(">%d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
   new.ip = 0;
   qoss_set(s, &new);
 //  while(s->max > s->num) {
