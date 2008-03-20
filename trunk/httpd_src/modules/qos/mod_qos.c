@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.33 2008-03-20 20:17:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.34 2008-03-20 21:10:44 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -313,6 +313,8 @@ typedef struct {
 #endif
   int net_prefer;
   int net_prefer_limit;
+  qos_s_t *qoss;
+  int has_qoss;
 } qos_srv_config;
 
 /**
@@ -504,7 +506,7 @@ static qos_s_t *qoss_new(apr_pool_t *pool, int size) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(002)"could not create c-shared memory: %s (%d)", buf, msize);
+                 QOS_LOG_PFX(002)"could not create c-shared memory: %s (%d bytes)", buf, msize);
     return NULL;
   }
   s = apr_shm_baseaddr_get(m);
@@ -803,7 +805,7 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(002)"could not create shared memory: %s (%d)", buf, size);
+                 QOS_LOG_PFX(002)"could not create shared memory: %s (%d bytes)", buf, size);
     u->m = NULL;
     return !OK;
   }
@@ -939,7 +941,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(002)"could not create shared memory: %s (%d)", buf, act->size);
+                 QOS_LOG_PFX(002)"could not create shared memory: %s (%d bytes)", buf, act->size);
     return res;
   }
   act->c = apr_shm_baseaddr_get(act->m);
@@ -965,10 +967,12 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     e->regex = rule->regex;
     e->condition = rule->condition;
     e->limit = rule->limit;
-    if(e->limit == 0) {
-      ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s,
-                   QOS_LOG_PFX(003)"request level rule %s has no concurrent request limitations",
-                   e->url);
+    if(e->limit == 0 ) {
+      if((e->condition == NULL) && (e->event == NULL)) {
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s,
+                     QOS_LOG_PFX(003)"request level rule %s has no concurrent request limitations",
+                     e->url);
+      }
     }
     e->interval = time(NULL);
     e->req_per_sec_limit = rule->req_per_sec_limit;
@@ -2854,6 +2858,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->hfilter_table = apr_table_make(p, 1);
   sconf->net_prefer = 0;
+  sconf->qoss = NULL;
+  sconf->has_qoss = 0;
   if(!s->is_virtual) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table);
     if(msg) {
@@ -2895,6 +2901,8 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   /* base table may contain custom rules */
   o->hfilter_table = b->hfilter_table;
   o->net_prefer = b->net_prefer;
+  o->qoss = b->qoss;
+  o->has_qoss = b->has_qoss;
   /* location rules or connection limit controls conf merger (see index.html) */
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1) ||
