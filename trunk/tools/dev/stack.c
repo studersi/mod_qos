@@ -23,14 +23,14 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.2 2008-03-20 14:28:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.3 2008-03-20 19:38:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-
-#define QS_S_ENTRY_NUM 5
+#include <time.h>
+#include <sys/time.h>
 
 typedef struct {
   unsigned long ip;
@@ -42,6 +42,7 @@ typedef struct {
   qos_s_entry_t **timed;
   int num;
   int max;
+  int msize;
 } qos_s_t;
 
 static int qoss_comp(const void *_pA, const void *_pB) {
@@ -52,55 +53,126 @@ static int qoss_comp(const void *_pA, const void *_pB) {
   return 0;
 }
 
+static int qoss_comp_time(const void *_pA, const void *_pB) {
+  qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
+  qos_s_entry_t *pB=*(( qos_s_entry_t **)_pB);
+  if(pA->time > pB->time) return 1;
+  if(pA->time < pB->time) return -1;
+  return 0;
+}
+
 static qos_s_t *qoss_new(int size) {
+  int msize = sizeof(qos_s_t) + 
+    (sizeof(qos_s_entry_t) * size) + 
+    (2 * sizeof(qos_s_entry_t *) * size);
   int i;
-  qos_s_entry_t *e = calloc(sizeof(qos_s_entry_t) * size, 1);
-  qos_s_t *s = calloc(sizeof(qos_s_t), 1);
-  s->ipd = calloc(sizeof(qos_s_entry_t *) * size, 1);
+  qos_s_t *s = calloc(msize, 1);
+  qos_s_entry_t *e = (qos_s_entry_t *)&s[1];
+  s->ipd = (qos_s_entry_t **)&e[size];
+  s->timed = (qos_s_entry_t **)&s->ipd[size];
   s->num = 0;
   s->max = size;
+  s->msize = msize;
   for(i = 0; i < size; i++) {
     s->ipd[i] = e;
+    s->timed[i] = e;
     e++;
   }
   return s;
 }
 
+static void qoss_free(qos_s_t *s) {
+  free(s);
+}
+
 /**
  * gets an entry by its ip
  */
-static qos_s_entry_t **qoss_get(qos_s_t *s, qos_s_entry_t *pA) {
+static qos_s_entry_t **qoss_get0(qos_s_t *s, qos_s_entry_t *pA) {
   return bsearch((const void *)&pA, (const void *)s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
 }
 
 static void qoss_set(qos_s_t *s, qos_s_entry_t *pA) {
   qos_s_entry_t **pB;
-  qos_s_entry_t search;
   if(s->num < s->max) {
-    search.ip = 0;
-    pB = qoss_get(s, &search);
-    if(pB) {
-      (*pB)->ip = pA->ip;
-      s->num++;
-      qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
-      return;
-    }
+    s->num++;
+    pB = &s->timed[0];
+    (*pB)->ip = pA->ip;
+    (*pB)->time = time(NULL);
+    qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
+    qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
+  } else {
+    pB = &s->timed[0];
+    (*pB)->ip = pA->ip;
+    (*pB)->time = time(NULL);
+    qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
+    qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
   }
-  /* $$$ */
+}
+
+static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA) {
+  qos_s_entry_t **pB;
+  if(s->num < s->max) {
+    s->num++;
+    pB = &s->timed[s->max - s->num];
+    (*pB)->ip = pA->ip;
+    (*pB)->time = time(NULL);
+  }
 }
 
 int main(int argc, char **argv) {
-  qos_s_entry_t search;
-  qos_s_entry_t *new = calloc(sizeof(qos_s_entry_t), 1);
-  qos_s_t *s = qoss_new(QS_S_ENTRY_NUM);
+  int size = 1000000;
+  qos_s_entry_t new;
+  qos_s_t *s = qoss_new(size);
   qos_s_entry_t **e = NULL;
+  int i;
+  int first = 0;
+  struct timeval tv;
+  long long start;
 
-  new->ip = 888;
-  qoss_set(s, new);
-  search.ip = 888;
-  e = qoss_get(s, &search);
-  if(e) {
-    printf("%lu\n", (*e)->ip);
+  printf(">%d %d\n", s->msize, s->max);
+  new.ip = 0;
+  qoss_set(s, &new);
+//  while(s->max > s->num) {
+//    new.ip = rand()%(size*10);
+//    if(first == 0) {
+//      first = new.ip;
+//    }
+//    e = qoss_get0(s, &new);
+//    if(!e) {
+//      qoss_set(s, &new);
+//    }
+//  }
+  for(i = 0; i < size; i++) {
+    new.ip = i;
+    qoss_set_fast(s, &new);
   }
+  i++;
+  new.ip = i;
+  qoss_set(s, &new);
+  first = 8725;
+//  /* oldest first */
+//  for(i = 0; i < s->max; i++) {
+//    e = &s->timed[i];
+//    printf("%lu %lu\n", (*e)->ip, (*e)->time);
+//  }
+
+  /* get */
+  printf("\n");
+  new.ip = first;
+  gettimeofday(&tv, NULL);
+  start = tv.tv_sec * 1000000 + tv.tv_usec;
+  e = qoss_get0(s, &new);
+  gettimeofday(&tv, NULL);
+  printf("get: %lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
+  /* set */
+  new.ip = size;
+  gettimeofday(&tv, NULL);
+  start = tv.tv_sec * 1000000 + tv.tv_usec;
+  qoss_set(s, &new);
+  gettimeofday(&tv, NULL);
+  printf("set: %lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
+
+  qoss_free(s);
   return 0;
 }
