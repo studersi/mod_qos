@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.3 2008-03-20 19:38:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.4 2008-03-20 19:43:03 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,6 +120,10 @@ static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA) {
   }
 }
 
+static void qoss_sort(qos_s_t *s) {
+  qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
+}
+
 int main(int argc, char **argv) {
   int size = 1000000;
   qos_s_entry_t new;
@@ -164,14 +168,24 @@ int main(int argc, char **argv) {
   start = tv.tv_sec * 1000000 + tv.tv_usec;
   e = qoss_get0(s, &new);
   gettimeofday(&tv, NULL);
-  printf("get: %lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
+  printf("get:  %.6lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
   /* set */
   new.ip = size;
   gettimeofday(&tv, NULL);
   start = tv.tv_sec * 1000000 + tv.tv_usec;
   qoss_set(s, &new);
   gettimeofday(&tv, NULL);
-  printf("set: %lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
+  printf("set:  %.6lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
+  /* sort */
+  new.ip = size;
+  gettimeofday(&tv, NULL);
+  start = tv.tv_sec * 1000000 + tv.tv_usec;
+  (*e)->time = time(NULL);
+  qoss_sort(s);
+  gettimeofday(&tv, NULL);
+  printf("sort: %.6lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
+
+
 
   qoss_free(s);
   return 0;
