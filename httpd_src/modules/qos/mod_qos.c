@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.32 2008-03-19 20:52:22 pbuchbinder Exp $";
-static const char g_revision[] = "5.18";
+static const char revision[] = "$Id: mod_qos.c,v 5.33 2008-03-20 20:17:02 pbuchbinder Exp $";
+static const char g_revision[] = "6.0";
 
 /************************************************************************
  * Includes
@@ -94,6 +94,24 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 /************************************************************************
  * structures
  ***********************************************************************/
+
+typedef struct {
+  unsigned long ip;
+  time_t time;
+} qos_s_entry_t;
+
+typedef struct {
+  apr_shm_t *m;
+  char *lock_file;
+  apr_global_mutex_t *lock;
+  /* index */
+  qos_s_entry_t **ipd;
+  qos_s_entry_t **timed;
+  /* size */
+  int num;
+  int max;
+  int msize;
+} qos_s_t;
 
 typedef enum  {
   QS_CONN_STATE_NEW,
@@ -449,6 +467,109 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table)
 }
 
 /**
+ * client ip store qoss_*() functions $$$
+ */
+static int qoss_comp(const void *_pA, const void *_pB) {
+  qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
+  qos_s_entry_t *pB=*(( qos_s_entry_t **)_pB);
+  if(pA->ip > pB->ip) return 1;
+  if(pA->ip < pB->ip) return -1;
+  return 0;
+}
+
+static int qoss_comp_time(const void *_pA, const void *_pB) {
+  qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
+  qos_s_entry_t *pB=*(( qos_s_entry_t **)_pB);
+  if(pA->time > pB->time) return 1;
+  if(pA->time < pB->time) return -1;
+  return 0;
+}
+
+static qos_s_t *qoss_new(apr_pool_t *pool, int size) {
+  apr_shm_t *m;
+  apr_status_t res;
+  int msize = sizeof(qos_s_t) + 
+    (sizeof(qos_s_entry_t) * size) + 
+    (2 * sizeof(qos_s_entry_t *) * size);
+  int i;
+  qos_s_t *s;
+  qos_s_entry_t *e;
+  char *file = apr_psprintf(pool, "%s_cc.mod_qos",
+                            ap_server_root_relative(pool, tmpnam(NULL)));
+  msize = APR_ALIGN_DEFAULT(msize) + 512;
+  ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
+               QOS_LOG_PFX(0)"create shared memory: %d bytes", msize);
+  res = apr_shm_create(&m, msize, file, pool);
+  if(res != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(res, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
+                 QOS_LOG_PFX(002)"could not create c-shared memory: %s (%d)", buf, msize);
+    return NULL;
+  }
+  s = apr_shm_baseaddr_get(m);
+  s->m = m;
+  s->lock_file = apr_psprintf(pool, "%s_ccl.mod_qos", 
+                              ap_server_root_relative(pool, tmpnam(NULL)));
+  res = apr_global_mutex_create(&s->lock, s->lock_file, APR_LOCK_DEFAULT, pool);
+  if(res != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(res, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
+                 QOS_LOG_PFX(004)"could not create c-mutex: %s", buf);
+    apr_shm_destroy(s->m);
+    return NULL;
+  }
+  e = (qos_s_entry_t *)&s[1];
+  s->ipd = (qos_s_entry_t **)&e[size];
+  s->timed = (qos_s_entry_t **)&s->ipd[size];
+  s->num = 0;
+  s->max = size;
+  s->msize = msize;
+  for(i = 0; i < size; i++) {
+    s->ipd[i] = e;
+    s->timed[i] = e;
+    e++;
+  }
+  return s;
+}
+
+static void qoss_free(qos_s_t *s) {
+  if(s->lock) {
+    apr_global_mutex_destroy(s->lock);
+  }
+  if(s->m) {
+    apr_shm_destroy(s->m);
+  }
+}
+
+static qos_s_entry_t **qoss_get0(qos_s_t *s, qos_s_entry_t *pA) {
+  return bsearch((const void *)&pA, (const void *)s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
+}
+
+static void qoss_sort(qos_s_t *s) {
+  qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
+}
+
+static void qoss_set(qos_s_t *s, qos_s_entry_t *pA) {
+  qos_s_entry_t **pB;
+  if(s->num < s->max) {
+    s->num++;
+    pB = &s->timed[0];
+    (*pB)->ip = pA->ip;
+    (*pB)->time = time(NULL);
+    qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
+    qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
+  } else {
+    pB = &s->timed[0];
+    (*pB)->ip = pA->ip;
+    (*pB)->time = time(NULL);
+    qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
+    qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
+  }
+}
+
+/**
  * returns the request id from mod_unique_id (if available)
  */
 static const char *qos_unique_id(request_rec *r, const char *eid) {
@@ -674,11 +795,11 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
   int i;
   u->m_file = apr_psprintf(ppool, "%s_c.mod_qos",
                            ap_server_root_relative(ppool, tmpnam(NULL)));
-  size = APR_ALIGN_DEFAULT(size * sizeof(qs_netstat_t));
+  size = APR_ALIGN_DEFAULT(size * sizeof(qs_netstat_t)) + 512;
   ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
                QOS_LOG_PFX(0)"create shared memory: %d bytes", size);
-  res = apr_shm_create(&u->m, (size + 512), u->m_file, ppool);
-  if (res != APR_SUCCESS) {
+  res = apr_shm_create(&u->m, size, u->m_file, ppool);
+  if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
@@ -689,11 +810,13 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
   u->lock_file = apr_psprintf(ppool, "%s_cl.mod_qos", 
                               ap_server_root_relative(ppool, tmpnam(NULL)));
   res = apr_global_mutex_create(&u->lock, u->lock_file, APR_LOCK_DEFAULT, ppool);
-  if (res != APR_SUCCESS) {
+  if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(004)"could create u-mutex: %s", buf);
+                 QOS_LOG_PFX(004)"could not create u-mutex: %s", buf);
+    apr_shm_destroy(u->m);
+    u->m = NULL;
     u->lock = NULL;
     return !OK;
   }
@@ -805,13 +928,14 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
                              ap_server_root_relative(act->pool, tmpnam(NULL)));
   act->size = APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
-    (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t)));
+    (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
+    512;
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
                QOS_LOG_PFX(0)"%s(%s), create shared memory: %d bytes (r=%d,ip=%d)", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->is_virtual ? "v" : "b", act->size, rule_entries, max_ip);
-  res = apr_shm_create(&act->m, (act->size + 512), act->m_file, act->pool);
-  if (res != APR_SUCCESS) {
+  res = apr_shm_create(&act->m, act->size, act->m_file, act->pool);
+  if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
@@ -2716,7 +2840,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     char buf[MAX_STRING_LEN];
     apr_strerror(rv, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(004)"could create a-mutex: %s", buf);
+                 QOS_LOG_PFX(004)"could not create a-mutex: %s", buf);
     exit(1);
   }
   sconf->is_virtual = s->is_virtual;
