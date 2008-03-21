@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.34 2008-03-20 21:10:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.35 2008-03-21 10:56:09 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -315,6 +315,7 @@ typedef struct {
   int net_prefer_limit;
   qos_s_t *qoss;
   int has_qoss;
+  int qoss_size;
 } qos_srv_config;
 
 /**
@@ -337,6 +338,7 @@ typedef struct {
   qs_acentry_t *entry_cond;
   char *evmsg;
   int is_vip;
+  int deny;
 } qs_req_ctx;
 
 /**
@@ -553,19 +555,19 @@ static void qoss_sort(qos_s_t *s) {
   qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
 }
 
-static void qoss_set(qos_s_t *s, qos_s_entry_t *pA) {
+static void qoss_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
   if(s->num < s->max) {
     s->num++;
     pB = &s->timed[0];
     (*pB)->ip = pA->ip;
-    (*pB)->time = time(NULL);
+    (*pB)->time = now;
     qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
     qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
   } else {
     pB = &s->timed[0];
     (*pB)->ip = pA->ip;
-    (*pB)->time = time(NULL);
+    (*pB)->time = now;
     qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
     qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
   }
@@ -671,7 +673,7 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
                         "invalid magic, id=%s", qos_unique_id(r, "022"));
           return 0;
         }
-        if(s->time < time(NULL) - sconf->max_age) {
+        if(s->time < (apr_time_sec(r->request_time) - sconf->max_age)) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                         QOS_LOG_PFX(023)"session cookie verification failed, "
                         "expired, id=%s", qos_unique_id(r, "023"));
@@ -754,6 +756,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->entry_cond = NULL;
     rctx->evmsg = NULL;
     rctx->is_vip = 0;
+    rctx->deny = 0;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
@@ -1658,7 +1661,7 @@ static void qos_lg_event_update(request_rec *r, time_t *t) {
                                                                 &qos_module);
   qs_actable_t *act = sconf->act;
   if(act->has_events) {
-    time_t now = time(NULL);
+    time_t now = apr_time_sec(r->request_time);
     qs_acentry_t *e = act->entry;
     *t = now;
     if(e) {
@@ -1725,7 +1728,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                                                                 &qos_module);
   server_rec *s = sconf->base_server;
   int i = 0;
-  time_t now = time(NULL);
+  time_t now = apr_time_sec(r->request_time);
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config,
                                                                  &qos_module);
   apr_table_t *qt = qos_get_query_table(r);
@@ -2188,7 +2191,7 @@ static int qos_header_parser(request_rec * r) {
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
-
+    qs_req_ctx *rctx = NULL;
     qos_hp_setenvif(r, sconf);
 
     /* 
@@ -2212,11 +2215,23 @@ static int qos_header_parser(request_rec * r) {
      */
     qos_hp_keepalive(r);
 
-    
     /*
      * QS_EventPerSecLimit
      */
     req_per_sec_block = qos_hp_event_count(r);
+
+    /*
+     * VIP control
+     */
+    if(sconf->header_name) {
+      rctx = qos_rctx_config_get(r);
+      rctx->is_vip = qos_is_vip(r, sconf);
+      if(rctx->is_vip) {
+        qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                                &qos_module);
+        if(cconf) cconf->is_vip = 1;
+      }
+    }
     
     /* get rule with conditional enforcement */
     e_cond = qos_getcondrule_byregex(r, sconf);
@@ -2225,20 +2240,14 @@ static int qos_header_parser(request_rec * r) {
     /* 2th prio has "URL" rule */
     if(!e) e = qos_getrule_bylocation(r, sconf);
     if(e || e_cond) {
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
       const char *error_page = sconf->error_page;
+      if(!rctx) {
+        rctx = qos_rctx_config_get(r);
+      }
       if(r->subprocess_env) {
         const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
         if(v) {
           error_page = v;
-        }
-      }
-      if(sconf->header_name && !rctx->is_vip) {
-        rctx->is_vip = qos_is_vip(r, sconf);
-        if(rctx->is_vip) {
-          qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                                  &qos_module);
-          if(cconf) cconf->is_vip = 1;
         }
       }
       rctx->entry_cond = e_cond;
@@ -2457,7 +2466,7 @@ static int qos_logger(request_rec *r) {
   if(e || e_cond) {
     char *h = apr_psprintf(r->pool, "%d", e->counter);
     if(!now) {
-      now = time(NULL);
+      now = apr_time_sec(r->request_time);
     }
     apr_global_mutex_lock(e->lock);   /* @CRT6 */
     if(e_cond) {
@@ -2860,6 +2869,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->net_prefer = 0;
   sconf->qoss = NULL;
   sconf->has_qoss = 0;
+  sconf->qoss_size = 0;
   if(!s->is_virtual) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table);
     if(msg) {
@@ -2903,6 +2913,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->net_prefer = b->net_prefer;
   o->qoss = b->qoss;
   o->has_qoss = b->has_qoss;
+  o->qoss_size = b->qoss_size;
   /* location rules or connection limit controls conf merger (see index.html) */
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1) ||
