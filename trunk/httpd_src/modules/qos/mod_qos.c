@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.36 2008-03-21 21:58:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.37 2008-03-21 22:52:04 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -1077,15 +1077,6 @@ static qs_ip_entry_t *qos_new_ip(qs_actable_t *act) {
  */
 static int qos_add_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
   int num = 0;
-  cconf->ip = inet_addr(cconf->c->remote_ip); /* v4 */
-#ifdef QS_INTERNAL_TEST
-  /* use one of the predefined ip addresses */
-  if(cconf->sconf->enable_testip) {
-    char *testid = apr_psprintf(p, "%d", rand()%(QS_SIM_IP_LEN-1));
-    const char *testip = apr_table_get(cconf->sconf->testip, testid);
-    cconf->ip = inet_addr(testip);
-  }
-#endif
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT1 */
   {
     qs_ip_entry_t *ipe = cconf->sconf->act->c->ip_tree;
@@ -1737,12 +1728,13 @@ static int qoss_pc_filter(qs_conn_ctx *cconf, qos_user_t *u) {
   if(cconf->sconf->has_qoss) {
     qos_s_entry_t **e = NULL;
     qos_s_entry_t new;
-    new.ip = inet_addr(cconf->c->remote_ip); /* v4 */
+    new.ip = cconf->ip;
     apr_global_mutex_lock(u->qoss->lock);            /* @CRT14 */
     e = qoss_get0(u->qoss, &new);
     if(!e) {
       e = qoss_set(u->qoss, &new, time(NULL));
     }
+    /* $$$ */
     if(cconf->sconf->qoss_prefer) {
       u->qoss->connections++;
     }
@@ -2122,6 +2114,19 @@ static int qos_process_connection(conn_rec * c) {
           break;
         }
       }
+    }
+
+    if((sconf->max_conn_per_ip != -1) ||
+       sconf->has_qoss) {
+      cconf->ip = inet_addr(cconf->c->remote_ip); /* v4 */
+#ifdef QS_INTERNAL_TEST
+      /* use one of the predefined ip addresses */
+      if(cconf->sconf->enable_testip) {
+        char *testid = apr_psprintf(c->pool, "%d", rand()%(QS_SIM_IP_LEN-1));
+        const char *testip = apr_table_get(cconf->sconf->testip, testid);
+        cconf->ip = inet_addr(testip);
+      }
+#endif
     }
 
     if(qoss_pc_filter(cconf, u) != DECLINED) {
