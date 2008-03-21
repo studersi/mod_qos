@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.41 2008-03-17 19:35:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.42 2008-03-21 21:58:47 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -107,6 +107,11 @@ echo "-- vip session, QS_VipHeaderName.htt" >>  logs/error_log
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipHeaderName.htt"
+fi
+./htt.sh -s ./scripts/QS_VipHeaderName2.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_VipHeaderName2.htt"
 fi
 
 # -----------------------------------------------------------------
