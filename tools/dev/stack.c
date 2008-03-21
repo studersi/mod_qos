@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.7 2008-03-21 22:20:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.8 2008-03-21 22:35:42 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -129,7 +129,7 @@ static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA) {
   }
 }
 
-int main(int argc, char **argv) {
+static void speed() {
   int size = 50000;
   qos_s_entry_t new;
   qos_s_t *s = qoss_new(size);
@@ -139,19 +139,9 @@ int main(int argc, char **argv) {
   struct timeval tv;
   long long start;
 
-  printf(">%d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
+  printf("> %d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
   new.ip = 0;
   qoss_set(s, &new);
-//  while(s->max > s->num) {
-//    new.ip = rand()%(size*10);
-//    if(first == 0) {
-//      first = new.ip;
-//    }
-//    e = qoss_get0(s, &new);
-//    if(!e) {
-//      qoss_set(s, &new);
-//    }
-//  }
   for(i = 0; i < size; i++) {
     new.ip = i;
     qoss_set_fast(s, &new);
@@ -160,14 +150,8 @@ int main(int argc, char **argv) {
   new.ip = i;
   qoss_set(s, &new);
   first = 8725;
-//  /* oldest first */
-//  for(i = 0; i < s->max; i++) {
-//    e = &s->timed[i];
-//    printf("%lu %lu\n", (*e)->ip, (*e)->time);
-//  }
 
   /* get */
-  printf("\n");
   new.ip = first;
   gettimeofday(&tv, NULL);
   start = tv.tv_sec * 1000000 + tv.tv_usec;
@@ -189,9 +173,50 @@ int main(int argc, char **argv) {
   qoss_sort(s);
   gettimeofday(&tv, NULL);
   printf("sort: %.6lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
-
-
-
   qoss_free(s);
+}
+
+static void func() {
+  int size = 10;
+  qos_s_entry_t new;
+  qos_s_t *s = qoss_new(size);
+  qos_s_entry_t **e = NULL;
+  int i;
+  unsigned long ar[] = { 1, 5, 6, 7, 8, 9, 10, 100 };
+  printf("> %d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
+  for(i = 0; i < sizeof(ar)/sizeof(unsigned long); i++) {
+    new.ip = ar[i];
+    e = qoss_get0(s, &new);
+    if(!e) {
+      printf("%lu", new.ip); fflush(stdout);
+      sleep(1);
+      qoss_set(s, &new);
+    }
+  }
+  printf("\n");
+  for(i = 0; i < s->max; i++) {
+    e = &s->timed[i];
+    printf("%lu %lu\n", (*e)->ip, (*e)->time);
+  }
+  for(i = 0; i < sizeof(ar)/sizeof(unsigned long); i++) {
+    new.ip = ar[i];
+    e = qoss_get0(s, &new);
+    if(!e) {
+      printf("ERROR %lu", new.ip); fflush(stdout);
+      exit(1);
+    }
+  }
+  /* oldest first */
+  qoss_sort(s);
+  for(i = 0; i < s->max; i++) {
+    e = &s->timed[i];
+    printf("%lu %lu\n", (*e)->ip, (*e)->time);
+  }
+  qoss_free(s);
+}
+
+int main(int argc, char **argv) {
+  func();
+  speed();
   return 0;
 }
