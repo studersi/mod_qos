@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.6 2008-03-20 21:53:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.7 2008-03-21 22:20:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -104,19 +104,18 @@ static void qoss_sort(qos_s_t *s) {
 
 static void qoss_set(qos_s_t *s, qos_s_entry_t *pA) {
   qos_s_entry_t **pB;
+  qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
   if(s->num < s->max) {
     s->num++;
     pB = &s->timed[0];
     (*pB)->ip = pA->ip;
     (*pB)->time = time(NULL);
     qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
-    qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
   } else {
     pB = &s->timed[0];
     (*pB)->ip = pA->ip;
     (*pB)->time = time(NULL);
     qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
-    qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
   }
 }
 
