@@ -622,11 +622,10 @@ cleared after 10 minutes.
 </li>
 <li>
 <code>QS_ClientPrefer</code><br>
-Allows access to VIP clients only when the server has 
-less than 80% of free TCP connections (similar to 
-<code>QS_SrvPreferNet</code> but for individual IP source 
-addresses. Use <code>QS_VipHeaderName</code> directive 
-in order to identify VIP clients.
+Accepts only VIP clients when the server has less than 80% 
+of free TCP connections (similar to <code>QS_SrvPreferNet</code> 
+but for individual IP source addresses). Use 
+<code>QS_VipHeaderName</code> directive in order to identify VIP clients.
 </li>
 </ul>
 

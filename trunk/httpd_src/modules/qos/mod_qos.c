@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.35 2008-03-21 10:56:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.36 2008-03-21 21:58:46 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -101,16 +101,19 @@ typedef struct {
 } qos_s_entry_t;
 
 typedef struct {
-  apr_shm_t *m;
-  char *lock_file;
-  apr_global_mutex_t *lock;
   /* index */
   qos_s_entry_t **ipd;
   qos_s_entry_t **timed;
+  /* shm */
+  apr_shm_t *m;
+  char *lock_file;
+  apr_global_mutex_t *lock;
   /* size */
   int num;
   int max;
   int msize;
+  /* data */
+  int connections;
 } qos_s_t;
 
 typedef enum  {
@@ -274,6 +277,7 @@ typedef struct {
   apr_global_mutex_t *lock;
   int connections;
   qs_netstat_t *netstat;
+  qos_s_t *qoss;
 } qos_user_t;
 
 /**
@@ -313,9 +317,13 @@ typedef struct {
 #endif
   int net_prefer;
   int net_prefer_limit;
-  qos_s_t *qoss;
+  /* client control */
   int has_qoss;
   int qoss_size;
+  int qoss_prefer;
+  int qoss_prefer_limit;
+  int qoss_event;
+  int qoss_block;
 } qos_srv_config;
 
 /**
@@ -471,7 +479,7 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table)
 }
 
 /**
- * client ip store qoss_*() functions $$$
+ * client ip store qoss_*() functions
  */
 static int qoss_comp(const void *_pA, const void *_pB) {
   qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
@@ -551,26 +559,22 @@ static qos_s_entry_t **qoss_get0(qos_s_t *s, qos_s_entry_t *pA) {
   return bsearch((const void *)&pA, (const void *)s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
 }
 
-static void qoss_sort(qos_s_t *s) {
-  qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
-}
-
-static void qoss_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
+static qos_s_entry_t **qoss_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
+  qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
   if(s->num < s->max) {
     s->num++;
     pB = &s->timed[0];
     (*pB)->ip = pA->ip;
     (*pB)->time = now;
     qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
-    qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
   } else {
     pB = &s->timed[0];
     (*pB)->ip = pA->ip;
     (*pB)->time = now;
     qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
-    qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
   }
+  return pB;
 }
 
 /**
@@ -610,12 +614,16 @@ static char *qos_get_remove_cookie(request_rec *r, qos_srv_config* sconf) {
       }
       /* restore cookie header */
       cookie_h = apr_pstrcat(r->pool, cookie_h, p, NULL);
-      if((strncasecmp(cookie_h, "$Version=", strlen("$Version=")) == 0) &&
-         (strlen(cookie_h) <= strlen("$Version=X; "))) {
-        /* nothing left */
+      if(strlen(cookie_h) == 0) {
         apr_table_unset(r->headers_in, "cookie");
       } else {
-        apr_table_set(r->headers_in, "cookie", cookie_h);
+        if((strncasecmp(cookie_h, "$Version=", strlen("$Version=")) == 0) &&
+           (strlen(cookie_h) <= strlen("$Version=X; "))) {
+          /* nothing left */
+          apr_table_unset(r->headers_in, "cookie");
+        } else {
+          apr_table_set(r->headers_in, "cookie", cookie_h);
+        }
       }
       return value;
     }
@@ -860,6 +868,7 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool, int net_prefer) {
   apr_pool_userdata_set(u, QS_USR_SPE, apr_pool_cleanup_null, ppool);
   u->m = NULL;
   u->lock = NULL;
+  u->qoss = NULL;
   if(net_prefer) {
     if(qos_init_netstat(ppool, u) != OK) return NULL;
   }
@@ -908,6 +917,10 @@ static apr_status_t qos_cleanup_shm(void *p) {
     apr_table_addn(u->act_table, this_generation, (char *)act);
   } else {
     qos_destroy_netstat(u);
+    if(u->qoss) {
+      qoss_free(u->qoss);
+      u->qoss = NULL;
+    }
     qos_destroy_act(act);
   }
   return APR_SUCCESS;
@@ -1716,6 +1729,28 @@ static int qos_hp_event_count(request_rec *r) {
   return req_per_sec_block;
 }
 
+/**
+ * client rules as connection handler
+ */
+static int qoss_pc_filter(qs_conn_ctx *cconf, qos_user_t *u) {
+  int ret = DECLINED;
+  if(cconf->sconf->has_qoss) {
+    qos_s_entry_t **e = NULL;
+    qos_s_entry_t new;
+    new.ip = inet_addr(cconf->c->remote_ip); /* v4 */
+    apr_global_mutex_lock(u->qoss->lock);            /* @CRT14 */
+    e = qoss_get0(u->qoss, &new);
+    if(!e) {
+      e = qoss_set(u->qoss, &new, time(NULL));
+    }
+    if(cconf->sconf->qoss_prefer) {
+      u->qoss->connections++;
+    }
+    apr_global_mutex_unlock(u->qoss->lock);          /* @CRT14 */
+  }
+  return ret;
+}
+
 /************************************************************************
  * "public"
  ***********************************************************************/
@@ -1798,6 +1833,36 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         ap_rprintf(r, "<td >%d</td>", sconf->net_prefer_limit);
         ap_rprintf(r, "<td >%d</td>", hc);
         ap_rputs("</tr>\n", r);
+      }
+      if(!s->is_virtual && sconf->has_qoss) {
+        if(sconf->qoss_prefer) {
+          qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+          int hc = -1;
+          int num = 0;
+          int max = 0;
+          ap_rputs("<tr class=\"rowt\">"
+                   "<td colspan=\"6\">client control</td>"
+                   "<td >max</td>"
+                   "<td >limit&nbsp;</td>"
+                   "<td >current&nbsp;</td>", r);
+          ap_rputs("</tr>\n", r);
+          apr_global_mutex_lock(u->qoss->lock);           /* @CRT16 */
+          hc = u->qoss->connections;
+          num = u->qoss->num;
+          max = u->qoss->max;
+          apr_global_mutex_unlock(u->qoss->lock);         /* @CRT18 */
+          ap_rprintf(r, "<!--%d--><tr class=\"rows\">", i);
+          ap_rprintf(r, "<td colspan=\"6\">connections</td>");
+          ap_rprintf(r, "<td >%d</td>", sconf->qoss_prefer);
+          ap_rprintf(r, "<td >%d</td>", sconf->qoss_prefer_limit);
+          ap_rprintf(r, "<td >%d</td>", hc);
+          ap_rprintf(r, "<!--%d--><tr class=\"rows\">", i);
+          ap_rprintf(r, "<td colspan=\"6\">clients in memory</td>");
+          ap_rprintf(r, "<td >%d</td>", max);
+          ap_rprintf(r, "<td >&nbsp</td>");
+          ap_rprintf(r, "<td >%d</td>", num);
+          ap_rputs("</tr>\n", r);
+        }
       }
       /* request level */
       if(sconf && sconf->act) {
@@ -1980,8 +2045,13 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
  */
 static apr_status_t qos_cleanup_conn(void *p) {
   qs_conn_ctx *cconf = p;
+  qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool, 0);
+  if(cconf->sconf->qoss_prefer) {
+    apr_global_mutex_lock(u->qoss->lock);             /* @CRT15 */
+    u->qoss->connections--;
+    apr_global_mutex_unlock(u->qoss->lock);           /* @CRT15 */
+  }
   if(cconf->sconf->net_prefer) {
-    qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool, 0);
     apr_global_mutex_lock(u->lock);                   /* @CRT10 */
     if(u->connections) u->connections--;
     if(u->connections < cconf->sconf->net_prefer_limit) {
@@ -2053,6 +2123,12 @@ static int qos_process_connection(conn_rec * c) {
         }
       }
     }
+
+    if(qoss_pc_filter(cconf, u) != DECLINED) {
+      c->keepalive = AP_CONN_CLOSE;
+      return qos_return_error(c);
+    }
+
     /* update data */
     if(sconf->net_prefer) {
       apr_global_mutex_lock(u->lock);                  /* @CRT9 */
@@ -2552,9 +2628,12 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   server_rec *s = bs->next;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   qs_acentry_t *e = sconf->act->entry;
+  qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
   if(sconf->net_prefer) {
-    qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
     apr_global_mutex_child_init(&u->lock, u->lock_file, sconf->act->ppool);
+  }
+  if(sconf->has_qoss) {
+    apr_global_mutex_child_init(&u->qoss->lock, u->qoss->lock_file, bs->process->pool);
   }
   if(!sconf->act->child_init) {
     sconf->act->child_init = 1;
@@ -2581,21 +2660,30 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_user_t *u;
   int net_prefer = 0;
   int net_prefer_limit = 0;
-  if(sconf->net_prefer) {
-    ap_directive_t *pdir;
-    for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
-      if(strcasecmp(pdir->directive, "MaxClients") == 0) {
-        sconf->net_prefer = atoi(pdir->args);
-      }
+  ap_directive_t *pdir;
+  for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
+    if(strcasecmp(pdir->directive, "MaxClients") == 0) {
+      net_prefer = atoi(pdir->args);
     }
-    if(sconf->net_prefer <= 1) {
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX(007)"could not determine MaxClients");
-      exit(1);
-    }
-    sconf->net_prefer_limit = sconf->net_prefer * 80 / 100;
-    net_prefer = sconf->net_prefer;
-    net_prefer_limit = sconf->net_prefer_limit;
+  }
+  if(net_prefer <= 1) {
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                 QOS_LOG_PFX(007)"could not determine MaxClients");
+  }
+  net_prefer_limit = net_prefer * 80 / 100;
+  if(sconf->net_prefer && net_prefer) {
+    sconf->net_prefer = net_prefer;
+    sconf->net_prefer_limit = net_prefer_limit;
+  } else {
+    sconf->net_prefer = 0;
+    sconf->net_prefer_limit = 0;
+  }
+  if(sconf->qoss_prefer && net_prefer) {
+    sconf->qoss_prefer = net_prefer;
+    sconf->qoss_prefer_limit = net_prefer_limit;
+  } else {
+    sconf->qoss_prefer = 0;
+    sconf->qoss_prefer_limit = 0;
   }
   u = qos_get_user_conf(bs->process->pool, sconf->net_prefer);
   if(u == NULL) return !OK;
@@ -2619,18 +2707,28 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                    he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key, he->text);
     }
   }
+  if(sconf->has_qoss && !u->qoss) {
+    u->qoss = qoss_new(bs->process->pool, sconf->qoss_size);
+    if(u->qoss == NULL) {
+      return !OK;
+    }
+  }
   while(s) {
-    sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    sconf->base_server = bs;
-    sconf->act->timeout = apr_time_sec(s->timeout);
-    sconf->net_prefer = net_prefer;
-    sconf->net_prefer_limit = net_prefer_limit;
-    if(sconf->act->timeout == 0) sconf->act->timeout = 300;
-    if(sconf->is_virtual) {
-      if(qos_init_shm(s, sconf->act, sconf->location_t) != APR_SUCCESS) {
+    qos_srv_config *ssconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    ssconf->base_server = bs;
+    ssconf->act->timeout = apr_time_sec(s->timeout);
+    ssconf->net_prefer = sconf->net_prefer;
+    ssconf->net_prefer_limit = sconf->net_prefer_limit;
+    ssconf->qoss_prefer = sconf->qoss_prefer;
+    ssconf->qoss_prefer_limit = sconf->qoss_prefer_limit;
+    if(ssconf->act->timeout == 0) {
+      ssconf->act->timeout = 300;
+    }
+    if(ssconf->is_virtual) {
+      if(qos_init_shm(s, ssconf->act, ssconf->location_t) != APR_SUCCESS) {
         return !OK;
       }
-      apr_pool_cleanup_register(sconf->pool, sconf->act,
+      apr_pool_cleanup_register(ssconf->pool, ssconf->act,
                                 qos_cleanup_shm, apr_pool_cleanup_null);
     }
     s = s->next;
@@ -2867,9 +2965,12 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->hfilter_table = apr_table_make(p, 1);
   sconf->net_prefer = 0;
-  sconf->qoss = NULL;
   sconf->has_qoss = 0;
-  sconf->qoss_size = 0;
+  sconf->qoss_size = 50000;
+  sconf->qoss_prefer = 0;
+  sconf->qoss_prefer_limit = 0;
+  sconf->qoss_event = 0;
+  sconf->qoss_block = 0;
   if(!s->is_virtual) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table);
     if(msg) {
@@ -2911,9 +3012,12 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   /* base table may contain custom rules */
   o->hfilter_table = b->hfilter_table;
   o->net_prefer = b->net_prefer;
-  o->qoss = b->qoss;
   o->has_qoss = b->has_qoss;
   o->qoss_size = b->qoss_size;
+  o->qoss_prefer = b->qoss_prefer;
+  o->qoss_prefer_limit = b->qoss_prefer_limit;
+  o->qoss_event = b->qoss_event;
+  o->qoss_block = b->qoss_block;
   /* location rules or connection limit controls conf merger (see index.html) */
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1) ||
@@ -3420,6 +3524,18 @@ const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, const char *he
   return NULL;
 }
 
+const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->has_qoss = 1;
+  sconf->qoss_prefer = 1;
+  return NULL;
+}
+
 #ifdef QS_INTERNAL_TEST
 const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -3595,6 +3711,13 @@ static const command_rec qos_config_cmds[] = {
                 " to add custom header filter rules which override the internal"
                 " filter rules of mod_qos."
                 " Directive is allowed in global server context only."),
+  /* client control */
+  AP_INIT_NO_ARGS("QS_ClientPrefer", qos_client_pref_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_ClientPrefer, prefers known VIP clients when server has"
+                  " less than 80% of free TCP connections. Preferred clients"
+                  " are VIP clients only, see QS_VipHeaderName directive."
+                  " Directive is allowed in global server context only."),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                RSRC_CONF,

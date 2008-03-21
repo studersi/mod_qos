@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.65 2008-03-17 19:12:17 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.66 2008-03-21 21:58:47 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -57,10 +57,15 @@ KeepAliveTimeout        5
 
 QS_SrvPreferNet
 QS_SrvConnTimeout       3
+<IfDefine cc>
+QS_ClientPrefer
+</IfDefine>
+
+QS_RequestHeaderFilterRule myheader "^static_content$" deny
+
 <IfDefine real_ip>
 QS_EnableInternalIPSimulation off
 </IfDefine>
-QS_RequestHeaderFilterRule myheader "^static_content$" deny
 
 Options                 FollowSymLinks Indexes Includes
 DefaultType             text/plain
