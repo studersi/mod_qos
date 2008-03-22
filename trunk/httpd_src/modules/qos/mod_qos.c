@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.40 2008-03-22 21:37:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.41 2008-03-22 22:10:41 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -3670,6 +3670,21 @@ const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, const char *he
   return NULL;
 }
 
+const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->qos_cc_size = atoi(arg1);
+  if(sconf->qos_cc_size == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
 const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -3882,6 +3897,11 @@ static const command_rec qos_config_cmds[] = {
                 " filter rules of mod_qos."
                 " Directive is allowed in global server context only."),
   /* client control */
+  AP_INIT_TAKE1("QS_ClientEntries", qos_client_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientEntries <number>, defines the number of individual"
+                " clients managed by mod_qos. Default are 50000"
+                " Directive is allowed in global server context only."),
   AP_INIT_NO_ARGS("QS_ClientPrefer", qos_client_pref_cmd, NULL,
                   RSRC_CONF,
                   "QS_ClientPrefer, prefers known VIP clients when server has"
