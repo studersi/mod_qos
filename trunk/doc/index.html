@@ -617,10 +617,10 @@ per second. Such events are are requests having the
 mod_setenvif.
 </li>
 <li>
-<code>QS_ClientEventBlockCount &lt;number&gt;</code><br>
-Denies access to a client after getting the <code>QS_Block</code> 
-event multiple times (as defined by number). Event counter gets 
-cleared after 10 minutes.
+<code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
+Defines the maximum number of <code>QS_Block</code> allowed 
+within the defined time (default are 10 minutes). Client IP is blocked 
+when reaching this counter for the specifed time.
 </li>
 <li>
 <code>QS_ClientPrefer</code><br>

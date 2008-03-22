@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.43 2008-03-22 19:42:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.44 2008-03-22 21:37:49 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -325,7 +325,7 @@ fi
 
 # -----------------------------------------------------------------
 ./ctl.sh restart -D max_clients -D cc > /dev/null
-echo "-- header filter, QS_ClientPrefer.htt" >>  logs/error_log
+echo "-- QS_ClientPrefer.htt" >>  logs/error_log
 ./htt.sh scripts/Log.htt > /dev/null
 QSTART=`grep -c "mod_qos(063)" logs/error_log`
 echo "run ./scripts/QS_ClientPrefer.htt"
@@ -345,6 +345,15 @@ echo "$QDIFF1 $QDIFF2"
 if [ $QDIFF1 -lt $QDIFF2 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientPrefer.htt"
+fi
+
+# -----------------------------------------------------------------
+./ctl.sh restart -D real_ip > /dev/null
+echo "-- QS_ClientEventBlockCount.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_ClientEventBlockCount.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventBlockCount.htt"
 fi
 
 # -----------------------------------------------------------------
