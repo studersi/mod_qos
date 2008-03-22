@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvPreferNet2.htt,v 1.2 2008-01-28 19:51:34 pbuchbinder Exp $
+# $Id: QS_SrvPreferNet2.htt,v 1.3 2008-03-22 19:46:54 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -16,14 +16,10 @@ END
 
 CLIENT 60
 _SLEEP 1000
-_LOOP 2
 _REQ server1 $QS_PORT_BASE1
 __GET /cgi/sleep.cgi HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
 _WAIT
-
-_SLEEP 100
-_END LOOP
 END
