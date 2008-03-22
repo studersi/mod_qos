@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.38 2008-03-22 13:11:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.39 2008-03-22 19:42:37 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -2214,7 +2214,7 @@ static int qos_process_connection(conn_rec *c) {
     /* client control */
     if((client_control != DECLINED) && !vip) {
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                   QOS_LOG_PFX(060)"access denied, rule: %s",
+                   QOS_LOG_PFX(063)"access denied, rule: %s",
                    msg == NULL ? "-" : msg);
       c->keepalive = AP_CONN_CLOSE;
       return qos_return_error(c);
