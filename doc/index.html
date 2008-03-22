@@ -571,7 +571,9 @@ from very slow clients which do not send the HTTP request data
 mod_qos prefers "known networks" when server has 
 less than 80% of free TCP connections. Preferred networks 
 have VIP clients, see <code>QS_VipHeaderName</code> directive. 
-Netmask is 255.255.240.0 (each net represents 4096 hosts).
+Netmask is 255.255.240.0 (each net represents 4096 hosts). 
+Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are
+excluded from connection restrictions.
 </li>
 </ul>
 
@@ -625,7 +627,10 @@ cleared after 10 minutes.
 Accepts only VIP clients when the server has less than 80% 
 of free TCP connections (similar to <code>QS_SrvPreferNet</code> 
 but for individual IP source addresses). Use 
-<code>QS_VipHeaderName</code> directive in order to identify VIP clients.
+<code>QS_VipHeaderName</code> directive in order 
+to identify VIP clients. 
+Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are
+excluded from connection restrictions.
 </li>
 </ul>
 
@@ -657,6 +662,7 @@ mod_qos(02x):  vip session event
 mod_qos(03x):  connection level event
 mod_qos(04x):  generic filter event
 mod_qos(05x):  bandwidth limitation event
+mod_qos(06x):  client control event
 </pre>
 </td></tr>
 </table>
