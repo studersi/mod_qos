@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.39 2008-03-22 19:42:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.40 2008-03-22 21:37:49 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -99,6 +99,8 @@ typedef struct {
   unsigned long ip;
   time_t time;
   int vip;
+  int block;
+  time_t block_time;
 } qos_s_entry_t;
 
 typedef struct {
@@ -325,6 +327,7 @@ typedef struct {
   int qos_cc_prefer_limit;
   int qos_cc_event;
   int qos_cc_block;
+  int qos_cc_block_time;
 } qos_srv_config;
 
 /**
@@ -562,6 +565,9 @@ static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA) {
 
 static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
+  pA->vip = 0;
+  pA->block = 0;
+  pA->block_time = 0;
   qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qos_cc_comp_time);
   if(s->num < s->max) {
     s->num++;
@@ -1753,6 +1759,49 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
 }
 
 /**
+ * client contol rules at header parser
+ */
+static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg) {
+  int ret = DECLINED;
+  if(sconf->has_qos_cc) {
+    qos_s_entry_t **e = NULL;
+    qos_s_entry_t new;
+    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+    qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+    apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT17 */
+    new.ip = cconf->ip;
+    e = qos_cc_get0(u->qos_cc, &new);
+    if(!e) {
+      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+    }
+    if(sconf->qos_cc_block) {
+      time_t now = apr_time_sec(r->request_time);
+      const char *v = apr_table_get(r->subprocess_env, "QS_Block");
+      if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
+        /* reset expired events */
+        (*e)->block = 0;
+      }
+      if(v) {
+        /* increment block event */
+        (*e)->block++;
+        (*e)->block_time = now;
+      }
+      if((*e)->block >= sconf->qos_cc_block) {
+          *msg = apr_psprintf(cconf->c->pool, 
+                              QOS_LOG_PFX(060)"access denied, rule: "
+                              "block=%d, current=%d, c=%s",
+                              cconf->sconf->qos_cc_block,
+                              (*e)->block,
+                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+          ret = HTTP_FORBIDDEN;
+      }
+    }
+    apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT17 */
+  }
+  return ret;
+}
+
+/**
  * client control rules at process connection handler
  */
 static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
@@ -1765,18 +1814,37 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
     e = qos_cc_get0(u->qos_cc, &new);
     if(!e) {
       e = qos_cc_set(u->qos_cc, &new, time(NULL));
-      (*e)->vip = 0;
     }
-    /* $$$ */
+    /* max connections */
     if(cconf->sconf->qos_cc_prefer) {
       u->qos_cc->connections++;
       if(!(*e)->vip) {
         if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
           *msg = apr_psprintf(cconf->c->pool, 
+                              QOS_LOG_PFX(063)"access denied, rule: "
                               "max=%d, concurrent connections=%d, c=%s",
                               cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
                               cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
           ret = HTTP_FORBIDDEN;
+        }
+      }
+    }
+    /* blocked by event */
+    if(cconf->sconf->qos_cc_block) {
+      if((*e)->block >= cconf->sconf->qos_cc_block) {
+        time_t now = time(NULL);
+        if(((*e)->block_time + cconf->sconf->qos_cc_block_time) > now) {
+          /* still blocking */
+          *msg = apr_psprintf(cconf->c->pool, 
+                              QOS_LOG_PFX(060)"access denied, rule: "
+                              "block=%d, current=%d, c=%s",
+                              cconf->sconf->qos_cc_block,
+                              (*e)->block,
+                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+          ret = HTTP_FORBIDDEN;
+        } else {
+          /* release */
+          (*e)->block = 0;
         }
       }
     }
@@ -2214,7 +2282,7 @@ static int qos_process_connection(conn_rec *c) {
     /* client control */
     if((client_control != DECLINED) && !vip) {
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                   QOS_LOG_PFX(063)"access denied, rule: %s",
+                   "%s",
                    msg == NULL ? "-" : msg);
       c->keepalive = AP_CONN_CLOSE;
       return qos_return_error(c);
@@ -2311,6 +2379,7 @@ static int qos_post_read_request(request_rec * r) {
 static int qos_header_parser(request_rec * r) {
   /* apply rules only to main request (avoid filtering of error documents) */
   if(ap_is_initial_req(r)) {
+    char *msg;
     int req_per_sec_block = 0;
     int status;
     qs_acentry_t *e;
@@ -2359,6 +2428,29 @@ static int qos_header_parser(request_rec * r) {
                                                                 &qos_module);
         if(cconf) cconf->is_vip = 1;
       }
+    }
+
+    /*
+     * client control
+     */
+    if(qos_hp_cc(r, sconf, &msg) != DECLINED) {
+      const char *error_page = sconf->error_page;
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                    "%s", msg == NULL ? "-" : msg);
+      if(!rctx) {
+        rctx = qos_rctx_config_get(r);
+      }
+      if(r->subprocess_env) {
+        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+        if(v) {
+          error_page = v;
+        }
+      }
+      if(error_page) {
+        qos_error_response(r, error_page);
+        return DONE;
+      }
+      return HTTP_INTERNAL_SERVER_ERROR;
     }
     
     /* get rule with conditional enforcement */
@@ -3023,6 +3115,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_prefer_limit = 0;
   sconf->qos_cc_event = 0;
   sconf->qos_cc_block = 0;
+  sconf->qos_cc_block_time = 600;
   if(!s->is_virtual) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table);
     if(msg) {
@@ -3070,6 +3163,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_prefer_limit = b->qos_cc_prefer_limit;
   o->qos_cc_event = b->qos_cc_event;
   o->qos_cc_block = b->qos_cc_block;
+  o->qos_cc_block_time = b->qos_cc_block_time;
   /* location rules or connection limit controls conf merger (see index.html) */
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1) ||
@@ -3588,6 +3682,30 @@ const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg) {
   return NULL;
 }
 
+const char *qos_client_block_cmd(cmd_parms *cmd, void *dcfg, const char *arg1,
+                                 const char *arg2) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->has_qos_cc = 1;
+  sconf->qos_cc_block = atoi(arg1);
+  if(sconf->qos_cc_block == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  if(arg2) {
+    sconf->qos_cc_block_time = atoi(arg2);
+  }
+  if(sconf->qos_cc_block_time == 0) {
+    return apr_psprintf(cmd->pool, "%s: time must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
 #ifdef QS_INTERNAL_TEST
 const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -3770,6 +3888,11 @@ static const command_rec qos_config_cmds[] = {
                   " less than 80% of free TCP connections. Preferred clients"
                   " are VIP clients only, see QS_VipHeaderName directive."
                   " Directive is allowed in global server context only."),
+  AP_INIT_TAKE12("QS_ClientEventBlockCount", qos_client_block_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"
+                 " of QS_Block allowed within the defined time (default are 10 minutes)."
+                 " Directive is allowed in global server context only."),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                RSRC_CONF,

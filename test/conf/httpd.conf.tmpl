@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.67 2008-03-22 19:42:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.68 2008-03-22 21:37:49 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -62,6 +62,7 @@ QS_SrvConnTimeout       3
 <IfDefine cc>
 QS_ClientPrefer
 </IfDefine>
+QS_ClientEventBlockCount 3 10
 
 QS_RequestHeaderFilterRule myheader "^static_content$" deny
 
@@ -166,6 +167,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    #QS_SessionCookieName       mm
    #QS_SessionCookiePath       /x
    QS_SessionKey              12345678
+
+   # -----------------------------------------------------------------
+   # client control
+   # -----------------------------------------------------------------
+   SetEnvIf Referer /block    QS_Block=yes
 
    # -----------------------------------------------------------------
    # connection level control
