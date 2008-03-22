@@ -606,7 +606,7 @@ These directives must only be used in the global server context.
 <code>QS_ClientEntries &lt;number&gt;</code><br>
 Defines the number of individual clients managed by mod_qos. 
 Default are 50'000 concurrent IP addresses. Each client requires 
-about 36 bytes of shared memory on a 32bit system or 72 bytes 
+about 28 bytes of shared memory on a 32bit system or 56 bytes 
 on a 64bit system respectively.
 </li>
 <!--
@@ -620,7 +620,7 @@ mod_setenvif.
 -->
 <li>
 <code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
-Defines the maximum number of <code>QS_Block</code> allowed 
+Defines the maximum number of <code>QS_Block</code> events allowed 
 within the defined time (default are 10 minutes). Client IP is blocked 
 when reaching this counter for the specifed time.
 </li>
@@ -640,8 +640,8 @@ excluded from connection restrictions.
 <tr><td bgcolor="#EBE5E0">
 Sample configuration:<br>
 <pre>
-# don't allow a client IP to access /app/start.html more than
-# 20 times within 10 minutes:
+# don't allow a client IP to access /app/start.html 20 or
+# more times within 10 minutes:
 SetEnvIf     Request_URI /app/start.html          QS_Block=yes
 QS_ClientEventBlockCount                          20
 </pre>
