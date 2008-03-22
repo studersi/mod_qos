@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.41 2008-03-22 22:10:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.42 2008-03-22 22:16:33 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -2161,7 +2161,6 @@ static apr_status_t qos_cleanup_conn(void *p) {
       }
       (*e)->vip = 1;
     }
-    /* $$$ */
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT15 */
   }
   if(cconf->sconf->net_prefer) {
