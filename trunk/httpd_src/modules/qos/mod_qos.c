@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.44 2008-03-23 11:47:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.45 2008-03-23 12:19:42 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -541,6 +541,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, int size) {
   s->num = 0;
   s->max = size;
   s->msize = msize;
+  s->connections = 0;
   for(i = 0; i < size; i++) {
     s->ipd[i] = e;
     s->timed[i] = e;
@@ -1931,6 +1932,47 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       ap_rputs("<tr class=\"rows\">"
                "<td colspan=\"9\"><i>uses base server settings</i></td></tr>\n", r);
     } else {
+      if(!s->is_virtual && sconf->has_qos_cc) {
+        qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+        int num = 0;
+        int max = 0;
+        int hc = -1;
+        apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT16 */
+        hc = u->qos_cc->connections;
+        num = u->qos_cc->num;
+        max = u->qos_cc->max;
+        apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT18 */
+        ap_rputs("<tr class=\"rowt\">"
+                 "<td colspan=\"6\">client control</td>"
+                 "<td >max</td>"
+                 "<td >limit&nbsp;</td>"
+                 "<td >current&nbsp;</td>", r);
+        ap_rputs("</tr>\n", r);
+        ap_rprintf(r, "<tr class=\"rows\">");
+        ap_rprintf(r, "<td colspan=\"6\">clients in memory</td>");
+        ap_rprintf(r, "<td >%d</td>", max);
+        ap_rprintf(r, "<td >&nbsp</td>");
+        ap_rprintf(r, "<td >%d</td>", num);
+        ap_rputs("</tr>\n", r);
+        if(sconf->qos_cc_prefer) {
+          ap_rprintf(r, "<tr class=\"rows\">");
+          ap_rprintf(r, "<td colspan=\"6\">connections</td>");
+          ap_rprintf(r, "<td >%d</td>", sconf->qos_cc_prefer);
+          ap_rprintf(r, "<td >%d</td>", sconf->qos_cc_prefer_limit);
+          ap_rprintf(r, "<td >%d</td>", hc);
+          ap_rputs("</tr>\n", r);
+        }
+        /*
+        if(sconf->qos_cc_block) {
+          ap_rprintf(r, "<tr class=\"rows\">");
+          ap_rprintf(r, "<td colspan=\"6\">block event</td>");
+          ap_rprintf(r, "<td >%d</td>", sconf->qos_cc_block);
+          ap_rprintf(r, "<td >&nbsp</td>");
+          ap_rprintf(r, "<td >%d</td>", blocked);
+          ap_rputs("</tr>\n", r);
+        }
+        */
+      }
       /* max host connections */
       if(!s->is_virtual && sconf->net_prefer) {
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
@@ -1950,36 +1992,6 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         ap_rprintf(r, "<td >%d</td>", sconf->net_prefer_limit);
         ap_rprintf(r, "<td >%d</td>", hc);
         ap_rputs("</tr>\n", r);
-      }
-      if(!s->is_virtual && sconf->has_qos_cc) {
-        if(sconf->qos_cc_prefer) {
-          qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
-          int hc = -1;
-          int num = 0;
-          int max = 0;
-          ap_rputs("<tr class=\"rowt\">"
-                   "<td colspan=\"6\">client control</td>"
-                   "<td >max</td>"
-                   "<td >limit&nbsp;</td>"
-                   "<td >current&nbsp;</td>", r);
-          ap_rputs("</tr>\n", r);
-          apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT16 */
-          hc = u->qos_cc->connections;
-          num = u->qos_cc->num;
-          max = u->qos_cc->max;
-          apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT18 */
-          ap_rprintf(r, "<!--%d--><tr class=\"rows\">", i);
-          ap_rprintf(r, "<td colspan=\"6\">connections</td>");
-          ap_rprintf(r, "<td >%d</td>", sconf->qos_cc_prefer);
-          ap_rprintf(r, "<td >%d</td>", sconf->qos_cc_prefer_limit);
-          ap_rprintf(r, "<td >%d</td>", hc);
-          ap_rprintf(r, "<!--%d--><tr class=\"rows\">", i);
-          ap_rprintf(r, "<td colspan=\"6\">clients in memory</td>");
-          ap_rprintf(r, "<td >%d</td>", max);
-          ap_rprintf(r, "<td >&nbsp</td>");
-          ap_rprintf(r, "<td >%d</td>", num);
-          ap_rputs("</tr>\n", r);
-        }
       }
       /* request level */
       if(sconf && sconf->act) {
