@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.43 2008-03-23 09:29:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.44 2008-03-23 11:47:49 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -1852,6 +1852,21 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
   return ret;
 }
 
+static int qos_has_clienttable(request_rec *r) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                &qos_module);
+  int has = 0;
+  server_rec *s = sconf->base_server;
+  while(s) {
+    sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+    if(sconf->act && sconf->act->c && sconf->act->c->ip_tree) {
+      has = 1;
+    }
+    s = s->next;
+  }
+  return has;
+}
+
 /************************************************************************
  * "public"
  ***********************************************************************/
@@ -1877,15 +1892,16 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
 #ifdef QS_INTERNAL_TEST
   ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE</p>\n", r);
 #endif
-  ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
-             ap_escape_html(r->pool, r->parsed_uri.path));
-  if(!option || (option && !strstr(option, "ip")) ) {
-    ap_rprintf(r, "<input name=\"option\" value=\"show client ip\" type=\"submit\">\n");
-  } else {
-    ap_rprintf(r, "<input name=\"option\" value=\"hide client connections\" type=\"submit\">\n");
+  if(qos_has_clienttable(r)) {
+    ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
+               ap_escape_html(r->pool, r->parsed_uri.path));
+    if(!option || (option && !strstr(option, "ip")) ) {
+      ap_rprintf(r, "<input name=\"option\" value=\"show client ip\" type=\"submit\">\n");
+    } else {
+      ap_rprintf(r, "<input name=\"option\" value=\"hide client connections\" type=\"submit\">\n");
+    }
+    ap_rputs("</form>\n", r);
   }
-  ap_rputs("</form>\n", r);
-
   if(strcmp(r->handler, "qos-viewer") == 0) {
     ap_rputs("<table class=\"btable\"><tbody>\n", r);
     ap_rputs(" <tr class=\"row\"><td>\n", r);
