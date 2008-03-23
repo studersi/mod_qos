@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.18 2008-03-20 20:17:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.19 2008-03-23 10:19:57 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -174,6 +174,9 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_RequestHeaderFilter", QSC_FLT_TYPE, FLAG, ACCESS_CONF, 0, "", "on" },
   { "QS_RequestHeaderFilterRule", QSC_FLT_TYPE, TAKE3, GLOBAL_ONLY|RSRC_CONF, 1, "",
     "header \"^pattern$\" drop" },
+  { "QS_ClientEntries", QSC_REQ_TYPE, TAKE1, GLOBAL_ONLY|RSRC_CONF, 0, "", "50000" },
+  { "QS_ClientPrefer", QSC_CON_TYPE, NO_ARGS, GLOBAL_ONLY|RSRC_CONF, 0, "", "" },
+  { "QS_ClientEventBlockCount", QSC_REQ_TYPE, TAKE12, GLOBAL_ONLY|RSRC_CONF, 0, "", "5 600" },
   { NULL, 0, 0, 0, 0, NULL, NULL }
 };
 
@@ -1258,7 +1261,7 @@ static int qosc_update_line(request_rec *r, qosc_settings_t *settings,
         for(elt = qosc_elts; elt->dir != NULL ; ++elt) {
           const char *found;
           strcpy(cmd, elt->dir);
-          if(elt->args == 0) {
+          if(elt->args == NO_ARGS) {
             cmd[strlen(elt->dir)] = '\0';
           } else {
             cmd[strlen(elt->dir)] = ' ';
@@ -1446,7 +1449,7 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
         for(elt = qosc_elts; elt->dir != NULL ; ++elt) {
           const char *found;
           strcpy(cmd, elt->dir);
-          if(elt->args == 0) {
+          if(elt->args == NO_ARGS) {
             cmd[strlen(elt->dir)] = '\0';
           } else {
             cmd[strlen(elt->dir)] = ' ';
@@ -2761,6 +2764,17 @@ static void qosc_print_input_value_fields(request_rec *r, const qosc_elt_t *elt,
       ap_rprintf(r, "<input name=\"v0\" value=\"%s\" size=\"16\">", ap_escape_html(r->pool, v));
     } else {
       ap_rprintf(r, "<input name=\"v0\" value=\"%s\" size=\"8\">", ap_escape_html(r->pool, v));
+    }
+  } else if(elt->args == TAKE12) {
+    char *e = strchr(v, ' ');
+    if(e) {
+      e[0] = '\0';
+      e++;
+      while(e[0] && (e[0] == ' ')) e++;
+    }
+    ap_rprintf(r, "<input name=\"v0\" value=\"%s\" size=\"16\">", ap_escape_html(r->pool, v));
+    if(e) {
+      ap_rprintf(r, "<input name=\"v1\" value=\"%s\" size=\"8\">", ap_escape_html(r->pool, e));
     }
   } else if(elt->args == TAKE2) {
     char *e = strchr(v, ' ');
