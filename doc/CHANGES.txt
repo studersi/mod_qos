@@ -1,3 +1,11 @@
+Version 6.0
+
+ - mod_qos features per client (IP) control rules.
+
+ - QS_ClientPrefer, prefers known VIP clients.
+
+ - QS_ClientEventBlockCount, blocks clients on events.
+
 Version 5.17
 
  - New directive QS_EventPerSecLimit allows req/sec limitation
