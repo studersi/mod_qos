@@ -458,15 +458,15 @@ variables to a new event type.
 <tr><td bgcolor="#EBE5E0">
 Sample of event rules:<br>
 <pre>
-# mark clients comming from the internal network:
+# marks clients comming from the internal network:
 SetEnvIf     Remote_Addr   "^192\.168\."          QS_Intra
 
-# mark clients neither comming from the internal network
+# marks clients neither comming from the internal network
 # nor are VIP clients as low priority clients:
 QS_SetEnvIf !QS_VipRequest !QS_Intra              QS_LowPrio
 
-# limits the request rate for low priority (not VIP not internal) clients:
-QS_EventPerSecLimit        !QS_LowPrio            100
+# limits the request rate for low priority (neither VIP nor internal) clients:
+QS_EventPerSecLimit        QS_LowPrio             100
 </pre>
 </td></tr>
 </table>
