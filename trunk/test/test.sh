@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.44 2008-03-22 21:37:49 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.45 2008-03-23 21:24:09 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -218,6 +218,12 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
+echo "-- req/sec limit, QS_EventPerSecLimit0.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_EventPerSecLimit0.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_EventPerSecLimit0.htt"
+fi
 echo "-- req/sec limit, QS_EventPerSecLimit.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_EventPerSecLimit.htt
 if [ $? -ne 0 ]; then

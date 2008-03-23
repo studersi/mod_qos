@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.45 2008-03-23 12:19:42 pbuchbinder Exp $";
-static const char g_revision[] = "6.0";
+static const char revision[] = "$Id: mod_qos.c,v 5.46 2008-03-23 21:24:09 pbuchbinder Exp $";
+static const char g_revision[] = "6.1";
 
 /************************************************************************
  * Includes
@@ -1317,6 +1317,7 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sco
  */
 static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
   if(qos_verify_session(r, sconf)) {
+    apr_table_set(r->subprocess_env, "QS_VipRequest", "yes");
     return 1;
   }
   if(r->subprocess_env) {
@@ -1607,9 +1608,26 @@ static void qos_hp_setenvif(request_rec *r, qos_srv_config *sconf) {
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvif_t)->elts;
   for(i = 0; i < apr_table_elts(sconf->setenvif_t)->nelts; i++) {
     qos_setenvif_t *setenvif = (qos_setenvif_t *)entry[i].val;
-    if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
-       apr_table_get(r->subprocess_env, setenvif->variable2)) {
-      apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+    if((setenvif->variable1[0] == '!') && (setenvif->variable2[0] == '!')) {
+      if(!apr_table_get(r->subprocess_env, &setenvif->variable1[1]) &&
+         !apr_table_get(r->subprocess_env, &setenvif->variable2[1])) {
+        apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+      }
+    } else if(setenvif->variable1[0] == '!') {
+      if(!apr_table_get(r->subprocess_env, &setenvif->variable1[1]) &&
+         apr_table_get(r->subprocess_env, setenvif->variable2)) {
+        apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+      }
+    } else if(setenvif->variable2[0] == '!') {
+      if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
+         !apr_table_get(r->subprocess_env, &setenvif->variable2[1])) {
+        apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+      }
+    } else {
+      if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
+         apr_table_get(r->subprocess_env, setenvif->variable2)) {
+        apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+      }
     }
   }
 }
@@ -2416,7 +2434,6 @@ static int qos_header_parser(request_rec * r) {
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
     qs_req_ctx *rctx = NULL;
-    qos_hp_setenvif(r, sconf);
 
     /* 
      * QS_Permit* / QS_Deny* enforcement
@@ -2440,11 +2457,6 @@ static int qos_header_parser(request_rec * r) {
     qos_hp_keepalive(r);
 
     /*
-     * QS_EventPerSecLimit
-     */
-    req_per_sec_block = qos_hp_event_count(r);
-
-    /*
      * VIP control
      */
     if(sconf->header_name) {
@@ -2456,6 +2468,16 @@ static int qos_header_parser(request_rec * r) {
         if(cconf) cconf->is_vip = 1;
       }
     }
+
+    /*
+     * additional variables
+     */
+    qos_hp_setenvif(r, sconf);
+
+    /*
+     * QS_EventPerSecLimit
+     */
+    req_per_sec_block = qos_hp_event_count(r);
 
     /*
      * client control
@@ -3878,7 +3900,7 @@ static const command_rec qos_config_cmds[] = {
                 " by adding a delay to each requests."),
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
                 RSRC_CONF,
-                "QS_SetEnvIf <variable1> <variable1> <variable=value>,"
+                "QS_SetEnvIf [!]<variable1> [!]<variable1> <variable=value>,"
                 " defines the new variable if variable1 AND variable2 are set."),
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,

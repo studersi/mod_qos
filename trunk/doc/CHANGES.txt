@@ -1,3 +1,10 @@
+Version 6.1
+
+ - QS_SetEnvIf supports NOT operator.
+
+ - Sets QS_VipRequest variable when receiving valid session
+   cookie.
+
 Version 6.0
 
  - mod_qos features per client (IP) control rules.

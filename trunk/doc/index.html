@@ -87,7 +87,7 @@ Limitations on the TCP connection level, e.g. the maximum of allowed connections
 a single IP source address or dynamic keep-alive control.
 </li>
 <li type=square>
-Preferes known networks when server runs out of free TCP connections.
+Prefers known networks when server runs out of free TCP connections.
 </li>
 </ul>
 
@@ -279,18 +279,29 @@ life time and its cookie format:
 <code>QS_VipHeaderName &lt;header name&gt;</code><br>
 Defines a HTTP response header which marks a user as a VIP. mod_qos creates 
 a session for this user by setting a cookie. Whenever an application handler 
-sets this response header, the user gets unlimited access to any location. This 
-directive works in conjunction with <code>QS_Loc*</code>, <code>QS_CondLoc*</code> and 
-<code>QS_SrvPreferNet</code> directives. See the <code>QS_Session*</code> 
-directives for further session attribute settings.
+sets this response header (e.g. after successful user authentication), 
+the user gets unlimited access to any location. This directive works in conjunction 
+with <code>QS_Loc*</code>, <code>QS_CondLoc*</code>, <code>QS_ClientPrefer</code>, and 
+<code>QS_SrvPreferNet</code> directives. The <code>QS_ClientPrefer</code> and 
+<code>QS_SrvPreferNet</code> directives store the VIP session information persistent 
+to the data record of the corresponding IP address. All other commands require 
+the mod_qos session cookie to identify subsequent requests comming from the 
+same user. A client request containing a valid mod_qos session cookie gets also 
+the environment variable <code>QS_VipRequest</code> set in the process environment 
+which may be evaluated by rules ignoring VIP client normally, such as the 
+<code>QS_EventPerSecLimit</code> directive. 
+See the <code>QS_Session*</code> directives for further session attribute settings. 
 </li>
 <li>
 <code>QS_SessionTimeout &lt;seconds&gt;</code><br>
-Defines the session life time for a VIP. Default are 3600 seconds.
+Defines the session life time for a VIP. It is only used for session based (cookie) 
+VIP identification (not for IP based). Default are 3600 seconds.
 </li>
 <li>
 <code>QS_SessionCookieName &lt;name&gt;</code><br>
-Defines a custom cookie name. Default is MODQOS.
+A cookie is used to identify requests comming from a user which has 
+been identified as a VIP. This directive defines a custom cookie name 
+for the mod_qos session cookie. Default is MODQOS.
 </li>
 <li>
 <code>QS_SessionCookiePath &lt;path&gt;</code><br>
@@ -338,8 +349,11 @@ QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
 
 <h4>Variables</h4>
 Environment variables are used on a per request level and implement
-additonal control mechanisms. Variables may be set uing mod_setenvif. 
-The following variables may be used:
+additonal control mechanisms. Variables may be set using the standard 
+Apache module mod_setenvif. See also the <code>QS_SetEnvIf</code> 
+directive in order to combine multiple variable to new variables 
+interpreted by mod_qos rules. <br>
+These are the standard mod_qos variables:
 <ul>
 <li>
 <code>QS_VipRequest=yes</code><br>
@@ -386,7 +400,7 @@ SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.ht
 </table>
 
 <h4>Conditional Rules</h4>
-Conditional rules are are only enforced if a the QS_Cond variable matches 
+Conditional rules are are only enforced if a the <code>QS_Cond</code> variable matches 
 the specified pattern.
 <ul>
 <li>
@@ -432,10 +446,11 @@ the requests having the specified variable set (or not set
 if the variable name is prefixed by a "!"). Ignores VIP privileges.
 </li>
 <li>
-<code>QS_SetEnvIf &lt;variable1&gt; &lt;variable2&gt; &lt;variable=value&gt;</code><br>
+<code>QS_SetEnvIf [!]&lt;variable1&gt; &lt;variable2&gt; &lt;variable=value&gt;</code><br>
 Sets the "variable=value" (literal string) if variable1 (literal string) 
 AND variable2 (literal string) are set in the request environment 
-variable list. This is used to combine multiple variables to a new event type.
+variable list (not case sensitive). This is used to combine multiple 
+variables to a new event type.
 </li>
 </ul>
 
@@ -444,10 +459,14 @@ variable list. This is used to combine multiple variables to a new event type.
 Sample of event rules:<br>
 <pre>
 # mark clients comming from the internal network:
-SetEnvIf     Remote_Addr "^192\.168\."            QS_Intra
+SetEnvIf     Remote_Addr   "^192\.168\."          QS_Intra
 
-# limits the request rate for external clients:
-QS_EventPerSecLimit      !QS_Intra                100
+# mark clients neither comming from the internal network
+# nor are VIP clients as low priority clients:
+QS_SetEnvIf !QS_VipRequest !QS_Intra              QS_LowPrio
+
+# limits the request rate for low priority (not VIP not internal) clients:
+QS_EventPerSecLimit        !QS_LowPrio            100
 </pre>
 </td></tr>
 </table>
