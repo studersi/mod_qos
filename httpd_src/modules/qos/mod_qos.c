@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.42 2008-03-22 22:16:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.43 2008-03-23 09:29:17 pbuchbinder Exp $";
 static const char g_revision[] = "6.0";
 
 /************************************************************************
@@ -350,7 +350,6 @@ typedef struct {
   qs_acentry_t *entry_cond;
   char *evmsg;
   int is_vip;
-  int deny;
 } qs_req_ctx;
 
 /**
@@ -514,7 +513,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, int size) {
                             ap_server_root_relative(pool, tmpnam(NULL)));
   msize = APR_ALIGN_DEFAULT(msize) + 512;
   ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
-               QOS_LOG_PFX(0)"create shared memory: %d bytes", msize);
+               QOS_LOG_PFX(000)"create shared memory (client control): %d bytes", msize);
   res = apr_shm_create(&m, msize, file, pool);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
@@ -771,7 +770,6 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->entry_cond = NULL;
     rctx->evmsg = NULL;
     rctx->is_vip = 0;
-    rctx->deny = 0;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
@@ -817,13 +815,13 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
                            ap_server_root_relative(ppool, tmpnam(NULL)));
   size = APR_ALIGN_DEFAULT(size * sizeof(qs_netstat_t)) + 512;
   ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
-               QOS_LOG_PFX(0)"create shared memory: %d bytes", size);
+               QOS_LOG_PFX(000)"create shared memory (network control): %d bytes", size);
   res = apr_shm_create(&u->m, size, u->m_file, ppool);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(002)"could not create shared memory: %s (%d bytes)", buf, size);
+                 QOS_LOG_PFX(002)"could not create n-shared memory: %s (%d bytes)", buf, size);
     u->m = NULL;
     return !OK;
   }
@@ -956,7 +954,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
     512;
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
-               QOS_LOG_PFX(0)"%s(%s), create shared memory: %d bytes (r=%d,ip=%d)", 
+               QOS_LOG_PFX(000)"%s(%s), create shared memory (request control): %d bytes (r=%d,ip=%d)", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->is_virtual ? "v" : "b", act->size, rule_entries, max_ip);
   res = apr_shm_create(&act->m, act->size, act->m_file, act->pool);
@@ -964,7 +962,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(002)"could not create shared memory: %s (%d bytes)", buf, act->size);
+                 QOS_LOG_PFX(002)"could not create r-shared memory: %s (%d bytes)", buf, act->size);
     return res;
   }
   act->c = apr_shm_baseaddr_get(act->m);
@@ -1761,7 +1759,7 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
 /**
  * client contol rules at header parser
  */
-static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg) {
+static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **uid) {
   int ret = DECLINED;
   if(sconf->has_qos_cc) {
     qos_s_entry_t **e = NULL;
@@ -1787,13 +1785,14 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg) {
         (*e)->block_time = now;
       }
       if((*e)->block >= sconf->qos_cc_block) {
-          *msg = apr_psprintf(cconf->c->pool, 
-                              QOS_LOG_PFX(060)"access denied, rule: "
-                              "block=%d, current=%d, c=%s",
-                              cconf->sconf->qos_cc_block,
-                              (*e)->block,
-                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
-          ret = HTTP_FORBIDDEN;
+        *uid = apr_pstrdup(cconf->c->pool, "060");
+        *msg = apr_psprintf(cconf->c->pool, 
+                            QOS_LOG_PFX(060)"access denied, rule: "
+                            "block=%d, current=%d, c=%s",
+                            cconf->sconf->qos_cc_block,
+                            (*e)->block,
+                            cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+        ret = HTTP_FORBIDDEN;
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT17 */
@@ -2379,6 +2378,7 @@ static int qos_header_parser(request_rec * r) {
   /* apply rules only to main request (avoid filtering of error documents) */
   if(ap_is_initial_req(r)) {
     char *msg;
+    char *uid;
     int req_per_sec_block = 0;
     int status;
     qs_acentry_t *e;
@@ -2432,10 +2432,11 @@ static int qos_header_parser(request_rec * r) {
     /*
      * client control
      */
-    if(qos_hp_cc(r, sconf, &msg) != DECLINED) {
+    if(qos_hp_cc(r, sconf, &msg, &uid) != DECLINED) {
       const char *error_page = sconf->error_page;
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                    "%s", msg == NULL ? "-" : msg);
+                    "%s, id=%s", msg == NULL ? "-" : msg,
+                    qos_unique_id(r, uid));
       if(!rctx) {
         rctx = qos_rctx_config_get(r);
       }
@@ -2555,7 +2556,7 @@ static int qos_header_parser(request_rec * r) {
               } else {
                 /* std user */
                 ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                              QOS_LOG_PFX(011)"access denied, rule: %s(%d),"
+                              QOS_LOG_PFX(011)"access denied (conditional), rule: %s(%d),"
                               " concurrent requests=%d,"
                               " c=%s, id=%s",
                               e_cond->url, e_cond->limit, e_cond->counter,
@@ -2846,7 +2847,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     for(i = 0; i < apr_table_elts(sconf->hfilter_table)->nelts; i++) {
       qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
       ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                   QOS_LOG_PFX(0)"header filter rule (%s) %s: %s",
+                   QOS_LOG_PFX(000)"header filter rule (%s) %s: %s",
                    he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key, he->text);
     }
   }
@@ -3119,7 +3120,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table);
     if(msg) {
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX(006)"could compile header filter rules: %s", msg);
+                   QOS_LOG_PFX(006)"could not compile header filter rules: %s", msg);
       exit(1);
     }
   }

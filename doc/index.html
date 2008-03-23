@@ -622,7 +622,7 @@ mod_setenvif.
 <code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
 Defines the maximum number of <code>QS_Block</code> events allowed 
 within the defined time (default are 600 seconds). Client IP is blocked 
-when reaching this counter for the specifed time.
+when reaching this counter for the specifed time (blocked at connection level).
 </li>
 <li>
 <code>QS_ClientPrefer</code><br>
@@ -632,7 +632,8 @@ but for individual IP source addresses). Use
 <code>QS_VipHeaderName</code> directive in order 
 to identify VIP clients. 
 Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are
-excluded from connection restrictions.
+excluded from connection restrictions. Filter is applied 
+on connection level.
 </li>
 </ul>
 
