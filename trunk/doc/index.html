@@ -446,7 +446,7 @@ the requests having the specified variable set (or not set
 if the variable name is prefixed by a "!"). Ignores VIP privileges.
 </li>
 <li>
-<code>QS_SetEnvIf [!]&lt;variable1&gt; &lt;variable2&gt; &lt;variable=value&gt;</code><br>
+<code>QS_SetEnvIf [!]&lt;variable1&gt; [!]&lt;variable2&gt; &lt;variable=value&gt;</code><br>
 Sets the "variable=value" (literal string) if variable1 (literal string) 
 AND variable2 (literal string) are set in the request environment 
 variable list (not case sensitive). This is used to combine multiple 
