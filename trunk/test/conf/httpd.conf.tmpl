@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.69 2008-03-23 21:24:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.70 2008-03-25 21:22:38 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -63,6 +63,7 @@ QS_SrvConnTimeout       3
 QS_ClientPrefer
 </IfDefine>
 QS_ClientEventBlockCount 3 10
+QS_ClientEventPerSecLimit  5
 
 QS_RequestHeaderFilterRule myheader "^static_content$" deny
 
@@ -173,6 +174,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    # client control
    # -----------------------------------------------------------------
    SetEnvIf Referer /block    QS_Block=yes
+   BrowserMatch     qs_cc_eps QS_Event=yes
 
    # -----------------------------------------------------------------
    # connection level control

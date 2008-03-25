@@ -625,18 +625,16 @@ These directives must only be used in the global server context.
 <code>QS_ClientEntries &lt;number&gt;</code><br>
 Defines the number of individual clients managed by mod_qos. 
 Default are 50'000 concurrent IP addresses. Each client requires 
-about 28 bytes of shared memory on a 32bit system or 56 bytes 
+about 44 bytes of shared memory on a 32bit system or 88 bytes 
 on a 64bit system respectively.
 </li>
-<!--
 <li>
 <code>QS_ClientEventPerSecLimit &lt;number&gt;</code><br>
 Defines how often a client may cause a <code>QS_Event</code> 
 per second. Such events are are requests having the 
 <code>QS_Event</code> variable set, e.g. defined by 
-mod_setenvif or using the <code>QS_SetEnvIf</code> directive..
+mod_setenvif or using the <code>QS_SetEnvIf</code> directive.
 </li>
--->
 <li>
 <code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
 Defines the maximum number of <code>QS_Block</code> events allowed 
