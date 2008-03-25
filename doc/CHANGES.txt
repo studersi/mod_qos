@@ -1,3 +1,7 @@
+Version 6.2
+
+ - New command: QS_ClientEventPerSecLimit.
+
 Version 6.1
 
  - QS_SetEnvIf supports NOT operator.

@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.47 2008-03-23 21:40:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.48 2008-03-25 21:22:37 pbuchbinder Exp $";
 static const char g_revision[] = "6.2";
 
 /************************************************************************
@@ -97,10 +97,17 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 typedef struct {
   unsigned long ip;
-  time_t time;
+  /* prefer */
   int vip;
+  /* ev block */
+  time_t time;
   int block;
   time_t block_time;
+  /* ev/sec */
+  time_t interval;
+  long req;
+  long req_per_sec;
+  int req_per_sec_block_rate;
 } qos_s_entry_t;
 
 typedef struct {
@@ -568,6 +575,10 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   pA->vip = 0;
   pA->block = 0;
   pA->block_time = 0;
+  pA->interval = now;
+  pA->req = 0;
+  pA->req_per_sec = 0;
+  pA->req_per_sec_block_rate = 0;
   qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qos_cc_comp_time);
   if(s->num < s->max) {
     s->num++;
@@ -1781,6 +1792,7 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
 static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **uid) {
   int ret = DECLINED;
   if(sconf->has_qos_cc) {
+    int req_per_sec_block_rate = 0;
     qos_s_entry_t **e = NULL;
     qos_s_entry_t new;
     qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
@@ -1790,6 +1802,46 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     e = qos_cc_get0(u->qos_cc, &new);
     if(!e) {
       e = qos_cc_set(u->qos_cc, &new, time(NULL));
+    }
+    if(sconf->qos_cc_event) {
+      time_t now = apr_time_sec(r->request_time);
+      const char *v = apr_table_get(r->subprocess_env, "QS_Event");
+      if(v) {
+        (*e)->req++;
+        if(now > (*e)->interval + 10) {
+          /* calc req/sec */
+          (*e)->req_per_sec = (*e)->req / (now - (*e)->interval);
+          (*e)->req = 0;
+          (*e)->interval = now;
+          /* calc block rate */
+          if((*e)->req_per_sec > sconf->qos_cc_event) {
+            int factor = (((*e)->req_per_sec * 100) / sconf->qos_cc_event) - 100;
+            (*e)->req_per_sec_block_rate = (*e)->req_per_sec_block_rate + factor;
+            if((*e)->req_per_sec_block_rate > QS_MAX_DELAY) {
+              (*e)->req_per_sec_block_rate = QS_MAX_DELAY;
+            }
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                          QOS_LOG_PFX(061)"request rate limit, rule: QS_Event(%d), req/sec=%ld,"
+                          " delay=%dms%s",
+                          sconf->qos_cc_event,
+                          (*e)->req_per_sec, (*e)->req_per_sec_block_rate,
+                          (*e)->req_per_sec_block_rate == QS_MAX_DELAY ? " (max)" : "");
+          } else if((*e)->req_per_sec_block_rate > 0) {
+            if((*e)->req_per_sec_block_rate < 50) {
+              (*e)->req_per_sec_block_rate = 0;
+            } else {
+              int factor = (*e)->req_per_sec_block_rate / 6;
+              (*e)->req_per_sec_block_rate = (*e)->req_per_sec_block_rate - factor;
+            }
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                          QOS_LOG_PFX(062)"request rate limit, rule: QS_Event(%d), req/sec=%ld,"
+                          " delay=%dms",
+                          sconf->qos_cc_event,
+                          (*e)->req_per_sec, (*e)->req_per_sec_block_rate);
+          }
+        }
+        req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
+      }
     }
     if(sconf->qos_cc_block) {
       time_t now = apr_time_sec(r->request_time);
@@ -1815,6 +1867,16 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT17 */
+    if(req_per_sec_block_rate) {
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      int sec = req_per_sec_block_rate / 1000;
+      int nsec = req_per_sec_block_rate % 1000;
+      struct timespec delay;
+      rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+      delay.tv_sec  = sec;
+      delay.tv_nsec = nsec * 1000000;
+      nanosleep(&delay,NULL);
+    }
   }
   return ret;
 }
@@ -2496,6 +2558,7 @@ static int qos_header_parser(request_rec * r) {
           error_page = v;
         }
       }
+      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
       if(error_page) {
         qos_error_response(r, error_page);
         return DONE;
@@ -3771,6 +3834,22 @@ const char *qos_client_block_cmd(cmd_parms *cmd, void *dcfg, const char *arg1,
   return NULL;
 }
 
+const char *qos_client_event_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->has_qos_cc = 1;
+  sconf->qos_cc_event = atoi(arg1);
+  if(sconf->qos_cc_event == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
 #ifdef QS_INTERNAL_TEST
 const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -3963,6 +4042,13 @@ static const command_rec qos_config_cmds[] = {
                  "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"
                  " of QS_Block allowed within the defined time (default are 10 minutes)."
                  " Directive is allowed in global server context only."),
+  AP_INIT_TAKE1("QS_ClientEventPerSecLimit", qos_client_event_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientEventPerSecLimit <number>, defines the number"
+                " events pro seconds on a per client (source IP) basis."
+                " Events are identified by requests having the"
+                " QS_Event variable set."
+                " Directive is allowed in global server context only."),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                RSRC_CONF,

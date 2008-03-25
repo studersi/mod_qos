@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.45 2008-03-23 21:24:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.46 2008-03-25 21:22:38 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -353,13 +353,50 @@ if [ $QDIFF1 -lt $QDIFF2 ]; then
     echo "FAILED QS_ClientPrefer.htt"
 fi
 
-# -----------------------------------------------------------------
+# - real ip -------------------------------------------------------
 ./ctl.sh restart -D real_ip > /dev/null
 echo "-- QS_ClientEventBlockCount.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_ClientEventBlockCount.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventBlockCount.htt"
+fi
+sleep 3
+SEC=`date '+%S'`
+MIN=`date '+%M'`
+MINM=`expr $MIN '*' 60`
+TM=`expr $MINM + $SEC`
+echo "-- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_ClientEventPerSecLimit.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventPerSecLimit.htt"
+fi
+SEC=`date '+%S'`
+MIN=`date '+%M'`
+MINM=`expr $MIN '*' 60`
+TM2=`expr $MINM + $SEC`
+TMD=`expr $TM2 - $TM`
+echo "$TMD"
+if [ $TMD -lt 30 ]; then
+    echo "WARNING: QS_ClientEventPerSecLimit.htt was to fast"
+fi
+./htt.sh -s ./scripts/QS_ClientEventPerSecLimit_t.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventPerSecLimit_t.htt"
+fi
+./ctl.sh restart > /dev/null
+echo "-- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_ClientEventPerSecLimit.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventPerSecLimit.htt"
+fi
+./htt.sh -s ./scripts/QS_ClientEventPerSecLimit_t2.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventPerSecLimit_t2.htt"
 fi
 
 # -----------------------------------------------------------------
