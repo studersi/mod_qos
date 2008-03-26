@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.48 2008-03-25 21:22:37 pbuchbinder Exp $";
-static const char g_revision[] = "6.2";
+static const char revision[] = "$Id: mod_qos.c,v 5.49 2008-03-26 19:03:08 pbuchbinder Exp $";
+static const char g_revision[] = "6.3";
 
 /************************************************************************
  * Includes
@@ -486,6 +486,14 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table)
     apr_pool_cleanup_register(pool, he->pcre, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   }
   return NULL;
+}
+
+static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
+  if(type == QS_DENY_REQUEST_LINE) return apr_pstrdup(pool, "QS_DenyRequestLine");
+  if(type == QS_DENY_PATH) return apr_pstrdup(pool, "QS_DenyPath");
+  if(type == QS_DENY_QUERY) return apr_pstrdup(pool, "QS_DenyQuery");
+  if(type == QS_PERMIT_URI) return apr_pstrdup(pool, "QS_PermitUri");
+  return apr_pstrdup(pool, "UNKNOWN");
 }
 
 /**
@@ -1455,7 +1463,9 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
       }
       if(deny_rule && (ex == 0)) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(040)"access denied, rule id: %s (%s), action=%s, c=%s, id=%s",
+                      QOS_LOG_PFX(040)"access denied, %s rule id: %s (%s),"
+                      " action=%s, c=%s, id=%s",
+                      qos_rfilter_type2text(r->pool, rfilter->type),
                       rfilter->id,
                       rfilter->text, rfilter->action == QS_DENY ? "deny" : "log only",
                       r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
@@ -1858,8 +1868,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       if((*e)->block >= sconf->qos_cc_block) {
         *uid = apr_pstrdup(cconf->c->pool, "060");
         *msg = apr_psprintf(cconf->c->pool, 
-                            QOS_LOG_PFX(060)"access denied, rule: "
-                            "block=%d, current=%d, c=%s",
+                            QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
+                            "max=%d, current=%d, c=%s",
                             cconf->sconf->qos_cc_block,
                             (*e)->block,
                             cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
@@ -1901,7 +1911,7 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
       if(!(*e)->vip) {
         if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
           *msg = apr_psprintf(cconf->c->pool, 
-                              QOS_LOG_PFX(063)"access denied, rule: "
+                              QOS_LOG_PFX(063)"access denied, QS_ClientPrefer rule: "
                               "max=%d, concurrent connections=%d, c=%s",
                               cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
                               cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
@@ -1916,8 +1926,8 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
         if(((*e)->block_time + cconf->sconf->qos_cc_block_time) > now) {
           /* still blocking */
           *msg = apr_psprintf(cconf->c->pool, 
-                              QOS_LOG_PFX(060)"access denied, rule: "
-                              "block=%d, current=%d, c=%s",
+                              QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
+                              "max=%d, current=%d, c=%s",
                               cconf->sconf->qos_cc_block,
                               (*e)->block,
                               cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
@@ -2397,8 +2407,9 @@ static int qos_process_connection(conn_rec *c) {
     if((sconf->max_conn != -1) && !vip) {
       if(connections > sconf->max_conn) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                     QOS_LOG_PFX(030)"access denied, rule: max=%d, concurrent connections=%d, "
-                     "c=%s",
+                     QOS_LOG_PFX(030)"access denied, QS_SrvMaxConn rule: max=%d,"
+                     " concurrent connections=%d,"
+                     " c=%s",
                      sconf->max_conn, connections,
                      c->remote_ip == NULL ? "-" : c->remote_ip);
         c->keepalive = AP_CONN_CLOSE;
@@ -2409,8 +2420,9 @@ static int qos_process_connection(conn_rec *c) {
     if((sconf->max_conn_per_ip != -1) && !vip) {
       if(current > sconf->max_conn_per_ip) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                     QOS_LOG_PFX(031)"access denied, rule: max_ip=%d, concurrent connections=%d, "
-                     "c=%s",
+                     QOS_LOG_PFX(031)"access denied, QS_SrvMaxConnPerIP rule: max=%d,"
+                     " concurrent connections=%d,"
+                     " c=%s",
                      sconf->max_conn_per_ip, current,
                      c->remote_ip == NULL ? "-" : c->remote_ip);
         c->keepalive = AP_CONN_CLOSE;
@@ -2425,8 +2437,9 @@ static int qos_process_connection(conn_rec *c) {
         if(u->netstat[net].vip == 0) {
           /* not a vip net */
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                       QOS_LOG_PFX(033)"access denied, rule: prefer=%d, concurrent connections=%d, "
-                       "c=%s",
+                       QOS_LOG_PFX(033)"access denied, QS_SrvPreferNet rule: max=%d,"
+                       " concurrent connections=%d,"
+                       " c=%s",
                        sconf->net_prefer_limit, net_connections,
                        c->remote_ip == NULL ? "-" : c->remote_ip);
           c->keepalive = AP_CONN_CLOSE;
@@ -2611,8 +2624,9 @@ static int qos_header_parser(request_rec * r) {
           } else {
             /* std user */
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOS_LOG_PFX(010)"access denied, rule: %s(%d), concurrent requests=%d, "
-                          "c=%s, id=%s",
+                          QOS_LOG_PFX(010)"access denied, QS_LocRequestLimit* rule: %s(%d),"
+                          " concurrent requests=%d,"
+                          " c=%s, id=%s",
                           e->url, e->limit, e->counter,
                           r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                           qos_unique_id(r, "010"));
@@ -2669,7 +2683,8 @@ static int qos_header_parser(request_rec * r) {
               } else {
                 /* std user */
                 ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                              QOS_LOG_PFX(011)"access denied (conditional), rule: %s(%d),"
+                              QOS_LOG_PFX(011)"access denied, QS_CondLocRequestLimitMatch"
+                              " rule: %s(%d),"
                               " concurrent requests=%d,"
                               " c=%s, id=%s",
                               e_cond->url, e_cond->limit, e_cond->counter,
@@ -2719,7 +2734,8 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     int qti = apr_time_sec(inctx->qt);
     f->c->base_server->timeout = inctx->server_timeout;
     ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
-                 QOS_LOG_PFX(032)"connection timeout, rule: %d sec inital timeout, c=%s",
+                 QOS_LOG_PFX(032)"connection timeout, QS_SrvConnTimeout"
+                 " rule: %d sec inital timeout, c=%s",
                  qti,
                  f->c->remote_ip == NULL ? "-" : f->c->remote_ip);
   }

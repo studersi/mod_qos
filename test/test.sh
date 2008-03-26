@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.46 2008-03-25 21:22:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.47 2008-03-26 19:03:08 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -40,6 +40,7 @@ QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 ./generate.sh
 
 ERRORS=0
+WARNINGS=0
 
 # delete the access log file since it is used to generate permit rules
 rm -f logs/access1_log
@@ -362,24 +363,11 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_ClientEventBlockCount.htt"
 fi
 sleep 3
-SEC=`date '+%S'`
-MIN=`date '+%M'`
-MINM=`expr $MIN '*' 60`
-TM=`expr $MINM + $SEC`
 echo "-- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_ClientEventPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventPerSecLimit.htt"
-fi
-SEC=`date '+%S'`
-MIN=`date '+%M'`
-MINM=`expr $MIN '*' 60`
-TM2=`expr $MINM + $SEC`
-TMD=`expr $TM2 - $TM`
-echo "$TMD"
-if [ $TMD -lt 30 ]; then
-    echo "WARNING: QS_ClientEventPerSecLimit.htt was to fast"
 fi
 ./htt.sh -s ./scripts/QS_ClientEventPerSecLimit_t.htt
 if [ $? -ne 0 ]; then
@@ -401,6 +389,19 @@ fi
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
+
+for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062"`; do
+    C=`grep -c $E logs/error_log`
+    C1=`grep -c $E logs/error1_log`
+    if [ $C -eq 0 -a $C1 -eq 0 ]; then
+        WARNINGS=`expr $WARNINGS + 1`
+	echo "WARNING: missing message $E $C $C1"
+    fi
+done
+
+if [ $WARNINGS -ne 0 ]; then
+    echo "ERROR: got $WARNINGS warnings"
+fi
 
 if [ $ERRORS -ne 0 ]; then
     echo "ERROR: end with $ERRORS errors"
