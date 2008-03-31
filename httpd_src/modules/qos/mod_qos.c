@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.50 2008-03-31 20:23:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.51 2008-03-31 20:28:47 pbuchbinder Exp $";
 static const char g_revision[] = "6.3";
 
 /************************************************************************
@@ -2484,7 +2484,8 @@ static int qos_post_read_request(request_rec * r) {
         if(inctx->status == QS_CONN_STATE_HEAD) {
           /* clear short timeout */
           apr_socket_timeout_set(inctx->client_socket, inctx->at);
-          inctx->status = QS_CONN_STATE_BODY;
+          // inctx->status = QS_CONN_STATE_BODY;
+          inctx->status = QS_CONN_STATE_END;
           r->connection->base_server->timeout = inctx->server_timeout;
         }
         break;
@@ -2733,7 +2734,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   apr_status_t rv;
   qos_ifctx_t *inctx = f->ctx;
   rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
-  if((rv == APR_TIMEUP) && (inctx->status < QS_CONN_STATE_END)) {
+  if((rv == APR_TIMEUP) && inctx->status && (inctx->status < QS_CONN_STATE_END)) {
     int qti = apr_time_sec(inctx->qt);
     f->c->base_server->timeout = inctx->server_timeout;
     ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
