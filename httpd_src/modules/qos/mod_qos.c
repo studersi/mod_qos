@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.49 2008-03-26 19:03:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.50 2008-03-31 20:23:48 pbuchbinder Exp $";
 static const char g_revision[] = "6.3";
 
 /************************************************************************
@@ -127,8 +127,9 @@ typedef struct {
 } qos_s_t;
 
 typedef enum  {
-  QS_CONN_STATE_NEW,
-  QS_CONN_STATE_SHORT,
+  QS_CONN_STATE_NEW = 0,
+  QS_CONN_STATE_HEAD,
+  QS_CONN_STATE_BODY,
   QS_CONN_STATE_END
 } qs_conn_state_e;
 
@@ -176,6 +177,7 @@ typedef struct {
   apr_interval_time_t qt;
   apr_interval_time_t server_timeout;
   qs_conn_state_e status;
+  conn_rec *c;
 } qos_ifctx_t;
 
 /**
@@ -1780,7 +1782,7 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
             server_rec *sc;
             /* set short timeout */
             apr_socket_timeout_set(inctx->client_socket, inctx->qt);
-            inctx->status = QS_CONN_STATE_SHORT;
+            inctx->status = QS_CONN_STATE_HEAD;
             /* make change "persisten" till we got the whole request
                line and headers (again, ugly but it works) */
             inctx->server_timeout = c->base_server->timeout;
@@ -2454,7 +2456,7 @@ static int qos_process_connection(conn_rec *c) {
 /**
  * pre connection, constructs the connection ctx (stores socket ref)
  */
-static int qos_pre_connection(conn_rec * c, void *skt) {
+static int qos_pre_connection(conn_rec *c, void *skt) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                 &qos_module);
   if(sconf && (sconf->connect_timeout != -1)) {
@@ -2462,6 +2464,7 @@ static int qos_pre_connection(conn_rec * c, void *skt) {
     inctx->client_socket = skt;
     inctx->status = QS_CONN_STATE_NEW;
     inctx->qt = apr_time_from_sec(sconf->connect_timeout);
+    inctx->c = c;
     ap_add_input_filter("qos-in-filter", inctx, NULL, c);
   }
   return DECLINED;
@@ -2478,10 +2481,10 @@ static int qos_post_read_request(request_rec * r) {
     while(f) {
       if(strcmp(f->frec->name, "qos-in-filter") == 0) {
         qos_ifctx_t *inctx = f->ctx;
-        if(inctx->status == QS_CONN_STATE_SHORT) {
+        if(inctx->status == QS_CONN_STATE_HEAD) {
           /* clear short timeout */
           apr_socket_timeout_set(inctx->client_socket, inctx->at);
-          inctx->status = QS_CONN_STATE_END;
+          inctx->status = QS_CONN_STATE_BODY;
           r->connection->base_server->timeout = inctx->server_timeout;
         }
         break;
@@ -2730,7 +2733,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   apr_status_t rv;
   qos_ifctx_t *inctx = f->ctx;
   rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
-  if((rv == APR_TIMEUP) && (inctx->status == QS_CONN_STATE_SHORT)) {
+  if((rv == APR_TIMEUP) && (inctx->status < QS_CONN_STATE_END)) {
     int qti = apr_time_sec(inctx->qt);
     f->c->base_server->timeout = inctx->server_timeout;
     ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
