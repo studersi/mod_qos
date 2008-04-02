@@ -272,8 +272,8 @@ a request is denied.
 </li>
 </ul>
 
-Additional directives are used to identify VIP's and to control the session 
-life time and its cookie format:
+Additional directives are used to identify VIP's (very important persons) 
+and to control the session life time and its cookie format:
 <ul>
 <li>
 <code>QS_VipHeaderName &lt;header name&gt;</code><br>
@@ -288,9 +288,15 @@ to the data record of the corresponding IP address. All other commands require
 the mod_qos session cookie to identify subsequent requests comming from the 
 same user. A client request containing a valid mod_qos session cookie gets also 
 the environment variable <code>QS_VipRequest</code> set in the process environment 
-which may be evaluated by rules ignoring VIP client normally, such as the 
+which may be evaluated by rules ignoring VIP status client normally, such as the 
 <code>QS_EventPerSecLimit</code> directive. 
 See the <code>QS_Session*</code> directives for further session attribute settings. 
+</li>
+<li>
+<code>QS_VipIPHeaderName &lt;header name&gt;</code><br>
+Defines a HTTP response header which marks a client source IP address as a VIP. 
+This header may be used in conjunction with the <code>QS_ClientPrefer</code>, and 
+<code>QS_SrvPreferNet</code> directives only.
 </li>
 <li>
 <code>QS_SessionTimeout &lt;seconds&gt;</code><br>
@@ -443,7 +449,8 @@ environment variable on a request per seconds level and tries to
 limit this occurence to the defined number. It works similar 
 as <code>QS_LocRequestPerSecLimit</code> does but counts only 
 the requests having the specified variable set (or not set 
-if the variable name is prefixed by a "!"). Ignores VIP privileges.
+if the variable name is prefixed by a "!"). Ignores VIP privileges 
+normally but you may evaluate the <code>QS_VipRequest</code> variable.
 </li>
 <li>
 <code>QS_SetEnvIf [!]&lt;variable1&gt; [!]&lt;variable2&gt; &lt;variable=value&gt;</code><br>
@@ -480,7 +487,7 @@ to sub locations. If a rule should not be active for a sub location, the
 very same rule must be defined but using a '-' prefix at the rule id. 
 The filter rules are implemented as perl compatible regular expressions 
 (pcre) and are applied to the decoded url components (un-escaped characters, 
-e.g. %20 is a space).
+e.g. %20 is a space). The generic request filer ignores the VIP status or a client.
 <ul>
 <li>
 <code>QS_DenyRequestLine '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
@@ -633,13 +640,17 @@ on a 64bit system respectively.
 Defines how often a client may cause a <code>QS_Event</code> 
 per second. Such events are are requests having the 
 <code>QS_Event</code> variable set, e.g. defined by 
-mod_setenvif or using the <code>QS_SetEnvIf</code> directive.
+mod_setenvif or using the <code>QS_SetEnvIf</code> directive. 
+Ignores VIP status by default but you may use the 
+<code>QS_VipRequest</code> variable to detect VIP clients.
 </li>
 <li>
 <code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
 Defines the maximum number of <code>QS_Block</code> events allowed 
 within the defined time (default are 600 seconds). Client IP is blocked 
-when reaching this counter for the specifed time (blocked at connection level).
+when reaching this counter for the specifed time (blocked at connection level). 
+Ignores VIP status by default but you may use the 
+<code>QS_VipRequest</code> variable to detect VIP clients.
 </li>
 <li>
 <code>QS_ClientPrefer</code><br>
