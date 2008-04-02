@@ -1,4 +1,7 @@
-Version 6.X
+Version 6.3
+
+ - New directive QS_VipIPHeaderName to mark clients (IP)
+   without providing them full VIP privileges.
 
  - Add details to log messages.
 
