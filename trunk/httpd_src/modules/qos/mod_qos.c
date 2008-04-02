@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.51 2008-03-31 20:28:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.52 2008-04-02 18:28:23 pbuchbinder Exp $";
 static const char g_revision[] = "6.3";
 
 /************************************************************************
@@ -317,6 +317,7 @@ typedef struct {
   int max_age;
   unsigned char key[EVP_MAX_KEY_LENGTH];
   char *header_name;
+  char *ip_header_name;
   int max_conn;
   int max_conn_close;
   int max_conn_per_ip;
@@ -2482,10 +2483,10 @@ static int qos_post_read_request(request_rec * r) {
       if(strcmp(f->frec->name, "qos-in-filter") == 0) {
         qos_ifctx_t *inctx = f->ctx;
         if(inctx->status == QS_CONN_STATE_HEAD) {
-          /* clear short timeout */
-          apr_socket_timeout_set(inctx->client_socket, inctx->at);
           // inctx->status = QS_CONN_STATE_BODY;
           inctx->status = QS_CONN_STATE_END;
+          /* clear short timeout */
+          apr_socket_timeout_set(inctx->client_socket, inctx->at);
           r->connection->base_server->timeout = inctx->server_timeout;
         }
         break;
@@ -2734,14 +2735,16 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   apr_status_t rv;
   qos_ifctx_t *inctx = f->ctx;
   rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
-  if((rv == APR_TIMEUP) && inctx->status && (inctx->status < QS_CONN_STATE_END)) {
-    int qti = apr_time_sec(inctx->qt);
-    f->c->base_server->timeout = inctx->server_timeout;
-    ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
-                 QOS_LOG_PFX(032)"connection timeout, QS_SrvConnTimeout"
-                 " rule: %d sec inital timeout, c=%s",
-                 qti,
-                 f->c->remote_ip == NULL ? "-" : f->c->remote_ip);
+  if(inctx->status > QS_CONN_STATE_NEW) {
+    if((rv == APR_TIMEUP) && inctx->status && (inctx->status < QS_CONN_STATE_END)) {
+      int qti = apr_time_sec(inctx->qt);
+      f->c->base_server->timeout = inctx->server_timeout;
+      ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
+                   QOS_LOG_PFX(032)"connection timeout, QS_SrvConnTimeout"
+                   " rule: %d sec inital timeout, c=%s",
+                   qti,
+                   f->c->remote_ip == NULL ? "-" : f->c->remote_ip);
+    }
   }
   return rv;
 }
@@ -2778,16 +2781,31 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
 static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  if(sconf->ip_header_name) {
+    const char *ctrl_h = apr_table_get(r->headers_out, sconf->ip_header_name);
+    if(ctrl_h) {
+      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                              &qos_module);
+      if(cconf) {
+        cconf->is_vip = 1;
+        cconf->is_vip_by_header = 1;
+      }
+      apr_table_unset(r->headers_out, sconf->ip_header_name);
+    }
+  }
   if(sconf->header_name) {
     /* got a vip header: create new session (if non exists) */
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->header_name);
     if(ctrl_h && !apr_table_get(r->notes, QS_REC_COOKIE)) {
-      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                              &qos_module);
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       qos_set_session(r, sconf);
       rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
-      cconf->is_vip = 1;
-      cconf->is_vip_by_header = 1;
+      if(cconf) {
+        cconf->is_vip = 1;
+        cconf->is_vip_by_header = 1;
+      }
       apr_table_unset(r->headers_out, sconf->header_name);
     }
   }
@@ -3236,6 +3254,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->cookie_path = apr_pstrdup(sconf->pool, "/");
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
+  sconf->ip_header_name = NULL;
   sconf->max_conn = -1;
   sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
@@ -3615,6 +3634,13 @@ const char *qos_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
   return NULL;
 }
 
+const char *qos_ip_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->ip_header_name = apr_pstrdup(cmd->pool, name);
+  return NULL;
+}
+
 /**
  * prefer clients from known networks
  */
@@ -3953,6 +3979,10 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_VipHeaderName <name>, defines the http header name which is"
                 " used to signalize a very important person (vip)."),
+  AP_INIT_TAKE1("QS_VipIPHeaderName", qos_ip_header_name_cmd, NULL,
+                RSRC_CONF,
+                "QS_VipIPHeaderName <name>, defines the http header name which is"
+                " used to signalize priviledged clients (IP addresses)."),
   /* connection limitations */
   AP_INIT_NO_ARGS("QS_SrvPreferNet", qos_pref_conn_cmd, NULL,
                   RSRC_CONF,
