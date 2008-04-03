@@ -87,7 +87,7 @@ Limitations on the TCP connection level, e.g. the maximum of allowed connections
 a single IP source address or dynamic keep-alive control.
 </li>
 <li type=square>
-Prefers known networks when server runs out of free TCP connections.
+Prefers known IP addresses when server runs out of free TCP connections.
 </li>
 </ul>
 
@@ -123,14 +123,14 @@ Prefers known networks when server runs out of free TCP connections.
 <p>
 mod_qos requires OpenSSL and shared memory. It works with Apache version 2.0 and 2.2.<br>
 Just copy the module into the modules directory of the Apache server's source code and 
-compile it using the following commands (all examples are using Apache 2.2.4 and 
+compile it using the following commands (all examples are using Apache 2.2.8 and 
 mod_qos 4.15):
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
-tar xfz httpd-2.2.4.tar.gz
+tar xfz httpd-2.2.8.tar.gz
 tar xfz mod_qos-4.15-src.tar.gz
-ln -s httpd-2.2.4 httpd
+ln -s httpd-2.2.8 httpd
 cd httpd
 mkdir modules/qos
 cp ../mod_qos-4.15/apache2/* modules/qos
@@ -219,35 +219,39 @@ regular expression.
 <li>
 <code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
 Defines the number of concurrent requests for the specified request pattern 
-(applied to the unparsed uri). Rule with the lowest number of allowed 
+(applied to the unparsed uri). The rule with the lowest number of allowed 
 concurrent connection has the highest priority if multiple expressions 
-match the request. By default, no limitations are active for locations.
+match the request. By default, no limitations are active.
 </li>
 <li>
 <code>QS_LocRequestPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
 Defines the allowed number of requests per second to the uri (path and query) 
 pattern. Requests are limited by adding a delay to each requests (linear). 
 By default, no limitation is active. This directive should be used in 
-conjunction with <code>QS_LocRequestLimitMatch</code> only.
+conjunction with <code>QS_LocRequestLimitMatch</code> only (you must use 
+the very same regex pattern with the <code>QS_LocRequestPerSecLimitMatch</code> 
+and <code>QS_LocRequestLimitMatch</code> directive).
 </li>
 <li>
 <code>QS_LocKBytesPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
 Defines the allowed download bandwidth to the location matching the 
-defined uri (path and query) pattern.  Responses are slowed by adding a delay 
+defined uri (path and query) pattern.  Responses are slowed down by adding a delay 
 to each response (non-linear, bigger files get longer delay than smaller 
 ones). By default, no limitation is active. This directive should be 
-used in conjunction with <code>QS_LocRequestLimitMatch</code> only. 
+used in conjunction with <code>QS_LocRequestLimitMatch</code> only (you must use 
+the very same regex pattern with the <code>QS_LocKBytesPerSecLimitMatch</code> 
+and <code>QS_LocRequestLimitMatch</code> directive).
 </li>
 <li>
 <code>QS_LocRequestLimit &lt;location&gt; &lt;number&gt;</code><br>
 Defines the number of concurrent requests for the specified location (applied to 
 the parsed path). By default, no limitations are active for locations. Has 
-lower priority than <code>QS_LocRequestLimitMatch</code>.
+lower priority than <code>QS_LocRequestLimitMatch</code> directives.
 </li>
 <li>
 <code>QS_LocRequestLimitDefault &lt;number&gt;</code><br>Defines the default limitation 
 for the maximum of concurrent per locations for those locations not defined by any 
-<code>QS_LocRequestLimit</code> directive. It can also be used to limit the 
+<code>QS_LocRequestLimit</code> directive. It could also be used to limit the 
 number of concurrent requests to a virtual host.
 </li>
 <li>
@@ -256,7 +260,8 @@ Defines the allowed number of requests per second to a location. The maximum
 number of requests is limited by adding a delay to each request (linear, each 
 request gets the same delay). By default, no limitation is active. This 
 directive should be used in conjunction with <code>QS_LocRequestLimit</code> 
-only. Has lower priority than <code>QS_LocRequestPerSecLimitMatch</code>.
+only (you must use the same location for both directives). 
+Has lower priority than <code>QS_LocRequestPerSecLimitMatch</code>.
 </li>
 <li>
 <code>QS_LocKBytesPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
@@ -264,11 +269,12 @@ Throttles the download bandwidth to the defined kbytes per second. Responses are
 slowed by adding a delay to each response (non-linear, bigger files get 
 longer delay than smaller ones). By default, no limitation is active. 
 This directive should be used in conjunction with <code>QS_LocRequestLimit</code> 
-only. Has lower priority than <code>QS_LocKBytesPerSecLimitMatch</code>.
+only (you must use the same location for both directives). Has lower priority 
+than <code>QS_LocKBytesPerSecLimitMatch</code>.
 </li>
 <li>
 <code>QS_ErrorPage &lt;url&gt;</code><br>Defines an error page to be returend when 
-a request is denied.
+a request is denied. The defined URL must be a HTML document accessible by the client.
 </li>
 </ul>
 
@@ -282,13 +288,15 @@ a session for this user by setting a cookie. Whenever an application handler
 sets this response header (e.g. after successful user authentication), 
 the user gets unlimited access to any location. This directive works in conjunction 
 with <code>QS_Loc*</code>, <code>QS_CondLoc*</code>, <code>QS_ClientPrefer</code>, and 
-<code>QS_SrvPreferNet</code> directives. The <code>QS_ClientPrefer</code> and 
-<code>QS_SrvPreferNet</code> directives store the VIP session information persistent 
-to the data record of the corresponding IP address. All other commands require 
-the mod_qos session cookie to identify subsequent requests comming from the 
-same user. A client request containing a valid mod_qos session cookie gets also 
-the environment variable <code>QS_VipRequest</code> set in the process environment 
-which may be evaluated by rules ignoring VIP status client normally, such as the 
+<code>QS_SrvPreferNet</code> directives. Limitations defined by these directives are 
+not active for requests having a VIP session cookie.
+The <code>QS_ClientPrefer</code> and <code>QS_SrvPreferNet</code> directives 
+store the VIP session information persistent to the data record of the 
+corresponding IP address. All other commands require the mod_qos session 
+cookie to identify subsequent requests comming from the same user. A client 
+request containing a valid mod_qos session cookie gets also the environment 
+variable <code>QS_VipRequest</code> set in the process environment which may 
+be evaluated by rules ignoring VIP status client normally, such as the 
 <code>QS_EventPerSecLimit</code> directive. 
 See the <code>QS_Session*</code> directives for further session attribute settings. 
 </li>
@@ -359,15 +367,18 @@ additonal control mechanisms. Variables may be set using the standard
 Apache module mod_setenvif. See also the <code>QS_SetEnvIf</code> 
 directive in order to combine multiple variable to new variables 
 interpreted by mod_qos rules. <br>
+<br>
 These are the standard mod_qos variables:
 <ul>
 <li>
 <code>QS_VipRequest=yes</code><br>
 Disables the pre location restrictions for this request. 
 Requires the definition of a VIP header using the 
-<code>QS_VipHeaderName</code> directive. However, such 
-an event does not create a VIP session. The user has the VIP status 
-only for a single request.
+<code>QS_VipHeaderName</code> directive (this activates VIP 
+verification). However, such an event does not create a VIP 
+session. The user has the VIP status only for a single 
+request (does not affect the <code>QS_ClientPrefer</code>, and 
+<code>QS_SrvPreferNet</code> directives).
 </li>
 <li>
 <code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
@@ -396,24 +407,26 @@ SetEnvIf     Request_URI /app/start.html          QS_VipRequest=yes
 SetEnvIf     Remote_Addr 172.18.3.32              QS_VipRequest=yes
 SetEnvIf     Remote_Addr 192.168.10.              QS_VipRequest=yes
 
-# set keep-alive timeout for MSIE version 5.x browser to 65 seconds
+# set keep-alive timeout for MSIE version 5.x browser to 65 seconds:
 BrowserMatch             "(MSIE 5\.)"             QS_KeepAliveTimeout=65
 
-# dynamic error page url
+# dynamic error page url (per host error page):
 SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.html
 </pre>
 </td></tr>
 </table>
 
 <h4>Conditional Rules</h4>
-Conditional rules are are only enforced if a the <code>QS_Cond</code> variable matches 
-the specified pattern.
+Conditional rules are are only enforced if a the <code>QS_Cond</code> 
+variable matches the specified pattern.
 <ul>
 <li>
 <code>QS_CondLocRequestLimitMatch &lt;regex&gt; &lt;number&gt; &lt;condition&gt;</code><br>
 Rule works similar to <code>QS_LocRequestLimitMatch</code> but it is only 
 enforced for requests whose <code>QS_Cond</code> variable matches the 
-specified condition (regular expression).
+specified condition (regular expression). Every request matching the defined 
+pattern is counted but the defined limitation is only enforced for those requests 
+matching the specified condition.
 </li>
 </ul>
 
@@ -422,11 +435,12 @@ specified condition (regular expression).
 Sample of conditional rules:<br>
 <pre>
 # set the conditional variable to spider if detecting a
-# "slurp" search engine:
+# "slurp" or "googlebot" search engine:
 BrowserMatch             "slurp"                  QS_Cond=spider
+BrowserMatch             "googlebot"              QS_Cond=spider
 
 # limits the number of concurrent requests to two applications
-# (/app/b and /app/c) to 300 but does not allow access by a spider
+# (/app/b and /app/c) to 300 but does not allow access by a "spider"
 # if the number of conurrent requests exceeds the limit of 10:
 QS_LocRequestLimitMatch       "^(/app/b/|/app/c/).*$"  300
 QS_CondLocRequestLimitMatch   "^(/app/b/|/app/c/).*$"  10   spider
