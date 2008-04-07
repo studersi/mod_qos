@@ -52,7 +52,7 @@
 <tr><td>&nbsp;</td><td>
 <p>
 The Apache Web Server requires threads and processes to serve HTTP requests. Each 
-TCP connection to the web server occupies one of these threads respecively processes. 
+TCP connection to the web server occupies one of these threads respectively processes. 
 Sometimes a server gets too busy to serve every request due the lack of free 
 processes or threads. mod_qos is a <b>Quality of Service module for the Apache 
 Web Server</b> implementing control mechanisms that can provide different priority 
@@ -77,7 +77,7 @@ Limits the number of request events per second.
 </li>
 <li type=square>
 It can also "detect" very important persons (VIP) which may access the web server 
-without or with less restrictions.
+without or with fewer restrictions.
 </li>
 <li type=square>
 Generic request line and header filter.
@@ -90,8 +90,8 @@ a single IP source address or dynamic keep-alive control.
 Prefers known IP addresses when server runs out of free TCP connections.
 </li>
 </ul>
-
 </p>
+
 <hr>
 <p>
 <ul>
@@ -117,6 +117,7 @@ Prefers known IP addresses when server runs out of free TCP connections.
 <li><a href="#usecases">Use Cases</a></li>
 </ul>
 </p>
+
 <hr>
 <a name="build">
 <h2>Build</h2>
@@ -151,9 +152,10 @@ LoadModule qos_module &lt;path to module&gt;/mod_qos.so
 </td></tr>
 </table>
 </p>
+
 <p>
 You can also compile the module using apxs alternatively. Your httpd must support 
-dynamically loaded objects (DSO). Verify this by checking the availablility 
+dynamically loaded objects (DSO). Verify this by checking the availability 
 of mod_so: The command <code>httpd -l</code> must list the mod_so.c module. 
 The following command compiles the module and installs the mod_qos into the 
 server's modules directory.
@@ -168,6 +170,7 @@ cd ../..
 </td></tr>
 </table>
 </p>
+
 <p>
 The support tools may be build using the following commands:
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -184,6 +187,7 @@ make
 </td></tr>
 </table>
 </p>
+
 <a name="source"></a>
 <h2>Source</h2>
 <p>
@@ -206,6 +210,7 @@ The <code>QS_SrvConnTimeout</code>, <code>QS_SrvPreferNet</code>,
 <code>QS_RequestHeaderFilterRule</code>, and all <code>QS_Client*</code> directives 
 may be used outside of virtual host configurations only.
 </p>
+
 <a name="requestlevelcontrol"></a>
 <h3>Request Level Control</h3>
 The module features the following directives to control server access on a per location 
@@ -219,13 +224,13 @@ regular expression.
 <li>
 <code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
 Defines the number of concurrent requests for the specified request pattern 
-(applied to the unparsed uri). The rule with the lowest number of allowed 
+(applied to the unparsed URL). The rule with the lowest number of allowed 
 concurrent connection has the highest priority if multiple expressions 
 match the request. By default, no limitations are active.
 </li>
 <li>
 <code>QS_LocRequestPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
-Defines the allowed number of requests per second to the uri (path and query) 
+Defines the allowed number of requests per second to the URL (path and query) 
 pattern. Requests are limited by adding a delay to each requests (linear). 
 By default, no limitation is active. This directive should be used in 
 conjunction with <code>QS_LocRequestLimitMatch</code> only (you must use 
@@ -235,7 +240,7 @@ and <code>QS_LocRequestLimitMatch</code> directive).
 <li>
 <code>QS_LocKBytesPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
 Defines the allowed download bandwidth to the location matching the 
-defined uri (path and query) pattern.  Responses are slowed down by adding a delay 
+defined URL (path and query) pattern.  Responses are slowed down by adding a delay 
 to each response (non-linear, bigger files get longer delay than smaller 
 ones). By default, no limitation is active. This directive should be 
 used in conjunction with <code>QS_LocRequestLimitMatch</code> only (you must use 
@@ -293,7 +298,7 @@ not active for requests having a VIP session cookie.
 The <code>QS_ClientPrefer</code> and <code>QS_SrvPreferNet</code> directives 
 store the VIP session information persistent to the data record of the 
 corresponding IP address. All other commands require the mod_qos session 
-cookie to identify subsequent requests comming from the same user. A client 
+cookie to identify subsequent requests coming from the same user. A client 
 request containing a valid mod_qos session cookie gets also the environment 
 variable <code>QS_VipRequest</code> set in the process environment which may 
 be evaluated by rules ignoring VIP status client normally, such as the 
@@ -313,7 +318,7 @@ VIP identification (not for IP based). Default are 3600 seconds.
 </li>
 <li>
 <code>QS_SessionCookieName &lt;name&gt;</code><br>
-A cookie is used to identify requests comming from a user which has 
+A cookie is used to identify requests coming from a user which has 
 been identified as a VIP. This directive defines a custom cookie name 
 for the mod_qos session cookie. Default is MODQOS.
 </li>
@@ -387,7 +392,7 @@ KeepAliveTimeout directive settings.
 </li>
 <li>
 <code>QS_ErrorPage=&lt;url&gt;</code><br>
-Defines the error page overriding the sessing made by the 
+Defines the error page overriding the setting made by the 
 <code>QS_ErrorPage</code> directive.
 </li>
 </ul>
@@ -479,10 +484,10 @@ variables to a new event type.
 <tr><td bgcolor="#EBE5E0">
 Sample of event rules:<br>
 <pre>
-# marks clients comming from the internal network:
+# marks clients coming from the internal network:
 SetEnvIf     Remote_Addr   "^192\.168\."          QS_Intra
 
-# marks clients neither comming from the internal network
+# marks clients neither coming from the internal network
 # nor are VIP clients as low priority clients:
 QS_SetEnvIf !QS_VipRequest !QS_Intra              QS_LowPrio
 
@@ -526,7 +531,7 @@ is logged) or 'deny' (access is denied).
 </li>
 <li>
 <code>QS_PermitUri '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
-Generic uri (path and query) filter implementing a request pattern 
+Generic URL (path and query) filter implementing a request pattern 
 whitelist. Only requests matching at least one <code>QS_PermitUri</code> 
 pattern are allowed. If a <code>QS_PermitUri</code> pattern has 
 been defined an the request does not match any rule, the request 
@@ -823,7 +828,6 @@ QSC_Filter2Binary       /usr/local/bin/qsfilter2
 </pre>
 </td></tr>
 </table>
-
 </p>
 
 <a name="usecases"></a>
@@ -836,11 +840,22 @@ In the case an application is very slow (e.g. at location /ccc), requests wait
 until a timeout occurs. Due many waiting requests, the number of free TCP 
 connections goes out and the web sever is not able to process other requests 
 to application, e.g. to /aaa or /bbb. mod_qos limits the concurrent requests 
-to an application in order to assure the availability of other resources. 
-<br>Example:<br> 
-<code>QS_LocRequestLimit /ccc 100</code> limits the maximum of requests blocked by 
-the slow application to 100.
+to an application in order to assure the availability of other resources.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+<pre>
+# maximum number of active TCP connections is limited to 256:
+MaxClients              256
+
+# limits the maximum of concurrent requests per application to 100:
+QS_LocRequestLimit /aaa 100
+QS_LocRequestLimit /bbb 100
+QS_LocRequestLimit /ccc 100
+</pre>
+</td></tr>
+</table>
 </p>
+
 <h3>HTTP Keep-Alive</h3>
 <p>
 The keep-alive extension to HTTP 1.1 allows persistent TCP connections for 
@@ -850,25 +865,82 @@ connections is, that server resources are blocked even no data is exchanged
 between client an server. mod_qos allows a server to support keep-alive 
 as long as sufficient connections are free but stopping the keep-alive 
 support when reaching a defined connection threshold. <br>Example:<br>
-<code>QS_SrvMaxConnClose 600</code>.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+<pre>
+# maximum number of active TCP connections is limited to 256:
+MaxClients              256
+
+# disables keep-alive when 70% of the TCP connections are occupied:
+QS_SrvMaxConnClose      180
+</pre>
+</td></tr>
+</table>
 </p>
+
 <h3>Client Opens Many Concurrent Connections</h3>
 <p>
 A single client may open many TCP connections simultaneously in order to 
 download different content from the web server. So the client gets many 
-connections while other users may not be able accessing the server 
+connections while other users may not be able to access the server 
 due no free connections remain for them. mod_qos can limit the number 
 of concurrent connections for a singe IP source address. <br>Example:<br>
-<code>QS_SrvMaxConnPerIP 50</code>.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+<pre>
+# maximum number of active TCP connections is limited to 256:
+MaxClients              256
+
+# don't allow a single client to open more than 50 TCP connections:
+QS_SrvMaxConnPerIP      50
+</pre>
+</td></tr>
+</table>
 </p>
+
 <h3>Many Requests to a Single URL</h3>
 <p>
 If you have to limit the number of requests to an URL, mod_qos can help 
-with that too. <br>Example:<br>
-<code>QS_LocRequestPerSecLimit /download/mod_qos.so.gz 150</code> 
-limits the number of requests per second to this URL by adding an 
-additional delay to requests to this URL.
+with that too. You may limit the number ot requests per secnod to 
+an URL by adding a delay to requests accessing this resource. <br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+<pre>
+# does not allow more than 150 requests/sec:
+QS_LocRequestPerSecLimit /download/mod_qos.so.gz 150
+</pre>
+</td></tr>
+</table>
 </p>
+
+<h3>Too Many Client Connections</h3>
+<p>
+mod_qos may prefere "known" client IP addresses in the case that too 
+many clients access the server. "Known" clients are thowse which 
+has once been identified by the application by setting the corresponding 
+HTTP response header. Such a identification may happen at successful 
+user login. Connections from clients which are not known to mod_qos are 
+denied if the server runs on low TCP connection resources.
+<br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+<pre>
+# maximum number of active TCP connections is limited to 256:
+MaxClients              256
+
+# name of the HTTP response header which marks preferred clients:
+QS_VipIPHeaderName      mod-qos-login
+
+# enables the known client perfer mode:
+QS_ClientPrefer
+
+# handles one million client IP addresses:
+QS_ClientEntries        1000000
+</pre>
+</td></tr>
+</table>
+</p>
+
 </p>
 
 </td></tr>
