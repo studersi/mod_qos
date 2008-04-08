@@ -194,6 +194,8 @@ make
 <a href="../apache2">mod_qos</a> is available for Apache version 2.0 and 2.2.
 </p>
 
+<!-- CONFIGURATION -->
+
 <a name="configuration"></a>
 <h2>Configuration</h2>
 <p>Configuration is made on a per server basis (except the generic request filter). 
@@ -388,7 +390,7 @@ request (does not affect the <code>QS_ClientPrefer</code>, and
 <li>
 <code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
 Applies dynamic connection keep-alive settings overriding the Apache 
-KeepAliveTimeout directive settings.
+<code>KeepAliveTimeout</code> directive settings.
 </li>
 <li>
 <code>QS_ErrorPage=&lt;url&gt;</code><br>
@@ -505,7 +507,7 @@ New rules are added by defining a rule id prefixed by a '+'. Rules are merged
 to sub locations. If a rule should not be active for a sub location, the 
 very same rule must be defined but using a '-' prefix at the rule id. 
 The filter rules are implemented as perl compatible regular expressions 
-(pcre) and are applied to the decoded url components (un-escaped characters, 
+(pcre) and are applied to the decoded URL components (un-escaped characters, 
 e.g. %20 is a space). The generic request filer ignores the VIP status or a client.
 <ul>
 <li>
@@ -592,7 +594,7 @@ Defines the maximum number of concurrent TCP connections for this server.
 <li>
 <code>QS_SrvMaxConnClose &lt;number&gt;</code><br>
 Defines the maximum number of connections supporting keep-alive. If the number 
-of concurrent connections exceeds this threshold, the TCP connetion gets closed 
+of concurrent connections exceeds this threshold, the TCP connection gets closed 
 after each request.
 </li>
 <li>
@@ -606,7 +608,7 @@ level control restrictions. An address range must end with a ".".
 </li>
 <li>
 <code>QS_SrvConnTimeout &lt;seconds&gt;</code><br>
-Defines the inital timeout for reading a request from the client from 
+Defines the initial timeout for reading a request from the client from 
 a new TCP connection. This parameter is used to drop TCP sessions 
 from very slow clients which do not send the HTTP request data 
 (request line and header) within this timeout.
@@ -667,7 +669,7 @@ Ignores VIP status by default but you may use the
 <code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
 Defines the maximum number of <code>QS_Block</code> events allowed 
 within the defined time (default are 600 seconds). Client IP is blocked 
-when reaching this counter for the specifed time (blocked at connection level). 
+when reaching this counter for the specified time (blocked at connection level). 
 Ignores VIP status by default but you may use the 
 <code>QS_VipRequest</code> variable to detect VIP clients.
 </li>
@@ -767,7 +769,7 @@ The <code><a href="qslog.html">qslog</a></code> tool, which is part of
 the support utilities of mod_qos, may be used to gather request 
 statistics from Apache's access log data. This includes data such 
 as the number of denied requests or new VIP session creations per 
-minute but also total requests per second and other data. Refere 
+minute but also total requests per second and other data. Refer 
 to the usage text of the <code><a href="qslog.html">qslog</a></code> 
 utility for further details.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -783,8 +785,6 @@ TransferLog "| ./bin/qslog -o logs/qs_log -f I..R.BT..Q"
 <h3>Status Viewer</h3>
 <p>
 mod_qos features a handler showing the current connection and request status. 
-Use "ip" in the query string in order to get a list of all concurrent requests 
-on a per client ip address basis, e.g. "/qos?option=ip".
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
@@ -859,10 +859,10 @@ QS_LocRequestLimit /ccc 100
 <h3>HTTP Keep-Alive</h3>
 <p>
 The keep-alive extension to HTTP 1.1 allows persistent TCP connections for 
-multiple request/responses. This accelerate access to the web server due 
-less and optimised network traffic. The disadvantage of these persistent 
+multiple request/responses. This accelerates access to the web server due 
+less and optimized network traffic. The disadvantage of these persistent 
 connections is, that server resources are blocked even no data is exchanged 
-between client an server. mod_qos allows a server to support keep-alive 
+between client and server. mod_qos allows a server to support keep-alive 
 as long as sufficient connections are free but stopping the keep-alive 
 support when reaching a defined connection threshold. <br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -901,7 +901,7 @@ QS_SrvMaxConnPerIP      50
 <h3>Many Requests to a Single URL</h3>
 <p>
 If you have to limit the number of requests to an URL, mod_qos can help 
-with that too. You may limit the number ot requests per secnod to 
+with that too. You may limit the number ot requests per second to 
 an URL by adding a delay to requests accessing this resource. <br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
@@ -915,10 +915,10 @@ QS_LocRequestPerSecLimit /download/mod_qos.so.gz 150
 
 <h3>Too Many Client Connections</h3>
 <p>
-mod_qos may prefere "known" client IP addresses in the case that too 
-many clients access the server. "Known" clients are thowse which 
+mod_qos may prefer "known" client IP addresses in the case that too 
+many clients access the server. "Known" clients are those which 
 has once been identified by the application by setting the corresponding 
-HTTP response header. Such a identification may happen at successful 
+HTTP response header. Such identification may happen at successful 
 user login. Connections from clients which are not known to mod_qos are 
 denied if the server runs on low TCP connection resources.
 <br>Example:<br>
