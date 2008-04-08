@@ -1,3 +1,11 @@
+Version 6.4
+
+ - New directive QS_SetEnvStatus.
+
+ - QS_SetEnvIf for response processing (log transaction).
+
+ - QS_ClientEventBlockCount on response events (log transaction).
+
 Version 6.3
 
  - New directive QS_VipIPHeaderName to mark clients (IP)

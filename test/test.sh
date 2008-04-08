@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.48 2008-04-02 18:28:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.49 2008-04-08 19:12:52 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -383,6 +383,19 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventPerSecLimit_t.htt"
+fi
+./ctl.sh restart -D real_ip > /dev/null
+echo "-- QS_ClientEventBlockCount_Status.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_ClientEventBlockCount_Status.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventBlockCount_Status.htt"
+fi
+./ctl.sh graceful > /dev/null
+./htt.sh -s ./scripts/QS_ClientEventBlockCount_Status_graceful.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventBlockCount_Status_graceful.htt"
 fi
 ./ctl.sh restart > /dev/null
 echo "-- QS_ClientEventPerSecLimit.htt" >>  logs/error_log

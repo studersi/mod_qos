@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.53 2008-04-02 19:19:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.54 2008-04-08 19:12:52 pbuchbinder Exp $";
 static const char g_revision[] = "6.4";
 
 /************************************************************************
@@ -312,6 +312,7 @@ typedef struct {
   const char *error_page;
   apr_table_t *location_t;
   apr_table_t *setenvif_t;
+  apr_table_t *setenvstatus_t;
   char *cookie_name;
   char *cookie_path;
   int max_age;
@@ -1625,9 +1626,20 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
 }
 
 /**
- * QS_SetEnvIf
+ * QS_SetEnvStatus (logger)
  */
-static void qos_hp_setenvif(request_rec *r, qos_srv_config *sconf) {
+static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
+  char *code = apr_psprintf(r->pool, "%d", r->status);
+  const char*var = apr_table_get(sconf->setenvstatus_t, code);
+  if(var) {
+    apr_table_set(r->subprocess_env, var, code);
+  }
+}
+
+/**
+ * QS_SetEnvIf (hp and logger)
+ */
+static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvif_t)->elts;
   for(i = 0; i < apr_table_elts(sconf->setenvif_t)->nelts; i++) {
@@ -1800,6 +1812,38 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
 }
 
 /**
+ * client contol rules at log transaction
+ */
+static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
+  if(sconf->has_qos_cc) {
+    if(!apr_table_get(r->subprocess_env, "QS_Block_seen") &&
+       apr_table_get(r->subprocess_env, "QS_Block")) {
+      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+      qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+      qos_s_entry_t **e = NULL;
+      qos_s_entry_t new;
+      time_t now = apr_time_sec(r->request_time);
+      apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
+      new.ip = cconf->ip;
+      e = qos_cc_get0(u->qos_cc, &new);
+      if(!e) {
+        e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      }
+      if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
+        /* reset expired events */
+        (*e)->block = 0;
+      }
+      /* increment block event */
+      (*e)->block++;
+      (*e)->block_time = now;
+      /* only once per request */
+      apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT19 */
+      apr_table_set(r->subprocess_env, "QS_Block_seen", "");
+    }
+  }
+}
+
+/**
  * client contol rules at header parser
  */
 static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **uid) {
@@ -1867,6 +1911,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         /* increment block event */
         (*e)->block++;
         (*e)->block_time = now;
+        /* only once per request */
+        apr_table_set(r->subprocess_env, "QS_Block_seen", "");
       }
       if((*e)->block >= sconf->qos_cc_block) {
         *uid = apr_pstrdup(cconf->c->pool, "060");
@@ -2552,7 +2598,7 @@ static int qos_header_parser(request_rec * r) {
     /*
      * additional variables
      */
-    qos_hp_setenvif(r, sconf);
+    qos_setenvif(r, sconf);
 
     /*
      * QS_EventPerSecLimit
@@ -2830,6 +2876,10 @@ static int qos_logger(request_rec *r) {
   qs_acentry_t *e_cond = rctx->entry_cond;
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
   time_t now = 0;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_setenvstatus(r, sconf);
+  qos_setenvif(r, sconf);
+  qos_logger_cc(r, sconf);
   if(cconf && cconf->evmsg) {
     rctx->evmsg = apr_pstrcat(r->pool, cconf->evmsg, rctx->evmsg, NULL);
   }
@@ -3228,6 +3278,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->pool = p;
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
+  sconf->setenvstatus_t = apr_table_make(sconf->pool, 1);
   sconf->error_page = NULL;
   sconf->connect_timeout = -1;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
@@ -3552,6 +3603,13 @@ const char *qos_event_rs_cmd(cmd_parms *cmd, void *dcfg, const char *event, cons
   rule->regex = NULL;
   rule->condition = NULL;
   apr_table_setn(sconf->location_t, rule->url, (char *)rule);
+  return NULL;
+}
+
+const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *rc, const char *var) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  apr_table_set(sconf->setenvstatus_t, rc, var);
   return NULL;
 }
 
@@ -4031,6 +4089,11 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_SetEnvIf [!]<variable1> [!]<variable1> <variable=value>,"
                 " defines the new variable if variable1 AND variable2 are set."),
+  AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetEnvStatus <status code> <variable>, adds the defined"
+                " request environment variable if the HTTP status code matches the"
+                " the defined value."),
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
                 ACCESS_CONF,
