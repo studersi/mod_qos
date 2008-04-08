@@ -1,0 +1,15 @@
+#
+# $Id: QS_ClientEventBlockCount_Status_graceful.htt,v 1.1 2008-04-08 19:12:54 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /test/404/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+END

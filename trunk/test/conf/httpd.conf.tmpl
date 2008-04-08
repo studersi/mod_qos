@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.72 2008-04-02 18:28:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.73 2008-04-08 19:12:53 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -173,6 +173,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    # -----------------------------------------------------------------
    # client control
    # -----------------------------------------------------------------
+   QS_SetEnvStatus  404       QS_Block
    SetEnvIf Referer /block    QS_Block=yes
    BrowserMatch     qs_cc_eps QS_Event=yes
 
@@ -292,7 +293,7 @@ SSLRandomSeed           startup builtin
    SSLCertificateKeyFile  ssl/key.pem
    SSLCertificateFile     ssl/cert.pem
    SSLVerifyDepth         10
-   SSLEngine on
+   SSLEngine              on
    ServerName             server1
 
    ProxyRequests              Off
@@ -305,6 +306,7 @@ SSLRandomSeed           startup builtin
    ProxyPass                  /status !
    ProxyPass                  /info !
    ProxyPass                  /qos !
+   ProxyPass                  /qos_control !
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
@@ -313,15 +315,25 @@ SSLRandomSeed           startup builtin
    QS_LocRequestLimit         /cgi            5
 
    <Location /status>
-       SetHandler server-status
+       SetHandler             server-status
    </Location>
    <Location /info>
-       SetHandler server-info
+       SetHandler             server-info
    </Location>
 
    <Location /qos>
-       SetHandler qos-viewer
+       SetHandler             qos-viewer
    </Location>
+
+   <Location /qos_control>
+       # basic authentication
+       AuthType               Basic 
+       AuthUserFile           ##ROOT##/conf/qos.htpasswd
+       AuthName               "QoS Control, htpasswd"
+       Require                valid-user
+       SetHandler             qos-control
+   </Location>
+
 
 </VirtualHost>
 

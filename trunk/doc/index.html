@@ -480,6 +480,13 @@ AND variable2 (literal string) are set in the request environment
 variable list (not case sensitive). This is used to combine multiple 
 variables to a new event type.
 </li>
+<li>
+<code>QS_SetEnvStatus &lt;code&gt; &lt;variable&gt;</code><br>
+Sets the defined variable in the request environment if the HTTP 
+response status code matches the defined value. This may be used 
+in conjunction with the <code>QS_ClientEventBlockCount</code> 
+directive.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -654,7 +661,8 @@ These directives must only be used in the global server context.
 Defines the number of individual clients managed by mod_qos. 
 Default are 50'000 concurrent IP addresses. Each client requires 
 about 44 bytes of shared memory on a 32bit system or 88 bytes 
-on a 64bit system respectively.
+on a 64bit system respectively. Client IP source address store 
+survives graceful server restart.
 </li>
 <li>
 <code>QS_ClientEventPerSecLimit &lt;number&gt;</code><br>
@@ -694,6 +702,10 @@ Sample configuration:<br>
 # more times within 10 minutes:
 SetEnvIf     Request_URI /app/start.html          QS_Block=yes
 QS_ClientEventBlockCount                          20
+
+# don't allow more than 20 "403" status code responses
+# (forbidden) for a client withn 10 minutes:
+QS_SetEnvStatus          403                      QS_Block
 </pre>
 </td></tr>
 </table>
@@ -839,8 +851,9 @@ The following use cases may give you an idea about how to use mod_qos.
 In the case an application is very slow (e.g. at location /ccc), requests wait 
 until a timeout occurs. Due many waiting requests, the number of free TCP 
 connections goes out and the web sever is not able to process other requests 
-to application, e.g. to /aaa or /bbb. mod_qos limits the concurrent requests 
-to an application in order to assure the availability of other resources.
+to applications still working fine, e.g. to /aaa or /bbb. mod_qos limits 
+the concurrent requests to an application in order to assure the 
+availability of other resources.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
@@ -919,8 +932,10 @@ mod_qos may prefer "known" client IP addresses in the case that too
 many clients access the server. "Known" clients are those which 
 has once been identified by the application by setting the corresponding 
 HTTP response header. Such identification may happen at successful 
-user login. Connections from clients which are not known to mod_qos are 
-denied if the server runs on low TCP connection resources.
+user login. Connections from clients which are not known to mod_qos 
+(never marked by the corresponding response header) are denied 
+if the server runs on low TCP connection resources (20% or fewer 
+free connections).
 <br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
@@ -931,10 +946,11 @@ MaxClients              256
 # name of the HTTP response header which marks preferred clients:
 QS_VipIPHeaderName      mod-qos-login
 
-# enables the known client perfer mode:
+# enables the known client perfer mode (server allows new TCP connections
+# to known clients when is has more than 205 open TCP connections):
 QS_ClientPrefer
 
-# handles one million client IP addresses:
+# handles one million different client IP addresses:
 QS_ClientEntries        1000000
 </pre>
 </td></tr>
