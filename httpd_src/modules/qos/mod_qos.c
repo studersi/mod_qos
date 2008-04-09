@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.55 2008-04-08 19:44:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.56 2008-04-09 18:03:14 pbuchbinder Exp $";
 static const char g_revision[] = "6.5";
 
 /************************************************************************
@@ -313,6 +313,7 @@ typedef struct {
   apr_table_t *location_t;
   apr_table_t *setenvif_t;
   apr_table_t *setenvstatus_t;
+  apr_table_t *setenvresheader_t;
   char *cookie_name;
   char *cookie_path;
   int max_age;
@@ -1385,6 +1386,7 @@ static int qos_ishex(char x) {
 /* url escaping (%xx) */
 static int qos_unescaping(char *x) {
   int i, j, ch;
+  if(x == 0) return 0;
   if (x[0] == '\0')
     return 0;
   for (i = 0, j = 0; x[i] != '\0'; i++, j++) {
@@ -1623,6 +1625,30 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
     }
   }
   return DECLINED;
+}
+
+/**
+ * QS_SetEnvResHeader (outfilter)
+ */
+static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvresheader_t)->elts;
+  for(i = 0; i < apr_table_elts(sconf->setenvresheader_t)->nelts; i++) {
+    const char *val = apr_table_get(r->headers_out, entry[i].key);
+    if(val) {
+      apr_table_set(r->subprocess_env, entry[i].key, val);
+      if(strcasecmp(entry[i].val, "drop") == 0) {
+        apr_table_unset(r->headers_out, entry[i].key);
+      }
+    }
+    val = apr_table_get(r->err_headers_out, entry[i].key);
+    if(val) {
+      apr_table_set(r->subprocess_env, entry[i].key, val);
+      if(strcasecmp(entry[i].val, "drop") == 0) {
+        apr_table_unset(r->err_headers_out, entry[i].key);
+      }
+    }
+  }
 }
 
 /**
@@ -2827,6 +2853,7 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
 static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_setenvresheader(r, sconf);
   if(sconf->ip_header_name) {
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->ip_header_name);
     if(ctrl_h) {
@@ -3279,6 +3306,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->setenvstatus_t = apr_table_make(sconf->pool, 1);
+  sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
   sconf->error_page = NULL;
   sconf->connect_timeout = -1;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
@@ -3610,6 +3638,13 @@ const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *r
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   apr_table_set(sconf->setenvstatus_t, rc, var);
+  return NULL;
+}
+
+const char *qos_event_setenvresheader_cmd(cmd_parms *cmd, void *dcfg, const char *hdr, const char *action) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  apr_table_set(sconf->setenvresheader_t, hdr, action == NULL ? "" : action);
   return NULL;
 }
 
@@ -4094,6 +4129,11 @@ static const command_rec qos_config_cmds[] = {
                 "QS_SetEnvStatus <status code> <variable>, adds the defined"
                 " request environment variable if the HTTP status code matches the"
                 " the defined value."),
+  AP_INIT_TAKE12("QS_SetEnvResHeader", qos_event_setenvresheader_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_SetEnvResHeader <header name> [drop], adds the defined"
+                 " HTTP response header to the request environment variables."
+                 " Deletes the header if the action 'drop' has been specified."),
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
                 ACCESS_CONF,
