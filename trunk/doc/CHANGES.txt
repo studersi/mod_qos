@@ -1,3 +1,10 @@
+Version 6.5
+
+ - New directive QS_SetEnvResHeader.
+
+ - mod_qos_control supports QS_SetEnvIf, QS_SetEnvStatus, and
+   QS_SetEnvIf directive editing.
+
 Version 6.4
 
  - New directive QS_SetEnvStatus.

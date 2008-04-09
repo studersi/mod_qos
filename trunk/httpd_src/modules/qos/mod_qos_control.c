@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.24 2008-04-08 19:44:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.25 2008-04-09 18:03:16 pbuchbinder Exp $";
 static const char g_revision[] = "6.5";
 
 /************************************************************************
@@ -153,6 +153,9 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 100" },
   { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 1200" },
   { "QS_EventPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "event 100" },
+  { "SetEnvIf", QSC_REQ_TYPE, RAW_ARGS, RSRC_CONF, 1, "", "..." },
+  { "QS_SetEnvIf", QSC_REQ_TYPE, TAKE3, RSRC_CONF, 1, "", "variable1 variable2 variable=yes" },
+  { "QS_SetEnvStatus", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "code variable" },
   { "QS_ErrorPage", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/error-docs/403.html" },
   { "QS_VipHeaderName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "mod-qos-vip" },
   { "QS_SessionCookieName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "modqos" },
@@ -237,7 +240,8 @@ static int qosc_ishex(char x) {
 }
 
 static int qosc_unescaping(char *x) {
-   int i, j, ch;
+  int i, j, ch;
+  if(x == NULL) return 0;
   if (x[0] == '\0')
     return 0;
   for (i = 0, j = 0; x[i] != '\0'; i++, j++) {
@@ -2822,6 +2826,8 @@ static void qosc_print_input_value_fields(request_rec *r, const qosc_elt_t *elt,
         }
       }
     }
+  } else if(elt->args == RAW_ARGS) {
+    ap_rprintf(r, "<input name=\"v0\" value=\"%s\" size=\"32\">", ap_escape_html(r->pool, v));
   }
 }
 
