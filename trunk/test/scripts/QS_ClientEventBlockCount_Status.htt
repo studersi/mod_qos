@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventBlockCount_Status.htt,v 1.1 2008-04-08 19:12:53 pbuchbinder Exp $
+# $Id: QS_ClientEventBlockCount_Status.htt,v 1.2 2008-04-09 18:03:17 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -22,4 +22,5 @@ __Connection: keep-alive
 __
 _EXPECT . "code=060"
 _WAIT
+_SLEEP 500
 END

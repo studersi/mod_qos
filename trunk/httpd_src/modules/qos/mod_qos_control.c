@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.25 2008-04-09 18:03:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.26 2008-04-09 18:06:07 pbuchbinder Exp $";
 static const char g_revision[] = "6.5";
 
 /************************************************************************
@@ -156,6 +156,7 @@ static const qosc_elt_t qosc_elts[] = {
   { "SetEnvIf", QSC_REQ_TYPE, RAW_ARGS, RSRC_CONF, 1, "", "..." },
   { "QS_SetEnvIf", QSC_REQ_TYPE, TAKE3, RSRC_CONF, 1, "", "variable1 variable2 variable=yes" },
   { "QS_SetEnvStatus", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "code variable" },
+  { "QS_SetEnvResHeader", QSC_REQ_TYPE, TAKE12, RSRC_CONF, 0, "", "name [deny]" },
   { "QS_ErrorPage", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/error-docs/403.html" },
   { "QS_VipHeaderName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "mod-qos-vip" },
   { "QS_SessionCookieName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "modqos" },
@@ -2488,7 +2489,7 @@ static void qosc_server_qsfilter2(request_rec *r, qosc_settings_t *settings) {
       // ---
       qosc_table_body_start(r);
       qosc_table_body_title_start(r);
-      ap_rprintf(r, "Access log data loaded (%s, %d bytes)", tmb, attrib.st_size);
+      ap_rprintf(r, "Access log data loaded (%s, %ld bytes)", tmb, attrib.st_size);
       qosc_table_body_title_end(r);
       ap_rprintf(r, "<form action=\"%sqsfilter2.do\" method=\"get\">\n",
                  qosc_get_path(r));
@@ -2683,10 +2684,10 @@ static void qosc_server(request_rec *r, qosc_settings_t *settings) {
           qosc_table_body_start(r);
           qosc_table_body_cell_single(r);
           ap_rprintf(r, "<b>Warning:</b><br>Too many locations for the current"
-                     " open file limitations of this server (%d). Use \"ulimit\""
+                     " open file limitations of this server (%ld). Use \"ulimit\""
                      " to increase the maximum open file handler.<br>", rlp.rlim_cur);
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOSC_LOG_PFX(0)"too many locations: %d, ulimit=%d",
+                        QOSC_LOG_PFX(0)"too many locations: %d, ulimit=%ld",
                         locations, rlp.rlim_cur); 
           qosc_table_body_cell_end(r);
           qosc_table_body_end(r);
