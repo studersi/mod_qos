@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.73 2008-04-08 19:12:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.74 2008-04-09 18:03:16 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -76,7 +76,7 @@ DefaultType             text/plain
 AddType                 text/html .shtml
 AddOutputFilter         INCLUDES .shtml
 
-LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e #%P"
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e %{qs_special}e #%P"
 
 LogLevel                warn
 #ErrorLog                "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 3600 -f"
@@ -169,6 +169,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    #QS_SessionCookieName       mm
    #QS_SessionCookiePath       /x
    QS_SessionKey              12345678
+
+   QS_SetEnvResHeader         qs_special       drop
 
    # -----------------------------------------------------------------
    # client control

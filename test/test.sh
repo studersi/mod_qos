@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.49 2008-04-08 19:12:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.50 2008-04-09 18:03:16 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -362,6 +362,13 @@ fi
 if [ $QDIFF2 -lt $QDIFF3 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientPrefer_IP.htt"
+fi
+
+echo "-- QS_SetEnvResHeaders" >> logs/error_log
+./htt.sh -s ./scripts/QS_SetEnvResHeaders.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SetEnvResHeaders.htt"
 fi
 
 # - real ip -------------------------------------------------------
