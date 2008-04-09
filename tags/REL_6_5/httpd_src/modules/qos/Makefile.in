@@ -1,0 +1,4 @@
+
+include $(top_srcdir)/build/special.mk
+
+SH_LDFLAGS += -lcrypto
