@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.56 2008-04-09 18:03:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.57 2008-04-10 19:14:35 pbuchbinder Exp $";
 static const char g_revision[] = "6.5";
 
 /************************************************************************
@@ -1631,22 +1631,23 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
  * QS_SetEnvResHeader (outfilter)
  */
 static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
+  apr_table_t *headers = r->headers_out;
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvresheader_t)->elts;
-  for(i = 0; i < apr_table_elts(sconf->setenvresheader_t)->nelts; i++) {
-    const char *val = apr_table_get(r->headers_out, entry[i].key);
-    if(val) {
-      apr_table_set(r->subprocess_env, entry[i].key, val);
-      if(strcasecmp(entry[i].val, "drop") == 0) {
-        apr_table_unset(r->headers_out, entry[i].key);
+  while(headers) {
+    for(i = 0; i < apr_table_elts(sconf->setenvresheader_t)->nelts; i++) {
+      const char *val = apr_table_get(headers, entry[i].key);
+      if(val) {
+        apr_table_set(r->subprocess_env, entry[i].key, val);
+        if(strcasecmp(entry[i].val, "drop") == 0) {
+          apr_table_unset(headers, entry[i].key);
+        }
       }
     }
-    val = apr_table_get(r->err_headers_out, entry[i].key);
-    if(val) {
-      apr_table_set(r->subprocess_env, entry[i].key, val);
-      if(strcasecmp(entry[i].val, "drop") == 0) {
-        apr_table_unset(r->err_headers_out, entry[i].key);
-      }
+    if(headers == r->headers_out) {
+      headers = r->err_headers_out;
+    } else {
+      headers = NULL;
     }
   }
 }
@@ -2038,6 +2039,83 @@ static int qos_has_clienttable(request_rec *r) {
  ***********************************************************************/
 
 /**
+ * short status viewer
+ */
+static void qos_ext_status_short(request_rec *r) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                &qos_module);
+  server_rec *s = sconf->base_server;
+  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config,
+                                                                 &qos_module);
+  while(s) {
+    char *sn = apr_psprintf(r->pool, "%s.%s.%d",
+                            s->is_virtual ? "v" : "b",
+                            s->server_hostname == NULL ? "-" :
+                            ap_escape_html(r->pool, s->server_hostname),
+                            s->addrs->host_port);
+    sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    if((s->is_virtual && (sconf != bsconf)) || !s->is_virtual) {
+      qs_acentry_t *e;
+      if(!s->is_virtual && sconf->has_qos_cc && sconf->qos_cc_prefer_limit) {
+        qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+        int hc = u->qos_cc->connections; /* not synchronized ... */
+        ap_rprintf(r, "%s.QS_ClientPrefer.%d[]: %d\n", sn,
+                   sconf->qos_cc_prefer_limit, hc);
+      }
+      if(!s->is_virtual && sconf->net_prefer_limit) {
+        qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+        int hc = u->connections; /* not synchronized ... */
+        ap_rprintf(r, "%s.QS_SrvPreferNet.%d[]: %d\n", sn,
+                   sconf->net_prefer_limit, hc);
+      }
+      /* request level */
+      e = sconf->act->entry;
+      while(e) {
+        if((e->limit > 0) && !e->condition) {
+          ap_rprintf(r, "%s.QS_LocRequestLimit%s.%d[%s]: %d\n", sn,
+                     e->regex == NULL ? "" : "Match", 
+                     e->limit,
+                     e->url, 
+                     e->counter);
+        }
+        if(e->req_per_sec_limit > 0) {
+          ap_rprintf(r, "%s.QS_LocRequestPerSecLimit%s.%ld[%s]: %ld\n", sn,
+                     e->regex == NULL ? "" : "Match", 
+                     e->req_per_sec_limit,
+                     e->url,
+                     e->req_per_sec);
+        }
+        if(e->kbytes_per_sec_limit > 0) {
+          ap_rprintf(r, "%s.QS_LocKBytesPerSecLimit%s.%ld[%s]: %ld\n", sn,
+                     e->regex == NULL ? "" : "Match",
+                     e->kbytes_per_sec_limit,
+                     e->url, 
+                     e->kbytes_per_sec);
+        }
+        if(e->condition) {
+          ap_rprintf(r, "%s.QS_CondLocRequestLimitMatch.%d[%s]: %d\n", sn,
+                     e->limit,
+                     e->url, 
+                     e->counter);
+        }
+        e = e->next;
+      }
+      if(sconf->max_conn != -1) {
+          ap_rprintf(r, "%s.QS_SrvMaxConn.%d[]: %d\n", sn,
+                     sconf->max_conn,
+                     sconf->act->c->connections);
+      }
+      if(sconf->max_conn_close != -1) {
+          ap_rprintf(r, "%s.QS_SrvMaxConnClose.%d[]: %d\n", sn,
+                     sconf->max_conn_close,
+                     sconf->act->c->connections);
+      }
+    }
+    s = s->next;
+  }
+}
+
+/**
  * status viewer, used by internal and mod_status handler
  */
 static int qos_ext_status_hook(request_rec *r, int flags) {
@@ -2050,10 +2128,10 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                                                                  &qos_module);
   apr_table_t *qt = qos_get_query_table(r);
   const char *option = apr_table_get(qt, "option");
-  //const char *search = apr_table_get(qt, "search");
-  if (flags & AP_STATUS_SHORT)
+  if (flags & AP_STATUS_SHORT) {
+    qos_ext_status_short(r);
     return OK;
-
+  }
   ap_rprintf(r, "<h2>mod_qos %s</h2>\n", ap_escape_html(r->pool, qos_revision(r->pool)));
 #ifdef QS_INTERNAL_TEST
   ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE</p>\n", r);
@@ -2159,71 +2237,69 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         ap_rputs("</tr>\n", r);
       }
       /* request level */
-      if(sconf && sconf->act) {
-        e = sconf->act->entry;
-        if(e) {
-          ap_rputs("<tr class=\"rowt\">"
-                   "<td colspan=\"1\">location</td>"
-                   "<td colspan=\"2\">concurrent requests</td>"
-                   "<td colspan=\"3\">requests/second</td>"
-                   "<td colspan=\"3\">kbytes/second</td>", r);
-          ap_rputs("</tr>\n", r);
-          ap_rputs("<tr class=\"rowt\">"
-                   "<td ></td>"
-                   "<td >limit</td>"
-                   "<td >current</td>"
+      e = sconf->act->entry;
+      if(e) {
+        ap_rputs("<tr class=\"rowt\">"
+                 "<td colspan=\"1\">location</td>"
+                 "<td colspan=\"2\">concurrent requests</td>"
+                 "<td colspan=\"3\">requests/second</td>"
+                 "<td colspan=\"3\">kbytes/second</td>", r);
+        ap_rputs("</tr>\n", r);
+        ap_rputs("<tr class=\"rowt\">"
+                 "<td ></td>"
+                 "<td >limit</td>"
+                 "<td >current</td>"
                    "<td >wait rate</td>"
-                   "<td >limit</td>"
-                   "<td >current</td>"
-                   "<td >wait rate</td>"
-                   "<td >limit</td>"
-                   "<td >current</td>", r);
+                 "<td >limit</td>"
+                 "<td >current</td>"
+                 "<td >wait rate</td>"
+                 "<td >limit</td>"
+                 "<td >current</td>", r);
           ap_rputs("</tr>\n", r);
+      }
+      while(e) {
+        char *red = "style=\"background-color: rgb(240,133,135);\"";
+        ap_rputs("<tr class=\"rows\">", r);
+        ap_rprintf(r, "<!--%d--><td>%s%s</a></td>", i,
+                   ap_escape_html(r->pool, qos_crline(r, e->url)),
+                   e->condition == NULL ? "" : " <small>(conditional)</small>");
+        if(e->limit == 0) {
+          ap_rprintf(r, "<td>-</td>");
+          ap_rprintf(r, "<td>-</td>");
+        } else {
+          ap_rprintf(r, "<td>%d</td>", e->limit);
+          ap_rprintf(r, "<td %s>%d</td>",
+                     ((e->counter * 100) / e->limit) > 70 ? red : "",
+                     e->counter);
         }
-        while(e) {
-          char *red = "style=\"background-color: rgb(240,133,135);\"";
-          ap_rputs("<tr class=\"rows\">", r);
-          ap_rprintf(r, "<!--%d--><td>%s%s</a></td>", i,
-                     ap_escape_html(r->pool, qos_crline(r, e->url)),
-                     e->condition == NULL ? "" : " <small>(conditional)</small>");
-          if(e->limit == 0) {
-            ap_rprintf(r, "<td>-</td>");
-            ap_rprintf(r, "<td>-</td>");
+        if(e->req_per_sec_limit == 0) {
+          ap_rprintf(r, "<td>-</td>");
+          ap_rprintf(r, "<td>-</td>");
+          ap_rprintf(r, "<td>-</td>");
           } else {
-            ap_rprintf(r, "<td>%d</td>", e->limit);
-            ap_rprintf(r, "<td %s>%d</td>",
-                       ((e->counter * 100) / e->limit) > 70 ? red : "",
-                       e->counter);
-          }
-          if(e->req_per_sec_limit == 0) {
+          ap_rprintf(r, "<td %s>%d&nbsp;ms</td>",
+                     e->req_per_sec_block_rate ? red : "",
+                     e->req_per_sec_block_rate);
+          ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
+          ap_rprintf(r, "<td %s>%ld</td>",
+                     ((e->req_per_sec * 100) / e->req_per_sec_limit) > 70 ? red : "",
+                     now > (e->interval + 11) ? 0 : e->req_per_sec);
+        }
+        if(e->kbytes_per_sec_limit == 0) {
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
-          } else {
-            ap_rprintf(r, "<td %s>%d&nbsp;ms</td>",
-                       e->req_per_sec_block_rate ? red : "",
-                       e->req_per_sec_block_rate);
-            ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
-            ap_rprintf(r, "<td %s>%ld</td>",
-                       ((e->req_per_sec * 100) / e->req_per_sec_limit) > 70 ? red : "",
-                       now > (e->interval + 11) ? 0 : e->req_per_sec);
-          }
-          if(e->kbytes_per_sec_limit == 0) {
-            ap_rprintf(r, "<td>-</td>");
-            ap_rprintf(r, "<td>-</td>");
-            ap_rprintf(r, "<td>-</td>");
-          } else {
-            ap_rprintf(r, "<td %s>%d&nbsp;ms</td>",
-                       e->kbytes_per_sec_block_rate ? red : "",
-                       e->kbytes_per_sec_block_rate);
+        } else {
+          ap_rprintf(r, "<td %s>%d&nbsp;ms</td>",
+                     e->kbytes_per_sec_block_rate ? red : "",
+                     e->kbytes_per_sec_block_rate);
           ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
                      ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 70 ? red : "",
                      now > (e->interval + 11) ? 0 : e->kbytes_per_sec);
-          }
-          ap_rputs("</tr>\n", r);
-          e = e->next;
         }
+        ap_rputs("</tr>\n", r);
+        e = e->next;
       }
       /* connection level */
       if(sconf) {
