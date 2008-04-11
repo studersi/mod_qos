@@ -51,16 +51,55 @@
 <tr><td><img src="mod_qos_s.gif" alt="mod_qos"></td><td style="vertical-align: bottom;"><h1>mod_qos</h1></td></tr>
 <tr><td>&nbsp;</td><td>
 <p>
-The Apache Web Server requires threads and processes to serve HTTP requests. Each 
-TCP connection to the web server occupies one of these threads respectively processes. 
-Sometimes a server gets too busy to serve every request due the lack of free 
-processes or threads. mod_qos is a <b>Quality of Service module for the Apache 
-Web Server</b> implementing control mechanisms that can provide different priority 
-to different requests.
+In computer networking, the term quality of services (QoS) describes 
+resource management rather than the quality of a service. 
+Quality of services implements control mechanism to provide 
+different priority to different users, applications, and data 
+connections. It is used to guarantee a certain level of performance 
+to data resources. The term quality of service is often used 
+in the field of wide area network protocols (e.g. ATM) and 
+telephony (e.g. VoIP) but rarely in conjunction with web applications. 
+<b>mod_qos is a quality of service module for the Apache web server</b> 
+implementing control mechanisms that can provide different priority to 
+different requests.
 </p>
 <p>
-mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a> 
-under the <a href="LICENSE.txt">GNU General Public License</a>.
+Web servers require threads and processes to serve HTTP requests. 
+Each TCP connection to the web server occupies one of these threads 
+respectively processes. Sometimes a server gets too busy to serve 
+every request due the lack of free processes or threads.
+All clients communicates to the server over a network link with a 
+limited bandwidth. Overfilling the link, result in network congestion 
+and poor performance.
+</p>
+<p>
+Example situations were web applications require QoS:
+<ul>
+<li>
+More resources are consumed if request processing takes a long time by an application, e.g. time consuming database queries.
+</li>
+<li>
+Oversubscription of link capabilities due too many concurrent clients uploading or downloading data.
+</li>
+<li>
+Penetration of the web server by attackers.
+</li>
+</ul>
+</p>
+<p>
+mod_qos may be used to determine which requests should be served and 
+which shouldn’t in order to avoid resource oversubscription. The 
+module collects different attributes such as the request URL, 
+HTTP request and response headers, the IP source address, 
+history data (user session and on per source IP address 
+basis), the number of concurrent requests to the server (total or 
+having the  same attributes), the number of concurrent TCP 
+connections (total or from a single source IP), and so forth.
+</p>
+<p>
+Counteractive measures to enforce the defined rules are: request 
+blocking, dynamic timeout adjustment, request delay, respinse 
+throttling, and dropping of TCP connections.
 </p>
 <p>
 The current release of the mod_qos <a href="mod_qos_seq.gif">module</a> implements control mechanisms for:
@@ -91,9 +130,15 @@ Prefers known IP addresses when server runs out of free TCP connections.
 </li>
 </ul>
 </p>
+<p>
+mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a> 
+under the <a href="LICENSE.txt">GNU General Public License</a>.
+</p>
+
 
 <hr>
 <p>
+More information about mod_qos:
 <ul>
 <li><a href="#build">Build</a></li>
 <li><a href="#source">Source</a></li>
