@@ -64,25 +64,30 @@ implementing control mechanisms that can provide different priority to
 different requests.
 </p>
 <p>
-Web servers require threads and processes to serve HTTP requests. 
+But why do you need quality of service for a web application? Well, 
+web servers require threads and processes to serve HTTP requests. 
 Each TCP connection to the web server occupies one of these threads 
 respectively processes. Sometimes a server gets too busy to serve 
-every request due the lack of free processes or threads.
-All clients communicates to the server over a network link with a 
-limited bandwidth. Overfilling the link, result in network congestion 
-and poor performance.
+every request due the lack of free processes or threads. Another parameter 
+requiring control by mod_qos is the available bandwith: all 
+clients communicates to the server over a network link with a 
+limited bandwidth. Overfilling the link, results in network 
+congestion and poor performance.
 </p>
 <p>
 Example situations were web applications require QoS:
 <ul>
 <li>
-More resources are consumed if request processing takes a long time by an application, e.g. time consuming database queries.
+More resources are consumed if request processing takes a long 
+time by an application, e.g. when request processing includes 
+time consuming database queries.
 </li>
 <li>
-Oversubscription of link capabilities due too many concurrent clients uploading or downloading data.
+Oversubscription of link capabilities due too many concurrent 
+clients uploading or downloading data.
 </li>
 <li>
-Penetration of the web server by attackers.
+Penetration of the web server by attackers (DDoS).
 </li>
 </ul>
 </p>
@@ -93,19 +98,20 @@ module collects different attributes such as the request URL,
 HTTP request and response headers, the IP source address, 
 history data (user session and on per source IP address 
 basis), the number of concurrent requests to the server (total or 
-having the  same attributes), the number of concurrent TCP 
+requests having similar attributes), the number of concurrent TCP 
 connections (total or from a single source IP), and so forth.
 </p>
 <p>
 Counteractive measures to enforce the defined rules are: request 
-blocking, dynamic timeout adjustment, request delay, respinse 
+blocking, dynamic timeout adjustment, request delay, response 
 throttling, and dropping of TCP connections.
 </p>
 <p>
-The current release of the mod_qos <a href="mod_qos_seq.gif">module</a> implements control mechanisms for:
+The current release of the mod_qos <a href="mod_qos_seq.gif">module</a> 
+implements control mechanisms to manage:
 <ul>
 <li type=square>
-The maximum number of concurrent requests to a location (URL) or virtual host.
+The maximum number of concurrent requests to a location/resouce (URL) or virtual host.
 </li>
 <li type=square>
 Limitation of the bandwidth such as the maximum allowed number of requests 
@@ -119,7 +125,7 @@ It can also "detect" very important persons (VIP) which may access the web serve
 without or with fewer restrictions.
 </li>
 <li type=square>
-Generic request line and header filter.
+Generic request line and header filter to deny unauthorized operations.
 </li>
 <li type=square>
 Limitations on the TCP connection level, e.g. the maximum of allowed connections from 
@@ -129,13 +135,12 @@ a single IP source address or dynamic keep-alive control.
 Prefers known IP addresses when server runs out of free TCP connections.
 </li>
 </ul>
+
 </p>
 <p>
 mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a> 
 under the <a href="LICENSE.txt">GNU General Public License</a>.
 </p>
-
-
 <hr>
 <p>
 More information about mod_qos:
@@ -162,6 +167,8 @@ More information about mod_qos:
 <li><a href="#usecases">Use Cases</a></li>
 </ul>
 </p>
+
+
 
 <hr>
 <a name="build">
