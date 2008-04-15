@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.74 2008-04-09 18:03:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.75 2008-04-15 19:30:59 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -87,6 +87,7 @@ PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 
 TypesConfig             conf/mime.types
+LoadModule              dumpio_module ##ROOT##/../httpd/modules/debug/.libs/mod_dumpio.so
 LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
 LoadModule              info_module ##ROOT##/../httpd/modules/generators/.libs/mod_info.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
@@ -99,6 +100,9 @@ QSC_Filter2Binary       /usr/local/bin/qsfilter2
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
+
+#DumpIOInput             On
+#DumpIOLogLevel          warn
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
    ServerName                 127.0.0.1

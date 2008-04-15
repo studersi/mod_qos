@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.23 2008-02-27 21:10:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.24 2008-04-15 19:30:59 pbuchbinder Exp $
 #
 # Simple build script using apache and libpng tar.gz from the 3thrdparty directory
 #
@@ -67,7 +67,7 @@ fi
 
 cd httpd
 ./buildconf
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared
 make
 strip modules/qos/.libs/mod_qos.so
 if [ $? -ne 0 ]; then
