@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.59 2008-04-12 15:18:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.60 2008-04-15 19:30:59 pbuchbinder Exp $";
 static const char g_revision[] = "6.7";
 
 /************************************************************************
@@ -85,6 +85,9 @@ static const char g_revision[] = "6.7";
 /* netmask 255.255.240.0 */
 #define QS_NETMASK 16
 #define QS_NETMASK_MOD (QS_NETMASK * 65536)
+
+#define QS_PKT_RATE_INIT 44
+#define QS_PKT_RATE_MIN  30
 
 #define QS_MAX_DELAY 5000
 
@@ -178,6 +181,10 @@ typedef struct {
   apr_interval_time_t server_timeout;
   qs_conn_state_e status;
   conn_rec *c;
+  /* packet recv rate: */
+  apr_size_t bytes;
+  int count;
+  int lowrate;
 } qos_ifctx_t;
 
 /**
@@ -1808,31 +1815,92 @@ static int qos_hp_event_count(request_rec *r) {
 }
 
 /**
+ * creates a new connection ctx (remember to set the socket, connection and timeout)
+ */
+static qos_ifctx_t *qos_create_ifctx(apr_pool_t *pool) {
+  qos_ifctx_t *inctx = apr_pcalloc(pool, sizeof(qos_ifctx_t));
+  inctx->client_socket = NULL;
+  inctx->status = QS_CONN_STATE_NEW;
+  inctx->qt = 0;
+  inctx->count = 5;
+  inctx->bytes = QS_PKT_RATE_INIT * inctx->count;
+  inctx->lowrate = 0;
+  return inctx;
+}
+
+/**
+ * returns the context from the r->connection->input_filters
+ */
+static qos_ifctx_t *qos_get_ifctx(ap_filter_t *f) {
+  qos_ifctx_t *inctx = NULL;
+  while(f) {
+    if(strcmp(f->frec->name, "qos-in-filter") == 0) {
+      inctx = f->ctx;
+      break;
+    }
+    f = f->next;
+  }
+  return inctx;
+}
+
+/**
+ * calculates the request packet size rate (called by input filter
+ */
+static void qos_packet_rate(qos_ifctx_t *inctx, apr_bucket_brigade *bb) {
+  apr_bucket *b;
+  apr_size_t av = 0;
+  for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
+    if(b->length) {
+      inctx->count++;
+      inctx->bytes = inctx->bytes + b->length;
+      av = inctx->bytes / inctx->count;
+      /* client hits min packet size */
+      if(av < QS_PKT_RATE_MIN) {
+        inctx->lowrate = 1;
+      }
+      if(inctx->count > 10) {
+        inctx->bytes = inctx->bytes - av;
+        inctx->count--;
+      }
+    }
+  }
+}
+
+/**
+ * start packet rate measure (if filter has not already been inserted)
+ */
+static void qos_pktrate_pc(conn_rec *c, qos_srv_config *sconf) {
+  if(sconf->qos_cc_prefer_limit) {
+    qos_ifctx_t *inctx = qos_get_ifctx(c->input_filters);
+    if(inctx == NULL) {
+      inctx = qos_create_ifctx(c->pool);
+      ap_add_input_filter("qos-in-filter", inctx, NULL, c);
+    }
+  }
+}
+
+/**
  * lower initial timeout at process connection handler
  */
 static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
   if(sconf && (sconf->connect_timeout != -1)) {
-    ap_filter_t *f = c->input_filters;
-    while(f) {
-      if(strcmp(f->frec->name, "qos-in-filter") == 0) {
-        qos_ifctx_t *inctx = f->ctx;
-        if(inctx->status == QS_CONN_STATE_NEW) {
-          apr_status_t rv = apr_socket_timeout_get(inctx->client_socket, &inctx->at);
-          if(rv == APR_SUCCESS) {
-            server_rec *sc;
-            /* set short timeout */
-            apr_socket_timeout_set(inctx->client_socket, inctx->qt);
-            inctx->status = QS_CONN_STATE_HEAD;
-            /* make change "persisten" till we got the whole request
-               line and headers (again, ugly but it works) */
-            inctx->server_timeout = c->base_server->timeout;
-            sc = apr_pcalloc(c->pool, sizeof(server_rec));
-            memcpy(sc, c->base_server, sizeof(server_rec));
-            c->base_server = sc;
-            c->base_server->timeout = inctx->qt;
-          }
+    qos_ifctx_t *inctx = qos_get_ifctx(c->input_filters);
+    if(inctx) {
+      if(inctx->status == QS_CONN_STATE_NEW) {
+        apr_status_t rv = apr_socket_timeout_get(inctx->client_socket, &inctx->at);
+        if(rv == APR_SUCCESS) {
+          server_rec *sc;
+          /* set short timeout */
+          apr_socket_timeout_set(inctx->client_socket, inctx->qt);
+          inctx->status = QS_CONN_STATE_HEAD;
+          /* make change "persisten" till we got the whole request
+             line and headers (again, ugly but it works) */
+          inctx->server_timeout = c->base_server->timeout;
+          sc = apr_pcalloc(c->pool, sizeof(server_rec));
+          memcpy(sc, c->base_server, sizeof(server_rec));
+          c->base_server = sc;
+          c->base_server->timeout = inctx->qt;
         }
-        break;
       }
     }
   }
@@ -1843,8 +1911,17 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
  */
 static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
   if(sconf->has_qos_cc) {
-    if(!apr_table_get(r->subprocess_env, "QS_Block_seen") &&
-       apr_table_get(r->subprocess_env, "QS_Block")) {
+    int low_rate = 0;
+    int block_event = !apr_table_get(r->subprocess_env, "QS_Block_seen") &&
+      apr_table_get(r->subprocess_env, "QS_Block");
+    if(sconf->qos_cc_prefer_limit) {
+      qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
+      if(inctx) {
+        low_rate = inctx->lowrate;
+      }
+    }
+    /* $$$ */
+    if(block_event) {
       qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
       qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
       qos_s_entry_t **e = NULL;
@@ -2482,6 +2559,9 @@ static int qos_process_connection(conn_rec *c) {
     /* control timeout */
     qos_timeout_pc(c, sconf);
 
+    /* packet rate */
+    qos_pktrate_pc(c, sconf);
+
     /* evaluates client ip */
     if((sconf->max_conn_per_ip != -1) ||
        sconf->has_qos_cc) {
@@ -2609,11 +2689,10 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                 &qos_module);
   if(sconf && (sconf->connect_timeout != -1)) {
-    qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
-    inctx->client_socket = skt;
-    inctx->status = QS_CONN_STATE_NEW;
-    inctx->qt = apr_time_from_sec(sconf->connect_timeout);
+    qos_ifctx_t *inctx = qos_create_ifctx(c->pool);
     inctx->c = c;
+    inctx->client_socket = skt;
+    inctx->qt = apr_time_from_sec(sconf->connect_timeout);
     ap_add_input_filter("qos-in-filter", inctx, NULL, c);
   }
   return DECLINED;
@@ -2625,21 +2704,17 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
 static int qos_post_read_request(request_rec * r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
+  qos_ifctx_t *inctx = NULL;
   if(sconf && (sconf->connect_timeout != -1)) {
-    ap_filter_t *f = r->connection->input_filters;
-    while(f) {
-      if(strcmp(f->frec->name, "qos-in-filter") == 0) {
-        qos_ifctx_t *inctx = f->ctx;
-        if(inctx->status == QS_CONN_STATE_HEAD) {
-          // inctx->status = QS_CONN_STATE_BODY;
-          inctx->status = QS_CONN_STATE_END;
-          /* clear short timeout */
-          apr_socket_timeout_set(inctx->client_socket, inctx->at);
-          r->connection->base_server->timeout = inctx->server_timeout;
-        }
-        break;
+    inctx = qos_get_ifctx(r->connection->input_filters);
+    if(inctx) {
+      if(inctx->status == QS_CONN_STATE_HEAD) {
+        // inctx->status = QS_CONN_STATE_BODY;
+        inctx->status = QS_CONN_STATE_END;
+        /* clear short timeout */
+        apr_socket_timeout_set(inctx->client_socket, inctx->at);
+        r->connection->base_server->timeout = inctx->server_timeout;
       }
-      f = f->next;
     }
   }
   return DECLINED;
@@ -2875,7 +2950,7 @@ static int qos_header_parser(request_rec * r) {
 }
 
 /**
- * input filter, used to log timeout event
+ * input filter, used to log timeout event and to calculate packet rate
  */
 static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
                                   ap_input_mode_t mode, apr_read_type_e block,
@@ -2883,6 +2958,9 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   apr_status_t rv;
   qos_ifctx_t *inctx = f->ctx;
   rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
+  if(rv == APR_SUCCESS) {
+    qos_packet_rate(inctx, bb);
+  }
   if(inctx->status > QS_CONN_STATE_NEW) {
     if((rv == APR_TIMEUP) && inctx->status && (inctx->status < QS_CONN_STATE_END)) {
       int qti = apr_time_sec(inctx->qt);
