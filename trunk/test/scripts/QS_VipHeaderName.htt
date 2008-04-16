@@ -1,7 +1,7 @@
 #
 # test QS_VipHeaderName directive
 #
-# $Id: QS_VipHeaderName.htt,v 1.1 2008-01-24 15:26:10 pbuchbinder Exp $
+# $Id: QS_VipHeaderName.htt,v 1.2 2008-04-16 19:22:04 pbuchbinder Exp $
 #
 
 
@@ -13,6 +13,7 @@ _SLEEP 1000
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=10 HTTP/1.1
 __Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __
 _EXPECT . "200 OK"
 _WAIT
@@ -25,6 +26,7 @@ CLIENT
 _REQ localhost $QS_PORT_BASE
 __GET /login/vip.cgi HTTP/1.1
 __Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __
 _MATCH headers "MODQOS=(.*); Path" COOKIE_VAL 
 _EXPECT . "200 OK"
@@ -37,6 +39,7 @@ _SLEEP 2000
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/index.cgi HTTP/1.1
 __Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __
 _EXPECT . "500 Internal Server Error"
 _WAIT
@@ -46,6 +49,7 @@ _CLOSE
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/index.cgi HTTP/1.1
 __Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Cookie: MODQOS=$COOKIE_VAL
 __
 _EXPECT . "200 OK"
@@ -55,6 +59,7 @@ _WAIT
 _REQ localhost $QS_PORT_BASE
 __GET /login/vip.cgi HTTP/1.1
 __Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Cookie: MODQOS=$COOKIE_VAL
 __
 _EXPECT . "200 OK"
@@ -65,6 +70,7 @@ _WAIT
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/index.cgi HTTP/1.1
 __Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Cookie: MODQOS=eg3LcsEBcTAlxjE12JVz+Q/GqaT/PiZC88AOPK08ckQ
 __
 _EXPECT . "500 Internal Server Error"
@@ -75,6 +81,7 @@ _CLOSE
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/index.cgi HTTP/1.1
 __Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Cookie: MODQOS=$COOKIE_VAL
 __
 _EXPECT . "200 OK"
@@ -84,6 +91,7 @@ _SLEEP 4000
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/index.cgi HTTP/1.1
 __Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Cookie: MODQOS=$COOKIE_VAL
 __
 _EXPECT . "500 Internal Server Error"

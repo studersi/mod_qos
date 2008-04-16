@@ -717,7 +717,7 @@ These directives must only be used in the global server context.
 <code>QS_ClientEntries &lt;number&gt;</code><br>
 Defines the number of individual clients managed by mod_qos. 
 Default are 50'000 concurrent IP addresses. Each client requires 
-about 44 bytes of shared memory on a 32bit system or 88 bytes 
+about 48 bytes of shared memory on a 32bit system or 96 bytes 
 on a 64bit system respectively. Client IP source address store 
 survives graceful server restart.
 </li>
@@ -802,7 +802,8 @@ to access log messages (the header is not sent to the client).
 <code>mod_qos_ev</code> <br> This header stores mod_qos event messages. A 
 single letter is used to signalize an event: "D"=denied, "S"=pass 
 due an available VIP session, "V"=create VIP session, "K"=connection closed 
-(no keep-alive), "T"=dynamic keep-alive, and "L"=means a request slow down.
+(no keep-alive), "T"=dynamic keep-alive, "r"=IP has marked as a 
+slow/bad client, and "L"=means a request slow down.
 </li>
 <li>
 <code>mod_qos_cr</code> <br> The number of concurrent requests to a 

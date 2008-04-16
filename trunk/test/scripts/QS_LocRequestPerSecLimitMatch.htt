@@ -1,5 +1,5 @@
 #
-# $Id: QS_LocRequestPerSecLimitMatch.htt,v 1.1 2008-01-24 15:25:58 pbuchbinder Exp $
+# $Id: QS_LocRequestPerSecLimitMatch.htt,v 1.2 2008-04-16 19:22:04 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -8,7 +8,8 @@ CLIENT 100
 _LOOP 12
 _REQ server1 $QS_PORT_BASE1
 __GET /ccc/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _WAIT
@@ -17,7 +18,8 @@ _SLEEP 100
 
 _REQ server1 $QS_PORT_BASE1
 __GET /ccc/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _WAIT
@@ -26,7 +28,8 @@ _SLEEP 100
 
 _REQ server1 $QS_PORT_BASE1
 __GET /ccc/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _WAIT
@@ -35,7 +38,8 @@ _SLEEP 100
 
 _REQ server1 $QS_PORT_BASE1
 __GET /ccc/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _WAIT
@@ -44,7 +48,8 @@ _SLEEP 100
 
 _REQ server1 $QS_PORT_BASE1
 __GET /ccc/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _WAIT
