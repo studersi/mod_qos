@@ -1,5 +1,5 @@
 #
-# $Id: MultiRequest.htt,v 1.5 2008-03-17 19:35:23 pbuchbinder Exp $
+# $Id: MultiRequest.htt,v 1.6 2008-04-16 19:22:04 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -8,7 +8,8 @@ CLIENT 50
 _LOOP 10
 _REQ server1 $QS_PORT_BASE1
 __GET /no/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _EXPECT . "200 OK"
@@ -16,7 +17,8 @@ _WAIT
 
 _REQ server1 $QS_PORT_BASE1
 __GET /no/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _EXPECT . "200 OK"
@@ -24,7 +26,8 @@ _WAIT
 
 _REQ server1 $QS_PORT_BASE1
 __GET /no/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _EXPECT . "200 OK"
@@ -32,7 +35,8 @@ _WAIT
 
 _REQ server1 $QS_PORT_BASE1
 __GET /no/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _EXPECT . "200 OK"
@@ -40,7 +44,8 @@ _WAIT
 
 _REQ server1 $QS_PORT_BASE1
 __GET /no/index.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _EXPECT . "200 OK"
@@ -48,7 +53,8 @@ _WAIT
 
 _REQ server1 $QS_PORT_BASE1
 __GET /no/index404.html HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _EXPECT . "404 Not Found"
@@ -62,7 +68,8 @@ CLIENT
 _SLEEP 1200
 _REQ localhost $QS_PORT_BASE
 __GET /qos?ip HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _EXPECT . "<!--4-->"
@@ -74,7 +81,8 @@ CLIENT
 _SLEEP 10000
 _REQ localhost $QS_PORT_BASE
 __GET /qos HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _EXPECT . "<!--0-->.*free ip entries.*4096"
@@ -95,35 +103,40 @@ _WAIT
 
 _REQ localhost $QS_PORT_BASE
 __GET /aaa/index.html HTTP/1.1
-__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Host: localhost.qos.ch
 __
 _EXPECT . "aaa index.html"
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi HTTP/1.1
-__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Host: localhost.qos.ch
 __
 _EXPECT . "200 OK"
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=1 HTTP/1.1
-__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Host: localhost.qos.ch
 __
 _EXPECT . "200 OK"
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
 __GET /aaa/index.html HTTP/1.1
-__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Host: localhost.qos.ch
 __
 _EXPECT . "aaa index.html"
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
 __GET /aaa/index.html HTTP/1.1
-__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Host: localhost.qos.ch
 __
 _EXPECT . "aaa index.html"
 _WAIT

@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvPreferNet2.htt,v 1.4 2008-03-22 21:56:29 pbuchbinder Exp $
+# $Id: QS_SrvPreferNet2.htt,v 1.5 2008-04-16 19:22:04 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -7,7 +7,8 @@ INCLUDE scripts/ports
 CLIENT 50
 _REQ server1 $QS_PORT_BASE1
 __GET /login/vip.cgi HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __
 _EXPECT . "200 OK"
 _WAIT
@@ -18,8 +19,9 @@ _SLEEP 1000
 
 _REQ server1 $QS_PORT_BASE1
 __GET /cgi/sleep.cgi?s=5 HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
 __Connection: keep-alive
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __
 _WAIT
 
@@ -31,8 +33,9 @@ _SLEEP 1000
 
 _REQ server1 $QS_PORT_BASE1
 __GET /cgi/sleep.cgi HTTP/1.1
-__Host: localhost
+__Host: localhost.qos.ch
 __Connection: keep-alive
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __
 _WAIT
 END

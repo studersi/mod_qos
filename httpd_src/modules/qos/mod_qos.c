@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.60 2008-04-15 19:30:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.61 2008-04-16 19:22:04 pbuchbinder Exp $";
 static const char g_revision[] = "6.7";
 
 /************************************************************************
@@ -86,8 +86,8 @@ static const char g_revision[] = "6.7";
 #define QS_NETMASK 16
 #define QS_NETMASK_MOD (QS_NETMASK * 65536)
 
-#define QS_PKT_RATE_INIT 44
-#define QS_PKT_RATE_MIN  30
+#define QS_PKT_RATE_INIT  220
+#define QS_PKT_RATE_MIN   30
 
 #define QS_MAX_DELAY 5000
 
@@ -102,6 +102,7 @@ typedef struct {
   unsigned long ip;
   /* prefer */
   int vip;
+  time_t lowrate;
   /* ev block */
   time_t time;
   int block;
@@ -593,6 +594,7 @@ static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA) {
 static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
   pA->vip = 0;
+  pA->lowrate = 0;
   pA->block = 0;
   pA->block_time = 0;
   pA->interval = now;
@@ -1823,8 +1825,8 @@ static qos_ifctx_t *qos_create_ifctx(apr_pool_t *pool) {
   inctx->status = QS_CONN_STATE_NEW;
   inctx->qt = 0;
   inctx->count = 5;
-  inctx->bytes = QS_PKT_RATE_INIT * inctx->count;
-  inctx->lowrate = 0;
+  inctx->bytes = QS_PKT_RATE_INIT;
+  inctx->lowrate = -1;
   return inctx;
 }
 
@@ -1856,7 +1858,7 @@ static void qos_packet_rate(qos_ifctx_t *inctx, apr_bucket_brigade *bb) {
       av = inctx->bytes / inctx->count;
       /* client hits min packet size */
       if(av < QS_PKT_RATE_MIN) {
-        inctx->lowrate = 1;
+        inctx->lowrate++;
       }
       if(inctx->count > 10) {
         inctx->bytes = inctx->bytes - av;
@@ -1876,6 +1878,7 @@ static void qos_pktrate_pc(conn_rec *c, qos_srv_config *sconf) {
       inctx = qos_create_ifctx(c->pool);
       ap_add_input_filter("qos-in-filter", inctx, NULL, c);
     }
+    inctx->lowrate = 0;
   }
 }
 
@@ -1911,17 +1914,21 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
  */
 static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
   if(sconf->has_qos_cc) {
-    int low_rate = 0;
+    int lowrate = 0;
     int block_event = !apr_table_get(r->subprocess_env, "QS_Block_seen") &&
       apr_table_get(r->subprocess_env, "QS_Block");
     if(sconf->qos_cc_prefer_limit) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
       if(inctx) {
-        low_rate = inctx->lowrate;
+        if(inctx->lowrate > 3) {
+          lowrate = inctx->lowrate;
+        }
+        inctx->count = 5;
+        inctx->bytes = QS_PKT_RATE_INIT;
+        inctx->lowrate = 0;
       }
     }
-    /* $$$ */
-    if(block_event) {
+    if(block_event || lowrate) {
       qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
       qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
       qos_s_entry_t **e = NULL;
@@ -1937,12 +1944,22 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
         /* reset expired events */
         (*e)->block = 0;
       }
-      /* increment block event */
-      (*e)->block++;
-      (*e)->block_time = now;
-      /* only once per request */
+      /* mark lowpkt client */
+      if(lowrate) {
+        (*e)->lowrate = apr_time_sec(r->request_time);
+        qs_req_ctx *rctx = qos_rctx_config_get(r);
+        rctx->evmsg = apr_pstrcat(r->pool, "r;", rctx->evmsg, NULL);
+      }
+      if(block_event) {
+        /* increment block event */
+        (*e)->block++;
+        (*e)->block_time = now;
+      }
       apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT19 */
-      apr_table_set(r->subprocess_env, "QS_Block_seen", "");
+      if(block_event) {
+        /* only once per request */
+        apr_table_set(r->subprocess_env, "QS_Block_seen", "");
+      }
     }
   }
 }
@@ -2192,6 +2209,62 @@ static void qos_ext_status_short(request_rec *r) {
   }
 }
 
+static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) {
+  int has_clienttable = qos_has_clienttable(r);
+  if(has_clienttable || sconf->has_qos_cc) {
+    const char *option = apr_table_get(qt, "option");
+    if(strcmp(r->handler, "qos-viewer") == 0) {
+      ap_rputs("<table class=\"btable\"><tbody>\n", r);
+      ap_rputs(" <tr class=\"row\"><td>\n", r);
+    } else {
+      ap_rputs("<table border=\"1\"><tbody>\n", r);
+      ap_rputs(" <tr><td>\n", r);
+    }
+    if(strcmp(r->handler, "qos-viewer") == 0) {
+      ap_rputs("<table border=\"0\" cellpadding=\"2\" "
+               "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
+    } else {
+      ap_rputs("<table border=\"1\" cellpadding=\"2\" "
+               "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
+    }
+    ap_rputs("<tr class=\"rowe\">\n", r);
+    ap_rputs("<td colspan=\"9\">settings</td>\n", r);
+    ap_rputs("</tr>", r);
+    if(has_clienttable) {
+      ap_rputs("<tr class=\"rows\">"
+               "<td colspan=\"2\">client ip connections</td>", r);
+      ap_rputs("<td colspan=\"7\">\n", r);
+      ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
+                 ap_escape_html(r->pool, r->parsed_uri.path));
+      if(!option || (option && !strstr(option, "ip")) ) {
+        ap_rprintf(r, "<input name=\"option\" value=\"ip\" type=\"hidden\">\n");
+        ap_rprintf(r, "<input name=\"action\" value=\"enable\" type=\"submit\">\n");
+      } else {
+        ap_rprintf(r, "<input name=\"option\" value=\"no\" type=\"hidden\">\n");
+        ap_rprintf(r, "<input name=\"action\" value=\"disable\" type=\"submit\">\n");
+      }
+      ap_rputs("</form>\n", r);
+      ap_rputs("</td></tr>", r);
+    }
+    if(sconf->has_qos_cc) {
+    }
+    ap_rprintf(r, "<tr class=\"row\">"
+               "<td style=\"width:28%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "<td style=\"width:9%%\"></td>"
+               "</tr>");
+    ap_rputs(" </tbody></table>\n", r);
+    ap_rputs(" </tr></td>\n", r);
+    ap_rputs("</tbody></table>\n", r);
+  }
+}
+
 /**
  * status viewer, used by internal and mod_status handler
  */
@@ -2213,16 +2286,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
 #ifdef QS_INTERNAL_TEST
   ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE</p>\n", r);
 #endif
-  if(qos_has_clienttable(r)) {
-    ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
-               ap_escape_html(r->pool, r->parsed_uri.path));
-    if(!option || (option && !strstr(option, "ip")) ) {
-      ap_rprintf(r, "<input name=\"option\" value=\"show client ip\" type=\"submit\">\n");
-    } else {
-      ap_rprintf(r, "<input name=\"option\" value=\"hide client connections\" type=\"submit\">\n");
-    }
-    ap_rputs("</form>\n", r);
-  }
+  qos_show_ip(r, bsconf, qt);
   if(strcmp(r->handler, "qos-viewer") == 0) {
     ap_rputs("<table class=\"btable\"><tbody>\n", r);
     ap_rputs(" <tr class=\"row\"><td>\n", r);
@@ -2245,7 +2309,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                s->server_hostname == NULL ? "-" : ap_escape_html(r->pool, s->server_hostname),
                s->addrs->host_port,
                s->is_virtual ? "virtual" : "base");
-    ap_rputs("</td></tr>\n", r);
+    ap_rputs("</tr>\n", r);
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
 
     if((sconf == bsconf) && s->is_virtual) {
@@ -2406,7 +2470,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                        (sconf->act->c->connections >= sconf->max_conn) ) ) ? red : "",
                    sconf->act->c->connections);
         
-        if(r->parsed_uri.query && strstr(r->parsed_uri.query, "ip")) {
+        if(option && strstr(option, "ip")) {
           if(sconf->act->c->connections) {
             apr_table_t *entries = apr_table_make(r->pool, 10);
             int j;
@@ -2560,7 +2624,9 @@ static int qos_process_connection(conn_rec *c) {
     qos_timeout_pc(c, sconf);
 
     /* packet rate */
-    qos_pktrate_pc(c, sconf);
+    if(sconf->qos_cc_prefer_limit) {
+      qos_pktrate_pc(c, sconf);
+    }
 
     /* evaluates client ip */
     if((sconf->max_conn_per_ip != -1) ||
@@ -2959,7 +3025,9 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   qos_ifctx_t *inctx = f->ctx;
   rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
   if(rv == APR_SUCCESS) {
-    qos_packet_rate(inctx, bb);
+    if(inctx->lowrate != -1) {
+      qos_packet_rate(inctx, bb);
+    }
   }
   if(inctx->status > QS_CONN_STATE_NEW) {
     if((rv == APR_TIMEUP) && inctx->status && (inctx->status < QS_CONN_STATE_END)) {
