@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.61 2008-04-16 19:22:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.62 2008-04-16 20:24:42 pbuchbinder Exp $";
 static const char g_revision[] = "6.7";
 
 /************************************************************************
@@ -1979,7 +1979,10 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     new.ip = cconf->ip;
     e = qos_cc_get0(u->qos_cc, &new);
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
+    } else {
+      /* update time */
+      (*e)->time = apr_time_sec(r->request_time);
     }
     if(sconf->qos_cc_event) {
       time_t now = apr_time_sec(r->request_time);
@@ -2209,6 +2212,9 @@ static void qos_ext_status_short(request_rec *r) {
   }
 }
 
+/**
+ * viewer settings about ip address information
+ */
 static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) {
   int has_clienttable = qos_has_clienttable(r);
   if(has_clienttable || sconf->has_qos_cc) {
@@ -2228,12 +2234,12 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
     }
     ap_rputs("<tr class=\"rowe\">\n", r);
-    ap_rputs("<td colspan=\"9\">settings</td>\n", r);
+    ap_rputs("<td colspan=\"9\">viewer settings</td>\n", r);
     ap_rputs("</tr>", r);
     if(has_clienttable) {
       ap_rputs("<tr class=\"rows\">"
-               "<td colspan=\"2\">client ip connections</td>", r);
-      ap_rputs("<td colspan=\"7\">\n", r);
+               "<td colspan=\"1\">client ip connections</td>", r);
+      ap_rputs("<td colspan=\"8\">\n", r);
       ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
                  ap_escape_html(r->pool, r->parsed_uri.path));
       if(!option || (option && !strstr(option, "ip")) ) {
@@ -2247,6 +2253,70 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
       ap_rputs("</td></tr>", r);
     }
     if(sconf->has_qos_cc) {
+      const char *address = apr_table_get(qt, "address");
+      ap_rputs("<tr class=\"rows\">"
+               "<td colspan=\"1\">search a client ip entry</td>", r);
+      ap_rputs("<td colspan=\"8\">\n", r);
+      ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
+                 ap_escape_html(r->pool, r->parsed_uri.path));
+      if(option && strstr(option, "ip")) {
+        ap_rprintf(r, "<input name=\"option\" value=\"ip\" type=\"hidden\">\n");
+      }
+      ap_rprintf(r, "<input name=\"address\" value=\"%s\" type=\"text\">\n",
+                 address ? ap_escape_html(r->pool, address) : "0.0.0.0");
+      ap_rprintf(r, "<input name=\"action\" value=\"search\" type=\"submit\">\n");
+      ap_rputs("</form>\n", r);
+      ap_rputs("</td></tr>", r);
+      if(address) {
+        unsigned long ip = inet_addr(address);
+        qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+        if(ip) {
+          qos_s_entry_t **e = NULL;
+          qos_s_entry_t new;
+          apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT20 */
+          new.ip = ip;
+          e = qos_cc_get0(u->qos_cc, &new);
+          if(e) {
+            new.vip = (*e)->vip;
+            new.lowrate = (*e)->lowrate;
+            new.time = (*e)->time;
+            new.block = (*e)->block;
+            new.block_time = (*e)->block_time;
+            new.req_per_sec = (*e)->req_per_sec;
+            new.req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
+            new.lowrate = (*e)->lowrate;
+          }
+          apr_global_mutex_unlock(u->qos_cc->lock);            /* @CRT20 */
+          ap_rputs("<tr class=\"rowt\"><td colspan=\"1\">IP</td>\n", r);
+          ap_rputs("<td colspan=\"2\">last request</td>\n", r);
+          ap_rputs("<td colspan=\"1\">vip</td>\n", r);
+          ap_rputs("<td colspan=\"2\">blocked</td>\n", r);
+          ap_rputs("<td colspan=\"2\">events/sec</td>\n", r);
+          ap_rputs("<td colspan=\"1\">low prio</td>\n", r);
+          ap_rputs("</tr>", r);
+          ap_rprintf(r, "<tr class=\"rows\">"
+                     "<td colspan=\"1\">%s</td>", ap_escape_html(r->pool, address));
+          if(!e) {
+            ap_rputs("<td colspan=\"8\"><i>not found</i></td>\n", r);
+          } else {
+            char buf[1024];
+            struct tm *ptr = localtime(&new.time);
+            strftime(buf, sizeof(buf), "%d.%m.%Y %H:%M:%S", ptr);
+            ap_rprintf(r, "<td colspan=\"2\">%s</td>\n", buf);
+            ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", new.vip ? "yes" : "no");
+            if(sconf->qos_cc_block_time > (time(NULL) - new.block_time)) {
+              ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", new.block ? "yes" : "no");
+              ap_rprintf(r, "<td colspan=\"1\">%ld&nbsp;sec</td>\n", time(NULL) - new.block_time);
+            } else {
+              ap_rprintf(r, "<td colspan=\"2\">no</td>\n");
+            }
+            ap_rprintf(r, "<td colspan=\"1\">%ld</td>\n", new.req_per_sec);
+            ap_rprintf(r, "<td colspan=\"1\">%d&nbsp;ms</td>\n", new.req_per_sec_block_rate);
+            ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", new.lowrate ? "yes" : "no");
+          }
+          ap_rputs("</tr>\n", r);
+        }
+      }
     }
     ap_rprintf(r, "<tr class=\"row\">"
                "<td style=\"width:28%%\"></td>"
