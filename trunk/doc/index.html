@@ -362,8 +362,23 @@ See the <code>QS_Session*</code> directives for further session attribute settin
 <li>
 <code>QS_VipIPHeaderName &lt;header name&gt;</code><br>
 Defines a HTTP response header which marks a client source IP address as a VIP. 
-This header may be used in conjunction with the <code>QS_ClientPrefer</code>, and 
+This header may be used in conjunction with the <code>QS_ClientPrefer</code> and 
 <code>QS_SrvPreferNet</code> directives only.
+</li>
+<li>
+<code>QS_VipUser</code><br>
+Creates a VIP session for users which has been authenticated by the 
+Apache server, e.g. by the standard mod_auth* modules. The command may 
+be used in conjunction with the <code>QS_ClientPrefer</code> and 
+<code>QS_SrvPreferNet</code> directives too (simplar to 
+<code>QS_VipHeaderName</code>).
+</li>
+<li>
+<code>QS_VipIPUser</code><br>
+Marks a source IP address as a VIP if the user has been been authenticated by the 
+Apache server, e.g. by the standard mod_auth* modules. The command may only 
+be used in conjunction with the <code>QS_ClientPrefer</code> and 
+<code>QS_SrvPreferNet</code> directives (similar to <code>QS_VipIPHeaderName</code>).
 </li>
 <li>
 <code>QS_SessionTimeout &lt;seconds&gt;</code><br>

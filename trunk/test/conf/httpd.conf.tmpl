@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.75 2008-04-15 19:30:59 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.76 2008-04-17 20:02:55 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -319,6 +319,7 @@ SSLRandomSeed           startup builtin
    QS_ErrorPage               /error-docs/error.html
    SetEnvIf   Host (.*):.*    QS_ErrorPage=/error-docs/$1.html
    QS_LocRequestLimit         /cgi            5
+   QS_VipUser
 
    <Location /status>
        SetHandler             server-status

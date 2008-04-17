@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.50 2008-04-09 18:03:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.51 2008-04-17 20:02:54 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -363,6 +363,15 @@ if [ $QDIFF2 -lt $QDIFF3 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientPrefer_IP.htt"
 fi
+QSTART=`grep -c "mod_qos(064)" logs/error_log`
+./htt.sh -s ./scripts/QS_ClientPrefer_SP.htt
+QFIRST=`grep -c "mod_qos(064)" logs/error_log`
+QDIFF1=`expr $QFIRST - $QSTART`
+echo "$QDIFF1"
+if [ $QDIFF1 -eq 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientPrefer_SP.htt"
+fi
 
 echo "-- QS_SetEnvResHeaders" >> logs/error_log
 ./htt.sh -s ./scripts/QS_SetEnvResHeaders.htt
@@ -415,6 +424,12 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventPerSecLimit_t2.htt"
+fi
+
+./htt.sh -s ./scripts/QS_VipUser.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_VipUser.htt"
 fi
 
 # -----------------------------------------------------------------

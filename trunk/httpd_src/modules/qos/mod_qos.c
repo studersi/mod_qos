@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.63 2008-04-17 07:15:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.64 2008-04-17 20:02:53 pbuchbinder Exp $";
 static const char g_revision[] = "6.7";
 
 /************************************************************************
@@ -329,6 +329,8 @@ typedef struct {
   unsigned char key[EVP_MAX_KEY_LENGTH];
   char *header_name;
   char *ip_header_name;
+  int vip_user;
+  int vip_ip_user;
   int max_conn;
   int max_conn_close;
   int max_conn_per_ip;
@@ -360,7 +362,7 @@ typedef struct {
   char *evmsg;
   qos_srv_config *sconf;
   int is_vip;           /* is vip, either by request or by session */
-  int is_vip_by_header; /* received vip header from application */
+  int is_vip_by_header; /* received vip header from application/or auth. user */
 } qs_conn_ctx;
 
 /**
@@ -1766,7 +1768,7 @@ static void qos_lg_event_update(request_rec *r, time_t *t) {
     qs_acentry_t *e = act->entry;
     *t = now;
     if(e) {
-      apr_global_mutex_lock(act->lock);   /* @CRT13 */
+      apr_global_mutex_lock(act->lock);     /* @CRT13 */
       while(e) {
         if(e->event) {
           if(((e->event[0] != '!') && apr_table_get(r->subprocess_env, e->event)) ||
@@ -2406,7 +2408,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         hc = u->qos_cc->connections;
         num = u->qos_cc->num;
         max = u->qos_cc->max;
-        apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT18 */
+        apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT16 */
         ap_rputs("<tr class=\"rowt\">"
                  "<td colspan=\"6\">client control</td>"
                  "<td >max</td>"
@@ -3097,7 +3099,8 @@ static int qos_header_parser(request_rec * r) {
 }
 
 /**
- * input filter, used to log timeout event and to calculate packet rate
+ * input filter, used to log timeout event, mark slow clients,
+ * and to calculate packet rate
  */
 static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
                                   ap_input_mode_t mode, apr_read_type_e block,
@@ -3113,7 +3116,21 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   if(inctx->status > QS_CONN_STATE_NEW) {
     if((rv == APR_TIMEUP) && inctx->status && (inctx->status < QS_CONN_STATE_END)) {
       int qti = apr_time_sec(inctx->qt);
-      /* $$$ update cc */
+      qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
+                                                                    &qos_module);
+      if(sconf) {
+        qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+        qos_s_entry_t **e = NULL;
+        qos_s_entry_t new;
+        apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
+        new.ip = inet_addr(inctx->c->remote_ip); /* v4 */
+        e = qos_cc_get0(u->qos_cc, &new);
+        if(!e) {
+          e = qos_cc_set(u->qos_cc, &new, time(NULL));
+        }
+        (*e)->lowrate = time(NULL);
+        apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT18 */
+      }
       inctx->lowrate = QS_PKT_RATE_TH + 1;
       f->c->base_server->timeout = inctx->server_timeout;
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
@@ -3185,6 +3202,29 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
         cconf->is_vip_by_header = 1;
       }
       apr_table_unset(r->headers_out, sconf->header_name);
+      apr_table_set(r->notes, QS_REC_COOKIE, "");
+    }
+  }
+  if(sconf->vip_user && r->user) {
+    if(!apr_table_get(r->notes, QS_REC_COOKIE)) {
+      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                              &qos_module);
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      qos_set_session(r, sconf);
+      rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
+      if(cconf) {
+        cconf->is_vip = 1;
+        cconf->is_vip_by_header = 1;
+      }
+      apr_table_set(r->notes, QS_REC_COOKIE, "");
+    }
+  }
+  if(sconf->vip_ip_user && r->user) {
+    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                            &qos_module);
+    if(cconf) {
+      cconf->is_vip = 1;
+      cconf->is_vip_by_header = 1;
     }
   }
   if(sconf->max_conn_close != -1) {
@@ -3639,6 +3679,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
   sconf->ip_header_name = NULL;
+  sconf->vip_user = 0;
+  sconf->vip_ip_user = 0;
   sconf->max_conn = -1;
   sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
@@ -3703,8 +3745,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   /* location rules or connection limit controls conf merger (see index.html) */
   if((apr_table_elts(o->location_t)->nelts > 0) ||
      (o->max_conn != -1) ||
-     (o->max_conn_per_ip != -1)
-     ) {
+     (o->max_conn_per_ip != -1)) {
     o->connect_timeout = b->connect_timeout;
 #ifdef QS_INTERNAL_TEST
     o->enable_testip = b->enable_testip;
@@ -4036,6 +4077,20 @@ const char *qos_ip_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *name)
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->ip_header_name = apr_pstrdup(cmd->pool, name);
+  return NULL;
+}
+
+const char *qos_vip_u_cmd(cmd_parms *cmd, void *dcfg) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->vip_user = 1;
+  return NULL;
+}
+
+const char *qos_vip_ip_u_cmd(cmd_parms *cmd, void *dcfg) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->vip_ip_user = 1;
   return NULL;
 }
 
@@ -4381,6 +4436,18 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_VipIPHeaderName <name>, defines the http header name which is"
                 " used to signalize priviledged clients (IP addresses)."),
+  AP_INIT_NO_ARGS("QS_VipUser", qos_vip_u_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_VipUser, creates a VIP session for users"
+                  " which has been authenticated by the Apache server."
+                  " May be used in conjunction with the QS_ClientPrefer and"
+                  "QS_SrvPreferNet directives too."),
+  AP_INIT_NO_ARGS("QS_VipIpUser", qos_vip_ip_u_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_VipIpUser, marks a source IP as VIP if the user"
+                  " has been authenticated by the Apache server."
+                  " May be used in conjunction with the QS_ClientPrefer and"
+                  "QS_SrvPreferNet directives only."),
   /* connection limitations */
   AP_INIT_NO_ARGS("QS_SrvPreferNet", qos_pref_conn_cmd, NULL,
                   RSRC_CONF,

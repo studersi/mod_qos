@@ -1,3 +1,13 @@
+
+ - Detects low priotity clients (clients sending slow
+   or using small data packets get marked as low
+   priority clients). 
+
+ - New directives QS_VipUser and QS_VipIpUser.
+
+ - Status viewer shows information about client (IP)
+   control status.
+
 Version 6.6
 
  - mod_status handler hook supports short status flag.
