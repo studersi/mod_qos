@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.62 2008-04-16 20:24:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.63 2008-04-17 07:15:10 pbuchbinder Exp $";
 static const char g_revision[] = "6.7";
 
 /************************************************************************
@@ -88,6 +88,7 @@ static const char g_revision[] = "6.7";
 
 #define QS_PKT_RATE_INIT  220
 #define QS_PKT_RATE_MIN   30
+#define QS_PKT_RATE_TH    3
 
 #define QS_MAX_DELAY 5000
 
@@ -1920,7 +1921,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
     if(sconf->qos_cc_prefer_limit) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
       if(inctx) {
-        if(inctx->lowrate > 3) {
+        if(inctx->lowrate > QS_PKT_RATE_TH) {
           lowrate = inctx->lowrate;
         }
         inctx->count = 5;
@@ -2084,7 +2085,17 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
       if(!(*e)->vip) {
         if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
           *msg = apr_psprintf(cconf->c->pool, 
-                              QOS_LOG_PFX(063)"access denied, QS_ClientPrefer rule: "
+                              QOS_LOG_PFX(063)"access denied, QS_ClientPrefer rule (not vip): "
+                              "max=%d, concurrent connections=%d, c=%s",
+                              cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
+                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+          ret = HTTP_FORBIDDEN;
+        }
+      }
+      if((*e)->lowrate) {
+        if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
+          *msg = apr_psprintf(cconf->c->pool, 
+                              QOS_LOG_PFX(064)"access denied, QS_ClientPrefer rule (low prio): "
                               "max=%d, concurrent connections=%d, c=%s",
                               cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
                               cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
@@ -3102,6 +3113,8 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   if(inctx->status > QS_CONN_STATE_NEW) {
     if((rv == APR_TIMEUP) && inctx->status && (inctx->status < QS_CONN_STATE_END)) {
       int qti = apr_time_sec(inctx->qt);
+      /* $$$ update cc */
+      inctx->lowrate = QS_PKT_RATE_TH + 1;
       f->c->base_server->timeout = inctx->server_timeout;
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
                    QOS_LOG_PFX(032)"connection timeout, QS_SrvConnTimeout"
