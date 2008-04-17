@@ -681,7 +681,8 @@ from very slow clients which do not send the HTTP request data
 <code>QS_SrvPreferNet</code><br>
 mod_qos prefers "known networks" when server has 
 less than 80% of free TCP connections. Preferred networks 
-have VIP clients, see <code>QS_VipHeaderName</code> directive. 
+have VIP clients, see <code>QS_VipHeaderName</code> or 
+<code>QS_VipIPHeaderName</code> directives. 
 Netmask is 255.255.240.0 (each net represents 4096 hosts). 
 Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are
 excluded from connection restrictions.
@@ -740,11 +741,15 @@ Ignores VIP status by default but you may use the
 </li>
 <li>
 <code>QS_ClientPrefer</code><br>
-Accepts only VIP clients when the server has less than 80% 
-of free TCP connections (similar to <code>QS_SrvPreferNet</code> 
-but for individual IP source addresses). Use 
-<code>QS_VipHeaderName</code> directive in order 
-to identify VIP clients. 
+Accepts only VIP and high priority clients when the server has 
+less than 80% of free TCP connections (similar to 
+<code>QS_SrvPreferNet</code> but for individual IP source 
+addresses). Use the <code>QS_VipHeaderName</code> or 
+<code>QS_VipIPHeaderName</code> directive in order 
+to identify VIP clients. The distinction between high and low 
+priority clients is made based on the client data transfer 
+behavior (clients sending slow or using small data packets 
+get marked as low priority clients). 
 Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are
 excluded from connection restrictions. Filter is applied 
 on connection level.
