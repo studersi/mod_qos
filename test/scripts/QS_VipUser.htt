@@ -1,0 +1,23 @@
+#
+# $Id: QS_VipUser.htt,v 1.1 2008-04-17 20:02:57 pbuchbinder Exp $
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /qos_control HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Authorization: Basic YWRtaW46MTIzNA==
+__
+_EXPECT . "200 OK"
+_EXPECT . "Set-Cookie: MODQOS"
+_WAIT
+
+END
+
+
+
