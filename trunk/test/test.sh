@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.51 2008-04-17 20:02:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.52 2008-04-18 12:44:45 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -380,6 +380,20 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SetEnvResHeaders.htt"
 fi
 
+./ctl.sh restart -D real_ip -D cc > /dev/null
+./htt.sh -s ./scripts/QS_VipUser.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_VipUser.htt"
+fi
+
+#./ctl.sh restart -D real_ip -D cc > /dev/null
+#./htt.sh -s ./scripts/QS_VipIpUser.htt
+#if [ $? -ne 0 ]; then
+#    ERRORS=`expr $ERRORS + 1`
+#    echo "FAILED QS_VipIpUser.htt"
+#fi
+
 # - real ip -------------------------------------------------------
 ./ctl.sh restart -D real_ip > /dev/null
 echo "-- QS_ClientEventBlockCount.htt" >>  logs/error_log
@@ -424,12 +438,6 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventPerSecLimit_t2.htt"
-fi
-
-./htt.sh -s ./scripts/QS_VipUser.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_VipUser.htt"
 fi
 
 # -----------------------------------------------------------------
