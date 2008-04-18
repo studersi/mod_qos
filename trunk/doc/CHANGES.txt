@@ -1,3 +1,4 @@
+Version 6.7
 
  - Detects low priotity clients (clients sending slow
    or using small data packets get marked as low
