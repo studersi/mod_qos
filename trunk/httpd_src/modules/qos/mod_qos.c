@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.65 2008-04-18 12:44:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.66 2008-04-18 19:01:18 pbuchbinder Exp $";
 static const char g_revision[] = "6.7";
 
 /************************************************************************
@@ -1949,8 +1949,8 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
       }
       /* mark lowpkt client */
       if(lowrate) {
-        (*e)->lowrate = apr_time_sec(r->request_time);
         qs_req_ctx *rctx = qos_rctx_config_get(r);
+        (*e)->lowrate = apr_time_sec(r->request_time);
         rctx->evmsg = apr_pstrcat(r->pool, "r;", rctx->evmsg, NULL);
       }
       if(block_event) {
