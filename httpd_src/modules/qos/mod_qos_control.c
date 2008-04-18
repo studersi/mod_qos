@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.28 2008-04-12 15:18:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.29 2008-04-18 12:44:43 pbuchbinder Exp $";
 static const char g_revision[] = "6.7";
 
 /************************************************************************
@@ -159,6 +159,9 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_SetEnvResHeader", QSC_REQ_TYPE, TAKE12, RSRC_CONF, 0, "", "name [deny]" },
   { "QS_ErrorPage", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/error-docs/403.html" },
   { "QS_VipHeaderName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "mod-qos-vip" },
+  { "QS_VipIpHeaderName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "mod-qos-vip-ip" },
+  { "QS_VipUser", QSC_MOD_TYPE, NO_ARGS, RSRC_CONF, 0, "", "" },
+  { "QS_VipIpUser", QSC_MOD_TYPE, NO_ARGS, RSRC_CONF, 0, "", "" },
   { "QS_SessionCookieName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "modqos" },
   { "QS_SessionCookiePath", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/" },
   { "QS_SessionTimeout", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "3600" },
