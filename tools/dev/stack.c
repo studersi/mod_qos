@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.10 2008-04-16 19:22:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.11 2008-05-05 18:47:28 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -135,7 +135,7 @@ static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA) {
 }
 
 static void speed() {
-  int size = 50000;
+  int size = 100000;
   qos_s_entry_t new;
   qos_s_t *s = qoss_new(size);
   qos_s_entry_t **e = NULL;

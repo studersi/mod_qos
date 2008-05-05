@@ -1,3 +1,8 @@
+Version 6.
+
+ - QS_ClientPrefer allows definition of free connections
+   in percent in order to override the default of 80%.
+
 Version 6.7
 
  - Detects low priotity clients (clients sending slow

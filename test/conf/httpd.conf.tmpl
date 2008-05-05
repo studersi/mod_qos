@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.76 2008-04-17 20:02:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.77 2008-05-05 18:47:28 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -60,7 +60,7 @@ QS_SrvPreferNet
 </IfDefine>
 QS_SrvConnTimeout       3
 <IfDefine cc>
-QS_ClientPrefer
+QS_ClientPrefer         80
 </IfDefine>
 QS_ClientEventBlockCount 3 10
 QS_ClientEventPerSecLimit  5
