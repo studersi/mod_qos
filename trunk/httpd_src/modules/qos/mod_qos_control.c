@@ -30,8 +30,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.29 2008-04-18 12:44:43 pbuchbinder Exp $";
-static const char g_revision[] = "6.7";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.30 2008-05-05 18:47:28 pbuchbinder Exp $";
+static const char g_revision[] = "6.8";
 
 /************************************************************************
  * Includes
@@ -137,10 +137,6 @@ typedef struct {
   const char *init;
 } qosc_elt_t;
 
-//#define ACCESS_CONF 64       /**< *.conf inside <Directory> or <Location> */
-//#define RSRC_CONF 128	     /**< *.conf outside <Directory> or <Location> */
-//#define  GLOBAL_ONLY            (NOT_IN_VIRTUALHOST|NOT_IN_LIMIT|NOT_IN_DIR_LOC_FILE) 
-
 static const qosc_elt_t qosc_elts[] = {
   { "QS_LocRequestLimitDefault", QSC_REQ_TYPE, TAKE1, RSRC_CONF, 0,
     "defines the number of concurrent requests to a location", "100" },
@@ -182,7 +178,8 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_RequestHeaderFilterRule", QSC_FLT_TYPE, TAKE3, GLOBAL_ONLY|RSRC_CONF, 1, "",
     "header \"^pattern$\" drop" },
   { "QS_ClientEntries", QSC_REQ_TYPE, TAKE1, GLOBAL_ONLY|RSRC_CONF, 0, "", "50000" },
-  { "QS_ClientPrefer", QSC_CON_TYPE, NO_ARGS, GLOBAL_ONLY|RSRC_CONF, 0, "", "" },
+  { "QS_ClientPrefer", QSC_CON_TYPE, TAKE_ARGV, GLOBAL_ONLY|RSRC_CONF, 0, "", "" },
+  { "QS_ClientEventPerSecLimit", QSC_REQ_TYPE, TAKE1, GLOBAL_ONLY|RSRC_CONF, 0, "", "5 600" },
   { "QS_ClientEventBlockCount", QSC_REQ_TYPE, TAKE12, GLOBAL_ONLY|RSRC_CONF, 0, "", "5 600" },
   { NULL, 0, 0, 0, 0, NULL, NULL }
 };
@@ -1259,10 +1256,9 @@ static int qosc_update_line(request_rec *r, qosc_settings_t *settings,
       const char *host = qosc_get_conf_value(r->pool, line, "VirtualHost ");
       const char *loc = qosc_get_conf_value(r->pool, line, "Location ");
       const char *tr = qosc_get_conf_value(r->pool, line, "TransferLog ");
-      const char *format = qosc_get_conf_value(r->pool, line, "LogFormat ");
       /* follows included files */
       const char *inc = qosc_get_conf_value(r->pool, line, "Include ");
-      if(maxc || host || loc || tr || format) {
+      if(maxc || host || loc || tr) {
         (*current_line)++;
       } else {
         const qosc_elt_t *elt;
@@ -1279,6 +1275,13 @@ static int qosc_update_line(request_rec *r, qosc_settings_t *settings,
           if(found) {
             this_command = elt->dir;
             (*current_line)++;
+          } else if(elt->args == TAKE_ARGV) {
+            cmd[strlen(elt->dir)] = '\0';
+            found = qosc_get_conf_value(r->pool, line, cmd);
+            if(found) {
+              this_command = elt->dir;
+              (*current_line)++;
+            }
           }
         }
       }
@@ -1329,7 +1332,7 @@ static int qosc_update_line(request_rec *r, qosc_settings_t *settings,
               errors++;
               ap_rprintf(r, "Invalid request<br>");
               ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                            QOSC_LOG_PFX(0)"directive is not available or not equal conf: '%s'"
+                            QOSC_LOG_PFX(0)"directive is not available or not equal, conf='%s'"
                             " req='%s'", this_command, dir == NULL ? "null" : dir);
             }
           }
@@ -1364,14 +1367,6 @@ static int qosc_update_line(request_rec *r, qosc_settings_t *settings,
 }
 
 /**
- * determines the qslog format string
- * not yet implemented ...
- */
-//static char *qosc_get_qslog_string(apr_pool_t *pool, char *line) {
-//  return apr_pstrdup(pool, "");
-//}
-
-/**
  * loads the httpd.conf file (only relevant directives are processed)
  */
 static void qosc_load_httpdconf(request_rec *r, const char *server_dir, 
@@ -1388,15 +1383,12 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
       const char *host = qosc_get_conf_value(r->pool, line, "VirtualHost ");
       const char *loc = qosc_get_conf_value(r->pool, line, "Location ");
       const char *tr = qosc_get_conf_value(r->pool, line, "TransferLog ");
-      const char *format = qosc_get_conf_value(r->pool, line, "LogFormat ");
       /* used to follow included configuration files */
       const char *inc = qosc_get_conf_value(r->pool, line, "Include ");
       /* special qos directives (required by qsfilter2) */
       const char *permit = qosc_get_conf_value(r->pool, line, "QS_PermitUri ");
       const char *deny = qosc_get_conf_value(r->pool, line, "QS_DenyRequestLine ");
-      if(format) {
-        // $$$ char *qslog = qosc_get_qslog_string(r->pool, line);
-      } else if(inc) {
+      if(inc) {
         char *incfile = qosc_included_file_path(r, root, inc);
         if(incfile) {
           qosc_load_httpdconf(r, server_dir, incfile, root, st, errors);
@@ -1466,6 +1458,12 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
           found = qosc_get_conf_value(r->pool, line, cmd);
           if(found) {
             sk_push(st, apr_pstrcat(r->pool, elt->dir, "=", found, NULL));
+          } else if(elt->args == TAKE_ARGV) {
+            cmd[strlen(elt->dir)] = '\0';
+            found = qosc_get_conf_value(r->pool, line, cmd);
+            if(found) {
+              sk_push(st, apr_pstrcat(r->pool, elt->dir, "=", found, NULL));
+            }
           }
         }
       }
@@ -2832,6 +2830,8 @@ static void qosc_print_input_value_fields(request_rec *r, const qosc_elt_t *elt,
     }
   } else if(elt->args == RAW_ARGS) {
     ap_rprintf(r, "<input name=\"v0\" value=\"%s\" size=\"32\">", ap_escape_html(r->pool, v));
+  } else if(elt->args == TAKE_ARGV) {
+    ap_rprintf(r, "<input name=\"v0\" value=\"%s\" size=\"32\">", ap_escape_html(r->pool, v));
   }
 }
 
@@ -2983,7 +2983,7 @@ static void qosc_process_dir_update(request_rec *r, qosc_settings_t *settings) {
   const char *action = apr_table_get(settings->qt, "action");
   if(action) {
     int errors = 0;
-    int current_line = 0;
+    int current_line = 1; /* starts with conf=... */
     char *httpdconf = qosc_get_httpd_conf_name(r, settings);
     char *root = apr_pstrdup(r->pool, httpdconf == NULL ? "" : httpdconf);
     char *p = strrchr(root, '/');

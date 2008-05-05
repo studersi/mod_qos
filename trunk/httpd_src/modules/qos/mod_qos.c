@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.66 2008-04-18 19:01:18 pbuchbinder Exp $";
-static const char g_revision[] = "6.7";
+static const char revision[] = "$Id: mod_qos.c,v 5.67 2008-05-05 18:47:28 pbuchbinder Exp $";
+static const char g_revision[] = "6.8";
 
 /************************************************************************
  * Includes
@@ -3377,6 +3377,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_user_t *u;
   int net_prefer = 0;
   int net_prefer_limit = 0;
+  int cc_net_prefer_limit = 0;
   ap_directive_t *pdir;
   for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
     if(strcasecmp(pdir->directive, "MaxClients") == 0) {
@@ -3388,6 +3389,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                  QOS_LOG_PFX(007)"could not determine MaxClients");
   }
   net_prefer_limit = net_prefer * 80 / 100;
+  cc_net_prefer_limit = net_prefer * sconf->qos_cc_prefer / 100;
   if(sconf->net_prefer && net_prefer) {
     sconf->net_prefer = net_prefer;
     sconf->net_prefer_limit = net_prefer_limit;
@@ -3397,7 +3399,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   if(sconf->qos_cc_prefer && net_prefer) {
     sconf->qos_cc_prefer = net_prefer;
-    sconf->qos_cc_prefer_limit = net_prefer_limit;
+    sconf->qos_cc_prefer_limit = cc_net_prefer_limit;
   } else {
     sconf->qos_cc_prefer = 0;
     sconf->qos_cc_prefer_limit = 0;
@@ -4297,7 +4299,7 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   return NULL;
 }
 
-const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg) {
+const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -4305,7 +4307,18 @@ const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg) {
     return err;
   }
   sconf->has_qos_cc = 1;
-  sconf->qos_cc_prefer = 1;
+  sconf->qos_cc_prefer = 80;
+  if(argc) {
+    sconf->qos_cc_prefer = atoi(argv[0]);
+  }
+  if((sconf->qos_cc_prefer == 0) || (sconf->qos_cc_prefer > 99)) {
+    return apr_psprintf(cmd->pool, "%s: percentage must be numeric value between 1 and 99",
+                        cmd->directive->directive);
+  }
+  if(argc > 1) {
+    return apr_psprintf(cmd->pool, "%s: command takes not more than one argument",
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
@@ -4556,12 +4569,12 @@ static const command_rec qos_config_cmds[] = {
                 "QS_ClientEntries <number>, defines the number of individual"
                 " clients managed by mod_qos. Default are 50000"
                 " Directive is allowed in global server context only."),
-  AP_INIT_NO_ARGS("QS_ClientPrefer", qos_client_pref_cmd, NULL,
-                  RSRC_CONF,
-                  "QS_ClientPrefer, prefers known VIP clients when server has"
-                  " less than 80% of free TCP connections. Preferred clients"
-                  " are VIP clients only, see QS_VipHeaderName directive."
-                  " Directive is allowed in global server context only."),
+  AP_INIT_TAKE_ARGV("QS_ClientPrefer", qos_client_pref_cmd, NULL,
+                    RSRC_CONF,
+                    "QS_ClientPrefer [<percent>], prefers known VIP clients when server has"
+                    " less than 80% of free TCP connections. Preferred clients"
+                    " are VIP clients only, see QS_VipHeaderName directive."
+                    " Directive is allowed in global server context only."),
   AP_INIT_TAKE12("QS_ClientEventBlockCount", qos_client_block_cmd, NULL,
                  RSRC_CONF,
                  "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"

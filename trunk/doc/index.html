@@ -755,11 +755,11 @@ Ignores VIP status by default but you may use the
 <code>QS_VipRequest</code> variable to detect VIP clients.
 </li>
 <li>
-<code>QS_ClientPrefer</code><br>
+<code>QS_ClientPrefer [&lt;percent&gt;]</code><br>
 Accepts only VIP and high priority clients when the server has 
-less than 80% of free TCP connections (similar to 
-<code>QS_SrvPreferNet</code> but for individual IP source 
-addresses). Use the <code>QS_VipHeaderName</code> or 
+less than 80% (or the defined percentage) of free TCP connections 
+(similar to <code>QS_SrvPreferNet</code> but for individual IP 
+source addresses). Use the <code>QS_VipHeaderName</code> or 
 <code>QS_VipIPHeaderName</code> directive in order 
 to identify VIP clients. The distinction between high and low 
 priority clients is made based on the client data transfer 
