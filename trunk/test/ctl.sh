@@ -35,7 +35,7 @@ case "$COMMAND" in
 	 ;;
   restart)
     $0 stop
-    sleep 1
+    sleep 2
     $0 start $ADDARGS
 esac
 
