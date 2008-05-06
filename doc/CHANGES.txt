@@ -1,7 +1,14 @@
-Version 6.
+Version 7.0
+
+ - New directive QS_SrvRequestRate enforces minimum
+   upload bandwith (used for TCP DoS prevention).
+   Requires thread support.
 
  - QS_ClientPrefer allows definition of free connections
    in percent in order to override the default of 80%.
+
+ - QS_SrvConnTimeout is no longer available.
+   Use may QS_SrvRequestRate instead.
 
 Version 6.7
 
