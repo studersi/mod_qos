@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.68 2008-05-06 20:26:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.69 2008-05-07 20:10:38 pbuchbinder Exp $";
 static const char g_revision[] = "7.0";
 
 /************************************************************************
@@ -1836,11 +1836,13 @@ static int qos_hp_event_count(request_rec *r) {
 /**
  * creates a new connection ctx (remember to set the socket, connection and timeout)
  */
-static qos_ifctx_t *qos_create_ifctx(apr_pool_t *pool) {
-  qos_ifctx_t *inctx = apr_pcalloc(pool, sizeof(qos_ifctx_t));
+static qos_ifctx_t *qos_create_ifctx(conn_rec *c) {
+  qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
   inctx->client_socket = NULL;
   inctx->status = QS_CONN_STATE_NEW;
+  inctx->c = c;
   inctx->r = NULL;
+  inctx->client_socket = NULL;
   inctx->time = 0;
   inctx->nbytes = 0;
   inctx->count = 5;
@@ -1897,7 +1899,7 @@ static void qos_pktrate_pc(conn_rec *c, qos_srv_config *sconf) {
   if(sconf->qos_cc_prefer_limit) {
     qos_ifctx_t *inctx = qos_get_ifctx(c->input_filters);
     if(inctx == NULL) {
-      inctx = qos_create_ifctx(c->pool);
+      inctx = qos_create_ifctx(c);
       ap_add_input_filter("qos-in-filter", inctx, NULL, c);
     }
     inctx->lowrate = 0;
@@ -1927,7 +1929,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
     int lowrate = 0;
     int block_event = !apr_table_get(r->subprocess_env, "QS_Block_seen") &&
       apr_table_get(r->subprocess_env, "QS_Block");
-    if(sconf->qos_cc_prefer_limit || (sconf->req_rate > 0)) {
+    if(sconf->qos_cc_prefer_limit || (sconf->req_rate != -1)) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
       if(inctx) {
         if(inctx->lowrate > QS_PKT_RATE_TH) {
@@ -2851,8 +2853,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                 &qos_module);
   if(sconf && (sconf->req_rate != -1)) {
-    qos_ifctx_t *inctx = qos_create_ifctx(c->pool);
-    inctx->c = c;
+    qos_ifctx_t *inctx = qos_create_ifctx(c);
     inctx->client_socket = skt;
     ap_add_input_filter("qos-in-filter", inctx, NULL, c);
   }
@@ -3134,41 +3135,35 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     /* $$$ unset */
   }
   if(inctx->status > QS_CONN_STATE_NEW) {
-    if(bytes == 0) {
-      apr_bucket *b;
-      for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
-        bytes = bytes + b->length;
+    if(rv == APR_SUCCESS) {
+      if(bytes == 0) {
+        apr_bucket *b;
+        for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
+          bytes = bytes + b->length;
+        }
       }
+      inctx->nbytes = inctx->nbytes + bytes;
     }
-    inctx->nbytes = inctx->nbytes + bytes;
+    if(rv == APR_TIMEUP) {
+      qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
+                                                                    &qos_module);
+      /* mark clients causing a timeout */
+      if(sconf) {
+        qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+        qos_s_entry_t **e = NULL;
+        qos_s_entry_t new;
+        apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
+        new.ip = inet_addr(inctx->c->remote_ip); /* v4 */
+        e = qos_cc_get0(u->qos_cc, &new);
+        if(!e) {
+          e = qos_cc_set(u->qos_cc, &new, time(NULL));
+        }
+        (*e)->lowrate = time(NULL);
+        apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT18 */
+      }
+      inctx->lowrate = QS_PKT_RATE_TH + 1;
+    }
   }
-//$$$  if(inctx->status > QS_CONN_STATE_NEW) {
-//    if((rv == APR_TIMEUP) && inctx->status && (inctx->status < QS_CONN_STATE_END)) {
-//      int qti = apr_time_sec(inctx->qt);
-//      qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
-//                                                                    &qos_module);
-//      if(sconf) {
-//        qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
-//        qos_s_entry_t **e = NULL;
-//        qos_s_entry_t new;
-//        apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
-//        new.ip = inet_addr(inctx->c->remote_ip); /* v4 */
-//        e = qos_cc_get0(u->qos_cc, &new);
-//        if(!e) {
-//          e = qos_cc_set(u->qos_cc, &new, time(NULL));
-//        }
-//        (*e)->lowrate = time(NULL);
-//        apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT18 */
-//      }
-//      inctx->lowrate = QS_PKT_RATE_TH + 1;
-//      f->c->base_server->timeout = inctx->server_timeout;
-//      ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, f->c->base_server,
-//                   QOS_LOG_PFX(032)"connection timeout, QS_SrvConnTimeout"
-//                   " rule: %d sec inital timeout, c=%s",
-//                   qti,
-//                   f->c->remote_ip == NULL ? "-" : f->c->remote_ip);
-//    }
-//  }
   return rv;
 }
 
