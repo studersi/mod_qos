@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.53 2008-05-06 20:26:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.54 2008-05-07 20:10:46 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -433,6 +433,13 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventPerSecLimit_t2.htt"
+fi
+
+./ctl.sh restart -D no_reqrate -D cc > /dev/null
+./htt.sh -s ./scripts/QS_ClientPrefer_TMO.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientPrefer_TMO.htt"
 fi
 
 # -----------------------------------------------------------------

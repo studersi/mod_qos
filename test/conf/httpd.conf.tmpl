@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.78 2008-05-06 20:26:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.79 2008-05-07 20:10:47 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -50,7 +50,7 @@ ServerSignature         off
 HostnameLookups         off
 UseCanonicalName        on
 LockFile                ##ROOT##/logs/accept.lock
-Timeout                 90
+Timeout                 30
 KeepAlive               on
 MaxKeepAliveRequests    100
 KeepAliveTimeout        5
@@ -58,7 +58,9 @@ KeepAliveTimeout        5
 <IfDefine !cc>
 QS_SrvPreferNet
 </IfDefine>
+<IfDefine !no_reqrate>
 QS_SrvRequestRate       3
+</IfDefine>
 <IfDefine cc>
 QS_ClientPrefer         80
 </IfDefine>
