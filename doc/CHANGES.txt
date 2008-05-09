@@ -6,6 +6,7 @@ Version 7.0
 
  - QS_ClientPrefer allows definition of free connections
    in percent in order to override the default of 80%.
+   Available for Apache 2.2 only.
 
  - QS_SrvConnTimeout is no longer available.
    Use may QS_SrvRequestRate instead.
