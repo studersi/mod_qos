@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.69 2008-05-07 20:10:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.70 2008-05-09 06:10:36 pbuchbinder Exp $";
 static const char g_revision[] = "7.0";
 
 /************************************************************************
@@ -90,6 +90,8 @@ static const char g_revision[] = "7.0";
 #define QS_PKT_RATE_INIT  220
 #define QS_PKT_RATE_MIN   30
 #define QS_PKT_RATE_TH    3
+
+#define QS_REQ_RATE_TM    5
 
 #define QS_MAX_DELAY 5000
 
@@ -197,8 +199,10 @@ typedef struct {
  */
 typedef struct {
   apr_table_t *table;
+#if APR_HAS_THREADS
   apr_thread_mutex_t *lock;
   apr_thread_t *thread;
+#endif
   int exit;
 } qos_ifctx_list_t;
 
@@ -1833,6 +1837,21 @@ static int qos_hp_event_count(request_rec *r) {
   return req_per_sec_block;
 }
 
+static apr_status_t qos_cleanup_inctx(void *p) {
+  qos_ifctx_t *inctx = p;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
+                                                                &qos_module);
+#if APR_HAS_THREADS
+  if(sconf->inctx_t && !sconf->inctx_t->exit) {
+    apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT25 */
+    apr_table_unset(sconf->inctx_t->table,
+                    apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+    apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT25 */
+  }
+#endif
+  return APR_SUCCESS;
+}
+
 /**
  * creates a new connection ctx (remember to set the socket, connection and timeout)
  */
@@ -1848,6 +1867,7 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c) {
   inctx->count = 5;
   inctx->bytes = QS_PKT_RATE_INIT;
   inctx->lowrate = -1;
+  apr_pool_cleanup_register(c->pool, inctx, qos_cleanup_inctx, apr_pool_cleanup_null);
   return inctx;
 }
 
@@ -1916,7 +1936,15 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
       inctx->status = QS_CONN_STATE_HEAD;
       inctx->time = time(NULL);
       inctx->nbytes = 0;
-      /* $$$ set */
+#if APR_HAS_THREADS
+      if(sconf->inctx_t && !sconf->inctx_t->exit) {
+        apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT22 */
+        apr_table_setn(sconf->inctx_t->table,
+                       apr_psprintf(inctx->c->pool, "%d", (int)inctx),
+                       (char *)inctx);
+        apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT22 */
+      }
+#endif
     }
   }
 }
@@ -2645,6 +2673,67 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   return OK;
 }
 
+static void qos_disable_req_rate(server_rec *bs, const char *msg) {
+  server_rec *s = bs->next;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+  ap_log_error(APLOG_MARK, APLOG_ERR, 0, bs,
+               QOS_LOG_PFX(008)"could not create supervisor thread (%s),"
+               " disable request rate enforcement", msg);
+  sconf->req_rate = -1;
+  while(s) {
+    sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    sconf->req_rate = -1;
+    s = s->next;
+  }
+}
+
+#if APR_HAS_THREADS
+static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
+  server_rec *bs = selfv;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+  while(!sconf->inctx_t->exit) {
+    time_t interval = time(NULL) - QS_REQ_RATE_TM;
+    int i;
+    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->inctx_t->table)->elts;
+    sleep(1);
+    apr_thread_mutex_lock(sconf->inctx_t->lock);   /* @CRT21 */
+    for(i = 0; i < apr_table_elts(sconf->inctx_t->table)->nelts; i++) {
+      qos_ifctx_t *inctx = (qos_ifctx_t *)entry[i].val;
+      if(interval > inctx->time) {
+        int rate = inctx->nbytes / QS_REQ_RATE_TM;
+        if(rate < sconf->req_rate) {
+          if(inctx->client_socket) {
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, inctx->c->base_server,
+                         QOS_LOG_PFX(034)"access denied, QS_SrvRequestRate rule: max=%d,"
+                         " this connections=%d,"
+                         " c=%s",
+                         sconf->req_rate, rate,
+                         inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+            apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+          }
+        } else {
+          inctx->time = interval + QS_REQ_RATE_TM;
+          inctx->nbytes = 0;
+        }
+      }
+    }
+    apr_thread_mutex_unlock(sconf->inctx_t->lock); /* @CRT21 */
+  }
+  apr_thread_mutex_destroy(sconf->inctx_t->lock);
+  apr_thread_exit(thread, APR_SUCCESS);
+  return NULL;
+}
+
+static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
+  server_rec *bs = selfv;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+  apr_status_t status;
+  sconf->inctx_t->exit = 1;
+  // apr_thread_join(&status, sconf->inctx_t->thread);
+  return APR_SUCCESS;
+}
+#endif
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -3123,16 +3212,35 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     }
   }
   if(inctx->status == QS_CONN_STATE_KEEP) {
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
+                                                                  &qos_module);
     inctx->status = QS_CONN_STATE_HEAD;
     inctx->time = time(NULL);
     inctx->nbytes = 0;
-    /* $$$ set */
+#if APR_HAS_THREADS
+    if(sconf->inctx_t && !sconf->inctx_t->exit) {
+      apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT23 */
+      apr_table_setn(sconf->inctx_t->table,
+                     apr_psprintf(inctx->c->pool, "%d", (int)inctx),
+                     (char *)inctx);
+      apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT23 */
+    }
+#endif
   }
   if(rv != APR_SUCCESS) {
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
+                                                                  &qos_module);
     inctx->status = QS_CONN_STATE_END;
     inctx->time = 0;
     inctx->nbytes = 0;
-    /* $$$ unset */
+#if APR_HAS_THREADS
+    if(sconf->inctx_t && !sconf->inctx_t->exit) {
+      apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT24 */
+      apr_table_unset(sconf->inctx_t->table,
+                      apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+      apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT24 */
+    }
+#endif
   }
   if(inctx->status > QS_CONN_STATE_NEW) {
     if(rv == APR_SUCCESS) {
@@ -3362,42 +3470,6 @@ static int qos_logger(request_rec *r) {
   return DECLINED;
 }
 
-static void qos_disable_req_rate(server_rec *bs, const char *msg) {
-  server_rec *s = bs->next;
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  ap_log_error(APLOG_MARK, APLOG_ERR, 0, bs,
-               QOS_LOG_PFX(008)"could not create supervisor thread (%s),"
-               " disable request rate enforcement", msg);
-  sconf->req_rate = -1;
-  while(s) {
-    sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    sconf->req_rate = -1;
-    s = s->next;
-  }
-}
-
-#if APR_HAS_THREADS
-static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
-  server_rec *bs = selfv;
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  while(!sconf->inctx_t->exit) {
-    sleep(1);
-  }
-  apr_thread_exit(thread, APR_SUCCESS);
-  return NULL;
-}
-
-static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
-  server_rec *bs = selfv;
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  apr_status_t status;
-  sconf->inctx_t->exit = 1;
-  apr_thread_join(&status, sconf->inctx_t->thread);
-  apr_thread_mutex_destroy(sconf->inctx_t->lock);
-  return APR_SUCCESS;
-}
-#endif
-
 /**
  * inits each child
  */
@@ -3406,11 +3478,13 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   qs_acentry_t *e = sconf->act->entry;
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+  qos_ifctx_list_t *inctx_t = NULL;
 #if APR_HAS_THREADS
-  if(sconf->req_rate > 0) {
-    sconf->inctx_t = apr_pcalloc(p, sizeof(qos_ifctx_list_t));
-    sconf->inctx_t->exit = 0;
-    sconf->inctx_t->table = apr_table_make(p, 64);
+  if(sconf->req_rate != -1) {
+    inctx_t = apr_pcalloc(p, sizeof(qos_ifctx_list_t));
+    inctx_t->exit = 0;
+    inctx_t->table = apr_table_make(p, 64);
+    sconf->inctx_t = inctx_t;
     if(apr_thread_mutex_create(&sconf->inctx_t->lock, APR_THREAD_MUTEX_DEFAULT, p) != APR_SUCCESS) {
       qos_disable_req_rate(bs, "create mutex");
     } else {
@@ -3422,7 +3496,13 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
                              qos_req_rate_thread, bs, p) != APR_SUCCESS) {
           qos_disable_req_rate(bs, "create thread");
         } else {
+          server_rec *sn = bs->next;
           apr_pool_cleanup_register(p, bs, qos_cleanup_req_rate_thread, apr_pool_cleanup_null);
+          while(sn) {
+            qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(sn->module_config, &qos_module);
+            sc->inctx_t = inctx_t;
+            sn = sn->next;
+          }
         }
       }
     }
