@@ -1,12 +1,11 @@
 #
-# $Id: QS_SrvRequestRate_1.htt,v 1.1 2008-05-09 07:07:22 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_1.htt,v 1.2 2008-05-09 18:49:11 pbuchbinder Exp $
 #
 # slow post data
 #
 
 INCLUDE scripts/ports
 
-SET TME=1000
 SET LN="1234567890 1234567890 1234567890 1234567890 1234567890 1234567890 1234567890 1234567890"
 
 CLIENT
@@ -15,50 +14,16 @@ _REQ server1 SSL:$QS_PORT_BASE2
 __POST /index.html HTTP/1.1
 __Host: localhost
 __Content-Type: application/x-www-form-urlencoded
-__Content-Length: 1194
+__Content-Length: 1012
 __
 __==START==
-_EXPECT ERROR "Software caused connection abort"
-_EXPECT ERROR "Software caused connection abort"
 __$LN
 _FLUSH
-_SLEEP $TME
+_SLEEP 3000
 __$LN
 _FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
+_SLEEP 6000
+_EXPECT . "500 Internal Server Error"
 _WAIT
 
 END
