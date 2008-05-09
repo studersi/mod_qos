@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_3.htt,v 1.1 2008-05-09 07:07:22 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_3.htt,v 1.2 2008-05-09 18:49:12 pbuchbinder Exp $
 #
 # client which is not sending a complete request line
 #
@@ -47,56 +47,13 @@ _WAIT
 
 END
 
-CLIENT 10
+CLIENT 5
 
 _REQ server1 SSL:$QS_PORT_BASE2
-__POST /index.html HTTP/1.1
+__GET /cgi/sleep.cgi HTTP/1.1
 __Host: localhost
-__Content-Type: application/x-www-form-urlencoded
-__Content-Length: 1194
 __
-__==START==
-_EXPECT ERROR "Software caused connection abort"
-_EXPECT ERROR "Software caused connection abort"
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
-_FLUSH
-_SLEEP $TME
-__$LN
+_EXPECT . "done"
 _WAIT
 
 END

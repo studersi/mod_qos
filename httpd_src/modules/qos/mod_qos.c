@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.70 2008-05-09 06:10:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.71 2008-05-09 18:49:10 pbuchbinder Exp $";
 static const char g_revision[] = "7.0";
 
 /************************************************************************
@@ -2704,8 +2704,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
         if(rate < sconf->req_rate) {
           if(inctx->client_socket) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, inctx->c->base_server,
-                         QOS_LOG_PFX(034)"access denied, QS_SrvRequestRate rule: max=%d,"
-                         " this connections=%d,"
+                         QOS_LOG_PFX(034)"access denied, QS_SrvRequestRate rule: min=%d,"
+                         " this connection=%d,"
                          " c=%s",
                          sconf->req_rate, rate,
                          inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
@@ -2727,7 +2727,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
 static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  apr_status_t status;
+  // apr_status_t status;
   sconf->inctx_t->exit = 1;
   // apr_thread_join(&status, sconf->inctx_t->thread);
   return APR_SUCCESS;
