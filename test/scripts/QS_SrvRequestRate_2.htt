@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_2.htt,v 1.2 2008-05-09 18:49:11 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_2.htt,v 1.3 2008-05-09 19:30:54 pbuchbinder Exp $
 #
 # slow post data, second request on the same connection
 #
@@ -31,7 +31,6 @@ __$LN
 _FLUSH
 _SLEEP 7000
 _EXPECT . "500 Internal Server Error"
-#_EXPECT ERROR "Software caused connection abort"
 _WAIT
 
 END
