@@ -1,0 +1,71 @@
+#
+# $Id: QS_SrvRequestRate_2.htt,v 1.1 2008-05-09 07:07:22 pbuchbinder Exp $
+#
+# slow post data, second request on the same connection
+#
+
+INCLUDE scripts/ports
+
+SET TME=1000
+SET LN="1234567890 1234567890 1234567890 1234567890 1234567890 1234567890 1234567890 1234567890"
+
+CLIENT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__POST /index.html HTTP/1.1
+__Host: localhost
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: 1194
+__
+__==START==
+_EXPECT ERROR "Software caused connection abort"
+_EXPECT ERROR "Software caused connection abort"
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_FLUSH
+_SLEEP $TME
+__$LN
+_WAIT
+
+END

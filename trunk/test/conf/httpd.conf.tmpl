@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.79 2008-05-07 20:10:47 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.80 2008-05-09 07:07:22 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -59,7 +59,7 @@ KeepAliveTimeout        5
 QS_SrvPreferNet
 </IfDefine>
 <IfDefine !no_reqrate>
-QS_SrvRequestRate       3
+QS_SrvRequestRate       120
 </IfDefine>
 <IfDefine cc>
 QS_ClientPrefer         80
