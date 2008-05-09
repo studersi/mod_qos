@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.72 2008-05-09 19:30:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.73 2008-05-09 19:57:43 pbuchbinder Exp $";
 static const char g_revision[] = "7.0";
 
 /************************************************************************
@@ -4468,7 +4468,13 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   return NULL;
 }
 
+#ifdef AP_TAKE_ARGV
 const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
+#else
+const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg) {
+  int argc = 0;
+  char *const argv = NULL;
+#endif
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -4740,7 +4746,11 @@ static const command_rec qos_config_cmds[] = {
                 "QS_ClientEntries <number>, defines the number of individual"
                 " clients managed by mod_qos. Default are 50000"
                 " Directive is allowed in global server context only."),
+#ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_ClientPrefer", qos_client_pref_cmd, NULL,
+#else
+  AP_INIT_NO_ARGS("QS_ClientPrefer", qos_client_pref_cmd, NULL,
+#endif
                     RSRC_CONF,
                     "QS_ClientPrefer [<percent>], prefers known VIP clients when server has"
                     " less than 80% of free TCP connections. Preferred clients"

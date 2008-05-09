@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.31 2008-05-09 19:39:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.32 2008-05-09 19:57:43 pbuchbinder Exp $";
 static const char g_revision[] = "7.0";
 
 /************************************************************************
@@ -178,7 +178,11 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_RequestHeaderFilterRule", QSC_FLT_TYPE, TAKE3, GLOBAL_ONLY|RSRC_CONF, 1, "",
     "header \"^pattern$\" drop" },
   { "QS_ClientEntries", QSC_REQ_TYPE, TAKE1, GLOBAL_ONLY|RSRC_CONF, 0, "", "50000" },
+#ifdef AP_TAKE_ARGV
   { "QS_ClientPrefer", QSC_CON_TYPE, TAKE_ARGV, GLOBAL_ONLY|RSRC_CONF, 0, "", "" },
+#else
+  { "QS_ClientPrefer", QSC_CON_TYPE, NO_ARGS, GLOBAL_ONLY|RSRC_CONF, 0, "", "" },
+#endif
   { "QS_ClientEventPerSecLimit", QSC_REQ_TYPE, TAKE1, GLOBAL_ONLY|RSRC_CONF, 0, "", "5 600" },
   { "QS_ClientEventBlockCount", QSC_REQ_TYPE, TAKE12, GLOBAL_ONLY|RSRC_CONF, 0, "", "5 600" },
   { NULL, 0, 0, 0, 0, NULL, NULL }
@@ -1275,6 +1279,7 @@ static int qosc_update_line(request_rec *r, qosc_settings_t *settings,
           if(found) {
             this_command = elt->dir;
             (*current_line)++;
+#ifdef AP_TAKE_ARGV
           } else if(elt->args == TAKE_ARGV) {
             cmd[strlen(elt->dir)] = '\0';
             found = qosc_get_conf_value(r->pool, line, cmd);
@@ -1282,6 +1287,7 @@ static int qosc_update_line(request_rec *r, qosc_settings_t *settings,
               this_command = elt->dir;
               (*current_line)++;
             }
+#endif
           }
         }
       }
@@ -1458,12 +1464,14 @@ static void qosc_load_httpdconf(request_rec *r, const char *server_dir,
           found = qosc_get_conf_value(r->pool, line, cmd);
           if(found) {
             sk_push(st, apr_pstrcat(r->pool, elt->dir, "=", found, NULL));
+#ifdef AP_TAKE_ARGV
           } else if(elt->args == TAKE_ARGV) {
             cmd[strlen(elt->dir)] = '\0';
             found = qosc_get_conf_value(r->pool, line, cmd);
             if(found) {
               sk_push(st, apr_pstrcat(r->pool, elt->dir, "=", found, NULL));
             }
+#endif
           }
         }
       }
@@ -2830,8 +2838,10 @@ static void qosc_print_input_value_fields(request_rec *r, const qosc_elt_t *elt,
     }
   } else if(elt->args == RAW_ARGS) {
     ap_rprintf(r, "<input name=\"v0\" value=\"%s\" size=\"32\">", ap_escape_html(r->pool, v));
+#ifdef AP_TAKE_ARGV
   } else if(elt->args == TAKE_ARGV) {
     ap_rprintf(r, "<input name=\"v0\" value=\"%s\" size=\"32\">", ap_escape_html(r->pool, v));
+#endif
   }
 }
 
