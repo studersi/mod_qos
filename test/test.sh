@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.54 2008-05-07 20:10:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.55 2008-05-09 07:07:22 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -436,11 +436,35 @@ if [ $? -ne 0 ]; then
 fi
 
 ./ctl.sh restart -D no_reqrate -D cc > /dev/null
-./htt.sh -s ./scripts/QS_ClientPrefer_TMO.htt
+./htt.sh -s ./scripts/QS_ClientPrefer_TMO.htt > /dev/null 2> /dev/null
+./htt.sh -s ./scripts/QS_ClientPrefer_TMO2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientPrefer_TMO.htt"
 fi
+
+# - DDoS -------------------------------------------------------
+./ctl.sh restart > /dev/null
+./htt.sh -s ./scripts/QS_SrvRequestRate_0.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate_0.htt"
+fi
+./htt.sh -s ./scripts/QS_SrvRequestRate_1.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate_1.htt"
+fi
+./htt.sh -s ./scripts/QS_SrvRequestRate_2.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate_2.htt"
+fi
+if [ `tail -20 logs/error_log | grep -c "mod_qos(034)"` -ne 3 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate_0/1.htt"
+fi
+
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
