@@ -686,8 +686,14 @@ Defines an IP address or address range to be excluded from connection
 level control restrictions. An address range must end with a ".".
 </li>
 <li>
-<code>QS_SrvRequestRate &lt;&gt;</code><br>
-
+<code>QS_SrvRequestRate &lt;bytes per second&gt;</code><br>
+Defines the minumum upload bandwith a client must generate (the bytes 
+send by the client per seconds). This bandwith is measured every 
+five seconds while receiving request data (request line, header fields, 
+or body). The client connection get closed if the client does not 
+fulfill the required request data rate and the concerned IP address 
+get marked in order to be handled with low priority (see the 
+<code>QS_ClientPrefer</code> directive). No limitation is set by default.
 </li>
 <li>
 <code>QS_SrvPreferNet</code><br>
@@ -1025,8 +1031,14 @@ QS_VipIPHeaderName      mod-qos-login
 # to known clients when is has more than 205 open TCP connections):
 QS_ClientPrefer
 
-# handles one million different client IP addresses:
-QS_ClientEntries        1000000
+# handles two hundred thousand different client IP addresses:
+QS_ClientEntries        200000
+
+# minimum request speed (deny slow clients blocking the server):
+QS_SrvRequestRate       120
+# and limit request header and body:
+LimitRequestFields      30
+LimitRequestBody        102400
 </pre>
 </td></tr>
 </table>

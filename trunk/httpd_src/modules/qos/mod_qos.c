@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.71 2008-05-09 18:49:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.72 2008-05-09 19:30:50 pbuchbinder Exp $";
 static const char g_revision[] = "7.0";
 
 /************************************************************************
@@ -188,6 +188,7 @@ typedef struct {
   /* upload bandwith (received bytes and start time) */
   time_t time;
   apr_size_t nbytes;
+  int shutdown;
   /* packet recv size rate: */
   apr_size_t bytes;
   int count;
@@ -1864,6 +1865,7 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c) {
   inctx->client_socket = NULL;
   inctx->time = 0;
   inctx->nbytes = 0;
+  inctx->shutdown = 0;
   inctx->count = 5;
   inctx->bytes = QS_PKT_RATE_INIT;
   inctx->lowrate = -1;
@@ -1971,6 +1973,10 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
         if(inctx->status > QS_CONN_STATE_NEW) {
           inctx->r = NULL;
           inctx->status = QS_CONN_STATE_KEEP;
+        }
+        if(inctx->shutdown) {
+          lowrate++;
+          inctx->shutdown = 0;
         }
       }
     }
@@ -2709,6 +2715,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                          " c=%s",
                          sconf->req_rate, rate,
                          inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+            inctx->shutdown = 1;
             apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
           }
         } else {
@@ -4653,7 +4660,14 @@ static const command_rec qos_config_cmds[] = {
 #if APR_HAS_THREADS
   AP_INIT_TAKE1("QS_SrvRequestRate", qos_req_rate_cmd, NULL,
                 RSRC_CONF,
-                "QS_SrvRequestRate <bytes per seconds>"),
+                "QS_SrvRequestRate <bytes per seconds>, defines the minumum upload"
+                " bandwith a client must generate (the bytes send by the client"
+                " per seconds). This bandwith is measured every five seconds"
+                " while receiving request data (request line, header fields, or"
+                " body). The client connection get closed if the client does not"
+                " fulfill the required request data rate and the concerned IP address"
+                " get marked in order to be handled with low priority (see"
+                " the QS_ClientPrefer directive). No limitation is set by default."),
 #endif
   /* event */
   AP_INIT_TAKE2("QS_EventPerSecLimit", qos_event_rs_cmd, NULL,
