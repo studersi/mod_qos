@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.74 2008-05-09 20:40:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.75 2008-05-10 12:19:13 pbuchbinder Exp $";
 static const char g_revision[] = "7.1";
 
 /************************************************************************
@@ -91,7 +91,11 @@ static const char g_revision[] = "7.1";
 #define QS_PKT_RATE_MIN   30
 #define QS_PKT_RATE_TH    3
 
+/* this is the measure rate for QS_SrvRequestRate which may be increased
+   to 10 or 30 seconds in order to compensate bandwidth variations */
+#ifndef QS_REQ_RATE_TM
 #define QS_REQ_RATE_TM    5
+#endif
 
 #define QS_MAX_DELAY 5000
 
@@ -185,7 +189,7 @@ typedef struct {
   qs_conn_state_e status;
   conn_rec *c;
   request_rec *r;
-  /* upload bandwith (received bytes and start time) */
+  /* upload bandwidth (received bytes and start time) */
   time_t time;
   apr_size_t nbytes;
   int shutdown;
@@ -4667,8 +4671,8 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_SrvRequestRate", qos_req_rate_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvRequestRate <bytes per seconds>, defines the minumum upload"
-                " bandwith a client must generate (the bytes send by the client"
-                " per seconds). This bandwith is measured every five seconds"
+                " bandwidth a client must generate (the bytes send by the client"
+                " per seconds). This bandwidth is measured every five seconds"
                 " while receiving request data (request line, header fields, or"
                 " body). The client connection get closed if the client does not"
                 " fulfill the required request data rate and the concerned IP address"

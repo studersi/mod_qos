@@ -69,7 +69,7 @@ web servers require threads and processes to serve HTTP requests.
 Each TCP connection to the web server occupies one of these threads 
 respectively processes. Sometimes a server gets too busy to serve 
 every request due the lack of free processes or threads. Another parameter 
-requiring control by mod_qos is the available bandwith: all 
+requiring control by mod_qos is the available bandwidth: all 
 clients communicates to the server over a network link with a 
 limited bandwidth. Overfilling the link, results in network 
 congestion and poor performance.
@@ -688,8 +688,8 @@ level control restrictions. An address range must end with a ".".
 </li>
 <li>
 <code>QS_SrvRequestRate &lt;bytes per second&gt;</code><br>
-Defines the minumum upload bandwith a client must generate (the bytes 
-send by the client per seconds). This bandwith is measured every 
+Defines the minumum upload bandwidth a client must generate (the bytes 
+send by the client per seconds). This bandwidth is measured every 
 five seconds while receiving request data (request line, header fields, 
 or body). The client connection get closed if the client does not 
 fulfill the required request data rate and the concerned IP address 
@@ -1036,7 +1036,7 @@ QS_ClientPrefer
 QS_ClientEntries        200000
 
 # minimum request speed (deny slow clients blocking the server):
-QS_SrvRequestRate       60
+QS_SrvRequestRate       120
 # and limit request header and body:
 LimitRequestFields      30
 LimitRequestBody        102400
