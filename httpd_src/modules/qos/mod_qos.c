@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.75 2008-05-10 12:19:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.76 2008-05-10 12:41:24 pbuchbinder Exp $";
 static const char g_revision[] = "7.1";
 
 /************************************************************************
@@ -2713,14 +2713,26 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
         int rate = inctx->nbytes / QS_REQ_RATE_TM;
         if(rate < sconf->req_rate) {
           if(inctx->client_socket) {
-            ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, inctx->c->base_server,
-                         QOS_LOG_PFX(034)"access denied, QS_SrvRequestRate rule: min=%d,"
+            qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
+                                                                    &qos_module);
+            int level = APLOG_ERR;
+            if(cconf->is_vip) {
+              level = APLOG_WARNING;
+            }
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
+                         QOS_LOG_PFX(034)"%s, QS_SrvRequestRate rule: min=%d,"
                          " this connection=%d,"
                          " c=%s",
+                         cconf->is_vip ? "log only due QS_SrvMaxConnExcludeIP match" : "access denied",
                          sconf->req_rate, rate,
                          inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
-            inctx->shutdown = 1;
-            apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+            if(cconf->is_vip) {
+              inctx->time = interval + QS_REQ_RATE_TM;
+              inctx->nbytes = 0;
+            } else {
+              inctx->shutdown = 1;
+              apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+            }
           }
         } else {
           inctx->time = interval + QS_REQ_RATE_TM;
