@@ -1,3 +1,9 @@
+Version 7.1
+
+ - QS_SrvMaxConnExcludeIP works with QS_SrvRequestRate
+   (may be used to allow selected IP sources, e.g. slow
+   spider like msnbot).
+
 Version 7.0
 
  - New directive QS_SrvRequestRate enforces minimum
