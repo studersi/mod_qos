@@ -712,6 +712,9 @@ excluded from connection restrictions.
 <tr><td bgcolor="#EBE5E0">
 Sample configuration:<br>
 <pre>
+# minimum request rate (bytes/sec at request reading):
+QS_SrvRequestRate                                 120
+
 # limits the connections for this virtual host:
 QS_SrvMaxConn                                     800
 

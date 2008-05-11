@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.56 2008-05-09 19:30:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.57 2008-05-11 19:30:24 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -374,7 +374,6 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SetEnvResHeaders.htt"
 fi
-
 ./ctl.sh restart -D real_ip -D cc > /dev/null
 ./htt.sh -s ./scripts/QS_VipUser.htt
 if [ $? -ne 0 ]; then
@@ -444,7 +443,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # - DDoS -------------------------------------------------------
-./ctl.sh restart > /dev/null
+./ctl.sh restart -D cc -D real_ip > /dev/null
 ./htt.sh -s ./scripts/QS_SrvRequestRate_0.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -454,6 +453,10 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_1.htt"
+fi
+if [ `tail -1 logs/access_log | grep -c ' r; '` -eq 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate_1.htt (no lowrate)"
 fi
 ./htt.sh -s ./scripts/QS_SrvRequestRate_2.htt
 if [ $? -ne 0 ]; then
