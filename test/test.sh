@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.57 2008-05-11 19:30:24 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.58 2008-05-11 19:48:18 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -375,6 +375,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SetEnvResHeaders.htt"
 fi
 ./ctl.sh restart -D real_ip -D cc > /dev/null
+echo "-- QS_VipUser" >> logs/error_log
 ./htt.sh -s ./scripts/QS_VipUser.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
