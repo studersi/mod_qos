@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.78 2008-05-11 07:56:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.79 2008-05-11 19:30:24 pbuchbinder Exp $";
 static const char g_revision[] = "7.1";
 
 /************************************************************************
@@ -386,6 +386,7 @@ typedef struct {
   qos_srv_config *sconf;
   int is_vip;           /* is vip, either by request or by session */
   int is_vip_by_header; /* received vip header from application/or auth. user */
+  int has_lowrate;
 } qs_conn_ctx;
 
 /**
@@ -2718,6 +2719,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
             int level = APLOG_ERR;
             if(cconf && cconf->is_vip) {
               level = APLOG_WARNING;
+              cconf->has_lowrate = 1; /* mark connection low rate */
             }
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
                          QOS_LOG_PFX(034)"%s, QS_SrvRequestRate rule: min=%d,"
@@ -2772,7 +2774,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
   if(cconf->sconf->qos_cc_prefer) {
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT15 */
     u->qos_cc->connections--;
-    if(cconf->is_vip_by_header) {
+    if(cconf->is_vip_by_header || cconf->has_lowrate) {
       qos_s_entry_t **e = NULL;
       qos_s_entry_t new;
       new.ip = cconf->ip;
@@ -2780,7 +2782,12 @@ static apr_status_t qos_cleanup_conn(void *p) {
       if(!e) {
         e = qos_cc_set(u->qos_cc, &new, time(NULL));
       }
-      (*e)->vip = 1;
+      if(cconf->is_vip_by_header) {
+        (*e)->vip = 1;
+      }
+      if(cconf->has_lowrate) {
+        (*e)->lowrate = time(NULL);
+      }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT15 */
   }
@@ -2829,6 +2836,7 @@ static int qos_process_connection(conn_rec *c) {
     cconf->sconf = sconf;
     cconf->is_vip = 0;
     cconf->is_vip_by_header = 0;
+    cconf->has_lowrate = 0;
     ap_set_module_config(c->conn_config, &qos_module, cconf);
     apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
 

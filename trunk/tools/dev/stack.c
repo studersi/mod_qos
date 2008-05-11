@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.11 2008-05-05 18:47:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.12 2008-05-11 19:30:24 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -187,6 +187,7 @@ static void func() {
   qos_s_t *s = qoss_new(size);
   qos_s_entry_t **e = NULL;
   int i;
+  unsigned long v = 0;
   unsigned long ar[] = { 1, 5, 6, 7, 8, 9, 10, 100 };
   printf("> %d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
   for(i = 0; i < sizeof(ar)/sizeof(unsigned long); i++) {
@@ -216,6 +217,15 @@ static void func() {
   for(i = 0; i < s->max; i++) {
     e = &s->timed[i];
     printf("%lu %lu\n", (*e)->ip, (*e)->time);
+  }
+  /* lowest first */
+  for(i = 0; i < s->max; i++) {
+    e = &s->ipd[i];
+    if((*e)->ip < v) {
+      printf("ERROR %lu", (*e)->ip); fflush(stdout);
+      exit(1);
+    }
+    v = (*e)->ip;
   }
   qoss_free(s);
 }
