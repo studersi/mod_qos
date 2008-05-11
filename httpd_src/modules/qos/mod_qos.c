@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.77 2008-05-11 07:51:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.78 2008-05-11 07:56:57 pbuchbinder Exp $";
 static const char g_revision[] = "7.1";
 
 /************************************************************************
@@ -2731,9 +2731,10 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
               inctx->time = interval + QS_REQ_RATE_TM;
               inctx->nbytes = 0;
             } else {
-              inctx->shutdown = 1;
               apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
             }
+            /* mark slow clients (QS_ClientPrefer) even they are VIP */
+            inctx->shutdown = 1;
           }
         } else {
           inctx->time = interval + QS_REQ_RATE_TM;
