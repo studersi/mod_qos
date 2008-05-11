@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.76 2008-05-10 12:41:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.77 2008-05-11 07:51:49 pbuchbinder Exp $";
 static const char g_revision[] = "7.1";
 
 /************************************************************************
@@ -2716,17 +2716,18 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
             qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
                                                                     &qos_module);
             int level = APLOG_ERR;
-            if(cconf->is_vip) {
+            if(cconf && cconf->is_vip) {
               level = APLOG_WARNING;
             }
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
                          QOS_LOG_PFX(034)"%s, QS_SrvRequestRate rule: min=%d,"
                          " this connection=%d,"
                          " c=%s",
-                         cconf->is_vip ? "log only due QS_SrvMaxConnExcludeIP match" : "access denied",
+                         level == APLOG_WARNING ? "log only due QS_SrvMaxConnExcludeIP match" 
+                         : "access denied",
                          sconf->req_rate, rate,
                          inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
-            if(cconf->is_vip) {
+            if(cconf && cconf->is_vip) {
               inctx->time = interval + QS_REQ_RATE_TM;
               inctx->nbytes = 0;
             } else {
