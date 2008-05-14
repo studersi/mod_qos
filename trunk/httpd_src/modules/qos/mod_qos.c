@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.79 2008-05-11 19:30:24 pbuchbinder Exp $";
-static const char g_revision[] = "7.1";
+static const char revision[] = "$Id: mod_qos.c,v 5.80 2008-05-14 18:56:30 pbuchbinder Exp $";
+static const char g_revision[] = "7.2";
 
 /************************************************************************
  * Includes
@@ -193,6 +193,7 @@ typedef struct {
   time_t time;
   apr_size_t nbytes;
   int shutdown;
+  int errors;
   /* packet recv size rate: */
   apr_size_t bytes;
   int count;

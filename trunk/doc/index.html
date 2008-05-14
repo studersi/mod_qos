@@ -689,9 +689,9 @@ level control restrictions. An address range must end with a ".".
 <li>
 <code>QS_SrvRequestRate &lt;bytes per second&gt;</code><br>
 Defines the minumum upload bandwidth a client must generate (the bytes 
-send by the client per seconds). This bandwidth is measured every 
-five seconds while receiving request data (request line, header fields, 
-or body). The client connection get closed if the client does not 
+send by the client per seconds). This bandwidth is measured while 
+receiving request data (request line, header fields, or body). 
+The client connection get closed if the client does not 
 fulfill the required request data rate and the concerned IP address 
 get marked in order to be handled with low priority (see the 
 <code>QS_ClientPrefer</code> directive). No limitation is set by default.
@@ -911,14 +911,14 @@ which the GUI is accessible.
 LoadModule qos_control_module &lt;path to module&gt;/mod_qos_control.so
 LoadModule qos_module         &lt;path to module&gt;/mod_qos.so
 
-# this is the working directory where the GUI stores its metadata to
+# this is the working directory where the GUI stores its metadata to:
 QSC_WorkingDirectory    /var/tmp/qosc
 
 # you must specify the location of the qsfilter2 utility which is used
-# to generate generic request filer rules based on access log files
+# to generate generic request filer rules based on access log files:
 QSC_Filter2Binary       /usr/local/bin/qsfilter2
 
-# the location/url where the GUI is accessible
+# the location/url where the GUI is accessible:
 &lt;Location /qos_control&gt;
    SetHandler qos-control
 &lt;/Location&gt;
@@ -936,9 +936,9 @@ The following use cases may give you an idea about how to use mod_qos.
 In the case an application is very slow (e.g. at location /ccc), requests wait 
 until a timeout occurs. Due many waiting requests, the number of free TCP 
 connections goes out and the web sever is not able to process other requests 
-to applications still working fine, e.g. to /aaa or /bbb. mod_qos limits 
-the concurrent requests to an application in order to assure the 
-availability of other resources.
+to applications still working fine, e.g. to /aaa, /bbb /dd1, and /dd2. 
+mod_qos limits the concurrent requests to an application in order to 
+assure the availability of other resources.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
@@ -946,9 +946,10 @@ availability of other resources.
 MaxClients              256
 
 # limits the maximum of concurrent requests per application to 100:
-QS_LocRequestLimit /aaa 100
-QS_LocRequestLimit /bbb 100
-QS_LocRequestLimit /ccc 100
+QS_LocRequestLimit      /aaa                100
+QS_LocRequestLimit      /bbb                100
+QS_LocRequestLimit      /ccc                100
+QS_LocRequestLimitMatch "^(/dd1/|/dd2/).*$" 100
 </pre>
 </td></tr>
 </table>
