@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.80 2008-05-14 18:56:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.81 2008-06-11 17:48:07 pbuchbinder Exp $";
 static const char g_revision[] = "7.2";
 
 /************************************************************************
@@ -346,6 +346,7 @@ typedef struct {
   apr_table_t *setenvif_t;
   apr_table_t *setenvstatus_t;
   apr_table_t *setenvresheader_t;
+  apr_table_t *setenvresheadermatch_t;
   char *cookie_name;
   char *cookie_path;
   int max_age;
@@ -1665,12 +1666,13 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
 }
 
 /**
- * QS_SetEnvResHeader (outfilter)
+ * QS_SetEnvResHeader(Match) (outfilter)
  */
 static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
   apr_table_t *headers = r->headers_out;
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvresheader_t)->elts;
+  apr_table_entry_t *entrym = (apr_table_entry_t *)apr_table_elts(sconf->setenvresheadermatch_t)->elts;
   while(headers) {
     for(i = 0; i < apr_table_elts(sconf->setenvresheader_t)->nelts; i++) {
       const char *val = apr_table_get(headers, entry[i].key);
@@ -1678,6 +1680,15 @@ static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
         apr_table_set(r->subprocess_env, entry[i].key, val);
         if(strcasecmp(entry[i].val, "drop") == 0) {
           apr_table_unset(headers, entry[i].key);
+        }
+      }
+    }
+    for(i = 0; i < apr_table_elts(sconf->setenvresheadermatch_t)->nelts; i++) {
+      const char *val = apr_table_get(headers, entrym[i].key);
+      if(val) {
+        pcre *pr = (pcre *)entrym[i].val;
+        if(pcre_exec(pr, NULL, val, strlen(val), 0, 0, NULL, 0) == 0) {
+          apr_table_set(r->subprocess_env, entrym[i].key, val);
         }
       }
     }
@@ -3850,6 +3861,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->setenvstatus_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
+  sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
   sconf->error_page = NULL;
   sconf->req_rate = -1;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
@@ -4189,6 +4201,24 @@ const char *qos_event_setenvresheader_cmd(cmd_parms *cmd, void *dcfg, const char
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   apr_table_set(sconf->setenvresheader_t, hdr, action == NULL ? "" : action);
+  return NULL;
+}
+
+const char *qos_event_setenvresheadermatch_cmd(cmd_parms *cmd, void *dcfg, const char *hdr,
+                                               const char *pcres) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *errptr = NULL;
+  int erroffset;
+  pcre *pr = pcre_compile(pcres, PCRE_DOTALL | PCRE_CASELESS, &errptr, &erroffset, NULL);
+  if(pr == NULL) {
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
+                        " reason: %s", 
+                        cmd->directive->directive,
+                        erroffset, errptr);
+  }
+  apr_pool_cleanup_register(cmd->pool, pr, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  apr_table_setn(sconf->setenvresheadermatch_t, apr_pstrdup(cmd->pool, hdr), (char *)pr);
   return NULL;
 }
 
@@ -4723,6 +4753,11 @@ static const command_rec qos_config_cmds[] = {
                  "QS_SetEnvResHeader <header name> [drop], adds the defined"
                  " HTTP response header to the request environment variables."
                  " Deletes the header if the action 'drop' has been specified."),
+  AP_INIT_TAKE2("QS_SetEnvResHeaderMatch", qos_event_setenvresheadermatch_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetEnvResHeaderMatch <header name> <regex>, adds the defined"
+                " HTTP response header to the request environment variables"
+                " if the specified regular expression (pcre) matches the header value."),
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
                 ACCESS_CONF,

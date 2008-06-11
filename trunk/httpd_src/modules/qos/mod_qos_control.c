@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.34 2008-05-14 18:56:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.35 2008-06-11 17:48:07 pbuchbinder Exp $";
 static const char g_revision[] = "7.2";
 
 /************************************************************************
@@ -153,6 +153,7 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_SetEnvIf", QSC_REQ_TYPE, TAKE3, RSRC_CONF, 1, "", "variable1 variable2 variable=yes" },
   { "QS_SetEnvStatus", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "code variable" },
   { "QS_SetEnvResHeader", QSC_REQ_TYPE, TAKE12, RSRC_CONF, 0, "", "name [deny]" },
+  { "QS_SetEnvResHeaderMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 0, "", "name regex" },
   { "QS_ErrorPage", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/error-docs/403.html" },
   { "QS_VipHeaderName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "mod-qos-vip" },
   { "QS_VipIpHeaderName", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "mod-qos-vip-ip" },
