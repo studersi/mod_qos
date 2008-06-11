@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.81 2008-05-09 19:30:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.82 2008-06-11 17:48:07 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -179,6 +179,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_SessionKey              12345678
 
    QS_SetEnvResHeader         qs_special       drop
+
+   # detect new session (implements session dos prevention
+   # using QS_ClientEventBlockCount)
+   QS_SetEnvResHeaderMatch    Set-Cookie        JSESSIONID=
+   QS_SetEnvIf                Set-Cookie !QSNOT QS_Block=yes
 
    # -----------------------------------------------------------------
    # client control

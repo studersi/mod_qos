@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.58 2008-05-11 19:48:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.59 2008-06-11 17:48:07 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -41,6 +41,9 @@ QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 
 ERRORS=0
 WARNINGS=0
+
+sleep 1
+IPCS=`ipcs | wc -l`
 
 # delete the access log file since it is used to generate permit rules
 rm -f logs/access1_log
@@ -474,10 +477,16 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SrvRequestRate_3.htt"
 fi
 
+./ctl.sh restart -D cc -D real_ip > /dev/null
+./htt.sh -s ./scripts/QS_SetEnvResHeadersMatch.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SetEnvResHeadersMatch.htt"
+fi
 
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
-
+sleep 2
 for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062"`; do
     C=`grep -c $E logs/error_log`
     C1=`grep -c $E logs/error1_log`
@@ -486,6 +495,14 @@ for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk 
 	echo "WARNING: missing message $E $C $C1"
     fi
 done
+
+IPCS2=`ipcs | wc -l`
+echo "ipcs: $IPCS $IPCS2"
+if [ $IPCS -ne $IPCS2 ]; then
+    echo "WARNING: ipcs count changed"
+    WARNINGS=`expr $WARNINGS + 1`
+fi
+
 
 if [ $WARNINGS -ne 0 ]; then
     echo "ERROR: got $WARNINGS warnings"
