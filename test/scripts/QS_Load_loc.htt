@@ -1,15 +1,14 @@
 
 #
-# $Id: QS_Load_loc.htt,v 1.1 2008-02-29 19:54:20 pbuchbinder Exp $
+# $Id: QS_Load_loc.htt,v 1.2 2008-06-24 19:58:26 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
 CLIENT 20
-
 _LOOP 50
-_LOOP 90
-_REQ localhost $QS_PORT_BASE8
+_LOOP 60
+_REQ localhost $QS_PORT_BASE
 __GET /appl/hh/index.html HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
@@ -19,6 +18,7 @@ _WAIT
 _END LOOP
 
 _CLOSE
+_SLEEP 100
 _END LOOP
 
 END

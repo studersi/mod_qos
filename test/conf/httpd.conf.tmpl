@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.82 2008-06-11 17:48:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.83 2008-06-24 19:58:25 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -40,7 +40,12 @@ MaxClients              896
 <IfDefine max_clients>
 MaxClients              64
 </IfDefine>
+<IfDefine !cont>
 MaxRequestsPerChild     0
+</IfDefine>
+<IfDefine cont>
+MaxRequestsPerChild     10000
+</IfDefine>
 User                    ##USR##
 Group                   users
 ServerAdmin             webmaster@127.0.0.1
@@ -197,7 +202,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    # -----------------------------------------------------------------
    QS_SrvMaxConn                             40
    QS_SrvMaxConnClose                        20
+<IfDefine !cont>
    QS_SrvMaxConnPerIP                        10
+</IfDefine>
 
    BrowserMatch "pass"                       QS_VipRequest=yes
    SetEnvIf     Request_URI /cgi/index2.cgi  QS_VipRequest=yes
