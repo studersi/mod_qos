@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.81 2008-06-11 17:48:07 pbuchbinder Exp $";
-static const char g_revision[] = "7.2";
+static const char revision[] = "$Id: mod_qos.c,v 5.82 2008-06-24 19:58:25 pbuchbinder Exp $";
+static const char g_revision[] = "7.3";
 
 /************************************************************************
  * Includes
@@ -142,6 +142,7 @@ typedef enum  {
   QS_CONN_STATE_NEW = 0,
   QS_CONN_STATE_HEAD,
   QS_CONN_STATE_BODY,
+  QS_CONN_STATE_CHUNKED,
   QS_CONN_STATE_KEEP,
   QS_CONN_STATE_END
 } qs_conn_state_e;
@@ -187,6 +188,7 @@ typedef struct {
 typedef struct {
   apr_socket_t *client_socket;
   qs_conn_state_e status;
+  apr_off_t cl_val;
   conn_rec *c;
   request_rec *r;
   /* upload bandwidth (received bytes and start time) */
@@ -1877,6 +1879,7 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c) {
   qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
   inctx->client_socket = NULL;
   inctx->status = QS_CONN_STATE_NEW;
+  inctx->cl_val = 0;
   inctx->c = c;
   inctx->r = NULL;
   inctx->client_socket = NULL;
@@ -3004,8 +3007,25 @@ static int qos_post_read_request(request_rec * r) {
   if(sconf && (sconf->req_rate != -1)) {
     inctx = qos_get_ifctx(r->connection->input_filters);
     if(inctx) {
+      const char *te = apr_table_get(r->headers_in, "Transfer-Encoding");
       inctx->r = r;
-      inctx->status = QS_CONN_STATE_BODY;
+      if(r->read_chunked || (te && (strcasecmp(te, "chunked") == 0))) {
+        inctx->status = QS_CONN_STATE_CHUNKED;
+      } else {
+        const char *cl = apr_table_get(r->headers_in, "Content-Length");
+        if(cl == NULL) {
+          inctx->status = QS_CONN_STATE_END;
+          apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT26 */
+          apr_table_unset(sconf->inctx_t->table,
+                          apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+          apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT26 */
+        } else {
+          if(APR_SUCCESS == apr_strtoff(&inctx->cl_val, cl, NULL, 0)) {
+            inctx->status = QS_CONN_STATE_BODY;
+          } else {
+          }
+        }
+      }
     }
   }
   return DECLINED;
@@ -3251,6 +3271,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   qos_ifctx_t *inctx = f->ctx;
   apr_size_t bytes = 0;
   rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
+
   if(rv == APR_SUCCESS) {
     if(inctx->lowrate != -1) {
       bytes = qos_packet_rate(inctx, bb);
@@ -3296,6 +3317,19 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         }
       }
       inctx->nbytes = inctx->nbytes + bytes;
+      if(inctx->status == QS_CONN_STATE_BODY) {
+        if(inctx->cl_val >= bytes) {
+          inctx->cl_val = inctx->cl_val - bytes;
+        }
+        if(inctx->cl_val == 0) {
+          qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
+                                                                        &qos_module);
+          apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT27 */
+          apr_table_unset(sconf->inctx_t->table,
+                          apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+          apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT27 */
+        }
+      }
     }
     if(rv == APR_TIMEUP) {
       qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
