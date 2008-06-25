@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_4.htt,v 1.1 2008-06-24 19:58:26 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_4.htt,v 1.2 2008-06-25 20:32:54 pbuchbinder Exp $
 #
 # slow application (test ensures we remove the conn ctx after we got all data)
 #
@@ -34,12 +34,27 @@ _WAIT
 #__Content-Type: application/x-www-form-urlencoded
 #__Host: localhost.host.ch
 #__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+#__
 #_FLUSH
 #__s=20
-#_CHUNKED
-#_CHUNKED
+#_CHUNK
+#_CHUNK
 #__
 #_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__POST /cgi/sleep.cgi HTTP/1.1
+__Transfer-Encoding: chunked
+__Content-Type: application/x-www-form-urlencoded
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+__6
+__s=20
+__
+__0
+__
+_WAIT
 
 _REQ server1 SSL:$QS_PORT_BASE2
 __GET /cgi/sleep.cgi?s=1 HTTP/1.1
