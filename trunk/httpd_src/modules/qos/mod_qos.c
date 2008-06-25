@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.82 2008-06-24 19:58:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.83 2008-06-25 20:02:57 pbuchbinder Exp $";
 static const char g_revision[] = "7.3";
 
 /************************************************************************
@@ -3010,17 +3010,21 @@ static int qos_post_read_request(request_rec * r) {
       const char *te = apr_table_get(r->headers_in, "Transfer-Encoding");
       inctx->r = r;
       if(r->read_chunked || (te && (strcasecmp(te, "chunked") == 0))) {
+        ap_add_input_filter("qos-in-filter2", inctx, r, r->connection);
         inctx->status = QS_CONN_STATE_CHUNKED;
       } else {
         const char *cl = apr_table_get(r->headers_in, "Content-Length");
         if(cl == NULL) {
           inctx->status = QS_CONN_STATE_END;
+#if APR_HAS_THREADS
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT26 */
           apr_table_unset(sconf->inctx_t->table,
                           apr_psprintf(inctx->c->pool, "%d", (int)inctx));
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT26 */
+#endif
         } else {
           if(APR_SUCCESS == apr_strtoff(&inctx->cl_val, cl, NULL, 0)) {
+            ap_add_input_filter("qos-in-filter2", inctx, r, r->connection);
             inctx->status = QS_CONN_STATE_BODY;
           } else {
           }
@@ -3260,6 +3264,25 @@ static int qos_header_parser(request_rec * r) {
   return DECLINED;
 }
 
+static apr_status_t qos_in_filter2(ap_filter_t *f, apr_bucket_brigade *bb,
+                                  ap_input_mode_t mode, apr_read_type_e block,
+                                  apr_off_t nbytes) {
+  qos_ifctx_t *inctx = f->ctx;
+  apr_status_t rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
+  if((rv == APR_SUCCESS) && APR_BUCKET_IS_EOS(APR_BRIGADE_LAST(bb))) {
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
+                                                                  &qos_module);
+    ap_remove_input_filter(f);
+#if APR_HAS_THREADS
+    apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT28 */
+    apr_table_unset(sconf->inctx_t->table,
+                    apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+    apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT28 */
+#endif
+  }
+  return rv;
+}
+
 /**
  * input filter, used to log timeout event, mark slow clients,
  * and to calculate packet rate
@@ -3270,8 +3293,8 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   apr_status_t rv;
   qos_ifctx_t *inctx = f->ctx;
   apr_size_t bytes = 0;
-  rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
 
+  rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
   if(rv == APR_SUCCESS) {
     if(inctx->lowrate != -1) {
       bytes = qos_packet_rate(inctx, bb);
@@ -3324,10 +3347,12 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         if(inctx->cl_val == 0) {
           qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
                                                                         &qos_module);
+#if APR_HAS_THREADS
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT27 */
           apr_table_unset(sconf->inctx_t->table,
                           apr_psprintf(inctx->c->pool, "%d", (int)inctx));
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT27 */
+#endif
         }
       }
     }
@@ -4887,6 +4912,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
 
   ap_register_input_filter("qos-in-filter", qos_in_filter, NULL, AP_FTYPE_CONNECTION);
+  ap_register_input_filter("qos-in-filter2", qos_in_filter2, NULL, AP_FTYPE_RESOURCE);
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
   ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
