@@ -1,3 +1,7 @@
+Version 7.4
+
+ - QS_SrvRequestRate supports chunked POST.
+
 Version 7.3
 
  - Partial (not for chunked post) fixed error message
