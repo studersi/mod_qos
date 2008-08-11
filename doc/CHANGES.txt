@@ -1,3 +1,11 @@
+Version 
+
+ - New diretive QS_ErrorResponseCode
+
+ - Multiple directives (QS_LocRequestLimit, QS_LocRequestLimitMatch,
+   QS_CondLocRequestLimitMatch, QS_ClientEventBlockCount, and
+   QS_ClientEventPerSecLimit) allow now a limitation set to "0".
+
 Version 7.4
 
  - QS_SrvRequestRate supports chunked POST.
