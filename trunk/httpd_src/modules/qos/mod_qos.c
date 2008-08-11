@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.84 2008-06-25 20:37:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.85 2008-08-11 17:51:31 pbuchbinder Exp $";
 static const char g_revision[] = "7.4";
 
 /************************************************************************
@@ -69,6 +69,9 @@ static const char g_revision[] = "7.4";
 #include <pcre.h>
 #include <apr_strings.h>
 #include <apr_base64.h>
+#ifdef AP_NEED_SET_MUTEX_PERMS
+#include <unixd.h>
+#endif
 
 /* additional modules */
 #include "mod_status.h"
@@ -440,6 +443,7 @@ typedef struct {
  ***********************************************************************/
 
 module AP_MODULE_DECLARE_DATA qos_module;
+static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 
 /************************************************************************
  * private functions
@@ -594,6 +598,9 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, int size) {
     apr_shm_destroy(s->m);
     return NULL;
   }
+#ifdef AP_NEED_SET_MUTEX_PERMS
+  unixd_set_global_mutex_perms(s->lock);
+#endif
   e = (qos_s_entry_t *)&s[1];
   s->ipd = (qos_s_entry_t **)&e[size];
   s->timed = (qos_s_entry_t **)&s->ipd[size];
@@ -903,6 +910,9 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     u->lock = NULL;
     return !OK;
   }
+#ifdef AP_NEED_SET_MUTEX_PERMS
+  unixd_set_global_mutex_perms(u->lock);
+#endif
   u->netstat = apr_shm_baseaddr_get(u->m);
   for(i = 0; i < elements; i++) {
     qs_netstat_t *netstat = &u->netstat[i];
@@ -1276,7 +1286,7 @@ static int qos_return_error(conn_rec *c) {
   e = apr_bucket_flush_create(c->bucket_alloc);
   APR_BRIGADE_INSERT_TAIL(bb, e);
   ap_pass_brigade(c->output_filters, bb);
-  return HTTP_INTERNAL_SERVER_ERROR;
+  return m_retcode;
 }
 
 /**
@@ -1285,7 +1295,7 @@ static int qos_return_error(conn_rec *c) {
 static void qos_error_response(request_rec *r, const char *error_page) {
   /* do (almost) the same as ap_die() does */
   const char *error_notes;
-  r->status = HTTP_INTERNAL_SERVER_ERROR;
+  r->status = m_retcode;
   r->connection->keepalive = AP_CONN_CLOSE;
   r->no_local_copy = 1;
   apr_table_setn(r->subprocess_env, "REQUEST_METHOD", r->method);
@@ -3119,7 +3129,7 @@ static int qos_header_parser(request_rec * r) {
         qos_error_response(r, error_page);
         return DONE;
       }
-      return HTTP_INTERNAL_SERVER_ERROR;
+      return m_retcode;
     }
     
     /* get rule with conditional enforcement */
@@ -3178,7 +3188,7 @@ static int qos_header_parser(request_rec * r) {
               qos_error_response(r, error_page);
               return DONE;
             }
-            return HTTP_INTERNAL_SERVER_ERROR;
+            return m_retcode;
           }
         }
         /*
@@ -3238,7 +3248,7 @@ static int qos_header_parser(request_rec * r) {
                   qos_error_response(r, error_page);
                   return DONE;
                 }
-                return HTTP_INTERNAL_SERVER_ERROR;
+                return m_retcode;
               }
             }
           }
@@ -3942,6 +3952,9 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
                  QOS_LOG_PFX(004)"could not create a-mutex: %s", buf);
     exit(1);
   }
+#ifdef AP_NEED_SET_MUTEX_PERMS
+  unixd_set_global_mutex_perms(sconf->act->lock);
+#endif
   sconf->is_virtual = s->is_virtual;
   sconf->cookie_name = apr_pstrdup(sconf->pool, QOS_COOKIE_NAME);
   sconf->cookie_path = apr_pstrdup(sconf->pool, "/");
@@ -4036,8 +4049,8 @@ const char *qos_loc_con_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const c
     rule->url = apr_pstrdup(cmd->pool, loc);
   }
   rule->limit = atoi(limit);
-  if(rule->limit == 0) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+  if((rule->limit < 0) || ((rule->limit == 0) && limit && (strcmp(limit, "0") != 0))) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
                         cmd->directive->directive);
   }
   rule->event = NULL;
@@ -4106,8 +4119,8 @@ const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, con
     rule->url = apr_pstrdup(cmd->pool, match);
   }
   rule->limit = atoi(limit);
-  if(rule->limit == 0) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+  if((rule->limit < 0) || ((rule->limit == 0) && limit && (strcmp(limit, "0") != 0))) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
                         cmd->directive->directive);
   }
 #ifdef AP_REGEX_H
@@ -4136,8 +4149,8 @@ const char *qos_cond_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match
   qs_rule_ctx_t *rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
   rule->url = apr_pstrdup(cmd->pool, match);
   rule->limit = atoi(limit);
-  if(rule->limit == 0) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+  if((rule->limit < 0) || ((rule->limit == 0) && limit && (strcmp(limit, "0") != 0))) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
                         cmd->directive->directive);
   }
 #ifdef AP_REGEX_H
@@ -4310,6 +4323,19 @@ const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   if(sconf->error_page[0] != '/') {
     return apr_psprintf(cmd->pool, "%s: requires absolute path (%s)", 
                         cmd->directive->directive, sconf->error_page);
+  }
+  return NULL;
+}
+
+const char *qos_error_code_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  m_retcode = atoi(arg);
+  if((m_retcode < 400) || (m_retcode > 599)) {
+    return apr_psprintf(cmd->pool, "%s: error code must be a numeric value between 400 and 599", 
+                        cmd->directive->directive);
   }
   return NULL;
 }
@@ -4623,8 +4649,8 @@ const char *qos_client_block_cmd(cmd_parms *cmd, void *dcfg, const char *arg1,
   }
   sconf->has_qos_cc = 1;
   sconf->qos_cc_block = atoi(arg1);
-  if(sconf->qos_cc_block == 0) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+  if((sconf->qos_cc_block < 0) || ((sconf->qos_cc_block == 0) && (strcmp(arg1, "0") != 0))) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
                         cmd->directive->directive);
   }
   if(arg2) {
@@ -4646,8 +4672,8 @@ const char *qos_client_event_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   }
   sconf->has_qos_cc = 1;
   sconf->qos_cc_event = atoi(arg1);
-  if(sconf->qos_cc_event == 0) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+  if((sconf->qos_cc_event < 0) || ((sconf->qos_cc_block == 0) && (strcmp(arg1, "0") != 0))) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
                         cmd->directive->directive);
   }
   return NULL;
@@ -4716,6 +4742,9 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorPage <url>, defines a custom error page."),
+  AP_INIT_TAKE1("QS_ErrorResponseCode", qos_error_code_cmd, NULL,
+                RSRC_CONF,
+                "QS_ErrorResponseCode <code>, defines the HTTP response code, default is 500."),
   /* vip session */
   AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
                 RSRC_CONF,
