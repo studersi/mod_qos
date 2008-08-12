@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.26 2008-06-24 19:58:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.27 2008-08-12 18:30:51 pbuchbinder Exp $
 #
 # Simple build script using apache and libpng tar.gz from the 3thrdparty directory
 #
@@ -56,19 +56,32 @@ ln -s `pwd`/httpd_src/modules/qos/mod_qos_control.c httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/config.m4 httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/Makefile.in httpd/modules/qos
 
+ADDMOD=""
 if [ "$1" = "release" ]; then
   echo "release binary"
-  CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_REQ_RATE_TM=10"
+  CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_REQ_RATE_TM=10 -DI_INSIST_ON_EXTRA_CYCLES_FOR_CLF_COMPLIANCE"
   export CFLAGS 
+  ADDMOD="--prefix=/opt/usp/apache"
 else
   CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g -Wall"
   export CFLAGS 
 fi
 
+LDFLAGS=""
+export LDFLAGS
+LD_LIBRARY_PATH=""
+export LD_LIBRARY_PATH
+LTCFLAGS=""
+export LTCFLAGS
+
 cd httpd
 ./buildconf
 #./configure --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared $ADDMOD
+# patch ...
+sed <build/rules.mk > build/rules.mk.2 \
+ -e "s;LINK     = \$(LIBTOOL) --mode=link \$(CC) \$(ALL_CFLAGS)  \$(LT_LDFLAGS);LINK     = \$(LIBTOOL) --mode=link \$(CC) \$(ALL_CFLAGS) -static \$(LT_LDFLAGS);g"
+mv build/rules.mk.2 build/rules.mk
 make
 strip modules/qos/.libs/mod_qos.so
 if [ $? -ne 0 ]; then
