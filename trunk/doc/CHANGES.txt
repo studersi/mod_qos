@@ -1,4 +1,4 @@
-Version
+Version 7.5
 
  - New diretive QS_ErrorResponseCode
 
@@ -6,7 +6,7 @@ Version
    QS_CondLocRequestLimitMatch, QS_ClientEventBlockCount, and
    QS_ClientEventPerSecLimit) allow now a limitation set to "0".
 
- - QS_SrvMinDataRate replaces QS_SrvMinDataRate.
+ - QS_SrvMinDataRate replaces QS_SrvRequestRate.
 
 Version 7.4
 
