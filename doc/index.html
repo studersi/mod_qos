@@ -261,7 +261,7 @@ the definition of a
 <code>QS_EventPerSecLimit</code>, 
 <code>QS_SrvMaxConnPerIP</code> 
 or <code>QS_SrvMaxConn</code> directive). <br> 
-The <code>QS_SrvRequestRate</code>, <code>QS_SrvPreferNet</code>, 
+The <code>QS_SrvMinDataRate</code>, <code>QS_SrvPreferNet</code>, 
 <code>QS_RequestHeaderFilterRule</code>, and all <code>QS_Client*</code> directives 
 may be used outside of virtual host configurations only.
 </p>
@@ -697,14 +697,19 @@ Defines an IP address or address range to be excluded from connection
 level control restrictions. An address range must end with a ".".
 </li>
 <li>
-<code>QS_SrvRequestRate &lt;bytes per second&gt;</code><br>
-Defines the minumum upload bandwidth a client must generate (the bytes 
-send by the client per seconds). This bandwidth is measured while 
+<code>QS_SrvMinDataRate &lt;bytes per second&gt;</code><br>
+Defines the minumum upload/download throughput a client must generate (the bytes 
+send/received by the client per seconds). This bandwidth is measured while 
 receiving request data (request line, header fields, or body). 
 The client connection get closed if the client does not 
-fulfill the required request data rate and the concerned IP address 
+fulfill this required minimal data rate and the IP address of the causing client 
 get marked in order to be handled with low priority (see the 
 <code>QS_ClientPrefer</code> directive). No limitation is set by default.
+</li>
+<li>
+<code>QS_SrvRequestRate &lt;bytes per second&gt;</code><br>
+Same as <code>QS_SrvMinDataRate</code> but enforcing a minimal upload 
+throughput only.
 </li>
 <li>
 <code>QS_SrvPreferNet</code><br>

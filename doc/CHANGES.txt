@@ -1,10 +1,12 @@
-Version 
+Version
 
  - New diretive QS_ErrorResponseCode
 
  - Multiple directives (QS_LocRequestLimit, QS_LocRequestLimitMatch,
    QS_CondLocRequestLimitMatch, QS_ClientEventBlockCount, and
    QS_ClientEventPerSecLimit) allow now a limitation set to "0".
+
+ - QS_SrvMinDataRate replaces QS_SrvMinDataRate.
 
 Version 7.4
 

@@ -29,6 +29,11 @@ echo "SET QS_PORT_BASE9=$QS_PORT_BASE9" >> scripts/ports
 echo "SET QS_HOME=`pwd`" >> scripts/ports
 echo "SET QS_HOME_ENC=`pwd | sed s:/:%2F:g`" >> scripts/ports
 
+if [ ! -f htdocs/image.iso ]; then
+    for E in `seq 12500`; do
+	echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso
+    done
+fi
 
 sed <conf/httpd.conf.tmpl >conf/httpd.conf \
     -e "s;##ROOT##;$ROOT;g" \
