@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.85 2008-08-11 17:51:31 pbuchbinder Exp $";
-static const char g_revision[] = "7.4";
+static const char revision[] = "$Id: mod_qos.c,v 5.86 2008-08-14 20:11:16 pbuchbinder Exp $";
+static const char g_revision[] = "7.5";
 
 /************************************************************************
  * Includes
@@ -94,8 +94,8 @@ static const char g_revision[] = "7.4";
 #define QS_PKT_RATE_MIN   30
 #define QS_PKT_RATE_TH    3
 
-/* this is the measure rate for QS_SrvRequestRate which may be increased
-   to 10 or 30 seconds in order to compensate bandwidth variations */
+/* this is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
+   be increased to 10 or 30 seconds in order to compensate bandwidth variations */
 #ifndef QS_REQ_RATE_TM
 #define QS_REQ_RATE_TM    5
 #endif
@@ -147,6 +147,7 @@ typedef enum  {
   QS_CONN_STATE_BODY,
   QS_CONN_STATE_CHUNKED,
   QS_CONN_STATE_KEEP,
+  QS_CONN_STATE_RESPONSE,
   QS_CONN_STATE_END
 } qs_conn_state_e;
 
@@ -365,6 +366,7 @@ typedef struct {
   int max_conn_per_ip;
   apr_table_t *exclude_ip;
   int req_rate;
+  int min_rate;
   qos_ifctx_list_t *inctx_t;
   apr_table_t *hfilter_table;
 #ifdef QS_INTERNAL_TEST
@@ -2678,7 +2680,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn_per_ip);
         }
         ap_rprintf(r, "<tr class=\"rows\">"
-                   "<td colspan=\"6\">request rate (bytes/sec)</td>");
+                   "<td colspan=\"6\">min. data rate (bytes/sec)</td>");
         if(sconf->req_rate == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
         } else {
@@ -2747,18 +2749,26 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
               cconf->has_lowrate = 1; /* mark connection low rate */
             }
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                         QOS_LOG_PFX(034)"%s, QS_SrvRequestRate rule: min=%d,"
+                         QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
                          " this connection=%d,"
                          " c=%s",
                          level == APLOG_WARNING ? "log only due QS_SrvMaxConnExcludeIP match" 
                          : "access denied",
-                         sconf->req_rate, rate,
+                         inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
+                         sconf->req_rate,
+                         rate,
                          inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
             if(cconf && cconf->is_vip) {
               inctx->time = interval + QS_REQ_RATE_TM;
               inctx->nbytes = 0;
             } else {
-              apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+              if(inctx->status == QS_CONN_STATE_RESPONSE) {
+                apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
+                /* close out socket (the hard way) */
+                apr_socket_close(inctx->client_socket);
+              } else {
+                apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+              }
             }
             /* mark slow clients (QS_ClientPrefer) even they are VIP */
             inctx->shutdown = 1;
@@ -3415,12 +3425,72 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
 }
 
 /**
+ * out filter measuring the minimal download bandwith
+ */
+static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
+  request_rec *r = f->r;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
+  if(APR_BUCKET_IS_EOS(APR_BRIGADE_LAST(bb))) {
+    apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
+    apr_table_unset(sconf->inctx_t->table,
+                    apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+    apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+    inctx->status = QS_CONN_STATE_END;
+    ap_remove_output_filter(f);
+  } else {
+    apr_size_t total = 0;
+    apr_bucket *b;
+    for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
+      total = total + b->length;
+    }
+    inctx->nbytes = inctx->nbytes + total;
+  }
+  return ap_pass_brigade(f->next, bb); 
+}
+
+static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
+  if(sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
+    qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
+    if(inctx) {
+      inctx->status = QS_CONN_STATE_RESPONSE;
+      inctx->time = time(NULL);
+      inctx->nbytes = 0;
+#if APR_HAS_THREADS
+      if(sconf->inctx_t && !sconf->inctx_t->exit) {
+        apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT29 */
+        apr_table_setn(sconf->inctx_t->table,
+                       apr_psprintf(inctx->c->pool, "%d", (int)inctx),
+                       (char *)inctx);
+        apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT29 */
+      }
+#endif
+      ap_add_output_filter("qos-out-filter-min", NULL, r, r->connection);
+    }
+  }
+}
+
+static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
+  if(sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
+    qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
+    if(inctx) {
+      apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
+      apr_table_unset(sconf->inctx_t->table,
+                      apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+      apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+      inctx->status = QS_CONN_STATE_END;
+    }
+  }
+}
+
+/**
  * process response:
  * - detects vip header and create session
  */
 static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_start_res_rate(r, sconf);
   qos_setenvresheader(r, sconf);
   if(sconf->ip_header_name) {
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->ip_header_name);
@@ -3495,6 +3565,7 @@ static int qos_logger(request_rec *r) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
   time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_end_res_rate(r, sconf);
   qos_setenvstatus(r, sconf);
   qos_setenvif(r, sconf);
   qos_logger_cc(r, sconf);
@@ -3933,6 +4004,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
   sconf->error_page = NULL;
   sconf->req_rate = -1;
+  sconf->min_rate = -1;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
@@ -4029,6 +4101,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
      (o->max_conn != -1) ||
      (o->max_conn_per_ip != -1)) {
     o->req_rate = b->req_rate;
+    o->min_rate = b->min_rate;
 #ifdef QS_INTERNAL_TEST
     o->enable_testip = b->enable_testip;
 #endif
@@ -4486,9 +4559,33 @@ const char *qos_req_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
   if (err != NULL) {
     return err;
   }
+  if(sconf->req_rate != -1) {
+    return apr_psprintf(cmd->pool, "%s: directive can't be used together with QS_SrvRequestRate", 
+                        cmd->directive->directive);
+  }
   sconf->req_rate = atoi(sec);
   if(sconf->req_rate == 0) {
     return apr_psprintf(cmd->pool, "%s: request rate must be a numeric value >0", 
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
+const char *qos_min_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  if(sconf->req_rate != -1) {
+    return apr_psprintf(cmd->pool, "%s: directive can't be used together with QS_SrvMinDataRate", 
+                        cmd->directive->directive);
+  }
+  sconf->req_rate = atoi(sec);
+  sconf->min_rate = sconf->min_rate;
+  if(sconf->req_rate == 0) {
+    return apr_psprintf(cmd->pool, "%s: minimal data rate must be a numeric value >0", 
                         cmd->directive->directive);
   }
   return NULL;
@@ -4812,13 +4909,17 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_SrvRequestRate", qos_req_rate_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvRequestRate <bytes per seconds>, defines the minumum upload"
-                " bandwidth a client must generate (the bytes send by the client"
-                " per seconds). This bandwidth is measured every five seconds"
-                " while receiving request data (request line, header fields, or"
-                " body). The client connection get closed if the client does not"
-                " fulfill the required request data rate and the concerned IP address"
-                " get marked in order to be handled with low priority (see"
-                " the QS_ClientPrefer directive). No limitation is set by default."),
+                " throughput a client must generate. See also QS_SrvMinDataRate."),
+  AP_INIT_TAKE1("QS_SrvMinDataRate", qos_min_rate_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvMinDataRate <bytes per seconds>, defines the minumum upload/download"
+                " throughput a client must generate (the bytes send/received by the client"
+                " per seconds). This bandwidth is measured while transmitting the data"
+                " (request line, header fields, request body, or response data). The"
+                " client connection get closed if the client does not fulfill the"
+                " required data rate and the IP address of the causing client get marked"
+                " in order to be handled with low priority (see the QS_ClientPrefer"
+                " directive). No limitation is set by default."),
 #endif
   /* event */
   AP_INIT_TAKE2("QS_EventPerSecLimit", qos_event_rs_cmd, NULL,
@@ -4943,6 +5044,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_input_filter("qos-in-filter", qos_in_filter, NULL, AP_FTYPE_CONNECTION);
   ap_register_input_filter("qos-in-filter2", qos_in_filter2, NULL, AP_FTYPE_RESOURCE);
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
+  ap_register_output_filter("qos-out-filter-min", qos_out_filter_min, NULL, AP_FTYPE_RESOURCE);
   ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
   //ap_hook_insert_error_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
