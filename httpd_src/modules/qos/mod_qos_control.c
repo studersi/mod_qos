@@ -30,8 +30,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.38 2008-08-11 17:51:32 pbuchbinder Exp $";
-static const char g_revision[] = "7.5";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.39 2008-08-20 20:30:42 pbuchbinder Exp $";
+static const char g_revision[] = "7.6";
 
 /************************************************************************
  * Includes
