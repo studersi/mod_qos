@@ -1,3 +1,10 @@
+Version 7.6
+
+ - Use the HTTP response code defined by QS_ErrorResponseCode
+   (default is 500) settings for all denied requests expect
+   for those requests rejected to a QS_Deny*, QS_Permit*, or 
+   QS_RequestHeaderFilter rule.
+
 Version 7.5
 
  - New diretive QS_ErrorResponseCode

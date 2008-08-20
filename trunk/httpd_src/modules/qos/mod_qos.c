@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.86 2008-08-14 20:11:16 pbuchbinder Exp $";
-static const char g_revision[] = "7.5";
+static const char revision[] = "$Id: mod_qos.c,v 5.87 2008-08-20 20:30:41 pbuchbinder Exp $";
+static const char g_revision[] = "7.6";
 
 /************************************************************************
  * Includes
@@ -2130,7 +2130,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                             cconf->sconf->qos_cc_block,
                             (*e)->block,
                             cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
-        ret = HTTP_FORBIDDEN;
+        ret = m_retcode;
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT17 */
@@ -2172,7 +2172,7 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
                               "max=%d, concurrent connections=%d, c=%s",
                               cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
                               cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
-          ret = HTTP_FORBIDDEN;
+          ret = m_retcode;
         }
       }
       if((*e)->lowrate) {
@@ -2182,7 +2182,7 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
                               "max=%d, concurrent connections=%d, c=%s",
                               cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
                               cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
-          ret = HTTP_FORBIDDEN;
+          ret = m_retcode;
         }
       }
     }
@@ -2198,7 +2198,7 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
                               cconf->sconf->qos_cc_block,
                               (*e)->block,
                               cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
-          ret = HTTP_FORBIDDEN;
+          ret = m_retcode;
         } else {
           /* release */
           (*e)->block = 0;
