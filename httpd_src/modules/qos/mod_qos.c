@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.87 2008-08-20 20:30:41 pbuchbinder Exp $";
-static const char g_revision[] = "7.6";
+static const char revision[] = "$Id: mod_qos.c,v 5.88 2008-09-02 06:37:57 pbuchbinder Exp $";
+static const char g_revision[] = "7.7";
 
 /************************************************************************
  * Includes
@@ -2399,7 +2399,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             ap_rprintf(r, "<td colspan=\"2\">%s</td>", buf);
             ap_rprintf(r, "<td colspan=\"1\">%s</td>", new.vip ? "yes" : "no");
             if(sconf->qos_cc_block_time > (time(NULL) - new.block_time)) {
-              ap_rprintf(r, "<td colspan=\"1\">%s</td>", new.block ? "yes" : "no");
+              ap_rprintf(r, "<td colspan=\"1\">%d</td>", new.block);
               ap_rprintf(r, "<td colspan=\"1\">%ld&nbsp;sec</td>", time(NULL) - new.block_time);
             } else {
               ap_rprintf(r, "<td colspan=\"2\">no</td>");
