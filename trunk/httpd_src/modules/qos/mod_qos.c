@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.88 2008-09-02 06:37:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.89 2008-09-09 18:03:34 pbuchbinder Exp $";
 static const char g_revision[] = "7.7";
 
 /************************************************************************
@@ -2383,10 +2383,14 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           apr_global_mutex_unlock(u->qos_cc->lock);            /* @CRT20 */
           ap_rputs("<tr class=\"rowt\"><td colspan=\"1\">IP</td>", r);
           ap_rputs("<td colspan=\"2\">last request</td>", r);
-          ap_rputs("<td colspan=\"1\">vip</td>", r);
-          ap_rputs("<td colspan=\"2\">blocked</td>", r);
-          ap_rputs("<td colspan=\"2\">events/sec</td>", r);
-          ap_rputs("<td colspan=\"1\">low prio</td>", r);
+          ap_rputs("<td colspan=\"1\">"
+                   "<div title=\"QS_VipHeaderName|QS_VipIPHeaderName\">vip</div></td>", r);
+          ap_rputs("<td colspan=\"2\">"
+                   "<div title=\"QS_ClientEventBlockCount\">blocked</div></td>", r);
+          ap_rputs("<td colspan=\"2\">"
+                   "<div title=\"QS_ClientEventPerSecLimit\">events/sec</div></td>", r);
+          ap_rputs("<td colspan=\"1\">"
+                   "<div title=\"QS_ClientPrefer\">low prio</div></td>", r);
           ap_rputs("</tr>\n", r);
           ap_rprintf(r, "<tr class=\"rows\">"
                      "<td colspan=\"1\">%s</td>", ap_escape_html(r->pool, address));
@@ -2497,14 +2501,14 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                  "<td >current&nbsp;</td>", r);
         ap_rputs("</tr>\n", r);
         ap_rprintf(r, "<tr class=\"rows\">");
-        ap_rprintf(r, "<td colspan=\"6\">clients in memory</td>");
+        ap_rprintf(r, "<td colspan=\"6\"><div title=\"QS_ClientEntries\">clients in memory</div></td>");
         ap_rprintf(r, "<td >%d</td>", max);
-        ap_rprintf(r, "<td >&nbsp</td>");
+        ap_rprintf(r, "<td >-</td>");
         ap_rprintf(r, "<td >%d</td>", num);
         ap_rputs("</tr>\n", r);
         if(sconf->qos_cc_prefer) {
           ap_rprintf(r, "<tr class=\"rows\">");
-          ap_rprintf(r, "<td colspan=\"6\">connections</td>");
+          ap_rprintf(r, "<td colspan=\"6\"><div title=\"QS_ClientPrefer\">connections</div></td>");
           ap_rprintf(r, "<td >%d</td>", sconf->qos_cc_prefer);
           ap_rprintf(r, "<td >%d</td>", sconf->qos_cc_prefer_limit);
           ap_rprintf(r, "<td >%d</td>", hc);
@@ -2546,9 +2550,15 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       if(e) {
         ap_rputs("<tr class=\"rowt\">"
                  "<td colspan=\"1\">location</td>"
-                 "<td colspan=\"2\">concurrent requests</td>"
-                 "<td colspan=\"3\">requests/second</td>"
-                 "<td colspan=\"3\">kbytes/second</td>", r);
+                 "<td colspan=\"2\">"
+                 "<div title=\"QS_LocRequestLimitMatch|QS_LocRequestLimit|QS_CondLocRequestLimitMatch\">"
+                 "concurrent requests</div></td>"
+                 "<td colspan=\"3\">"
+                 "<div title=\"QS_LocRequestPerSecLimitMatch|QS_LocRequestPerSecLimit|QS_EventPerSecLimit\">"
+                 "requests/second</div></td>"
+                 "<td colspan=\"3\">"
+                 "<div title=\"QS_LocKBytesPerSecLimitMatch|QS_LocKBytesPerSecLimit\">"
+                 "kbytes/second</div></td>", r);
         ap_rputs("</tr>\n", r);
         ap_rputs("<tr class=\"rowt\">"
                  "<td ></td>"
@@ -2623,10 +2633,12 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                  "<td colspan=\"9\">connections</td>", r);
         ap_rputs("</tr>\n", r);
         ap_rprintf(r, "<tr class=\"rows\">"
-                   "<!--%d--><td colspan=\"6\">free ip entries</td>"
+                   "<!--%d--><td colspan=\"6\">"
+                   "<div title=\"QS_SrvMaxConnPerIP\">free ip entries</div></td>"
                    "<td colspan=\"3\">%d</td></tr>\n", i, c);
         ap_rprintf(r, "<tr class=\"rows\">"
-                   "<!--%d--><td colspan=\"6\">current connections</td>"
+                   "<!--%d--><td colspan=\"6\">"
+                   "<div title=\"QS_SrvMaxConn|QS_SrvMaxConnClose\">current connections</div></td>"
                    "<td %s colspan=\"3\">%d</td></tr>\n", i,
                    ( ( (sconf->max_conn_close != -1) &&
                        (sconf->act->c->connections >= sconf->max_conn_close) )  ||
@@ -2640,7 +2652,8 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
             int j;
             apr_table_entry_t *entry;
             ap_rputs("<tr class=\"rowt\">"
-                     "<td colspan=\"6\">client ip connections</td>"
+                     "<td colspan=\"6\">"
+                     "<div title=\"QS_SrvMaxConnPerIP\">client ip connections</div></td>"
                      "<td colspan=\"3\">current&nbsp;</td>", r);
             ap_rputs("</tr>\n", r);
             apr_global_mutex_lock(sconf->act->lock);   /* @CRT8 */
@@ -2659,28 +2672,33 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                  "<td colspan=\"9\">connection settings</td>", r);
         ap_rputs("</tr>\n", r);
         ap_rprintf(r, "<tr class=\"rows\">"
-                   "<td colspan=\"6\">max connections</td>");
+                   "<td colspan=\"6\">"
+                   "<div title=\"QS_SrvMaxConn\">max connections</div></td>");
         if(sconf->max_conn == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
         } else {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn);
         }
         ap_rprintf(r, "<tr class=\"rows\">"
-                   "<td colspan=\"6\">max connections with keep-alive</td>");
+                   "<td colspan=\"6\">"
+                   "<div title=\"QS_SrvMaxConnClose\">max connections with keep-alive</div></td>");
         if(sconf->max_conn_close == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
         } else {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn_close);
         }
         ap_rprintf(r, "<tr class=\"rows\">"
-                   "<td colspan=\"6\">max connections per client ip</td>");
+                   "<td colspan=\"6\">"
+                   "<div title=\"QS_SrvMaxConnPerIP\">max connections per client ip</div></td>");
         if(sconf->max_conn_per_ip == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
         } else {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn_per_ip);
         }
         ap_rprintf(r, "<tr class=\"rows\">"
-                   "<td colspan=\"6\">min. data rate (bytes/sec)</td>");
+                   "<td colspan=\"6\">"
+                   "<div title=\"QS_SrvMinDataRate|QS_SrvRequestRate\">"
+                   "min. data rate (bytes/sec)</div></td>");
         if(sconf->req_rate == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
         } else {

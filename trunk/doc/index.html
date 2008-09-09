@@ -542,7 +542,8 @@ environment variable on a request per seconds level and tries to
 limit this occurence to the defined number. It works similar 
 as <code>QS_LocRequestPerSecLimit</code> does but counts only 
 the requests having the specified variable set (or not set 
-if the variable name is prefixed by a "!"). Ignores VIP privileges 
+if the variable name is prefixed by a "!"). Events are limited 
+by adding a delay to each requests causing an event. Ignores VIP privileges 
 normally but you may evaluate the <code>QS_VipRequest</code> variable.
 </li>
 <li>
