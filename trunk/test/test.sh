@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.61 2008-06-25 20:32:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.62 2008-09-10 20:45:32 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -448,6 +448,12 @@ fi
 
 # - DDoS -------------------------------------------------------
 ./ctl.sh restart -D cc -D real_ip > /dev/null
+./htt.sh -s ./scripts/QS_SetEnvIfQuery.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SetEnvIfQuery.htt"
+fi
+
 ./htt.sh -s ./scripts/QS_SrvRequestRate_0.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`

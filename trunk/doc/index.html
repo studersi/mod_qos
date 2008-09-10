@@ -95,11 +95,12 @@ Penetration of the web server by attackers (DDoS).
 mod_qos may be used to determine which requests should be served and 
 which shouldn't in order to avoid resource oversubscription. The 
 module collects different attributes such as the request URL, 
-HTTP request and response headers, the IP source address, 
-history data (user session and on per source IP address 
-basis), the number of concurrent requests to the server (total or 
-requests having similar attributes), the number of concurrent TCP 
-connections (total or from a single source IP), and so forth.
+HTTP request and response headers, the IP source address, the 
+HTTP response code, history data (user session and on per source 
+IP address basis), the number of concurrent requests to the 
+server (total or requests having similar attributes), the number 
+of concurrent TCP connections (total or from a single source IP), 
+and so forth.
 </p>
 <p>
 Counteractive measures to enforce the defined rules are: request 
@@ -496,7 +497,7 @@ SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.ht
 </table>
 
 <h4>Conditional Rules</h4>
-Conditional rules are are only enforced if a the <code>QS_Cond</code> 
+Conditional rules are only enforced if a the <code>QS_Cond</code> 
 variable matches the specified pattern.
 <ul>
 <li>
@@ -535,7 +536,7 @@ Such variables may be set by mod_setenvif or by other Apache modules.
 
 <ul>
 <li>
-<code>QS_EventPerSecLimit [!]&lt;variable&gt; &lt;number&gt;</code><br>
+<code>QS_EventPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
 Defines how often requests may have the defined environment variable 
 (literal string) set. It measures the occurence of the defined 
 environment variable on a request per seconds level and tries to 
@@ -547,14 +548,20 @@ by adding a delay to each requests causing an event. Ignores VIP privileges
 normally but you may evaluate the <code>QS_VipRequest</code> variable.
 </li>
 <li>
-<code>QS_SetEnvIf [!]&lt;variable1&gt; [!]&lt;variable2&gt; &lt;variable=value&gt;</code><br>
+<code>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; &lt;variable=value&gt;</code><br>
 Sets the "variable=value" (literal string) if variable1 (literal string) 
 AND variable2 (literal string) are set in the request environment 
 variable list (not case sensitive). This is used to combine multiple 
 variables to a new event type.
 </li>
 <li>
-<code>QS_SetEnvStatus &lt;code&gt; &lt;variable&gt;</code><br>
+<code>QS_SetEnvIfQuery &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
+Directive works quite simliar to the <code>SetEnvIf</code> directive 
+of the Apache module mod_setenvif but the specified regex is 
+applied against the request query string.
+</li>
+<li>
+<code>QS_SetEnvStatus &lt;code&gt; &lt;env-variable&gt;</code><br>
 Sets the defined variable in the request environment if the HTTP 
 response status code matches the defined value. This may be used 
 in conjunction with the <code>QS_ClientEventBlockCount</code> 
@@ -763,10 +770,12 @@ survives graceful server restart.
 <li>
 <code>QS_ClientEventPerSecLimit &lt;number&gt;</code><br>
 Defines how often a client may cause a <code>QS_Event</code> 
-per second. Such events are are requests having the 
+per second. Such events are requests having the 
 <code>QS_Event</code> variable set, e.g. defined by 
 mod_setenvif or using the <code>QS_SetEnvIf</code> directive. 
-Ignores VIP status by default but you may use the 
+The rule is enforced by adding a delay to requests causing 
+the event (similar to the <code>QS_LocRequestPerSecLimit</code> 
+directive. Ignores VIP status by default but you may use the 
 <code>QS_VipRequest</code> variable to detect VIP clients.
 </li>
 <li>
