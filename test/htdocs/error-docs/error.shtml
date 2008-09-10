@@ -26,10 +26,16 @@ custom error page
     <!--#if expr="\"${REDIRECT_ERROR_NOTES}\" = /\"05[0-9]{1}\"/" -->
         message: bandwidth limitation
     <!--#endif -->
+
+<pre>
+    _1<!--#echo var="NAME" -->
+    _2<!--#echo var="VALUE" -->
+    _3<!--#echo var="EMPTY" -->
+</pre>
 </p>
 <hr>
 <pre>
-$Revision: 1.1 $
+$Revision: 1.2 $
 </pre>
 </body>
 </html>

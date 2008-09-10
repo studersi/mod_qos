@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.89 2008-09-09 18:03:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.90 2008-09-10 20:45:32 pbuchbinder Exp $";
 static const char g_revision[] = "7.7";
 
 /************************************************************************
@@ -174,6 +174,12 @@ typedef struct {
   char *name;
   char *value;
 } qos_setenvif_t;
+
+typedef struct {
+  ap_regex_t *preg;
+  char *name;
+  char *value;
+} qos_setenvifquery_t;
 
 /**
  * generic request filter
@@ -350,6 +356,7 @@ typedef struct {
   const char *error_page;
   apr_table_t *location_t;
   apr_table_t *setenvif_t;
+  apr_table_t *setenvifquery_t;
   apr_table_t *setenvstatus_t;
   apr_table_t *setenvresheader_t;
   apr_table_t *setenvresheadermatch_t;
@@ -1722,6 +1729,27 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
   const char*var = apr_table_get(sconf->setenvstatus_t, code);
   if(var) {
     apr_table_set(r->subprocess_env, var, code);
+  }
+}
+
+/**
+ * QS_SetEnvIfQuery (hp)
+ */
+static void qos_setenvifquery(request_rec *r, qos_srv_config *sconf) {
+  if(r->parsed_uri.query) {
+    int i;
+    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvifquery_t)->elts;
+    for(i = 0; i < apr_table_elts(sconf->setenvifquery_t)->nelts; i++) {
+      qos_setenvifquery_t *setenvif = (qos_setenvifquery_t *)entry[i].val;
+      ap_regmatch_t regm[AP_MAX_REG_MATCH];
+      if(ap_regexec(setenvif->preg, r->parsed_uri.query, AP_MAX_REG_MATCH, regm, 0) == 0) {
+        char *replaced = "";
+        if(setenvif->value) {
+          replaced = ap_pregsub(r->pool, setenvif->value, r->parsed_uri.query, AP_MAX_REG_MATCH, regm);
+        }
+        apr_table_setn(r->subprocess_env, setenvif->name, replaced);
+      }
+    }
   }
 }
 
@@ -3128,6 +3156,7 @@ static int qos_header_parser(request_rec * r) {
     /*
      * additional variables
      */
+    qos_setenvifquery(r, sconf);
     qos_setenvif(r, sconf);
 
     /*
@@ -4017,6 +4046,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->pool = p;
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
+  sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
   sconf->setenvstatus_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
@@ -4401,6 +4431,29 @@ const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, c
   setenvif->value[0] = '\0';
   setenvif->value++;
   apr_table_setn(sconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
+  return NULL;
+}
+
+const char *qos_event_setenvifquery_cmd(cmd_parms *cmd, void *dcfg, const char *rx, const char *v) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qos_setenvifquery_t *setenvif = apr_pcalloc(cmd->pool, sizeof(qos_setenvifquery_t));
+  char *p;
+  setenvif->preg = ap_pregcomp(cmd->pool, rx, AP_REG_EXTENDED);
+  if(setenvif->preg == NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to compile regex %s",
+                        cmd->directive->directive, rx);
+  }
+  setenvif->name = apr_pstrdup(cmd->pool, v);
+  p = strchr(setenvif->name, '=');
+  if(p == NULL) {
+    setenvif->value = apr_pstrdup(cmd->pool, "");
+  } else {
+    p[0] = '\0';
+    p++;
+    setenvif->value = p;
+  }
+  apr_table_setn(sconf->setenvifquery_t, apr_pstrdup(cmd->pool, rx), (char *)setenvif);
   return NULL;
 }
 
@@ -4950,6 +5003,12 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_SetEnvIf [!]<variable1> [!]<variable1> <variable=value>,"
                 " defines the new variable if variable1 AND variable2 are set."),
+  AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetEnvIfQuery <regex> [!]<variable>[=value],"
+                " directive works simliar to the <code>SetEnvIf</code> directive"
+                " of the Apache module mod_setenvif but the specified regex is"
+                " applied against the request query string."),
   AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvStatus <status code> <variable>, adds the defined"
