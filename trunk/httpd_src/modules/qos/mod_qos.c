@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.90 2008-09-10 20:45:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.91 2008-09-11 06:12:21 pbuchbinder Exp $";
 static const char g_revision[] = "7.7";
 
 /************************************************************************
@@ -1741,13 +1741,18 @@ static void qos_setenvifquery(request_rec *r, qos_srv_config *sconf) {
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvifquery_t)->elts;
     for(i = 0; i < apr_table_elts(sconf->setenvifquery_t)->nelts; i++) {
       qos_setenvifquery_t *setenvif = (qos_setenvifquery_t *)entry[i].val;
+      char *name = setenvif->name;
       ap_regmatch_t regm[AP_MAX_REG_MATCH];
       if(ap_regexec(setenvif->preg, r->parsed_uri.query, AP_MAX_REG_MATCH, regm, 0) == 0) {
-        char *replaced = "";
-        if(setenvif->value) {
-          replaced = ap_pregsub(r->pool, setenvif->value, r->parsed_uri.query, AP_MAX_REG_MATCH, regm);
+        if(name[0] == '!') {
+          apr_table_unset(r->subprocess_env, &name[1]);
+        } else {
+          char *replaced = "";
+          if(setenvif->value) {
+            replaced = ap_pregsub(r->pool, setenvif->value, r->parsed_uri.query, AP_MAX_REG_MATCH, regm);
+          }
+          apr_table_setn(r->subprocess_env, name, replaced);
         }
-        apr_table_setn(r->subprocess_env, setenvif->name, replaced);
       }
     }
   }
@@ -4441,8 +4446,12 @@ const char *qos_event_setenvifquery_cmd(cmd_parms *cmd, void *dcfg, const char *
   char *p;
   setenvif->preg = ap_pregcomp(cmd->pool, rx, AP_REG_EXTENDED);
   if(setenvif->preg == NULL) {
-    return apr_psprintf(cmd->pool, "%s: failed to compile regex %s",
+    return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
                         cmd->directive->directive, rx);
+  }
+  if(strlen(v) < 2) {
+    return apr_psprintf(cmd->pool, "%s: variable name is too short (%s)",
+                        cmd->directive->directive, v);
   }
   setenvif->name = apr_pstrdup(cmd->pool, v);
   p = strchr(setenvif->name, '=');
