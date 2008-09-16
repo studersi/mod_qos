@@ -1,3 +1,12 @@
+Version 7.8
+
+ - Directive QS_SrvMinDataRate supports min/max limitation
+   in order to increase the minimum upload/download bandwith
+   on multiple simultaneously connections.
+
+ - Fix: activation of QS_SrvMinDataRate did not work
+   (QS_SrvRequestRate only).
+
 Version 7.7
 
  - New directive QS_SetEnvIfQuery.

@@ -30,8 +30,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.40 2008-09-09 18:03:36 pbuchbinder Exp $";
-static const char g_revision[] = "7.7";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.41 2008-09-16 19:43:44 pbuchbinder Exp $";
+static const char g_revision[] = "7.8";
 
 /************************************************************************
  * Includes
@@ -163,7 +163,8 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_SessionCookiePath", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "/" },
   { "QS_SessionTimeout", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "3600" },
   { "QS_SessionKey", QSC_MOD_TYPE, TAKE1, RSRC_CONF, 0, "", "12345" },
-  { "QS_SrvRequestRate", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "", "100" },
+  { "QS_SrvRequestRate", QSC_CON_TYPE, TAKE12, RSRC_CONF, 0, "", "100 500" },
+  { "QS_SrvMinDataRate", QSC_CON_TYPE, TAKE12, RSRC_CONF, 0, "", "100 500" },
   { "QS_SrvMaxConnClose", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "", "700" },
   { "QS_SrvMaxConnPerIP", QSC_CON_TYPE, TAKE1, RSRC_CONF, 0, "", "40" },
   { "QS_SrvMaxConnExcludeIP", QSC_CON_TYPE, TAKE1, RSRC_CONF, 1, "", "192.168." },
