@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.85 2008-09-10 20:45:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.86 2008-09-16 19:43:44 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -66,7 +66,7 @@ LimitRequestBody        1048576
 QS_SrvPreferNet
 </IfDefine>
 <IfDefine !no_reqrate>
-QS_SrvMinDataRate       120
+QS_SrvMinDataRate       120 3000
 </IfDefine>
 <IfDefine cc>
 QS_ClientPrefer         80

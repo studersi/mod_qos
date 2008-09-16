@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.62 2008-09-10 20:45:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.63 2008-09-16 19:43:44 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -492,6 +492,18 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_5.htt"
+fi
+
+./htt.sh -s ./scripts/QS_SrvRequestRate_6.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate_6.htt"
+fi
+
+./htt.sh -s ./scripts/QS_SrvResponseRate_0.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvResponseRate_0.htt"
 fi
 
 ./ctl.sh restart -D cc -D real_ip > /dev/null
