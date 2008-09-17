@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.93 2008-09-16 20:19:16 pbuchbinder Exp $";
-static const char g_revision[] = "7.8";
+static const char revision[] = "$Id: mod_qos.c,v 5.94 2008-09-17 14:40:26 pbuchbinder Exp $";
+static const char g_revision[] = "7.9";
 
 /************************************************************************
  * Includes
@@ -326,13 +326,14 @@ typedef struct qs_netstat_st {
 typedef struct {
   int server_start;
   apr_table_t *act_table;
-  /* source ip stat */
+  /* source network stat */
   char *m_file;
   apr_shm_t *m;
   char *lock_file;
   apr_global_mutex_t *lock;
   int connections;
   qs_netstat_t *netstat;
+  /* client control */
   qos_s_t *qos_cc;
 } qos_user_t;
 
@@ -1053,6 +1054,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     return res;
   }
   act->c = apr_shm_baseaddr_get(act->m);
+  act->c->connections = 0;
   if(rule_entries) {
     act->entry = (qs_acentry_t *)&act->c[1];
     e = act->entry;
@@ -2267,9 +2269,19 @@ static int qos_has_clienttable(request_rec *r) {
 static int qos_req_rate_calc(qos_srv_config *sconf) {
   int req_rate = sconf->req_rate;
   if(sconf->min_rate_max != -1) {
+    server_rec *s = sconf->base_server;
+    qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    int connections = bsconf->act->c->connections;
+    s = s->next;
+    while(s) {
+      qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+      if(sc != bsconf) {
+        connections = connections + sc->act->c->connections;
+      }
+      s = s->next;
+    }
     req_rate = req_rate +
-      ((sconf->min_rate_max / sconf->max_clients) * 
-       apr_table_elts(sconf->inctx_t->table)->nelts);
+      ((sconf->min_rate_max / sconf->max_clients) * connections);
   }
   return req_rate;
 }
@@ -2911,9 +2923,11 @@ static apr_status_t qos_cleanup_conn(void *p) {
     }
     apr_global_mutex_unlock(u->lock);                 /* @CRT10 */
   }
-  if(cconf->sconf->max_conn != -1) {
+  if((cconf->sconf->max_conn != -1) || (cconf->sconf->min_rate_max != -1)) {
     apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT3 */
-    if(cconf->sconf->act->c->connections) cconf->sconf->act->c->connections--;
+    if(cconf->sconf->act->c) {
+      cconf->sconf->act->c->connections--;
+    }
     apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT3 */
   }
   if(cconf->sconf->max_conn_per_ip != -1) {
@@ -2930,7 +2944,7 @@ static int qos_process_connection(conn_rec *c) {
   int vip = 0;
   if(cconf == NULL) {
     int client_control = DECLINED;
-    int connections;
+    int connections = 0;
     int net_connections;
     int current;
     char *msg = NULL;
@@ -2975,10 +2989,12 @@ static int qos_process_connection(conn_rec *c) {
     /* client control */
     client_control = qos_cc_pc_filter(cconf, u, &msg);
     /* vhost connections */
-    if(sconf->max_conn != -1) {
+    if((sconf->max_conn != -1) || (sconf->min_rate_max != -1)) {
       apr_global_mutex_lock(cconf->sconf->act->lock);  /* @CRT4 */
-      cconf->sconf->act->c->connections++;
-      connections = cconf->sconf->act->c->connections; /* @CRT4 */
+      if(cconf->sconf->act->c) {
+        cconf->sconf->act->c->connections++;
+        connections = cconf->sconf->act->c->connections; /* @CRT4 */
+      }
       apr_global_mutex_unlock(cconf->sconf->act->lock);
     }
     /* single source ip */

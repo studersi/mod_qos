@@ -1,8 +1,14 @@
+Version 7.9
+
+ - Fix: QS_SrvMinDataRate/QS_SrvRequestRate counts all
+   server connections (not only per child process).
+
 Version 7.8
 
- - Directive QS_SrvMinDataRate supports min/max limitation
-   in order to increase the minimum upload/download bandwith
-   on multiple simultaneously connections.
+ - Directive QS_SrvMinDataRate/QS_SrvRequestRate supports
+   min/max limitation in order to increase the minimum
+   upload/download bandwith on multiple simultaneously
+   connections.
 
  - Fix: activation of QS_SrvMinDataRate did not work
    (QS_SrvRequestRate only).
