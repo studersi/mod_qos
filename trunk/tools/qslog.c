@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.11 2008-02-27 22:09:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.12 2008-09-17 14:19:36 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -126,6 +126,7 @@ static char *cutNext(char **line) {
 
 static void getFreeMem(char *buf) {
   FILE *f = fopen("/proc/meminfo", "r");
+  int mem = 0;
   buf[0] = '\0';
   if(f) {
     char line[MAX_LINE];
@@ -137,11 +138,20 @@ static void getFreeMem(char *buf) {
 	e = c;
 	while(e[0] && (e[0] != ' ')) e++;
 	e[0] = '\0';
-	strcpy(buf, c);
-	break;
+	mem = mem + atoi(c);
+      }
+      if(strncmp(line, "Cached: ", 8) == 0) {
+	char *c = &line[8];
+	char *e;
+	while(c[0] && ((c[0] == ' ') || (c[0] == '\t'))) c++;
+	e = c;
+	while(e[0] && (e[0] != ' ')) e++;
+	e[0] = '\0';
+	mem = mem + atoi(c);
       }
     }
     fclose(f);
+    sprintf(buf, "%d", mem);
   }
 }
 
