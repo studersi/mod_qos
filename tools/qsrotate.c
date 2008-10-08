@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 2.2 2008-02-27 19:20:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 2.3 2008-10-08 06:13:44 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -120,7 +120,7 @@ static void deleteOldFiles(const char *cmd, const char *file_name) {
       int num = 0;
       struct dirent *de;
       char filename[HUGE_STR];
-      sprintf(filename, "%s.20", p);
+      snprintf(filename, sizeof(filename), "%s.20", p);
       /* determine how many files to delete */
       while((de = readdir(dir)) != 0) {
 	if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
@@ -135,10 +135,10 @@ static void deleteOldFiles(const char *cmd, const char *file_name) {
 	while((de = readdir(dir)) != 0) {
 	  if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
 	    if(strcmp(old, de->d_name) > 0) {
-	      sprintf(old, de->d_name);
+	      snprintf(old, sizeof(old), de->d_name);
 	    } else {
 	      if(old[0] == '\0') {
-		sprintf(old, de->d_name);
+		snprintf(old, sizeof(old), de->d_name);
 	      }
 	    }
 	  }
@@ -146,7 +146,7 @@ static void deleteOldFiles(const char *cmd, const char *file_name) {
 	{
 	  /* build abs path and delete it */
 	  char unl[HUGE_STR];
-	  sprintf(unl, "%s/%s", dirname, old);
+	  snprintf(unl, sizeof(unl), "%s/%s", dirname, old);
 	  unlink(unl);
 	}
 	num--;
@@ -162,7 +162,7 @@ static void compressThread(const char *cmd, const char *arch) {
   char dest[HUGE_STR+20];
   char buf[HUGE_STR];
   int len;
-  sprintf(dest, "%s.gz", arch);
+  snprintf(dest, sizeof(dest), "%s.gz", arch);
   /* low prio */
   nice(10);
   if((infp = open(arch, O_RDONLY)) == -1) {
@@ -197,7 +197,7 @@ static void rotate(const char *cmd, const char *file_name, long *messages) {
   time_t now = time(NULL);
   struct tm *ptr = localtime(&now);
   strftime(tmb, sizeof(tmb), "%Y%m%d%H%M%S", ptr);
-  sprintf(arch, "%s.%s", file_name, tmb);
+  snprintf(arch, sizeof(arch), "%s.%s", file_name, tmb);
   /* set next rotation time */
   m_tLogEnd = ((now / m_tRotation) * m_tRotation) + m_tRotation;
   
@@ -213,7 +213,7 @@ static void rotate(const char *cmd, const char *file_name, long *messages) {
     /* opening a new file has failed!
        try to reopen and clear the last file */
     char msg[HUGE_STR];
-    sprintf(msg, "ERROR while writing to file, %ld messages lost\n", *messages);
+    snprintf(msg, sizeof(msg), "ERROR while writing to file, %ld messages lost\n", *messages);
     fprintf(stderr,"[%s]: ERROR, while writing to file <%s>\n", cmd, file_name);
     rename(arch,  file_name);
     m_nLogFD = openFile(cmd, file_name);
@@ -355,7 +355,7 @@ int main(int argc, char **argv) {
       m_messages++;
       if(m_nLogFD >= 0) {
 	char msg[HUGE_STR];
-	sprintf(msg, "ERROR while writing to file, %ld messages lost\n", m_messages);
+	snprintf(msg, sizeof(msg), "ERROR while writing to file, %ld messages lost\n", m_messages);
 	/* error while writing data, try to delete the old file and continue ... */
 	ftruncate(m_nLogFD, 0);
 	write(m_nLogFD, msg, strlen(msg));
