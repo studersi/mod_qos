@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qscheck.c,v 2.0 2007-07-19 19:48:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: qscheck.c,v 2.1 2008-10-08 06:13:44 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -208,7 +208,7 @@ static int checkHost(const char *cmd, const char *filename, int ln, char *abs_ur
     }
   }
   /* check each host only once */
-  sprintf(hp, "#%s:%d#", host, port);
+  snprintf(hp, sizeof(hp), "#%s:%d#", host, port);
   if(checkedHosts && strstr(checkedHosts, hp) != NULL) {
     /* already checked */
     return 1;
@@ -217,8 +217,9 @@ static int checkHost(const char *cmd, const char *filename, int ln, char *abs_ur
     checkedHosts = calloc(1, strlen(hp) + 1);
     strcpy(checkedHosts, hp);
   } else {
-    char *p = calloc(1, strlen(checkedHosts) +strlen(hp) + 1);
-    sprintf(p, "%s%s", checkedHosts, hp);
+    int pl = strlen(checkedHosts) +strlen(hp) + 1;
+    char *p = calloc(1, pl);
+    snprintf(p, pl, "%s%s", checkedHosts, hp);
     free(checkedHosts);
     checkedHosts = p;
   }
@@ -253,7 +254,7 @@ static int checkFile(const char *cmd, const char *filename) {
   if(f == NULL) {
     if(ServerRoot[0] != '\0') {
       char fqfile[2048];
-      sprintf(fqfile, "%s/%s", ServerRoot, filename);
+      snprintf(fqfile, sizeof(fqfile), "%s/%s", ServerRoot, filename);
       f = fopen(fqfile, "r");
     }
   }

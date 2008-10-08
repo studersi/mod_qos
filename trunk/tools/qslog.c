@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.12 2008-09-17 14:19:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.13 2008-10-08 06:13:44 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -124,7 +124,7 @@ static char *cutNext(char **line) {
   return c;
 }
 
-static void getFreeMem(char *buf) {
+static void getFreeMem(char *buf, int sz) {
   FILE *f = fopen("/proc/meminfo", "r");
   int mem = 0;
   buf[0] = '\0';
@@ -151,7 +151,7 @@ static void getFreeMem(char *buf) {
       }
     }
     fclose(f);
-    sprintf(buf, "%d", mem);
+    snprintf(buf, sz, "%d", mem);
   }
 }
 
@@ -169,7 +169,7 @@ static void printAndResetStat(char *timeStr) {
   char mem[256];
   if(!m_offline) {
     getloadavg(av, 1);
-    getFreeMem(mem);
+    getFreeMem(mem, sizeof(mem));
   } else {
     mem[0] = '\0';
   }
@@ -415,7 +415,7 @@ static time_t getMinutes(char *line) {
       /* cut month */
       buf[strlen(buf)-4] = '\0';
       day = buf;
-      sprintf(m_date_str, "%s.%02d.%s", day, mstr2i(month), year);
+      snprintf(m_date_str, sizeof(m_date_str), "%s.%02d.%s", day, mstr2i(month), year);
     }
     return minutes;
   }
@@ -461,7 +461,7 @@ static void readStdinOffline(const char *cstr) {
 	fflush(stdout);
       }
       while(l_time > unitTime) {
-	sprintf(buf,"%s %.2ld:%.2ld:00", m_date_str, unitTime/60, unitTime%60);
+	snprintf(buf, sizeof(buf), "%s %.2ld:%.2ld:00", m_date_str, unitTime/60, unitTime%60);
 	printAndResetStat(buf);
 	unitTime++;
 	qs_setTime(unitTime * 60);;
@@ -493,7 +493,7 @@ static void *loggerThread(void *argv) {
       if(strcmp(buf, "23:59") == 0) {
 	char arch[MAX_LINE];
 	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptr);
-	sprintf(arch, "%s.%s", m_file_name, buf);
+	snprintf(arch, sizeof(arch), "%s.%s", m_file_name, buf);
 	fclose(m_f);
 	rename(m_file_name, arch);
 	m_f = fopen(m_file_name, "a+"); 
