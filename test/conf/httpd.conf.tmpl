@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.86 2008-09-16 19:43:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.87 2008-10-09 18:34:00 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -103,6 +103,8 @@ LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.s
 LoadModule              qos_control_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos_control.so
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
+LoadModule              security2_module libexec/mod_security.so
+
 
 QSC_WorkingDirectory    /var/tmp/qosc
 QSC_Filter2Binary       /usr/local/bin/qsfilter2
@@ -239,6 +241,14 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        Allow from all
 
        QS_RequestHeaderFilter on
+   </Location>
+
+   QS_EventPerSecLimit argmatch 1
+   <Location /app/a/args>
+       SecRuleEngine on
+       SecDefaultAction "nolog,pass,phase:2,status:500,t:urlDecodeUni,t:htmlEntityDecode,t:lowercase"
+       SecRule ARGS "trigger" "setenv:argmatch=trigger"
+       SecRequestBodyAccess on
    </Location>
 
 </VirtualHost>
