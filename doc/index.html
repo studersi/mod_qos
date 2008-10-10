@@ -259,6 +259,7 @@ the definition of a
 <code>QS_LocRequestPerSecLimit*</code>, 
 <code>QS_LocKBytesPerSecLimit*</code>, 
 <code>QS_CondLocRequestLimitMatch</code>, 
+<code>QS_EventRequestLimit</code>, 
 <code>QS_EventPerSecLimit</code>, 
 <code>QS_SrvMaxConnPerIP</code> 
 or <code>QS_SrvMaxConn</code> directive). <br> 
@@ -536,6 +537,14 @@ request attribute which can be represented by an environment variable.
 Such variables may be set by mod_setenvif or by other Apache modules.
 
 <ul>
+<li>
+<code>QS_EventRequestLimit &lt;env-variable&gt; &lt;number&gt;</code><br>
+Defines the number of concurrent events. Directive works similar to 
+<code>QS_LocRequestLimit</code> but counting the requests having the same 
+environment variable set rather than having the same URL pattern. 
+Ignores VIP privileges normally but you may evaluate the 
+<code>QS_VipRequest</code> variable, e.g. by using <code>QS_SetEnvIf</code>.
+</li>
 <li>
 <code>QS_EventPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
 Defines how often requests may have the defined environment variable 
