@@ -1,3 +1,7 @@
+Version 7.10
+
+ - New directive QS_EventRequestLimit.
+
 Version 7.9
 
  - Fix: QS_SrvMinDataRate/QS_SrvRequestRate counts all
