@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.87 2008-10-09 18:34:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.88 2008-10-10 17:09:42 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -195,6 +195,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    # using QS_ClientEventBlockCount)
    QS_SetEnvResHeaderMatch    Set-Cookie        JSESSIONID=
    QS_SetEnvIf                Set-Cookie !QSNOT QS_Block=yes
+
+   # concurrent requests
+   QS_SetEnvIfQuery           QS_EventRequestLimit query
+   QS_EventRequestLimit       query           3
 
    # -----------------------------------------------------------------
    # client control
