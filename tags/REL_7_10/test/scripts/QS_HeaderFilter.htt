@@ -1,0 +1,141 @@
+#
+# $Id: QS_HeaderFilter.htt,v 1.1 2008-01-24 15:25:54 pbuchbinder Exp $
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+# allowed headers
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__MAX-forwards: 10
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__X-FORWARDED-FOR: 127.0.0.1
+__X-FORWARDED-HOST: localhost:5960
+__X-FORWARDED-SERVER: 127.0.0.1
+__myheader: static_content
+__
+_EXPECT . "200 OK"
+_EXPECT . "HTTP Headers:"
+_EXPECT . "HTTP_ACCEPT:"
+_EXPECT . "HTTP_ACCEPT_CHARSET"
+_EXPECT . "HTTP_ACCEPT_ENCODING"
+_EXPECT . "HTTP_ACCEPT_LANGUAGE"
+_EXPECT . "HTTP_CACHE_CONTROL"
+_EXPECT . "HTTP_CONNECTION"
+_EXPECT . "HTTP_HOST"
+_EXPECT . "HTTP_MAX_FORWARDS"
+_EXPECT . "HTTP_USER_AGENT"
+_EXPECT . "HTTP_X_FORWARDED_FOR"
+_EXPECT . "HTTP_X_FORWARDED_HOST"
+_EXPECT . "HTTP_X_FORWARDED_SERVER"
+_EXPECT . "HTTP_MYHEADER"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.8) Gecko/20071008 Firefox/2.0.0.8
+__Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+__Accept-Language: en-us,en;q=0.5
+__Accept-Encoding: gzip,deflate
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Keep-Alive: 300
+__Connection: keep-alive
+__Referer: http://localhost.server.ch/bin/attach/view?show=all
+__X-lori-time-1: 1193603219265
+__Authorization: Basic Ukhasdhzgasdljsad76jgasHKdnacnQ=
+__Content-Type: multipart/form-data; boundary=---------------------------16009193506174
+__Content-Length: AUTO
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filename"
+__
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filepath"; filename="test pic _=n.JPG"
+__Content-Type: image/jpeg
+__
+__111111
+__-----------------------------16009193506174--
+_EXPECT . "HTTP Headers:"
+_EXPECT . " HTTP_ACCEPT"
+_EXPECT . " HTTP_ACCEPT_CHARSET"
+_EXPECT . " HTTP_ACCEPT_ENCODING"
+_EXPECT . " HTTP_ACCEPT_LANGUAGE"
+_EXPECT . " HTTP_CONNECTION"
+_EXPECT . " HTTP_HOST"
+_EXPECT . " HTTP_KEEP_ALIVE"
+_EXPECT . " HTTP_REFERER"
+_EXPECT . " HTTP_USER_AGENT"
+_EXPECT . " HTTP_X_LORI_TIME_1"
+_EXPECT . ". test pic _=n.JPG"
+_WAIT
+
+# drop headers
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/@html;level=2;q=0.4, */*;q=0.5
+__Other: text
+__
+_EXPECT . "200 OK"
+_EXPECT . "HTTP Headers:"
+_EXPECT . "!HTTP_ACCEPT"
+_EXPECT . "!HTTP_OTHER"
+_WAIT
+
+# deny
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/@html;level=2;q=0.4, */*;q=0.5
+__myheader: deny
+__
+_EXPECT . "custom error page"
+_EXPECT . "code=043"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.8) Gecko/20071008 Firefox/2.0.0.8
+__Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+__Accept-Language: en-us,en;q=0.5
+__Accept-Encoding: gzip,deflate
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Keep-Alive: 300
+__Connection: keep-alive
+__Referer: http://localhost.server.ch/bin/attach/view?show=all
+__X-lori-time-1: 1193603219265
+__Authorization: Basic Ukhasdhzgasdljsad76jgasHKdnacnQ=
+__Content-Type: multipart/form-@data; boundary=---------------------------16009193506174
+__Content-Length: AUTO
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filename"
+__
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filepath"; filename="test pic _=n.JPG"
+__Content-Type: image/jpeg
+__
+__111111
+__-----------------------------16009193506174--
+_EXPECT . "custom error page"
+_EXPECT . "code=043"
+_WAIT
+_CLOSE
+
+END
