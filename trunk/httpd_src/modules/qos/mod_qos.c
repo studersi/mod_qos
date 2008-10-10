@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.95 2008-10-10 17:09:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.96 2008-10-10 17:35:56 pbuchbinder Exp $";
 static const char g_revision[] = "7.10";
 
 /************************************************************************
@@ -3707,17 +3707,20 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 }
 
 /**
+ * QS_EventRequestLimit
  * reset event counter
  */
 static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
-  int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rctx->event_entries)->elts;
-  apr_global_mutex_lock(sconf->act->lock);   /* @CRT32 */
-  for(i = 0; i < apr_table_elts(rctx->event_entries)->nelts; i++) {
-    qs_acentry_t *e = (qs_acentry_t *)entry[i].key;
-    e->counter--;
+  if(apr_table_elts(rctx->event_entries)->nelts > 0) {
+    int i;
+    apr_global_mutex_lock(sconf->act->lock);   /* @CRT32 */
+    for(i = 0; i < apr_table_elts(rctx->event_entries)->nelts; i++) {
+      qs_acentry_t *e = (qs_acentry_t *)entry[i].key;
+      e->counter--;
+    }
+    apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
   }
-  apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
 }
 
 /**
