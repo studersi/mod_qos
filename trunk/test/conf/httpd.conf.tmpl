@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.88 2008-10-10 17:09:42 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.89 2008-10-11 07:23:43 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -199,6 +199,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    # concurrent requests
    QS_SetEnvIfQuery           QS_EventRequestLimit query
    QS_EventRequestLimit       query           3
+   QS_EventPerSecLimit        query         100
 
    # -----------------------------------------------------------------
    # client control

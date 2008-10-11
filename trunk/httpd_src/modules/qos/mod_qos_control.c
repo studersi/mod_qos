@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.44 2008-10-11 07:23:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.45 2008-10-11 07:27:53 pbuchbinder Exp $";
 static const char g_revision[] = "7.11";
 
 /************************************************************************
@@ -148,6 +148,7 @@ static const qosc_elt_t qosc_elts[] = {
   { "QS_CondLocRequestLimitMatch", QSC_REQ_TYPE, TAKE3, RSRC_CONF, 1, "", "/new 100 pattern" },
   { "QS_LocRequestPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 100" },
   { "QS_LocKBytesPerSecLimitMatch", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "/new 1200" },
+  { "QS_EventRequestLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "event 100" },
   { "QS_EventPerSecLimit", QSC_REQ_TYPE, TAKE2, RSRC_CONF, 1, "", "event 100" },
   { "SetEnvIf", QSC_REQ_TYPE, RAW_ARGS, RSRC_CONF, 1, "", "..." },
   { "QS_SetEnvIf", QSC_REQ_TYPE, TAKE3, RSRC_CONF, 1, "", "variable1 variable2 variable=yes" },
