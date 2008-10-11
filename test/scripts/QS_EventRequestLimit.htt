@@ -1,7 +1,7 @@
 #
 # test QS_LocRequestLimit and QS_ErrorPage directive
 #
-# $Id: QS_EventRequestLimit.htt,v 1.1 2008-10-10 17:09:42 pbuchbinder Exp $
+# $Id: QS_EventRequestLimit.htt,v 1.2 2008-10-11 07:23:43 pbuchbinder Exp $
 #
 
 
@@ -27,6 +27,17 @@ _EXPECT . "500 Internal Server Error"
 _EXPECT . "custom error page"
 _EXPECT . "code=012"
 _EXPECT . "message: request rule"
+_WAIT
+
+END
+
+CLIENT 1
+_SLEEP 5000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=0&QS_EventRequestLimit=ok HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
 _WAIT
 
 END
