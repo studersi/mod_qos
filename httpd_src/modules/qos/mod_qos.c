@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.96 2008-10-10 17:35:56 pbuchbinder Exp $";
-static const char g_revision[] = "7.10";
+static const char revision[] = "$Id: mod_qos.c,v 5.97 2008-10-11 07:23:43 pbuchbinder Exp $";
+static const char g_revision[] = "7.11";
 
 /************************************************************************
  * Includes
@@ -2692,7 +2692,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         ap_rprintf(r, "<!--%d--><td>%s%s</a></td>", i,
                    ap_escape_html(r->pool, qos_crline(r, e->url)),
                    e->condition == NULL ? "" : " <small>(conditional)</small>");
-        if(e->limit == 0) {
+        if((e->limit == 0) || (e->limit == -1)) {
           ap_rprintf(r, "<td>-</td>");
           ap_rprintf(r, "<td>-</td>");
         } else {
@@ -3716,7 +3716,7 @@ static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
     int i;
     apr_global_mutex_lock(sconf->act->lock);   /* @CRT32 */
     for(i = 0; i < apr_table_elts(rctx->event_entries)->nelts; i++) {
-      qs_acentry_t *e = (qs_acentry_t *)entry[i].key;
+      qs_acentry_t *e = (qs_acentry_t *)entry[i].val;
       e->counter--;
     }
     apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
@@ -4497,7 +4497,7 @@ const char *qos_event_req_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   qs_rule_ctx_t *rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
-  rule->url = apr_pstrcat(cmd->pool, "var=[", event, "]", NULL);
+  rule->url = apr_pstrcat(cmd->pool, "var=(", event, ")", NULL);
   rule->limit = atoi(limit);
   if((rule->limit < 0) || ((rule->limit == 0) && limit && (strcmp(limit, "0") != 0))) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
