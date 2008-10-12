@@ -1,7 +1,7 @@
 #
 # test QS_LocRequestLimit and QS_ErrorPage directive
 #
-# $Id: QS_LocRequestLimit_5.htt,v 1.1 2008-01-24 15:25:56 pbuchbinder Exp $
+# $Id: QS_LocRequestLimit_5.htt,v 1.2 2008-10-12 08:41:55 pbuchbinder Exp $
 #
 
 
@@ -27,6 +27,23 @@ _EXPECT . "500 Internal Server Error"
 _EXPECT . "custom error page"
 _EXPECT . "code=010"
 _EXPECT . "message: request rule"
+_WAIT
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+# connections has been closed by the server
+_EXPECT ERROR "End of file found"
+_WAIT
+
+END
+
+CLIENT 1
+_SLEEP 6000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
 _WAIT
 
 END
