@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.97 2008-10-11 07:23:43 pbuchbinder Exp $";
-static const char g_revision[] = "7.11";
+static const char revision[] = "$Id: mod_qos.c,v 5.98 2008-10-13 09:00:53 pbuchbinder Exp $";
+static const char g_revision[] = "7.12";
 
 /************************************************************************
  * Includes
@@ -375,6 +375,9 @@ typedef struct {
   apr_table_t *exclude_ip;
   qos_ifctx_list_t *inctx_t;
   apr_table_t *hfilter_table;
+  /* event rule (enables rule validation) */
+  int has_event_filter;
+  int has_event_limit;
   /* min data rate */
   int req_rate;
   int min_rate;
@@ -1656,7 +1659,7 @@ static void qos_cal_req_sec(request_rec *r, qs_acentry_t *e) {
     if(e->req_per_sec_block_rate < 50) {
       e->req_per_sec_block_rate = 0;
     } else {
-      int factor = e->req_per_sec_block_rate / 6;
+      int factor = e->req_per_sec_block_rate / 4;
       e->req_per_sec_block_rate = e->req_per_sec_block_rate - factor;
     }
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
@@ -1849,6 +1852,9 @@ static void qos_hp_keepalive(request_rec *r) {
   }
 }
 
+/**
+ * QS_EventPerSecLimit
+ */
 static void qos_lg_event_update(request_rec *r, time_t *t) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
@@ -2186,7 +2192,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
             if((*e)->req_per_sec_block_rate < 50) {
               (*e)->req_per_sec_block_rate = 0;
             } else {
-              int factor = (*e)->req_per_sec_block_rate / 6;
+              int factor = (*e)->req_per_sec_block_rate / 4;
               (*e)->req_per_sec_block_rate = (*e)->req_per_sec_block_rate - factor;
             }
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
@@ -3043,7 +3049,7 @@ static int qos_process_connection(conn_rec *c) {
     client_control = qos_cc_pc_filter(cconf, u, &msg);
     /* vhost connections */
     if((sconf->max_conn != -1) || (sconf->min_rate_max != -1)) {
-      apr_global_mutex_lock(cconf->sconf->act->lock);  /* @CRT4 */
+      apr_global_mutex_lock(cconf->sconf->act->lock);    /* @CRT4 */
       if(cconf->sconf->act->c) {
         cconf->sconf->act->c->connections++;
         connections = cconf->sconf->act->c->connections; /* @CRT4 */
@@ -3258,15 +3264,19 @@ static int qos_header_parser(request_rec * r) {
     /*
      * QS_EventRequestLimit
      */
-    status = qos_hp_event_filter(r, sconf);
-    if(status != DECLINED) {
-      return status;
+    if(sconf->has_event_filter) {
+      status = qos_hp_event_filter(r, sconf);
+      if(status != DECLINED) {
+        return status;
+      }
     }
 
     /*
      * QS_EventPerSecLimit
      */
-    req_per_sec_block = qos_hp_event_count(r);
+    if(sconf->has_event_limit) {
+      req_per_sec_block = qos_hp_event_count(r);
+    }
 
     /*
      * client control
@@ -3293,7 +3303,10 @@ static int qos_header_parser(request_rec * r) {
       return m_retcode;
     }
     
-    /* get rule with conditional enforcement */
+    /* 
+     * Request level control
+     * get rule with conditional enforcement
+     */
     e_cond = qos_getcondrule_byregex(r, sconf);
     /* 1st prio has "Match" rule */
     e = qos_getrule_byregex(r, sconf);
@@ -3712,15 +3725,13 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
  */
 static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rctx->event_entries)->elts;
-  if(apr_table_elts(rctx->event_entries)->nelts > 0) {
-    int i;
-    apr_global_mutex_lock(sconf->act->lock);   /* @CRT32 */
-    for(i = 0; i < apr_table_elts(rctx->event_entries)->nelts; i++) {
-      qs_acentry_t *e = (qs_acentry_t *)entry[i].val;
-      e->counter--;
-    }
-    apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
+  int i;
+  apr_global_mutex_lock(sconf->act->lock);   /* @CRT32 */
+  for(i = 0; i < apr_table_elts(rctx->event_entries)->nelts; i++) {
+    qs_acentry_t *e = (qs_acentry_t *)entry[i].val;
+    e->counter--;
   }
+  apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
 }
 
 /**
@@ -3737,11 +3748,15 @@ static int qos_logger(request_rec *r) {
   qos_setenvstatus(r, sconf);
   qos_setenvif(r, sconf);
   qos_logger_cc(r, sconf);
-  qos_event_reset(sconf, rctx);
   if(cconf && cconf->evmsg) {
     rctx->evmsg = apr_pstrcat(r->pool, cconf->evmsg, rctx->evmsg, NULL);
   }
-  qos_lg_event_update(r, &now);
+  if(sconf->has_event_filter) {
+    qos_event_reset(sconf, rctx);
+  }
+  if(sconf->has_event_limit) {
+    qos_lg_event_update(r, &now);
+  }
   if(e || e_cond) {
     char *h = apr_psprintf(r->pool, "%d", e->counter);
     if(!now) {
@@ -3781,7 +3796,7 @@ static int qos_logger(request_rec *r) {
             if(e->kbytes_per_sec_block_rate < 50) {
               e->kbytes_per_sec_block_rate = 0;
             } else {
-              int factor = e->kbytes_per_sec_block_rate / 6;
+              int factor = e->kbytes_per_sec_block_rate / 4;
               e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate - factor;
             }
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
@@ -4179,6 +4194,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->min_rate = -1;
   sconf->min_rate_max = -1;
   sconf->max_clients = 1024;
+  sconf->has_event_filter = 0;
+  sconf->has_event_limit = 0;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
@@ -4254,8 +4271,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
 /**
  * "merges" server configuration: virtual host overwrites global settings (if
  * any rule has been specified)
- * but: header filter table and connection timeouts are always used from
- * the base server
+ * but: global settings such as header filter table and connection timeouts
+ * are always used from the base server
  */
 static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_srv_config *b = (qos_srv_config *)basev;
@@ -4503,6 +4520,7 @@ const char *qos_event_req_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
                         cmd->directive->directive);
   }
+  sconf->has_event_filter = 1;
   rule->req_per_sec_limit = 0;
   rule->event = apr_pstrdup(cmd->pool, event);
   rule->regex = NULL;
@@ -4524,6 +4542,7 @@ const char *qos_event_rs_cmd(cmd_parms *cmd, void *dcfg, const char *event, cons
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
   }
+  sconf->has_event_limit = 1;
   rule->event = apr_pstrdup(cmd->pool, event);
   rule->regex = NULL;
   rule->condition = NULL;
