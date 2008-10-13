@@ -1,3 +1,11 @@
+Version 7.12
+
+ - Process event filter only if some rules have been
+   defined.
+
+ - Recovery rate (decreas limitation) for bandwidth and
+   and request limit has been increased from 16% to 25%.
+
 Version 7.11
 
  - New directive QS_EventRequestLimit.
