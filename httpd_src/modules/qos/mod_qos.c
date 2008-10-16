@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.99 2008-10-16 19:58:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.100 2008-10-16 20:30:33 pbuchbinder Exp $";
 static const char g_revision[] = "7.12";
 
 /************************************************************************
@@ -59,6 +59,7 @@ static const char g_revision[] = "7.12";
 #include <http_protocol.h>
 #include <http_request.h>
 #include <http_connection.h>
+#define CORE_PRIVATE
 #include <http_config.h>
 #include <http_log.h>
 #include <util_filter.h>
@@ -3905,6 +3906,16 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   }
 }
 
+static int qos_parp_check() {
+  module *modp = NULL;
+  for(modp = ap_top_module; modp; modp = modp->next) {
+    if(strcmp(modp->name, "mod_parp.c") == 0) {
+      return APR_SUCCESS;
+    }
+  }
+  return DECLINED;
+}
+
 /**
  * inits the server configuration
  */
@@ -3955,6 +3966,10 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   apr_pool_cleanup_register(sconf->pool, sconf->act,
                             qos_cleanup_shm, apr_pool_cleanup_null);
 
+  if(qos_parp_check() == APR_SUCCESS) {
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
+                 QOS_LOG_PFX(000)"found mod_parp");
+  }
   if(u->server_start == 2) {
     int i;
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->hfilter_table)->elts;
@@ -5327,7 +5342,7 @@ static const command_rec qos_config_cmds[] = {
  * apache register 
  ***********************************************************************/
 static void qos_register_hooks(apr_pool_t * p) {
-  static const char *pre[] = { "mod_setenvif.c", NULL };
+  static const char *pre[] = { "mod_setenvif.c", "mod_parp", NULL };
   ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
