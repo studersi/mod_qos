@@ -1,12 +1,12 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.90 2008-10-16 19:58:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.91 2008-10-16 20:06:05 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007 Pascal Buchbinder
+# Copyright (C) 2007-2008 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -101,6 +101,7 @@ LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs
 LoadModule              info_module ##ROOT##/../httpd/modules/generators/.libs/mod_info.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 LoadModule              qos_control_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos_control.so
+LoadModule              parp_module libexec/mod_parp.so
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
 LoadModule              security2_module libexec/mod_security.so
