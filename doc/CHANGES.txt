@@ -1,3 +1,7 @@
+Version
+
+ - New directive QS_DenyEvent.
+
 Version 7.12
 
  - Process event filter only if some rules have been

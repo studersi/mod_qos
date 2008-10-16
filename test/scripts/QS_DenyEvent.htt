@@ -1,0 +1,24 @@
+#
+# $Id: QS_DenyEvent.htt,v 1.1 2008-10-16 19:58:03 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__POST /qos/merged HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Content-Type: multipart/form-data; boundary=---------------------------15922
+__Content-Length: AUTO
+__
+__-----------------------------15922
+__Content-Disposition: form-data; name="access_log"; filename="access_log"
+__Content-Type: application/octet-stream
+__
+__DATA
+__-----------------------------15922--
+_EXPECT . "message: request filter"
+_WAIT
+
+END

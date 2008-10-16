@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.98 2008-10-13 09:00:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.99 2008-10-16 19:58:03 pbuchbinder Exp $";
 static const char g_revision[] = "7.12";
 
 /************************************************************************
@@ -160,6 +160,7 @@ typedef enum  {
   QS_DENY_REQUEST_LINE,
   QS_DENY_PATH,
   QS_DENY_QUERY,
+  QS_DENY_EVENT,
   QS_PERMIT_URI
 } qs_rfilter_type_e;
 
@@ -557,6 +558,7 @@ static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
   if(type == QS_DENY_REQUEST_LINE) return apr_pstrdup(pool, "QS_DenyRequestLine");
   if(type == QS_DENY_PATH) return apr_pstrdup(pool, "QS_DenyPath");
   if(type == QS_DENY_QUERY) return apr_pstrdup(pool, "QS_DenyQuery");
+  if(type == QS_DENY_EVENT) return apr_pstrdup(pool, "QS_DenyEvent");
   if(type == QS_PERMIT_URI) return apr_pstrdup(pool, "QS_PermitUri");
   return apr_pstrdup(pool, "UNKNOWN");
 }
@@ -1528,6 +1530,11 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
       } else if(rfilter->type == QS_DENY_QUERY) {
         deny_rule = 1;
         ex = pcre_exec(rfilter->pr, NULL, query, query_len, 0, 0, NULL, 0);
+      } else if(rfilter->type == QS_DENY_EVENT) {
+        deny_rule = 1;
+        if(apr_table_get(r->subprocess_env, rfilter->text) != NULL) {
+          ex = 0;
+        }
       } else {
         permit_rule = 1;
         ex = pcre_exec(rfilter->pr, NULL, uri, uri_len, 0, 0, NULL, 0);
@@ -4872,14 +4879,16 @@ const char *qos_deny_cmd(cmd_parms *cmd, void *dcfg,
     return apr_psprintf(cmd->pool, "%s: invalid action", 
                         cmd->directive->directive);
   }
-  flt->pr = pcre_compile(pcres, PCRE_DOTALL | options, &errptr, &erroffset, NULL);
-  if(flt->pr == NULL) {
-    return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
-                        " reason: %s", 
-                        cmd->directive->directive,
-                        erroffset, errptr);
+  if(flt->type != QS_DENY_EVENT) {
+    flt->pr = pcre_compile(pcres, PCRE_DOTALL | options, &errptr, &erroffset, NULL);
+    if(flt->pr == NULL) {
+      return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
+                          " reason: %s", 
+                          cmd->directive->directive,
+                          erroffset, errptr);
+    }
+    apr_pool_cleanup_register(cmd->pool, flt->pr, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   }
-  apr_pool_cleanup_register(cmd->pool, flt->pr, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   flt->text = apr_pstrdup(cmd->pool, pcres);
   apr_table_setn(dconf->rfilter_table, id, (char *)flt);
   return NULL;
@@ -4895,6 +4904,10 @@ const char *qos_deny_path_cmd(cmd_parms *cmd, void *dcfg,
 const char *qos_deny_query_cmd(cmd_parms *cmd, void *dcfg,
                                const char *id, const char *action, const char *pcres) {
   return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_DENY_QUERY, PCRE_CASELESS);
+}
+const char *qos_deny_event_cmd(cmd_parms *cmd, void *dcfg,
+                               const char *id, const char *action, const char *event) {
+  return qos_deny_cmd(cmd, dcfg, id, action, event, QS_DENY_EVENT, 0);
 }
 const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
                                const char *id, const char *action, const char *pcres) {
@@ -5240,6 +5253,13 @@ static const command_rec qos_config_cmds[] = {
                 ACCESS_CONF,
                 "QS_DenyQuery, same as QS_DenyRequestLine but applied to the"
                 " query only."),
+  AP_INIT_TAKE3("QS_DenyEvent", qos_deny_event_cmd, NULL,
+                ACCESS_CONF,
+                "QS_DenyEvent '+'|'-'<id> 'log'|'deny' <variable>, matches"
+                " requests having the defined process"
+                " environment variable set. The action taken for matching rules"
+                " is either 'log' (access is granted but the rule match is"
+                " logged) or 'deny' (access is denied)."),
   AP_INIT_TAKE3("QS_PermitUri", qos_permit_uri_cmd, NULL,
                 ACCESS_CONF,
                 "QS_PermitUri, '+'|'-'<id> 'log'|'deny' <pcre>, generic"
