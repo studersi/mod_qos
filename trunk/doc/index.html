@@ -644,6 +644,12 @@ matching rules is either 'log' (access is granted but the rule match
 is logged) or 'deny' (access is denied).
 </li>
 <li>
+<code>QS_DenyEvent '+'|'-'&lt;id&gt; 'log'|'deny' &lt;env-variable&gt;</code><br>
+Rule matching requests having the defined process environment variable set. 
+The action taken for matching rules is either 'log' (access is granted 
+but the rule match is logged) or 'deny' (access is denied).
+</li>
+<li>
 <code>QS_PermitUri '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
 Generic URL (path and query) filter implementing a request pattern 
 whitelist. Only requests matching at least one <code>QS_PermitUri</code> 
