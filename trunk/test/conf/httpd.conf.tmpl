@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.91 2008-10-16 20:06:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.92 2008-10-21 19:46:16 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -129,7 +129,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
       Allow from all
    </Proxy>
 
-   QS_SetEnvIfQuery name=(.*)& NAME=myname_is_$1
+   QS_SetEnvIfQuery name=(.*)[&]? NAME=myname_is_$1
    QS_SetEnvIfQuery other;value=(.*)match VALUE=$1
    QS_SetEnvIfQuery ok EMPTY
 

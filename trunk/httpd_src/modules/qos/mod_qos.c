@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.100 2008-10-16 20:30:33 pbuchbinder Exp $";
-static const char g_revision[] = "7.12";
+static const char revision[] = "$Id: mod_qos.c,v 5.101 2008-10-21 19:46:15 pbuchbinder Exp $";
+static const char g_revision[] = "7.13";
 
 /************************************************************************
  * Includes
@@ -76,6 +76,7 @@ static const char g_revision[] = "7.12";
 
 /* additional modules */
 #include "mod_status.h"
+
 
 /************************************************************************
  * defines
@@ -360,6 +361,7 @@ typedef struct {
   apr_table_t *location_t;
   apr_table_t *setenvif_t;
   apr_table_t *setenvifquery_t;
+  apr_table_t *setenvifparp_t;
   apr_table_t *setenvstatus_t;
   apr_table_t *setenvresheader_t;
   apr_table_t *setenvresheadermatch_t;
@@ -463,6 +465,11 @@ typedef struct {
 
 module AP_MODULE_DECLARE_DATA qos_module;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
+
+/* mod_parp, forward and optional function */
+APR_DECLARE_OPTIONAL_FN(apr_table_t *, parp_hp_table, (request_rec *));
+static APR_OPTIONAL_FN_TYPE(parp_hp_table) *qos_parp_hp_table_fn = NULL;
+static int m_requires_parp = 0;
 
 /************************************************************************
  * private functions
@@ -1748,6 +1755,16 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
   if(var) {
     apr_table_set(r->subprocess_env, var, code);
   }
+}
+
+/**
+ * QS_SetEnvIfParp (hp)
+ */
+static apr_status_t qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
+  if(qos_parp_hp_table_fn) {
+    // $$$ apr_table_t *tl = qos_parp_hp_table_fn(r);
+  }
+  return DECLINED;
 }
 
 /**
@@ -3265,6 +3282,7 @@ static int qos_header_parser(request_rec * r) {
     /*
      * additional variables
      */
+    qos_parp_hp(r, sconf);
     qos_setenvifquery(r, sconf);
     qos_setenvif(r, sconf);
 
@@ -3966,10 +3984,15 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   apr_pool_cleanup_register(sconf->pool, sconf->act,
                             qos_cleanup_shm, apr_pool_cleanup_null);
 
-  if(qos_parp_check() == APR_SUCCESS) {
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                 QOS_LOG_PFX(000)"found mod_parp");
-  }
+  //$$  if(m_requires_parp) {
+    if(qos_parp_check() != APR_SUCCESS) {
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                   QOS_LOG_PFX(009)"mod_parp not available"
+                   " (required by some directives)");
+    } else {
+      qos_parp_hp_table_fn = APR_RETRIEVE_OPTIONAL_FN(parp_hp_table);
+    }
+    //}
   if(u->server_start == 2) {
     int i;
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->hfilter_table)->elts;
@@ -4208,6 +4231,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
+  sconf->setenvifparp_t = apr_table_make(sconf->pool, 1);
+  m_requires_parp = 0;
   sconf->setenvstatus_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
@@ -4648,6 +4673,34 @@ const char *qos_event_setenvifquery_cmd(cmd_parms *cmd, void *dcfg, const char *
     setenvif->value = p;
   }
   apr_table_setn(sconf->setenvifquery_t, apr_pstrdup(cmd->pool, rx), (char *)setenvif);
+  return NULL;
+}
+
+const char *qos_event_setenvifparp_cmd(cmd_parms *cmd, void *dcfg, const char *rx, const char *v) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qos_setenvifquery_t *setenvif = apr_pcalloc(cmd->pool, sizeof(qos_setenvifquery_t));
+  char *p;
+  setenvif->preg = ap_pregcomp(cmd->pool, rx, AP_REG_EXTENDED);
+  if(setenvif->preg == NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
+                        cmd->directive->directive, rx);
+  }
+  if(strlen(v) < 2) {
+    return apr_psprintf(cmd->pool, "%s: variable name is too short (%s)",
+                        cmd->directive->directive, v);
+  }
+  setenvif->name = apr_pstrdup(cmd->pool, v);
+  p = strchr(setenvif->name, '=');
+  if(p == NULL) {
+    setenvif->value = apr_pstrdup(cmd->pool, "");
+  } else {
+    p[0] = '\0';
+    p++;
+    setenvif->value = p;
+  }
+  m_requires_parp = 1;
+  apr_table_setn(sconf->setenvifparp_t, apr_pstrdup(cmd->pool, rx), (char *)setenvif);
   return NULL;
 }
 
@@ -5236,6 +5289,12 @@ static const command_rec qos_config_cmds[] = {
                 " directive works simliar to the <code>SetEnvIf</code> directive"
                 " of the Apache module mod_setenvif but the specified regex is"
                 " applied against the request query string."),
+  AP_INIT_TAKE2("QS_SetEnvIfParp", qos_event_setenvifparp_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetEnvIfParp <regex> <variable>[=value],"
+                " parsed the request payload using the Apache module"
+                " mod_parp. It matches the request URL query and the body"
+                " data as well and sets the defined process variable."),
   AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvStatus <status code> <variable>, adds the defined"
