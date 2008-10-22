@@ -1,13 +1,13 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.66 2008-10-16 19:58:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.67 2008-10-22 18:15:53 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007 Pascal Buchbinder
+# Copyright (C) 2007-2008 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -455,14 +455,20 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_ClientPrefer_TMO.htt"
 fi
 
-# - DDoS -------------------------------------------------------
+# - query/parp -------------------------------------------------
 ./ctl.sh restart -D cc -D real_ip > /dev/null
 ./htt.sh -s ./scripts/QS_SetEnvIfQuery.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SetEnvIfQuery.htt"
 fi
+./htt.sh -s ./scripts/QS_SetEnvIfParp.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SetEnvIfParp.htt"
+fi
 
+# - DDoS -------------------------------------------------------
 ./htt.sh -s ./scripts/QS_SrvRequestRate_0.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`

@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.101 2008-10-21 19:46:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.102 2008-10-22 18:15:52 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -1758,13 +1758,80 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
 }
 
 /**
- * QS_SetEnvIfParp (hp)
+ * QS_SetEnvIfParp (prr)
  */
-static apr_status_t qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
-  if(qos_parp_hp_table_fn) {
-    // $$$ apr_table_t *tl = qos_parp_hp_table_fn(r);
+static apr_status_t qos_parp_prr(request_rec *r, qos_srv_config *sconf) {
+  if(apr_table_elts(sconf->setenvifparp_t)->nelts > 0) {
+    apr_table_set(r->notes, "parp", "mod_qos");
   }
   return DECLINED;
+}
+
+/**
+ * QS_SetEnvIfQuery/QS_SetEnvIfParp
+ */
+static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *setenvif) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(setenvif)->elts;
+  for(i = 0; i < apr_table_elts(setenvif)->nelts; i++) {
+    qos_setenvifquery_t *setenvif = (qos_setenvifquery_t *)entry[i].val;
+    char *name = setenvif->name;
+    ap_regmatch_t regm[AP_MAX_REG_MATCH];
+    if(ap_regexec(setenvif->preg, query, AP_MAX_REG_MATCH, regm, 0) == 0) {
+      if(name[0] == '!') {
+        apr_table_unset(r->subprocess_env, &name[1]);
+      } else {
+        char *replaced = "";
+        if(setenvif->value) {
+          replaced = ap_pregsub(r->pool, setenvif->value, query, AP_MAX_REG_MATCH, regm);
+        }
+        apr_table_setn(r->subprocess_env, name, replaced);
+      }
+    }
+  }
+}
+
+/**
+ * QS_SetEnvIfParp (hp)
+ */
+static void qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
+  if(apr_table_elts(sconf->setenvifparp_t)->nelts > 0) {
+    if(qos_parp_hp_table_fn) {
+      apr_table_t *tl = qos_parp_hp_table_fn(r);
+      if(tl && (apr_table_elts(tl)->nelts > 0)) {
+        int len = 0;
+        char *query;
+        char *p;
+        int i;
+        apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(tl)->elts;
+        for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
+          len = len + 
+            (entry[i].key == NULL ? 0 : strlen(entry[i].key)) +
+            (entry[i].val == NULL ? 0 : strlen(entry[i].val)) +
+            2;
+        }
+        query = apr_palloc(r->pool, len + 1);
+        p = query;
+        for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
+          int l = strlen(entry[i].key);
+          if(p != query) {
+            p[0] = '&';
+            p++;
+            p[0] = '\0';
+          }
+          memcpy(p, entry[i].key, l);
+          p += l;
+          p[0] = '=';
+          p++;
+          l = strlen(entry[i].val);
+          memcpy(p, entry[i].val, l);
+          p += l;
+          p[0] = '\0';
+        }
+        qos_setenvif_ex(r, query, sconf->setenvifparp_t);
+      }
+    }
+  }
 }
 
 /**
@@ -1772,24 +1839,7 @@ static apr_status_t qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
  */
 static void qos_setenvifquery(request_rec *r, qos_srv_config *sconf) {
   if(r->parsed_uri.query) {
-    int i;
-    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvifquery_t)->elts;
-    for(i = 0; i < apr_table_elts(sconf->setenvifquery_t)->nelts; i++) {
-      qos_setenvifquery_t *setenvif = (qos_setenvifquery_t *)entry[i].val;
-      char *name = setenvif->name;
-      ap_regmatch_t regm[AP_MAX_REG_MATCH];
-      if(ap_regexec(setenvif->preg, r->parsed_uri.query, AP_MAX_REG_MATCH, regm, 0) == 0) {
-        if(name[0] == '!') {
-          apr_table_unset(r->subprocess_env, &name[1]);
-        } else {
-          char *replaced = "";
-          if(setenvif->value) {
-            replaced = ap_pregsub(r->pool, setenvif->value, r->parsed_uri.query, AP_MAX_REG_MATCH, regm);
-          }
-          apr_table_setn(r->subprocess_env, name, replaced);
-        }
-      }
-    }
+    qos_setenvif_ex(r, r->parsed_uri.query, sconf->setenvifquery_t);
   }
 }
 
@@ -3196,6 +3246,7 @@ static int qos_post_read_request(request_rec * r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
+  qos_parp_prr(r, sconf);
   if(sconf && (sconf->req_rate != -1)) {
     inctx = qos_get_ifctx(r->connection->input_filters);
     if(inctx) {
@@ -3865,6 +3916,16 @@ static int qos_logger(request_rec *r) {
   return DECLINED;
 }
 
+static int qos_parp_check() {
+  module *modp = NULL;
+  for(modp = ap_top_module; modp; modp = modp->next) {
+    if(strcmp(modp->name, "mod_parp.c") == 0) {
+      return APR_SUCCESS;
+    }
+  }
+  return DECLINED;
+}
+
 /**
  * inits each child
  */
@@ -3924,16 +3985,6 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   }
 }
 
-static int qos_parp_check() {
-  module *modp = NULL;
-  for(modp = ap_top_module; modp; modp = modp->next) {
-    if(strcmp(modp->name, "mod_parp.c") == 0) {
-      return APR_SUCCESS;
-    }
-  }
-  return DECLINED;
-}
-
 /**
  * inits the server configuration
  */
@@ -3984,15 +4035,16 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   apr_pool_cleanup_register(sconf->pool, sconf->act,
                             qos_cleanup_shm, apr_pool_cleanup_null);
 
-  //$$  if(m_requires_parp) {
+  if(m_requires_parp) {
     if(qos_parp_check() != APR_SUCCESS) {
+      qos_parp_hp_table_fn = NULL;
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
                    QOS_LOG_PFX(009)"mod_parp not available"
                    " (required by some directives)");
     } else {
       qos_parp_hp_table_fn = APR_RETRIEVE_OPTIONAL_FN(parp_hp_table);
     }
-    //}
+  }
   if(u->server_start == 2) {
     int i;
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->hfilter_table)->elts;
@@ -4232,7 +4284,6 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparp_t = apr_table_make(sconf->pool, 1);
-  m_requires_parp = 0;
   sconf->setenvstatus_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
@@ -5291,7 +5342,7 @@ static const command_rec qos_config_cmds[] = {
                 " applied against the request query string."),
   AP_INIT_TAKE2("QS_SetEnvIfParp", qos_event_setenvifparp_cmd, NULL,
                 RSRC_CONF,
-                "QS_SetEnvIfParp <regex> <variable>[=value],"
+                "QS_SetEnvIfParp <regex> [!]<variable>[=value],"
                 " parsed the request payload using the Apache module"
                 " mod_parp. It matches the request URL query and the body"
                 " data as well and sets the defined process variable."),
@@ -5401,7 +5452,7 @@ static const command_rec qos_config_cmds[] = {
  * apache register 
  ***********************************************************************/
 static void qos_register_hooks(apr_pool_t * p) {
-  static const char *pre[] = { "mod_setenvif.c", "mod_parp", NULL };
+  static const char *pre[] = { "mod_setenvif.c", "mod_parp.c", NULL };
   ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);

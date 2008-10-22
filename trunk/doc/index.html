@@ -573,12 +573,16 @@ of the Apache module mod_setenvif but the specified regex is
 applied against the query string portion of the request line.
 </li>
 <li>
-<code>QS_SetEnvIfParp &lt;regex&gt; &lt;env-variable&gt;[=&lt;value&gt;]</code><br>
+<code>QS_SetEnvIfParp &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Directive parsing the request payload using the Apache module 
 <a href="http://parp.sourceforge.net">mod_parp</a>. It matches 
-the request URL query and the body data as well 
+the request URL query and the HTTP request message body data as well 
 (<code>application/x-www-form-urlencoded</code> and 
-<code>multipart/form-data</code>) and sets the defined process variable.
+<code>multipart/form-data</code>) and sets the defined process variable 
+(quite similar to the <code>QS_SetEnvIfQuery</code> directive). You 
+should limit the allowed size of an HTTP request message body using 
+<code>LimitRequestBody</code> directive when using 
+<code>QS_SetEnvIfParp</code>!
 </li>
 <li>
 <code>QS_SetEnvStatus &lt;code&gt; &lt;env-variable&gt;</code><br>
@@ -618,7 +622,7 @@ QS_EventRequestLimit       QS_LowPrio             400
 
 # query match sets the variable "found" if the query parameter
 # name is in the request URL assigning the value of the parameter:
-QS_SetEnvIfQuery           name=(.*)[&]?          found=$1
+QS_SetEnvIfQuery           name=([a-zA-Z]*)       found=$1
 </pre>
 </td></tr>
 </table>

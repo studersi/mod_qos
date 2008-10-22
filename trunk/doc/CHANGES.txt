@@ -1,4 +1,7 @@
-Version
+Version 7.13
+
+ - New directive QS_SetEnvIfParp (requires mod_parp,
+   see http://parp.sourceforge.net).
 
  - New directive QS_DenyEvent.
 

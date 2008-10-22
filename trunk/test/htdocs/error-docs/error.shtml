@@ -31,11 +31,13 @@ custom error page
     _1<!--#echo var="NAME" -->
     _2<!--#echo var="VALUE" -->
     _3<!--#echo var="EMPTY" -->
+    _4<!--#echo var="BODY" -->
+    _5<!--#echo var="PARP" -->
 </pre>
 </p>
 <hr>
 <pre>
-$Revision: 1.2 $
+$Revision: 1.3 $
 </pre>
 </body>
 </html>
