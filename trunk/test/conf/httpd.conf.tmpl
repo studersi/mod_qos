@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.93 2008-10-22 18:15:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.94 2008-10-22 19:46:20 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -132,8 +132,13 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_SetEnvIfQuery name=([a-z]*)         NAME=mein_name_ist_$1
    QS_SetEnvIfQuery other;value=(.*)match VALUE=$1
    QS_SetEnvIfQuery ok                    EMPTY
+
+   # disable mod_parp for header filter test and file upload
+   SetEnvIf         Request_URI /cgi-local/index.cgi !parp
+   SetEnvIf         Request_URI /qos_control.* !parp
+   # mod_parp:
    QS_SetEnvIfParp  body=([a-z]*)         BODY=parp[$1]
-   QS_SetEnvIfParp  postdata=([a-z]*)     PARP=parp[$1]
+   QS_SetEnvIfParp  postdata=([a-z]*)     PARP_PATTERN=parp[$1]
 
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
@@ -199,10 +204,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_SetEnvResHeaderMatch    Set-Cookie        JSESSIONID=
    QS_SetEnvIf                Set-Cookie !QSNOT QS_Block=yes
 
-   # concurrent requests
+   # concurrent requests with certain event
    QS_SetEnvIfQuery           QS_EventRequestLimit query
    QS_EventRequestLimit       query           3
-   QS_EventRequestLimit       PARP            3
+   QS_EventRequestLimit       PARP_PATTERN   3
    QS_EventPerSecLimit        query         100
 
    # -----------------------------------------------------------------

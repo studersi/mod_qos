@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.102 2008-10-22 18:15:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.103 2008-10-22 19:46:20 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -1762,7 +1762,7 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
  */
 static apr_status_t qos_parp_prr(request_rec *r, qos_srv_config *sconf) {
   if(apr_table_elts(sconf->setenvifparp_t)->nelts > 0) {
-    apr_table_set(r->notes, "parp", "mod_qos");
+    apr_table_set(r->subprocess_env, "parp", "mod_qos");
   }
   return DECLINED;
 }
@@ -5453,11 +5453,12 @@ static const command_rec qos_config_cmds[] = {
  ***********************************************************************/
 static void qos_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", "mod_parp.c", NULL };
+  static const char *post[] = { "mod_setenvif.c", NULL };
   ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
-  ap_hook_post_read_request(qos_post_read_request, pre, NULL, APR_HOOK_LAST);
+  ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);
   ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(qos_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);

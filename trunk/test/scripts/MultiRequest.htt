@@ -1,5 +1,5 @@
 #
-# $Id: MultiRequest.htt,v 1.6 2008-04-16 19:22:04 pbuchbinder Exp $
+# $Id: MultiRequest.htt,v 1.7 2008-10-22 19:46:20 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -78,7 +78,7 @@ _CLOSE
 END
 
 CLIENT
-_SLEEP 10000
+_SLEEP 12000
 _REQ localhost $QS_PORT_BASE
 __GET /qos HTTP/1.1
 __Host: localhost.qos.ch
