@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.92 2008-10-21 19:46:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.93 2008-10-22 18:15:53 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -129,9 +129,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
       Allow from all
    </Proxy>
 
-   QS_SetEnvIfQuery name=(.*)[&]? NAME=myname_is_$1
+   QS_SetEnvIfQuery name=([a-z]*)         NAME=mein_name_ist_$1
    QS_SetEnvIfQuery other;value=(.*)match VALUE=$1
-   QS_SetEnvIfQuery ok EMPTY
+   QS_SetEnvIfQuery ok                    EMPTY
+   QS_SetEnvIfParp  body=([a-z]*)         BODY=parp[$1]
+   QS_SetEnvIfParp  postdata=([a-z]*)     PARP=parp[$1]
 
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
@@ -200,6 +202,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    # concurrent requests
    QS_SetEnvIfQuery           QS_EventRequestLimit query
    QS_EventRequestLimit       query           3
+   QS_EventRequestLimit       PARP            3
    QS_EventPerSecLimit        query         100
 
    # -----------------------------------------------------------------

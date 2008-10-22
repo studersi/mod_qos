@@ -1,6 +1,6 @@
 http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
 #
-# $Id: QS_SetEnvIfQuery.htt,v 1.1 2008-09-10 20:45:51 pbuchbinder Exp $
+# $Id: QS_SetEnvIfQuery.htt,v 1.2 2008-10-22 18:15:53 pbuchbinder Exp $
 #
 
 
@@ -14,7 +14,7 @@ __Host: localhost
 __Connection: keep-alive
 __
 _EXPECT . "200"
-_EXPECT . "1myname_is_hase"
+_EXPECT . "1mein_name_ist_hase"
 _EXPECT . "_2123"
 _EXPECT . "!_3.none."
 
