@@ -32,12 +32,12 @@ custom error page
     _2<!--#echo var="VALUE" -->
     _3<!--#echo var="EMPTY" -->
     _4<!--#echo var="BODY" -->
-    _5<!--#echo var="PARP" -->
+    _5<!--#echo var="PARP_PATTERN" -->
 </pre>
 </p>
 <hr>
 <pre>
-$Revision: 1.3 $
+$Revision: 1.4 $
 </pre>
 </body>
 </html>
