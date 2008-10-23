@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.103 2008-10-22 19:46:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.104 2008-10-23 18:21:04 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -95,6 +95,10 @@ static const char g_revision[] = "7.13";
 #define QS_PKT_RATE_INIT  220
 #define QS_PKT_RATE_MIN   30
 #define QS_PKT_RATE_TH    3
+
+#define QS_PARP_Q         "qos-parp-query"
+#define QS_PARP_QUERY     "qos-query"
+#define QS_PARP_URL       "qos-url"
 
 /* this is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
    be increased to 10 or 30 seconds in order to compensate bandwidth variations */
@@ -1486,6 +1490,44 @@ static int qos_unescaping(char *x) {
 }
 
 /**
+ * writes the parp table to a single query line
+ */
+static const char *qos_parp_query(request_rec *r, apr_table_t *tl) {
+  char *query = NULL;
+  int len = 0;
+  char *p;
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(tl)->elts;
+  for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
+    len = len + 
+      (entry[i].key == NULL ? 0 : strlen(entry[i].key)) +
+      (entry[i].val == NULL ? 0 : strlen(entry[i].val)) +
+      2;
+  }
+  query = apr_palloc(r->pool, len + 2);
+  query[0] = '?';
+  p = &query[1];
+  for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
+    int l = strlen(entry[i].key);
+    if(p != &query[1]) {
+      p[0] = '&';
+      p++;
+      p[0] = '\0';
+    }
+    memcpy(p, entry[i].key, l);
+    p += l;
+    p[0] = '=';
+    p++;
+    l = strlen(entry[i].val);
+    memcpy(p, entry[i].val, l);
+    p += l;
+    p[0] = '\0';
+  }
+  apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), query);
+  return &query[1];
+}
+
+/**
  * processes the per location rules QS_Permit* and QS_Deny*
  */
 static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
@@ -1796,40 +1838,18 @@ static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *sete
  */
 static void qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
   if(apr_table_elts(sconf->setenvifparp_t)->nelts > 0) {
-    if(qos_parp_hp_table_fn) {
+    char *query = apr_table_get(r->notes, QS_PARP_Q);
+    if((query == NULL) && qos_parp_hp_table_fn) {
       apr_table_t *tl = qos_parp_hp_table_fn(r);
       if(tl && (apr_table_elts(tl)->nelts > 0)) {
-        int len = 0;
-        char *query;
-        char *p;
-        int i;
-        apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(tl)->elts;
-        for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
-          len = len + 
-            (entry[i].key == NULL ? 0 : strlen(entry[i].key)) +
-            (entry[i].val == NULL ? 0 : strlen(entry[i].val)) +
-            2;
+        query = qos_parp_query(r, tl);
+        if(query) {
+          apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_Q), query);
         }
-        query = apr_palloc(r->pool, len + 1);
-        p = query;
-        for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
-          int l = strlen(entry[i].key);
-          if(p != query) {
-            p[0] = '&';
-            p++;
-            p[0] = '\0';
-          }
-          memcpy(p, entry[i].key, l);
-          p += l;
-          p[0] = '=';
-          p++;
-          l = strlen(entry[i].val);
-          memcpy(p, entry[i].val, l);
-          p += l;
-          p[0] = '\0';
-        }
-        qos_setenvif_ex(r, query, sconf->setenvifparp_t);
       }
+    }
+    if(query) {
+      qos_setenvif_ex(r, query, sconf->setenvifparp_t);
     }
   }
 }
