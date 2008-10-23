@@ -9,7 +9,4 @@
        QS_DenyPath        +qos       deny ^/qos/internal.*$
        QS_DenyRequestLine +printable deny ".*[\x00-\x19].*"
    </Location>
-   <Location /qos_control>
-       SetHandler qos-control
-   </Location>
 

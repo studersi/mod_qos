@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.67 2008-10-22 18:15:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.68 2008-10-23 20:19:10 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -329,13 +329,13 @@ if [ $QDIFF1 -lt $QDIFF2 ]; then
     echo "FAILED QS_SrvPreferNet.htt"
 fi
 
-# -----------------------------------------------------------------
-echo "-- mod_qos_control, QS_Control_Server.htt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_Control_Server.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_Control_Server.htt"
-fi
+### -----------------------------------------------------------------
+##echo "-- mod_qos_control, QS_Control_Server.htt" >>  logs/error_log
+##./htt.sh -s ./scripts/QS_Control_Server.htt
+##if [ $? -ne 0 ]; then
+##    ERRORS=`expr $ERRORS + 1`
+##    echo "FAILED QS_Control_Server.htt"
+##fi
 
 # -----------------------------------------------------------------
 ./ctl.sh restart -D max_clients -D cc > /dev/null
