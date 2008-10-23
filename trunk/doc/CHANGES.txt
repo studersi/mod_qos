@@ -3,6 +3,15 @@ Version 7.13
  - New directive QS_SetEnvIfParp (requires mod_parp,
    see http://parp.sourceforge.net).
 
+   Important:
+   mod_parp and the QS_SetEnvIfParp directive copies
+   the whole HTTP request message body into the servers
+   memory (requires at least twice the memory size of
+   the posted data). It is very important that you
+   limit the messagy body size for requests processed
+   my mod_parp/QS_SetEnvIfParp using the Apache directive
+   LimitRequestBody.
+
  - New directive QS_DenyEvent.
 
 Version 7.12
