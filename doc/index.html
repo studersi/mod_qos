@@ -446,9 +446,9 @@ QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
 <h4>Variables</h4>
 Environment variables are used on a per request level and implement
 additonal control mechanisms. Variables may be set using the standard 
-Apache module mod_setenvif. See also the <code>QS_SetEnvIf</code> 
-directive in order to combine multiple variable to new variables 
-interpreted by mod_qos rules. <br>
+Apache module mod_setenvif. See also the <a href="#eventcontrol">
+<code>QS_SetEnvIf*</code></a> directives in order to combine multiple 
+variable to new variables interpreted by mod_qos rules. <br>
 <br>
 These are the standard mod_qos variables:
 <ul>
@@ -620,9 +620,8 @@ QS_SetEnvIf !QS_VipRequest !QS_Intra              QS_LowPrio
 QS_EventPerSecLimit        QS_LowPrio             100
 QS_EventRequestLimit       QS_LowPrio             400
 
-# query match sets the variable "found" if the query parameter
-# name is in the request URL assigning the value of the parameter:
-QS_SetEnvIfQuery           name=([a-zA-Z]*)       found=$1
+# detects the variable "file" within the query portion of the URL:
+QS_SetEnvIfQuery           file=([a-zA-Z]*)       QS_LowPrio=$1
 </pre>
 </td></tr>
 </table>
