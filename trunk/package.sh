@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.21 2008-03-24 14:00:11 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.22 2008-10-23 20:19:10 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -35,13 +35,11 @@
 
 TOP=`pwd`
 VERSION=`grep "char g_revision" httpd_src/modules/qos/mod_qos.c | awk '{print $6}' | awk -F'"' '{print $2}'`
-C_VERSION=`grep "char g_revision" httpd_src/modules/qos/mod_qos_control.c | awk '{print $6}' | awk -F'"' '{print $2}'`
 F_VERSION=`grep "char g_revision" tools/filter/qsfilter2.c | awk '{print $6}' | awk -F'"' '{print $2}'`
 echo "build mod_dos version $VERSION distribution package"
-if [ "$VERSION" != "$C_VERSION" -o "$VERSION" != "$F_VERSION" ]; then
+if [ "$VERSION" != "$F_VERSION" ]; then
   echo "FAILED, wrong version!"
   echo " mod_qos: $VERSION"
-  echo " mod_control: $C_VERSION"
   echo " qsfilter2: $F_VERSION"
   exit 1
 fi
@@ -79,8 +77,7 @@ cp doc/qslog.html mod_qos-${VERSION}/doc
 
 echo "install source"
 cp httpd_src/modules/qos/mod_qos.c mod_qos-${VERSION}/apache2
-cp httpd_src/modules/qos/mod_qos_control.c mod_qos-${VERSION}/apache2
-cp httpd_src/modules/qos/config.m4 mod_qos-${VERSION}/apache2
+grep -v qos_control httpd_src/modules/qos/config.m4 > mod_qos-${VERSION}/apache2/config.m4
 cp httpd_src/modules/qos/Makefile.in mod_qos-${VERSION}/apache2
 
 echo "tools"

@@ -1,5 +1,5 @@
 #
-# $Id: QS_VipUser.htt,v 1.2 2008-04-18 12:44:48 pbuchbinder Exp $
+# $Id: QS_VipUser.htt,v 1.3 2008-10-23 20:19:10 pbuchbinder Exp $
 #
 
 
@@ -8,7 +8,7 @@ INCLUDE scripts/ports
 CLIENT
 
 _REQ server1 SSL:$QS_PORT_BASE2
-__GET /qos_control HTTP/1.1
+__GET /qos_control/index.txt HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Authorization: Basic YWRtaW46MTIzNA==

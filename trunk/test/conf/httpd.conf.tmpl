@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.94 2008-10-22 19:46:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.95 2008-10-23 20:19:10 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -100,15 +100,10 @@ LoadModule              dumpio_module ##ROOT##/../httpd/modules/debug/.libs/mod_
 LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
 LoadModule              info_module ##ROOT##/../httpd/modules/generators/.libs/mod_info.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
-LoadModule              qos_control_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos_control.so
 LoadModule              parp_module libexec/mod_parp.so
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
 LoadModule              security2_module libexec/mod_security.so
-
-
-QSC_WorkingDirectory    /var/tmp/qosc
-QSC_Filter2Binary       /usr/local/bin/qsfilter2
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
@@ -133,9 +128,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_SetEnvIfQuery other;value=(.*)match VALUE=$1
    QS_SetEnvIfQuery ok                    EMPTY
 
-   # disable mod_parp for header filter test and file upload
+   # disable mod_parp for header filter test
    SetEnvIf         Request_URI /cgi-local/index.cgi !parp
-   SetEnvIf         Request_URI /qos_control.* !parp
    # mod_parp:
    QS_SetEnvIfParp  body=([a-z]*)         BODY=parp[$1]
    QS_SetEnvIfParp  postdata=([a-z]*)     PARP_PATTERN=parp[$1]
@@ -384,7 +378,6 @@ SSLRandomSeed           startup builtin
        AuthUserFile           ##ROOT##/conf/qos.htpasswd
        AuthName               "QoS Control, htpasswd"
        Require                valid-user
-       SetHandler             qos-control
    </Location>
 
 

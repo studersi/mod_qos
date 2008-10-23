@@ -14,6 +14,8 @@ Version 7.13
 
  - New directive QS_DenyEvent.
 
+ - Chuck out mod_qos_control.
+
 Version 7.12
 
  - Process event filter only if some rules have been
