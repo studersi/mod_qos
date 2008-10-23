@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.104 2008-10-23 18:21:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.105 2008-10-23 19:37:08 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -1838,7 +1838,7 @@ static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *sete
  */
 static void qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
   if(apr_table_elts(sconf->setenvifparp_t)->nelts > 0) {
-    char *query = apr_table_get(r->notes, QS_PARP_Q);
+    const char *query = apr_table_get(r->notes, QS_PARP_Q);
     if((query == NULL) && qos_parp_hp_table_fn) {
       apr_table_t *tl = qos_parp_hp_table_fn(r);
       if(tl && (apr_table_elts(tl)->nelts > 0)) {
