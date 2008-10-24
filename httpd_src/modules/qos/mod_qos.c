@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.105 2008-10-23 19:37:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.106 2008-10-24 06:16:32 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -98,7 +98,7 @@ static const char g_revision[] = "7.13";
 
 #define QS_PARP_Q         "qos-parp-query"
 #define QS_PARP_QUERY     "qos-query"
-#define QS_PARP_URL       "qos-url"
+#define QS_PARP_PATH      "qos-path"
 
 /* this is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
    be increased to 10 or 30 seconds in order to compensate bandwidth variations */
@@ -3831,6 +3831,28 @@ static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
   apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
 }
 
+static void qos_audit(request_rec *r) {
+  const char *q = apr_table_get(r->notes, QS_PARP_QUERY);
+  const char *u = apr_table_get(r->notes, QS_PARP_PATH);
+  if(u == NULL) {
+    u = r->parsed_uri.path;
+    apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_PATH), u);
+  }
+  if(q == 0) {
+    if(r->parsed_uri.query) {
+      q = apr_pstrcat(r->pool, "?", r->parsed_uri.query, NULL);
+    } else {
+      q = apr_pstrdup(r->pool, "");
+    }
+    apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
+  }
+  if(r->next) {
+    apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_PATH), u);
+    apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
+  }
+}
+
+
 /**
  * "free resources" and update stats
  */
@@ -3841,6 +3863,7 @@ static int qos_logger(request_rec *r) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
   time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_audit(r);
   qos_end_res_rate(r, sconf);
   qos_setenvstatus(r, sconf);
   qos_setenvif(r, sconf);
