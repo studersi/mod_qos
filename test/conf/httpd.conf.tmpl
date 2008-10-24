@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.97 2008-10-24 19:44:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.98 2008-10-24 21:31:48 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -85,7 +85,6 @@ DefaultType             text/plain
 AddType                 text/html .shtml
 AddOutputFilter         INCLUDES .shtml
 
-LogFormat               "%{qos-path}n%{qos-query}n" qos_audit_t
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e %{qs_special}e #%P"
 
 LogLevel                warn
@@ -93,7 +92,7 @@ LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
 TransferLog             "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
 TransferLog             "|##ROOT##/../tools/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
-CustomLog               ##ROOT##/logs/qsaudit_log qos_audit_t
+#CustomLog               "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/qsaudit_log -z -g 4 -s 3600 -f" "%{qos-path}n%{qos-query}n"
 PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 

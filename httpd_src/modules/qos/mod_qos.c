@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.107 2008-10-24 19:44:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.108 2008-10-24 21:31:48 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -3840,6 +3840,7 @@ static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
   apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
 }
 
+#ifdef QS_AUDIT
 static void qos_audit(request_rec *r) {
   const char *q = apr_table_get(r->notes, QS_PARP_QUERY);
   const char *u = apr_table_get(r->notes, QS_PARP_PATH);
@@ -3860,7 +3861,7 @@ static void qos_audit(request_rec *r) {
     apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
   }
 }
-
+#endif
 
 /**
  * "free resources" and update stats
@@ -3872,7 +3873,9 @@ static int qos_logger(request_rec *r) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
   time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+#ifdef QS_AUDIT
   qos_audit(r);
+#endif
   qos_end_res_rate(r, sconf);
   qos_setenvstatus(r, sconf);
   qos_setenvif(r, sconf);
@@ -4650,6 +4653,15 @@ const char *qos_match_bs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
   return NULL;
 }
 
+// /**
+//  * enable the audit log
+//  */
+// const char *qos_audit_cmd(cmd_parms *cmd, void *dcfg, const char *file) {
+//   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+//                                                                 &qos_module);
+//   return NULL;
+// }
+
 /**
  * sets the default limitation of cuncurrent requests
  */
@@ -5283,6 +5295,10 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ErrorResponseCode", qos_error_code_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorResponseCode <code>, defines the HTTP response code, default is 500."),
+//   AP_INIT_TAKE1("QS_Audit", qos_audit_cmd, NULL,
+//                 RSRC_CONF,
+//                 " QS_Audit <path>, specifies the audit log file where mod_qos writes"
+//                 " the request path any payload to."),
   /* vip session */
   AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
                 RSRC_CONF,

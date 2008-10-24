@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.47 2008-10-22 18:15:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.48 2008-10-24 21:31:48 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -3704,6 +3704,39 @@ const char *qosc_filter2_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   }
   return NULL;
 }
+
+// /** search for a command record */
+// static const command_rec *qosc_get_cmd(const char *m, const char *n) {
+//   module *modp = NULL;
+//   for(modp = ap_top_module; modp; modp = modp->next) {
+//     if(strcmp(modp->name, m) == 0) {
+//       const command_rec *cmd = modp->cmds;
+//       while(cmd) {
+//         if(cmd->name) {
+//           if(strcmp(cmd->name, n) == 0) {
+//             return cmd;
+//           }
+//         }
+//         cmd++;
+//       }
+//     }
+//   }
+//   return NULL;
+// }
+// 
+// /** execute a command of another module */
+// static const char *qosc_take3(cmd_parms *cmd, void *dcfg, 
+//                              const char *m, const char *command,
+//                              const char *arg1, const char *arg2, const char *arg3) {
+//   const command_rec *cr = qosc_get_cmd(m, command);
+//   if(cr == NULL) {
+//     return apr_psprintf(cmd->pool, "command %s of %s not available", m, command);
+//   } else {
+//     cmd_func func = cr->func;
+//     return func.take3(cmd, dcfg, arg1, arg2, arg3);
+//   }
+//   return NULL;
+// }
 
 static const command_rec qosc_config_cmds[] = {
   AP_INIT_TAKE1("QSC_WorkingDirectory", qosc_wd_cmd, NULL,
