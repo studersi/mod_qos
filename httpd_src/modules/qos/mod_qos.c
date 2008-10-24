@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.106 2008-10-24 06:16:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.107 2008-10-24 19:44:54 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -3299,6 +3299,23 @@ static int qos_post_read_request(request_rec * r) {
 }
 
 /**
+ * header parser (executed before mod_setenvif or mod_parp)
+ */
+static int qos_header_parser0(request_rec * r) {
+  if(ap_is_initial_req(r)) {
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_module);
+    qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
+                                                                  &qos_module);
+    /*
+     * QS_RequestHeaderFilter enforcement
+     */
+    return qos_hp_header_filter(r, sconf, dconf);
+  }
+  return DECLINED;
+}
+
+/**
  * header parser implements restrictions on a per location (url) basis.
  */
 static int qos_header_parser(request_rec * r) {
@@ -3320,14 +3337,6 @@ static int qos_header_parser(request_rec * r) {
      * QS_Permit* / QS_Deny* enforcement
      */
     status = qos_hp_filter(r, sconf, dconf);
-    if(status != DECLINED) {
-      return status;
-    }
-
-    /*
-     * QS_RequestHeaderFilter enforcement
-     */
-    status = qos_hp_header_filter(r, sconf, dconf);
     if(status != DECLINED) {
       return status;
     }
@@ -5502,6 +5511,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);
+  ap_hook_header_parser(qos_header_parser0, NULL, post, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(qos_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);

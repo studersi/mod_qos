@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.96 2008-10-24 06:16:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.97 2008-10-24 19:44:54 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -131,7 +131,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_SetEnvIfQuery ok                    EMPTY
 
    # disable mod_parp for header filter test
-   SetEnvIf         Request_URI /cgi-local/index.cgi !parp
+   # SetEnvIf         Request_URI /cgi-local/index.cgi !parp
    # mod_parp:
    QS_SetEnvIfParp  body=([a-z]*)         BODY=parp[$1]
    QS_SetEnvIfParp  postdata=([a-z]*)     PARP_PATTERN=parp[$1]
