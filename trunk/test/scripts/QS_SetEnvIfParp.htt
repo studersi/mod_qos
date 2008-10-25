@@ -1,6 +1,6 @@
 http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
 #
-# $Id: QS_SetEnvIfParp.htt,v 1.1 2008-10-22 18:15:53 pbuchbinder Exp $
+# $Id: QS_SetEnvIfParp.htt,v 1.2 2008-10-25 19:57:14 pbuchbinder Exp $
 #
 
 
@@ -67,5 +67,30 @@ _EXPECT . "500 Internal Server Error"
 _EXPECT . "!done"
 _EXPECT . "code=012"
 _WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=4&postdata=match&body=more HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "!done"
+_EXPECT . "code=012"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi/sleep.cgi?s=4&postdata=match&body=more HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/plain
+__
+__body
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "!done"
+_EXPECT . "code=012"
+_WAIT
+_CLOSE
+
 
 END
