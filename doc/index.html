@@ -584,8 +584,8 @@ You may deactivate mod_parp for selected requests using the
 <code>SetEnvIf</code> directive: unset the variable "parp" to do so.
 Important: request message body processing requires that the server 
 loads the whole request into its memory (at least twice the length 
-of the message). You should limit the allowed size of an HTTP 
-request message body using <code>LimitRequestBody</code> directive 
+of the message). You should limit the allowed size of HTTP 
+requests message body using the <code>LimitRequestBody</code> directive 
 when using <code>QS_SetEnvIfParp</code>!
 </li>
 <li>
