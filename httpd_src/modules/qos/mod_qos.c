@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.108 2008-10-24 21:31:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.109 2008-10-25 19:53:39 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -1800,11 +1800,18 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
 }
 
 /**
- * QS_SetEnvIfParp (prr)
+ * QS_SetEnvIfParp (prr), enable parp
  */
 static apr_status_t qos_parp_prr(request_rec *r, qos_srv_config *sconf) {
   if(apr_table_elts(sconf->setenvifparp_t)->nelts > 0) {
-    apr_table_set(r->subprocess_env, "parp", "mod_qos");
+    const char *ct = apr_table_get(r->headers_in, "Content-Type");
+    if(ct) {
+      if(ap_strcasestr(ct, "application/x-www-form-urlencoded") ||
+         ap_strcasestr(ct, "multipart/form-data") ||
+         ap_strcasestr(ct, "multipart/mixed")) {
+        apr_table_set(r->subprocess_env, "parp", "mod_qos");
+      }
+    }
   }
   return DECLINED;
 }
@@ -1841,10 +1848,18 @@ static void qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
     const char *query = apr_table_get(r->notes, QS_PARP_Q);
     if((query == NULL) && qos_parp_hp_table_fn) {
       apr_table_t *tl = qos_parp_hp_table_fn(r);
-      if(tl && (apr_table_elts(tl)->nelts > 0)) {
-        query = qos_parp_query(r, tl);
-        if(query) {
-          apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_Q), query);
+      if(tl) {
+        if(apr_table_elts(tl)->nelts > 0) {
+          query = qos_parp_query(r, tl);
+          if(query) {
+            apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_Q), query);
+          }
+        }
+      } else {
+        /* no table provided by mod_parp (unsupported content type?),
+           use query string if available */
+        if(r->parsed_uri.query) {
+          query = r->parsed_uri.query;
         }
       }
     }
