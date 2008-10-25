@@ -1,5 +1,7 @@
 Version 7.13
 
+ - Changed directive processing order, see mod_qos_seq.gif.
+
  - New directive QS_SetEnvIfParp (requires mod_parp,
    see http://parp.sourceforge.net).
 

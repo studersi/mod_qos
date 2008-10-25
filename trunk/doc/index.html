@@ -575,8 +575,9 @@ applied against the query string portion of the request line.
 Directive parsing the request payload using the Apache module 
 <a href="http://parp.sourceforge.net">mod_parp</a>. It matches 
 the request URL query and the HTTP request message body data as well 
-(<code>application/x-www-form-urlencoded</code> and 
-<code>multipart/form-data</code>) and sets the defined process variable 
+(<code>application/x-www-form-urlencoded</code>, 
+<code>multipart/form-data</code>, and <code>multipart/mixed</code>) 
+and sets the defined process variable 
 (quite similar to the <code>QS_SetEnvIfQuery</code> directive). This 
 directive activates mod_parp for every request to the virtual host. 
 You may deactivate mod_parp for selected requests using the 
@@ -627,11 +628,11 @@ QS_EventRequestLimit         QS_LowPrio             400
 QS_SetEnvIfQuery             file=([a-zA-Z]*)       QS_LowPrio=$1
 
 # body pattern detection, examples limits the maximum of concurrent
-# the requests posting "id=1234" to 10:
+# the requests posting "id=1234" to ten:
 QS_SetEnvIfParp  id=1234     PARP_PATTERN=on
 QS_EventRequestLimit         PARP_PATTERN           10
-# but ignore requests to the location /main/ (any any sub-locations)
-SetEnvIf         Request_URI /main/.*               !parp
+# but ignore requests to the location /main/ (any any sub-locations):
+SetEnvIf    Request_URI      /main/.*               !parp
 </pre>
 </td></tr>
 </table>
