@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.110 2008-10-26 20:48:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.111 2008-10-26 21:26:15 pbuchbinder Exp $";
 static const char g_revision[] = "7.14";
 
 /************************************************************************
@@ -1552,7 +1552,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   qos_unescaping(path);
   path_len = strlen(path);
   uri_len = path_len;
-  if(dconf->bodyfilter) {
+  if(dconf->bodyfilter == 1) {
     const char *q = apr_table_get(r->notes, QS_PARP_Q);
     if((q == NULL) && qos_parp_hp_table_fn) {
       apr_table_t *tl = qos_parp_hp_table_fn(r);

@@ -1,8 +1,5 @@
-
-
-http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
 #
-# $Id: QS_DenyQueryParp.htt,v 1.1 2008-10-26 20:48:28 pbuchbinder Exp $
+# $Id: QS_DenyQueryParp.htt,v 1.2 2008-10-26 21:26:15 pbuchbinder Exp $
 #
 
 

@@ -717,8 +717,13 @@ QS_ErrorPage                     /error-docs/qs_error.html
 QS_RequestHeaderFilterRule       UA-CPU "^[a-zA-Z0-9]+$" drop
 
 &lt;Location /&gt;
+   # enable header validation:
    QS_RequestHeaderFilter        on
+
+   # don't allow access to the path /app/admin.jsp:
    QS_DenyPath        +admin     deny "^/app/admin.jsp$"
+
+   # allow printable characters only within the request line:
    QS_DenyRequestLine +printable deny ".*[\x00-\x19].*"
 &lt;/Location&gt;
 </pre>
@@ -726,7 +731,7 @@ QS_RequestHeaderFilterRule       UA-CPU "^[a-zA-Z0-9]+$" drop
 </table>
 
 Body data filtering requires <a href="http://parp.sourceforge.net">mod_parp</a> 
-which processes the requests message body of the following HTTP request content types: 
+which processes the request's message body of the following HTTP request content types: 
 <code>application/x-www-form-urlencoded</code>, 
 <code>multipart/form-data</code>, and <code>multipart/mixed</code>. The body 
 data is transformed into a request query and may be filtered using the 
@@ -741,11 +746,15 @@ Enables message body filtering.
 <tr><td bgcolor="#EBE5E0">
 Sample configuration:<br>
 <pre>
-# configure the audit log writing the request data to a file (use
-# this log to generate a white list rule set using <a href="qsfilter.html">qsfilter2</a>):
+# configure the audit log writing the request body data to a file
+# => use this log to generate a whitelist rules using <a href="qsfilter.html">qsfilter2</a>
+# note: the variable %{qos-path}n and %{qos-query}n are ony set
+#       for locations with enabled body parsing
 CustomLog             logs/qsaudit_log  %{qos-path}n%{qos-query}n
 
 &lt;Location /app&gt;
+   # don't allow certain string pattern within the request query or
+   # the request message body data:
    QS_DenyBody                   on
    QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
 &lt;/Location&gt;

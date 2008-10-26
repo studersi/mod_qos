@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.68 2008-10-23 20:19:10 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.69 2008-10-26 21:26:15 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -182,7 +182,7 @@ fi
 ./htt.sh -s ./scripts/QS_DenyEvent.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_DenyEvente.htt"
+    echo "FAILED QS_DenyEvent.htt"
 fi
 
 # -----------------------------------------------------------------
@@ -294,7 +294,6 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_PermitUri.htt"
 fi
-
 
 echo "-- header filter, QS_HeaderFilter.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_HeaderFilter.htt
@@ -466,6 +465,11 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SetEnvIfParp.htt"
+fi
+./htt.sh -s ./scripts/QS_DenyQueryParp.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_DenyQueryParp.htt"
 fi
 
 # - DDoS -------------------------------------------------------
