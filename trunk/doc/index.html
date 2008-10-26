@@ -681,7 +681,7 @@ Generic URL (path and query) filter implementing a request pattern
 whitelist. Only requests matching at least one <code>QS_PermitUri</code> 
 pattern are allowed. If a <code>QS_PermitUri</code> pattern has 
 been defined an the request does not match any rule, the request 
-is denied albeit of any server resource availability (whitelist). 
+is denied albeit of any server resource availability. 
 All rules must define the same action. pcre is case sensitve. 
 You may use the <code><a href="qsfilter.html">qsfilter2</a></code> 
 utility to generate rules based on access log files.
@@ -724,6 +724,35 @@ QS_RequestHeaderFilterRule       UA-CPU "^[a-zA-Z0-9]+$" drop
 </pre>
 </td></tr>
 </table>
+
+Body data filtering requires <a href="http://parp.sourceforge.net">mod_parp</a> 
+which processes the requests message body of the following HTTP request content types: 
+<code>application/x-www-form-urlencoded</code>, 
+<code>multipart/form-data</code>, and <code>multipart/mixed</code>. The body 
+data is transformed into a request query and may be filtered using the 
+<code>QS_DenyQuery</code> and <code>QS_PermitUri</code> directives.
+<ul>
+<li>
+<code>QS_DenyBody 'on|'off'</code><br>
+Enables message body filtering.
+</li>
+</ul>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+Sample configuration:<br>
+<pre>
+# configure the audit log writing the request data to a file (use
+# this log to generate a white list rule set using <a href="qsfilter.html">qsfilter2</a>):
+CustomLog             logs/qsaudit_log  %{qos-path}n%{qos-query}n
+
+&lt;Location /app&gt;
+   QS_DenyBody                   on
+   QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+
 
 <a name="connectionlevelcontrol"></a>
 <h3>Connection Level Control</h3>

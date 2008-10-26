@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.109 2008-10-25 19:53:39 pbuchbinder Exp $";
-static const char g_revision[] = "7.13";
+static const char revision[] = "$Id: mod_qos.c,v 5.110 2008-10-26 20:48:28 pbuchbinder Exp $";
+static const char g_revision[] = "7.14";
 
 /************************************************************************
  * Includes
@@ -351,6 +351,7 @@ typedef struct {
   apr_table_t *rfilter_table;
   int inheritoff;
   int headerfilter;
+  int bodyfilter;
 } qos_dir_config;
 
 /**
@@ -1551,12 +1552,40 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   qos_unescaping(path);
   path_len = strlen(path);
   uri_len = path_len;
-  if(r->parsed_uri.query) {
-    query = apr_pstrdup(r->pool, r->parsed_uri.query);
-    qos_unescaping(query);
-    query_len = strlen(query);
-    uri = apr_pstrcat(r->pool, path, "?", query, NULL);
-    uri_len = strlen(uri);
+  if(dconf->bodyfilter) {
+    const char *q = apr_table_get(r->notes, QS_PARP_Q);
+    if((q == NULL) && qos_parp_hp_table_fn) {
+      apr_table_t *tl = qos_parp_hp_table_fn(r);
+      if(tl) {
+        if(apr_table_elts(tl)->nelts > 0) {
+          q = qos_parp_query(r, tl);
+          if(q) {
+            apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_Q), q);
+          }
+        }
+      } else {
+        /* no table provided by mod_parp (unsupported content type?),
+           use query string if available */
+        if(r->parsed_uri.query) {
+          q = r->parsed_uri.query;
+        }
+      }
+    }
+    if(q) {
+      query = apr_pstrdup(r->pool, q);
+      qos_unescaping(query);
+      query_len = strlen(query);
+      uri = apr_pstrcat(r->pool, path, "?", query, NULL);
+      uri_len = strlen(uri);
+    }
+  } else {
+    if(r->parsed_uri.query) {
+      query = apr_pstrdup(r->pool, r->parsed_uri.query);
+      qos_unescaping(query);
+      query_len = strlen(query);
+      uri = apr_pstrcat(r->pool, path, "?", query, NULL);
+      uri_len = strlen(uri);
+    }
   }
   if(r->parsed_uri.fragment) {
     fragment = apr_pstrdup(r->pool, r->parsed_uri.fragment);
@@ -1799,19 +1828,23 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
+static void qos_enable_parp(request_rec *r) {
+  const char *ct = apr_table_get(r->headers_in, "Content-Type");
+  if(ct) {
+    if(ap_strcasestr(ct, "application/x-www-form-urlencoded") ||
+       ap_strcasestr(ct, "multipart/form-data") ||
+       ap_strcasestr(ct, "multipart/mixed")) {
+      apr_table_set(r->subprocess_env, "parp", "mod_qos");
+    }
+  }
+}
+
 /**
  * QS_SetEnvIfParp (prr), enable parp
  */
 static apr_status_t qos_parp_prr(request_rec *r, qos_srv_config *sconf) {
   if(apr_table_elts(sconf->setenvifparp_t)->nelts > 0) {
-    const char *ct = apr_table_get(r->headers_in, "Content-Type");
-    if(ct) {
-      if(ap_strcasestr(ct, "application/x-www-form-urlencoded") ||
-         ap_strcasestr(ct, "multipart/form-data") ||
-         ap_strcasestr(ct, "multipart/mixed")) {
-        apr_table_set(r->subprocess_env, "parp", "mod_qos");
-      }
-    }
+    qos_enable_parp(r);
   }
   return DECLINED;
 }
@@ -3322,6 +3355,11 @@ static int qos_header_parser0(request_rec * r) {
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
+    /** QS_DenyBody */
+    if(dconf && (dconf->bodyfilter == 1)) {
+      qos_enable_parp(r);
+    }
+
     /*
      * QS_RequestHeaderFilter enforcement
      */
@@ -3855,7 +3893,6 @@ static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
   apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
 }
 
-#ifdef QS_AUDIT
 static void qos_audit(request_rec *r) {
   const char *q = apr_table_get(r->notes, QS_PARP_QUERY);
   const char *u = apr_table_get(r->notes, QS_PARP_PATH);
@@ -3876,7 +3913,6 @@ static void qos_audit(request_rec *r) {
     apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
   }
 }
-#endif
 
 /**
  * "free resources" and update stats
@@ -3888,9 +3924,10 @@ static int qos_logger(request_rec *r) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
   time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
-#ifdef QS_AUDIT
-  qos_audit(r);
-#endif
+  qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config, &qos_module);
+  if(dconf && (dconf->bodyfilter == 1)) {
+    qos_audit(r);
+  }
   qos_end_res_rate(r, sconf);
   qos_setenvstatus(r, sconf);
   qos_setenvif(r, sconf);
@@ -4301,6 +4338,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->rfilter_table = apr_table_make(p, 1);
   dconf->inheritoff = 0;
   dconf->headerfilter = -1;
+  dconf->bodyfilter = -1;
   return dconf;
 }
 
@@ -4315,6 +4353,11 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
     dconf->headerfilter = o->headerfilter;
   } else {
     dconf->headerfilter = b->headerfilter;
+  }
+  if(o->bodyfilter != -1) {
+    dconf->bodyfilter = o->bodyfilter;
+  } else {
+    dconf->bodyfilter = b->bodyfilter;
   }
   if(o->inheritoff) {
     dconf->rfilter_table = o->rfilter_table;
@@ -5118,6 +5161,15 @@ const char *qos_denyinheritoff_cmd(cmd_parms *cmd, void *dcfg) {
   return NULL;
 }
 
+const char *qos_denybody_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  dconf->bodyfilter = flag;
+  if(flag) {
+    m_requires_parp = 1;
+  }
+  return NULL;
+}
+
 /* enables/disables header filter */
 const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
@@ -5495,6 +5547,9 @@ static const command_rec qos_config_cmds[] = {
                 " to add custom header filter rules which override the internal"
                 " filter rules of mod_qos."
                 " Directive is allowed in global server context only."),
+  AP_INIT_FLAG("QS_DenyBody", qos_denybody_cmd, NULL,
+               ACCESS_CONF,
+               "QS_DenyBody 'on'|'off', enabled body data filter."),
   /* client control */
   AP_INIT_TAKE1("QS_ClientEntries", qos_client_cmd, NULL,
                 RSRC_CONF,

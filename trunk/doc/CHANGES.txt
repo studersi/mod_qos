@@ -1,3 +1,8 @@
+Version
+
+ - New directive QS_DenyBody implements generic request body
+   filter.
+
 Version 7.13
 
  - Changed directive processing order, see mod_qos_seq.gif.
