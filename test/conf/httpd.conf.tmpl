@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.98 2008-10-24 21:31:48 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.99 2008-10-26 20:48:28 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -92,7 +92,7 @@ LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
 TransferLog             "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
 TransferLog             "|##ROOT##/../tools/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
-#CustomLog               "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/qsaudit_log -z -g 4 -s 3600 -f" "%{qos-path}n%{qos-query}n"
+CustomLog               "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/qsaudit_log -z -g 4 -s 3600 -f" "%{qos-path}n%{qos-query}n"
 PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 
@@ -244,6 +244,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    <Location /qos/off>
        QS_DenyInheritanceOff
        QS_DenyRequestLine +restrict deny ".*simple.*"
+   </Location>
+   <Location /qos/parp>
+       QS_DenyBody                   on
+       QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
    </Location>
 
    <Location /cgi-local>
