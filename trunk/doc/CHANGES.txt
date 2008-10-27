@@ -1,7 +1,9 @@
-Version
+Version 7.14
 
  - New directive QS_DenyBody implements generic request body
-   filter.
+   filter which can be used in conjunction with QS_DenyQuery,
+   QS_PermitUri, and body data audit log (to be processed
+   my qsfilter2).
 
 Version 7.13
 

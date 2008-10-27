@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.69 2008-10-26 21:26:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.70 2008-10-27 19:38:16 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -454,23 +454,16 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_ClientPrefer_TMO.htt"
 fi
 
-# - query/parp -------------------------------------------------
+# - query/parp/path --------------------------------------------
 ./ctl.sh restart -D cc -D real_ip > /dev/null
-./htt.sh -s ./scripts/QS_SetEnvIfQuery.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_SetEnvIfQuery.htt"
-fi
-./htt.sh -s ./scripts/QS_SetEnvIfParp.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_SetEnvIfParp.htt"
-fi
-./htt.sh -s ./scripts/QS_DenyQueryParp.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_DenyQueryParp.htt"
-fi
+PSCR="QS_SetEnvIfQuery.htt QS_SetEnvIfParp.htt QS_DenyQueryParp.htt QS_DenyPath.htt QS_DenyQuery.htt"
+for E in $PSCR; do
+    ./htt.sh -s ./scripts/${E}
+    if [ $? -ne 0 ]; then
+	ERRORS=`expr $ERRORS + 1`
+	echo "FAILED $E"
+    fi
+done
 
 # - DDoS -------------------------------------------------------
 ./htt.sh -s ./scripts/QS_SrvRequestRate_0.htt
