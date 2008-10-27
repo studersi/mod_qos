@@ -615,7 +615,7 @@ the header value.
 Sample of event rules:<br>
 <pre>
 # marks clients coming from the internal network:
-SetEnvIf     Remote_Addr     "^192\.168\."          QS_Intra
+SetEnvIf    Remote_Addr      "^192\.168\."          QS_Intra
 
 # marks clients neither coming from the internal network
 # nor are VIP clients as low priority clients:
@@ -628,6 +628,10 @@ QS_EventRequestLimit         QS_LowPrio             400
 
 # detects the variable "file" within the query portion of the URL:
 QS_SetEnvIfQuery             file=([a-zA-Z]*)       QS_LowPrio=$1
+
+# limit the max. body size since mod_parp loads the whole message into the
+# memory servers's:
+LimitRequestBody             131072
 
 # body pattern detection, examples limits the maximum of concurrent
 # the requests posting "id=1234" to ten:
@@ -753,6 +757,10 @@ Sample configuration:<br>
 # note: the variable %{qos-path}n and %{qos-query}n are ony set
 #       for locations with enabled body parsing
 CustomLog             logs/qsaudit_log  %{qos-path}n%{qos-query}n
+
+# limit the max. body size since mod_parp loads the whole message into the
+# memory servers's:
+LimitRequestBody      131072
 
 &lt;Location /app&gt;
    # don't allow certain string pattern within the request query or
