@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.99 2008-10-26 20:48:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.100 2008-10-27 19:32:06 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -248,6 +248,14 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    <Location /qos/parp>
        QS_DenyBody                   on
        QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+   </Location>
+   <Location /qos/parp/sub>
+   </Location>
+   <Location /qos/query>
+       QS_DenyQuery       +q01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+   </Location>
+   <Location /qos/path>
+       QS_DenyPath        +p01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
    </Location>
 
    <Location /cgi-local>
