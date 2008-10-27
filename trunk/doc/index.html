@@ -577,9 +577,11 @@ Directive parsing the request payload using the Apache module
 the request URL query and the HTTP request message body data as well 
 (<code>application/x-www-form-urlencoded</code>, 
 <code>multipart/form-data</code>, and <code>multipart/mixed</code>) 
-and sets the defined process variable 
-(quite similar to the <code>QS_SetEnvIfQuery</code> directive). This 
-directive activates mod_parp for every request to the virtual host. 
+and sets the defined process variable (quite similar to the 
+<code>QS_SetEnvIfQuery</code> directive). mod_qos recognizes the 
+occurrences of $1..$9 within value and replaces them by subexpressions 
+of the defined regex pattern. This directive activates 
+mod_parp for every request to the virtual host. 
 You may deactivate mod_parp for selected requests using the 
 <code>SetEnvIf</code> directive: unset the variable "parp" to do so.
 Important: request message body processing requires that the server 
