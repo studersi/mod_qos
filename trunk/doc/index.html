@@ -536,12 +536,13 @@ Such variables may be set by mod_setenvif or by other Apache modules.
 
 <ul>
 <li>
-<code>QS_EventRequestLimit &lt;env-variable&gt; &lt;number&gt;</code><br>
+<code>QS_EventRequestLimit &lt;env-variable&gt;[=&lt;regex&gt] &lt;number&gt;</code><br>
 Defines the number of concurrent events. Directive works similar to 
 <code>QS_LocRequestLimit</code> but counting the requests having the same 
-environment variable set rather than having the same URL pattern. 
-Ignores VIP privileges normally but you may evaluate the 
-<code>QS_VipRequest</code> variable, e.g. by using <code>QS_SetEnvIf</code>.
+environment variable (and optionally matching its value too) set 
+rather than having the same URL pattern. Ignores VIP privileges normally 
+but you may evaluate the <code>QS_VipRequest</code> variable, 
+e.g. by using <code>QS_SetEnvIf</code>.
 </li>
 <li>
 <code>QS_EventPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
@@ -629,8 +630,8 @@ QS_EventRequestLimit         QS_LowPrio             400
 # detects the variable "file" within the query portion of the URL:
 QS_SetEnvIfQuery             file=([a-zA-Z]*)       QS_LowPrio=$1
 
-# limit the max. body size since mod_parp loads the whole message into the
-# memory servers's:
+# limit the max. body size since mod_parp loads the whole message into
+# the memory servers's:
 LimitRequestBody             131072
 
 # body pattern detection, examples limits the maximum of concurrent
