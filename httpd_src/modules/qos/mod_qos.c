@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.111 2008-10-26 21:26:15 pbuchbinder Exp $";
-static const char g_revision[] = "7.14";
+static const char revision[] = "$Id: mod_qos.c,v 5.112 2008-10-30 08:50:22 pbuchbinder Exp $";
+static const char g_revision[] = "7.15";
 
 /************************************************************************
  * Includes
@@ -273,9 +273,11 @@ typedef struct qs_acentry_st {
   char *event;
 #ifdef AP_REGEX_H
   ap_regex_t *regex;
+  ap_regex_t *regex_var;
   ap_regex_t *condition;
 #else
   regex_t *regex;
+  regex_t *regex_var;
   regex_t *condition;
 #endif
   int counter;
@@ -442,10 +444,12 @@ typedef struct {
 #ifdef AP_REGEX_H
   /* apache 2.2 */
   ap_regex_t *regex;
+  ap_regex_t *regex_var;
   ap_regex_t *condition;
 #else
   /* apache 2.0 */
   regex_t *regex;
+  regex_t *regex_var;
   regex_t *condition;
 #endif
   long req_per_sec_limit;
@@ -1096,6 +1100,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     }
     e->regex = rule->regex;
     e->condition = rule->condition;
+    e->regex_var = rule->regex_var;
     e->limit = rule->limit;
     if(e->limit == 0 ) {
       if((e->condition == NULL) && (e->event == NULL)) {
@@ -2041,18 +2046,27 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
       apr_global_mutex_lock(act->lock);   /* @CRT31 */
       while(e) {
         if(e->event && (e->limit != -1)) {
-          if(apr_table_get(r->subprocess_env, e->event)) {
-            apr_table_setn(rctx->event_entries, e->url, (char *)e);
-            e->counter++;
-            if(e->counter > e->limit) {
-              rv = m_retcode;
-              ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                            QOS_LOG_PFX(012)"access denied, QS_EventRequestLimit rule: %s(%d),"
-                            " concurrent requests=%d,"
-                            " c=%s, id=%s",
-                            e->url, e->limit, e->counter,
-                            r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
-                            qos_unique_id(r, "012"));
+          const char *var = apr_table_get(r->subprocess_env, e->event);
+          if(var) {
+            int match = 1;
+            if(e->regex_var) {
+              if(ap_regexec(e->regex_var, var, 0, NULL, 0) != 0) {
+                match = 0;
+              }
+            }
+            if(match) {
+              apr_table_setn(rctx->event_entries, e->url, (char *)e);
+              e->counter++;
+              if(e->counter > e->limit) {
+                rv = m_retcode;
+                ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                              QOS_LOG_PFX(012)"access denied, QS_EventRequestLimit rule: %s(%d),"
+                              " concurrent requests=%d,"
+                              " c=%s, id=%s",
+                              e->url, e->limit, e->counter,
+                              r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                              qos_unique_id(r, "012"));
+              }
             }
           }
         }
@@ -4734,6 +4748,7 @@ const char *qos_event_req_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   qs_rule_ctx_t *rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+  char *p = strchr(event, '=');
   rule->url = apr_pstrcat(cmd->pool, "var=(", event, ")", NULL);
   rule->limit = atoi(limit);
   if((rule->limit < 0) || ((rule->limit == 0) && limit && (strcmp(limit, "0") != 0))) {
@@ -4742,7 +4757,22 @@ const char *qos_event_req_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
   }
   sconf->has_event_filter = 1;
   rule->req_per_sec_limit = 0;
-  rule->event = apr_pstrdup(cmd->pool, event);
+  if(p) {
+    p++;
+#ifdef AP_REGEX_H
+    rule->regex_var = ap_pregcomp(cmd->pool, p, AP_REG_EXTENDED);
+#else
+    rule->regex_var = ap_pregcomp(cmd->pool, p, REG_EXTENDED);
+#endif
+    if(rule->regex_var == NULL) {
+      return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
+                          cmd->directive->directive, p);
+    }
+    rule->event = apr_pstrndup(cmd->pool, event, p - event - 1);
+  } else {
+    rule->regex_var = NULL;
+    rule->event = apr_pstrdup(cmd->pool, event);
+  }
   rule->regex = NULL;
   rule->condition = NULL;
   apr_table_setn(sconf->location_t, rule->url, (char *)rule);
@@ -4827,7 +4857,11 @@ const char *qos_event_setenvifquery_cmd(cmd_parms *cmd, void *dcfg, const char *
                                                                 &qos_module);
   qos_setenvifquery_t *setenvif = apr_pcalloc(cmd->pool, sizeof(qos_setenvifquery_t));
   char *p;
+#ifdef AP_REGEX_H
   setenvif->preg = ap_pregcomp(cmd->pool, rx, AP_REG_EXTENDED);
+#else
+  setenvif->preg = ap_pregcomp(cmd->pool, rx, REG_EXTENDED);
+#endif
   if(setenvif->preg == NULL) {
     return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
                         cmd->directive->directive, rx);
@@ -4854,7 +4888,11 @@ const char *qos_event_setenvifparp_cmd(cmd_parms *cmd, void *dcfg, const char *r
                                                                 &qos_module);
   qos_setenvifquery_t *setenvif = apr_pcalloc(cmd->pool, sizeof(qos_setenvifquery_t));
   char *p;
+#ifdef AP_REGEX_H
   setenvif->preg = ap_pregcomp(cmd->pool, rx, AP_REG_EXTENDED);
+#else
+  setenvif->preg = ap_pregcomp(cmd->pool, rx, REG_EXTENDED);
+#endif
   if(setenvif->preg == NULL) {
     return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
                         cmd->directive->directive, rx);
@@ -5457,8 +5495,9 @@ static const command_rec qos_config_cmds[] = {
   /* event */
   AP_INIT_TAKE2("QS_EventRequestLimit", qos_event_req_cmd, NULL,
                 RSRC_CONF,
-                "QS_EventRequestLimit <variable> <number>, defines the allowed"
-                " number of concurrent requests, having the specified variable set."),
+                "QS_EventRequestLimit <variable>[=<regex>] <number>, defines the allowed"
+                " number of concurrent requests, having the specified variable set"
+                " (optionally checking its value too)."),
   AP_INIT_TAKE2("QS_EventPerSecLimit", qos_event_rs_cmd, NULL,
                 RSRC_CONF,
                 "QS_EventPerSecLimit [!]<variable> <number>, defines the allowed"

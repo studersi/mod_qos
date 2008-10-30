@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.100 2008-10-27 19:32:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.101 2008-10-30 08:50:22 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -201,8 +201,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
    # concurrent requests with certain event
    QS_SetEnvIfQuery           QS_EventRequestLimit query
+   QS_SetEnvIfQuery           QS_EventRequestV=([a-z]*) queryv=$1
    QS_EventRequestLimit       query           3
-   QS_EventRequestLimit       PARP_PATTERN   3
+   QS_EventRequestLimit       queryv=abc      3
+   QS_EventRequestLimit       PARP_PATTERN    3
    QS_EventPerSecLimit        query         100
 
    # -----------------------------------------------------------------
