@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.1 2008-01-24 15:25:54 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.2 2008-11-02 20:32:49 pbuchbinder Exp $
 #
 
 
@@ -50,7 +50,7 @@ __Accept-Encoding: gzip,deflate
 __Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
 __Keep-Alive: 300
 __Connection: keep-alive
-__Referer: http://localhost.server.ch/bin/attach/view?show=all
+__Referer: https://localhost.server.ch/viewer/sample/print/__pm0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_view/__ws0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_normal/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_protocol/TCP/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_name/Link0x8A/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_stringNumbers/a-10a/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_port/80/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_foreignMappingValue/60/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_endDate/2007-10-310x812:46/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_struts.portlet.action/0x3view0x3view0x3showChangeServiceName/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_serviceName/test/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_struts.portlet.mode/view/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_bandwithOut/60000x20/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_protocolNumber/6/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_bandwithIn/60000x20/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_startDate/2007-10-300x812:46
 __X-lori-time-1: 1193603219265
 __Authorization: Basic Ukhasdhzgasdljsad76jgasHKdnacnQ=
 __Content-Type: multipart/form-data; boundary=---------------------------16009193506174
