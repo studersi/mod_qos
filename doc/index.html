@@ -174,8 +174,9 @@ More information about mod_qos:
 <a name="build">
 <h2>Build</h2>
 <p>
-mod_qos requires OpenSSL and shared memory. It works with Apache version 2.0 and 2.2 
-(tested in mpm worker and prefork mode)<br>
+mod_qos requires OpenSSL, PCRE (don't use the version which comes with the 
+Apache distribution), threading and shared memory support. mod_qos works 
+with Apache version 2.0 and 2.2 (tested in mpm worker and prefork mode).<br>
 Just copy the module into the modules directory of the Apache server's source code and 
 compile it using the following commands (all examples are using Apache 2.2.8 and 
 mod_qos 4.15):
