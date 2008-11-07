@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.112 2008-10-30 08:50:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.113 2008-11-07 20:41:57 pbuchbinder Exp $";
 static const char g_revision[] = "7.15";
 
 /************************************************************************
@@ -479,6 +479,7 @@ static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 APR_DECLARE_OPTIONAL_FN(apr_table_t *, parp_hp_table, (request_rec *));
 static APR_OPTIONAL_FN_TYPE(parp_hp_table) *qos_parp_hp_table_fn = NULL;
 static int m_requires_parp = 0;
+static int m_enable_audit = 0;
 
 /************************************************************************
  * private functions
@@ -3938,8 +3939,7 @@ static int qos_logger(request_rec *r) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
   time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
-  qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config, &qos_module);
-  if(dconf && (dconf->bodyfilter == 1)) {
+  if(m_enable_audit) {
     qos_audit(r);
   }
   qos_end_res_rate(r, sconf);
@@ -4035,6 +4035,20 @@ static int qos_logger(request_rec *r) {
     }
   }
   return DECLINED;
+}
+
+static void qos_audit_check(ap_directive_t * node) {
+  ap_directive_t *pdir;
+  for(pdir = node; pdir != NULL; pdir = pdir->next) {
+    fprintf(stderr, "%s: [%s]\n", pdir->directive, pdir->args); fflush(stderr);
+    //if(strcasecmp(pdir->directive, "SetHandler") == 0) {
+    if(pdir->args && strstr(pdir->args, "%{qos-path}n%{qos-query}n")) {
+      m_enable_audit = 1;
+    }
+    if(pdir->first_child != NULL) {
+      qos_audit_check(pdir->first_child);
+    }
+  }
 }
 
 static int qos_parp_check() {
@@ -4156,6 +4170,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   apr_pool_cleanup_register(sconf->pool, sconf->act,
                             qos_cleanup_shm, apr_pool_cleanup_null);
 
+  qos_audit_check(ap_conftree);
   if(m_requires_parp) {
     if(qos_parp_check() != APR_SUCCESS) {
       qos_parp_hp_table_fn = NULL;

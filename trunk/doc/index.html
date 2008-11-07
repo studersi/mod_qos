@@ -755,10 +755,8 @@ Enables message body filtering.
 Sample configuration:<br>
 <pre>
 # configure the audit log writing the request body data to a file
-# => use this log to generate a whitelist rules using <a href="qsfilter.html">qsfilter2</a>
-# note: the variable %{qos-path}n and %{qos-query}n are ony set
-#       for locations with enabled body parsing
-CustomLog             logs/qsaudit_log  %{qos-path}n%{qos-query}n
+# (use this log to generate a whitelist rules using <a href="qsfilter.html">qsfilter2</a>)
+CustomLog             logs/qsaudit_log  "%{qos-path}n%{qos-query}n"
 
 # limit the max. body size since mod_parp loads the whole message into the
 # memory servers's:
