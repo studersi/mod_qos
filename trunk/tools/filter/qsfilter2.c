@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.85 2008-10-30 08:50:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.86 2008-11-08 23:14:34 pbuchbinder Exp $";
 static const char g_revision[] = "7.15";
 
 /* system */
@@ -71,7 +71,7 @@ typedef enum  {
 #define QS_SUB                "!$&'\\(\\)\\*\\+,;="
 #define QS_SUB_S              "!$&\\(\\)\\*\\+,;="
 
-#define QS_SIMPLE_PATH_PCRE   "(/[a-zA-Z0-9-_]+)+[/]?\\.?[a-zA-Z]{0,4}"
+#define QS_SIMPLE_PATH_PCRE   "(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}"
 #define QS_B64                "([a-z]+[a-z0-9]*[A-Z]+[A-Z0-9]*)"
 #define QS_HX                 "([A-F0-9]*[A-F]+[0-9]+[A-F0-9]*)"
 

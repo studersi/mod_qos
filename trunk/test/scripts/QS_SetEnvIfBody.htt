@@ -1,0 +1,21 @@
+http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
+#
+# $Id: QS_SetEnvIfBody.htt,v 1.1 2008-11-08 23:14:34 pbuchbinder Exp $
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /error-docs/error.shtml HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/html; charset=utf-8
+__
+__<data>value1</data>
+_WAIT
+
+END
+

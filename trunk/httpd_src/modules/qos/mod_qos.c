@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.113 2008-11-07 20:41:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.114 2008-11-08 23:14:34 pbuchbinder Exp $";
 static const char g_revision[] = "7.15";
 
 /************************************************************************
@@ -187,6 +187,12 @@ typedef struct {
   char *name;
   char *value;
 } qos_setenvifquery_t;
+
+typedef struct {
+  pcre *preg;
+  char *name;
+  char *value;
+} qos_setenvifparpbody_t;
 
 /**
  * generic request filter
@@ -369,6 +375,7 @@ typedef struct {
   apr_table_t *setenvif_t;
   apr_table_t *setenvifquery_t;
   apr_table_t *setenvifparp_t;
+  apr_table_t *setenvifparpbody_t;
   apr_table_t *setenvstatus_t;
   apr_table_t *setenvresheader_t;
   apr_table_t *setenvresheadermatch_t;
@@ -477,7 +484,9 @@ static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 
 /* mod_parp, forward and optional function */
 APR_DECLARE_OPTIONAL_FN(apr_table_t *, parp_hp_table, (request_rec *));
+APR_DECLARE_OPTIONAL_FN(char *, parp_body_data, (request_rec *, apr_size_t *));
 static APR_OPTIONAL_FN_TYPE(parp_hp_table) *qos_parp_hp_table_fn = NULL;
+static APR_OPTIONAL_FN_TYPE(parp_body_data) *parp_appl_body_data_fn = NULL;
 static int m_requires_parp = 0;
 static int m_enable_audit = 0;
 
@@ -1874,6 +1883,49 @@ static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *sete
           replaced = ap_pregsub(r->pool, setenvif->value, query, AP_MAX_REG_MATCH, regm);
         }
         apr_table_setn(r->subprocess_env, name, replaced);
+      }
+    }
+  }
+}
+
+static void qos_parp_hp_body(request_rec *r, qos_srv_config *sconf) {
+  if(apr_table_elts(sconf->setenvifparpbody_t)->nelts > 0) {
+    if(parp_appl_body_data_fn) {
+      apr_size_t len;
+      const char *data = parp_appl_body_data_fn(r, &len);
+      if(data && (len > 0)) {
+        int ovector[2];
+        int i;
+        apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvifparpbody_t)->elts;
+        for(i = 0; i < apr_table_elts(sconf->setenvifparpbody_t)->nelts; i++) {
+          qos_setenvifparpbody_t *setenvif = (qos_setenvifparpbody_t *)entry[i].val;
+          int c = pcre_exec(setenvif->preg, NULL, data, len, 0, 0, ovector, 2);
+          if(c >= 0) {
+            char *name = setenvif->name;
+            char *value = apr_pstrdup(r->pool, setenvif->value);
+            if(name[0] == '!') {
+              apr_table_unset(r->subprocess_env, &name[1]);
+            } else {
+              /*
+              char *replaced = "";
+              if(value) {
+                char *p = strstr(value, "$1");
+                if(p == NULL) {
+                  replaced = value;
+                } else {
+                  p[0] = '\0';
+                  p = p + 2;
+                  replaced = apr_pstrcat(r->pool, value,
+                                         apr_pstrndup(r->pool, &data[ovector[0]], ovector[1] - ovector[0]),
+                                         p,
+                                         NULL);
+                }
+              }
+              */
+              apr_table_setn(r->subprocess_env, name, value);
+            }
+          }
+        }
       }
     }
   }
@@ -3431,6 +3483,7 @@ static int qos_header_parser(request_rec * r) {
      * additional variables
      */
     qos_parp_hp(r, sconf);
+    qos_parp_hp_body(r, sconf);
     qos_setenvifquery(r, sconf);
     qos_setenvif(r, sconf);
 
@@ -4040,8 +4093,6 @@ static int qos_logger(request_rec *r) {
 static void qos_audit_check(ap_directive_t * node) {
   ap_directive_t *pdir;
   for(pdir = node; pdir != NULL; pdir = pdir->next) {
-    fprintf(stderr, "%s: [%s]\n", pdir->directive, pdir->args); fflush(stderr);
-    //if(strcasecmp(pdir->directive, "SetHandler") == 0) {
     if(pdir->args && strstr(pdir->args, "%{qos-path}n%{qos-query}n")) {
       m_enable_audit = 1;
     }
@@ -4179,6 +4230,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                    " (required by some directives)");
     } else {
       qos_parp_hp_table_fn = APR_RETRIEVE_OPTIONAL_FN(parp_hp_table);
+      parp_appl_body_data_fn = APR_RETRIEVE_OPTIONAL_FN(parp_body_data);
     }
   }
   if(u->server_start == 2) {
@@ -4426,6 +4478,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparp_t = apr_table_make(sconf->pool, 1);
+  sconf->setenvifparpbody_t = apr_table_make(sconf->pool, 1);
   sconf->setenvstatus_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
@@ -4895,6 +4948,36 @@ const char *qos_event_setenvifquery_cmd(cmd_parms *cmd, void *dcfg, const char *
     setenvif->value = p;
   }
   apr_table_setn(sconf->setenvifquery_t, apr_pstrdup(cmd->pool, rx), (char *)setenvif);
+  return NULL;
+}
+
+const char *qos_event_setenvifparpbody_cmd(cmd_parms *cmd, void *dcfg,
+                                           const char *rx, const char *v) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qos_setenvifparpbody_t *setenvif = apr_pcalloc(cmd->pool, sizeof(qos_setenvifparpbody_t));
+  char *p;
+  const char *errptr = NULL;
+  int erroffset;
+  setenvif->preg = pcre_compile(rx, PCRE_DOTALL | PCRE_CASELESS, &errptr, &erroffset, NULL);
+  if(setenvif->preg == NULL) {
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
+                        " reason: %s", 
+                        cmd->directive->directive,
+                        erroffset, errptr);
+  }
+  apr_pool_cleanup_register(cmd->pool, setenvif->preg, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  setenvif->name = apr_pstrdup(cmd->pool, v);
+  p = strchr(setenvif->name, '=');
+  if(p == NULL) {
+    setenvif->value = apr_pstrdup(cmd->pool, "");
+  } else {
+    p[0] = '\0';
+    p++;
+    setenvif->value = p;
+  }
+  m_requires_parp = 1;
+  apr_table_setn(sconf->setenvifparpbody_t, apr_pstrdup(cmd->pool, rx), (char *)setenvif);
   return NULL;
 }
 
@@ -5415,10 +5498,6 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ErrorResponseCode", qos_error_code_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorResponseCode <code>, defines the HTTP response code, default is 500."),
-//   AP_INIT_TAKE1("QS_Audit", qos_audit_cmd, NULL,
-//                 RSRC_CONF,
-//                 " QS_Audit <path>, specifies the audit log file where mod_qos writes"
-//                 " the request path any payload to."),
   /* vip session */
   AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
                 RSRC_CONF,
@@ -5535,6 +5614,11 @@ static const command_rec qos_config_cmds[] = {
                 " parsed the request payload using the Apache module"
                 " mod_parp. It matches the request URL query and the body"
                 " data as well and sets the defined process variable."),
+  AP_INIT_TAKE2("QS_SetEnvIfBody", qos_event_setenvifparpbody_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetEnvIfBody <regex> [!]<variable>[=value],"
+                " parsed the request body using the Apache module"
+                " mod_parp."),
   AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvStatus <status code> <variable>, adds the defined"
