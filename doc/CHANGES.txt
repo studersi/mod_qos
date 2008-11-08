@@ -2,6 +2,10 @@ Version
 
  - Directive QS_EventRequestLimit may match variable values too.
 
+ - New directive QS_SetEnvIfBody.
+
+ - Audit log is enabled based on the defined log format variables.
+
 Version 7.14
 
  - New directive QS_DenyBody implements generic request body

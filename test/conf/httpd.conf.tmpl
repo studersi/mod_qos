@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.102 2008-11-07 20:41:57 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.103 2008-11-08 23:14:34 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -128,6 +128,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_SetEnvIfQuery name=([a-z]*)         NAME=mein_name_ist_$1
    QS_SetEnvIfQuery other;value=(.*)match VALUE=$1
    QS_SetEnvIfQuery ok                    EMPTY
+
+   PARP_BodyData              text/html
+   SetEnvIf     Content-Type  text/html.*   parp
+   QS_SetEnvIfBody  "<data>(.*)</data>" PARP_PATTERN=parp[$1]
 
    # disable mod_parp for header filter test
    # SetEnvIf         Request_URI /cgi-local/index.cgi !parp
