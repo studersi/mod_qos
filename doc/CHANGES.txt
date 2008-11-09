@@ -1,4 +1,4 @@
-Version
+Version 7.15
 
  - Directive QS_EventRequestLimit may match variable values too.
 
