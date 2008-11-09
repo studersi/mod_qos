@@ -570,7 +570,9 @@ variables to a new event type.
 <code>QS_SetEnvIfQuery &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Directive works quite simliar to the <code>SetEnvIf</code> directive 
 of the Apache module mod_setenvif but the specified regex is 
-applied against the query string portion of the request line.
+applied against the query string portion of the request line. The directive 
+recognizes the occurrences of $1..$9 within value and replaces them by 
+the subexpressions of the defined regex pattern.
 </li>
 <li>
 <code>QS_SetEnvIfParp &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
@@ -580,7 +582,7 @@ the request URL query and the HTTP request message body data as well
 (<code>application/x-www-form-urlencoded</code>, 
 <code>multipart/form-data</code>, and <code>multipart/mixed</code>) 
 and sets the defined process variable (quite similar to the 
-<code>QS_SetEnvIfQuery</code> directive). mod_qos recognizes the 
+<code>QS_SetEnvIfQuery</code> directive). The directive recognizes the 
 occurrences of $1..$9 within value and replaces them by the subexpressions 
 of the defined regex pattern. This directive activates 
 mod_parp for every request to the virtual host. 
@@ -598,9 +600,9 @@ Directive parsing the request body using the Apache module
 <a href="http://parp.sourceforge.net">mod_parp</a>. Specify the content 
 types to process using the mod_parp directive <code>PARP_BodyData</code> 
 and ensure that mod_parp is enabled using the <code>SetEnvIf</code> directive 
-of the Apache module mod_setenvif. mod_qos recognizes the 
-occurrences of $1 within value and replaces them by the subexpression 
-of the defined regex pattern (should be a string).
+of the Apache module mod_setenvif. You should limit the allowed size of HTTP 
+requests message body using the <code>LimitRequestBody</code> directive 
+when using mod_parp.
 </li>
 <li>
 <code>QS_SetEnvStatus &lt;code&gt; &lt;env-variable&gt;</code><br>
@@ -647,8 +649,8 @@ LimitRequestBody             131072
 
 # body pattern detection, examples limits the maximum of concurrent
 # the requests posting "id=1234" to ten:
-QS_SetEnvIfParp  id=1234     PARP_PATTERN=on
-QS_EventRequestLimit         PARP_PATTERN           10
+QS_SetEnvIfParp  id=([0-9]*) PARP_PATTERN=$1
+QS_EventRequestLimit         PARP_PATTERN=1234      10
 # but ignore requests to the location /main/ (any any sub-locations):
 SetEnvIf    Request_URI      /main/.*               !parp
 </pre>

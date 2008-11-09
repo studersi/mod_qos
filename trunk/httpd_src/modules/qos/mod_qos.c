@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.114 2008-11-08 23:14:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.115 2008-11-09 19:02:49 pbuchbinder Exp $";
 static const char g_revision[] = "7.15";
 
 /************************************************************************
@@ -1882,7 +1882,7 @@ static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *sete
         if(setenvif->value) {
           replaced = ap_pregsub(r->pool, setenvif->value, query, AP_MAX_REG_MATCH, regm);
         }
-        apr_table_setn(r->subprocess_env, name, replaced);
+        apr_table_set(r->subprocess_env, name, replaced);
       }
     }
   }
@@ -1906,23 +1906,7 @@ static void qos_parp_hp_body(request_rec *r, qos_srv_config *sconf) {
             if(name[0] == '!') {
               apr_table_unset(r->subprocess_env, &name[1]);
             } else {
-              /*
-              char *replaced = "";
-              if(value) {
-                char *p = strstr(value, "$1");
-                if(p == NULL) {
-                  replaced = value;
-                } else {
-                  p[0] = '\0';
-                  p = p + 2;
-                  replaced = apr_pstrcat(r->pool, value,
-                                         apr_pstrndup(r->pool, &data[ovector[0]], ovector[1] - ovector[0]),
-                                         p,
-                                         NULL);
-                }
-              }
-              */
-              apr_table_setn(r->subprocess_env, name, value);
+              apr_table_set(r->subprocess_env, name, value != NULL ? value : "");
             }
           }
         }
