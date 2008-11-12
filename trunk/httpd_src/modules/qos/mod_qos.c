@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.115 2008-11-09 19:02:49 pbuchbinder Exp $";
-static const char g_revision[] = "7.15";
+static const char revision[] = "$Id: mod_qos.c,v 5.116 2008-11-12 10:19:28 pbuchbinder Exp $";
+static const char g_revision[] = "7.16";
 
 /************************************************************************
  * Includes
@@ -3133,6 +3133,31 @@ static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
 }
 #endif
 
+static void qos_audit(request_rec *r) {
+  const char *q = apr_table_get(r->notes, QS_PARP_QUERY);
+  const char *u = apr_table_get(r->notes, QS_PARP_PATH);
+  if(u == NULL) {
+    if(r->parsed_uri.path) {
+      u = apr_pstrdup(r->pool, r->parsed_uri.path);
+    } else {
+      u = apr_pstrdup(r->pool, "");
+    }
+    apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_PATH), u);
+  }
+  if(q == 0) {
+    if(r->parsed_uri.query) {
+      q = apr_pstrcat(r->pool, "?", r->parsed_uri.query, NULL);
+    } else {
+      q = apr_pstrdup(r->pool, "");
+    }
+    apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
+  }
+  if(r->next) {
+    apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_PATH), u);
+    apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
+  }
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -3441,6 +3466,10 @@ static int qos_header_parser(request_rec * r) {
      * QS_Permit* / QS_Deny* enforcement
      */
     status = qos_hp_filter(r, sconf, dconf);
+    /* prepare audit log */
+    if(m_enable_audit) {
+      qos_audit(r);
+    }
     if(status != DECLINED) {
       return status;
     }
@@ -3945,27 +3974,6 @@ static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
   apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
 }
 
-static void qos_audit(request_rec *r) {
-  const char *q = apr_table_get(r->notes, QS_PARP_QUERY);
-  const char *u = apr_table_get(r->notes, QS_PARP_PATH);
-  if(u == NULL) {
-    u = r->parsed_uri.path;
-    apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_PATH), u);
-  }
-  if(q == 0) {
-    if(r->parsed_uri.query) {
-      q = apr_pstrcat(r->pool, "?", r->parsed_uri.query, NULL);
-    } else {
-      q = apr_pstrdup(r->pool, "");
-    }
-    apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
-  }
-  if(r->next) {
-    apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_PATH), u);
-    apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
-  }
-}
-
 /**
  * "free resources" and update stats
  */
@@ -3976,9 +3984,6 @@ static int qos_logger(request_rec *r) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
   time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
-  if(m_enable_audit) {
-    qos_audit(r);
-  }
   qos_end_res_rate(r, sconf);
   qos_setenvstatus(r, sconf);
   qos_setenvif(r, sconf);
