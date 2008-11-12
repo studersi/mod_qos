@@ -602,7 +602,9 @@ types to process using the mod_parp directive <code>PARP_BodyData</code>
 and ensure that mod_parp is enabled using the <code>SetEnvIf</code> directive 
 of the Apache module mod_setenvif. You should limit the allowed size of HTTP 
 requests message body using the <code>LimitRequestBody</code> directive 
-when using mod_parp.
+when using mod_parp. The directive recognizes the occurrence of $1 within 
+the variable value and replaces it by the subexpressions of the defined regex 
+pattern.
 </li>
 <li>
 <code>QS_SetEnvStatus &lt;code&gt; &lt;env-variable&gt;</code><br>

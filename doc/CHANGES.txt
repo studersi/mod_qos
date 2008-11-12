@@ -1,3 +1,9 @@
+Version 7.17
+
+ - QS_SetEnvIfBody recognizes the occurrence of $1 within
+   the variable value and replaces it by the subexpressions
+   of the defined regex pattern.
+
 Version 7.16
 
  - Set audit log variables at header parser hook.
