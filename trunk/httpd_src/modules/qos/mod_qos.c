@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.116 2008-11-12 10:19:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.117 2008-11-12 20:52:53 pbuchbinder Exp $";
 static const char g_revision[] = "7.16";
 
 /************************************************************************
@@ -190,6 +190,7 @@ typedef struct {
 
 typedef struct {
   pcre *preg;
+  ap_regex_t *pregx;
   char *name;
   char *value;
 } qos_setenvifparpbody_t;
@@ -1894,18 +1895,26 @@ static void qos_parp_hp_body(request_rec *r, qos_srv_config *sconf) {
       apr_size_t len;
       const char *data = parp_appl_body_data_fn(r, &len);
       if(data && (len > 0)) {
-        int ovector[2];
+        int ovector[3];
         int i;
         apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvifparpbody_t)->elts;
         for(i = 0; i < apr_table_elts(sconf->setenvifparpbody_t)->nelts; i++) {
           qos_setenvifparpbody_t *setenvif = (qos_setenvifparpbody_t *)entry[i].val;
-          int c = pcre_exec(setenvif->preg, NULL, data, len, 0, 0, ovector, 2);
+          int c = pcre_exec(setenvif->preg, NULL, data, len, 0, 0, ovector, 3);
           if(c >= 0) {
             char *name = setenvif->name;
             char *value = apr_pstrdup(r->pool, setenvif->value);
             if(name[0] == '!') {
               apr_table_unset(r->subprocess_env, &name[1]);
             } else {
+              char *p = strstr(value, "$1");
+              if(p) {
+                char *c = apr_pstrndup(r->pool, &data[ovector[0]], ovector[1] - ovector[0]);
+                ap_regmatch_t regm[AP_MAX_REG_MATCH];
+                if(ap_regexec(setenvif->pregx, c, AP_MAX_REG_MATCH, regm, 0) == 0) {
+                  value = ap_pregsub(r->pool, value, c, AP_MAX_REG_MATCH, regm);
+                }
+              }
               apr_table_set(r->subprocess_env, name, value != NULL ? value : "");
             }
           }
@@ -4948,6 +4957,11 @@ const char *qos_event_setenvifparpbody_cmd(cmd_parms *cmd, void *dcfg,
   char *p;
   const char *errptr = NULL;
   int erroffset;
+#ifdef AP_REGEX_H
+  setenvif->pregx = ap_pregcomp(cmd->pool, rx, AP_REG_EXTENDED);
+#else
+  setenvif->pregx = ap_pregcomp(cmd->pool, rx, REG_EXTENDED);
+#endif
   setenvif->preg = pcre_compile(rx, PCRE_DOTALL | PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(setenvif->preg == NULL) {
     return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
@@ -4956,6 +4970,10 @@ const char *qos_event_setenvifparpbody_cmd(cmd_parms *cmd, void *dcfg,
                         erroffset, errptr);
   }
   apr_pool_cleanup_register(cmd->pool, setenvif->preg, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  if(setenvif->pregx == NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
+                        cmd->directive->directive, rx);
+  }
   setenvif->name = apr_pstrdup(cmd->pool, v);
   p = strchr(setenvif->name, '=');
   if(p == NULL) {
