@@ -1,3 +1,7 @@
+Version 7.16
+
+ - Set audit log variables at header parser hook.
+
 Version 7.15
 
  - Directive QS_EventRequestLimit may match variable values too.
