@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.118 2008-11-12 20:54:16 pbuchbinder Exp $";
-static const char g_revision[] = "7.17";
+static const char revision[] = "$Id: mod_qos.c,v 5.119 2008-11-13 21:03:53 pbuchbinder Exp $";
+static const char g_revision[] = "7.18";
 
 /************************************************************************
  * Includes
@@ -1639,7 +1639,8 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
         }
       }
       if(deny_rule && (ex == 0)) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+        int severity = rfilter->action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
                       QOS_LOG_PFX(040)"access denied, %s rule id: %s (%s),"
                       " action=%s, c=%s, id=%s",
                       qos_rfilter_type2text(r->pool, rfilter->type),
@@ -1654,7 +1655,8 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
     }
   }
   if(permit_rule && !permit_rule_match) {
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+    int severity = permit_rule_action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
                   QOS_LOG_PFX(041)"access denied, no permit rule match, action=%s, c=%s, id=%s",
                   permit_rule_action == QS_DENY ? "deny" : "log only",
                   r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,

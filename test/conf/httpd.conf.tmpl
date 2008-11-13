@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.105 2008-11-12 20:52:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.106 2008-11-13 21:03:53 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -244,6 +244,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    Include 	  conf/qos_viewer.conf
    <Location /qos/merged>
        QS_DenyRequestLine -restrict    deny                .*private.*
+       QS_DenyRequestLine +l01         log                 .*sample.*
        SetEnvIf           Content-Type multipart/form-data QS_EV=1
        QS_DenyEvent       +event       deny                QS_EV
    </Location>
