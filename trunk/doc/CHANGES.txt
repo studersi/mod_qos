@@ -1,3 +1,7 @@
+Version 7.18
+
+ - QS_Deny/Permit logs on severity warning if action is log only.
+
 Version 7.17
 
  - QS_SetEnvIfBody recognizes the occurrence of $1 within
