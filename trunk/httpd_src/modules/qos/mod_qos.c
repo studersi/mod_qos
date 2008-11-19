@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.119 2008-11-13 21:03:53 pbuchbinder Exp $";
-static const char g_revision[] = "7.18";
+static const char revision[] = "$Id: mod_qos.c,v 5.120 2008-11-19 19:08:45 pbuchbinder Exp $";
+static const char g_revision[] = "7.19";
 
 /************************************************************************
  * Includes
@@ -1627,8 +1627,14 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
         ex = pcre_exec(rfilter->pr, NULL, query, query_len, 0, 0, NULL, 0);
       } else if(rfilter->type == QS_DENY_EVENT) {
         deny_rule = 1;
-        if(apr_table_get(r->subprocess_env, rfilter->text) != NULL) {
-          ex = 0;
+        if(rfilter->text[0] == '!') {
+          if(apr_table_get(r->subprocess_env, &rfilter->text[1]) == NULL) {
+            ex = 0;
+          }
+        } else {
+          if(apr_table_get(r->subprocess_env, rfilter->text) != NULL) {
+            ex = 0;
+          }
         }
       } else {
         permit_rule = 1;
@@ -5662,9 +5668,10 @@ static const command_rec qos_config_cmds[] = {
                 " query only."),
   AP_INIT_TAKE3("QS_DenyEvent", qos_deny_event_cmd, NULL,
                 ACCESS_CONF,
-                "QS_DenyEvent '+'|'-'<id> 'log'|'deny' <variable>, matches"
+                "QS_DenyEvent '+'|'-'<id> 'log'|'deny' [!]<variable>, matches"
                 " requests having the defined process"
-                " environment variable set. The action taken for matching rules"
+                " environment variable set (or NOT set if prefixed by a '!')."
+                " The action taken for matching rules"
                 " is either 'log' (access is granted but the rule match is"
                 " logged) or 'deny' (access is denied)."),
   AP_INIT_TAKE3("QS_PermitUri", qos_permit_uri_cmd, NULL,
