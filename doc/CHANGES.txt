@@ -1,3 +1,8 @@
+Version 
+
+ - QS_DenyEvent may be used to block requests which do NOT have
+   the specified event set.
+
 Version 7.18
 
  - QS_Deny/Permit logs on severity warning if action is log only.
