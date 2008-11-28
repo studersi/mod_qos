@@ -1,7 +1,10 @@
-Version 
+Version 7.19
 
  - QS_DenyEvent may be used to block requests which do NOT have
    the specified event set.
+
+ - QS_DenyEvent is applied after the QS_SetEnvIf* directives.
+   See mod_qos_seq.gif for more details.
 
 Version 7.18
 

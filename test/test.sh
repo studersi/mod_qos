@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.71 2008-11-09 19:02:49 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.72 2008-11-28 20:54:04 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -456,7 +456,7 @@ fi
 
 # - query/parp/path --------------------------------------------
 ./ctl.sh restart -D cc -D real_ip > /dev/null
-PSCR="QS_SetEnvIfQuery.htt QS_SetEnvIfParp.htt QS_SetEnvIfBody.htt QS_DenyQueryParp.htt QS_DenyPath.htt QS_DenyQuery.htt"
+PSCR="QS_SetEnvIfQuery.htt QS_SetEnvIfParp.htt QS_SetEnvIfBody.htt QS_SetEnvIfBody_support.htt QS_DenyQueryParp.htt QS_DenyPath.htt QS_DenyQuery.htt"
 for E in $PSCR; do
     ./htt.sh -s ./scripts/${E}
     if [ $? -ne 0 ]; then
@@ -464,6 +464,11 @@ for E in $PSCR; do
 	echo "FAILED $E"
     fi
 done
+./htt.sh -s ./scripts/Count.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED Count.htt"
+fi
 
 # - DDoS -------------------------------------------------------
 ./htt.sh -s ./scripts/QS_SrvRequestRate_0.htt

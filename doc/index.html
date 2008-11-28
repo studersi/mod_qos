@@ -533,7 +533,9 @@ QS_CondLocRequestLimitMatch   "^(/app/b/|/app/c/).*$"  10   spider
 <h3>Events</h3>
 mod_qos may control the frequency of "events". An event may be any 
 request attribute which can be represented by an environment variable. 
-Such variables may be set by mod_setenvif or by other Apache modules.
+Such variables may be set by mod_setenvif or by other Apache modules. 
+Please attend to the <a href="mod_qos_seq.gif">order</a> of command 
+execution to ensure the necessary variables are set.
 
 <ul>
 <li>

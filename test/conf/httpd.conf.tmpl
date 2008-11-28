@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.107 2008-11-19 19:08:45 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.108 2008-11-28 20:54:04 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -159,6 +159,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPassReverse           /app/d http://localhost:##QS_PORT_BASE6##/app/d
    ProxyPass                  /app/e http://localhost:9999/app/e
    ProxyPassReverse           /app/e http://localhost:9999/app/e
+   ProxyPass                  /support http://localhost:##QS_PORT_BASE6##/support
+   ProxyPassReverse           /support http://localhost:##QS_PORT_BASE6##/support
 
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
@@ -283,6 +285,18 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        SecDefaultAction "nolog,pass,phase:2,status:500,t:urlDecodeUni,t:htmlEntityDecode,t:lowercase"
        SecRule ARGS "trigger" "setenv:argmatch=trigger"
        SecRequestBodyAccess on
+   </Location>
+   
+   #ProxyPass              /support http://localhost:##QS_PORT_BASE6##/support
+   #ProxyPassReverse       /support http://localhost:##QS_PORT_BASE6##/support
+   PARP_BodyData                       text/xml
+   SetEnvIf               Content-Type text/xml.* parp
+   QS_SetEnvIfBody        <codeApplication>(A1|A2|A3)</codeApplication> CODEAPPLI=$1
+   QS_EventRequestLimit   CODEAPPLI=A1       1
+   QS_EventRequestLimit   CODEAPPLI=A2       5
+   QS_EventRequestLimit   CODEAPPLI=A3       10
+   <Location /support>
+     QS_DenyEvent        +BADCODEAPPLI deny !CODEAPPLI
    </Location>
 
 </VirtualHost>
