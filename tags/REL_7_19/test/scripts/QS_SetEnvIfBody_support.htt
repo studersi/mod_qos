@@ -1,0 +1,46 @@
+http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
+#
+# $Id: QS_SetEnvIfBody_support.htt,v 1.1 2008-11-28 20:54:04 pbuchbinder Exp $
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /support HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/xml
+__
+__<node>
+__<codeApplication>A1</codeApplication>
+_-<node>
+_EXPECT . "==OK1=="
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /support HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/xml
+__
+__<node>
+__<codeApplication>A4</codeApplication>
+_-<node>
+_EXPECT . "code=040"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==OK1==
+
+END
