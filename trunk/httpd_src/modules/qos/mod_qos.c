@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.120 2008-11-19 19:08:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.121 2008-11-28 20:54:03 pbuchbinder Exp $";
 static const char g_revision[] = "7.19";
 
 /************************************************************************
@@ -1544,6 +1544,47 @@ static const char *qos_parp_query(request_rec *r, apr_table_t *tl) {
   return &query[1];
 }
 
+/* filter events */
+static int qos_per_dir_event_rules(request_rec *r, qos_dir_config *dconf) {
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(dconf->rfilter_table)->elts;
+  int i;
+  for(i = 0; i < apr_table_elts(dconf->rfilter_table)->nelts; i++) {
+    if(entry[i].key[0] == '+') {
+      int deny_rule = 0;
+      int ex = -1;
+      qos_rfilter_t *rfilter = (qos_rfilter_t *)entry[i].val;
+      if(rfilter->type == QS_DENY_EVENT) {
+        deny_rule = 1;
+        if(rfilter->text[0] == '!') {
+          if(apr_table_get(r->subprocess_env, &rfilter->text[1]) == NULL) {
+            ex = 0;
+          }
+        } else {
+          if(apr_table_get(r->subprocess_env, rfilter->text) != NULL) {
+            ex = 0;
+          }
+        }
+      }
+      if(deny_rule && (ex == 0)) {
+        int severity = rfilter->action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
+                      QOS_LOG_PFX(040)"access denied, %s rule id: %s (%s),"
+                      " action=%s, c=%s, id=%s",
+                      qos_rfilter_type2text(r->pool, rfilter->type),
+                      rfilter->id,
+                      rfilter->text, rfilter->action == QS_DENY ? "deny" : "log only",
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      qos_unique_id(r, "040"));
+        if(rfilter->action == QS_DENY) {
+          return HTTP_FORBIDDEN;
+        }
+      }
+    }
+  }
+  return APR_SUCCESS;
+}
+  
+
 /**
  * processes the per location rules QS_Permit* and QS_Deny*
  */
@@ -1626,16 +1667,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
         deny_rule = 1;
         ex = pcre_exec(rfilter->pr, NULL, query, query_len, 0, 0, NULL, 0);
       } else if(rfilter->type == QS_DENY_EVENT) {
-        deny_rule = 1;
-        if(rfilter->text[0] == '!') {
-          if(apr_table_get(r->subprocess_env, &rfilter->text[1]) == NULL) {
-            ex = 0;
-          }
-        } else {
-          if(apr_table_get(r->subprocess_env, rfilter->text) != NULL) {
-            ex = 0;
-          }
-        }
+        /* event rules are processed seperately */
       } else {
         permit_rule = 1;
         ex = pcre_exec(rfilter->pr, NULL, uri, uri_len, 0, 0, NULL, 0);
@@ -1778,6 +1810,32 @@ static void qos_cal_req_sec(request_rec *r, qs_acentry_t *e) {
                   e->url, e->req_per_sec_limit,
                   e->req_per_sec, e->req_per_sec_block_rate);
   }
+}
+
+/*
+ * QS_DenyEvent
+ */
+static int qos_hp_event_deny_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
+  if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
+    apr_status_t rv = qos_per_dir_event_rules(r, dconf);
+    if(rv != APR_SUCCESS) {
+      const char *error_page = sconf->error_page;
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      if(r->subprocess_env) {
+        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+        if(v) {
+          error_page = v;
+        }
+      }
+      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+      if(error_page) {
+        qos_error_response(r, error_page);
+          return DONE;
+      }
+      return rv;
+    }
+  }
+  return DECLINED;
 }
 
 /* 
@@ -3480,7 +3538,7 @@ static int qos_header_parser(request_rec * r) {
     qs_req_ctx *rctx = NULL;
 
     /* 
-     * QS_Permit* / QS_Deny* enforcement
+     * QS_Permit* / QS_Deny* enforcement (but not QS_DenyEvent)
      */
     status = qos_hp_filter(r, sconf, dconf);
     /* prepare audit log */
@@ -3517,6 +3575,14 @@ static int qos_header_parser(request_rec * r) {
     qos_setenvifquery(r, sconf);
     qos_setenvif(r, sconf);
 
+
+    /*
+     * QS_DenyEvent
+     */
+    status = qos_hp_event_deny_filter(r, sconf, dconf);
+    if(status != DECLINED) {
+      return status;
+    }
 
     /*
      * QS_EventRequestLimit
