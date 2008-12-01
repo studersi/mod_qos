@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.108 2008-11-28 20:54:04 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.109 2008-12-01 21:04:28 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -61,7 +61,7 @@ MaxKeepAliveRequests    100
 KeepAliveTimeout        5
 
 LimitRequestFields      30
-LimitRequestBody        1048576
+LimitRequestBody        65536
 <IfDefine !cc>
 QS_SrvPreferNet
 </IfDefine>
@@ -85,7 +85,7 @@ DefaultType             text/plain
 AddType                 text/html .shtml
 AddOutputFilter         INCLUDES .shtml
 
-LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e %{qs_special}e #%P"
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o %{mod_qos_ev}o %{mod_qos_con}o id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i #%P"
 
 LogLevel                warn
 #ErrorLog                "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 3600 -f"
@@ -261,6 +261,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    <Location /qos/parp>
        QS_DenyBody                   on
        QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+       QS_DenyDecoding    html
    </Location>
    <Location /qos/parp/sub>
    </Location>
