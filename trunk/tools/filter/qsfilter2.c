@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.90 2008-11-19 19:08:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.91 2008-12-01 21:04:28 pbuchbinder Exp $";
 static const char g_revision[] = "7.19";
 
 /* system */
@@ -217,7 +217,7 @@ static int qos_unescaping(char *x) {
     return 0;
   for (i = 0, j = 0; x[i] != '\0'; i++, j++) {
     ch = x[i];
-    if (ch == '%' && isxdigit(x[i + 1]) && isxdigit(x[i + 2])) {
+    if(ch == '%' && qos_ishex(x[i + 1]) && qos_ishex(x[i + 2])) {
       ch = qos_hex2c(&x[i + 1]);
       i += 2;
     } else if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
