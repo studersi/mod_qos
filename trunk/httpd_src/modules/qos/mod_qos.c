@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.122 2008-12-01 21:04:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.123 2008-12-01 21:15:44 pbuchbinder Exp $";
 static const char g_revision[] = "7.20";
 
 /************************************************************************
@@ -369,7 +369,6 @@ typedef struct {
   int headerfilter;
   int bodyfilter;
   int dec_mode;
-  //  long long maxsize;
 } qos_dir_config;
 
 /**
@@ -1463,10 +1462,17 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
 }
 
 // 000-255
-int qos_dec2c(const char *x) {
+int qos_dec32c(const char *x) {
   char buf[4];
   strncpy(buf, x, 3);
   buf[3] = '\0';
+  return atoi(buf);
+}
+
+int qos_dec22c(const char *x) {
+  char buf[4];
+  strncpy(buf, x, 2);
+  buf[2] = '\0';
   return atoi(buf);
 }
 
@@ -1500,7 +1506,7 @@ static int qos_ishex(char x) {
   return 0;
 }
 
-/* url unescaping (%xx, \xHH, '+', html (amp/angelbr, &#xHH;, &#DDD;))
+/* url unescaping (%xx, \xHH, '+', html (amp/angelbr, &#xHH;, &#DDD;, &#DD;))
  * TODO: unicode, ansi c esc (\n, \r, ...), charset conv */
 static int qos_unescaping(char *x, int mode) {
   int html = mode & QOS_DEC_MODE_FLAGS_HTML;
@@ -1529,8 +1535,13 @@ static int qos_unescaping(char *x, int mode) {
     } else if(html &&
               (ch == '&') && (x[i + 1] == '#') && isdigit(x[i + 2]) &&
               isdigit(x[i + 3]) && isdigit(x[i + 4]) && (x[i + 5] == ';')) {
-      ch = qos_dec2c(&x[i + 3]);
+      ch = qos_dec32c(&x[i + 3]);
       i += 5;
+    } else if(html &&
+              (ch == '&') && (x[i + 1] == '#') && isdigit(x[i + 2]) &&
+              isdigit(x[i + 3]) && (x[i + 4] == ';')) {
+      ch = qos_dec22c(&x[i + 3]);
+      i += 4;
     } else if(html &&
               (ch == '&') && (strncasecmp(&x[i + 1], "amp;", 4) == 0)) {
       ch = '&';
@@ -1543,6 +1554,10 @@ static int qos_unescaping(char *x, int mode) {
               (ch == '&') && (strncasecmp(&x[i + 1], "gt;", 3) == 0)) {
       ch = '>';
       i += 4;
+    } else if(html &&
+              (ch == '&') && (strncasecmp(&x[i + 1], "quot;", 5) == 0)) {
+      ch = '"';
+      i += 6;
       //} else if(mode & QOS_DEC_MODE_FLAGS_ESC) {
       //} else if(mode & QOS_DEC_MODE_FLAGS_UNI) {
     }
@@ -4539,7 +4554,6 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->headerfilter = -1;
   dconf->bodyfilter = -1;
   dconf->dec_mode = QOS_DEC_MODE_FLAGS_NONE;
-  //  dconf->maxsize = -1;
   return dconf;
 }
 
@@ -4560,13 +4574,6 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   } else {
     dconf->bodyfilter = b->bodyfilter;
   }
-  /*
-  if(o->maxsize != -1) {
-    dconf->maxsize = o->maxsize;
-  } else {
-    dconf->maxsize = b->maxsize;
-  }
-  */
   if(o->dec_mode != QOS_DEC_MODE_FLAGS_NONE) {
     dconf->dec_mode = o->dec_mode;
   } else {
@@ -5446,18 +5453,6 @@ const char *qos_denyinheritoff_cmd(cmd_parms *cmd, void *dcfg) {
   return NULL;
 }
 
-/*
-const char *qos_lmitrequestbody_cmd(cmd_parms *cmd, void *dcfg, const char *size) {
-  qos_dir_config *dconf = (qos_dir_config*)dcfg;
-  dconf->maxsize = atoll(size);
-  if((dconf->maxsize == 0) && (size[0] != '0')) {
-    return apr_psprintf(cmd->pool, "%s: bytes must be a numeric value", 
-                        cmd->directive->directive);
-  }
-  return NULL;
-}
-*/
-
 const char *qos_denybody_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
   dconf->bodyfilter = flag;
@@ -5855,12 +5850,6 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_FLAG("QS_DenyBody", qos_denybody_cmd, NULL,
                ACCESS_CONF,
                "QS_DenyBody 'on'|'off', enabled body data filter."),
-  /*
-  AP_INIT_TAKE1("QS_LimitRequestBody", qos_lmitrequestbody_cmd, NULL,
-                ACCESS_CONF,
-                "QS_LimitRequestBody <bytes>, defines the maximum number of bytes"
-                " which may be posted by a client."),
-  */
   /* client control */
   AP_INIT_TAKE1("QS_ClientEntries", qos_client_cmd, NULL,
                 RSRC_CONF,
