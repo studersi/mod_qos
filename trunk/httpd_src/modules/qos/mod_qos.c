@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.123 2008-12-01 21:15:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.124 2008-12-02 06:51:54 pbuchbinder Exp $";
 static const char g_revision[] = "7.20";
 
 /************************************************************************
@@ -108,12 +108,11 @@ static const char g_revision[] = "7.20";
 
 #define QS_MAX_DELAY 5000
 
-#define QOS_DEC_MODE_FLAGS_NONE       0x00
-#define QOS_DEC_MODE_FLAGS_STD        0x01
-#define QOS_DEC_MODE_FLAGS_HTML       0x02
-#define QOS_DEC_MODE_FLAGS_UNI        0x04
-#define QOS_DEC_MODE_FLAGS_ESC        0x08
-#define QOS_DEC_MODE_FLAGS_CHARSET    0x10
+#define QOS_DEC_MODE_FLAGS_STD        0x00
+#define QOS_DEC_MODE_FLAGS_HTML       0x01
+#define QOS_DEC_MODE_FLAGS_UNI        0x02
+#define QOS_DEC_MODE_FLAGS_ESC        0x04
+#define QOS_DEC_MODE_FLAGS_CHARSET    0x08
 
 #define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
@@ -1499,17 +1498,19 @@ int qos_hex2c(const char *x) {
   return i;
 }
 
-static int qos_ishex(char x) {
-  if((x >= '0') && (x <= '9')) return 1;
-  if((x >= 'a') && (x <= 'f')) return 1;
-  if((x >= 'A') && (x <= 'F')) return 1;
-  return 0;
-}
+#define QOS_ISHEX(x) (((x >= '0') && (x <= '9')) || \
+                      ((x >= 'a') && (x <= 'f')) || \
+                      ((x >= 'A') && (x <= 'F')))
 
-/* url unescaping (%xx, \xHH, '+', html (amp/angelbr, &#xHH;, &#DDD;, &#DD;))
- * TODO: unicode, ansi c esc (\n, \r, ...), charset conv */
+/**
+ * url unescaping (%xx, \xHH, '+')
+ * other decoding:
+ * - html (amp/angelbr, &#xHH;, &#DDD;, &#DD;), not implemented ('&' is delimiter)
+ * - unicode, not implemented
+ * - ansi c esc (\n, \r, ...), not implemented
+ * - charset conv, not implemented
+ */
 static int qos_unescaping(char *x, int mode) {
-  int html = mode & QOS_DEC_MODE_FLAGS_HTML;
   int i, j, ch;
   if(x == 0) {
     return 0;
@@ -1519,47 +1520,14 @@ static int qos_unescaping(char *x, int mode) {
   }
   for(i = 0, j = 0; x[i] != '\0'; i++, j++) {
     ch = x[i];
-    if(ch == '%' && qos_ishex(x[i + 1]) && qos_ishex(x[i + 2])) {
+    if(ch == '%' && QOS_ISHEX(x[i + 1]) && QOS_ISHEX(x[i + 2])) {
       ch = qos_hex2c(&x[i + 1]);
       i += 2;
-    } else if(ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
+    } else if(ch == '\\' && (x[i + 1] == 'x') && QOS_ISHEX(x[i + 2]) && QOS_ISHEX(x[i + 3])) {
       ch = qos_hex2c(&x[i + 2]);
       i += 3;
     } else if(ch == '+') {
       ch = ' ';
-    } else if(html &&
-              (ch == '&') && (x[i + 1] == '#') && (x[i + 2] == 'x') &&
-              qos_ishex(x[i + 3]) && qos_ishex(x[i + 4]) && (x[i + 5] == ';')) {
-      ch = qos_hex2c(&x[i + 3]);
-      i += 5;
-    } else if(html &&
-              (ch == '&') && (x[i + 1] == '#') && isdigit(x[i + 2]) &&
-              isdigit(x[i + 3]) && isdigit(x[i + 4]) && (x[i + 5] == ';')) {
-      ch = qos_dec32c(&x[i + 3]);
-      i += 5;
-    } else if(html &&
-              (ch == '&') && (x[i + 1] == '#') && isdigit(x[i + 2]) &&
-              isdigit(x[i + 3]) && (x[i + 4] == ';')) {
-      ch = qos_dec22c(&x[i + 3]);
-      i += 4;
-    } else if(html &&
-              (ch == '&') && (strncasecmp(&x[i + 1], "amp;", 4) == 0)) {
-      ch = '&';
-      i += 5;
-    } else if(html &&
-              (ch == '&') && (strncasecmp(&x[i + 1], "lt;", 3) == 0)) {
-      ch = '<';
-      i += 4;
-    } else if(html &&
-              (ch == '&') && (strncasecmp(&x[i + 1], "gt;", 3) == 0)) {
-      ch = '>';
-      i += 4;
-    } else if(html &&
-              (ch == '&') && (strncasecmp(&x[i + 1], "quot;", 5) == 0)) {
-      ch = '"';
-      i += 6;
-      //} else if(mode & QOS_DEC_MODE_FLAGS_ESC) {
-      //} else if(mode & QOS_DEC_MODE_FLAGS_UNI) {
     }
     x[j] = ch;
   }
@@ -4553,7 +4521,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->inheritoff = 0;
   dconf->headerfilter = -1;
   dconf->bodyfilter = -1;
-  dconf->dec_mode = QOS_DEC_MODE_FLAGS_NONE;
+  dconf->dec_mode = QOS_DEC_MODE_FLAGS_STD;
   return dconf;
 }
 
@@ -4574,7 +4542,7 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   } else {
     dconf->bodyfilter = b->bodyfilter;
   }
-  if(o->dec_mode != QOS_DEC_MODE_FLAGS_NONE) {
+  if(o->dec_mode != QOS_DEC_MODE_FLAGS_STD) {
     dconf->dec_mode = o->dec_mode;
   } else {
     dconf->dec_mode = b->dec_mode;
@@ -5439,6 +5407,7 @@ const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
   return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_PERMIT_URI, 0);
 }
 
+/*
 const char *qos_denydec_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
   if(strcasecmp(arg, "html") == 0) {
@@ -5446,6 +5415,7 @@ const char *qos_denydec_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   }
   return NULL;
 }
+*/
 
 const char *qos_denyinheritoff_cmd(cmd_parms *cmd, void *dcfg) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
@@ -5824,11 +5794,13 @@ static const command_rec qos_config_cmds[] = {
                 " request does not match any rule, the request is denied albeit of"
                 " any server resource availability (white list). All rules"
                 " must define the same action. pcre is case sensitve."),
+  /*
   AP_INIT_ITERATE("QS_DenyDecoding", qos_denydec_cmd, NULL,
                   ACCESS_CONF,
                   "QS_DenyDecoding <html>, enabled additional string decoding functions which"
                   " are applied before matching QS_Deny* and QS_Permit* directives."
                   " Default is URL decoding (%xx, \\xHH, '+')."),
+  */
   AP_INIT_NO_ARGS("QS_DenyInheritanceOff", qos_denyinheritoff_cmd, NULL,
                   ACCESS_CONF,
                   "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"

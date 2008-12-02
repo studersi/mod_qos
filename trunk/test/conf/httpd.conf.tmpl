@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.109 2008-12-01 21:04:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.110 2008-12-02 06:51:55 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -261,7 +261,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    <Location /qos/parp>
        QS_DenyBody                   on
        QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
-       QS_DenyDecoding    html
+       QS_DenyQuery       +s02       deny "<script>"
    </Location>
    <Location /qos/parp/sub>
    </Location>
