@@ -1,0 +1,51 @@
+#
+# $Id: MultiRequest2.htt,v 1.1 2008-01-24 15:25:50 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 10
+_LOOP 10000
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_END LOOP
+END
