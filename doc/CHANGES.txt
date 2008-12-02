@@ -1,3 +1,10 @@
+Version 8.0
+
+ - New server configuration merger: settings within virtual
+   hosts are merged with the settings from the base server
+   (directives outside virtual hosts). Virtual host settings
+   do not overwrite base settings any more.
+
 Version 7.20
 
  - Fix url decoding detecting %HH encoding (full range).
