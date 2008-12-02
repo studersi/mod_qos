@@ -1,3 +1,7 @@
+Version 7.20
+
+ - Fix url decoding detecting %HH encoding (full range).
+
 Version 7.19
 
  - QS_DenyEvent may be used to block requests which do NOT have
