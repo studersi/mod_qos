@@ -252,16 +252,10 @@ make
 <a name="configuration"></a>
 <h2>Configuration</h2>
 <p>Configuration is made on a per server basis (except the generic request filter). 
-Commands within a virtual host overwrites the global configuration (requires 
-the definition of a 
-<code>QS_LocRequestLimit*</code>, 
-<code>QS_LocRequestPerSecLimit*</code>, 
-<code>QS_LocKBytesPerSecLimit*</code>, 
-<code>QS_CondLocRequestLimitMatch</code>, 
-<code>QS_EventRequestLimit</code>, 
-<code>QS_EventPerSecLimit</code>, 
-<code>QS_SrvMaxConnPerIP</code> 
-or <code>QS_SrvMaxConn</code> directive). <br> 
+Commands within a virtual host are merged with the settings in the global 
+configuration.
+</p> 
+<p>
 The <code>QS_SrvMinDataRate</code>, <code>QS_SrvRequestRate</code>, 
 <code>QS_SrvPreferNet</code>, <code>QS_RequestHeaderFilterRule</code>, 
 and all <code>QS_Client*</code> directives may be used outside 
@@ -827,7 +821,7 @@ get marked in order to be handled with low priority (see the
 minimum throughput control: The required minimal throughput is increased in parallel 
 to the number of concurrent clients sending/receiving data. The "max bytes per second" 
 setting is reached when the number of sending/receiving clients is equal to 
-the <code>MaxClients</code> setting. No limitation is set by default.
+the <code>MaxClients</code> setting. No limitation is set by default. 
 </li>
 <li>
 <code>QS_SrvRequestRate &lt;bytes per second&gt; [&lt;max bytes per second&gt;]</code><br>

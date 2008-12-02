@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.124 2008-12-02 06:51:54 pbuchbinder Exp $";
-static const char g_revision[] = "7.20";
+static const char revision[] = "$Id: mod_qos.c,v 5.125 2008-12-02 21:45:23 pbuchbinder Exp $";
+static const char g_revision[] = "8.0";
 
 /************************************************************************
  * Includes
@@ -368,6 +368,7 @@ typedef struct {
   int headerfilter;
   int bodyfilter;
   int dec_mode;
+  apr_int64_t maxpost;
 } qos_dir_config;
 
 /**
@@ -391,6 +392,7 @@ typedef struct {
   char *cookie_path;
   int max_age;
   unsigned char key[EVP_MAX_KEY_LENGTH];
+  int keyset;
   char *header_name;
   char *ip_header_name;
   int vip_user;
@@ -400,29 +402,30 @@ typedef struct {
   int max_conn_per_ip;
   apr_table_t *exclude_ip;
   qos_ifctx_list_t *inctx_t;
-  apr_table_t *hfilter_table;
+  apr_table_t *hfilter_table; /* GLOBAL ONLY */
   /* event rule (enables rule validation) */
   int has_event_filter;
   int has_event_limit;
   /* min data rate */
-  int req_rate;
-  int min_rate;
-  int min_rate_max;
+  int req_rate;               /* GLOBAL ONLY */
+  int min_rate;               /* GLOBAL ONLY */
+  int min_rate_max;           /* GLOBAL ONLY */
   int max_clients;
 #ifdef QS_INTERNAL_TEST
   apr_table_t *testip;
   int enable_testip;
 #endif
-  int net_prefer;
+  int net_prefer;             /* GLOBAL ONLY */
   int net_prefer_limit;
   /* client control */
-  int has_qos_cc;
-  int qos_cc_size;
-  int qos_cc_prefer;
+  int has_qos_cc;             /* GLOBAL ONLY */
+  int qos_cc_size;            /* GLOBAL ONLY */
+  int qos_cc_prefer;          /* GLOBAL ONLY */
   int qos_cc_prefer_limit;
-  int qos_cc_event;
-  int qos_cc_block;
-  int qos_cc_block_time;
+  int qos_cc_event;           /* GLOBAL ONLY */
+  int qos_cc_block;           /* GLOBAL ONLY */
+  int qos_cc_block_time;      /* GLOBAL ONLY */
+  apr_int64_t maxpost;
 } qos_srv_config;
 
 /**
@@ -596,6 +599,13 @@ static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
   if(type == QS_DENY_EVENT) return apr_pstrdup(pool, "QS_DenyEvent");
   if(type == QS_PERMIT_URI) return apr_pstrdup(pool, "QS_PermitUri");
   return apr_pstrdup(pool, "UNKNOWN");
+}
+
+static apr_int64_t qos_maxpost(qos_srv_config *sconf, qos_dir_config *dconf) {
+  if(dconf->maxpost != -1) {
+    return dconf->maxpost;
+  }
+  return sconf->maxpost;
 }
 
 /**
@@ -3535,6 +3545,19 @@ static int qos_header_parser0(request_rec * r) {
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
+
+    /** QS_LimitRequestBody */
+    apr_int64_t maxpost = qos_maxpost(sconf, dconf);
+    /*
+    if(maxpost != -1) {
+      const char *l = apr_table_get(r->headers_in, "Content-Length");
+      if(l != NULL) {
+        apr_int64_t ts = apr_strtoi64(l, NULL, 10);
+        if(ts > maxpost) {
+        }
+      }
+    }
+    */
     /** QS_DenyBody */
     if(dconf && (dconf->bodyfilter == 1)) {
       qos_enable_parp(r);
@@ -4516,12 +4539,13 @@ static void qos_insert_filter(request_rec *r) {
  ***********************************************************************/
 
 static void *qos_dir_config_create(apr_pool_t *p, char *d) {
-  qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_rfilter_t));
+  qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_dir_config));
   dconf->rfilter_table = apr_table_make(p, 1);
   dconf->inheritoff = 0;
   dconf->headerfilter = -1;
   dconf->bodyfilter = -1;
   dconf->dec_mode = QOS_DEC_MODE_FLAGS_STD;
+  dconf->maxpost = -1;
   return dconf;
 }
 
@@ -4570,6 +4594,11 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
         apr_table_unset(dconf->rfilter_table, id);
       }
     }
+  }
+  if(o->maxpost != -1) {
+    dconf->maxpost = o->maxpost;
+  } else {
+    dconf->maxpost = b->maxpost;
   }
   return dconf;
 }
@@ -4639,6 +4668,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_event = 0;
   sconf->qos_cc_block = 0;
   sconf->qos_cc_block_time = 600;
+  sconf->maxpost = -1;
   if(!s->is_virtual) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table);
     if(msg) {
@@ -4653,6 +4683,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     unsigned char *rand = apr_pcalloc(p, len);
     RAND_bytes(rand, len);
     EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, rand, len, 1, sconf->key, NULL);
+    sconf->keyset = 0;
   }
 #ifdef QS_INTERNAL_TEST
   {
@@ -4668,6 +4699,17 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   return sconf;
 }
 
+static void qos_table_merge(apr_table_t *o, apr_table_t *b) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b)->elts;
+  for(i = 0; i < apr_table_elts(b)->nelts; ++i) {
+    if(apr_table_get(o, entry[i].key) == NULL) {
+      apr_table_setn(o, entry[i].key, entry[i].val);
+    }
+  }
+
+}
+
 /**
  * "merges" server configuration: virtual host overwrites global settings (if
  * any rule has been specified)
@@ -4677,7 +4719,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
 static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_srv_config *b = (qos_srv_config *)basev;
   qos_srv_config *o = (qos_srv_config *)addv;
-  /* base table may contain custom rules */
+  /* GLOBAL ONLY directives: */
   o->hfilter_table = b->hfilter_table;
   o->net_prefer = b->net_prefer;
   o->has_qos_cc = b->has_qos_cc;
@@ -4687,19 +4729,67 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_event = b->qos_cc_event;
   o->qos_cc_block = b->qos_cc_block;
   o->qos_cc_block_time = b->qos_cc_block_time;
-  /* location rules or connection limit controls conf merger (see index.html) */
-  if((apr_table_elts(o->location_t)->nelts > 0) ||
-     (o->max_conn != -1) ||
-     (o->max_conn_per_ip != -1)) {
-    o->req_rate = b->req_rate;
-    o->min_rate = b->min_rate;
-    o->min_rate_max = b->min_rate_max;
+  o->req_rate = b->req_rate;
+  o->min_rate = b->min_rate;
+  o->min_rate_max = b->min_rate_max;
 #ifdef QS_INTERNAL_TEST
-    o->enable_testip = b->enable_testip;
+  o->enable_testip = b->enable_testip;
 #endif
-    return o;
+  if(o->error_page == NULL) {
+    o->error_page = b->error_page;
   }
-  return b;
+  qos_table_merge(o->location_t, b->location_t);
+  qos_table_merge(o->setenvif_t, b->setenvif_t);
+  qos_table_merge(o->setenvifquery_t, b->setenvifquery_t);
+  qos_table_merge(o->setenvifparp_t, b->setenvifparp_t);
+  qos_table_merge(o->setenvifparpbody_t, b->setenvifparpbody_t);
+  qos_table_merge(o->setenvstatus_t, b->setenvstatus_t);
+  qos_table_merge(o->setenvresheader_t, b->setenvresheader_t);
+  qos_table_merge(o->setenvresheadermatch_t, b->setenvresheadermatch_t);
+  qos_table_merge(o->exclude_ip, b->exclude_ip);
+  if(strcmp(o->cookie_name, QOS_COOKIE_NAME) == 0) {
+    o->cookie_name = b->cookie_name;
+  }
+  if(strcmp(o->cookie_path, "/") == 0) {
+    o->cookie_path = b->cookie_path;
+  }
+  if(o->max_age == atoi(QOS_MAX_AGE)) {
+    o->max_age = b->max_age;
+  }
+  if(o->keyset == 0) {
+    memcpy(o->key, b->key, sizeof(o->key));
+  }
+  if(o->header_name == NULL) {
+    o->header_name = b->header_name;
+  }
+  if(o->ip_header_name == NULL) {
+    o->ip_header_name = b->ip_header_name;
+  }
+  if(o->vip_user == 0) {
+    o->vip_user = b->vip_user;
+  }
+  if(o->vip_ip_user == 0) {
+    o->vip_ip_user = b->vip_ip_user;
+  }
+  if(o->max_conn == -1) {
+    o->max_conn = b->max_conn;
+  }
+  if(o->max_conn_close == -1) {
+    o->max_conn_close = b->max_conn_close;
+  }
+  if(o->max_conn_per_ip == -1) {
+    o->max_conn_per_ip = b->max_conn_per_ip;
+  }
+  if(o->has_event_filter == 0) {
+    o->has_event_filter = b->has_event_filter;
+  }
+  if(o->has_event_limit == 0) {
+    o->has_event_limit = b->has_event_limit;
+  }
+  if(o->maxpost == -1) {
+    o->maxpost = b->maxpost;
+  }
+  return o;
 }
 
 /**
@@ -5189,6 +5279,7 @@ const char *qos_key_cmd(cmd_parms *cmd, void *dcfg, const char *seed) {
                                                                 &qos_module);
   EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL,
                  (const unsigned char *)seed, strlen(seed), 1, sconf->key, NULL);
+  sconf->keyset = 1;
   return NULL;
 }
 
@@ -5383,7 +5474,7 @@ const char *qos_deny_cmd(cmd_parms *cmd, void *dcfg,
     apr_pool_cleanup_register(cmd->pool, flt->pr, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   }
   flt->text = apr_pstrdup(cmd->pool, pcres);
-  apr_table_setn(dconf->rfilter_table, id, (char *)flt);
+  apr_table_setn(dconf->rfilter_table, apr_pstrdup(cmd->pool, id), (char *)flt);
   return NULL;
 }
 const char *qos_deny_rql_cmd(cmd_parms *cmd, void *dcfg,
@@ -5405,6 +5496,19 @@ const char *qos_deny_event_cmd(cmd_parms *cmd, void *dcfg,
 const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
                                const char *id, const char *action, const char *pcres) {
   return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_PERMIT_URI, 0);
+}
+
+const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
+  if(cmd->path == NULL) {
+    /* server */
+    qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
+    sconf->maxpost = apr_strtoi64(bytes, NULL, 10);
+  } else {
+    /* location */
+    qos_dir_config *dconf = (qos_dir_config*)dcfg;
+    dconf->maxpost = apr_strtoi64(bytes, NULL, 10);
+  }
+  return NULL;
 }
 
 /*
@@ -5469,7 +5573,7 @@ const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, const char *he
                         rule,
                         erroffset, errptr);
   }
-  apr_table_setn(sconf->hfilter_table, header, (char *)he);
+  apr_table_setn(sconf->hfilter_table, apr_pstrdup(cmd->pool, header), (char *)he);
   apr_pool_cleanup_register(cmd->pool, he->pcre, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   return NULL;
 }
@@ -5794,6 +5898,9 @@ static const command_rec qos_config_cmds[] = {
                 " request does not match any rule, the request is denied albeit of"
                 " any server resource availability (white list). All rules"
                 " must define the same action. pcre is case sensitve."),
+  AP_INIT_TAKE1("QS_LimitRequestBody", qos_maxpost_cmd, NULL,
+                ACCESS_CONF|RSRC_CONF,
+                "QS_LimitRequestBody <bytes>"),
   /*
   AP_INIT_ITERATE("QS_DenyDecoding", qos_denydec_cmd, NULL,
                   ACCESS_CONF,
