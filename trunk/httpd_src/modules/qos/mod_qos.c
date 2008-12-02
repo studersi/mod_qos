@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.125 2008-12-02 21:45:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.126 2008-12-02 21:56:22 pbuchbinder Exp $";
 static const char g_revision[] = "8.0";
 
 /************************************************************************
@@ -368,7 +368,7 @@ typedef struct {
   int headerfilter;
   int bodyfilter;
   int dec_mode;
-  apr_int64_t maxpost;
+  apr_off_t maxpost;
 } qos_dir_config;
 
 /**
@@ -425,7 +425,7 @@ typedef struct {
   int qos_cc_event;           /* GLOBAL ONLY */
   int qos_cc_block;           /* GLOBAL ONLY */
   int qos_cc_block_time;      /* GLOBAL ONLY */
-  apr_int64_t maxpost;
+  apr_off_t maxpost;
 } qos_srv_config;
 
 /**
@@ -601,7 +601,7 @@ static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
   return apr_pstrdup(pool, "UNKNOWN");
 }
 
-static apr_int64_t qos_maxpost(qos_srv_config *sconf, qos_dir_config *dconf) {
+static apr_off_t qos_maxpost(qos_srv_config *sconf, qos_dir_config *dconf) {
   if(dconf->maxpost != -1) {
     return dconf->maxpost;
   }
@@ -3547,14 +3547,21 @@ static int qos_header_parser0(request_rec * r) {
                                                                   &qos_module);
 
     /** QS_LimitRequestBody */
-    apr_int64_t maxpost = qos_maxpost(sconf, dconf);
+    apr_off_t maxpost = qos_maxpost(sconf, dconf);
     /*
     if(maxpost != -1) {
       const char *l = apr_table_get(r->headers_in, "Content-Length");
       if(l != NULL) {
-        apr_int64_t ts = apr_strtoi64(l, NULL, 10);
-        if(ts > maxpost) {
-        }
+  apr_off_t s;
+  char *errp;
+
+  if(APR_SUCCESS != apr_strtoff(&s, bytes, &errp, 10)) {
+    return "QS_LimitRequestBody argument is not parsable";
+  }
+  if(*errp || s < 0) {
+    return "QS_LimitRequestBody requires a non-negative integer";
+  }
+
       }
     }
     */
@@ -5499,14 +5506,22 @@ const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
 }
 
 const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
+  apr_off_t s;
+  char *errp;
+  if(APR_SUCCESS != apr_strtoff(&s, bytes, &errp, 10)) {
+    return "QS_LimitRequestBody argument is not parsable";
+  }
+  if(*errp || s < 0) {
+    return "QS_LimitRequestBody requires a non-negative integer";
+  }
   if(cmd->path == NULL) {
     /* server */
     qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
-    sconf->maxpost = apr_strtoi64(bytes, NULL, 10);
+    sconf->maxpost = s;
   } else {
     /* location */
     qos_dir_config *dconf = (qos_dir_config*)dcfg;
-    dconf->maxpost = apr_strtoi64(bytes, NULL, 10);
+    dconf->maxpost = s;
   }
   return NULL;
 }
