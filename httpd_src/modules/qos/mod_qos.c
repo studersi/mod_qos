@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.126 2008-12-02 21:56:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.127 2008-12-03 08:57:38 pbuchbinder Exp $";
 static const char g_revision[] = "8.0";
 
 /************************************************************************
@@ -450,6 +450,7 @@ typedef struct {
   apr_table_t *event_entries;
   char *evmsg;
   int is_vip;
+  apr_off_t maxpostcount;
 } qs_req_ctx;
 
 /**
@@ -907,6 +908,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->evmsg = NULL;
     rctx->is_vip = 0;
     rctx->event_entries = apr_table_make(r->pool, 1);
+    rctx->maxpostcount = 0;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
@@ -1869,7 +1871,7 @@ static int qos_hp_event_deny_filter(request_rec *r, qos_srv_config *sconf, qos_d
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
       if(error_page) {
         qos_error_response(r, error_page);
-          return DONE;
+        return DONE;
       }
       return rv;
     }
@@ -1895,7 +1897,7 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
       if(error_page) {
         qos_error_response(r, error_page);
-          return DONE;
+        return DONE;
       }
       return rv;
     }
@@ -3536,35 +3538,69 @@ static int qos_post_read_request(request_rec * r) {
   return DECLINED;
 }
 
+/** QS_LimitRequestBody, if content-length header is available */
+static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sconf,
+                                             qos_dir_config *dconf) {
+  apr_off_t maxpost = qos_maxpost(sconf, dconf);
+  if(maxpost != -1) {
+    const char *l = apr_table_get(r->headers_in, "Content-Length");
+    if(l != NULL) {
+      apr_off_t s;
+      char *errp;
+      if((APR_SUCCESS != apr_strtoff(&s, l, &errp, 10)) ||
+         *errp ||
+         (s < 0)) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
+                      " invalid content-length header, c=%s, id=%s",
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      qos_unique_id(r, "044"));
+        return HTTP_REQUEST_ENTITY_TOO_LARGE;
+      }
+      if(s > maxpost) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
+                      " max=%"APR_OFF_T_FMT" this=%"APR_OFF_T_FMT", c=%s, id=%s",
+                      maxpost, s,
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      qos_unique_id(r, "044"));
+        return HTTP_REQUEST_ENTITY_TOO_LARGE;
+      }
+    }
+  }
+  return APR_SUCCESS;
+}
+
 /**
  * header parser (executed before mod_setenvif or mod_parp)
  */
 static int qos_header_parser0(request_rec * r) {
   if(ap_is_initial_req(r)) {
+    apr_status_t rv;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
 
     /** QS_LimitRequestBody */
-    apr_off_t maxpost = qos_maxpost(sconf, dconf);
-    /*
-    if(maxpost != -1) {
-      const char *l = apr_table_get(r->headers_in, "Content-Length");
-      if(l != NULL) {
-  apr_off_t s;
-  char *errp;
-
-  if(APR_SUCCESS != apr_strtoff(&s, bytes, &errp, 10)) {
-    return "QS_LimitRequestBody argument is not parsable";
-  }
-  if(*errp || s < 0) {
-    return "QS_LimitRequestBody requires a non-negative integer";
-  }
-
+    rv = qos_limitrequestbody_ctl(r, sconf, dconf);
+    if(rv != APR_SUCCESS) {
+      const char *error_page = sconf->error_page;
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      if(r->subprocess_env) {
+        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+        if(v) {
+          error_page = v;
+        }
       }
+      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+      if(error_page) {
+        qos_error_response(r, error_page);
+        return DONE;
+      }
+      return rv;
     }
-    */
+    
     /** QS_DenyBody */
     if(dconf && (dconf->bodyfilter == 1)) {
       qos_enable_parp(r);
@@ -3828,6 +3864,44 @@ static int qos_header_parser(request_rec * r) {
 
   }
   return DECLINED;
+}
+
+/** QS_LimitRequestBody, for chunked encoded requests */
+static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
+                                  ap_input_mode_t mode, apr_read_type_e block,
+                                  apr_off_t nbytes) {
+  apr_status_t rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
+  request_rec *r = f->r;
+  if(rv != APR_SUCCESS) {
+    return rv;
+  }
+  if(!ap_is_initial_req(r) || !r->read_chunked) {
+    ap_remove_output_filter(f);
+    return APR_SUCCESS;
+  } else {
+    qos_srv_config *sconf = ap_get_module_config(r->server->module_config, &qos_module);
+    qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
+    apr_off_t maxpost = qos_maxpost(sconf, dconf);
+    if(maxpost != -1) {
+      apr_size_t bytes = 0;
+      apr_bucket *b;
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
+        bytes = bytes + b->length;
+      }
+      rctx->maxpostcount += bytes;
+      if(rctx->maxpostcount > maxpost) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
+                      " max=%"APR_OFF_T_FMT" this=%"APR_OFF_T_FMT", c=%s, id=%s",
+                      maxpost, rctx->maxpostcount,
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      qos_unique_id(r, "044"));
+        return HTTP_REQUEST_ENTITY_TOO_LARGE;
+      }
+    }
+  }
+  return APR_SUCCESS;
 }
 
 static apr_status_t qos_in_filter2(ap_filter_t *f, apr_bucket_brigade *bb,
@@ -5998,6 +6072,7 @@ static void qos_register_hooks(apr_pool_t * p) {
 
   ap_register_input_filter("qos-in-filter", qos_in_filter, NULL, AP_FTYPE_CONNECTION);
   ap_register_input_filter("qos-in-filter2", qos_in_filter2, NULL, AP_FTYPE_RESOURCE);
+  ap_register_input_filter("qos-in-filter3", qos_in_filter3, NULL, AP_FTYPE_CONTENT_SET);
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
   ap_register_output_filter("qos-out-filter-min", qos_out_filter_min, NULL, AP_FTYPE_RESOURCE);
   ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE);
