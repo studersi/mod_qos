@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.127 2008-12-03 08:57:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.128 2008-12-03 21:13:00 pbuchbinder Exp $";
 static const char g_revision[] = "8.0";
 
 /************************************************************************
@@ -3506,6 +3506,14 @@ static int qos_post_read_request(request_rec * r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
+  if((r->parsed_uri.path == NULL) || (r->unparsed_uri == NULL)) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(045)"access denied, invalid request line:"
+                  " can't parse uri, c=%s, id=%s",
+                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                  qos_unique_id(r, "045"));
+    return HTTP_BAD_REQUEST;
+  }
   qos_parp_prr(r, sconf);
   if(sconf && (sconf->req_rate != -1)) {
     inctx = qos_get_ifctx(r->connection->input_filters);
@@ -3566,6 +3574,8 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
                       qos_unique_id(r, "044"));
         return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
+    } else {
+      ap_add_input_filter("qos-in-filter3", NULL, r, r->connection);
     }
   }
   return APR_SUCCESS;
@@ -3891,12 +3901,25 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
       }
       rctx->maxpostcount += bytes;
       if(rctx->maxpostcount > maxpost) {
+        const char *error_page = sconf->error_page;
+        qs_req_ctx *rctx = qos_rctx_config_get(r);
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
                       " max=%"APR_OFF_T_FMT" this=%"APR_OFF_T_FMT", c=%s, id=%s",
                       maxpost, rctx->maxpostcount,
                       r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                       qos_unique_id(r, "044"));
+        if(r->subprocess_env) {
+          const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+          if(v) {
+            error_page = v;
+          }
+        }
+        rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+        if(error_page) {
+          qos_error_response(r, error_page);
+          return DONE;
+        }
         return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
     }

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.73 2008-12-02 06:51:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.74 2008-12-03 21:13:00 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -456,7 +456,7 @@ fi
 
 # - query/parp/path --------------------------------------------
 ./ctl.sh restart -D cc -D real_ip > /dev/null
-PSCR="QS_SetEnvIfQuery.htt QS_SetEnvIfParp.htt QS_SetEnvIfBody.htt QS_SetEnvIfBody_support.htt QS_DenyQueryParp.htt QS_DenyPath.htt QS_DenyQuery.htt QS_DenyEnc.htt"
+PSCR="QS_SetEnvIfQuery.htt QS_SetEnvIfParp.htt QS_SetEnvIfBody.htt QS_SetEnvIfBody_support.htt QS_DenyQueryParp.htt QS_DenyPath.htt QS_DenyQuery.htt QS_DenyEnc.htt QS_LimitRequestBody.htt QS_UriParser.htt"
 for E in $PSCR; do
     ./htt.sh -s ./scripts/${E}
     if [ $? -ne 0 ]; then

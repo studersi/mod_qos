@@ -1,6 +1,6 @@
 http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
 #
-# $Id: QS_LimitRequestBody.htt,v 1.1 2008-12-03 08:57:38 pbuchbinder Exp $
+# $Id: QS_LimitRequestBody.htt,v 1.2 2008-12-03 21:13:00 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -27,6 +27,43 @@ __$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $D
 __$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
 __$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
 _-<node>
+_EXPECT . "code=044"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi/sleep.cgi?s=20 HTTP/1.1
+__Host: localhost
+__Transfer-Encoding: chunked
+__Content-Type: text/xml
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_CHUNKED
+__
 _EXPECT . "code=044"
 _WAIT
 
