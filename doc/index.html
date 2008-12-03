@@ -587,7 +587,7 @@ You may deactivate mod_parp for selected requests using the
 Important: request message body processing requires that the server 
 loads the whole request into its memory (at least twice the length 
 of the message). You should limit the allowed size of HTTP 
-requests message body using the <code>LimitRequestBody</code> directive 
+requests message body using the <code>QS_LimitRequestBody</code> directive 
 when using <code>QS_SetEnvIfParp</code>!
 </li>
 <li>
@@ -597,7 +597,7 @@ Directive parsing the request body using the Apache module
 types to process using the mod_parp directive <code>PARP_BodyData</code> 
 and ensure that mod_parp is enabled using the <code>SetEnvIf</code> directive 
 of the Apache module mod_setenvif. You should limit the allowed size of HTTP 
-requests message body using the <code>LimitRequestBody</code> directive 
+requests message body using the <code>QS_LimitRequestBody</code> directive 
 when using mod_parp. The directive recognizes the occurrence of $1 within 
 the variable value and replaces it by the subexpressions of the defined regex 
 pattern.
@@ -643,7 +643,7 @@ QS_SetEnvIfQuery             file=([a-zA-Z]*)       QS_LowPrio=$1
 
 # limit the max. body size since mod_parp loads the whole message into
 # the memory servers's:
-LimitRequestBody             131072
+QS_LimitRequestBody          131072
 
 # body pattern detection, examples limits the maximum of concurrent
 # the requests posting "id=1234" to ten:
@@ -760,6 +760,12 @@ data is transformed into a request query and may be filtered using the
 <code>QS_DenyBody 'on|'off'</code><br>
 Enables message body filtering.
 </li>
+<li>
+<code>QS_LimitRequestBody &lt;bytes&gt;</code><br>
+Limits the allowed size of an HTTP request message body. This directive may 
+be placed anywhere in the configuration.
+</li>
+
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
@@ -771,7 +777,7 @@ CustomLog             logs/qsaudit_log  "%{qos-path}n%{qos-query}n"
 
 # limit the max. body size since mod_parp loads the whole message into the
 # memory servers's:
-LimitRequestBody      131072
+QS_LimitRequestBody   131072
 
 &lt;Location /app&gt;
    # don't allow certain string pattern within the request query or
@@ -1148,7 +1154,7 @@ QS_ClientEntries        200000
 QS_SrvMinDataRate       150 1200
 # and limit request header and body:
 LimitRequestFields      30
-LimitRequestBody        102400
+QS_LimitRequestBody     102400
 </pre>
 </td></tr>
 </table>

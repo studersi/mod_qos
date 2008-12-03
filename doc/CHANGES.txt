@@ -5,6 +5,8 @@ Version 8.0
    (directives outside virtual hosts). Virtual host settings
    do not overwrite base settings any more.
 
+ - New directive QS_LimitRequestBody.
+
 Version 7.20
 
  - Fix url decoding detecting %HH encoding (full range).
