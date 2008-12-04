@@ -1,0 +1,17 @@
+http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
+#
+# $Id: QS_UriParser.htt,v 1.1 2008-12-03 21:13:00 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__1
+_EXPECT . "400 Bad Request"
+_WAIT
+
+END
+
+
