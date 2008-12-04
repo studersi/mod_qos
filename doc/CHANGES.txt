@@ -1,3 +1,7 @@
+Version 8.1
+
+ - Bugfix: check for enabled cc in input filter.
+
 Version 8.0
 
  - New server configuration merger: settings within virtual

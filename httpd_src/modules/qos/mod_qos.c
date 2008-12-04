@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.128 2008-12-03 21:13:00 pbuchbinder Exp $";
-static const char g_revision[] = "8.0";
+static const char revision[] = "$Id: mod_qos.c,v 5.129 2008-12-04 19:29:03 pbuchbinder Exp $";
+static const char g_revision[] = "8.1";
 
 /************************************************************************
  * Includes
@@ -3284,7 +3284,7 @@ static void qos_audit(request_rec *r) {
 static apr_status_t qos_cleanup_conn(void *p) {
   qs_conn_ctx *cconf = p;
   qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool, 0);
-  if(cconf->sconf->qos_cc_prefer) {
+  if(cconf->sconf->has_qos_cc && cconf->sconf->qos_cc_prefer) {
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT15 */
     u->qos_cc->connections--;
     if(cconf->is_vip_by_header || cconf->has_lowrate) {
@@ -4023,7 +4023,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
       qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
                                                                     &qos_module);
       /* mark clients causing a timeout */
-      if(sconf) {
+      if(sconf && sconf->has_qos_cc) {
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
         qos_s_entry_t **e = NULL;
         qos_s_entry_t new;
