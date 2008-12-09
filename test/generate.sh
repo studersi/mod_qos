@@ -58,6 +58,9 @@ sed <appl_conf/httpd.conf.tmpl >appl_conf/httpd.conf \
 
 cp conf/qos_viewer.conf.tmpl conf/qos_viewer.conf
 
+sed <conf/demo.conf.tmpl >conf/demo.conf \
+    -e "s;##ROOT##;$ROOT;g"
+
 if [ ! -d logs ]; then
     mkdir logs
 fi

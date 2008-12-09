@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.111 2008-12-03 08:57:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.112 2008-12-09 21:21:17 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -142,6 +142,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
    ProxyPass                  /info !
+   ProxyPass                  /demo !
    ProxyPass                  /qos !
    ProxyPass                  /qos_control !
    ProxyPass                  /cgi-local !
@@ -300,6 +301,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
      QS_DenyEvent        +BADCODEAPPLI deny !CODEAPPLI
    </Location>
 
+   Include 	  conf/demo.conf
+
 </VirtualHost>
 
 NameVirtualHost         server1:##QS_PORT_BASE1##
@@ -320,6 +323,7 @@ Listen                  server1:##QS_PORT_BASE1##
 
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
+   ProxyPass                  /demo !
    ProxyPass                  /info !
    ProxyPass                  /qos !
    ProxyPass                  /qos_control !
@@ -361,6 +365,7 @@ Listen                  server1:##QS_PORT_BASE1##
    </Location>
 
    Include 	  conf/qos_viewer.conf
+   Include 	  conf/demo.conf
 
 </VirtualHost>
 
@@ -389,6 +394,7 @@ SSLRandomSeed           startup builtin
 
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
+   ProxyPass                  /demo !
    ProxyPass                  /info !
    ProxyPass                  /qos !
    ProxyPass                  /qos_control !
@@ -419,6 +425,7 @@ SSLRandomSeed           startup builtin
        Require                valid-user
    </Location>
 
+   Include 	  conf/demo.conf
 
 </VirtualHost>
 
@@ -434,5 +441,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE9##
    SetEnvIf                   Request_URI     "/aaa/index.html" qsvar2
    QS_SetEnvIf                qsmin           qsvar2            multi=true
    QS_EventPerSecLimit        multi           5
+
+   Include 	  conf/demo.conf
 
 </VirtualHost>
