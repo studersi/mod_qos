@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.130 2008-12-13 20:44:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.131 2008-12-13 21:59:25 pbuchbinder Exp $";
 static const char g_revision[] = "8.2";
 
 /************************************************************************
@@ -1172,23 +1172,27 @@ static int qos_get_net(qs_conn_ctx *cconf) {
   return net;
 }
 
+static char *qos_ip_long2str(request_rec *r, unsigned long ip) {
+  int a,b,c,d;
+  a = ip % 256;
+  ip = ip / 256;
+  b = ip % 256;
+  ip = ip / 256;
+  c = ip % 256;
+  ip = ip / 256;
+  d = ip % 256;
+  return apr_psprintf(r->pool, "%d.%d.%d.%d", a, b, c, d);
+}
+    
 /**
  * helper for the status viewer (unsigned long to char)
  */
 static void qos_collect_ip(request_rec *r, qs_ip_entry_t *ipe, apr_table_t *entries, int limit) {
   if(ipe) {
     unsigned long ip = ipe->ip;
-    int a,b,c,d;
     char *red = "style=\"background-color: rgb(240,133,135);\"";
-    a = ip % 256;
-    ip = ip / 256;
-    b = ip % 256;
-    ip = ip / 256;
-    c = ip % 256;
-    ip = ip / 256;
-    d = ip % 256;
-    apr_table_addn(entries, apr_psprintf(r->pool, "%d.%d.%d.%d</td><td %s colspan=\"3\">%d",
-                                         a,b,c,d,
+    apr_table_addn(entries, apr_psprintf(r->pool, "%s</td><td %s colspan=\"3\">%d",
+                                         qos_ip_long2str(r, ip),
                                          ((limit != -1) && ipe->counter >= limit) ? red : "",
                                          ipe->counter), "");
     qos_collect_ip(r, ipe->left, entries, limit);
@@ -2890,6 +2894,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   ap_rprintf(r, "<h2>mod_qos %s</h2>\n", ap_escape_html(r->pool, qos_revision(r->pool)));
 #ifdef QS_INTERNAL_TEST
   ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE</p>\n", r);
+  ap_rprintf(r, "<p>client ip=%s</p>\n", qos_ip_long2str(r, inet_addr(r->connection->remote_ip)));
 #endif
   qos_show_ip(r, bsconf, qt);
   if(strcmp(r->handler, "qos-viewer") == 0) {
@@ -3963,7 +3968,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   apr_status_t rv;
   qos_ifctx_t *inctx = f->ctx;
   apr_size_t bytes = 0;
-
+  int crs = inctx->status;
   rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
   if(rv == APR_SUCCESS) {
     if(inctx->lowrate != -1) {
@@ -4027,8 +4032,8 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
       }
     }
     if((rv == APR_TIMEUP) &&
-       (inctx->status != QS_CONN_STATE_END) && 
-       (inctx->status != QS_CONN_STATE_KEEP)) {
+       (crs != QS_CONN_STATE_END) && 
+       (crs != QS_CONN_STATE_KEEP)) {
       qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
                                                                     &qos_module);
       /* mark clients causing a timeout */

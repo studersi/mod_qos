@@ -1,3 +1,8 @@
+Version
+
+ - Bugfix: Client prefer, don't mark connection timeout at
+   keep alive.
+
 Version 8.1
 
  - Bugfix: check for enabled cc in input filter.

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.74 2008-12-03 21:13:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.75 2008-12-13 21:59:25 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -393,12 +393,12 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_VipUser.htt"
 fi
 
-#./ctl.sh restart -D real_ip -D cc > /dev/null
-#./htt.sh -s ./scripts/QS_VipIpUser.htt
-#if [ $? -ne 0 ]; then
-#    ERRORS=`expr $ERRORS + 1`
-#    echo "FAILED QS_VipIpUser.htt"
-#fi
+./ctl.sh restart -D real_ip -D cc > /dev/null
+./htt.sh -s ./scripts/QS_VipIpUser.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_VipIpUser.htt"
+fi
 
 # - real ip -------------------------------------------------------
 ./ctl.sh restart -D real_ip > /dev/null
