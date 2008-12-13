@@ -1,5 +1,5 @@
 #
-# $Id: QS_VipIpUser.htt,v 1.2 2008-10-23 20:19:10 pbuchbinder Exp $
+# $Id: QS_VipIpUser.htt,v 1.3 2008-12-13 21:59:25 pbuchbinder Exp $
 #
 
 
@@ -7,36 +7,41 @@ INCLUDE scripts/ports
 
 CLIENT
 
-_REQ localhost $QS_PORT_BASE9
-__GET /qos_control/index.txt HTTP/1.1
+_REQ server1 $QS_PORT_BASE1
+__GET /qos HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
-__Authorization: Basic YWRtaW46MTIzNA==
 __
+_MATCH body ".p.client ip.(.*)..p." IP
 _EXPECT . "200 OK"
-_EXPECT . "!Set-Cookie: MODQOS"
 _WAIT
 
-_CLOSE
-_SLEEP 200
+_REQ server1 $QS_PORT_BASE1
+__GET /qos?address=$IP&action=search HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "<td colspan=.1.>$IP</td><td colspan=.2.>......20.. [0-9:]*</td><td colspan=.1.>no</td>"
+_EXPECT . "200 OK"
+_WAIT
 
-_REQ localhost $QS_PORT_BASE
+_REQ server1 $QS_PORT_BASE1
 __GET /htt/index1.html HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
-_MATCH body "(.*) - admin" IP
 _EXPECT . "200"
 _WAIT
 
-_REQ localhost $QS_PORT_BASE
+_CLOSE
+
+_REQ server1 $QS_PORT_BASE1
 __GET /qos?address=$IP&action=search HTTP/1.1
 __Host: localhost
-__Connection: keep-alive
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __
-_EXPECT . "200"
-_EXPECT . "<tr class=.rows.><td colspan=.1.>[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}</td><td colspan=.2.>.*</td><td colspan=.1.>yes</td><td colspan=.2.>no</td>"
-
+_EXPECT . "<td colspan=.1.>$IP</td><td colspan=.2.>......20.. [0-9:]*</td><td colspan=.1.>yes</td>"
+_EXPECT . "200 OK"
 _WAIT
 
 
@@ -48,9 +53,8 @@ _WAIT
 __HTTP/1.1 200 OK
 __Content-Length: AUTO 
 __Content-Type: text/html
+__mod-qos-vip-ip: vip
 __
 __==AS1==
-_PIPE
-_EXEC tail -1 ./logs/access_log
 
 END
