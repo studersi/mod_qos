@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.129 2008-12-04 19:29:03 pbuchbinder Exp $";
-static const char g_revision[] = "8.1";
+static const char revision[] = "$Id: mod_qos.c,v 5.130 2008-12-13 20:44:53 pbuchbinder Exp $";
+static const char g_revision[] = "8.2";
 
 /************************************************************************
  * Includes
@@ -1795,8 +1795,12 @@ static apr_table_t *qos_get_query_table(request_rec *r) {
       const char *t = ap_getword(r->pool, &q, '&');
       const char *name = ap_getword(r->pool, &t, '=');
       const char *value = t;
-      if((strlen(name) > 0) && (strlen(value) > 0)) {
-        apr_table_add(av, name, value);
+      if(name && (strlen(name) > 0)) {
+        if(value && (strlen(value) > 0)) {
+          apr_table_add(av, name, value);
+        } else if((strlen(name) > 0)) {
+          apr_table_add(av, name, "");
+        }
       }
     }
   }
@@ -2808,7 +2812,6 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             new.block_time = (*e)->block_time;
             new.req_per_sec = (*e)->req_per_sec;
             new.req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
-            new.lowrate = (*e)->lowrate;
           }
           apr_global_mutex_unlock(u->qos_cc->lock);            /* @CRT20 */
           ap_rputs("<tr class=\"rowt\"><td colspan=\"1\">IP</td>", r);
@@ -2840,7 +2843,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             }
             ap_rprintf(r, "<td colspan=\"1\">%ld</td>", new.req_per_sec);
             ap_rprintf(r, "<td colspan=\"1\">%d&nbsp;ms</td>", new.req_per_sec_block_rate);
-            ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", new.lowrate ? "yes" : "no");
+            ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", new.lowrate > 0 ? "yes" : "no");
           }
           ap_rputs("</tr>\n", r);
         }
@@ -2877,6 +2880,10 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   apr_table_t *qt = qos_get_query_table(r);
   const char *option = apr_table_get(qt, "option");
   if (flags & AP_STATUS_SHORT) {
+    qos_ext_status_short(r);
+    return OK;
+  }
+  if(qt && (apr_table_get(qt, "auto") != NULL)) {
     qos_ext_status_short(r);
     return OK;
   }
@@ -4019,7 +4026,9 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         }
       }
     }
-    if(rv == APR_TIMEUP) {
+    if((rv == APR_TIMEUP) &&
+       (inctx->status != QS_CONN_STATE_END) && 
+       (inctx->status != QS_CONN_STATE_KEEP)) {
       qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
                                                                     &qos_module);
       /* mark clients causing a timeout */
