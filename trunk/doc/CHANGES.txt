@@ -1,7 +1,7 @@
 Version
 
  - Bugfix: Client prefer, don't mark connection timeout at
-   keep alive.
+   keep alive end.
 
  - Access log events (mod_qos_ev, mod_qos_cr, mod_qos_con)
    are stored as variables and not as out headers.
@@ -9,6 +9,8 @@ Version
 Version 8.1
 
  - Bugfix: check for enabled cc in input filter.
+
+ - Don't allow requests without an URL.
 
 Version 8.0
 
