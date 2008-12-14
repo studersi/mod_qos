@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.132 2008-12-14 20:16:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.133 2008-12-14 20:35:53 pbuchbinder Exp $";
 static const char g_revision[] = "8.2";
 
 /************************************************************************
@@ -5113,15 +5113,6 @@ const char *qos_match_bs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
   apr_table_setn(sconf->location_t, apr_pstrdup(cmd->pool, match), (char *)rule);
   return NULL;
 }
-
-// /**
-//  * enable the audit log
-//  */
-// const char *qos_audit_cmd(cmd_parms *cmd, void *dcfg, const char *file) {
-//   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
-//                                                                 &qos_module);
-//   return NULL;
-// }
 
 /**
  * sets the default limitation of cuncurrent requests
