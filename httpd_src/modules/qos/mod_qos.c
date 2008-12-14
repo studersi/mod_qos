@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.131 2008-12-13 21:59:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.132 2008-12-14 20:16:04 pbuchbinder Exp $";
 static const char g_revision[] = "8.2";
 
 /************************************************************************
@@ -2336,7 +2336,7 @@ static qos_ifctx_t *qos_get_ifctx(ap_filter_t *f) {
 }
 
 /**
- * calculates the request packet size rate (called by input filter
+ * calculates the request packet size rate (called by input filter)
  */
 static apr_size_t qos_packet_rate(qos_ifctx_t *inctx, apr_bucket_brigade *bb) {
   apr_bucket *b;
@@ -4305,9 +4305,11 @@ static int qos_logger(request_rec *r) {
     /* allow logging of the current location usage */
     apr_table_set(r->headers_out, "mod_qos_cr", h);
     apr_table_set(r->err_headers_out, "mod_qos_cr", h);
+    apr_table_set(r->subprocess_env, "mod_qos_cr", h);
     if(r->next) {
       apr_table_set(r->next->headers_out, "mod_qos_cr", h);
       apr_table_set(r->next->err_headers_out, "mod_qos_cr", h);
+      apr_table_set(r->next->subprocess_env, "mod_qos_cr", h);
     }
     /* decrement only once */
     ap_set_module_config(r->request_config, &qos_module, NULL);
@@ -4316,17 +4318,21 @@ static int qos_logger(request_rec *r) {
     char *cc = apr_psprintf(r->pool, "%d", cconf->sconf->act->c->connections);
     apr_table_set(r->headers_out, "mod_qos_con", cc);
     apr_table_set(r->err_headers_out, "mod_qos_con", cc);
+    apr_table_set(r->subprocess_env, "mod_qos_con", cc);
     if(r->next) {
       apr_table_set(r->next->headers_out, "mod_qos_con", cc);
       apr_table_set(r->next->err_headers_out, "mod_qos_con", cc);
+      apr_table_set(r->next->subprocess_env, "mod_qos_con", cc);
     }
   }
   if(rctx->evmsg) {
     apr_table_set(r->headers_out, "mod_qos_ev", rctx->evmsg);
     apr_table_set(r->err_headers_out, "mod_qos_ev", rctx->evmsg);
+    apr_table_set(r->subprocess_env, "mod_qos_ev", rctx->evmsg);
     if(r->next) {
       apr_table_set(r->next->headers_out, "mod_qos_ev", rctx->evmsg);
       apr_table_set(r->next->err_headers_out, "mod_qos_ev", rctx->evmsg);
+      apr_table_set(r->next->subprocess_env, "mod_qos_ev", rctx->evmsg);
     }
   }
   return DECLINED;
