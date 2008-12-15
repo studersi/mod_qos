@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.133 2008-12-14 20:35:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.134 2008-12-15 09:23:26 pbuchbinder Exp $";
 static const char g_revision[] = "8.2";
 
 /************************************************************************
@@ -2993,10 +2993,12 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         ap_rputs("<tr class=\"rowt\">"
                  "<td colspan=\"1\">location</td>"
                  "<td colspan=\"2\">"
-                 "<div title=\"QS_LocRequestLimitMatch|QS_LocRequestLimit|QS_CondLocRequestLimitMatch\">"
+                 "<div title=\"QS_LocRequestLimitMatch|QS_LocRequestLimit"
+                 "|QS_CondLocRequestLimitMatch|QS_EventRequestLimit\">"
                  "concurrent requests</div></td>"
                  "<td colspan=\"3\">"
-                 "<div title=\"QS_LocRequestPerSecLimitMatch|QS_LocRequestPerSecLimit|QS_EventPerSecLimit\">"
+                 "<div title=\"QS_LocRequestPerSecLimitMatch|"
+                 "QS_LocRequestPerSecLimit|QS_EventPerSecLimit\">"
                  "requests/second</div></td>"
                  "<td colspan=\"3\">"
                  "<div title=\"QS_LocKBytesPerSecLimitMatch|QS_LocKBytesPerSecLimit\">"
@@ -4940,7 +4942,7 @@ const char *qos_loc_con_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const c
 }
 
 /**
- * command to define the req/sec limitation for a location
+ * QS_LocRequestPerSecLimit: command to define the req/sec limitation for a location
  */
 const char *qos_loc_rs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -4963,7 +4965,7 @@ const char *qos_loc_rs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const ch
 }
 
 /**
- * command to define the kbytes/sec limitation for a location
+ * QS_LocKBytesPerSecLimit: command to define the kbytes/sec limitation for a location
  */
 const char *qos_loc_bs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -4986,7 +4988,7 @@ const char *qos_loc_bs_cmd(cmd_parms *cmd, void *dcfg, const char *loc, const ch
 }
 
 /**
- * defines the maximum of concurrent requests matching the specified
+ * QS_LocRequestLimitMatch: defines the maximum of concurrent requests matching the specified
  * request line pattern
  */
 const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, const char *limit) {
@@ -5018,8 +5020,8 @@ const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, con
 }
 
 /**
- * defines the maximum of concurrent requests matching the specified
- * request line pattern
+ * QS_CondLocRequestLimitMatch: defines the maximum of concurrent requests
+ * matching the specified request line pattern
  */
 const char *qos_cond_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match,
                                    const char *limit, const char *pattern) {
@@ -5053,7 +5055,8 @@ const char *qos_cond_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match
 }
 
 /**
- * defines the maximum requests/sec for the matching request line pattern
+ * QS_LocRequestPerSecLimitMatch: defines the maximum requests/sec for
+ * the matching request line pattern
  */
 const char *qos_match_rs_cmd(cmd_parms *cmd, void *dcfg, const char *match, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -5084,7 +5087,8 @@ const char *qos_match_rs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
 }
 
 /**
- * defines the maximum kbytes/sec for the matching request line pattern
+ * QS_LocKBytesPerSecLimitMatch: defines the maximum kbytes/sec for
+ * the matching request line pattern
  */
 const char *qos_match_bs_cmd(cmd_parms *cmd, void *dcfg, const char *match, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -5122,7 +5126,7 @@ const char *qos_loc_con_def_cmd(cmd_parms *cmd, void *dcfg, const char *limit) {
 }
 
 /**
- * defined the number of concurrent events
+ * QS_EventRequestLimit: defines the number of concurrent events
  */
 const char *qos_event_req_cmd(cmd_parms *cmd, void *dcfg, const char *event, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
