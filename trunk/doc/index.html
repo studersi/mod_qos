@@ -974,8 +974,14 @@ slow/bad client, and "L"=means a request slow down.
 </li>
 <li>
 <code>mod_qos_cr</code> <br> The number of concurrent requests to a 
-location defined by directives such as the <code>QS_LocRequestLimit</code> 
-or <code>QS_LocRequestLimitMatch</code>.
+location matching the <code>QS_LocRequestLimit</code>, 
+<code>QS_LocRequestLimitMatch</code>, 
+<code>QS_LocRequestPerSecLimit</code>, 
+<code>QS_LocRequestPerSecLimitMatch</code>, 
+<code>QS_LocKBytesPerSecLimit</code>, 
+<code>QS_LocKBytesPerSecLimitMatch</code>, 
+<code>QS_CondLocRequestLimitMatch</code>, 
+or <code>QS_EventRequestLimit</code> directive.
 </li>
 <li>
 <code>mod_qos_con</code> <br> This event shows the number of 

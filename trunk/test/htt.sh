@@ -1,5 +1,5 @@
 #!/bin/sh
 
-../test_tools/src/httest $@
+./bin/httest $@
 exit $?
 
