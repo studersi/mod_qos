@@ -1,10 +1,11 @@
-Version
+Version 8.2
 
  - Fixed: Client prefer, don't mark connection timeout at
-   keep alive end.
+   keep alive end (used in conjunction with QS_ClientPrefer).
 
  - Access log events (mod_qos_ev, mod_qos_cr, mod_qos_con)
-   are stored as variables and not as out headers.
+   are stored as variables (storing them in the out headers
+   will be removed in one of the next release).
 
 Version 8.1
 

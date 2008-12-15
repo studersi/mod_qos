@@ -24,8 +24,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.94 2008-12-04 19:29:03 pbuchbinder Exp $";
-static const char g_revision[] = "8.1";
+static const char revision[] = "$Id: qsfilter2.c,v 1.95 2008-12-15 21:13:44 pbuchbinder Exp $";
+static const char g_revision[] = "8.2";
 
 /* system */
 #include <stdio.h>
@@ -375,7 +375,7 @@ static void usage(char *cmd) {
   printf("  ./%s -i loc.txt -c httpd.conf -m -e\n", cmd);
   printf("  ...\n");
   printf("  # ADD line 1: /aaa/index.do\n");
-  printf("  # 003 ^(/[a-zA-Z0-9-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\n");
+  printf("  # 003 ^(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\n");
   printf("  # ADD line 3: /aaa/view?page=1\n");
   printf("  # --- ^[/a-zA-Z0-9]+/view\\?(page=[0-9]+)?$\n");
   printf("  # ADD line 4: /aaa/edit?document=1\n");
@@ -385,7 +385,7 @@ static void usage(char *cmd) {
   printf("  ...\n");
   printf("  QS_PermitUri +QSF001 deny \"^[/a-zA-Z]+/edit\\?((document|image)(=[0-9\\.a-zA-Z]*)*[&]?)*$\"\n");
   printf("  QS_PermitUri +QSF002 deny \"^[/a-zA-Z0-9]+/view\\?(page=[0-9]+)?$\"\n");
-  printf("  QS_PermitUri +QSF003 deny \"^(/[a-zA-Z0-9-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\"\n");
+  printf("  QS_PermitUri +QSF003 deny \"^(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\"\n");
   printf("\n");
   printf("mod_qos %s\n", g_revision);
   exit(1);
