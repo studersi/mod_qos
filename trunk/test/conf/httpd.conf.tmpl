@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.114 2008-12-14 20:16:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.115 2008-12-17 20:58:00 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -74,7 +74,7 @@ QS_ClientPrefer         80
 QS_ClientEventBlockCount 3 10
 QS_ClientEventPerSecLimit  5
 
-QS_RequestHeaderFilterRule myheader "^static_content$" deny
+QS_RequestHeaderFilterRule myheader deny "^static_content$" 20
 
 <IfDefine real_ip>
 QS_EnableInternalIPSimulation off
