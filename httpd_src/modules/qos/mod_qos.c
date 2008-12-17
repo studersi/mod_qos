@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.135 2008-12-17 20:58:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.136 2008-12-17 22:02:14 pbuchbinder Exp $";
 static const char g_revision[] = "8.2";
 
 /************************************************************************
@@ -162,6 +162,13 @@ typedef enum  {
   QS_CONN_STATE_RESPONSE,
   QS_CONN_STATE_END
 } qs_conn_state_e;
+
+typedef enum  {
+  QS_HEADERFILTER_OFF_DEFAULT = 0,
+  QS_HEADERFILTER_OFF,
+  QS_HEADERFILTER_ON,
+  QS_HEADERFILTER_SIZE_ONLY
+} qs_headerfilter_mode_e;
 
 typedef enum  {
   QS_FLT_ACTION_DROP,
@@ -365,7 +372,7 @@ typedef struct {
 typedef struct {
   apr_table_t *rfilter_table;
   int inheritoff;
-  int headerfilter;
+  qs_headerfilter_mode_e headerfilter;
   int bodyfilter;
   int dec_mode;
   apr_off_t maxpost;
@@ -534,40 +541,40 @@ static const qos_her_t qs_header_rules[] = {
   { "Accept", "^("QS_H_ACCEPT"){1}([ ]?,[ ]?"QS_H_ACCEPT")*$", QS_FLT_ACTION_DROP, 200 },
   { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}([ ]?,[ ]?"QS_H_ACCEPT_C")*$", QS_FLT_ACTION_DROP, 200 },
   { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}([ ]?,[ ]?"QS_H_ACCEPT_E")*$", QS_FLT_ACTION_DROP, 200 },
-  { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?"QS_H_ACCEPT_L")*$", QS_FLT_ACTION_DROP, 200 },
-  { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 200 },
-  { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?"QS_H_CACHE")*$", QS_FLT_ACTION_DROP, 200 },
-  { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?[teTE]+)?$", QS_FLT_ACTION_DROP, 200 },
-  { "Content-Encoding", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DENY, 200 },
-  { "Content-Language", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DROP, 200 },
+  { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?"QS_H_ACCEPT_L")*$", QS_FLT_ACTION_DROP, 100 },
+  { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 100 },
+  { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?"QS_H_CACHE")*$", QS_FLT_ACTION_DROP, 100 },
+  { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?[teTE]+)?$", QS_FLT_ACTION_DROP, 100 },
+  { "Content-Encoding", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DENY, 100 },
+  { "Content-Language", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DROP, 100 },
   { "Content-Length", "^[0-9]+$", QS_FLT_ACTION_DENY, 200 },
   { "Content-Location", "^"QS_URL"+$", QS_FLT_ACTION_DENY, 200 },
-  { "Content-md5", "^"QS_B64_SP"$", QS_FLT_ACTION_DENY, 200 },
-  { "Content-Range", "^.*$", QS_FLT_ACTION_DENY, 200 },
+  { "Content-md5", "^"QS_B64_SP"$", QS_FLT_ACTION_DENY, 50 },
+  { "Content-Range", "^.*$", QS_FLT_ACTION_DENY, 50 },
   { "Content-Type", "^("QS_H_CONTENT"){1}([ ]?,[ ]?"QS_H_CONTENT")*$", QS_FLT_ACTION_DENY, 200 },
-  { "Cookie", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 200 },
-  { "Cookie2", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 200 },
+  { "Cookie", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 500 },
+  { "Cookie2", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 500 },
   { "Expect", "^"QS_H_EXPECT"+$", QS_FLT_ACTION_DROP, 200 },
-  { "From", "^"QS_H_FROM"+$", QS_FLT_ACTION_DROP, 200 },
-  { "Host", "^"QS_H_HOST"+$", QS_FLT_ACTION_DROP, 200 },
-  { "If-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 200 },
-  { "If-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 200 },
-  { "If-None-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 200 },
-  { "If-Range", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 200 },
-  { "If-Unmodified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 200 },
-  { "Keep-Alive", "^[0-9]+$", QS_FLT_ACTION_DROP, 200 },
-  { "Max-Forwards", "^[0-9]+$", QS_FLT_ACTION_DROP, 200 },
-  { "Proxy-Authorization", "^"QS_B64_SP"$", QS_FLT_ACTION_DROP, 200 },
+  { "From", "^"QS_H_FROM"+$", QS_FLT_ACTION_DROP, 100 },
+  { "Host", "^"QS_H_HOST"+$", QS_FLT_ACTION_DROP, 100 },
+  { "If-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
+  { "If-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
+  { "If-None-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
+  { "If-Range", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
+  { "If-Unmodified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
+  { "Keep-Alive", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
+  { "Max-Forwards", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
+  { "Proxy-Authorization", "^"QS_B64_SP"$", QS_FLT_ACTION_DROP, 100 },
   { "Pragma", "^"QS_H_PRAGMA"+$", QS_FLT_ACTION_DROP, 200 },
   { "Range", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 200 },
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
-  { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?"QS_H_TE")*$", QS_FLT_ACTION_DROP, 200 },
+  { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?"QS_H_TE")*$", QS_FLT_ACTION_DROP, 100 },
   { "User-Agent", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!=]+$", QS_FLT_ACTION_DROP, 200 },
-  { "Via", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 200 },
-  { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 200 },
-  { "X-Forwarded-Host", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 200 },
-  { "X-Forwarded-Server", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 200 },
-  { "X-lori-time-1", "^[0-9]+$", QS_FLT_ACTION_DROP, 200 },
+  { "Via", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 20 },
+  { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 50 },
+  { "X-Forwarded-Host", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 50 },
+  { "X-Forwarded-Server", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 50 },
+  { "X-lori-time-1", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { NULL, NULL, 0, 0 }
 };
 
@@ -1757,15 +1764,23 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
 /**
  * request header filter, drops headers which are not allowed
  */
-static int qos_header_filter(request_rec *r, qos_srv_config *sconf) {
+static int qos_header_filter(request_rec *r, qos_srv_config *sconf, qs_headerfilter_mode_e mode) {
   apr_table_t *delete = apr_table_make(r->pool, 1);
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(r->headers_in)->elts;
   for(i = 0; i < apr_table_elts(r->headers_in)->nelts; i++) {
     qos_fhlt_r_t *he = (qos_fhlt_r_t *)apr_table_get(sconf->hfilter_table, entry[i].key);
+    int denied = 0;
     if(he) {
-      if((pcre_exec(he->pcre, NULL, entry[i].val, strlen(entry[i].val), 0, 0, NULL, 0) < 0) ||
-         (strlen(entry[i].val) > he->size)) {
+      if(mode != QS_HEADERFILTER_SIZE_ONLY) {
+        if(pcre_exec(he->pcre, NULL, entry[i].val, strlen(entry[i].val), 0, 0, NULL, 0) < 0) {
+          denied = 1;
+        }
+      }
+      if(strlen(entry[i].val) > he->size) {
+        denied += 2;
+      }
+      if(denied) {
         if(he->action == QS_FLT_ACTION_DENY) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                         QOS_LOG_PFX(043)"access denied, header: \'%s: %s\', c=%s, id=%s",
@@ -2117,8 +2132,8 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
  * QS_RequestHeaderFilter enforcement
  */
 static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
-  if(dconf->headerfilter > 0) {
-    apr_status_t rv = qos_header_filter(r, sconf);
+  if(dconf->headerfilter > QS_HEADERFILTER_OFF) {
+    apr_status_t rv = qos_header_filter(r, sconf, dconf->headerfilter);
     if(rv != APR_SUCCESS) {
       const char *error_page = sconf->error_page;
       qs_req_ctx *rctx = qos_rctx_config_get(r);
@@ -4673,7 +4688,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_dir_config));
   dconf->rfilter_table = apr_table_make(p, 1);
   dconf->inheritoff = 0;
-  dconf->headerfilter = -1;
+  dconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
   dconf->bodyfilter = -1;
   dconf->dec_mode = QOS_DEC_MODE_FLAGS_STD;
   dconf->maxpost = -1;
@@ -4687,7 +4702,7 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_dir_config *b = (qos_dir_config *)basev;
   qos_dir_config *o = (qos_dir_config *)addv;
   qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_rfilter_t));
-  if(o->headerfilter != -1) {
+  if(o->headerfilter != QS_HEADERFILTER_OFF_DEFAULT) {
     dconf->headerfilter = o->headerfilter;
   } else {
     dconf->headerfilter = b->headerfilter;
@@ -5669,9 +5684,18 @@ const char *qos_denybody_cmd(cmd_parms *cmd, void *dcfg, int flag) {
 }
 
 /* enables/disables header filter */
-const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
-  dconf->headerfilter = flag;
+  if(strcasecmp(flag, "on") == 0) {
+    dconf->headerfilter = QS_HEADERFILTER_ON;
+  } else if(strcasecmp(flag, "off") == 0) {
+    dconf->headerfilter = QS_HEADERFILTER_OFF;
+  } else if(strcasecmp(flag, "size") == 0) {
+    dconf->headerfilter = QS_HEADERFILTER_SIZE_ONLY;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: invalid argument",
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
@@ -6059,14 +6083,16 @@ static const command_rec qos_config_cmds[] = {
                   ACCESS_CONF,
                   "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"
                   " directives to a location."),
-  AP_INIT_FLAG("QS_RequestHeaderFilter", qos_headerfilter_cmd, NULL,
-               ACCESS_CONF,
-               "QS_RequestHeaderFilter 'on'|'off', filters request headers by allowing"
-               " only these headers which match the request header rules defined by"
-               " mod_qos. Request headers which do not conform these definitions"
-               " are either dropped or the whole request is denied. Custom"
-               " request headers may be added by the QS_RequestHeaderFilterRule"
-               " directive."),
+  AP_INIT_TAKE1("QS_RequestHeaderFilter", qos_headerfilter_cmd, NULL,
+                ACCESS_CONF,
+                "QS_RequestHeaderFilter 'on'|'off'|'size', filters request headers by allowing"
+                " only these headers which match the request header rules defined by"
+                " mod_qos. Request headers which do not conform these definitions"
+                " are either dropped or the whole request is denied. Custom"
+                " request headers may be added by the QS_RequestHeaderFilterRule"
+                " directive. Using the 'size' option, the header field max. size"
+                " is verified only (similar to LimitRequestFieldsize but using"
+                " individual values for each header type) while the pattern is ignored."),
   AP_INIT_TAKE_ARGV("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
                     RSRC_CONF,
                     "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>  <size>, used"
