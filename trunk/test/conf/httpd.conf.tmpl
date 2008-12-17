@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.115 2008-12-17 20:58:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.116 2008-12-17 22:02:14 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -146,6 +146,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /qos !
    ProxyPass                  /qos_control !
    ProxyPass                  /cgi-local !
+   ProxyPass                  /cgi-local_s !
 
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
@@ -168,7 +169,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
    ProxyReceiveBufferSize     1024
 
-   ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /cgi-local/   ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /cgi-local_s/ ##ROOT##/htdocs/cgi-local/
 
    # -----------------------------------------------------------------
    # request level control
@@ -279,6 +281,14 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        Allow from all
 
        QS_RequestHeaderFilter on
+   </Location>
+
+   <Location /cgi-local_s>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+
+       QS_RequestHeaderFilter size
    </Location>
 
    QS_EventPerSecLimit argmatch 1

@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.3 2008-12-17 20:58:00 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.4 2008-12-17 22:02:14 pbuchbinder Exp $
 #
 
 
@@ -139,5 +139,21 @@ _EXPECT . "custom error page"
 _EXPECT . "code=043"
 _WAIT
 _CLOSE
+
+# drop headers (size check only)
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local_s/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/@html;level=2;q=0.4, */*;q=0.5
+__Keep-Alive: 3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+__Other: text
+__
+_EXPECT . "200 OK"
+_EXPECT . "HTTP Headers:"
+_EXPECT . "HTTP_ACCEPT"
+_EXPECT . "!HTTP_OTHER"
+_EXPECT . "!HTTP_KEEP_ALIVE"
+_WAIT
 
 END
