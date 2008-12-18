@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.137 2008-12-18 07:50:03 pbuchbinder Exp $";
-static const char g_revision[] = "8.2";
+static const char revision[] = "$Id: mod_qos.c,v 5.138 2008-12-18 08:11:02 pbuchbinder Exp $";
+static const char g_revision[] = "8.3";
 
 /************************************************************************
  * Includes
@@ -5713,7 +5713,7 @@ const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
 }
 
 /* QS_RequestHeaderFilterRule: set custom header rules (global only)
-   name, action, pcre, size $$$ */
+   name, action, pcre, size */
 const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
