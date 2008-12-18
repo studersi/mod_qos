@@ -3,7 +3,7 @@ Version 8.3
  - QS_RequestHeaderFilterRule has new syntax.
 
  - QS_RequestHeaderFilter checks the header length too.
-   It's possible to use QS_RequestHeaderFilter for
+   It's possible to use "QS_RequestHeaderFilter size" for
    header length checking only (instead of using
    LimitRequestFieldsize).
 
