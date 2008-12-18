@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.136 2008-12-17 22:02:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.137 2008-12-18 07:50:03 pbuchbinder Exp $";
 static const char g_revision[] = "8.2";
 
 /************************************************************************
@@ -1766,6 +1766,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
  */
 static int qos_header_filter(request_rec *r, qos_srv_config *sconf, qs_headerfilter_mode_e mode) {
   apr_table_t *delete = apr_table_make(r->pool, 1);
+  apr_table_t *reason = NULL;apr_table_make(r->pool, 1);
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(r->headers_in)->elts;
   for(i = 0; i < apr_table_elts(r->headers_in)->nelts; i++) {
@@ -1781,25 +1782,37 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf, qs_headerfil
         denied += 2;
       }
       if(denied) {
+        char *pattern = apr_psprintf(r->pool, "(pattern=%s, max. lenght=%d)",
+                                     he->text, he->size);
         if(he->action == QS_FLT_ACTION_DENY) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX(043)"access denied, header: \'%s: %s\', c=%s, id=%s",
+                        QOS_LOG_PFX(043)"access denied, header: \'%s: %s\', %s, c=%s, id=%s",
                         entry[i].key, entry[i].val,
+                        pattern,
                         r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                         qos_unique_id(r, "043"));
           return HTTP_FORBIDDEN;
         }
+        if(reason == NULL) {
+          reason = apr_table_make(r->pool, 1);
+        }
         apr_table_add(delete, entry[i].key, entry[i].val);
+        apr_table_add(reason, entry[i].key, pattern);
       }
     } else {
+      if(reason == NULL) {
+        reason = apr_table_make(r->pool, 1);
+      }
       apr_table_add(delete, entry[i].key, entry[i].val);
+      apr_table_add(reason, entry[i].key, "(no rule available)");
     }
   }
   entry = (apr_table_entry_t *)apr_table_elts(delete)->elts;
   for(i = 0; i < apr_table_elts(delete)->nelts; i++) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                  QOS_LOG_PFX(042)"drop header: \'%s: %s\', c=%s, id=%s",
+                  QOS_LOG_PFX(042)"drop header: \'%s: %s\', %s, c=%s, id=%s",
                   entry[i].key, entry[i].val,
+                  apr_table_get(reason, entry[i].key),
                   r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                   qos_unique_id(r, "042"));
     apr_table_unset(r->headers_in, entry[i].key);
