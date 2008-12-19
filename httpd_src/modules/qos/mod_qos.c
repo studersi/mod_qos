@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.139 2008-12-19 07:24:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.140 2008-12-19 20:44:22 pbuchbinder Exp $";
 static const char g_revision[] = "8.4";
 
 /************************************************************************
@@ -385,7 +385,7 @@ typedef struct {
   apr_pool_t *pool;
   int is_virtual;
   server_rec *base_server;
-  const char *chroot;
+  //  const char *chroot;
   qs_actable_t *act;
   const char *error_page;
   apr_table_t *location_t;
@@ -2212,11 +2212,16 @@ static void qos_lg_event_update(request_rec *r, time_t *t) {
           if(((e->event[0] != '!') && apr_table_get(r->subprocess_env, e->event)) ||
              ((e->event[0] == '!') && !apr_table_get(r->subprocess_env, &e->event[1]))) {
             e->req++;
-            if(now > e->interval + 10) {
-              e->req_per_sec = e->req / (now - e->interval);
-              e->req = 0;
-              e->interval = now;
-              qos_cal_req_sec(r, e);
+            if(e->req_per_sec_limit) {
+              /* QS_EventPerSecLimit */
+              if(now > e->interval + 10) {
+                e->req_per_sec = e->req / (now - e->interval);
+                e->req = 0;
+                e->interval = now;
+                qos_cal_req_sec(r, e);
+              }
+            } else {
+              /* QS_EventKBytesPerSecLimit */
             }
           }
         }
@@ -2304,8 +2309,13 @@ static int qos_hp_event_count(request_rec *r) {
         if(e->event && (e->limit == -1)) {
           if(((e->event[0] != '!') && apr_table_get(r->subprocess_env, e->event)) ||
              ((e->event[0] == '!') && !apr_table_get(r->subprocess_env, &e->event[1]))) {
-            if(e->req_per_sec_block_rate > req_per_sec_block) {
-              req_per_sec_block = e->req_per_sec_block_rate;
+            if(e->req_per_sec_limit) {
+              /* QS_EventPerSecLimit */
+              if(e->req_per_sec_block_rate > req_per_sec_block) {
+                req_per_sec_block = e->req_per_sec_block_rate;
+              }
+            } else {
+              /* QS_EventKBytesPerSecLimit */
             }
           }
         }
@@ -4395,6 +4405,29 @@ static int qos_parp_check() {
   return DECLINED;
 }
 
+/*
+static int qos_chroot(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+  qos_user_t *u = qos_get_user_conf(bs->process->pool, sconf->net_prefer);
+  if(u->server_start == 2) {
+    if(sconf->chroot) {
+      int rc = 0;
+      ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
+                   QOS_LOG_PFX(000)"change root to %s", sconf->chroot);
+      if((rc = chroot(sconf->chroot)) < 0) {
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
+                     QOS_LOG_PFX(000)"chroot failed: %s", strerror(errno));
+      }
+      if((rc = chdir("/")) < 0) {
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
+                     QOS_LOG_PFX(000)"chroot failed (chdir /): %s", strerror(errno));
+      }
+    }
+  }
+  return DECLINED;
+}
+*/
+
 /**
  * inits each child
  */
@@ -4453,29 +4486,6 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
     }
   }
 }
-
-/**
- * post config handler used for change root
- */
-/*
-static int qos_chroot(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  if(sconf->chroot) {
-    int rc = 0;
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
-                 QOS_LOG_PFX(000)"change root to %s", sconf->chroot);
-    if((rc = chroot(sconf->chroot)) < 0) {
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
-                   QOS_LOG_PFX(000)"chroot failed: %s", strerror(errno));
-    }
-    if((rc = chdir("/")) < 0) {
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
-                   QOS_LOG_PFX(000)"chroot failed (chdir /): %s", strerror(errno));
-    }
-  }
-  return DECLINED;
-}
-*/
 
 /**
  * inits the server configuration
@@ -4793,7 +4803,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   apr_pool_create(&act_pool, NULL);
   sconf =(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
   sconf->pool = p;
-  sconf->chroot = NULL;
+  //  sconf->chroot = NULL;
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
@@ -5193,12 +5203,13 @@ const char *qos_event_req_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
   char *p = strchr(event, '=');
   rule->url = apr_pstrcat(cmd->pool, "var=(", event, ")", NULL);
   rule->limit = atoi(limit);
+  rule->req_per_sec_limit = 0;
+  rule->req_per_sec_limit = 0;
   if((rule->limit < 0) || ((rule->limit == 0) && limit && (strcmp(limit, "0") != 0))) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
                         cmd->directive->directive);
   }
   sconf->has_event_filter = 1;
-  rule->req_per_sec_limit = 0;
   if(p) {
     p++;
 #ifdef AP_REGEX_H
@@ -5222,7 +5233,7 @@ const char *qos_event_req_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
 }
 
 /**
- * defines the maximum requests/sec for the matching variable.
+ * QS_EventPerSecLimit: defines the maximum requests/sec for the matching variable.
  */
 const char *qos_event_rs_cmd(cmd_parms *cmd, void *dcfg, const char *event, const char *limit) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -5230,6 +5241,7 @@ const char *qos_event_rs_cmd(cmd_parms *cmd, void *dcfg, const char *event, cons
   qs_rule_ctx_t *rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
   rule->url = apr_pstrcat(cmd->pool, "var=[", event, "]", NULL);
   rule->req_per_sec_limit = atol(limit);
+  rule->kbytes_per_sec_limit = 0;
   if(rule->req_per_sec_limit == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
@@ -5242,6 +5254,30 @@ const char *qos_event_rs_cmd(cmd_parms *cmd, void *dcfg, const char *event, cons
   apr_table_setn(sconf->location_t, rule->url, (char *)rule);
   return NULL;
 }
+
+/**
+ * QS_EventKBytesPerSecLimit: maximum download per event
+ */
+const char *qos_event_bps_cmd(cmd_parms *cmd, void *dcfg, const char *event, const char *limit) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qs_rule_ctx_t *rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
+  rule->url = apr_pstrcat(cmd->pool, "var=[", event, "]", NULL);
+  rule->kbytes_per_sec_limit = atol(limit);
+  rule->req_per_sec_limit = 0;
+  if(rule->kbytes_per_sec_limit == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  sconf->has_event_limit = 1;
+  rule->event = apr_pstrdup(cmd->pool, event);
+  rule->regex = NULL;
+  rule->condition = NULL;
+  rule->limit = -1;
+  apr_table_setn(sconf->location_t, rule->url, (char *)rule);
+  return NULL;
+}
+
 
 const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *rc, const char *var) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -5410,9 +5446,6 @@ const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   return NULL;
 }
 
-/**
- * change root directive
- */
 /*
 const char *qos_chroot_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   char cwd[2048] = "";
@@ -5959,7 +5992,7 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_LocKBytesPerSecLimit <regex> <kbytes>, defined the allowed"
                 " download bandwidth to the defined kbytes per second. Responses are"
-                "slowed by adding a delay to each response (non-linear, bigger files"
+                " slowed by adding a delay to each response (non-linear, bigger files"
                 " get longer delay than smaller ones). This directive should be used"
                 " in conjunction with QS_LocRequestLimitMatch only."),
   /* error document */
@@ -6074,6 +6107,14 @@ static const command_rec qos_config_cmds[] = {
                 " number of requests, having the specified variable set,"
                 " per second. Requests are limited"
                 " by adding a delay to each requests."),
+  AP_INIT_TAKE2("QS_EventKBytesPerSecLimit", qos_event_bps_cmd, NULL,
+                RSRC_CONF,
+                "QS_EventKBytesPerSecLimit [!]<variable> <kbytes>, defines the allowed"
+                " download bandwidth to the defined kbytes per second for those"
+                " requests which have the specified variable set. Responses are"
+                " slowed by adding a delay to each response (non-linear, bigger files"
+                " get longer delay than smaller ones). This directive should be used"
+                " in conjunction with QS_EventRequestLimit only."),
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIf [!]<variable1> [!]<variable1> <variable=value>,"
@@ -6188,11 +6229,11 @@ static const command_rec qos_config_cmds[] = {
 #else
   AP_INIT_NO_ARGS("QS_ClientPrefer", qos_client_pref_cmd, NULL,
 #endif
-                    RSRC_CONF,
-                    "QS_ClientPrefer [<percent>], prefers known VIP clients when server has"
-                    " less than 80% of free TCP connections. Preferred clients"
-                    " are VIP clients only, see QS_VipHeaderName directive."
-                    " Directive is allowed in global server context only."),
+                  RSRC_CONF,
+                  "QS_ClientPrefer [<percent>], prefers known VIP clients when server has"
+                  " less than 80% of free TCP connections. Preferred clients"
+                  " are VIP clients only, see QS_VipHeaderName directive."
+                  " Directive is allowed in global server context only."),
   AP_INIT_TAKE12("QS_ClientEventBlockCount", qos_client_block_cmd, NULL,
                  RSRC_CONF,
                  "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"
@@ -6219,10 +6260,9 @@ static const command_rec qos_config_cmds[] = {
 static void qos_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", "mod_parp.c", NULL };
   static const char *post[] = { "mod_setenvif.c", NULL };
+  //  static const char *prelast[] = { "mod_setenvif.c", "mod_ssl.c", NULL };
   ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
-  /*
-  ap_hook_post_config(qos_chroot, pre, NULL, APR_HOOK_LAST);
-  */
+  //  ap_hook_post_config(qos_chroot, prelast, NULL, APR_HOOK_REALLY_LAST);
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
