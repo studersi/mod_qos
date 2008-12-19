@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.116 2008-12-17 22:02:14 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.117 2008-12-19 22:36:33 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -366,6 +366,10 @@ Listen                  server1:##QS_PORT_BASE1##
    #QS_SrvMaxConnExcludeIP           192.168.32.
 
    BrowserMatch "(MSIE 5\.)"  QS_KeepAliveTimeout=7
+
+   BrowserMatch QS_EventKBytesPerSecLimit  eventkbytespersec
+   QS_EventKBytesPerSecLimit  eventkbytespersec 202
+
    <Directory /error-docs>
       SetHandler              default
    </Directory>

@@ -556,6 +556,15 @@ event. Ignores VIP privileges normally but you may evaluate
 the <code>QS_VipRequest</code> variable.
 </li>
 <li>
+<code>QS_EventKBytesPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
+Throttles the download bandwidth of all requests having the defined 
+variable set to the defined kbytes per second. Responses are slowed 
+by adding a delay to each response (non-linear, bigger files get 
+longer delay than smaller ones). By default, no limitation is active. 
+This directive should be used in conjunction with <code>QS_EventRequestLimit</code> 
+only (you must use the same variable name for both directives).
+</li>
+<li>
 <code>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; &lt;variable=value&gt;</code><br>
 Sets the "variable=value" (literal string) if variable1 (literal string) 
 AND variable2 (literal string) are set in the request environment 

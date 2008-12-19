@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.75 2008-12-13 21:59:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.76 2008-12-19 22:36:33 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -278,6 +278,20 @@ if [ $? -ne 0 ]; then
     echo "FAILED MultiRequest.htt"
 fi
 sleep 1
+
+./ctl.sh restart > /dev/null
+# -----------------------------------------------------------------
+echo "-- kbytes/sec limit, QS_EventKBytesPerSecLimit.htt" >>  logs/error_log
+./htt.sh -s ./scripts/QS_EventKBytesPerSecLimit.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_EventKBytesPerSecLimit.htt"
+fi
+./htt.sh -s ./scripts/QS_EventKBytesPerSecLimit_t.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_EventKBytesPerSecLimit_t.htt"
+fi
 
 # -----------------------------------------------------------------
 cat logs/access1_log | awk '{print $7}' > logs/loc1.htt
