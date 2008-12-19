@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.140 2008-12-19 20:44:22 pbuchbinder Exp $";
-static const char g_revision[] = "8.4";
+static const char revision[] = "$Id: mod_qos.c,v 5.141 2008-12-19 22:36:33 pbuchbinder Exp $";
+static const char g_revision[] = "8.5";
 
 /************************************************************************
  * Includes
@@ -459,6 +459,7 @@ typedef struct {
   char *evmsg;
   int is_vip;
   apr_off_t maxpostcount;
+  int event_kbytes_per_sec_block_rate;
 } qs_req_ctx;
 
 /**
@@ -920,6 +921,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->is_vip = 0;
     rctx->event_entries = apr_table_make(r->pool, 1);
     rctx->maxpostcount = 0;
+    rctx->event_kbytes_per_sec_block_rate = 0;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
@@ -1863,6 +1865,34 @@ static char *qos_crline(request_rec *r, const char *line) {
   return string;
 }
 
+static void qos_cal_bytes_sec(request_rec *r, qs_acentry_t *e) {
+  if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
+    int factor = ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) - 100;
+    e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
+    if(e->kbytes_per_sec_block_rate > QS_MAX_DELAY) {
+      e->kbytes_per_sec_block_rate = QS_MAX_DELAY;
+    }
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                  QOS_LOG_PFX(052)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
+                  " delay=%dms%s",
+                  e->url, e->kbytes_per_sec_limit,
+                  e->kbytes_per_sec, e->kbytes_per_sec_block_rate,
+                  e->kbytes_per_sec_block_rate == QS_MAX_DELAY ? " (max)" : "");
+  } else if(e->kbytes_per_sec_block_rate > 0) {
+    if(e->kbytes_per_sec_block_rate < 50) {
+      e->kbytes_per_sec_block_rate = 0;
+    } else {
+      int factor = e->kbytes_per_sec_block_rate / 4;
+      e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate - factor;
+    }
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                  QOS_LOG_PFX(053)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
+                  " delay=%dms",
+                  e->url, e->kbytes_per_sec_limit,
+                  e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
+  }
+}
+
 /**
  * calculates the rec/sec block rate
  */
@@ -2212,16 +2242,21 @@ static void qos_lg_event_update(request_rec *r, time_t *t) {
           if(((e->event[0] != '!') && apr_table_get(r->subprocess_env, e->event)) ||
              ((e->event[0] == '!') && !apr_table_get(r->subprocess_env, &e->event[1]))) {
             e->req++;
-            if(e->req_per_sec_limit) {
-              /* QS_EventPerSecLimit */
-              if(now > e->interval + 10) {
+            e->bytes = e->bytes + r->bytes_sent;
+            if(now > (e->interval + 10)) {
+              if(e->req_per_sec_limit) {
+                /* QS_EventPerSecLimit */
                 e->req_per_sec = e->req / (now - e->interval);
                 e->req = 0;
                 e->interval = now;
                 qos_cal_req_sec(r, e);
+              } else {
+                /* QS_EventKBytesPerSecLimit */
+                e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
+                e->bytes = 0;
+                e->interval = now;
+                qos_cal_bytes_sec(r, e);
               }
-            } else {
-              /* QS_EventKBytesPerSecLimit */
             }
           }
         }
@@ -2293,14 +2328,15 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
 }
 
 /*
- * QS_EventPerSecLimit
- * returns the max req_per_sec_block_rate
+ * QS_EventPerSecLimit/QS_EventKBytesPerSecLimit
+ * returns the max req_per_sec_block_rate/kbytes_per_sec_block_rate
  */
-static int qos_hp_event_count(request_rec *r) {
+static void qos_hp_event_count(request_rec *r, int *req_per_sec_block, int *kbytes_per_sec_block) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
   qs_actable_t *act = sconf->act;
-  int req_per_sec_block = 0;
+  *req_per_sec_block = 0;
+  *kbytes_per_sec_block = 0;
   if(act->has_events) {
     qs_acentry_t *e = act->entry;
     if(e) {
@@ -2311,11 +2347,14 @@ static int qos_hp_event_count(request_rec *r) {
              ((e->event[0] == '!') && !apr_table_get(r->subprocess_env, &e->event[1]))) {
             if(e->req_per_sec_limit) {
               /* QS_EventPerSecLimit */
-              if(e->req_per_sec_block_rate > req_per_sec_block) {
-                req_per_sec_block = e->req_per_sec_block_rate;
+              if(e->req_per_sec_block_rate > *req_per_sec_block) {
+                *req_per_sec_block = e->req_per_sec_block_rate;
               }
             } else {
               /* QS_EventKBytesPerSecLimit */
+              if(e->kbytes_per_sec_block_rate > *kbytes_per_sec_block) {
+                *kbytes_per_sec_block = e->kbytes_per_sec_block_rate;
+              }
             }
           }
         }
@@ -2324,7 +2363,7 @@ static int qos_hp_event_count(request_rec *r) {
       apr_global_mutex_unlock(act->lock); /* @CRT12 */
     }
   }
-  return req_per_sec_block;
+  return;
 }
 
 static apr_status_t qos_cleanup_inctx(void *p) {
@@ -3690,6 +3729,7 @@ static int qos_header_parser(request_rec * r) {
     char *msg;
     char *uid;
     int req_per_sec_block = 0;
+    int kbytes_per_sec_block = 0;
     int status;
     qs_acentry_t *e;
     qs_acentry_t *e_cond;
@@ -3760,7 +3800,7 @@ static int qos_header_parser(request_rec * r) {
      * QS_EventPerSecLimit
      */
     if(sconf->has_event_limit) {
-      req_per_sec_block = qos_hp_event_count(r);
+      qos_hp_event_count(r, &req_per_sec_block, &kbytes_per_sec_block);
     }
 
     /*
@@ -3851,7 +3891,7 @@ static int qos_header_parser(request_rec * r) {
           }
         }
         /*
-         * QS_LocRequestPerSecLimit enforcement
+         * QS_LocRequestPerSecLimit/QS_EventPerSecLimit enforcement
          */
         if(req_per_sec_block) {
           if(rctx->is_vip) {
@@ -3876,6 +3916,18 @@ static int qos_header_parser(request_rec * r) {
             rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
           } else {
             rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+            ap_add_output_filter("qos-out-filter-delay", NULL, r, r->connection);
+          }
+        }
+        /*
+         * QS_EventKBytesPerSecLimit
+         */
+        if(kbytes_per_sec_block) {
+          if(rctx->is_vip) {
+            rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+          } else {
+            rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+            rctx->event_kbytes_per_sec_block_rate = kbytes_per_sec_block;
             ap_add_output_filter("qos-out-filter-delay", NULL, r, r->connection);
           }
         }
@@ -4107,7 +4159,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
 static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qs_req_ctx *rctx = qos_rctx_config_get(r);
-  if(rctx->entry) {
+  if(rctx->entry && rctx->entry->kbytes_per_sec_block_rate) {
     if(rctx->is_vip) {
       rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
     } else {
@@ -4115,6 +4167,21 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
        * QS_LocKBytesPerSecLimit enforcement
        */
       int kbytes_per_sec_block = rctx->entry->kbytes_per_sec_block_rate;
+      int sec = kbytes_per_sec_block / 1000;
+      int nsec = kbytes_per_sec_block % 1000;
+      struct timespec delay;
+      delay.tv_sec  = sec;
+      delay.tv_nsec = nsec * 1000000;
+      nanosleep(&delay,NULL);
+    }
+  } else if(rctx->event_kbytes_per_sec_block_rate) {
+    if(rctx->is_vip) {
+      rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+    } else {
+      /*
+       * QS_EventKBytesPerSecLimit enforcement
+       */
+      int kbytes_per_sec_block = rctx->event_kbytes_per_sec_block_rate;
       int sec = kbytes_per_sec_block / 1000;
       int nsec = kbytes_per_sec_block % 1000;
       struct timespec delay;
@@ -4308,7 +4375,7 @@ static int qos_logger(request_rec *r) {
       if(e->counter) e->counter--;
       e->req++;
       e->bytes = e->bytes + r->bytes_sent;
-      if(now > e->interval + 10) {
+      if(now > (e->interval + 10)) {
         e->req_per_sec = e->req / (now - e->interval);
         e->req = 0;
         e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
@@ -4318,31 +4385,7 @@ static int qos_logger(request_rec *r) {
           qos_cal_req_sec(r, e);
         }
         if(e->kbytes_per_sec_limit) {
-          if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
-            int factor = ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) - 100;
-            e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
-            if(e->kbytes_per_sec_block_rate > QS_MAX_DELAY) {
-              e->kbytes_per_sec_block_rate = QS_MAX_DELAY;
-            }
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                          QOS_LOG_PFX(052)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
-                          " delay=%dms%s",
-                          e->url, e->kbytes_per_sec_limit,
-                          e->kbytes_per_sec, e->kbytes_per_sec_block_rate,
-                          e->kbytes_per_sec_block_rate == QS_MAX_DELAY ? " (max)" : "");
-          } else if(e->kbytes_per_sec_block_rate > 0) {
-            if(e->kbytes_per_sec_block_rate < 50) {
-              e->kbytes_per_sec_block_rate = 0;
-            } else {
-              int factor = e->kbytes_per_sec_block_rate / 4;
-              e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate - factor;
-            }
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                          QOS_LOG_PFX(053)"byte rate limit, rule: %s(%ld), kbytes/sec=%ld,"
-                          " delay=%dms",
-                          e->url, e->kbytes_per_sec_limit,
-                          e->kbytes_per_sec, e->kbytes_per_sec_block_rate);
-          }
+          qos_cal_bytes_sec(r, e);
         }
       }
     }
@@ -5262,7 +5305,7 @@ const char *qos_event_bps_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   qs_rule_ctx_t *rule =  (qs_rule_ctx_t *)apr_pcalloc(cmd->pool, sizeof(qs_rule_ctx_t));
-  rule->url = apr_pstrcat(cmd->pool, "var=[", event, "]", NULL);
+  rule->url = apr_pstrcat(cmd->pool, "var={", event, "}", NULL);
   rule->kbytes_per_sec_limit = atol(limit);
   rule->req_per_sec_limit = 0;
   if(rule->kbytes_per_sec_limit == 0) {
