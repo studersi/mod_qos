@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.138 2008-12-18 08:11:02 pbuchbinder Exp $";
-static const char g_revision[] = "8.3";
+static const char revision[] = "$Id: mod_qos.c,v 5.139 2008-12-19 07:24:14 pbuchbinder Exp $";
+static const char g_revision[] = "8.4";
 
 /************************************************************************
  * Includes
@@ -385,6 +385,7 @@ typedef struct {
   apr_pool_t *pool;
   int is_virtual;
   server_rec *base_server;
+  const char *chroot;
   qs_actable_t *act;
   const char *error_page;
   apr_table_t *location_t;
@@ -1766,7 +1767,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
  */
 static int qos_header_filter(request_rec *r, qos_srv_config *sconf, qs_headerfilter_mode_e mode) {
   apr_table_t *delete = apr_table_make(r->pool, 1);
-  apr_table_t *reason = NULL;apr_table_make(r->pool, 1);
+  apr_table_t *reason = NULL;
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(r->headers_in)->elts;
   for(i = 0; i < apr_table_elts(r->headers_in)->nelts; i++) {
@@ -4454,6 +4455,29 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
 }
 
 /**
+ * post config handler used for change root
+ */
+/*
+static int qos_chroot(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+  if(sconf->chroot) {
+    int rc = 0;
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
+                 QOS_LOG_PFX(000)"change root to %s", sconf->chroot);
+    if((rc = chroot(sconf->chroot)) < 0) {
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
+                   QOS_LOG_PFX(000)"chroot failed: %s", strerror(errno));
+    }
+    if((rc = chdir("/")) < 0) {
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
+                   QOS_LOG_PFX(000)"chroot failed (chdir /): %s", strerror(errno));
+    }
+  }
+  return DECLINED;
+}
+*/
+
+/**
  * inits the server configuration
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
@@ -4769,6 +4793,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   apr_pool_create(&act_pool, NULL);
   sconf =(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
   sconf->pool = p;
+  sconf->chroot = NULL;
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
@@ -5385,6 +5410,38 @@ const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   return NULL;
 }
 
+/**
+ * change root directive
+ */
+/*
+const char *qos_chroot_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
+  char cwd[2048] = "";
+  qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->chroot = apr_pstrdup(cmd->pool, arg);
+  if(getcwd(cwd, sizeof(cwd)) == NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to examine current working directory",
+                        cmd->directive->directive);
+  }
+  if(chdir(sconf->chroot) < 0) {
+    return apr_psprintf(cmd->pool, "%s: change dir to %s failed",
+                        cmd->directive->directive, sconf->chroot);
+  }
+  if(chdir(cwd) < 0) {
+    return apr_psprintf(cmd->pool, "%s: change dir to %s failed",
+                        cmd->directive->directive, cwd);
+  }
+ 
+  return NULL;
+}
+*/
+
+/**
+ * global error code setting
+ */
 const char *qos_error_code_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
@@ -5909,6 +5966,11 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorPage <url>, defines a custom error page."),
+  /*
+  AP_INIT_TAKE1("QS_Chroot", qos_chroot_cmd, NULL,
+                RSRC_CONF,
+                "QS_Chroot <path>, change root directory."),
+  */
   AP_INIT_TAKE1("QS_ErrorResponseCode", qos_error_code_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorResponseCode <code>, defines the HTTP response code, default is 500."),
@@ -6158,6 +6220,9 @@ static void qos_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", "mod_parp.c", NULL };
   static const char *post[] = { "mod_setenvif.c", NULL };
   ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
+  /*
+  ap_hook_post_config(qos_chroot, pre, NULL, APR_HOOK_LAST);
+  */
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
