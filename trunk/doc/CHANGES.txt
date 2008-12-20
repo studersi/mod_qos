@@ -2,6 +2,10 @@ Version 8.5
 
  - New directive QS_EventKBytesPerSecLimit.
 
+ - New structure of the source archive tarball, see
+   index.html#build for more information about building
+   the binaries.
+
 Version 8.3
 
  - QS_RequestHeaderFilterRule has new syntax.
