@@ -1,5 +1,5 @@
 #
-# $Id: QS_EventKBytesPerSecLimit.htt,v 1.1 2008-12-20 13:20:37 pbuchbinder Exp $
+# $Id: QS_EventKBytesPerSecLimit.htt,v 1.2 2008-12-22 08:45:50 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -12,6 +12,7 @@ __Host: server1
 __User-Agent: QS_EventKBytesPerSecLimit
 __Connection: keep-alive
 __
+_EXPECT . "Revision"
 _WAIT
 
 _REQ server1 $QS_PORT_BASE1
@@ -20,6 +21,7 @@ __Host: server1
 __User-Agent: QS_EventKBytesPerSecLimit
 __Connection: keep-alive
 __
+_EXPECT . "Revision"
 _WAIT
 
 _REQ server1 $QS_PORT_BASE1
@@ -28,6 +30,7 @@ __Host: server1
 __User-Agent: QS_EventKBytesPerSecLimit
 __Connection: keep-alive
 __
+_EXPECT . "Revision"
 _WAIT
 
 _REQ server1 $QS_PORT_BASE1
@@ -36,6 +39,7 @@ __Host: server1
 __User-Agent: QS_EventKBytesPerSecLimit
 __Connection: keep-alive
 __
+_EXPECT . "Revision"
 _WAIT
 
 _REQ server1 $QS_PORT_BASE1
@@ -44,6 +48,7 @@ __Host: server1
 __User-Agent: QS_EventKBytesPerSecLimit
 __Connection: keep-alive
 __
+_EXPECT . "Revision"
 _WAIT
 
 _CLOSE
