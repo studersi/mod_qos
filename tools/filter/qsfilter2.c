@@ -5,7 +5,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007-2008 Pascal Buchbinder
+ * Copyright (C) 2007-2009 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -24,8 +24,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.98 2008-12-20 13:20:37 pbuchbinder Exp $";
-static const char g_revision[] = "8.5";
+static const char revision[] = "$Id: qsfilter2.c,v 1.99 2009-01-06 20:32:52 pbuchbinder Exp $";
+static const char g_revision[] = "8.6";
 
 /* system */
 #include <stdio.h>
