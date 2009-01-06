@@ -1,5 +1,6 @@
-Version 8.
+Version 8.6
 
+ - QS_Chroot directive.
 
 Version 8.5
 

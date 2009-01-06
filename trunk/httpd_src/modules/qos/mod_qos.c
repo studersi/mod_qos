@@ -15,7 +15,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007-2008 Pascal Buchbinder
+ * Copyright (C) 2007-2009 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.141 2008-12-19 22:36:33 pbuchbinder Exp $";
-static const char g_revision[] = "8.5";
+static const char revision[] = "$Id: mod_qos.c,v 5.142 2009-01-06 20:32:52 pbuchbinder Exp $";
+static const char g_revision[] = "8.6";
 
 /************************************************************************
  * Includes
@@ -385,7 +385,7 @@ typedef struct {
   apr_pool_t *pool;
   int is_virtual;
   server_rec *base_server;
-  //  const char *chroot;
+  const char *chroot;
   qs_actable_t *act;
   const char *error_page;
   apr_table_t *location_t;
@@ -4448,7 +4448,6 @@ static int qos_parp_check() {
   return DECLINED;
 }
 
-/*
 static int qos_chroot(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   qos_user_t *u = qos_get_user_conf(bs->process->pool, sconf->net_prefer);
@@ -4469,7 +4468,6 @@ static int qos_chroot(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, se
   }
   return DECLINED;
 }
-*/
 
 /**
  * inits each child
@@ -4846,7 +4844,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   apr_pool_create(&act_pool, NULL);
   sconf =(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
   sconf->pool = p;
-  //  sconf->chroot = NULL;
+  sconf->chroot = NULL;
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
@@ -5489,7 +5487,6 @@ const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   return NULL;
 }
 
-/*
 const char *qos_chroot_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   char cwd[2048] = "";
   qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
@@ -5513,7 +5510,6 @@ const char *qos_chroot_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
  
   return NULL;
 }
-*/
 
 /**
  * global error code setting
@@ -6042,11 +6038,9 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorPage <url>, defines a custom error page."),
-  /*
   AP_INIT_TAKE1("QS_Chroot", qos_chroot_cmd, NULL,
                 RSRC_CONF,
                 "QS_Chroot <path>, change root directory."),
-  */
   AP_INIT_TAKE1("QS_ErrorResponseCode", qos_error_code_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorResponseCode <code>, defines the HTTP response code, default is 500."),
@@ -6303,9 +6297,9 @@ static const command_rec qos_config_cmds[] = {
 static void qos_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", "mod_parp.c", NULL };
   static const char *post[] = { "mod_setenvif.c", NULL };
-  //  static const char *prelast[] = { "mod_setenvif.c", "mod_ssl.c", NULL };
+  static const char *prelast[] = { "mod_setenvif.c", "mod_ssl.c", NULL };
   ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
-  //  ap_hook_post_config(qos_chroot, prelast, NULL, APR_HOOK_REALLY_LAST);
+  ap_hook_post_config(qos_chroot, prelast, NULL, APR_HOOK_REALLY_LAST);
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
