@@ -6,7 +6,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007-2008 Pascal Buchbinder
+ * Copyright (C) 2007-2009 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,11 +25,13 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.13 2008-10-08 06:13:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.14 2009-01-08 19:37:20 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <errno.h>
+#include <stdarg.h>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -85,6 +87,18 @@ static char  m_date_str[MAX_LINE];
 /* debug */
 static long  m_lines = 0;
 static int   m_verbose = 0;
+
+static void qerror(const char *fmt,...) {
+  char buf[MAX_LINE];
+  va_list args;
+  time_t t = time(NULL);
+  char *time_string = ctime(&t);
+  va_start(args, fmt);
+  vsprintf(buf, fmt, args);
+  time_string[strlen(time_string) - 1] = '\0';
+  fprintf(stderr, "[%s] [error] qslog: %s\n", time_string, buf);
+  fflush(stderr);
+}
 
 /*
  * skip an element to the next space
@@ -494,8 +508,12 @@ static void *loggerThread(void *argv) {
 	char arch[MAX_LINE];
 	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptr);
 	snprintf(arch, sizeof(arch), "%s.%s", m_file_name, buf);
-	fclose(m_f);
-	rename(m_file_name, arch);
+	if(fclose(m_f) != 0) {
+	  qerror("failed to close file %s: %s", m_file_name, strerror(errno));
+	}
+	if(rename(m_file_name, arch) != 0) {
+	  qerror("failed to move file %s: %s", arch, strerror(errno));
+	}
 	m_f = fopen(m_file_name, "a+"); 
       }
     }
@@ -604,7 +622,7 @@ int main(int argc, char **argv) {
     } else if(strcmp(*argv,"-?") == 0) {
       usage(cmd);
     } else {
-      fprintf(stderr,"[%s]: ERROR, unknown option '%s'\n", cmd, *argv);
+      qerror("unknown option '%s'", *argv);
       exit(1);
     }
     argc--;
@@ -617,7 +635,7 @@ int main(int argc, char **argv) {
     struct passwd *pwd = getpwnam(username);
     uid_t uid, gid;
     if(pwd == NULL) {
-      fprintf(stderr,"[%s]: ERROR, unknown user id '%s'\n", cmd, username);
+      qerror("unknown user id '%s'", username);
       exit(1);
     }
     uid = pwd->pw_uid;
@@ -625,22 +643,22 @@ int main(int argc, char **argv) {
     setgid(gid);
     setuid(uid);
     if(getuid() != uid) {
-      fprintf(stderr,"[%s]: ERROR, setuid failed (%s,%d)\n", cmd, username, uid);
+      qerror("setuid failed (%s,%d)", username, uid);
       exit(1);
     }
     if(getgid() != gid) {
-      fprintf(stderr,"[%s]: ERROR, setgid failed (%d)\n", cmd, gid);
+      qerror("setgid failed (%d)", gid);
       exit(1);
     }
   }
 
   m_f = fopen(file, "a+"); 
   if(m_f == NULL) {
-    fprintf(stderr, "[%s]: ERROR, could not open file for writing '%s'\n", cmd, file);
+    qerror("could not open file for writing '%s'", file);
     exit(1);
   }
   if(strlen(file) > (sizeof(m_file_name) - strlen(".yyyymmddHHMMSS "))) {
-    fprintf(stderr, "[%s]: ERROR, file name too long '%s'\n", cmd, file);
+    qerror("file name too long '%s'", file);
     exit(1);
   }
   strcpy(m_file_name, file);
