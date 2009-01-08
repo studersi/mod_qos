@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.142 2009-01-06 20:32:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.143 2009-01-08 07:28:48 pbuchbinder Exp $";
 static const char g_revision[] = "8.6";
 
 /************************************************************************
@@ -4450,22 +4450,28 @@ static int qos_parp_check() {
 
 static int qos_chroot(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+#ifndef QS_HAS_APACHE_PATH
   qos_user_t *u = qos_get_user_conf(bs->process->pool, sconf->net_prefer);
   if(u->server_start == 2) {
+#endif
     if(sconf->chroot) {
       int rc = 0;
-      ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
+      ap_log_error(APLOG_MARK, APLOG_INFO, 0, bs, 
                    QOS_LOG_PFX(000)"change root to %s", sconf->chroot);
       if((rc = chroot(sconf->chroot)) < 0) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                      QOS_LOG_PFX(000)"chroot failed: %s", strerror(errno));
+        return !DECLINED;
       }
       if((rc = chdir("/")) < 0) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                      QOS_LOG_PFX(000)"chroot failed (chdir /): %s", strerror(errno));
+        return !DECLINED;
       }
     }
+#ifndef QS_HAS_APACHE_PATH
   }
+#endif
   return DECLINED;
 }
 
@@ -4955,6 +4961,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_srv_config *b = (qos_srv_config *)basev;
   qos_srv_config *o = (qos_srv_config *)addv;
   /* GLOBAL ONLY directives: */
+  o->chroot = b->chroot;
   o->hfilter_table = b->hfilter_table;
   o->net_prefer = b->net_prefer;
   o->has_qos_cc = b->has_qos_cc;
@@ -5487,6 +5494,9 @@ const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   return NULL;
 }
 
+/**
+ * path to chrooted jail
+ */
 const char *qos_chroot_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   char cwd[2048] = "";
   qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
@@ -6299,7 +6309,10 @@ static void qos_register_hooks(apr_pool_t * p) {
   static const char *post[] = { "mod_setenvif.c", NULL };
   static const char *prelast[] = { "mod_setenvif.c", "mod_ssl.c", NULL };
   ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
+#ifndef QS_HAS_APACHE_PATH
+  /* use post config hook only for non-patched Apache server (worker.c/prefork.c) */
   ap_hook_post_config(qos_chroot, prelast, NULL, APR_HOOK_REALLY_LAST);
+#endif
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
