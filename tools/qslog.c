@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.14 2009-01-08 19:37:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.15 2009-01-09 08:15:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -509,10 +509,10 @@ static void *loggerThread(void *argv) {
 	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptr);
 	snprintf(arch, sizeof(arch), "%s.%s", m_file_name, buf);
 	if(fclose(m_f) != 0) {
-	  qerror("failed to close file %s: %s", m_file_name, strerror(errno));
+	  qerror("failed to close file '%s': %s", m_file_name, strerror(errno));
 	}
 	if(rename(m_file_name, arch) != 0) {
-	  qerror("failed to move file %s: %s", arch, strerror(errno));
+	  qerror("failed to move file '%s': %s", arch, strerror(errno));
 	}
 	m_f = fopen(m_file_name, "a+"); 
       }
@@ -635,7 +635,7 @@ int main(int argc, char **argv) {
     struct passwd *pwd = getpwnam(username);
     uid_t uid, gid;
     if(pwd == NULL) {
-      qerror("unknown user id '%s'", username);
+      qerror("unknown user id '%s': %s", username, strerror(errno));
       exit(1);
     }
     uid = pwd->pw_uid;
@@ -651,10 +651,9 @@ int main(int argc, char **argv) {
       exit(1);
     }
   }
-
   m_f = fopen(file, "a+"); 
   if(m_f == NULL) {
-    qerror("could not open file for writing '%s'", file);
+    qerror("could not open file for writing '%s': ", file, strerror(errno));
     exit(1);
   }
   if(strlen(file) > (sizeof(m_file_name) - strlen(".yyyymmddHHMMSS "))) {
