@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.100 2009-01-13 20:03:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.101 2009-01-13 20:52:12 pbuchbinder Exp $";
 static const char g_revision[] = "8.6";
 
 /* system */
@@ -1453,8 +1453,11 @@ int main(int argc, const char * const argv[]) {
 
   if((m_query_pcre && m_query_multi_pcre) ||
      (m_query_pcre && m_query_single_pcre) ||
-     (m_query_multi_pcre && m_query_single_pcre)) {
-    fprintf(stderr, "ERROR, option -s,-m or -p can't be used together.\n");
+     (m_query_multi_pcre && m_query_single_pcre) ||
+     (m_query_pcre && m_query_o_pcre) ||
+     (m_query_multi_pcre && m_query_o_pcre) ||
+     (m_query_single_pcre && m_query_o_pcre)) {
+    fprintf(stderr, "ERROR, option -s,-m,-o or -p can't be used together.\n");
     exit(1);
   }
 
