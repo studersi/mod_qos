@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.99 2009-01-06 20:32:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.100 2009-01-13 20:03:07 pbuchbinder Exp $";
 static const char g_revision[] = "8.6";
 
 /* system */
@@ -88,6 +88,7 @@ static int m_path_depth = 1;
 static int m_redundant = 1;
 static int m_query_pcre = 0;
 static int m_query_multi_pcre = 0;
+static int m_query_o_pcre = 0;
 static int m_query_single_pcre = 0;
 static int m_query_len_pcre = 10;
 static int m_exit_on_error = 0;
@@ -1134,6 +1135,27 @@ static void qos_rule_optimization(apr_pool_t *pool, apr_pool_t *lpool,
   }
 }
 
+/* rules do not care the order of parameter values (makes rule processing slow)
+ *  (id=[0-9]{0,13}[&]?)?(name=[a-zA-Z]{0,12}[&]?)?
+ * ((id=[0-9]{0,13}[&]?)|(name=[a-zA-Z]{0,12}[&]?))*
+ */
+static char *qos_post_optimization(apr_pool_t *lpool, char *query) {
+  int hit = 0;
+  char *p = query;
+  while(p && p[0]) {
+    if(strncmp(p, "[&]?)?(", 7) == 0) {
+      hit = 1;
+      p[5] = '|';
+    }
+    p++;
+  }
+  if(hit) {
+    query[strlen(query)-1] = '\0';
+    return apr_psprintf(lpool, "(%s)*", query);
+  }
+  return query;
+}
+
 /* process the input file line by line */
 static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
 			    apr_table_t *rules_url, apr_table_t *special_rules,
@@ -1188,8 +1210,12 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	    } else {
 	      if(!m_query_multi_pcre) {
 		query = qos_query_string_pcre(lpool, parsed_uri.query);
+		if(m_query_o_pcre) {
+		  query = qos_post_optimization(lpool, query);
+		}
 	      } else {
-		query = qos_multi_query_string_pcre(lpool, parsed_uri.query, &query_m_string, &query_m_pcre);
+		query = qos_multi_query_string_pcre(lpool, parsed_uri.query,
+						    &query_m_string, &query_m_pcre);
 	      }
 	    }
 	  } else {
@@ -1405,6 +1431,8 @@ int main(int argc, const char * const argv[]) {
       m_query_pcre = 1;
     } else if(strcmp(*argv,"-m") == 0) {
       m_query_multi_pcre = 1;
+    } else if(strcmp(*argv,"-o") == 0) {
+      m_query_o_pcre = 1;
     } else if(strcmp(*argv,"-s") == 0) {
       m_query_single_pcre = 1;
     } else if(strcmp(*argv,"-e") == 0) {
@@ -1493,6 +1521,9 @@ int main(int argc, const char * const argv[]) {
   printf("#  redundancy check (-n): %s\n", m_redundant == 1 ? "on" : "off");
   printf("#  pcre only for query (-p): %s\n", m_query_pcre == 1 ? "yes" : "no");
   printf("#  one pcre for query value (-m): %s\n", m_query_multi_pcre == 1 ? "yes" : "no");
+  if(m_query_o_pcre) {
+    printf("#  ignore query order (-o): yes\n");
+  }
   printf("#  single pcre for query (-s): %s\n", m_query_single_pcre == 1 ? "yes" : "no");
   printf("#  query outsize (-l): %d\n", m_query_len_pcre);
   printf("#  exit on error (-e): %s\n", m_exit_on_error == 1 ? "yes" : "no");
