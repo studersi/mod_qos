@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regex.c,v 1.2 2009-01-19 20:30:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.1 2009-01-19 20:30:06 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -31,57 +31,37 @@ static const char revision[] = "$Id: regex.c,v 1.2 2009-01-19 20:30:06 pbuchbind
 #include <unistd.h>
 #include <time.h>
 
-/* OpenSSL  */
-#include <openssl/stack.h>
-
 /* apr */
-#include <pcre.h>
-#include <apr.h>
-#include <apr_uri.h>
-#include <apr_signal.h>
+#include <apr_base64.h>
 #include <apr_strings.h>
-#include <apr_network_io.h>
-#include <apr_file_io.h>
-#include <apr_time.h>
-#include <apr_getopt.h>
-#include <apr_general.h>
-#include <apr_lib.h>
-#include <apr_portable.h>
-#include <apr_thread_proc.h>
-#include <apr_thread_cond.h>
-#include <apr_thread_mutex.h>
-#include <apr_support.h>
-
-#define MAX_LINE 32768
-#define CR 13
-#define LF 10
 
 static void usage() {
-  printf("usage: regex <string> <pcre>\n");
+  printf("usage: b64 -e|-d <string>\n");
   exit(1);
 }
 
 int main(int argc, char **argv) {
-  const char *errptr = NULL;
-  int erroffset;
-  pcre *pcre;
-  int rc_c;
-
+  apr_pool_t *pool;
+  apr_app_initialize(&argc, &argv, NULL);
+  apr_pool_create(&pool, NULL);
   argc--;
   argv++;
   if(argc != 2) {
     usage();
   }
-
-  pcre = pcre_compile(argv[1], PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
-  if(pcre == NULL) {
-    fprintf(stderr, "ERROR, rule <%s> could not compile pcre at position %d,"
-	    " reason: %s\n", argv[1], erroffset, errptr);
-    exit(1);
+  if(strcmp(argv[0], "-d") == 0) {
+    char *dec = (char *)apr_palloc(pool, 1 + apr_base64_decode_len(argv[1]));
+    int dec_len = apr_base64_decode(dec, argv[1]);
+    if(dec_len > 0) {
+      dec[dec_len] = '\0';
+      printf("%s\n", dec);
+    }
+  } else if(strcmp(argv[0], "-e") == 0) {
+    char *enc = (char *)apr_pcalloc(pool, 1 + apr_base64_encode_len(strlen(argv[1])));
+    int enc_len = apr_base64_encode(enc, (const char *)argv[1], strlen(argv[1]));
+    enc[enc_len] = '\0';
+    printf("%s\n", enc);
   }
-  
-  rc_c = pcre_exec(pcre, NULL, argv[0], strlen(argv[0]), 0, 0, NULL, 0);
-
-  printf("%d\n", rc_c);
-  return rc_c;
+  apr_pool_destroy(pool);
+  return 0;
 }
