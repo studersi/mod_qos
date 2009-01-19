@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.23 2008-12-20 13:20:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.24 2009-01-19 20:30:05 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -15,7 +15,7 @@
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2008 Pascal Buchbinder
+# Copyright (C) 2007-2009 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -77,6 +77,7 @@ cp doc/qslog.html mod_qos-${VERSION}/doc
 
 echo "install source"
 cp httpd_src/modules/qos/mod_qos.c mod_qos-${VERSION}/apache2
+cp httpd_src/modules/qos/mod_qos.h mod_qos-${VERSION}/apache2
 grep -v qos_control httpd_src/modules/qos/config.m4 > mod_qos-${VERSION}/apache2/config.m4
 cp httpd_src/modules/qos/Makefile.in mod_qos-${VERSION}/apache2
 

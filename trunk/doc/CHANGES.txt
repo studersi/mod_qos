@@ -1,3 +1,8 @@
+Version 8.7
+
+ - mod_qos.h header file and hooks for path/query
+   decoding (used by QS_Deny* and QS_Permit* rules).
+
 Version 8.6
 
  - QS_Chroot directive.

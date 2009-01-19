@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.27 2008-08-12 18:30:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.28 2009-01-19 20:30:05 pbuchbinder Exp $
 #
 # Simple build script using apache and libpng tar.gz from the 3thrdparty directory
 #
@@ -52,6 +52,7 @@ ln -s httpd-${APACHE_VER} httpd
 rm -rf httpd/modules/qos
 mkdir -p httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/mod_qos.c httpd/modules/qos
+ln -s `pwd`/httpd_src/modules/qos/mod_qos.h httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/mod_qos_control.c httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/config.m4 httpd/modules/qos
 ln -s `pwd`/httpd_src/modules/qos/Makefile.in httpd/modules/qos
@@ -84,11 +85,6 @@ sed <build/rules.mk > build/rules.mk.2 \
 mv build/rules.mk.2 build/rules.mk
 make
 strip modules/qos/.libs/mod_qos.so
-if [ $? -ne 0 ]; then
-  echo "ERROR"
-  exit 1
-fi
-strip modules/qos/.libs/mod_qos_control.so
 if [ $? -ne 0 ]; then
   echo "ERROR"
   exit 1

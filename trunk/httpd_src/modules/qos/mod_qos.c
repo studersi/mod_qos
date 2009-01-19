@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.143 2009-01-08 07:28:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.144 2009-01-19 20:30:05 pbuchbinder Exp $";
 static const char g_revision[] = "8.6";
 
 /************************************************************************
@@ -70,12 +70,16 @@ static const char g_revision[] = "8.6";
 #include <pcre.h>
 #include <apr_strings.h>
 #include <apr_base64.h>
+#include <apr_hooks.h>
 #ifdef AP_NEED_SET_MUTEX_PERMS
 #include <unixd.h>
 #endif
 
 /* additional modules */
 #include "mod_status.h"
+
+/* this */
+#include "mod_qos.h"
 
 
 /************************************************************************
@@ -116,6 +120,15 @@ static const char g_revision[] = "8.6";
 
 #define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
+
+APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, path_decode_hook,
+                                    (request_rec *r, char **path),
+                                    (r, path),
+                                    OK, DECLINED)
+APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, query_decode_hook,
+                                    (request_rec *r, char **query),
+                                    (r, query),
+                                    OK, DECLINED)
 
 /************************************************************************
  * structures
@@ -1665,6 +1678,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   qos_unescaping(request_line, dconf->dec_mode);
   request_line_len = strlen(request_line);
   qos_unescaping(path, dconf->dec_mode);
+  qos_run_path_decode_hook(r, &path);
   path_len = strlen(path);
   uri_len = path_len;
   if(dconf->bodyfilter == 1) {
@@ -1689,6 +1703,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
     if(q) {
       query = apr_pstrdup(r->pool, q);
       qos_unescaping(query, dconf->dec_mode);
+      qos_run_query_decode_hook(r, &query);
       query_len = strlen(query);
       uri = apr_pstrcat(r->pool, path, "?", query, NULL);
       uri_len = strlen(uri);
