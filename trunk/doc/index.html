@@ -61,7 +61,7 @@ in the field of wide area network protocols (e.g. ATM) and
 telephony (e.g. VoIP) but rarely in conjunction with web applications. 
 <b>mod_qos is a quality of service module for the Apache web server</b> 
 implementing control mechanisms that can provide different priority to 
-different requests.
+different HTTP requests.
 </p>
 <p>
 But why do you need quality of service for a web application? Well, 
@@ -127,6 +127,10 @@ without or with fewer restrictions.
 </li>
 <li type=square>
 Generic request line and header filter to deny unauthorized operations.
+</li>
+<li type=square>
+Request body data limitation and filtering (requires 
+<a href="http://parp.sourceforge.net">mod_parp</a>).
 </li>
 <li type=square>
 Limitations on the TCP connection level, e.g. the maximum of allowed connections from 
@@ -1076,6 +1080,7 @@ connections goes out and the web sever is not able to process other requests
 to applications still working fine, e.g. to /aaa, /bbb /dd1, and /dd2. 
 mod_qos limits the concurrent requests to an application in order to 
 assure the availability of other resources.
+<br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
@@ -1100,7 +1105,8 @@ less and optimized network traffic. The disadvantage of these persistent
 connections is, that server resources are blocked even no data is exchanged 
 between client and server. mod_qos allows a server to support keep-alive 
 as long as sufficient connections are free but stopping the keep-alive 
-support when reaching a defined connection threshold. <br>Example:<br>
+support when reaching a defined connection threshold. 
+<br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
@@ -1120,7 +1126,8 @@ A single client may open many TCP connections simultaneously in order to
 download different content from the web server. So the client gets many 
 connections while other users may not be able to access the server 
 due no free connections remain for them. mod_qos can limit the number 
-of concurrent connections for a singe IP source address. <br>Example:<br>
+of concurrent connections for a singe IP source address. 
+<br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
@@ -1138,7 +1145,8 @@ QS_SrvMaxConnPerIP      50
 <p>
 If you have to limit the number of requests to an URL, mod_qos can help 
 with that too. You may limit the number ot requests per second to 
-an URL by adding a delay to requests accessing this resource. <br>Example:<br>
+an URL by adding a delay to requests accessing this resource. 
+<br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
@@ -1161,9 +1169,10 @@ if the server runs on low TCP connection resources (20% or fewer
 free connections). mod_qos prefers also those clients which communicates 
 instantaneous  and fast with the server and denies access to slow 
 clients sending data irregular in the case the server has not enougth 
-resources. A minimal request bandwidth should be enforced too in order 
+resources.</p>
+<p>A minimal request bandwidth should be enforced too in order 
 to close the connections comming from idle clients.
-<br>Example:<br>
+<br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
