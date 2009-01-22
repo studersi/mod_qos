@@ -791,7 +791,9 @@ Enables message body filtering.
 <li>
 <code>QS_LimitRequestBody &lt;bytes&gt;</code><br>
 Limits the allowed size of an HTTP request message body. This directive may 
-be placed anywhere in the configuration.
+be placed anywhere in the configuration. Alternatively, the limitation 
+may be set as an environment variable using mod_setenvif (overriding 
+the directive settings).
 </li>
 
 </ul>

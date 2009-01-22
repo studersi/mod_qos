@@ -1,6 +1,11 @@
+Version 8.7
+
+ - QS_LimitRequestBody may be defined using mod_setenvif.
+   See new directive order in mod_qos_seq.gif
+
 Version 8.6
 
- - mod_qos.h header file and hooks for path/query
+ - mod_qos.h header file defining hooks for path/query
    decoding (used by QS_Deny* and QS_Permit* rules).
 
  - QS_Chroot directive.
