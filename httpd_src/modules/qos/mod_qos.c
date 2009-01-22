@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.146 2009-01-20 08:40:22 pbuchbinder Exp $";
-static const char g_revision[] = "8.6";
+static const char revision[] = "$Id: mod_qos.c,v 5.147 2009-01-22 21:25:08 pbuchbinder Exp $";
+static const char g_revision[] = "8.7";
 
 /************************************************************************
  * Includes
@@ -562,7 +562,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?[teTE]+)?$", QS_FLT_ACTION_DROP, 100 },
   { "Content-Encoding", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DENY, 100 },
   { "Content-Language", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DROP, 100 },
-  { "Content-Length", "^[0-9]+$", QS_FLT_ACTION_DENY, 200 },
+  { "Content-Length", "^[0-9]+$", QS_FLT_ACTION_DENY, 10 },
   { "Content-Location", "^"QS_URL"+$", QS_FLT_ACTION_DENY, 200 },
   { "Content-md5", "^"QS_B64_SP"$", QS_FLT_ACTION_DENY, 50 },
   { "Content-Range", "^.*$", QS_FLT_ACTION_DENY, 50 },
@@ -627,7 +627,17 @@ static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
   return apr_pstrdup(pool, "UNKNOWN");
 }
 
-static apr_off_t qos_maxpost(qos_srv_config *sconf, qos_dir_config *dconf) {
+static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
+  if(r->subprocess_env) {
+    const char *bytes = apr_table_get(r->subprocess_env, "QS_LimitRequestBody");
+    if(bytes) {
+      apr_off_t s;
+      char *errp;
+      if(APR_SUCCESS == apr_strtoff(&s, bytes, &errp, 10)) {
+        return s;
+      }
+    }
+  }
   if(dconf->maxpost != -1) {
     return dconf->maxpost;
   }
@@ -3660,7 +3670,7 @@ static int qos_post_read_request(request_rec * r) {
 /** QS_LimitRequestBody, if content-length header is available */
 static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sconf,
                                              qos_dir_config *dconf) {
-  apr_off_t maxpost = qos_maxpost(sconf, dconf);
+  apr_off_t maxpost = qos_maxpost(r, sconf, dconf);
   if(maxpost != -1) {
     const char *l = apr_table_get(r->headers_in, "Content-Length");
     if(l != NULL) {
@@ -3693,16 +3703,15 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
 }
 
 /**
- * header parser (executed before mod_setenvif or mod_parp)
+ * header parser (executed after mod_setenvif but before mod_parp)
  */
-static int qos_header_parser0(request_rec * r) {
+static int qos_header_parser1(request_rec * r) {
   if(ap_is_initial_req(r)) {
     apr_status_t rv;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
-
     /** QS_LimitRequestBody */
     rv = qos_limitrequestbody_ctl(r, sconf, dconf);
     if(rv != APR_SUCCESS) {
@@ -3721,7 +3730,20 @@ static int qos_header_parser0(request_rec * r) {
       }
       return rv;
     }
-    
+  }
+  return DECLINED;
+}
+
+/**
+ * header parser (executed before mod_setenvif or mod_parp)
+ */
+static int qos_header_parser0(request_rec * r) {
+  if(ap_is_initial_req(r)) {
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                  &qos_module);
+    qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
+                                                                  &qos_module);
+
     /** QS_DenyBody */
     if(dconf && (dconf->bodyfilter == 1)) {
       qos_enable_parp(r);
@@ -4015,7 +4037,7 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
   } else {
     qos_srv_config *sconf = ap_get_module_config(r->server->module_config, &qos_module);
     qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
-    apr_off_t maxpost = qos_maxpost(sconf, dconf);
+    apr_off_t maxpost = qos_maxpost(r, sconf, dconf);
     if(maxpost != -1) {
       apr_size_t bytes = 0;
       apr_bucket *b;
@@ -6249,7 +6271,8 @@ static const command_rec qos_config_cmds[] = {
                 " must define the same action. pcre is case sensitve."),
   AP_INIT_TAKE1("QS_LimitRequestBody", qos_maxpost_cmd, NULL,
                 ACCESS_CONF|RSRC_CONF,
-                "QS_LimitRequestBody <bytes>"),
+                "QS_LimitRequestBody <bytes>, limits the allowed size"
+                " of an HTTP request message body."),
   /*
   AP_INIT_ITERATE("QS_DenyDecoding", qos_denydec_cmd, NULL,
                   ACCESS_CONF,
@@ -6322,6 +6345,7 @@ static const command_rec qos_config_cmds[] = {
 static void qos_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", "mod_parp.c", NULL };
   static const char *post[] = { "mod_setenvif.c", NULL };
+  static const char *parp[] = { "mod_parp.c", NULL };
   static const char *prelast[] = { "mod_setenvif.c", "mod_ssl.c", NULL };
   ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
 #ifndef QS_HAS_APACHE_PATH
@@ -6333,6 +6357,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);
   ap_hook_header_parser(qos_header_parser0, NULL, post, APR_HOOK_FIRST);
+  ap_hook_header_parser(qos_header_parser1, post, parp, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(qos_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
