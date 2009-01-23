@@ -807,7 +807,9 @@ CustomLog             logs/qsaudit_log  "%{qos-path}n%{qos-query}n"
 
 # limit the max. body size since mod_parp loads the whole message into the
 # memory servers's:
-QS_LimitRequestBody   131072
+SetEnvIf Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=131072
+SetEnvIf Content-Type multipart/form-data               QS_LimitRequestBody=131072
+SetEnvIf Content-Type multipart/mixed                   QS_LimitRequestBody=131072
 
 &lt;Location /app&gt;
    # don't allow certain string pattern within the request query or
