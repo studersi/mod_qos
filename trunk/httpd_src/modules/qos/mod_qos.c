@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.147 2009-01-22 21:25:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.148 2009-01-23 07:44:26 pbuchbinder Exp $";
 static const char g_revision[] = "8.7";
 
 /************************************************************************
@@ -79,8 +79,9 @@ static const char g_revision[] = "8.7";
 #include "mod_status.h"
 
 /* this */
+#ifdef QS_MOD_EXT_HOOKS
 #include "mod_qos.h"
-
+#endif
 
 /************************************************************************
  * defines
@@ -121,6 +122,7 @@ static const char g_revision[] = "8.7";
 #define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
+#ifdef QS_MOD_EXT_HOOKS
 APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, path_decode_hook,
                                     (request_rec *r, char **path),
                                     (r, path),
@@ -129,6 +131,7 @@ APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, query_decode_hook,
                                     (request_rec *r, char **query),
                                     (r, query),
                                     OK, DECLINED)
+#endif
 
 /************************************************************************
  * structures
@@ -1688,7 +1691,9 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   qos_unescaping(request_line, dconf->dec_mode);
   request_line_len = strlen(request_line);
   qos_unescaping(path, dconf->dec_mode);
+#ifdef QS_MOD_EXT_HOOKS
   qos_run_path_decode_hook(r, &path);
+#endif
   path_len = strlen(path);
   uri_len = path_len;
   if(dconf->bodyfilter == 1) {
@@ -1713,7 +1718,9 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
     if(q) {
       query = apr_pstrdup(r->pool, q);
       qos_unescaping(query, dconf->dec_mode);
+#ifdef QS_MOD_EXT_HOOKS
       qos_run_query_decode_hook(r, &query);
+#endif
       query_len = strlen(query);
       uri = apr_pstrcat(r->pool, path, "?", query, NULL);
       uri_len = strlen(uri);

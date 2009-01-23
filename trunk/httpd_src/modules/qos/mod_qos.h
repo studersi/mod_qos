@@ -61,6 +61,14 @@
 #define QOS_OPTIONAL_HOOK(name,fn,pre,succ,order) \
         APR_OPTIONAL_HOOK(qos,name,fn,pre,succ,order)
 
+/**
+ * mod_qos.h header file defining hooks for path/query
+ * decoding (used by QS_Deny* and QS_Permit* rules).
+ *
+ * Define QS_MOD_EXT_HOOKS in order to enable these hooks
+ * within mod_qos.c.
+ */
+
 /* hook to decode/unescape the path portion of the request uri */
 APR_DECLARE_EXTERNAL_HOOK(qos, QOS, apr_status_t, path_decode_hook,
                           (request_rec *r, char **path))

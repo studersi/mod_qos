@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.24 2009-01-19 20:30:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.25 2009-01-23 07:44:26 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -11,6 +11,8 @@
 # contains the source code
 # ./tools
 # supplemental code
+# ./generators
+# rule generators
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
@@ -77,7 +79,6 @@ cp doc/qslog.html mod_qos-${VERSION}/doc
 
 echo "install source"
 cp httpd_src/modules/qos/mod_qos.c mod_qos-${VERSION}/apache2
-cp httpd_src/modules/qos/mod_qos.h mod_qos-${VERSION}/apache2
 grep -v qos_control httpd_src/modules/qos/config.m4 > mod_qos-${VERSION}/apache2/config.m4
 cp httpd_src/modules/qos/Makefile.in mod_qos-${VERSION}/apache2
 
@@ -89,9 +90,16 @@ cp tools/Makefile.tmpl mod_qos-${VERSION}/tools/Makefile
 cp tools/filter/qsfilter2.c mod_qos-${VERSION}/generators
 cp tools/filter/Makefile mod_qos-${VERSION}/generators
 
-echo "package: mod_qos-${VERSION}-src.tar.gz"
+# standard distribution
+echo "std package: mod_qos-${VERSION}-src.tar.gz"
 tar cf mod_qos-${VERSION}-src.tar --owner root --group bin mod_qos-${VERSION}
 gzip mod_qos-${VERSION}-src.tar
+
+# extended distribution
+echo "ext package: mod_qos-${VERSION}.tar.gz"
+cp httpd_src/modules/qos/mod_qos.h mod_qos-${VERSION}/apache2
+tar cf mod_qos-${VERSION}.tar --owner root --group bin mod_qos-${VERSION}
+gzip mod_qos-${VERSION}.tar
 rm -r mod_qos-${VERSION}
 
 echo "END"
