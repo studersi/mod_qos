@@ -3,7 +3,10 @@ Version 8.7
  - QS_LimitRequestBody may be defined using mod_setenvif.
    See new directive order in mod_qos_seq.gif
 
- - QS_Chroot directive.
+ - mod_qos uses anonymous shm by default.
+
+ - mod_qos.h header file defining hooks for path/query 	 
+   decoding (used by QS_Deny* and QS_Permit* rules).
 
 Version 8.5
 
