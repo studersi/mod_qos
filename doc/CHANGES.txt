@@ -5,9 +5,6 @@ Version 8.7
 
  - mod_qos uses anonymous shm by default.
 
- - mod_qos.h header file defining hooks for path/query 	 
-   decoding (used by QS_Deny* and QS_Permit* rules).
-
 Version 8.5
 
  - New directive QS_EventKBytesPerSecLimit.
