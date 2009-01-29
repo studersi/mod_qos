@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.148 2009-01-23 07:44:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.149 2009-01-29 07:55:18 pbuchbinder Exp $";
 static const char g_revision[] = "8.7";
 
 /************************************************************************
@@ -337,7 +337,6 @@ typedef struct qs_acentry_st {
 typedef struct qs_actable_st {
   apr_size_t size;
   apr_shm_t *m;
-  char *m_file;
   apr_pool_t *pool;
   /** process pool is used to create user space data */
   apr_pool_t *ppool;
@@ -372,7 +371,6 @@ typedef struct {
   int server_start;
   apr_table_t *act_table;
   /* source network stat */
-  char *m_file;
   apr_shm_t *m;
   char *lock_file;
   apr_global_mutex_t *lock;
@@ -680,13 +678,20 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, int size) {
   msize = APR_ALIGN_DEFAULT(msize) + 512;
   ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
                QOS_LOG_PFX(000)"create shared memory (client control): %d bytes", msize);
-  res = apr_shm_create(&m, msize, file, pool);
-  if(res != APR_SUCCESS) {
-    char buf[MAX_STRING_LEN];
-    apr_strerror(res, buf, sizeof(buf));
-    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(002)"could not create c-shared memory: %s (%d bytes)", buf, msize);
-    return NULL;
+  /* use anonymous shm by default */
+  res = apr_shm_create(&m, msize, NULL, pool);
+  if(APR_STATUS_IS_ENOTIMPL(res)) {
+    apr_shm_remove(file, pool);
+    res = apr_shm_create(&m, msize, file, pool);
+    if(res != APR_SUCCESS) {
+      char buf[MAX_STRING_LEN];
+      apr_strerror(res, buf, sizeof(buf));
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
+                   QOS_LOG_PFX(002)"could not create c-shared memory: %s (%d bytes)", buf, msize);
+      return NULL;
+    }
+  } else {
+    file = NULL;
   }
   s = apr_shm_baseaddr_get(m);
   s->m = m;
@@ -989,19 +994,24 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
   int size = elements;
   apr_status_t res;
   int i;
-  u->m_file = apr_psprintf(ppool, "%s_c.mod_qos",
+  char *m_file = apr_psprintf(ppool, "%s_c.mod_qos",
                            ap_server_root_relative(ppool, tmpnam(NULL)));
   size = APR_ALIGN_DEFAULT(size * sizeof(qs_netstat_t)) + 512;
   ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
                QOS_LOG_PFX(000)"create shared memory (network control): %d bytes", size);
-  res = apr_shm_create(&u->m, size, u->m_file, ppool);
-  if(res != APR_SUCCESS) {
-    char buf[MAX_STRING_LEN];
-    apr_strerror(res, buf, sizeof(buf));
-    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(002)"could not create n-shared memory: %s (%d bytes)", buf, size);
-    u->m = NULL;
-    return !OK;
+  /* use anonymous shm by default */
+  res = apr_shm_create(&u->m, size, NULL, ppool);
+  if(APR_STATUS_IS_ENOTIMPL(res)) {
+    apr_shm_remove(m_file, ppool);
+    res = apr_shm_create(&u->m, size, m_file, ppool);
+    if(res != APR_SUCCESS) {
+      char buf[MAX_STRING_LEN];
+      apr_strerror(res, buf, sizeof(buf));
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
+                   QOS_LOG_PFX(002)"could not create n-shared memory: %s (%d bytes)", buf, size);
+      u->m = NULL;
+      return !OK;
+    }
   }
   u->lock_file = apr_psprintf(ppool, "%s_cl.mod_qos", 
                               ap_server_root_relative(ppool, tmpnam(NULL)));
@@ -1116,6 +1126,7 @@ static apr_status_t qos_cleanup_shm(void *p) {
  * init the shared memory act
  */
 static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *table) {
+  char *m_file;
   apr_status_t res;
   int i;
   int rule_entries = apr_table_elts(table)->nelts;
@@ -1128,8 +1139,8 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   if(thread_limit == 0) thread_limit = 1; // mpm prefork
   max_ip = thread_limit * server_limit;
 
-  act->m_file = apr_psprintf(act->pool, "%s_m.mod_qos",
-                             ap_server_root_relative(act->pool, tmpnam(NULL)));
+  m_file = apr_psprintf(act->pool, "%s_m.mod_qos",
+                        ap_server_root_relative(act->pool, tmpnam(NULL)));
   act->size = APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
@@ -1138,13 +1149,18 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
                QOS_LOG_PFX(000)"%s(%s), create shared memory (request control): %d bytes (r=%d,ip=%d)", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->is_virtual ? "v" : "b", act->size, rule_entries, max_ip);
-  res = apr_shm_create(&act->m, act->size, act->m_file, act->pool);
-  if(res != APR_SUCCESS) {
-    char buf[MAX_STRING_LEN];
-    apr_strerror(res, buf, sizeof(buf));
-    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(002)"could not create r-shared memory: %s (%d bytes)", buf, act->size);
-    return res;
+  /* use anonymous shm by default */
+  res = apr_shm_create(&act->m, act->size, NULL, act->pool);
+  if(APR_STATUS_IS_ENOTIMPL(res)) {
+    apr_shm_remove(m_file, act->pool);
+    res = apr_shm_create(&act->m, act->size, m_file, act->pool);
+    if(res != APR_SUCCESS) {
+      char buf[MAX_STRING_LEN];
+      apr_strerror(res, buf, sizeof(buf));
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                   QOS_LOG_PFX(002)"could not create r-shared memory: %s (%d bytes)", buf, act->size);
+      return res;
+    }
   }
   act->c = apr_shm_baseaddr_get(act->m);
   act->c->connections = 0;
@@ -4914,7 +4930,6 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
   sconf->act->generation = ap_my_generation;
-  sconf->act->m_file = NULL;
   sconf->act->child_init = 0;
   sconf->act->timeout = apr_time_sec(s->timeout);
   sconf->act->has_events = 0;
