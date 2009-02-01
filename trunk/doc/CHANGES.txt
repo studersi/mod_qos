@@ -1,3 +1,8 @@
+Version
+
+ - Use constant semaphore/shared memory file names in order
+   to reuse resources after unclear server shutdown.
+
 Version 8.7
 
  - QS_LimitRequestBody may be defined using mod_setenvif.
