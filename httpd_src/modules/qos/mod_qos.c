@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.149 2009-01-29 07:55:18 pbuchbinder Exp $";
-static const char g_revision[] = "8.7";
+static const char revision[] = "$Id: mod_qos.c,v 5.150 2009-02-01 21:51:03 pbuchbinder Exp $";
+static const char g_revision[] = "8.8";
 
 /************************************************************************
  * Includes
@@ -518,6 +518,7 @@ typedef struct {
 
 module AP_MODULE_DECLARE_DATA qos_module;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
+static unsigned int m_hostcode = 0;
 
 /* mod_parp, forward and optional function */
 APR_DECLARE_OPTIONAL_FN(apr_table_t *, parp_hp_table, (request_rec *));
@@ -628,6 +629,48 @@ static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
   return apr_pstrdup(pool, "UNKNOWN");
 }
 
+/** hopefully a unique apache instance id */
+static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
+  char *key = apr_psprintf(ptemp, "%s%s%s%d%s%s%s",
+                           s->defn_name ? s->defn_name : "",
+                           s->server_admin ? s->server_admin : "",
+                           s->server_hostname ? s->server_hostname : "",
+                           s->addrs ? s->addrs->host_port : 0,
+                           s->path ? s->path : "",
+                           s->error_fname ? s->error_fname : "",
+                           s->server_scheme ? s->server_scheme : "");
+  int len = strlen(key);
+  int i;
+  char *p;
+  for(p = key, i = len; i; i--, p++) {
+    m_hostcode = m_hostcode * 33 + *p;
+  }
+}
+
+/** file name for the main/virtual server, replaces ap_server_root_relative() and tmpnam()*/
+static char *qos_server_root_relative(apr_pool_t *pool, server_rec *s) {
+  if(s) {
+    unsigned int scode = 0;
+    char *key = apr_psprintf(pool, "%u%s.%s.%d",
+                             m_hostcode,
+                             s->is_virtual ? "v" : "b",
+                             s->server_hostname == NULL ? "-" : s->server_hostname,
+                             s->addrs == NULL ? 0 : s->addrs->host_port);
+    int len = strlen(key);
+    int i;
+    char *p;
+    for(p = key, i = len; i; i--, p++) {
+      scode = scode * 33 + *p;
+    }
+    return apr_psprintf(pool, "/var/tmp/%u",
+                        scode);
+    
+  }
+  return apr_psprintf(pool, "/var/tmp/%u",
+                      m_hostcode);
+}
+
+/** QS_LimitRequestBody settings (env has higher prio) */
 static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   if(r->subprocess_env) {
     const char *bytes = apr_table_get(r->subprocess_env, "QS_LimitRequestBody");
@@ -664,7 +707,7 @@ static int qos_cc_comp_time(const void *_pA, const void *_pB) {
   return 0;
 }
 
-static qos_s_t *qos_cc_new(apr_pool_t *pool, int size) {
+static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
   apr_shm_t *m;
   apr_status_t res;
   int msize = sizeof(qos_s_t) + 
@@ -674,7 +717,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, int size) {
   qos_s_t *s;
   qos_s_entry_t *e;
   char *file = apr_psprintf(pool, "%s_cc.mod_qos",
-                            ap_server_root_relative(pool, tmpnam(NULL)));
+                            qos_server_root_relative(pool, srec));
   msize = APR_ALIGN_DEFAULT(msize) + 512;
   ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
                QOS_LOG_PFX(000)"create shared memory (client control): %d bytes", msize);
@@ -696,7 +739,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, int size) {
   s = apr_shm_baseaddr_get(m);
   s->m = m;
   s->lock_file = apr_psprintf(pool, "%s_ccl.mod_qos", 
-                              ap_server_root_relative(pool, tmpnam(NULL)));
+                              qos_server_root_relative(pool, srec));
   res = apr_global_mutex_create(&s->lock, s->lock_file, APR_LOCK_DEFAULT, pool);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
@@ -995,7 +1038,7 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
   apr_status_t res;
   int i;
   char *m_file = apr_psprintf(ppool, "%s_c.mod_qos",
-                           ap_server_root_relative(ppool, tmpnam(NULL)));
+                              qos_server_root_relative(ppool, NULL));
   size = APR_ALIGN_DEFAULT(size * sizeof(qs_netstat_t)) + 512;
   ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
                QOS_LOG_PFX(000)"create shared memory (network control): %d bytes", size);
@@ -1014,7 +1057,7 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
     }
   }
   u->lock_file = apr_psprintf(ppool, "%s_cl.mod_qos", 
-                              ap_server_root_relative(ppool, tmpnam(NULL)));
+                              qos_server_root_relative(ppool, NULL));
   res = apr_global_mutex_create(&u->lock, u->lock_file, APR_LOCK_DEFAULT, ppool);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
@@ -1140,7 +1183,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   max_ip = thread_limit * server_limit;
 
   m_file = apr_psprintf(act->pool, "%s_m.mod_qos",
-                        ap_server_root_relative(act->pool, tmpnam(NULL)));
+                        qos_server_root_relative(act->pool, s));
   act->size = APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
@@ -4606,6 +4649,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   int net_prefer_limit = 0;
   int cc_net_prefer_limit = 0;
   ap_directive_t *pdir;
+  qos_hostcode(ptemp, bs);
   for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
     if(strcasecmp(pdir->directive, "MaxClients") == 0) {
       net_prefer = atoi(pdir->args);
@@ -4668,7 +4712,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     }
   }
   if(sconf->has_qos_cc && !u->qos_cc) {
-    u->qos_cc = qos_cc_new(bs->process->pool, sconf->qos_cc_size);
+    u->qos_cc = qos_cc_new(bs->process->pool, bs, sconf->qos_cc_size);
     if(u->qos_cc == NULL) {
       return !OK;
     }
@@ -4934,7 +4978,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act->timeout = apr_time_sec(s->timeout);
   sconf->act->has_events = 0;
   sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
-                                       ap_server_root_relative(sconf->act->pool, tmpnam(NULL)));
+                                       qos_server_root_relative(sconf->act->pool, s));
   rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
                                APR_LOCK_DEFAULT, sconf->act->pool);
   if (rv != APR_SUCCESS) {
