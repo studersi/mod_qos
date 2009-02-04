@@ -70,7 +70,7 @@ Each TCP connection to the web server occupies one of these threads
 respectively processes. Sometimes a server gets too busy to serve 
 every request due the lack of free processes or threads. Another parameter 
 requiring control by mod_qos is the available bandwidth: all 
-clients communicates to the server over a network link with a 
+clients communicate to the server over a network link with a 
 limited bandwidth. Overfilling the link, results in network 
 congestion and poor performance.
 </p>
@@ -286,7 +286,7 @@ match the request. By default, no limitations are active.
 <li>
 <code>QS_LocRequestPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
 Defines the allowed number of requests per second to the URL (path and query) 
-pattern. Requests are limited by adding a delay to each requests (linear). 
+pattern. Requests are limited by adding a delay to each request (linear). 
 By default, no limitation is active. This directive should be used in 
 conjunction with <code>QS_LocRequestLimitMatch</code> only (you must use 
 the very same regex pattern with the <code>QS_LocRequestPerSecLimitMatch</code> 
@@ -333,7 +333,7 @@ only (you must use the same location for both directives). Has lower priority
 than <code>QS_LocKBytesPerSecLimitMatch</code>.
 </li>
 <li>
-<code>QS_ErrorPage &lt;URL&gt;</code><br>Defines an error page to be returend when 
+<code>QS_ErrorPage &lt;URL&gt;</code><br>Defines an error page to be returned when 
 a request is denied. The defined URL must be a HTML document accessible by the client. 
 </li>
 <li>
@@ -351,53 +351,65 @@ directive.<br>
 </li>
 </ul>
 
+<a name="privilegedusers"></a>
+<h4>Privileged Users</h4>
 Additional directives are used to identify VIP's (very important persons) 
-and to control the session life time and its cookie format:
+and to control the session life time and its cookie format. VIP users have 
+privileged access and less QoS restrictions than ordinary users. <br>
+VIP information is stored and evaluated at different levels.
+<ul>
+<li>
+Session: VIP identification is stored using a HTTP 
+session cookie. mod_qos starts a new session when detecting a HTTP 
+response header (the header name is defined by the <code>QS_VipHeaderName</code> 
+directive). Alternatively, a new session is started when detecting an 
+authenticated user, see <code>QS_VipUser</code>. The <code>QS_Session*</code> 
+directives are used to set session attributes.
+</li>
+<li>
+Request: The <code>QS_VipRequest</code> process environment may 
+be evaluated by mod_qos rules. This variable is set automatically when 
+receiving a valid mod_qos session cookie. The <code>QS_VipRequest</code> 
+variable may also be set by configuration using a <code>QS_SetEnvIf*</code> 
+or <code>SetEnvIf</code> directive. VIP status last for the particular request 
+only.
+</li>
+<li>
+Client IP address: VIP identification may be stored at the server side 
+on a pre client IP address basis. The <code>QS_VipIPHeaderName</code>, 
+<code>QS_VipHeaderName</code>, <code>QS_VipIPUser</code>, and <code>QS_VipUser</code> 
+directives are used to define when a per IP address should be marked as a VIP user.
+</li>
+</ul>
+
+VIP setting directives:
+
 <ul>
 <li>
 <code>QS_VipHeaderName &lt;header name&gt;</code><br>
 Defines a HTTP response header which marks a user as a VIP. mod_qos creates 
-a session for this user by setting a cookie. Whenever an application handler 
-sets this response header (e.g. after successful user authentication), 
-the user gets unlimited access to any location. This directive works in conjunction 
-with <code>QS_Loc*</code>, <code>QS_CondLoc*</code>, <code>QS_ClientPrefer</code>, and 
-<code>QS_SrvPreferNet</code> directives. Limitations defined by these directives are 
-not active for requests having a VIP session cookie.
-The <code>QS_ClientPrefer</code> and <code>QS_SrvPreferNet</code> directives 
-store the VIP session information persistent to the data record of the 
-corresponding IP address. All other commands require the mod_qos session 
-cookie to identify subsequent requests coming from the same user. A client 
-request containing a valid mod_qos session cookie gets also the environment 
-variable <code>QS_VipRequest</code> set in the process environment which may 
-be evaluated by rules ignoring VIP status client normally, such as the 
-<code>QS_EventPerSecLimit</code> directive. 
-See the <code>QS_Session*</code> directives for further session attribute settings. 
+a session for this user by setting a cookie, e.g. after successful user authentication. 
 </li>
 <li>
 <code>QS_VipIPHeaderName &lt;header name&gt;</code><br>
 Defines a HTTP response header which marks a client source IP address as a VIP. 
-This header may be used in conjunction with the <code>QS_ClientPrefer</code> and 
-<code>QS_SrvPreferNet</code> directives only.
 </li>
 <li>
 <code>QS_VipUser</code><br>
 Creates a VIP session for users which has been authenticated by the 
-Apache server, e.g. by the standard mod_auth* modules. The command may 
-be used in conjunction with the <code>QS_ClientPrefer</code> and 
-<code>QS_SrvPreferNet</code> directives too (simplar to 
-<code>QS_VipHeaderName</code>).
+Apache server, e.g. by the standard mod_auth* modules.
+It works similar to the <code>QS_VipHeaderName</code> directive.
 </li>
 <li>
 <code>QS_VipIPUser</code><br>
-Marks a source IP address as a VIP if the user has been been authenticated by the 
-Apache server, e.g. by the standard mod_auth* modules. The command may only 
-be used in conjunction with the <code>QS_ClientPrefer</code> and 
-<code>QS_SrvPreferNet</code> directives (similar to <code>QS_VipIPHeaderName</code>).
+Marks a source IP address as a VIP if the user has been authenticated by the 
+Apache server, e.g. by the standard mod_auth* modules. It works similar to 
+the <code>QS_VipIPHeaderName</code> directive.
 </li>
 <li>
 <code>QS_SessionTimeout &lt;seconds&gt;</code><br>
 Defines the session life time for a VIP. It is only used for session based (cookie) 
-VIP identification (not for IP based). Default are 3600 seconds.
+VIP identification (not for IP based). Default is 3600 seconds.
 </li>
 <li>
 <code>QS_SessionCookieName &lt;name&gt;</code><br>
@@ -449,9 +461,10 @@ QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
 </td></tr>
 </table>
 
+<a name="variables"></a>
 <h4>Variables</h4>
 Environment variables are used on a per request level and implement
-additonal control mechanisms. Variables may be set using the standard 
+additional control mechanisms. Variables may be set using the standard 
 Apache module mod_setenvif. See also the <a href="#eventcontrol">
 <code>QS_SetEnvIf*</code></a> directives in order to combine multiple 
 variable to new variables interpreted by mod_qos rules. <br>
@@ -465,8 +478,7 @@ Requires the definition of a VIP header using the
 <code>QS_VipHeaderName</code> directive (this activates VIP 
 verification). However, such an event does not create a VIP 
 session. The user has the VIP status only for a single 
-request (does not affect the <code>QS_ClientPrefer</code>, and 
-<code>QS_SrvPreferNet</code> directives).
+request.
 </li>
 <li>
 <code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
@@ -504,6 +516,7 @@ SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.ht
 </td></tr>
 </table>
 
+<a name="conditionalrules"></a>
 <h4>Conditional Rules</h4>
 Conditional rules are only enforced if a the <code>QS_Cond</code> 
 variable matches the specified pattern.
@@ -529,7 +542,7 @@ BrowserMatch             "googlebot"              QS_Cond=spider
 
 # limits the number of concurrent requests to two applications
 # (/app/b and /app/c) to 300 but does not allow access by a "spider"
-# if the number of conurrent requests exceeds the limit of 10:
+# if the number of concurrent requests exceeds the limit of 10:
 QS_LocRequestLimitMatch       "^(/app/b/|/app/c/).*$"  300
 QS_CondLocRequestLimitMatch   "^(/app/b/|/app/c/).*$"  10   spider
 </pre>
@@ -550,23 +563,20 @@ execution to ensure the necessary variables are set.
 Defines the number of concurrent events. Directive works similar to 
 <code>QS_LocRequestLimit</code> but counting the requests having the same 
 environment variable (and optionally matching its value too) set 
-rather than having the same URL pattern. Ignores VIP privileges normally 
-but you may evaluate the <code>QS_VipRequest</code> variable, 
-e.g. by using <code>QS_SetEnvIf</code>.
+rather than having the same URL pattern.
 </li>
 <li>
 <code>QS_EventPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
 Defines how often requests may have the defined environment variable 
-(literal string) set. It measures the occurence of the defined 
+(literal string) set. It measures the occurrences of the defined 
 environment variable on a request per seconds level and tries to 
-limit this occurence to the defined number. It works similar 
+limit this occurrence to the defined number. It works similar 
 as <code>QS_LocRequestPerSecLimit</code> does but counts only 
 the requests having the specified variable set (or not set 
-if the variable name is prefixed by a "!"). If a requests matches 
+if the variable name is prefixed by a "!"). If a request matches 
 multiple events, the rule with the lowest bandwidth is applied. 
-Events are limited by adding a delay to each requests causing an 
-event. Ignores VIP privileges normally but you may evaluate 
-the <code>QS_VipRequest</code> variable.
+Events are limited by adding a delay to each request causing an 
+event.
 </li>
 <li>
 <code>QS_EventKBytesPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
@@ -586,7 +596,7 @@ variables to a new event type.
 </li>
 <li>
 <code>QS_SetEnvIfQuery &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
-Directive works quite simliar to the <code>SetEnvIf</code> directive 
+Directive works quite similar to the <code>SetEnvIf</code> directive 
 of the Apache module mod_setenvif but the specified regex is 
 applied against the query string portion of the request line. The directive 
 recognizes the occurrences of $1..$9 within value and replaces them by 
@@ -686,7 +696,8 @@ to sub locations. If a rule should not be active for a sub location, the
 very same rule must be defined but using a '-' prefix at the rule id. 
 The filter rules are implemented as perl compatible regular expressions 
 (pcre) and are applied to the decoded URL components (un-escaped characters, 
-e.g. %20 is a space). The generic request filer ignores the VIP status or a client.
+e.g. %20 is a space). The generic request filer ignores the 
+<a href="#privilegedusers">VIP</a> status or a client.
 <ul>
 <li>
 <code>QS_DenyRequestLine '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
@@ -697,14 +708,14 @@ match is logged) or 'deny' (access is denied).
 </li>
 <li>
 <code>QS_DenyPath '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
-Generic abs_path (see RFC 2616 secion 3.2.2) filter used to deny access 
+Generic abs_path (see RFC 2616 section 3.2.2) filter used to deny access 
 for requests matching the defined expression (pcre). The action taken for 
 matching rules is either 'log' (access is granted but the rule match is 
 logged) or 'deny' (access is denied).
 </li>
 <li>
 <code>QS_DenyQuery '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</code><br>
-Generic query (see RFC 2616 secion 3.2.2) filter used to deny access for 
+Generic query (see RFC 2616 section 3.2.2) filter used to deny access for 
 requests matching the defined expression (pcre). The action taken for 
 matching rules is either 'log' (access is granted but the rule match 
 is logged) or 'deny' (access is denied).
@@ -721,9 +732,9 @@ but the rule match is logged) or 'deny' (access is denied).
 Generic URL (path and query) filter implementing a request pattern 
 whitelist. Only requests matching at least one <code>QS_PermitUri</code> 
 pattern are allowed. If a <code>QS_PermitUri</code> pattern has 
-been defined an the request does not match any rule, the request 
+been defined and the request does not match any rule, the request 
 is denied albeit of any server resource availability. 
-All rules must define the same action. pcre is case sensitve. 
+All rules must define the same action. pcre is case sensitive. 
 You may use the <code><a href="qsfilter.html">qsfilter2</a></code> 
 utility to generate rules based on access log files.
 </li>
@@ -742,16 +753,16 @@ request blocking. Only the defined headers are allowed. Custom rules
 added using the <code>QS_RequestHeaderFilterRule</code> directive. Filter 
 is activated ('on') or deactivated ('off') on a per location basis. The 
 mode 'size' does not verify the pattern but limits the maximum length 
-of reques header values (replaces the Apache directive 
+of request header values (replaces the Apache directive 
 <code>LimitRequestFieldsize</code>).
 </li>
 <li>
 <code>QS_RequestHeaderFilterRule &lt;header name&gt; 'drop'|'deny' &lt;pcre&gt; &lt;size&gt;</code><br>
 Used to add custom request header filter rules, e.g. to override the internal 
 rules (different pcre or size) or to add additional headers which should be allowed. 
-Definitions are made globaly (outside VirtualHost). A list of all rules 
+Definitions are made globally (outside VirtualHost). A list of all rules 
 is shown at server startup when using <code>LogLevel debug</code>. pcre is 
-case sensitive. The size prarameter defines the maximum length of a header value. 
+case sensitive. The size parameter defines the maximum length of a header value. 
 The action 'drop' removes a header not matching the pcre, the action 'deny' 
 rejects a request including such a header not matching the pcre.
 </li>
@@ -849,7 +860,7 @@ level control restrictions. An address range must end with a ".".
 </li>
 <li>
 <code>QS_SrvMinDataRate &lt;bytes per second&gt; [&lt;max bytes per second&gt;]</code><br>
-Defines the minumum upload/download throughput a client must generate (the bytes 
+Defines the minimum upload/download throughput a client must generate (the bytes 
 send/received by the client per seconds). This bandwidth is measured while 
 receiving request data (request line, header fields, or body). 
 The client connection get closed if the client does not 
@@ -870,9 +881,9 @@ throughput only.
 <code>QS_SrvPreferNet</code><br>
 mod_qos prefers "known networks" when server has 
 less than 80% of free TCP connections. Preferred networks 
-have VIP clients, see <code>QS_VipHeaderName</code> or 
+have <a href="#privilegedusers">VIP</a> clients, see <code>QS_VipHeaderName</code> or 
 <code>QS_VipIPHeaderName</code> directives. 
-Netmask is 255.255.240.0 (each net represents 4096 hosts). 
+Net mask is 255.255.240.0 (each net represents 4096 hosts). 
 Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are
 excluded from connection restrictions.
 </li>
@@ -909,7 +920,7 @@ These directives must only be used in the global server context.
 <li>
 <code>QS_ClientEntries &lt;number&gt;</code><br>
 Defines the number of individual clients managed by mod_qos. 
-Default are 50'000 concurrent IP addresses. Each client requires 
+Default is 50'000 concurrent IP addresses. Each client requires 
 about 48 bytes of shared memory on a 32bit system or 96 bytes 
 on a 64bit system respectively. Client IP source address store 
 survives graceful server restart.
@@ -922,20 +933,18 @@ per second. Such events are requests having the
 mod_setenvif or using the <code>QS_SetEnvIf</code> directive. 
 The rule is enforced by adding a delay to requests causing 
 the event (similar to the <code>QS_LocRequestPerSecLimit</code> 
-directive. Ignores VIP status by default but you may use the 
-<code>QS_VipRequest</code> variable to detect VIP clients.
+directive.
 </li>
 <li>
 <code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
 Defines the maximum number of <code>QS_Block</code> events allowed 
-within the defined time (default are 600 seconds). Client IP is blocked 
+within the defined time (default is 600 seconds). Client IP is blocked 
 when reaching this counter for the specified time (blocked at connection level). 
-Ignores VIP status by default but you may use the 
-<code>QS_VipRequest</code> variable to detect VIP clients.
 </li>
 <li>
 <code>QS_ClientPrefer [&lt;percent&gt;]</code><br>
-Accepts only VIP and high priority clients when the server has 
+Accepts only <a href="#privilegedusers">VIP</a> 
+and high priority clients when the server has 
 less than 80% (or the defined percentage) of free TCP connections 
 (similar to <code>QS_SrvPreferNet</code> but for individual IP 
 source addresses). Use the <code>QS_VipHeaderName</code> or 
@@ -960,7 +969,7 @@ SetEnvIf     Request_URI /app/start.html          QS_Block=yes
 QS_ClientEventBlockCount                          20
 
 # don't allow more than 20 "403" status code responses
-# (forbidden) for a client withn 10 minutes:
+# (forbidden) for a client within 10 minutes:
 QS_SetEnvStatus          403                      QS_Block
 </pre>
 </td></tr>
@@ -1000,7 +1009,8 @@ to access log messages.
 <li>
 <code>mod_qos_ev</code> <br> Status event message of mod_qos. It's a 
 single letter which is used to signalize an event: "D"=denied, "S"=pass 
-due an available VIP session, "V"=create VIP session, "K"=connection closed 
+due an available <a href="#privilegedusers">VIP</a> session, 
+"V"=create VIP session, "K"=connection closed 
 (no keep-alive), "T"=dynamic keep-alive, "r"=IP has marked as a 
 slow/bad client, and "L"=means a request slow down.
 </li>
