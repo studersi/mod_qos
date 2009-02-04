@@ -1,14 +1,12 @@
-Version
-
- - Use constant semaphore/shared memory file names in order
-   to reuse resources after unclear server shutdown.
-
-Version 8.7
+Version 8.8
 
  - QS_LimitRequestBody may be defined using mod_setenvif.
    See new directive order in mod_qos_seq.gif
 
  - mod_qos uses anonymous shm by default.
+
+ - Use constant semaphore/shared memory file names in order
+   to reuse resources after unclear server shutdown.
 
 Version 8.5
 

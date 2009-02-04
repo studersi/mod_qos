@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.151 2009-02-02 07:28:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.152 2009-02-04 20:28:17 pbuchbinder Exp $";
 static const char g_revision[] = "8.8";
 
 /************************************************************************
@@ -3862,7 +3862,7 @@ static int qos_header_parser(request_rec * r) {
     /*
      * VIP control
      */
-    if(sconf->header_name) {
+    if(sconf->header_name || sconf->vip_user) {
       rctx = qos_rctx_config_get(r);
       rctx->is_vip = qos_is_vip(r, sconf);
       if(rctx->is_vip) {
