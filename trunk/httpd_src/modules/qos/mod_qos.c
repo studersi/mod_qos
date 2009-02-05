@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.152 2009-02-04 20:28:17 pbuchbinder Exp $";
-static const char g_revision[] = "8.8";
+static const char revision[] = "$Id: mod_qos.c,v 5.153 2009-02-05 16:21:37 pbuchbinder Exp $";
+static const char g_revision[] = "8.9";
 
 /************************************************************************
  * Includes
@@ -666,8 +666,9 @@ static char *qos_tmpnam(apr_pool_t *pool, server_rec *s) {
     }
     id = apr_psprintf(pool, "/var/tmp/%u", scode);
     
+  } else {
+    id = apr_psprintf(pool, "/var/tmp/%u", m_hostcode);
   }
-  id = apr_psprintf(pool, "/var/tmp/%u", m_hostcode);
   e = strrchr(id, '/');
   e[1] += 25;
   return id;
@@ -4649,6 +4650,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   int net_prefer_limit = 0;
   int cc_net_prefer_limit = 0;
   ap_directive_t *pdir;
+  apr_status_t rv;
   qos_hostcode(ptemp, bs);
   for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
     if(strcasecmp(pdir->directive, "MaxClients") == 0) {
@@ -4679,6 +4681,23 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   u = qos_get_user_conf(bs->process->pool, sconf->net_prefer);
   if(u == NULL) return !OK;
   u->server_start++;
+  /* mutex init */
+  if(sconf->act->lock_file == NULL) {
+    sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
+                                         qos_tmpnam(sconf->act->pool, s));
+    rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
+                                 APR_LOCK_DEFAULT, sconf->act->pool);
+    if (rv != APR_SUCCESS) {
+      char buf[MAX_STRING_LEN];
+      apr_strerror(rv, buf, sizeof(buf));
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                   QOS_LOG_PFX(004)"could not create a-mutex: %s", buf);
+      exit(1);
+    }
+#ifdef AP_NEED_SET_MUTEX_PERMS
+    unixd_set_global_mutex_perms(sconf->act->lock);
+#endif
+  }
   sconf->base_server = bs;
   sconf->act->timeout = apr_time_sec(bs->timeout);
   if(sconf->act->timeout == 0) sconf->act->timeout = 300;
@@ -4719,6 +4738,23 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   while(s) {
     qos_srv_config *ssconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    /* mutex init */
+    if(ssconf->act->lock_file == NULL) {
+      ssconf->act->lock_file = apr_psprintf(ssconf->act->pool, "%s.mod_qos",
+                                            qos_tmpnam(ssconf->act->pool, s));
+      rv = apr_global_mutex_create(&ssconf->act->lock, ssconf->act->lock_file,
+                                   APR_LOCK_DEFAULT, ssconf->act->pool);
+      if (rv != APR_SUCCESS) {
+        char buf[MAX_STRING_LEN];
+        apr_strerror(rv, buf, sizeof(buf));
+        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                     QOS_LOG_PFX(004)"could not create a-mutex: %s", buf);
+        exit(1);
+      }
+#ifdef AP_NEED_SET_MUTEX_PERMS
+      unixd_set_global_mutex_perms(ssconf->act->lock);
+#endif
+    }
     ssconf->base_server = bs;
     ssconf->act->timeout = apr_time_sec(s->timeout);
     ssconf->net_prefer = sconf->net_prefer;
@@ -4949,7 +4985,6 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
 
 static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   qos_srv_config *sconf;
-  apr_status_t rv;
   apr_pool_t *act_pool;
   apr_pool_create(&act_pool, NULL);
   sconf =(qos_srv_config *)apr_pcalloc(p, sizeof(qos_srv_config));
@@ -4977,20 +5012,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act->child_init = 0;
   sconf->act->timeout = apr_time_sec(s->timeout);
   sconf->act->has_events = 0;
-  sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
-                                       qos_tmpnam(sconf->act->pool, s));
-  rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
-                               APR_LOCK_DEFAULT, sconf->act->pool);
-  if (rv != APR_SUCCESS) {
-    char buf[MAX_STRING_LEN];
-    apr_strerror(rv, buf, sizeof(buf));
-    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(004)"could not create a-mutex: %s", buf);
-    exit(1);
-  }
-#ifdef AP_NEED_SET_MUTEX_PERMS
-  unixd_set_global_mutex_perms(sconf->act->lock);
-#endif
+  sconf->act->lock_file = NULL;
   sconf->is_virtual = s->is_virtual;
   sconf->cookie_name = apr_pstrdup(sconf->pool, QOS_COOKIE_NAME);
   sconf->cookie_path = apr_pstrdup(sconf->pool, "/");
