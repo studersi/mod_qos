@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.153 2009-02-05 16:21:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.154 2009-02-05 18:54:01 pbuchbinder Exp $";
 static const char g_revision[] = "8.9";
 
 /************************************************************************
@@ -730,13 +730,13 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
                               qos_tmpnam(pool, srec));
     apr_shm_remove(file, pool);
     res = apr_shm_create(&m, msize, file, pool);
-    if(res != APR_SUCCESS) {
-      char buf[MAX_STRING_LEN];
-      apr_strerror(res, buf, sizeof(buf));
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                   QOS_LOG_PFX(002)"could not create c-shared memory: %s (%d bytes)", buf, msize);
-      return NULL;
-    }
+  }
+  if(res != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(res, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
+                 QOS_LOG_PFX(002)"could not create c-shared memory: %s (%d bytes)", buf, msize);
+    return NULL;
   }
   s = apr_shm_baseaddr_get(m);
   s->m = m;
@@ -1049,14 +1049,14 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
                               qos_tmpnam(ppool, NULL));
     apr_shm_remove(file, ppool);
     res = apr_shm_create(&u->m, size, file, ppool);
-    if(res != APR_SUCCESS) {
-      char buf[MAX_STRING_LEN];
-      apr_strerror(res, buf, sizeof(buf));
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                   QOS_LOG_PFX(002)"could not create n-shared memory: %s (%d bytes)", buf, size);
-      u->m = NULL;
-      return !OK;
-    }
+  }
+  if(res != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(res, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
+                 QOS_LOG_PFX(002)"could not create n-shared memory: %s (%d bytes)", buf, size);
+    u->m = NULL;
+    return !OK;
   }
   u->lock_file = apr_psprintf(ppool, "%s_cl.mod_qos", 
                               qos_tmpnam(ppool, NULL));
@@ -1198,13 +1198,13 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
                               qos_tmpnam(act->pool, s));
     apr_shm_remove(file, act->pool);
     res = apr_shm_create(&act->m, act->size, file, act->pool);
-    if(res != APR_SUCCESS) {
-      char buf[MAX_STRING_LEN];
-      apr_strerror(res, buf, sizeof(buf));
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX(002)"could not create r-shared memory: %s (%d bytes)", buf, act->size);
-      return res;
-    }
+  }
+  if(res != APR_SUCCESS) {
+    char buf[MAX_STRING_LEN];
+    apr_strerror(res, buf, sizeof(buf));
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                 QOS_LOG_PFX(002)"could not create r-shared memory: %s (%d bytes)", buf, act->size);
+    return res;
   }
   act->c = apr_shm_baseaddr_get(act->m);
   act->c->connections = 0;
