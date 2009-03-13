@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.156 2009-03-13 21:03:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.157 2009-03-13 21:34:03 pbuchbinder Exp $";
 static const char g_revision[] = "8.10";
 
 /************************************************************************
@@ -3794,7 +3794,6 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
       // Apache 2.2
       char *errp = NULL;
       if((APR_SUCCESS != apr_strtoff(&s, l, &errp, 10)) ||
-         errp ||
 #else
       if(((s = apr_atoi64(l)) < 0) ||
 #endif
@@ -5978,7 +5977,7 @@ const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
 #endif
     return "QS_LimitRequestBody argument is not parsable";
   }
-  if(errp || s < 0) {
+  if(s < 0) {
     return "QS_LimitRequestBody requires a non-negative integer";
   }
   if(cmd->path == NULL) {
