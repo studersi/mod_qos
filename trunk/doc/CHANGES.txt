@@ -1,3 +1,7 @@
+Version 8.10
+
+ - Fixed: Did not compile with Apache 2.0.
+
 Version 8.9
 
  - QS_LimitRequestBody may be defined using mod_setenvif.
