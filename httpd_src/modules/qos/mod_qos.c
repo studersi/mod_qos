@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.154 2009-02-05 18:54:01 pbuchbinder Exp $";
-static const char g_revision[] = "8.9";
+static const char revision[] = "$Id: mod_qos.c,v 5.155 2009-03-13 20:45:17 pbuchbinder Exp $";
+static const char g_revision[] = "8.10";
 
 /************************************************************************
  * Includes
@@ -212,14 +212,22 @@ typedef struct {
 } qos_setenvif_t;
 
 typedef struct {
+#ifdef AP_REGEX_H
   ap_regex_t *preg;
+#else
+  regex_t *preg;
+#endif
   char *name;
   char *value;
 } qos_setenvifquery_t;
 
 typedef struct {
   pcre *preg;
+#ifdef AP_REGEX_H
   ap_regex_t *pregx;
+#else
+  regex_t *pregx;
+#endif  
   char *name;
   char *value;
 } qos_setenvifparpbody_t;
@@ -631,14 +639,24 @@ static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
 
 /** a unique apache instance id (hopefully) */
 static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
-  char *key = apr_psprintf(ptemp, "%s%s%s%d%s%s%s",
+  char *key = apr_psprintf(ptemp, "%s%s%s%d%s"
+#ifdef ap_http_scheme
+  // Apache 2.2
+                           "%s"
+#endif
+                           "%s",
                            s->defn_name ? s->defn_name : "",
                            s->server_admin ? s->server_admin : "",
                            s->server_hostname ? s->server_hostname : "",
                            s->addrs ? s->addrs->host_port : 0,
                            s->path ? s->path : "",
-                           s->error_fname ? s->error_fname : "",
-                           s->server_scheme ? s->server_scheme : "");
+                           s->error_fname ? s->error_fname : ""
+#ifdef ap_http_scheme
+  // Apache 2.2
+                           ,s->server_scheme ? s->server_scheme : "");
+#else
+                           );
+#endif
   int len = strlen(key);
   int i;
   char *p;
@@ -681,9 +699,16 @@ static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_conf
     if(bytes) {
       apr_off_t s;
       char *errp;
+#ifdef ap_http_scheme
+      // Apache 2.2
       if(APR_SUCCESS == apr_strtoff(&s, bytes, &errp, 10)) {
         return s;
       }
+#else
+      if((s = apr_atoi64(bytes)) >= 0) {
+        return s;
+      }
+#endif
     }
   }
   if(dconf->maxpost != -1) {
@@ -721,14 +746,17 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
   qos_s_t *s;
   qos_s_entry_t *e;
   msize = APR_ALIGN_DEFAULT(msize) + 512;
-  ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
+  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL, 
                QOS_LOG_PFX(000)"create shared memory (client control): %d bytes", msize);
   /* use anonymous shm by default */
   res = apr_shm_create(&m, msize, NULL, pool);
   if(APR_STATUS_IS_ENOTIMPL(res)) {
     char *file = apr_psprintf(pool, "%s_cc.mod_qos",
                               qos_tmpnam(pool, srec));
+#ifdef ap_http_scheme
+    // Apache 2.2
     apr_shm_remove(file, pool);
+#endif
     res = apr_shm_create(&m, msize, file, pool);
   }
   if(res != APR_SUCCESS) {
@@ -1025,7 +1053,7 @@ static apr_status_t qos_destroy_netstat(void *p) {
  * destroy shared memory and mutexes
  */
 static void qos_destroy_act(qs_actable_t *act) {
-  ap_log_error(APLOG_MARK, APLOG_NOTICE|APLOG_NOERRNO, 0, NULL,
+  ap_log_error(APLOG_MARK, APLOG_DEBUG|APLOG_NOERRNO, 0, NULL,
                QOS_LOG_PFX(001)"cleanup shared memory: %d bytes",
                act->size);
   act->child_init = 0;
@@ -1040,14 +1068,17 @@ static int qos_init_netstat(apr_pool_t *ppool, qos_user_t *u) {
   apr_status_t res;
   int i;
   size = APR_ALIGN_DEFAULT(size * sizeof(qs_netstat_t)) + 512;
-  ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL, 
+  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL, 
                QOS_LOG_PFX(000)"create shared memory (network control): %d bytes", size);
   /* use anonymous shm by default */
   res = apr_shm_create(&u->m, size, NULL, ppool);
   if(APR_STATUS_IS_ENOTIMPL(res)) {
     char *file = apr_psprintf(ppool, "%s_c.mod_qos",
                               qos_tmpnam(ppool, NULL));
+#ifdef ap_http_scheme
+    // Apache 2.2
     apr_shm_remove(file, ppool);
+#endif
     res = apr_shm_create(&u->m, size, file, ppool);
   }
   if(res != APR_SUCCESS) {
@@ -1196,7 +1227,10 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   if(APR_STATUS_IS_ENOTIMPL(res)) {
     char *file = apr_psprintf(act->pool, "%s_m.mod_qos",
                               qos_tmpnam(act->pool, s));
+#ifdef ap_http_scheme
+    // Apache 2.2
     apr_shm_remove(file, act->pool);
+#endif
     res = apr_shm_create(&act->m, act->size, file, act->pool);
   }
   if(res != APR_SUCCESS) {
@@ -2144,7 +2178,11 @@ static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *sete
   for(i = 0; i < apr_table_elts(setenvif)->nelts; i++) {
     qos_setenvifquery_t *setenvif = (qos_setenvifquery_t *)entry[i].val;
     char *name = setenvif->name;
+#ifdef AP_REGEX_H
     ap_regmatch_t regm[AP_MAX_REG_MATCH];
+#else
+    regmatch_t regm[AP_MAX_REG_MATCH];
+#endif
     if(ap_regexec(setenvif->preg, query, AP_MAX_REG_MATCH, regm, 0) == 0) {
       if(name[0] == '!') {
         apr_table_unset(r->subprocess_env, &name[1]);
@@ -2180,7 +2218,11 @@ static void qos_parp_hp_body(request_rec *r, qos_srv_config *sconf) {
               char *p = strstr(value, "$1");
               if(p) {
                 char *c = apr_pstrndup(r->pool, &data[ovector[0]], ovector[1] - ovector[0]);
+#ifdef AP_REGEX_H
                 ap_regmatch_t regm[AP_MAX_REG_MATCH];
+#else
+                regmatch_t regm[AP_MAX_REG_MATCH];
+#endif
                 if(ap_regexec(setenvif->pregx, c, AP_MAX_REG_MATCH, regm, 0) == 0) {
                   value = ap_pregsub(r->pool, value, c, AP_MAX_REG_MATCH, regm);
                 }
@@ -3722,10 +3764,16 @@ static int qos_post_read_request(request_rec * r) {
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT26 */
 #endif
         } else {
+#ifdef ap_http_scheme
+          // Apache 2.2
           if(APR_SUCCESS == apr_strtoff(&inctx->cl_val, cl, NULL, 0)) {
+#else
+          if((inctx->cl_val = apr_atoi64(cl)) >= 0) {
+#endif
             ap_add_input_filter("qos-in-filter2", inctx, r, r->connection);
             inctx->status = QS_CONN_STATE_BODY;
           } else {
+            // header filter should block this request
           }
         }
       }
@@ -3743,7 +3791,12 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
     if(l != NULL) {
       apr_off_t s;
       char *errp;
+#ifdef ap_http_scheme
+      // Apache 2.2
       if((APR_SUCCESS != apr_strtoff(&s, l, &errp, 10)) ||
+#else
+      if(((s = apr_atoi64(l)) >= 0) ||
+#endif
          *errp ||
          (s < 0)) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -5917,7 +5970,12 @@ const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
 const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
   apr_off_t s;
   char *errp;
+#ifdef ap_http_scheme
+  // Apache 2.2
   if(APR_SUCCESS != apr_strtoff(&s, bytes, &errp, 10)) {
+#else
+  if((s = apr_atoi64(bytes)) >= 0) {
+#endif
     return "QS_LimitRequestBody argument is not parsable";
   }
   if(*errp || s < 0) {
@@ -5978,28 +6036,42 @@ const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
 
 /* QS_RequestHeaderFilterRule: set custom header rules (global only)
    name, action, pcre, size */
+#ifdef AP_TAKE_ARGV
 const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
+#else
+const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, 
+                                      const char *header, const char *action,
+                                      const char *rule) {
+#endif
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *errptr = NULL;
   int erroffset;
   qos_fhlt_r_t *he;
+#ifdef AP_TAKE_ARGV
   const char *header;
   const char *rule;
   const char *action;
+#endif
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
     return err;
   }
+#ifdef AP_TAKE_ARGV
   if(argc != 4) {
     return apr_psprintf(cmd->pool, "%s: takes 4 arguments",
                         cmd->directive->directive);
   }
+#endif
   he = apr_pcalloc(cmd->pool, sizeof(qos_fhlt_r_t));
+#ifdef AP_TAKE_ARGV
   header = argv[0];
   action = argv[1];
   rule = argv[2];
   he->size = atoi(argv[3]);
+#else
+  he->size = 9000;
+#endif
   he->text = apr_pstrdup(cmd->pool, rule);
   he->pcre = pcre_compile(rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(strcasecmp(action, "deny") == 0) {
@@ -6045,8 +6117,6 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
 const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
 #else
 const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg) {
-  int argc = 0;
-  char *const argv = NULL;
 #endif
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -6056,17 +6126,21 @@ const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg) {
   }
   sconf->has_qos_cc = 1;
   sconf->qos_cc_prefer = 80;
+#ifdef AP_TAKE_ARGV
   if(argc) {
     sconf->qos_cc_prefer = atoi(argv[0]);
   }
+#endif
   if((sconf->qos_cc_prefer == 0) || (sconf->qos_cc_prefer > 99)) {
     return apr_psprintf(cmd->pool, "%s: percentage must be numeric value between 1 and 99",
                         cmd->directive->directive);
   }
+#ifdef AP_TAKE_ARGV
   if(argc > 1) {
     return apr_psprintf(cmd->pool, "%s: command takes not more than one argument",
                         cmd->directive->directive);
   }
+#endif
   return NULL;
 }
 
@@ -6382,9 +6456,15 @@ static const command_rec qos_config_cmds[] = {
                 " directive. Using the 'size' option, the header field max. size"
                 " is verified only (similar to LimitRequestFieldsize but using"
                 " individual values for each header type) while the pattern is ignored."),
+#ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
                     RSRC_CONF,
                     "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>  <size>, used"
+#else
+  AP_INIT_TAKE3("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
+                    RSRC_CONF,
+                    "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>, used"
+#endif
                     " to add custom header filter rules which override the internal"
                     " filter rules of mod_qos."
                     " Directive is allowed in global server context only."),

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.119 2009-01-22 21:25:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.120 2009-03-13 20:45:18 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -100,7 +100,7 @@ CoreDumpDirectory       ##ROOT##/logs/
 #LoadFile                /lib/libgcc_s.so.1
 
 TypesConfig             conf/mime.types
-LoadModule              dumpio_module ##ROOT##/../httpd/modules/debug/.libs/mod_dumpio.so
+#LoadModule              dumpio_module ##ROOT##/../httpd/modules/debug/.libs/mod_dumpio.so
 LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
 LoadModule              info_module ##ROOT##/../httpd/modules/generators/.libs/mod_info.so
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so

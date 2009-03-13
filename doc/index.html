@@ -156,6 +156,9 @@ More information about mod_qos:
 <li><a href="#configuration">Configuration</a></li>
 <ul>
 <li><a href="#requestlevelcontrol">Request Level Control</a></li>
+<li><a href="#privilegedusers">Privileged Users</a></li>
+<li><a href="#variables">Variables</a></li>
+<li><a href="#conditionalrules">Conditional Rules</a></li>
 <li><a href="#eventcontrol">Events</a></li>
 <li><a href="#filter">Request Level, Generic Filter</a></li>
 <li><a href="#connectionlevelcontrol">Connection Level Control</a></li>
@@ -352,7 +355,7 @@ directive.<br>
 </ul>
 
 <a name="privilegedusers"></a>
-<h4>Privileged Users</h4>
+<h3>Privileged Users</h3>
 Additional directives are used to identify VIP's (very important persons) 
 and to control the session life time and its cookie format. VIP users have 
 privileged access and less QoS restrictions than ordinary users. <br>
@@ -382,7 +385,7 @@ directives are used to define when a per IP address should be marked as a VIP us
 </li>
 </ul>
 
-VIP setting directives:
+Directives:
 
 <ul>
 <li>
@@ -462,7 +465,7 @@ QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
 </table>
 
 <a name="variables"></a>
-<h4>Variables</h4>
+<h3>Variables</h3>
 Environment variables are used on a per request level and implement
 additional control mechanisms. Variables may be set using the standard 
 Apache module mod_setenvif. See also the <a href="#eventcontrol">
@@ -517,7 +520,7 @@ SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.ht
 </table>
 
 <a name="conditionalrules"></a>
-<h4>Conditional Rules</h4>
+<h3>Conditional Rules</h3>
 Conditional rules are only enforced if a the <code>QS_Cond</code> 
 variable matches the specified pattern.
 <ul>
