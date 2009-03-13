@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.155 2009-03-13 20:45:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.156 2009-03-13 21:03:14 pbuchbinder Exp $";
 static const char g_revision[] = "8.10";
 
 /************************************************************************
@@ -698,9 +698,9 @@ static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_conf
     const char *bytes = apr_table_get(r->subprocess_env, "QS_LimitRequestBody");
     if(bytes) {
       apr_off_t s;
-      char *errp;
 #ifdef ap_http_scheme
       // Apache 2.2
+      char *errp = NULL;
       if(APR_SUCCESS == apr_strtoff(&s, bytes, &errp, 10)) {
         return s;
       }
@@ -3790,14 +3790,14 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
     const char *l = apr_table_get(r->headers_in, "Content-Length");
     if(l != NULL) {
       apr_off_t s;
-      char *errp;
 #ifdef ap_http_scheme
       // Apache 2.2
+      char *errp = NULL;
       if((APR_SUCCESS != apr_strtoff(&s, l, &errp, 10)) ||
+         errp ||
 #else
-      if(((s = apr_atoi64(l)) >= 0) ||
+      if(((s = apr_atoi64(l)) < 0) ||
 #endif
-         *errp ||
          (s < 0)) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
@@ -5969,16 +5969,16 @@ const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
 
 const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
   apr_off_t s;
-  char *errp;
+  char *errp = NULL;
 #ifdef ap_http_scheme
   // Apache 2.2
   if(APR_SUCCESS != apr_strtoff(&s, bytes, &errp, 10)) {
 #else
-  if((s = apr_atoi64(bytes)) >= 0) {
+  if((s = apr_atoi64(bytes)) < 0) {
 #endif
     return "QS_LimitRequestBody argument is not parsable";
   }
-  if(*errp || s < 0) {
+  if(errp || s < 0) {
     return "QS_LimitRequestBody requires a non-negative integer";
   }
   if(cmd->path == NULL) {
