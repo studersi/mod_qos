@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.157 2009-03-13 21:34:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.158 2009-03-16 14:16:07 pbuchbinder Exp $";
 static const char g_revision[] = "8.10";
 
 /************************************************************************
@@ -2172,10 +2172,10 @@ static apr_status_t qos_parp_prr(request_rec *r, qos_srv_config *sconf) {
 /**
  * QS_SetEnvIfQuery/QS_SetEnvIfParp
  */
-static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *setenvif) {
+static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *table_setenvif) {
   int i;
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(setenvif)->elts;
-  for(i = 0; i < apr_table_elts(setenvif)->nelts; i++) {
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(table_setenvif)->elts;
+  for(i = 0; i < apr_table_elts(table_setenvif)->nelts; i++) {
     qos_setenvifquery_t *setenvif = (qos_setenvifquery_t *)entry[i].val;
     char *name = setenvif->name;
 #ifdef AP_REGEX_H
@@ -6367,7 +6367,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIfQuery <regex> [!]<variable>[=value],"
-                " directive works simliar to the <code>SetEnvIf</code> directive"
+                " directive works simliar to the SetEnvIf directive"
                 " of the Apache module mod_setenvif but the specified regex is"
                 " applied against the request query string."),
   AP_INIT_TAKE2("QS_SetEnvIfParp", qos_event_setenvifparp_cmd, NULL,
