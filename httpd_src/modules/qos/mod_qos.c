@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.158 2009-03-16 14:16:07 pbuchbinder Exp $";
-static const char g_revision[] = "8.10";
+static const char revision[] = "$Id: mod_qos.c,v 5.159 2009-03-20 15:21:43 pbuchbinder Exp $";
+static const char g_revision[] = "8.11";
 
 /************************************************************************
  * Includes
@@ -6459,14 +6459,17 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE_ARGV("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
                     RSRC_CONF,
                     "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>  <size>, used"
+                    " to add custom header filter rules which override the internal"
+                    " filter rules of mod_qos."
+                    " Directive is allowed in global server context only."),
 #else
   AP_INIT_TAKE3("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
                     RSRC_CONF,
                     "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>, used"
-#endif
                     " to add custom header filter rules which override the internal"
                     " filter rules of mod_qos."
                     " Directive is allowed in global server context only."),
+#endif
   AP_INIT_FLAG("QS_DenyBody", qos_denybody_cmd, NULL,
                ACCESS_CONF,
                "QS_DenyBody 'on'|'off', enabled body data filter."),
@@ -6478,14 +6481,19 @@ static const command_rec qos_config_cmds[] = {
                 " Directive is allowed in global server context only."),
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_ClientPrefer", qos_client_pref_cmd, NULL,
-#else
-  AP_INIT_NO_ARGS("QS_ClientPrefer", qos_client_pref_cmd, NULL,
-#endif
                   RSRC_CONF,
                   "QS_ClientPrefer [<percent>], prefers known VIP clients when server has"
                   " less than 80% of free TCP connections. Preferred clients"
                   " are VIP clients only, see QS_VipHeaderName directive."
                   " Directive is allowed in global server context only."),
+#else
+  AP_INIT_NO_ARGS("QS_ClientPrefer", qos_client_pref_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_ClientPrefer [<percent>], prefers known VIP clients when server has"
+                  " less than 80% of free TCP connections. Preferred clients"
+                  " are VIP clients only, see QS_VipHeaderName directive."
+                  " Directive is allowed in global server context only."),
+#endif
   AP_INIT_TAKE12("QS_ClientEventBlockCount", qos_client_block_cmd, NULL,
                  RSRC_CONF,
                  "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"
