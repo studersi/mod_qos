@@ -1,3 +1,8 @@
+Version 8.11
+
+ - Fixed: Change Apache 2.0 ifdef statements in order to
+   compile with any compiler.
+
 Version 8.10
 
  - Fixed: Did not compile with Apache 2.0.
