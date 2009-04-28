@@ -775,7 +775,7 @@ rejects a request including such a header not matching the pcre.
 Sample configuration:<br>
 <pre>
 QS_ErrorPage                     /error-docs/qs_error.html
-QS_RequestHeaderFilterRule       UA-CPU "^[a-zA-Z0-9]+$" drop
+QS_RequestHeaderFilterRule       UA-CPU drop "^[a-zA-Z0-9]+$" 20
 
 &lt;Location /&gt;
    # enable header validation:
