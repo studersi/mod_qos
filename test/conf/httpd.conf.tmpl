@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.120 2009-03-13 20:45:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.121 2009-06-10 20:17:52 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -255,6 +255,14 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        QS_DenyRequestLine +l01         log                 .*sample.*
        SetEnvIf           Content-Type multipart/form-data QS_EV=1
        QS_DenyEvent       +event       deny                QS_EV
+   </Location>
+   <Location /qos/urlenc>
+       QS_InvalidUrlEncoding           deny
+   </Location>
+   <Location /qos/urlenc/sub>
+   </Location>
+   <Location /qos/urlenc/sub/off>
+       QS_InvalidUrlEncoding           off
    </Location>
    <Location /qos/notev>
        SetEnvIf           Content-Type multipart/form-data QS_EV=1

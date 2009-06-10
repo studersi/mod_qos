@@ -13,7 +13,24 @@ case "$COMMAND" in
 	    ../httpd/httpd -d `pwd` $ADDARGS
             ../httpd/httpd -d `pwd` -f appl_conf/httpd.conf $ADDARGS
 	 fi
-	 sleep 1
+	 COUNT=0
+	 while [ $COUNT -lt 10 ]; do
+	   if [ -f logs/apache.pid ]; then
+             COUNT=10
+           else
+             let COUNT=$COUNT+1
+             sleep 1
+           fi
+         done
+	 COUNT=0
+	 while [ $COUNT -lt 10 ]; do
+	   if [ -f logs/apache1.pid ]; then
+             COUNT=10
+           else
+             let COUNT=$COUNT+1
+             sleep 1
+           fi
+         done
 	 echo "proxy `cat logs/apache.pid`"
 	 echo "application `cat logs/apache1.pid`"
 	 ;;

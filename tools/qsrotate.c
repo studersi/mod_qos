@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 2.3 2008-10-08 06:13:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 2.4 2009-06-10 20:17:52 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -244,11 +244,13 @@ static void *forcedRotationThread(void *argv) {
   while(1) {
     now = time(NULL);
     qs_csLock();
-    if(now >= m_tLogEnd) {
+    if(now > m_tLogEnd) {
       rotate(m_cmd, m_file_name, &m_messages);
+      sleep(2); // don't rotate more than once
     }
-    n = m_tLogEnd - now;
     qs_csUnLock();
+    now = time(NULL);
+    n = m_tLogEnd - now;
     sleep(n);
   }
 }
@@ -363,7 +365,7 @@ int main(int argc, char **argv) {
     } else {
       m_messages++;
     }
-    if(now >= m_tLogEnd) {
+    if(now > m_tLogEnd) {
       /* rotate! */
       rotate(m_cmd, m_file_name, &m_messages);
     }
