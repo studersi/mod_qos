@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.159 2009-03-20 15:21:43 pbuchbinder Exp $";
-static const char g_revision[] = "8.11";
+static const char revision[] = "$Id: mod_qos.c,v 5.160 2009-06-10 20:17:48 pbuchbinder Exp $";
+static const char g_revision[] = "8.12";
 
 /************************************************************************
  * Includes
@@ -200,8 +200,10 @@ typedef enum  {
 } qs_rfilter_type_e;
 
 typedef enum  {
-  QS_LOG,
-  QS_DENY
+  QS_LOG = 0,
+  QS_DENY,
+  QS_OFF_DEFAULT,
+  QS_OFF
 } qs_rfilter_action_e;
 
 typedef struct {
@@ -398,6 +400,7 @@ typedef struct {
   int bodyfilter;
   int dec_mode;
   apr_off_t maxpost;
+  qs_rfilter_action_e urldecoding;
 } qos_dir_config;
 
 /**
@@ -1661,27 +1664,36 @@ int qos_hex2c(const char *x) {
  */
 static int qos_unescaping(char *x, int mode) {
   int i, j, ch;
+  int ret = 0;
   if(x == 0) {
-    return 0;
+    return ret;
   }
   if(x[0] == '\0') {
-    return 0;
+    return ret;
   }
   for(i = 0, j = 0; x[i] != '\0'; i++, j++) {
     ch = x[i];
-    if(ch == '%' && QOS_ISHEX(x[i + 1]) && QOS_ISHEX(x[i + 2])) {
-      ch = qos_hex2c(&x[i + 1]);
-      i += 2;
-    } else if(ch == '\\' && (x[i + 1] == 'x') && QOS_ISHEX(x[i + 2]) && QOS_ISHEX(x[i + 3])) {
-      ch = qos_hex2c(&x[i + 2]);
-      i += 3;
+    if(ch == '%') {
+      if(QOS_ISHEX(x[i + 1]) && QOS_ISHEX(x[i + 2])) {
+        ch = qos_hex2c(&x[i + 1]);
+        i += 2;
+      } else {
+        ret = 1;
+      }
+    } else if(ch == '\\' && (x[i + 1] == 'x')) {
+      if(QOS_ISHEX(x[i + 2]) && QOS_ISHEX(x[i + 3])) {
+        ch = qos_hex2c(&x[i + 2]);
+        i += 3;
+      } else {
+        ret = 1;
+      }
     } else if(ch == '+') {
       ch = ' ';
     }
     x[j] = ch;
   }
   x[j] = '\0';
-  return j;
+  return ret;
 }
 
 /**
@@ -1782,9 +1794,9 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   int permit_rule = 0;
   int permit_rule_match = 0;
   int permit_rule_action = QS_DENY;
-  qos_unescaping(request_line, dconf->dec_mode);
+  int esc = qos_unescaping(request_line, dconf->dec_mode);
   request_line_len = strlen(request_line);
-  qos_unescaping(path, dconf->dec_mode);
+  esc += qos_unescaping(path, dconf->dec_mode);
 #ifdef QS_MOD_EXT_HOOKS
   qos_run_path_decode_hook(r, &path);
 #endif
@@ -1811,7 +1823,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
     }
     if(q) {
       query = apr_pstrdup(r->pool, q);
-      qos_unescaping(query, dconf->dec_mode);
+      esc += qos_unescaping(query, dconf->dec_mode);
 #ifdef QS_MOD_EXT_HOOKS
       qos_run_query_decode_hook(r, &query);
 #endif
@@ -1822,7 +1834,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   } else {
     if(r->parsed_uri.query) {
       query = apr_pstrdup(r->pool, r->parsed_uri.query);
-      qos_unescaping(query, dconf->dec_mode);
+      esc += qos_unescaping(query, dconf->dec_mode);
       query_len = strlen(query);
       uri = apr_pstrcat(r->pool, path, "?", query, NULL);
       uri_len = strlen(uri);
@@ -1830,10 +1842,21 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   }
   if(r->parsed_uri.fragment) {
     fragment = apr_pstrdup(r->pool, r->parsed_uri.fragment);
-    qos_unescaping(fragment, dconf->dec_mode);
+    esc += qos_unescaping(fragment, dconf->dec_mode);
     fragment_len = strlen(fragment);
     uri = apr_pstrcat(r->pool, uri, "#", fragment, NULL);
     uri_len = strlen(uri);
+  }
+  if(esc > 0 && (dconf->urldecoding < QS_OFF_DEFAULT)) {
+    int severity = dconf->urldecoding == QS_DENY ? APLOG_ERR : APLOG_WARNING;
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
+                  QOS_LOG_PFX(046)"access denied, invalid url encoding, action=%s, c=%s, id=%s",
+                  dconf->urldecoding == QS_DENY ? "deny" : "log only",
+                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                  qos_unique_id(r, "046"));
+    if(dconf->urldecoding == QS_DENY) {
+      return HTTP_FORBIDDEN;
+    }
   }
   /* process black and white list rules in one loop */
   for(i = 0; i < apr_table_elts(dconf->rfilter_table)->nelts; i++) {
@@ -4978,6 +5001,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->bodyfilter = -1;
   dconf->dec_mode = QOS_DEC_MODE_FLAGS_STD;
   dconf->maxpost = -1;
+  dconf->urldecoding = QS_OFF_DEFAULT;
   return dconf;
 }
 
@@ -4987,7 +5011,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
 static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_dir_config *b = (qos_dir_config *)basev;
   qos_dir_config *o = (qos_dir_config *)addv;
-  qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_rfilter_t));
+  qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_dir_config));
   if(o->headerfilter != QS_HEADERFILTER_OFF_DEFAULT) {
     dconf->headerfilter = o->headerfilter;
   } else {
@@ -5031,6 +5055,11 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
     dconf->maxpost = o->maxpost;
   } else {
     dconf->maxpost = b->maxpost;
+  }
+  if(o->urldecoding == QS_OFF_DEFAULT) {
+    dconf->urldecoding = b->urldecoding;
+  } else {
+    dconf->urldecoding = o->urldecoding;
   }
   return dconf;
 }
@@ -5965,6 +5994,20 @@ const char *qos_permit_uri_cmd(cmd_parms *cmd, void *dcfg,
                                const char *id, const char *action, const char *pcres) {
   return qos_deny_cmd(cmd, dcfg, id, action, pcres, QS_PERMIT_URI, 0);
 }
+const char *qos_deny_urlenc_cmd(cmd_parms *cmd, void *dcfg, const char *mode) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  if(strcasecmp(mode, "log") == 0) {
+    dconf->urldecoding = QS_LOG;
+  } else if(strcasecmp(mode, "deny") == 0) {
+    dconf->urldecoding = QS_DENY;
+  } else if(strcasecmp(mode, "off") == 0) {
+    dconf->urldecoding = QS_OFF;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: invalid action", 
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
 
 const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
   apr_off_t s;
@@ -6413,6 +6456,12 @@ static const command_rec qos_config_cmds[] = {
                 ACCESS_CONF,
                 "QS_DenyQuery, same as QS_DenyRequestLine but applied to the"
                 " query only."),
+  AP_INIT_TAKE1("QS_InvalidUrlEncoding", qos_deny_urlenc_cmd, NULL,
+                ACCESS_CONF,
+                "QS_InvalidUrlEncoding 'log'|'deny'|'off',"
+                " enforces correct URL decoding in conjunction with the"
+                " QS_DenyRequestLine, QS_DenyPath, and QS_DenyQuery"
+                " directives. Default is \"off\"."),
   AP_INIT_TAKE3("QS_DenyEvent", qos_deny_event_cmd, NULL,
                 ACCESS_CONF,
                 "QS_DenyEvent '+'|'-'<id> 'log'|'deny' [!]<variable>, matches"

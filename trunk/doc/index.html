@@ -724,6 +724,12 @@ matching rules is either 'log' (access is granted but the rule match
 is logged) or 'deny' (access is denied).
 </li>
 <li>
+<code>QS_InvalidUrlEncoding 'log'|'deny'|'off'</code><br>
+Enforces correct URL decoding in conjunction with the <code>QS_DenyRequestLine</code>, 
+<code>QS_DenyPath</code>, and <code>QS_DenyQuery</code> directives. Default is 
+"off" which means that incorrect encodings are ignored.
+</li>
+<li>
 <code>QS_DenyEvent '+'|'-'&lt;id&gt; 'log'|'deny' [!]&lt;env-variable&gt;</code><br>
 Rule matching requests having the defined process environment variable set 
 (or NOT set if prefixed by a '!'). 
