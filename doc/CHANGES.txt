@@ -1,3 +1,11 @@
+Version 8.13
+
+ - New directives QS_DenyQueryBody and QS_PermitUriBody
+   obsolte QS_DenyBody.
+
+ - Fixed: QS_Deny*/QS_Permit* directives can handle strings
+   containing 0 bytes (qsfilter2 still can't).
+
 Version 8.12
 
  - New directive QS_InvalidUrlEncoding.
