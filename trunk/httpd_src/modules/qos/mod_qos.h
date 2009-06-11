@@ -71,9 +71,9 @@
 
 /* hook to decode/unescape the path portion of the request uri */
 APR_DECLARE_EXTERNAL_HOOK(qos, QOS, apr_status_t, path_decode_hook,
-                          (request_rec *r, char **path))
+                          (request_rec *r, char **path, int *len))
 /* hook to decode/unescape the query portion of the request uri */
 APR_DECLARE_EXTERNAL_HOOK(qos, QOS, apr_status_t, query_decode_hook,
-                          (request_rec *r, char **query))
+                          (request_rec *r, char **query, int *len))
 
 #endif /* __MOD_QOS_H__ */

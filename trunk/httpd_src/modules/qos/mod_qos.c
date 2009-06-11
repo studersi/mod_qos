@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.160 2009-06-10 20:17:48 pbuchbinder Exp $";
-static const char g_revision[] = "8.12";
+static const char revision[] = "$Id: mod_qos.c,v 5.161 2009-06-11 18:47:29 pbuchbinder Exp $";
+static const char g_revision[] = "8.13";
 
 /************************************************************************
  * Includes
@@ -124,12 +124,12 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 #ifdef QS_MOD_EXT_HOOKS
 APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, path_decode_hook,
-                                    (request_rec *r, char **path),
-                                    (r, path),
+                                    (request_rec *r, char **path, int *len),
+                                    (r, path, len),
                                     OK, DECLINED)
 APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, query_decode_hook,
-                                    (request_rec *r, char **query),
-                                    (r, query),
+                                    (request_rec *r, char **query, int *len),
+                                    (r, query, len),
                                     OK, DECLINED)
 #endif
 
@@ -397,7 +397,8 @@ typedef struct {
   apr_table_t *rfilter_table;
   int inheritoff;
   qs_headerfilter_mode_e headerfilter;
-  int bodyfilter;
+  int bodyfilter_d;
+  int bodyfilter_p;
   int dec_mode;
   apr_off_t maxpost;
   qs_rfilter_action_e urldecoding;
@@ -1662,14 +1663,13 @@ int qos_hex2c(const char *x) {
  * - ansi c esc (\n, \r, ...), not implemented
  * - charset conv, not implemented
  */
-static int qos_unescaping(char *x, int mode) {
+static int qos_unescaping(char *x, int mode, int *error) {
   int i, j, ch;
-  int ret = 0;
   if(x == 0) {
-    return ret;
+    return 0;
   }
   if(x[0] == '\0') {
-    return ret;
+    return 0;
   }
   for(i = 0, j = 0; x[i] != '\0'; i++, j++) {
     ch = x[i];
@@ -1678,14 +1678,14 @@ static int qos_unescaping(char *x, int mode) {
         ch = qos_hex2c(&x[i + 1]);
         i += 2;
       } else {
-        ret = 1;
+        (*error)++;
       }
     } else if(ch == '\\' && (x[i + 1] == 'x')) {
       if(QOS_ISHEX(x[i + 2]) && QOS_ISHEX(x[i + 3])) {
         ch = qos_hex2c(&x[i + 2]);
         i += 3;
       } else {
-        ret = 1;
+        (*error)++;
       }
     } else if(ch == '+') {
       ch = ' ';
@@ -1693,7 +1693,7 @@ static int qos_unescaping(char *x, int mode) {
     x[j] = ch;
   }
   x[j] = '\0';
-  return ret;
+  return j;
 }
 
 /**
@@ -1794,15 +1794,14 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   int permit_rule = 0;
   int permit_rule_match = 0;
   int permit_rule_action = QS_DENY;
-  int esc = qos_unescaping(request_line, dconf->dec_mode);
-  request_line_len = strlen(request_line);
-  esc += qos_unescaping(path, dconf->dec_mode);
+  int escerr = 0;
+  request_line_len = qos_unescaping(request_line, dconf->dec_mode, &escerr);
+  path_len = qos_unescaping(path, dconf->dec_mode, &escerr);
 #ifdef QS_MOD_EXT_HOOKS
-  qos_run_path_decode_hook(r, &path);
+  qos_run_path_decode_hook(r, &path, &path_len);
 #endif
-  path_len = strlen(path);
   uri_len = path_len;
-  if(dconf->bodyfilter == 1) {
+  if(dconf->bodyfilter_p == 1 || dconf->bodyfilter_d == 1) {
     const char *q = apr_table_get(r->notes, QS_PARP_Q);
     if((q == NULL) && qos_parp_hp_table_fn) {
       apr_table_t *tl = qos_parp_hp_table_fn(r);
@@ -1822,32 +1821,76 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
       }
     }
     if(q) {
-      query = apr_pstrdup(r->pool, q);
-      esc += qos_unescaping(query, dconf->dec_mode);
+      // prepare unescaped body query (parp)
+      char *q1 = apr_pstrdup(r->pool, q);
+      int q1_len = 0;
+      q1 = apr_pstrdup(r->pool, q);
+      q1_len = qos_unescaping(q1, dconf->dec_mode, &escerr);
 #ifdef QS_MOD_EXT_HOOKS
-      qos_run_query_decode_hook(r, &query);
+      qos_run_query_decode_hook(r, &q1, &q1_len);
 #endif
-      query_len = strlen(query);
-      uri = apr_pstrcat(r->pool, path, "?", query, NULL);
-      uri_len = strlen(uri);
+      if(dconf->bodyfilter_d == 1) {
+        // use body for query deny filter
+        query = q1;
+        query_len = q1_len;
+      } else {
+        // don't use body for query deny filter
+        if(r->parsed_uri.query) {
+          query = apr_pstrdup(r->pool, r->parsed_uri.query);
+          query_len = qos_unescaping(query, dconf->dec_mode, &escerr);
+#ifdef QS_MOD_EXT_HOOKS
+          qos_run_query_decode_hook(r, &query, &query_len);
+#endif
+        }
+      }
+      if(dconf->bodyfilter_p != 1) {
+        // don' use body for permit filter
+        if(r->parsed_uri.query) {
+          q1 = apr_pstrdup(r->pool, r->parsed_uri.query);
+          q1_len = qos_unescaping(q1, dconf->dec_mode, &escerr);
+#ifdef QS_MOD_EXT_HOOKS
+          qos_run_query_decode_hook(r, &q1, &q1_len);
+#endif
+        } else {
+          q1 = NULL;
+          q1_len = 0;
+        }
+      }
+      if(q1) {
+        uri = apr_pcalloc(r->pool, path_len + 1 + q1_len + 1);
+        memcpy(uri, path, path_len);
+        uri[path_len] = '?';
+        memcpy(&uri[path_len+1], q1, q1_len);
+        uri[path_len+1+q1_len] = '\0';
+        uri_len = path_len + 1 + q1_len;
+      }
     }
   } else {
     if(r->parsed_uri.query) {
       query = apr_pstrdup(r->pool, r->parsed_uri.query);
-      esc += qos_unescaping(query, dconf->dec_mode);
-      query_len = strlen(query);
-      uri = apr_pstrcat(r->pool, path, "?", query, NULL);
-      uri_len = strlen(uri);
+      query_len = qos_unescaping(query, dconf->dec_mode, &escerr);
+#ifdef QS_MOD_EXT_HOOKS
+      qos_run_query_decode_hook(r, &query, &query_len);
+#endif
+      uri = apr_pcalloc(r->pool, path_len + 1 + query_len + 1);
+      memcpy(uri, path, path_len);
+      uri[path_len] = '?';
+      memcpy(&uri[path_len+1], query, query_len);
+      uri[path_len+1+query_len] = '\0';
+      uri_len = path_len + 1 + query_len;
     }
   }
   if(r->parsed_uri.fragment) {
     fragment = apr_pstrdup(r->pool, r->parsed_uri.fragment);
-    esc += qos_unescaping(fragment, dconf->dec_mode);
-    fragment_len = strlen(fragment);
-    uri = apr_pstrcat(r->pool, uri, "#", fragment, NULL);
-    uri_len = strlen(uri);
+    fragment_len = qos_unescaping(fragment, dconf->dec_mode, &escerr);
+    uri = apr_pcalloc(r->pool, path_len + 1 + fragment_len + 1);
+    memcpy(uri, path, path_len);
+    uri[path_len] = '?';
+    memcpy(&uri[path_len+1], fragment, fragment_len);
+    uri[path_len+1+fragment_len] = '\0';
+    uri_len = path_len + 1 + fragment_len;
   }
-  if(esc > 0 && (dconf->urldecoding < QS_OFF_DEFAULT)) {
+  if(escerr > 0 && (dconf->urldecoding < QS_OFF_DEFAULT)) {
     int severity = dconf->urldecoding == QS_DENY ? APLOG_ERR : APLOG_WARNING;
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
                   QOS_LOG_PFX(046)"access denied, invalid url encoding, action=%s, c=%s, id=%s",
@@ -3502,9 +3545,12 @@ static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
 }
 #endif
 
-static void qos_audit(request_rec *r) {
-  const char *q = apr_table_get(r->notes, QS_PARP_QUERY);
+static void qos_audit(request_rec *r, qos_dir_config *dconf) {
+  const char *q = NULL;
   const char *u = apr_table_get(r->notes, QS_PARP_PATH);
+  if(dconf->bodyfilter_p == 1) {
+    q = apr_table_get(r->notes, QS_PARP_QUERY);
+  }
   if(u == NULL) {
     if(r->parsed_uri.path) {
       u = apr_pstrdup(r->pool, r->parsed_uri.path);
@@ -3887,7 +3933,7 @@ static int qos_header_parser0(request_rec * r) {
                                                                   &qos_module);
 
     /** QS_DenyBody */
-    if(dconf && (dconf->bodyfilter == 1)) {
+    if(dconf && (dconf->bodyfilter_p == 1 || dconf->bodyfilter_d == 1)) {
       qos_enable_parp(r);
     }
 
@@ -3924,7 +3970,7 @@ static int qos_header_parser(request_rec * r) {
     status = qos_hp_filter(r, sconf, dconf);
     /* prepare audit log */
     if(m_enable_audit) {
-      qos_audit(r);
+      qos_audit(r, dconf);
     }
     if(status != DECLINED) {
       return status;
@@ -4998,7 +5044,8 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->rfilter_table = apr_table_make(p, 1);
   dconf->inheritoff = 0;
   dconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
-  dconf->bodyfilter = -1;
+  dconf->bodyfilter_p = -1;
+  dconf->bodyfilter_d = -1;
   dconf->dec_mode = QOS_DEC_MODE_FLAGS_STD;
   dconf->maxpost = -1;
   dconf->urldecoding = QS_OFF_DEFAULT;
@@ -5017,10 +5064,15 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   } else {
     dconf->headerfilter = b->headerfilter;
   }
-  if(o->bodyfilter != -1) {
-    dconf->bodyfilter = o->bodyfilter;
+  if(o->bodyfilter_p != -1) {
+    dconf->bodyfilter_p = o->bodyfilter_p;
   } else {
-    dconf->bodyfilter = b->bodyfilter;
+    dconf->bodyfilter_p = b->bodyfilter_p;
+  }
+  if(o->bodyfilter_d != -1) {
+    dconf->bodyfilter_d = o->bodyfilter_d;
+  } else {
+    dconf->bodyfilter_d = b->bodyfilter_d;
   }
   if(o->dec_mode != QOS_DEC_MODE_FLAGS_STD) {
     dconf->dec_mode = o->dec_mode;
@@ -6053,7 +6105,26 @@ const char *qos_denyinheritoff_cmd(cmd_parms *cmd, void *dcfg) {
 
 const char *qos_denybody_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
-  dconf->bodyfilter = flag;
+  dconf->bodyfilter_p = flag;
+  dconf->bodyfilter_d = flag;
+  if(flag) {
+    m_requires_parp = 1;
+  }
+  return NULL;
+}
+
+const char *qos_denybody_d_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  dconf->bodyfilter_d = flag;
+  if(flag) {
+    m_requires_parp = 1;
+  }
+  return NULL;
+}
+
+const char *qos_denybody_p_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  dconf->bodyfilter_p = flag;
   if(flag) {
     m_requires_parp = 1;
   }
@@ -6521,7 +6592,13 @@ static const command_rec qos_config_cmds[] = {
 #endif
   AP_INIT_FLAG("QS_DenyBody", qos_denybody_cmd, NULL,
                ACCESS_CONF,
-               "QS_DenyBody 'on'|'off', enabled body data filter."),
+               "QS_DenyBody 'on'|'off', enabled body data filter (obsolete)."),
+  AP_INIT_FLAG("QS_DenyQueryBody", qos_denybody_d_cmd, NULL,
+               ACCESS_CONF,
+               "QS_DenyQueryBody 'on'|'off', enabled body data filter for QS_DenyQuery."),
+  AP_INIT_FLAG("QS_PermitUriBody", qos_denybody_p_cmd, NULL,
+               ACCESS_CONF,
+               "QS_PermitUriBody 'on'|'off', enabled body data filter for QS_PermitUriBody."),
   /* client control */
   AP_INIT_TAKE1("QS_ClientEntries", qos_client_cmd, NULL,
                 RSRC_CONF,

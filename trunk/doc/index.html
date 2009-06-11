@@ -805,8 +805,12 @@ data is transformed into a request query and may be filtered using the
 <code>QS_DenyQuery</code> and <code>QS_PermitUri</code> directives.
 <ul>
 <li>
-<code>QS_DenyBody 'on|'off'</code><br>
-Enables message body filtering.
+<code>QS_DenyQueryBody 'on|'off'</code><br>
+Enables request  body data filtering for the <code>QS_DenyQuery</code> directive.
+</li>
+<li>
+<code>QS_PermitUriBody 'on|'off'</code><br>
+Enables request body data filtering for the <code>QS_PermitUri</code> directive.
 </li>
 <li>
 <code>QS_LimitRequestBody &lt;bytes&gt;</code><br>
@@ -822,7 +826,8 @@ the directive settings).
 Sample configuration:<br>
 <pre>
 # configure the audit log writing the request body data to a file
-# (use this log to generate a whitelist rules using <a href="qsfilter.html">qsfilter2</a>)
+# (use this log to generate a whitelist rules using <a href="qsfilter.html">qsfilter2</a>
+# when QS_PermitUriBody has been enabled)
 CustomLog             logs/qsaudit_log  "%{qos-path}n%{qos-query}n"
 
 # limit the max. body size since mod_parp loads the whole message into the
