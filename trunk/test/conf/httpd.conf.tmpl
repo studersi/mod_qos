@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.121 2009-06-10 20:17:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.122 2009-06-12 20:05:04 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -273,11 +273,23 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        QS_DenyRequestLine +restrict deny ".*simple.*"
    </Location>
    <Location /qos/parp>
-       QS_DenyBody                   on
+       QS_DenyQueryBody              on
        QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
        QS_DenyQuery       +s02       deny "<script>"
    </Location>
+   <Location /qos/parp/off>
+       QS_DenyQueryBody              off
+   </Location>
    <Location /qos/parp/sub>
+   </Location>
+   <Location /qos/parp/permit>
+       QS_PermitUriBody              on
+       QS_PermitUri       +p01       deny ^/qos/parp/permit(\?name=[a-z]{0,10}&id=[a-z]{0,10})?$
+   </Location>
+   <Location /qos/parp/permit/off>
+       QS_PermitUriBody              off
+       QS_DenyQueryBody              on
+       QS_PermitUri       +p02       deny ^/qos/parp/permit/off(\?name=[a-z]{0,10}&id=[a-z]{0,10})?$
    </Location>
    <Location /qos/query>
        QS_DenyQuery       +q01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
