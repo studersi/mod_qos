@@ -839,7 +839,7 @@ SetEnvIf Content-Type multipart/mixed                   QS_LimitRequestBody=1310
 &lt;Location /app&gt;
    # don't allow certain string pattern within the request query or
    # the request message body data:
-   QS_DenyBody                   on
+   QS_DenyQueryBody              on
    QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
 &lt;/Location&gt;
 </pre>
