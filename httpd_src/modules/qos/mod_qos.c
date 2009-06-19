@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.161 2009-06-11 18:47:29 pbuchbinder Exp $";
-static const char g_revision[] = "8.13";
+static const char revision[] = "$Id: mod_qos.c,v 5.162 2009-06-19 09:14:21 pbuchbinder Exp $";
+static const char g_revision[] = "8.14";
 
 /************************************************************************
  * Includes
@@ -444,6 +444,7 @@ typedef struct {
   int req_rate;               /* GLOBAL ONLY */
   int min_rate;               /* GLOBAL ONLY */
   int min_rate_max;           /* GLOBAL ONLY */
+  int min_rate_off;
   int max_clients;
 #ifdef QS_INTERNAL_TEST
   apr_table_t *testip;
@@ -2668,7 +2669,7 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
       inctx->time = time(NULL);
       inctx->nbytes = 0;
 #if APR_HAS_THREADS
-      if(sconf->inctx_t && !sconf->inctx_t->exit) {
+      if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
         apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT22 */
         apr_table_setn(sconf->inctx_t->table,
                        apr_psprintf(inctx->c->pool, "%d", (int)inctx),
@@ -4304,7 +4305,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     inctx->time = time(NULL);
     inctx->nbytes = 0;
 #if APR_HAS_THREADS
-    if(sconf->inctx_t && !sconf->inctx_t->exit) {
+    if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
       apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT23 */
       apr_table_setn(sconf->inctx_t->table,
                      apr_psprintf(inctx->c->pool, "%d", (int)inctx),
@@ -4451,7 +4452,7 @@ static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
       inctx->time = time(NULL);
       inctx->nbytes = 0;
 #if APR_HAS_THREADS
-      if(sconf->inctx_t && !sconf->inctx_t->exit) {
+      if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
         apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT29 */
         apr_table_setn(sconf->inctx_t->table,
                        apr_psprintf(inctx->c->pool, "%d", (int)inctx),
@@ -5135,6 +5136,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->req_rate = -1;
   sconf->min_rate = -1;
   sconf->min_rate_max = -1;
+  sconf->min_rate_off = 0;
   sconf->max_clients = 1024;
   sconf->has_event_filter = 0;
   sconf->has_event_limit = 0;
@@ -5934,6 +5936,12 @@ const char *qos_max_conn_ex_cmd(cmd_parms *cmd, void *dcfg, const char *addr) {
   }
   return NULL;
 }
+const char *qos_req_rate_off_cmd(cmd_parms *cmd, void *dcfg) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->min_rate_off = 1;
+  return NULL;
+}
 
 const char *qos_req_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const char *secmax) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -6430,6 +6438,12 @@ static const command_rec qos_config_cmds[] = {
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an ip address or"
                 " address range from beeing limited."),
 #if APR_HAS_THREADS
+  AP_INIT_NO_ARGS("QS_SrvDataRateOff", qos_req_rate_off_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_SrvDataRateOff,"
+                  " disables the QS_SrvRequestRate and QS_SrvMinDataRate enforcement for"
+                  " a virtual host (only port/address based but not for name based"
+                  " virtual hosts)."),
   AP_INIT_TAKE12("QS_SrvRequestRate", qos_req_rate_cmd, NULL,
                  RSRC_CONF,
                  "QS_SrvRequestRate <bytes per seconds> [<max bytes per second>],"

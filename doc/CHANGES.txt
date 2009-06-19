@@ -1,3 +1,7 @@
+Version 8.14
+
+ - New directive QS_SrvDataRateOff.
+
 Version 8.13
 
  - New directives QS_DenyQueryBody and QS_PermitUriBody
