@@ -1,0 +1,18 @@
+#
+# $Id: QS_Delay.htt,v 1.1 2009-06-26 19:28:14 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?QS_Delay=2200 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "index.html"
+_WAIT
+
+_EXPECT EXEC "/index.html.QS_Delay=3200 HTTP/1.1. 200 230 .-. 2 1 L; 1"
+_EXEC tail -1 logs/access_log
+
+END

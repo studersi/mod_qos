@@ -1,3 +1,7 @@
+Version 8.15
+
+ - New variable QS_Delay.
+
 Version 8.14
 
  - New directive QS_SrvDataRateOff.
