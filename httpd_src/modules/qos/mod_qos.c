@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.162 2009-06-19 09:14:21 pbuchbinder Exp $";
-static const char g_revision[] = "8.14";
+static const char revision[] = "$Id: mod_qos.c,v 5.163 2009-06-26 19:28:14 pbuchbinder Exp $";
+static const char g_revision[] = "8.15";
 
 /************************************************************************
  * Includes
@@ -3574,6 +3574,29 @@ static void qos_audit(request_rec *r, qos_dir_config *dconf) {
   }
 }
 
+static void qos_delay(request_rec *r) {
+  const char *d = apr_table_get(r->subprocess_env, "QS_Delay");
+  if(d) {
+    apr_off_t s;
+#ifdef ap_http_scheme
+    // Apache 2.2
+    char *errp = NULL;
+    if((APR_SUCCESS == apr_strtoff(&s, d, &errp, 10)) && s > 0) {
+#else
+    if((s = apr_atoi64(d)) > 0) {
+#endif
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      int sec = s / 1000;
+      int nsec = s % 1000;
+      struct timespec delay;
+      rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+      delay.tv_sec  = sec;
+      delay.tv_nsec = nsec * 1000000;
+      nanosleep(&delay,NULL);      
+    }
+  }
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -4206,6 +4229,11 @@ static int qos_header_parser(request_rec * r) {
       delay.tv_nsec = nsec * 1000000;
       nanosleep(&delay,NULL);
     }
+
+    /*
+     * QS_Delay
+     */
+    qos_delay(r);
 
   }
   return DECLINED;
