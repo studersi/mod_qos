@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.80 2009-06-19 09:14:21 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.81 2009-07-31 21:49:48 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -553,6 +553,13 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SetEnvResHeadersMatch.htt"
 fi
 
+# tools -----------------------------------------------------------
+./htt.sh -s ./scripts/qslog.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED qslog.htt"
+fi
+
 # -----------------------------------------------------------------
 ./ctl.sh stop > /dev/null
 sleep 2
@@ -575,6 +582,7 @@ fi
 
 if [ $WARNINGS -ne 0 ]; then
     echo "ERROR: got $WARNINGS warnings"
+    exit 1
 fi
 
 if [ $ERRORS -ne 0 ]; then
