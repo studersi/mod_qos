@@ -1,5 +1,5 @@
 #
-# $Id: qslog.htt,v 1.1 2009-07-31 21:49:48 pbuchbinder Exp $
+# $Id: qslog.htt,v 1.2 2009-08-11 10:55:07 pbuchbinder Exp $
 #
 # test the qsrotate tool
 
@@ -18,7 +18,7 @@ _SLEEP $T
 _SLEEP 3000
 _EXEC date
 # test for at least 5 seconds
-_EXEC ./qslog.sh
+_EXEC ./qslog.sh run
 _EXEC date
 
 _REQ server1 $QS_PORT_BASE6
