@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.163 2009-06-26 19:28:14 pbuchbinder Exp $";
-static const char g_revision[] = "8.15";
+static const char revision[] = "$Id: mod_qos.c,v 5.164 2009-08-11 20:44:31 pbuchbinder Exp $";
+static const char g_revision[] = "8.16";
 
 /************************************************************************
  * Includes
@@ -1062,7 +1062,11 @@ static void qos_destroy_act(qs_actable_t *act) {
                QOS_LOG_PFX(001)"cleanup shared memory: %d bytes",
                act->size);
   act->child_init = 0;
-  apr_global_mutex_destroy(act->lock);
+  if(act->lock_file && act->lock_file[0]) {
+    apr_global_mutex_destroy(act->lock);
+    act->lock_file[0] = '\0';
+    act->lock_file = NULL;
+  }
   apr_shm_destroy(act->m);
   apr_pool_destroy(act->pool);
 }
@@ -4733,9 +4737,7 @@ static int qos_chroot(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, se
  * inits each child
  */
 static void qos_child_init(apr_pool_t *p, server_rec *bs) {
-  server_rec *s = bs->next;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  qs_acentry_t *e = sconf->act->entry;
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
   qos_ifctx_list_t *inctx_t = NULL;
 #if APR_HAS_THREADS
@@ -4777,14 +4779,6 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
     sconf->act->child_init = 1;
     /* propagate mutex to child process (required for certaing platforms) */
     apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, p);
-    while(s) {
-      sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-      if(sconf->is_virtual) {
-        apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, p);
-        e = sconf->act->entry;
-      }
-      s = s->next;
-    }
   }
 }
 
@@ -4890,20 +4884,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     qos_srv_config *ssconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
     /* mutex init */
     if(ssconf->act->lock_file == NULL) {
-      ssconf->act->lock_file = apr_psprintf(ssconf->act->pool, "%s.mod_qos",
-                                            qos_tmpnam(ssconf->act->pool, s));
-      rv = apr_global_mutex_create(&ssconf->act->lock, ssconf->act->lock_file,
-                                   APR_LOCK_DEFAULT, ssconf->act->pool);
-      if (rv != APR_SUCCESS) {
-        char buf[MAX_STRING_LEN];
-        apr_strerror(rv, buf, sizeof(buf));
-        ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                     QOS_LOG_PFX(004)"could not create a-mutex: %s", buf);
-        exit(1);
-      }
-#ifdef AP_NEED_SET_MUTEX_PERMS
-      unixd_set_global_mutex_perms(ssconf->act->lock);
-#endif
+      ssconf->act->lock_file = sconf->act->lock_file;
+      ssconf->act->lock = sconf->act->lock;
     }
     ssconf->base_server = bs;
     ssconf->act->timeout = apr_time_sec(s->timeout);

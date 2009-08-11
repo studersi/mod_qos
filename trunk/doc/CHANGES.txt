@@ -1,3 +1,9 @@
+Version 8.16
+
+ - Q2834297: use a single mutex for all per virtual host ACT
+   tables (too many mutexes if a server uses many virtual
+   hosts).
+
 Version 8.15
 
  - New variable QS_Delay.
