@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.164 2009-08-11 20:44:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.165 2009-08-17 20:36:22 pbuchbinder Exp $";
 static const char g_revision[] = "8.16";
 
 /************************************************************************
@@ -4649,12 +4649,8 @@ static int qos_logger(request_rec *r) {
     }
     apr_global_mutex_unlock(e->lock); /* @CRT6 */
     /* allow logging of the current location usage */
-    apr_table_set(r->headers_out, "mod_qos_cr", h);
-    apr_table_set(r->err_headers_out, "mod_qos_cr", h);
     apr_table_set(r->subprocess_env, "mod_qos_cr", h);
     if(r->next) {
-      apr_table_set(r->next->headers_out, "mod_qos_cr", h);
-      apr_table_set(r->next->err_headers_out, "mod_qos_cr", h);
       apr_table_set(r->next->subprocess_env, "mod_qos_cr", h);
     }
     /* decrement only once */
@@ -4662,22 +4658,14 @@ static int qos_logger(request_rec *r) {
   }
   if(cconf && (cconf->sconf->max_conn != -1)) {
     char *cc = apr_psprintf(r->pool, "%d", cconf->sconf->act->c->connections);
-    apr_table_set(r->headers_out, "mod_qos_con", cc);
-    apr_table_set(r->err_headers_out, "mod_qos_con", cc);
     apr_table_set(r->subprocess_env, "mod_qos_con", cc);
     if(r->next) {
-      apr_table_set(r->next->headers_out, "mod_qos_con", cc);
-      apr_table_set(r->next->err_headers_out, "mod_qos_con", cc);
       apr_table_set(r->next->subprocess_env, "mod_qos_con", cc);
     }
   }
   if(rctx->evmsg) {
-    apr_table_set(r->headers_out, "mod_qos_ev", rctx->evmsg);
-    apr_table_set(r->err_headers_out, "mod_qos_ev", rctx->evmsg);
     apr_table_set(r->subprocess_env, "mod_qos_ev", rctx->evmsg);
     if(r->next) {
-      apr_table_set(r->next->headers_out, "mod_qos_ev", rctx->evmsg);
-      apr_table_set(r->next->err_headers_out, "mod_qos_ev", rctx->evmsg);
       apr_table_set(r->next->subprocess_env, "mod_qos_ev", rctx->evmsg);
     }
   }
