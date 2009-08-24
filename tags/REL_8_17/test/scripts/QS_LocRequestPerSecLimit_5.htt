@@ -1,0 +1,52 @@
+#
+# $Id: QS_LocRequestPerSecLimit_5.htt,v 1.2 2008-04-16 19:22:04 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 10
+_LOOP 60
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_END LOOP
+END
+
+
