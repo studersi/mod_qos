@@ -1,3 +1,7 @@
+Version 8.17
+
+ - Q2841328: remove nasty pointer address cast to int.
+
 Version 8.16
 
  - Q2834297: use a single mutex for all per virtual host ACT

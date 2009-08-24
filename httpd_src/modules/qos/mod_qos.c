@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.165 2009-08-17 20:36:22 pbuchbinder Exp $";
-static const char g_revision[] = "8.16";
+static const char revision[] = "$Id: mod_qos.c,v 5.166 2009-08-24 13:37:58 pbuchbinder Exp $";
+static const char g_revision[] = "8.17";
 
 /************************************************************************
  * Includes
@@ -1586,7 +1586,7 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sco
   qs_acentry_t *e = act->entry;
   int match_len = 0;
   while(e) {
-    if((e->event == NULL) && (e->regex == NULL)) {
+    if((e->event == NULL) && (e->regex == NULL) && (r->parsed_uri.path != NULL)) {
       /* per location limitation */
       if(e->url && (strncmp(e->url, r->parsed_uri.path, e->url_len) == 0)) {
         /* best match */
@@ -1786,7 +1786,7 @@ static int qos_per_dir_event_rules(request_rec *r, qos_dir_config *dconf) {
 static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(dconf->rfilter_table)->elts;
   int i;
-  char *path = apr_pstrdup(r->pool, r->parsed_uri.path);
+  char *path = apr_pstrdup(r->pool, r->parsed_uri.path ? r->parsed_uri.path : "");
   char *query = NULL;
   char *fragment = NULL;
   char *request_line = apr_pstrdup(r->pool, r->the_request);
@@ -2579,7 +2579,7 @@ static apr_status_t qos_cleanup_inctx(void *p) {
   if(sconf->inctx_t && !sconf->inctx_t->exit) {
     apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT25 */
     apr_table_unset(sconf->inctx_t->table,
-                    apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+                    apr_psprintf(inctx->c->pool, "%p", inctx));
     apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT25 */
   }
 #endif
@@ -2676,7 +2676,7 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
       if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
         apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT22 */
         apr_table_setn(sconf->inctx_t->table,
-                       apr_psprintf(inctx->c->pool, "%d", (int)inctx),
+                       apr_psprintf(inctx->c->pool, "%p", inctx),
                        (char *)inctx);
         apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT22 */
       }
@@ -3060,7 +3060,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                "<td colspan=\"1\">client ip connections</td>", r);
       ap_rputs("<td colspan=\"8\">\n", r);
       ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
-                 ap_escape_html(r->pool, r->parsed_uri.path));
+                 ap_escape_html(r->pool, r->parsed_uri.path ? r->parsed_uri.path : ""));
       if(!option || (option && !strstr(option, "ip")) ) {
         ap_rprintf(r, "<input name=\"option\" value=\"ip\" type=\"hidden\">\n");
         ap_rprintf(r, "<input name=\"action\" value=\"enable\" type=\"submit\">\n");
@@ -3077,7 +3077,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                "<td colspan=\"1\">search a client ip entry</td>\n", r); 
       ap_rputs("<td colspan=\"8\">\n", r);
       ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
-                 ap_escape_html(r->pool, r->parsed_uri.path));
+                 ap_escape_html(r->pool, r->parsed_uri.path ? r->parsed_uri.path : ""));
       if(option && strstr(option, "ip")) {
         ap_rprintf(r, "<input name=\"option\" value=\"ip\" type=\"hidden\">\n");
       }
@@ -3857,7 +3857,7 @@ static int qos_post_read_request(request_rec * r) {
 #if APR_HAS_THREADS
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT26 */
           apr_table_unset(sconf->inctx_t->table,
-                          apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+                          apr_psprintf(inctx->c->pool, "%p", inctx));
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT26 */
 #endif
         } else {
@@ -4306,7 +4306,7 @@ static apr_status_t qos_in_filter2(ap_filter_t *f, apr_bucket_brigade *bb,
 #if APR_HAS_THREADS
     apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT28 */
     apr_table_unset(sconf->inctx_t->table,
-                    apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+                    apr_psprintf(inctx->c->pool, "%p", inctx));
     apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT28 */
 #endif
   }
@@ -4340,7 +4340,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
       apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT23 */
       apr_table_setn(sconf->inctx_t->table,
-                     apr_psprintf(inctx->c->pool, "%d", (int)inctx),
+                     apr_psprintf(inctx->c->pool, "%p", inctx),
                      (char *)inctx);
       apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT23 */
     }
@@ -4356,7 +4356,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     if(sconf->inctx_t && !sconf->inctx_t->exit) {
       apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT24 */
       apr_table_unset(sconf->inctx_t->table,
-                      apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+                      apr_psprintf(inctx->c->pool, "%p", inctx));
       apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT24 */
     }
 #endif
@@ -4380,7 +4380,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
 #if APR_HAS_THREADS
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT27 */
           apr_table_unset(sconf->inctx_t->table,
-                          apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+                          apr_psprintf(inctx->c->pool, "%p", inctx));
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT27 */
 #endif
         }
@@ -4461,7 +4461,7 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
   if(APR_BUCKET_IS_EOS(APR_BRIGADE_LAST(bb))) {
     apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
     apr_table_unset(sconf->inctx_t->table,
-                    apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+                    apr_psprintf(inctx->c->pool, "%p", inctx));
     apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
     inctx->status = QS_CONN_STATE_END;
     ap_remove_output_filter(f);
@@ -4487,7 +4487,7 @@ static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
       if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
         apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT29 */
         apr_table_setn(sconf->inctx_t->table,
-                       apr_psprintf(inctx->c->pool, "%d", (int)inctx),
+                       apr_psprintf(inctx->c->pool, "%p", inctx),
                        (char *)inctx);
         apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT29 */
       }
@@ -4503,7 +4503,7 @@ static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
     if(inctx) {
       apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
       apr_table_unset(sconf->inctx_t->table,
-                      apr_psprintf(inctx->c->pool, "%d", (int)inctx));
+                      apr_psprintf(inctx->c->pool, "%p", inctx));
       apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
       inctx->status = QS_CONN_STATE_END;
     }
@@ -4929,14 +4929,15 @@ static int qos_handler(request_rec * r) {
   if (strcmp(r->handler, "qos-viewer") != 0) {
     return DECLINED;
   } 
-  if(strstr(r->parsed_uri.path, "favicon.ico") != NULL) {
+  if(r->parsed_uri.path && (strstr(r->parsed_uri.path, "favicon.ico") != NULL)) {
     return qos_favicon(r);
   }
   ap_set_content_type(r, "text/html");
   //  apr_table_set(r->headers_out,"Cache-Control","no-cache");
   if(!r->header_only) {
     ap_rputs("<html><head><title>mod_qos</title>\n", r);
-    ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n", r->parsed_uri.path);
+    ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n",
+               r->parsed_uri.path ? r->parsed_uri.path : "");
     ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
     ap_rputs("<meta name=\"author\" content=\"Pascal Buchbinder\">\n", r);
     ap_rputs("<meta http-equiv=\"Pragma\" content=\"no-cache\">\n", r);
