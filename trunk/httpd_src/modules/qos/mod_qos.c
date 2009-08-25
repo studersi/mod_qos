@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.167 2009-08-25 07:10:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.168 2009-08-25 07:25:15 pbuchbinder Exp $";
 static const char g_revision[] = "8.18";
 
 /************************************************************************
@@ -5949,12 +5949,29 @@ const char *qos_req_rate_off_cmd(cmd_parms *cmd, void *dcfg) {
   return NULL;
 }
 
+/** verify, that the platform supports "%p" in sprintf */
+static int qos_sprintfcheck() {
+  char buf[128];
+  char buf2[128];
+  sprintf(buf, "%p", buf);
+  sprintf(buf2, "%p", buf2);
+  if((strcmp(buf, buf2) == 0) || (strlen(buf) < 4)) {
+    /* not okay */
+    return 0;
+  }
+  return 1;
+}
+
 const char *qos_req_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const char *secmax) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
     return err;
+  }
+  if(!qos_sprintfcheck()) {
+    return apr_psprintf(cmd->pool, "%s: directive can't be used on this platform",
+                        cmd->directive->directive);
   }
   if(sconf->req_rate != -1) {
     return apr_psprintf(cmd->pool, "%s: directive can't be used together with QS_SrvRequestRate", 
@@ -5981,6 +5998,10 @@ const char *qos_min_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const 
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
     return err;
+  }
+  if(!qos_sprintfcheck()) {
+    return apr_psprintf(cmd->pool, "%s: directive can't be used on this platform",
+                        cmd->directive->directive);
   }
   if(sconf->req_rate != -1) {
     return apr_psprintf(cmd->pool, "%s: directive can't be used together with QS_SrvMinDataRate", 
