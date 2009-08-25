@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.166 2009-08-24 13:37:58 pbuchbinder Exp $";
-static const char g_revision[] = "8.17";
+static const char revision[] = "$Id: mod_qos.c,v 5.167 2009-08-25 07:10:51 pbuchbinder Exp $";
+static const char g_revision[] = "8.18";
 
 /************************************************************************
  * Includes
@@ -104,6 +104,8 @@ static const char g_revision[] = "8.17";
 #define QS_PARP_Q         "qos-parp-query"
 #define QS_PARP_QUERY     "qos-query"
 #define QS_PARP_PATH      "qos-path"
+
+#define QS_INCTX_ID inctx->id
 
 /* this is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
    be increased to 10 or 30 seconds in order to compensate bandwidth variations */
@@ -263,6 +265,7 @@ typedef struct {
   apr_size_t bytes;
   int count;
   int lowrate;
+  char *id;
 } qos_ifctx_t;
 
 /**
@@ -2579,7 +2582,7 @@ static apr_status_t qos_cleanup_inctx(void *p) {
   if(sconf->inctx_t && !sconf->inctx_t->exit) {
     apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT25 */
     apr_table_unset(sconf->inctx_t->table,
-                    apr_psprintf(inctx->c->pool, "%p", inctx));
+                    QS_INCTX_ID);
     apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT25 */
   }
 #endif
@@ -2591,6 +2594,7 @@ static apr_status_t qos_cleanup_inctx(void *p) {
  */
 static qos_ifctx_t *qos_create_ifctx(conn_rec *c) {
   qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
+  char buf[128];
   inctx->client_socket = NULL;
   inctx->status = QS_CONN_STATE_NEW;
   inctx->cl_val = 0;
@@ -2603,6 +2607,8 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c) {
   inctx->count = 5;
   inctx->bytes = QS_PKT_RATE_INIT;
   inctx->lowrate = -1;
+  sprintf(buf, "%p", inctx);
+  inctx->id = apr_psprintf(c->pool, "%s", buf);
   apr_pool_cleanup_register(c->pool, inctx, qos_cleanup_inctx, apr_pool_cleanup_null);
   return inctx;
 }
@@ -2676,7 +2682,7 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
       if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
         apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT22 */
         apr_table_setn(sconf->inctx_t->table,
-                       apr_psprintf(inctx->c->pool, "%p", inctx),
+                       QS_INCTX_ID,
                        (char *)inctx);
         apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT22 */
       }
@@ -3857,7 +3863,7 @@ static int qos_post_read_request(request_rec * r) {
 #if APR_HAS_THREADS
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT26 */
           apr_table_unset(sconf->inctx_t->table,
-                          apr_psprintf(inctx->c->pool, "%p", inctx));
+                          QS_INCTX_ID);
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT26 */
 #endif
         } else {
@@ -4306,7 +4312,7 @@ static apr_status_t qos_in_filter2(ap_filter_t *f, apr_bucket_brigade *bb,
 #if APR_HAS_THREADS
     apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT28 */
     apr_table_unset(sconf->inctx_t->table,
-                    apr_psprintf(inctx->c->pool, "%p", inctx));
+                    QS_INCTX_ID);
     apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT28 */
 #endif
   }
@@ -4340,7 +4346,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
       apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT23 */
       apr_table_setn(sconf->inctx_t->table,
-                     apr_psprintf(inctx->c->pool, "%p", inctx),
+                     QS_INCTX_ID,
                      (char *)inctx);
       apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT23 */
     }
@@ -4356,7 +4362,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     if(sconf->inctx_t && !sconf->inctx_t->exit) {
       apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT24 */
       apr_table_unset(sconf->inctx_t->table,
-                      apr_psprintf(inctx->c->pool, "%p", inctx));
+                      QS_INCTX_ID);
       apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT24 */
     }
 #endif
@@ -4380,7 +4386,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
 #if APR_HAS_THREADS
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT27 */
           apr_table_unset(sconf->inctx_t->table,
-                          apr_psprintf(inctx->c->pool, "%p", inctx));
+                          QS_INCTX_ID);
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT27 */
 #endif
         }
@@ -4461,7 +4467,7 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
   if(APR_BUCKET_IS_EOS(APR_BRIGADE_LAST(bb))) {
     apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
     apr_table_unset(sconf->inctx_t->table,
-                    apr_psprintf(inctx->c->pool, "%p", inctx));
+                    QS_INCTX_ID);
     apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
     inctx->status = QS_CONN_STATE_END;
     ap_remove_output_filter(f);
@@ -4487,7 +4493,7 @@ static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
       if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
         apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT29 */
         apr_table_setn(sconf->inctx_t->table,
-                       apr_psprintf(inctx->c->pool, "%p", inctx),
+                       QS_INCTX_ID,
                        (char *)inctx);
         apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT29 */
       }
@@ -4503,7 +4509,7 @@ static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
     if(inctx) {
       apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
       apr_table_unset(sconf->inctx_t->table,
-                      apr_psprintf(inctx->c->pool, "%p", inctx));
+                      QS_INCTX_ID);
       apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
       inctx->status = QS_CONN_STATE_END;
     }
@@ -5233,6 +5239,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->req_rate = b->req_rate;
   o->min_rate = b->min_rate;
   o->min_rate_max = b->min_rate_max;
+  /* end GLOBAL ONLY directives */
 #ifdef QS_INTERNAL_TEST
   o->enable_testip = b->enable_testip;
 #endif
