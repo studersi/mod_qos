@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.169 2009-08-25 19:48:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.170 2009-09-14 21:05:50 pbuchbinder Exp $";
 static const char g_revision[] = "8.19";
 
 /************************************************************************
@@ -141,12 +141,18 @@ APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, query_decode_hook,
 
 typedef struct {
   unsigned long ip;
-  /* prefer */
-  int vip;
   time_t lowrate;
+  /* behavior */
+  unsigned int html;
+  unsigned int cssjs;
+  unsigned int img;
+  unsigned int other;
+  unsigned int notmodified;
+  /* prefer */
+  short int vip;
   /* ev block */
+  short int block;
   time_t time;
-  int block;
   time_t block_time;
   /* ev/sec */
   time_t interval;
@@ -2691,6 +2697,29 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
   }
 }
 
+static void qos_content_type(request_rec *r, qos_s_entry_t *e) {
+  const char *ct = apr_table_get(r->headers_out, "Content-Type");
+  if(r->status == 304) {
+    e->notmodified ++;
+  }
+  if(ct) {
+    if(ap_strcasestr(ct, "html")) {
+      e->html++;
+      return;
+    } else if(ap_strcasestr(ct, "image")) {
+      e->img++;
+      return;
+    } else if(ap_strcasestr(ct, "css")) {
+      e->cssjs++;
+      return;
+    } else if(ap_strcasestr(ct, "javascript")) {
+      e->cssjs++;
+      return;
+    }
+  }
+  e->other++;
+}
+
 /**
  * client contol rules at log transaction
  */
@@ -2699,6 +2728,12 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
     int lowrate = 0;
     int block_event = !apr_table_get(r->subprocess_env, "QS_Block_seen") &&
       apr_table_get(r->subprocess_env, "QS_Block");
+    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+    qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
+    qos_s_entry_t **e = NULL;
+    qos_s_entry_t new;
+    time_t now = apr_time_sec(r->request_time);
+
     if(sconf->qos_cc_prefer_limit || (sconf->req_rate != -1)) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
       if(inctx) {
@@ -2720,18 +2755,15 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
         }
       }
     }
+
+    apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
+    new.ip = cconf->ip;
+    e = qos_cc_get0(u->qos_cc, &new);
+    if(!e) {
+      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+    }
+    qos_content_type(r, *e);
     if(block_event || lowrate) {
-      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
-      qos_user_t *u = qos_get_user_conf(sconf->act->ppool, 0);
-      qos_s_entry_t **e = NULL;
-      qos_s_entry_t new;
-      time_t now = apr_time_sec(r->request_time);
-      apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
-      new.ip = cconf->ip;
-      e = qos_cc_get0(u->qos_cc, &new);
-      if(!e) {
-        e = qos_cc_set(u->qos_cc, &new, time(NULL));
-      }
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
         (*e)->block = 0;
@@ -2747,11 +2779,11 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
         (*e)->block++;
         (*e)->block_time = now;
       }
-      apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT19 */
-      if(block_event) {
-        /* only once per request */
-        apr_table_set(r->subprocess_env, "QS_Block_seen", "");
-      }
+    }
+    apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT19 */
+    if(block_event) {
+      /* only once per request */
+      apr_table_set(r->subprocess_env, "QS_Block_seen", "");
     }
   }
 }
@@ -3109,6 +3141,11 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             new.block_time = (*e)->block_time;
             new.req_per_sec = (*e)->req_per_sec;
             new.req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
+            new.other = (*e)->other;
+            new.html = (*e)->html;
+            new.cssjs = (*e)->cssjs;
+            new.img = (*e)->img;
+            new.notmodified = (*e)->notmodified;
           }
           apr_global_mutex_unlock(u->qos_cc->lock);            /* @CRT20 */
           ap_rputs("<tr class=\"rowt\"><td colspan=\"1\">IP</td>", r);
@@ -3143,6 +3180,22 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", new.lowrate > 0 ? "yes" : "no");
           }
           ap_rputs("</tr>\n", r);
+          ap_rprintf(r, "<tr class=\"rowt\">"
+                     "<td colspan=\"4\"></td>"
+                     "<td style=\"width:9%%\">html</td>"
+                     "<td style=\"width:9%%\">css/js</td>"
+                     "<td style=\"width:9%%\">images</td>"
+                     "<td style=\"width:9%%\">other</td>"
+                     "<td style=\"width:9%%\">304</td>"
+                     "</tr>");
+          ap_rprintf(r, "<tr class=\"rows\">"
+                     "<td colspan=\"4\"></td>"
+                     "<td style=\"width:9%%\">%d</td>"
+                     "<td style=\"width:9%%\">%d</td>"
+                     "<td style=\"width:9%%\">%d</td>"
+                     "<td style=\"width:9%%\">%d</td>"
+                     "<td style=\"width:9%%\">%d</td>"
+                     "</tr>", new.html, new.cssjs, new.img, new.other, new.notmodified);
         }
       }
     }
