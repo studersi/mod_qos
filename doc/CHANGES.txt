@@ -1,3 +1,9 @@
+Version 8.19
+
+ - Client level control: request characteristics measuring
+   content type ration and 304 responses (requires now
+   64bytes instead of 48bytes per client on a 32bit system.).
+
 Version 8.18
 
  - Q2841328: remove nasty pointer address cast to int.
