@@ -264,7 +264,7 @@ configuration.
 </p> 
 <p>
 The <code>QS_SrvMinDataRate</code>, <code>QS_SrvRequestRate</code>, 
-<code>QS_SrvPreferNet</code>, <code>QS_RequestHeaderFilterRule</code>, 
+<code>QS_RequestHeaderFilterRule</code>, 
 and all <code>QS_Client*</code> directives may be used outside 
 of virtual host configurations only.
 </p>
@@ -900,16 +900,6 @@ throughput only.
 Disables the <code>QS_SrvMinDataRate</code> and <code>QS_SrvMinDataRate</code> enforcement 
 for a virtual host.
 </li>
-<li>
-<code>QS_SrvPreferNet</code><br>
-mod_qos prefers "known networks" when server has 
-less than 80% of free TCP connections. Preferred networks 
-have <a href="#privilegedusers">VIP</a> clients, see <code>QS_VipHeaderName</code> or 
-<code>QS_VipIPHeaderName</code> directives. 
-Net mask is 255.255.240.0 (each net represents 4096 hosts). 
-Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are
-excluded from connection restrictions.
-</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -968,9 +958,8 @@ when reaching this counter for the specified time (blocked at connection level).
 <code>QS_ClientPrefer [&lt;percent&gt;]</code><br>
 Accepts only <a href="#privilegedusers">VIP</a> 
 and high priority clients when the server has 
-less than 80% (or the defined percentage) of free TCP connections 
-(similar to <code>QS_SrvPreferNet</code> but for individual IP 
-source addresses). Use the <code>QS_VipHeaderName</code> or 
+less than 80% (or the defined percentage) of free TCP connections. 
+Use the <code>QS_VipHeaderName</code> or 
 <code>QS_VipIPHeaderName</code> directive in order 
 to identify VIP clients. The distinction between high and low 
 priority clients is made based on the client data transfer 

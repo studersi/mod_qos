@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.81 2009-07-31 21:49:48 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.82 2009-09-15 18:36:23 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -314,32 +314,6 @@ echo "-- header filter, QS_HeaderFilter.htt" >>  logs/error_log
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_HeaderFilter.htt"
-fi
-
-# -----------------------------------------------------------------
-./ctl.sh stop > /dev/null
-sleep 2
-./ctl.sh start -D max_clients > /dev/null
-echo "-- header filter, QS_SrvPreferNet.htt" >>  logs/error_log
-./htt.sh scripts/Log.htt > /dev/null
-QSTART=`grep -c "mod_qos(033)" logs/error_log`
-echo "run ./scripts/QS_SrvPreferNet.htt"
-./htt.sh -s ./scripts/QS_SrvPreferNet.htt 2>/dev/null 1>/dev/null
-sleep 1
-./htt.sh scripts/Log.htt > /dev/null
-sleep 2
-QFIRST=`grep -c "mod_qos(033)" logs/error_log`
-./htt.sh -s ./scripts/QS_SrvPreferNet2.htt 2>/dev/null 1>/dev/null
-sleep 1
-./htt.sh scripts/Log.htt > /dev/null
-sleep 2
-QSECOND=`grep -c "mod_qos(033)" logs/error_log`
-QDIFF1=`expr $QFIRST - $QSTART`
-QDIFF2=`expr $QSECOND - $QFIRST`
-echo "$QDIFF1 $QDIFF2"
-if [ $QDIFF1 -lt $QDIFF2 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_SrvPreferNet.htt"
 fi
 
 ### -----------------------------------------------------------------
