@@ -1,4 +1,8 @@
-Version 8.19
+Version 9.0
+
+ - Improved client behavior detection (content types, caching).
+
+ - Directive QS_SrvPreferNet has been removed.
 
  - Client level control: request characteristics measuring
    content type ration and 304 responses (requires now

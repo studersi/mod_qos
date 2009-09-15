@@ -28,7 +28,7 @@ b64: $(b64_OBJECTS)
 
 
 stack: stack.c
-	cc -Wall -g -o $@ $<
+	cc -Wall -O3 -o $@ $<
 
 clean:
 	rm *.o stack regex b64
