@@ -1,0 +1,6 @@
+
+- Collecting additional client/connection attributes such as requests per single TCP connection (keep-alive), 304 responses, elapse time between requests, request/response length, etc. would be interesting.
+- More "dynamic" rules: enforce rules on certain conditions only (e.g. overall server usage), adjust metrics dynamically, learning and permissive mode.
+- Re-design/re-implementation of some parts (maybe dropping some features, maybe start the implementation of a separate module).
+- Web interface to configure mod_qos dynamically. 
+
