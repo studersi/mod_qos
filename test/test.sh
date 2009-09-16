@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.83 2009-09-16 08:24:19 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.84 2009-09-16 13:20:29 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -367,6 +367,12 @@ if [ $QDIFF1 -eq 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientPrefer_SP.htt"
 fi
+./ctl.sh restart -D real_ip -D cc > /dev/null
+./htt.sh -se ./scripts/ClientBehavior.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED ClientBehavior.htt"
+fi
 
 echo "-- QS_SetEnvResHeaders" >> logs/error_log
 ./htt.sh -se ./scripts/QS_SetEnvResHeaders.htt
@@ -556,7 +562,7 @@ fi
 
 
 if [ $WARNINGS -ne 0 ]; then
-    echo "ERROR: got $WARNINGS warnings"
+    echo "ERROR: got $WARNINGS warnings and $ERROR errors"
     exit 1
 fi
 
