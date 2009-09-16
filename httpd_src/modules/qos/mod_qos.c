@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.172 2009-09-16 08:24:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.173 2009-09-16 13:41:01 pbuchbinder Exp $";
 static const char g_revision[] = "9.0";
 
 /************************************************************************
@@ -126,8 +126,7 @@ static const char g_revision[] = "9.0";
 #define QOS_CC_BEHAVIOR_THR 50
 #define QOS_CC_BEHAVIOR_THR_SINGLE 10
 #endif
-#define QOS_CC_BEHAVIOR_TOLERANCE 500
-#define QOS_CC_BEHAVIOR_TOLERANCE_MAX 995
+#define QOS_CC_BEHAVIOR_TOLERANCE_STR "500"
 #define QOS_CC_BEHAVIOR_TOLERANCE_MIN 5
 
 #define QOS_MAGIC_LEN 8
@@ -477,6 +476,9 @@ typedef struct {
   int qos_cc_block;           /* GLOBAL ONLY */
   int qos_cc_block_time;      /* GLOBAL ONLY */
   apr_off_t maxpost;
+  int cc_tolerance;           /* GLOBAL ONLY */
+  int cc_tolerance_max;       /* GLOBAL ONLY */
+  int cc_tolerance_min;       /* GLOBAL ONLY */
 } qos_srv_config;
 
 /**
@@ -2623,7 +2625,8 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
 }
 
 /** determine client behavior */
-static int qos_content_type(request_rec *r, qos_s_t *s, qos_s_entry_t *e, int limit) {
+static int qos_content_type(request_rec *r, qos_srv_config *sconf,
+                            qos_s_t *s, qos_s_entry_t *e, int limit) {
   int penalty = 0;
   const char *ct = apr_table_get(r->headers_out, "Content-Type");
   if(r->status == 304) {
@@ -2665,21 +2668,21 @@ static int qos_content_type(request_rec *r, qos_s_t *s, qos_s_entry_t *e, int li
     unsigned long long s_2img = s_all / s->img;
     unsigned long long s_2other = s_all / s->other;
     unsigned long long s_2notmodified = s_all / s->notmodified;
-    unsigned int e_2html_p = ((e_all / e->html) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2html;
-    unsigned int e_2cssjs_p = ((e_all / e->cssjs ) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2cssjs;
-    unsigned int e_2img_p = ((e_all / e->img) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2img;
-    unsigned int e_2other_p = ((e_all / e->other) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2other;
-    unsigned int e_2notmodified_p = ((e_all / s->notmodified ) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2notmodified;
-    if((e_2html_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
-       (e_2html_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN) ||
-       (e_2cssjs_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
-       (e_2cssjs_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN) ||
-       (e_2img_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
-       (e_2img_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN) ||
-       (e_2other_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
-       (e_2other_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN) ||
-       (e_2notmodified_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
-       (e_2notmodified_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN)) {
+    unsigned int e_2html_p = ((e_all / e->html) * sconf->cc_tolerance) / s_2html;
+    unsigned int e_2cssjs_p = ((e_all / e->cssjs ) * sconf->cc_tolerance) / s_2cssjs;
+    unsigned int e_2img_p = ((e_all / e->img) * sconf->cc_tolerance) / s_2img;
+    unsigned int e_2other_p = ((e_all / e->other) * sconf->cc_tolerance) / s_2other;
+    unsigned int e_2notmodified_p = ((e_all / s->notmodified ) * sconf->cc_tolerance) / s_2notmodified;
+    if((e_2html_p > sconf->cc_tolerance_max) ||
+       (e_2html_p < sconf->cc_tolerance_min) ||
+       (e_2cssjs_p > sconf->cc_tolerance_max) ||
+       (e_2cssjs_p < sconf->cc_tolerance_min) ||
+       (e_2img_p > sconf->cc_tolerance_max) ||
+       (e_2img_p < sconf->cc_tolerance_min) ||
+       (e_2other_p > sconf->cc_tolerance_max) ||
+       (e_2other_p < sconf->cc_tolerance_min) ||
+       (e_2notmodified_p > sconf->cc_tolerance_max) ||
+       (e_2notmodified_p < sconf->cc_tolerance_min)) {
       penalty = 1;
     }
   }
@@ -2729,7 +2732,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
     if(!e) {
       e = qos_cc_set(u->qos_cc, &new, time(NULL));
     }
-    unusual_bahavior = qos_content_type(r, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
+    unusual_bahavior = qos_content_type(r, sconf, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
     if(block_event || lowrate || unusual_bahavior) {
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
@@ -5232,6 +5235,9 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_prefer_limit = 0;
   sconf->qos_cc_event = 0;
   sconf->qos_cc_block = 0;
+  sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
+  sconf->cc_tolerance_max = 2 * sconf->cc_tolerance;
+  sconf->cc_tolerance_min = QOS_CC_BEHAVIOR_TOLERANCE_MIN;
   sconf->qos_cc_block_time = 600;
   sconf->maxpost = -1;
   if(!s->is_virtual) {
@@ -5294,6 +5300,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_event = b->qos_cc_event;
   o->qos_cc_block = b->qos_cc_block;
   o->qos_cc_block_time = b->qos_cc_block_time;
+  o->cc_tolerance = b->cc_tolerance;
+  o->cc_tolerance_max = b->cc_tolerance_max;
+  o->cc_tolerance_min = b->cc_tolerance_min;
   o->req_rate = b->req_rate;
   o->min_rate = b->min_rate;
   o->min_rate_max = b->min_rate_max;
@@ -6360,6 +6369,22 @@ const char *qos_client_block_cmd(cmd_parms *cmd, void *dcfg, const char *arg1,
   return NULL;
 }
 
+const char *qos_client_tolerance_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->cc_tolerance = atoi(arg1);
+  sconf->cc_tolerance_max = 2 * sconf->cc_tolerance;
+  if(sconf->cc_tolerance < 50) {
+    return apr_psprintf(cmd->pool, "%s: must be numeric value >=50",
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
 const char *qos_client_event_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -6697,6 +6722,11 @@ static const command_rec qos_config_cmds[] = {
                   " are VIP clients only, see QS_VipHeaderName directive."
                   " Directive is allowed in global server context only."),
 #endif
+  AP_INIT_TAKE1("QS_ClientTolerance", qos_client_tolerance_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientTolerance <number>, defines the allowed tolerance (variation)"
+                " from a \"normal\" client (average). Default is "QOS_CC_BEHAVIOR_TOLERANCE_STR"."
+                " Directive is allowed in global server context only."),
   AP_INIT_TAKE12("QS_ClientEventBlockCount", qos_client_block_cmd, NULL,
                  RSRC_CONF,
                  "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"
