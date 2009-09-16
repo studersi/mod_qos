@@ -934,7 +934,7 @@ These directives must only be used in the global server context.
 <code>QS_ClientEntries &lt;number&gt;</code><br>
 Defines the number of individual clients managed by mod_qos. 
 Default is 50'000 concurrent IP addresses. Each client requires 
-about 64 bytes of shared memory on a 32bit system or 128 bytes 
+about 64 bytes of shared memory on a 32bit system or 104 bytes 
 on a 64bit system respectively. Client IP source address store 
 survives graceful server restart.
 </li>
@@ -963,9 +963,14 @@ Use the <code>QS_VipHeaderName</code> or
 <code>QS_VipIPHeaderName</code> directive in order 
 to identify VIP clients. The distinction between high and low 
 priority clients is made based on the client data transfer 
-behavior (clients sending slow or using small data packets 
-get marked as low priority clients). 
-Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are
+behavior (clients sending slow, using small data packets, or 
+accessing the "unusual" content types, get marked as 
+low priority clients, look for "r;" events within the 
+<a href="#accesslog">access log</a> or use the 
+<a href="#statusviewer">status viewer</a> to which client addresses 
+are identified as log priority clients). A low priority flag 
+is cleared after 24h hours. 
+Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are 
 excluded from connection restrictions. Filter is applied 
 on connection level.
 </li>
