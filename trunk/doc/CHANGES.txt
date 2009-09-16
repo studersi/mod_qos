@@ -1,12 +1,14 @@
 Version 9.0
 
- - Improved client behavior detection (content types, caching).
+ - Client level control: request characteristics measuring adds
+   content type ration and number of 304 responses (requires now
+   64bytes instead of 48bytes per client on a 32bit system).
 
- - Directive QS_SrvPreferNet has been removed.
+ - Improved client level control (behavior detection, see above)
+   is processed by the QS_ClientPrefer directive.
 
- - Client level control: request characteristics measuring
-   content type ration and 304 responses (requires now
-   64bytes instead of 48bytes per client on a 32bit system.).
+ - Directive QS_SrvPreferNet has been removed. It's recommended
+   to use QS_ClientPrefer instead.
 
 Version 8.18
 

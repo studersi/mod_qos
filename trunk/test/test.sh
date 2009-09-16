@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.82 2009-09-15 18:36:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.83 2009-09-16 08:24:19 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -46,7 +46,8 @@ sleep 1
 IPCS=`ipcs | wc -l`
 
 # delete the access log file since it is used to generate permit rules
-rm -f logs/access1_log
+./ctl.sh stop
+rm -f logs/*
 rm -rf /var/tmp/qosc/server1
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
 echo "-- start `date` --" >>  logs/error_log

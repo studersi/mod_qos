@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.171 2009-09-15 18:36:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.172 2009-09-16 08:24:19 pbuchbinder Exp $";
 static const char g_revision[] = "9.0";
 
 /************************************************************************
@@ -118,11 +118,17 @@ static const char g_revision[] = "9.0";
 #define QOS_DEC_MODE_FLAGS_ESC        0x04
 #define QOS_DEC_MODE_FLAGS_CHARSET    0x08
 
-#define QOS_CC_BEHAVIOR_T 10000
+#define QOS_CC_BEHAVIOR_THR 10000
+#define QOS_CC_BEHAVIOR_THR_SINGLE 50
 #ifdef QS_INTERNAL_TEST
-#undef QOS_CC_BEHAVIOR_T
-#define QOS_CC_BEHAVIOR_T 100
+#undef QOS_CC_BEHAVIOR_THR
+#undef QOS_CC_BEHAVIOR_THR_SINGLE
+#define QOS_CC_BEHAVIOR_THR 50
+#define QOS_CC_BEHAVIOR_THR_SINGLE 10
 #endif
+#define QOS_CC_BEHAVIOR_TOLERANCE 500
+#define QOS_CC_BEHAVIOR_TOLERANCE_MAX 995
+#define QOS_CC_BEHAVIOR_TOLERANCE_MIN 5
 
 #define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
@@ -826,25 +832,14 @@ static void qos_cc_free(qos_s_t *s) {
   }
 }
 
+/** search an entry */
 static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA) {
   return bsearch((const void *)&pA, (const void *)s->ipd, s->max, sizeof(qos_s_entry_t *), qos_cc_comp);
 }
 
+/** create a new entry */
 static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  pA->vip = 0;
-  pA->lowrate = 0;
-  pA->block = 0;
-  pA->block_time = 0;
-  pA->interval = now;
-  pA->req = 0;
-  pA->req_per_sec = 0;
-  pA->req_per_sec_block_rate = 0;
-  pA->other = 0;
-  pA->html = 0;
-  pA->cssjs = 0;
-  pA->img = 0;
-  pA->notmodified = 0;
   qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qos_cc_comp_time);
   if(s->num < s->max) {
     s->num++;
@@ -858,6 +853,19 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
     (*pB)->time = now;
     qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qos_cc_comp);
   }
+  (*pB)->vip = 0;
+  (*pB)->lowrate = 0;
+  (*pB)->block = 0;
+  (*pB)->block_time = 0;
+  (*pB)->interval = now;
+  (*pB)->req = 0;
+  (*pB)->req_per_sec = 0;
+  (*pB)->req_per_sec_block_rate = 0;
+  (*pB)->html = 1;
+  (*pB)->cssjs = 1;
+  (*pB)->img = 1;
+  (*pB)->other = 1;
+  (*pB)->notmodified = 1;
   return pB;
 }
 
@@ -2615,7 +2623,7 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
 }
 
 /** determine client behavior */
-static int qos_content_type(request_rec *r, qos_s_t *s, qos_s_entry_t *e) {
+static int qos_content_type(request_rec *r, qos_s_t *s, qos_s_entry_t *e, int limit) {
   int penalty = 0;
   const char *ct = apr_table_get(r->headers_out, "Content-Type");
   if(r->status == 304) {
@@ -2645,23 +2653,36 @@ static int qos_content_type(request_rec *r, qos_s_t *s, qos_s_entry_t *e) {
   s->other++;
 
  end:
-//  /* $$$ compare this client with other clients */
-//  if((s->html > QOS_CC_BEHAVIOR_T) && (s->img > QOS_CC_BEHAVIOR_T) && 
-//     (s->cssjs > QOS_CC_BEHAVIOR_T) && (s->other > QOS_CC_BEHAVIOR_T) && 
-//     (s->notmodified > QOS_CC_BEHAVIOR_T) && (e->html > 50)) {
-//    unsigned long long s_all = s->html + s->img + s->cssjs + s->other + s->notmodified;
-//    unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
-//    int s_2html = s_all / s->cssjs;
-//    int s_2css = s_all / s->cssjs;
-//    int s_2img = s_all / s->img;
-//    int s_2others = s_all / s->other;
-//    int s_2cache = s_all / s->notmodified;
-//    int e_2html = e_all / s->cssjs;
-//    int e_2css = e_all / s->cssjs;
-//    int e_2img = e_all / s->img;
-//    int e_2others = e_all / s->other;
-//    int e_2cache = e_all / s->notmodified;
-//  }
+  /* compare this client with other clients */
+  if(limit &&
+     ((s->html > QOS_CC_BEHAVIOR_THR) && (s->img > QOS_CC_BEHAVIOR_THR) && 
+      (s->cssjs > QOS_CC_BEHAVIOR_THR) && (s->other > QOS_CC_BEHAVIOR_THR) && 
+      (s->notmodified > QOS_CC_BEHAVIOR_THR) && (e->html > QOS_CC_BEHAVIOR_THR_SINGLE))) {
+    unsigned long long s_all = s->html + s->img + s->cssjs + s->other + s->notmodified;
+    unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
+    unsigned long long s_2html = s_all / s->html;
+    unsigned long long s_2cssjs = s_all / s->cssjs;
+    unsigned long long s_2img = s_all / s->img;
+    unsigned long long s_2other = s_all / s->other;
+    unsigned long long s_2notmodified = s_all / s->notmodified;
+    unsigned int e_2html_p = ((e_all / e->html) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2html;
+    unsigned int e_2cssjs_p = ((e_all / e->cssjs ) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2cssjs;
+    unsigned int e_2img_p = ((e_all / e->img) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2img;
+    unsigned int e_2other_p = ((e_all / e->other) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2other;
+    unsigned int e_2notmodified_p = ((e_all / s->notmodified ) * QOS_CC_BEHAVIOR_TOLERANCE) / s_2notmodified;
+    if((e_2html_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
+       (e_2html_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN) ||
+       (e_2cssjs_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
+       (e_2cssjs_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN) ||
+       (e_2img_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
+       (e_2img_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN) ||
+       (e_2other_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
+       (e_2other_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN) ||
+       (e_2notmodified_p > QOS_CC_BEHAVIOR_TOLERANCE_MAX) ||
+       (e_2notmodified_p < QOS_CC_BEHAVIOR_TOLERANCE_MIN)) {
+      penalty = 1;
+    }
+  }
   return penalty;
 }
 
@@ -2708,7 +2729,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
     if(!e) {
       e = qos_cc_set(u->qos_cc, &new, time(NULL));
     }
-    unusual_bahavior = qos_content_type(r, u->qos_cc, *e);
+    unusual_bahavior = qos_content_type(r, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
     if(block_event || lowrate || unusual_bahavior) {
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
@@ -2724,6 +2745,11 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
         /* increment block event */
         (*e)->block++;
         (*e)->block_time = now;
+      }
+    } else if((*e)->lowrate) {
+      /* reset low prio client after 24h */
+      if(((*e)->lowrate + 86400) < now) {
+        (*e)->lowrate = 0;
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT19 */
@@ -3075,6 +3101,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           unsigned long long notmodified;
           qos_s_entry_t **e = NULL;
           qos_s_entry_t new;
+          int found = 0;
           apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT20 */
           html = u->qos_cc->html;
           cssjs = u->qos_cc->cssjs;
@@ -3084,6 +3111,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           new.ip = ip;
           e = qos_cc_get0(u->qos_cc, &new);
           if(e) {
+            found = 1;
             new.vip = (*e)->vip;
             new.lowrate = (*e)->lowrate;
             new.time = (*e)->time;
@@ -3091,11 +3119,11 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             new.block_time = (*e)->block_time;
             new.req_per_sec = (*e)->req_per_sec;
             new.req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
-            new.other = (*e)->other;
-            new.html = (*e)->html;
-            new.cssjs = (*e)->cssjs;
-            new.img = (*e)->img;
-            new.notmodified = (*e)->notmodified;
+            new.other = (*e)->other - 1;
+            new.html = (*e)->html - 1;
+            new.cssjs = (*e)->cssjs - 1;
+            new.img = (*e)->img - 1;
+            new.notmodified = (*e)->notmodified - 1;
           }
           apr_global_mutex_unlock(u->qos_cc->lock);            /* @CRT20 */
           ap_rputs("<tr class=\"rowt\"><td colspan=\"1\">IP</td>", r);
@@ -3111,7 +3139,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           ap_rputs("</tr>\n", r);
           ap_rprintf(r, "<tr class=\"rows\">"
                      "<td colspan=\"1\">%s</td>", ap_escape_html(r->pool, address));
-          if(!e) {
+          if(!found) {
             ap_rputs("<td colspan=\"8\"><i>not found</i></td>\n", r);
           } else {
             char buf[1024];
@@ -3128,8 +3156,9 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             ap_rprintf(r, "<td colspan=\"1\">%ld</td>", new.req_per_sec);
             ap_rprintf(r, "<td colspan=\"1\">%d&nbsp;ms</td>", new.req_per_sec_block_rate);
             ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", new.lowrate > 0 ? "yes" : "no");
+
+            ap_rputs("</tr>\n", r);
           }
-          ap_rputs("</tr>\n", r);
           ap_rprintf(r, "<tr class=\"rowt\">"
                      "<td colspan=\"4\"></td>"
                      "<td style=\"width:9%%\">html</td>"
@@ -3138,14 +3167,16 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                      "<td style=\"width:9%%\">other</td>"
                      "<td style=\"width:9%%\">304</td>"
                      "</tr>");
-          ap_rprintf(r, "<tr class=\"rows\">"
-                     "<td colspan=\"4\"></td>"
-                     "<td style=\"width:9%%\">%u</td>"
-                     "<td style=\"width:9%%\">%u</td>"
-                     "<td style=\"width:9%%\">%u</td>"
-                     "<td style=\"width:9%%\">%u</td>"
-                     "<td style=\"width:9%%\">%u</td>"
-                     "</tr>", new.html, new.cssjs, new.img, new.other, new.notmodified);
+          if(found) {
+            ap_rprintf(r, "<tr class=\"rows\">"
+                       "<td colspan=\"4\"></td>"
+                       "<td style=\"width:9%%\">%u</td>"
+                       "<td style=\"width:9%%\">%u</td>"
+                       "<td style=\"width:9%%\">%u</td>"
+                       "<td style=\"width:9%%\">%u</td>"
+                       "<td style=\"width:9%%\">%u</td>"
+                       "</tr>", new.html, new.cssjs, new.img, new.other, new.notmodified);
+          }
           ap_rprintf(r, "<tr class=\"rows\">"
                      "<td colspan=\"3\"></td>"
                      "<td style=\"width:9%%\">all clients</td>"
