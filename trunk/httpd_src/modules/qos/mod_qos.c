@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.173 2009-09-16 13:41:01 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.174 2009-09-18 07:23:54 pbuchbinder Exp $";
 static const char g_revision[] = "9.0";
 
 /************************************************************************
@@ -4489,6 +4489,44 @@ static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
+/** ensure that every request record has the error notes to log
+    TODO: propagte events too! */
+static void qos_propagate_notes(request_rec *r) {
+  request_rec *mr = NULL;
+  int propagated = 0;
+  if(r->prev) {
+    mr = r->prev;
+  } else if(r->main) {
+    mr = r->main;
+  } else if(r->next) {
+    mr = r->next;
+  }
+  if(mr) {
+    const char *p = apr_table_get(mr->notes, QS_PARP_PATH);
+    const char *q = apr_table_get(mr->notes, QS_PARP_QUERY);
+    if(p) {
+      propagated = 1;
+      apr_table_setn(r->notes, QS_PARP_PATH, p);
+    }
+    if(q) {
+      propagated = 1;
+      apr_table_setn(r->notes, QS_PARP_QUERY, q);
+    }
+    if(!propagated) {
+      p = apr_table_get(r->notes, QS_PARP_PATH);
+      q = apr_table_get(r->notes, QS_PARP_QUERY);
+      if(p) {
+        propagated = 1;
+        apr_table_setn(mr->notes, QS_PARP_PATH, p);
+      }
+      if(q) {
+        propagated = 1;
+        apr_table_setn(mr->notes, QS_PARP_QUERY, q);
+      }
+    }
+  }
+}
+
 static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
   if(sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
     qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
@@ -4599,6 +4637,7 @@ static int qos_logger(request_rec *r) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
   time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_propagate_notes(r);
   qos_end_res_rate(r, sconf);
   qos_setenvstatus(r, sconf);
   qos_setenvif(r, sconf);

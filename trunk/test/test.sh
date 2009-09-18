@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.84 2009-09-16 13:20:29 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.85 2009-09-18 07:23:55 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -305,6 +305,12 @@ sleep 1
 echo "-- permit filter QS_PermitUri.htt" >>  logs/error_log
 echo "-- permit filter QS_PermitUri.htt" >>  logs/error1_log
 ./htt.sh -se ./scripts/QS_PermitUri.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_PermitUri.htt"
+fi
+
+./htt.sh -se ./scripts/QS_PermitUriAudit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_PermitUri.htt"

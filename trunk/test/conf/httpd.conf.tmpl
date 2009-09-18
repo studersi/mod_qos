@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.125 2009-09-15 18:36:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.126 2009-09-18 07:23:55 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -339,6 +339,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    </Location>
 
    Include 	  conf/demo.conf
+
+   <Location /app/d/special/permit/url/audit>
+       QS_PermitUri +s01 deny "^/app/d/special/permit/url/audit/static.html$"
+   </Location>
 
 </VirtualHost>
 
