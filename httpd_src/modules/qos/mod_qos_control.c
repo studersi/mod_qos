@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.48 2008-10-24 21:31:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.49 2009-10-21 18:12:55 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -1796,8 +1796,15 @@ static void qosc_qsfilter2_start(request_rec *r, qosc_settings_t *settings) {
           return;
         case 0:
           /* child processing the data */
+          // ap_listen_rec *cur = ap_listeners;
+          // while (cur) {
+          //   if (cur->active && cur->sd) {
+          //     apr_socket_close(cur->sd);
+          //   }
+          //   cur = cur->next;
+          // }
           for(i=3;i<65000;i++) {
-            /* $$$ */
+            /* $$$, see ap_listeners above */
             close(i);
           }
           qosc_reopen_locations(r->pool, locations, APR_WRITE|APR_CREATE|APR_APPEND);
