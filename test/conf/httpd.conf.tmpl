@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.126 2009-09-18 07:23:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.127 2009-10-23 21:36:15 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -76,6 +76,8 @@ QS_RequestHeaderFilterRule myheader deny "^static_content$" 20
 <IfDefine real_ip>
 QS_EnableInternalIPSimulation off
 </IfDefine>
+
+QS_ClientEventRequestLimit 2
 
 Options                 FollowSymLinks Indexes Includes
 DefaultType             text/plain
@@ -172,7 +174,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /cgi-local/   ##ROOT##/htdocs/cgi-local/
    ScriptAlias /cgi-local_s/ ##ROOT##/htdocs/cgi-local/
 
-   QS_SetEnvIfQuery QS_Delay=(.*) QS_Delay=$1
+   QS_SetEnvIfQuery QS_Delay=(.*)   QS_Delay=$1
+   QS_SetEnvIfQuery QS_EventRequest QS_EventRequest
 
    # -----------------------------------------------------------------
    # request level control

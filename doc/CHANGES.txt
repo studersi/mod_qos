@@ -1,3 +1,9 @@
+Version 9.1
+
+- QS_ClientEventRequestLimit limits the number of concurrent
+  events on a per client IP address basis (again increasing
+  the per client memory consumption).
+
 Version 9.0
 
  - Client level control: request characteristics measuring adds
