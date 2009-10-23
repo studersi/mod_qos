@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.174 2009-09-18 07:23:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.175 2009-10-23 21:36:15 pbuchbinder Exp $";
 static const char g_revision[] = "9.0";
 
 /************************************************************************
@@ -167,6 +167,7 @@ typedef struct {
   long req;
   long req_per_sec;
   int req_per_sec_block_rate;
+  int event_req;
 } qos_s_entry_t;
 
 typedef struct {
@@ -473,6 +474,7 @@ typedef struct {
   int qos_cc_prefer;          /* GLOBAL ONLY */
   int qos_cc_prefer_limit;
   int qos_cc_event;           /* GLOBAL ONLY */
+  int qos_cc_event_req;       /* GLOBAL ONLY */
   int qos_cc_block;           /* GLOBAL ONLY */
   int qos_cc_block_time;      /* GLOBAL ONLY */
   apr_off_t maxpost;
@@ -505,6 +507,7 @@ typedef struct {
   int is_vip;
   apr_off_t maxpostcount;
   int event_kbytes_per_sec_block_rate;
+  int cc_event_req_set;
 } qs_req_ctx;
 
 /**
@@ -863,6 +866,7 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->req = 0;
   (*pB)->req_per_sec = 0;
   (*pB)->req_per_sec_block_rate = 0;
+  (*pB)->event_req = 0;
   (*pB)->html = 1;
   (*pB)->cssjs = 1;
   (*pB)->img = 1;
@@ -1061,6 +1065,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->event_entries = apr_table_make(r->pool, 1);
     rctx->maxpostcount = 0;
     rctx->event_kbytes_per_sec_block_rate = 0;
+    rctx->cc_event_req_set = 0;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
@@ -2469,6 +2474,62 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
 }
 
 /*
+ * QS_ClientEventRequestLimit
+ */
+static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_ctx * rctx) {
+  qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
+  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+  if(!rctx) {
+    rctx = qos_rctx_config_get(r);
+  }
+  if(u && cconf &&
+     r->subprocess_env && apr_table_get(r->subprocess_env, "QS_EventRequest")) {
+    int vip = 0;
+    int count = 0;
+    qos_s_entry_t **e = NULL;
+    qos_s_entry_t new;
+    rctx->cc_event_req_set = 1;
+    apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT33 */
+    new.ip = cconf->ip;
+    e = qos_cc_get0(u->qos_cc, &new);
+    if(!e) {
+      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+    }
+    (*e)->event_req++;
+    count = (*e)->event_req;
+    if((*e)->vip || rctx->is_vip) {
+      vip = 1;
+    }
+    apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT33 */
+    if(count > sconf->qos_cc_event_req) {
+      if(vip) {
+        rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+      } else {
+        const char *error_page = sconf->error_page;
+        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+        if(v) {
+          error_page = v;
+        }
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOS_LOG_PFX(065)"access denied, QS_ClientEventBlockCount rule: "
+                      "max=%d, current=%d, c=%s, id=%s",
+                      sconf->qos_cc_event_req,
+                      count,
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      qos_unique_id(r, "065"));
+        rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+        if(error_page) {
+          qos_error_response(r, error_page);
+          return DONE;
+        }
+        return m_retcode;
+      }
+    }
+  }
+  return DECLINED;
+}
+
+/*
  * QS_EventPerSecLimit/QS_EventKBytesPerSecLimit
  * returns the max req_per_sec_block_rate/kbytes_per_sec_block_rate
  */
@@ -2692,7 +2753,7 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
 /**
  * client contol rules at log transaction
  */
-static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
+static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rctx) {
   if(sconf->has_qos_cc) {
     int lowrate = 0;
     int unusual_bahavior = 0;
@@ -2731,6 +2792,11 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf) {
     e = qos_cc_get0(u->qos_cc, &new);
     if(!e) {
       e = qos_cc_set(u->qos_cc, &new, time(NULL));
+    }
+    if(rctx->cc_event_req_set) {
+      /* QS_ClientEventRequestLimit */
+      rctx->cc_event_req_set = 0;
+      (*e)->event_req--;
     }
     unusual_bahavior = qos_content_type(r, sconf, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
     if(block_event || lowrate || unusual_bahavior) {
@@ -3127,6 +3193,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             new.cssjs = (*e)->cssjs - 1;
             new.img = (*e)->img - 1;
             new.notmodified = (*e)->notmodified - 1;
+            new.event_req = (*e)->event_req;
           }
           apr_global_mutex_unlock(u->qos_cc->lock);            /* @CRT20 */
           ap_rputs("<tr class=\"rowt\"><td colspan=\"1\">IP</td>", r);
@@ -3161,6 +3228,13 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", new.lowrate > 0 ? "yes" : "no");
 
             ap_rputs("</tr>\n", r);
+            ap_rprintf(r, "<tr class=\"rows\">"
+                       "<td colspan=\"6\">&nbsp;</td>"
+                       "<td>"
+                       "<div title=\"QS_ClientEventRequestLimit\">events:</div></td>"
+                       "<td style=\"width:9%%\">%s</td>"
+                       "<td colspan=\"1\"></td>"
+                       "</tr>", (sconf->qos_cc_event_req == -1 ? "off" : apr_psprintf(r->pool, "%d", new.event_req)));
           }
           ap_rprintf(r, "<tr class=\"rowt\">"
                      "<td colspan=\"4\"></td>"
@@ -4049,6 +4123,16 @@ static int qos_header_parser(request_rec * r) {
     }
 
     /*
+     * QS_ClientEventRequestLimit
+     */
+    if(sconf->qos_cc_event_req >= 0) {
+      status = qos_hp_cc_event_count(r, sconf, rctx);
+      if(status != DECLINED) {
+        return status;
+      }
+    }
+
+    /*
      * client control
      */
     if(qos_hp_cc(r, sconf, &msg, &uid) != DECLINED) {
@@ -4641,7 +4725,7 @@ static int qos_logger(request_rec *r) {
   qos_end_res_rate(r, sconf);
   qos_setenvstatus(r, sconf);
   qos_setenvif(r, sconf);
-  qos_logger_cc(r, sconf);
+  qos_logger_cc(r, sconf, rctx);
   if(cconf && cconf->evmsg) {
     rctx->evmsg = apr_pstrcat(r->pool, cconf->evmsg, rctx->evmsg, NULL);
   }
@@ -5273,6 +5357,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_prefer = 0;
   sconf->qos_cc_prefer_limit = 0;
   sconf->qos_cc_event = 0;
+  sconf->qos_cc_event_req = -1;
   sconf->qos_cc_block = 0;
   sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
   sconf->cc_tolerance_max = 2 * sconf->cc_tolerance;
@@ -5337,6 +5422,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_prefer = b->qos_cc_prefer;
   o->qos_cc_prefer_limit = b->qos_cc_prefer_limit;
   o->qos_cc_event = b->qos_cc_event;
+  o->qos_cc_event_req = b->qos_cc_event_req;
   o->qos_cc_block = b->qos_cc_block;
   o->qos_cc_block_time = b->qos_cc_block_time;
   o->cc_tolerance = b->cc_tolerance;
@@ -6433,7 +6519,23 @@ const char *qos_client_event_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   }
   sconf->has_qos_cc = 1;
   sconf->qos_cc_event = atoi(arg1);
-  if((sconf->qos_cc_event < 0) || ((sconf->qos_cc_block == 0) && (strcmp(arg1, "0") != 0))) {
+  if((sconf->qos_cc_event < 0) || ((sconf->qos_cc_event == 0) && (strcmp(arg1, "0") != 0))) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
+const char *qos_client_event_req_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->has_qos_cc = 1;
+  sconf->qos_cc_event_req = atoi(arg1);
+  if((sconf->qos_cc_event_req < 0) || ((sconf->qos_cc_event_req == 0) && (strcmp(arg1, "0") != 0))) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
                         cmd->directive->directive);
   }
@@ -6777,6 +6879,12 @@ static const command_rec qos_config_cmds[] = {
                 " events pro seconds on a per client (source IP) basis."
                 " Events are identified by requests having the"
                 " QS_Event variable set."
+                " Directive is allowed in global server context only."),
+  AP_INIT_TAKE1("QS_ClientEventRequestLimit", qos_client_event_req_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientEventRequestLimit <number>, defines the allowed"
+                " number of concurrent requests comming from the same client source IP address"
+                " having the QS_EventRequest variable set."
                 " Directive is allowed in global server context only."),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,

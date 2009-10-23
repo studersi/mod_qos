@@ -939,6 +939,11 @@ on a 64bit system respectively. Client IP source address store
 survives graceful server restart.
 </li>
 <li>
+<code>QS_ClientEventRequestLimit &lt;number&gt;</code><br>
+Defines the allowed number of concurrent requests comming from the same 
+client source IP address having the QS_EventRequest variable set.
+</li>
+<li>
 <code>QS_ClientEventPerSecLimit &lt;number&gt;</code><br>
 Defines how often a client may cause a <code>QS_Event</code> 
 per second. Such events are requests having the 
@@ -957,22 +962,25 @@ when reaching this counter for the specified time (blocked at connection level).
 <li>
 <code>QS_ClientPrefer [&lt;percent&gt;]</code><br>
 Accepts only <a href="#privilegedusers">VIP</a> 
-and high priority clients when the server has 
-less than 80% (or the defined percentage) of free TCP connections. 
-Use the <code>QS_VipHeaderName</code> or 
-<code>QS_VipIPHeaderName</code> directive in order 
-to identify VIP clients. The distinction between high and low 
-priority clients is made based on the client data transfer 
-behavior (clients sending slow, using small data packets, or 
-accessing the "unusual" content types, get marked as 
-low priority clients, look for "r;" events within the 
+and high priority clients when the server has less than 80% 
+(or the defined percentage) of free TCP connections. Use the 
+<code>QS_VipHeaderName</code> or <code>QS_VipIPHeaderName</code> 
+directive in order to identify VIP clients. The distinction between 
+high and low priority clients is made based on the client data transfer 
+behavior (clients sending slow, using small data packets, or accessing 
+the "unusual" content types (see <code>QS_ClientTolerance</code>), 
+get marked as low priority clients, look for "r;" events within the 
 <a href="#accesslog">access log</a> or use the 
 <a href="#statusviewer">status viewer</a> to which client addresses 
 are identified as log priority clients). A low priority flag 
-is cleared after 24h hours. 
-Clients identified by <code>QS_SrvMaxConnExcludeIP</code> are 
-excluded from connection restrictions. Filter is applied 
-on connection level.
+is cleared after 24h hours. Clients identified by 
+<code>QS_SrvMaxConnExcludeIP</code> are excluded from connection 
+restrictions. Filter is applied on connection level.
+</li>
+<li>
+<code>QS_ClientTolerance &lt;percent&gt;</code><br>
+Defines the allowed variation from a "normal" client (average). 
+Default is 500.
 </li>
 </ul>
 
