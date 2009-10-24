@@ -1,0 +1,73 @@
+#
+# $Id: QS_DenyQueryParp.htt,v 1.4 2009-06-12 20:05:05 pbuchbinder Exp $
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=;DECLARE%20@S%20NVARCHAR(4000);SET%20@S=CAST(0x4400450006F007200%20AS%20NVARCHAR(4000));EXEC(@S);--
+_EXPECT . "code=040"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=sell
+_EXPECT . "!code=040"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/sub/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=sell
+_EXPECT . "!code=040"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/sub/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=;DECLARE%20@S%20NVARCHAR(4000);SET%20@S=CAST(0x4400450006F007200%20AS%20NVARCHAR(4000));EXEC(@S);--
+_EXPECT . "code=040"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/off/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=;DECLARE%20@S%20NVARCHAR(4000);SET%20@S=CAST(0x4400450006F007200%20AS%20NVARCHAR(4000));EXEC(@S);--
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+END
