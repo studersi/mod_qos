@@ -1,5 +1,13 @@
 Version 9.1
 
+- QS_VipIPHeaderName <name>[=<regex>]
+
+- New syntax:
+  QS_VipHeaderName <header name>[=<regex>] [drop]
+  QS_VipIPHeaderName <header name>[=<regex>] [drop]
+
+Version 9.1
+
 - QS_ClientEventRequestLimit limits the number of concurrent
   events on a per client IP address basis (again increasing
   the per client memory consumption).
