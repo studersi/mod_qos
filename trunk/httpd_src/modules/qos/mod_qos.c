@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.177 2009-10-25 18:34:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.178 2009-10-26 21:13:46 pbuchbinder Exp $";
 static const char g_revision[] = "9.2";
 
 /************************************************************************
@@ -446,7 +446,19 @@ typedef struct {
   unsigned char key[EVP_MAX_KEY_LENGTH];
   int keyset;
   char *header_name;
+  int header_name_drop;
+#ifdef AP_REGEX_H
+  ap_regex_t *header_name_regex;
+#else
+  regex_t *header_name_regex;
+#endif
   char *ip_header_name;
+  int ip_header_name_drop;
+#ifdef AP_REGEX_H
+  ap_regex_t *ip_header_name_regex;
+#else
+  regex_t *ip_header_name_regex;
+#endif
   int vip_user;
   int vip_ip_user;
   int max_conn;
@@ -4636,30 +4648,50 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   if(sconf->ip_header_name) {
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->ip_header_name);
     if(ctrl_h) {
-      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                              &qos_module);
-      if(cconf) {
-        cconf->is_vip = 1;
-        cconf->is_vip_by_header = 1;
+      int match = 1;
+      if(sconf->ip_header_name_regex) {
+        if(ap_regexec(sconf->ip_header_name_regex, ctrl_h, 0, NULL, 0) != 0) {
+          match = 0;
+        }
       }
-      apr_table_unset(r->headers_out, sconf->ip_header_name);
+      if(match) {
+        qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                                &qos_module);
+        if(cconf) {
+          cconf->is_vip = 1;
+          cconf->is_vip_by_header = 1;
+        }
+      }
+      if(sconf->ip_header_name_drop) {
+        apr_table_unset(r->headers_out, sconf->ip_header_name);
+      }
     }
   }
   if(sconf->header_name) {
     /* got a vip header: create new session (if non exists) */
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->header_name);
     if(ctrl_h && !apr_table_get(r->notes, QS_REC_COOKIE)) {
-      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                              &qos_module);
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
-      qos_set_session(r, sconf);
-      rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
-      if(cconf) {
-        cconf->is_vip = 1;
-        cconf->is_vip_by_header = 1;
+      int match = 1;
+      if(sconf->header_name_regex) {
+        if(ap_regexec(sconf->header_name_regex, ctrl_h, 0, NULL, 0) != 0) {
+          match = 0;
+        }
       }
-      apr_table_unset(r->headers_out, sconf->header_name);
-      apr_table_set(r->notes, QS_REC_COOKIE, "");
+      if(match) {
+        qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                                &qos_module);
+        qs_req_ctx *rctx = qos_rctx_config_get(r);
+        qos_set_session(r, sconf);
+        rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
+        if(cconf) {
+          cconf->is_vip = 1;
+          cconf->is_vip_by_header = 1;
+        }
+        apr_table_set(r->notes, QS_REC_COOKIE, "");
+      }
+      if(sconf->header_name_drop) {
+        apr_table_unset(r->headers_out, sconf->header_name);
+      }
     }
   }
   if(sconf->vip_user && r->user) {
@@ -5344,7 +5376,11 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->cookie_path = apr_pstrdup(sconf->pool, "/");
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
+  sconf->header_name_drop = 0;
+  sconf->header_name_regex = NULL;
   sconf->ip_header_name = NULL;
+  sconf->ip_header_name_drop = 0;
+  sconf->ip_header_name_regex = NULL;
   sconf->vip_user = 0;
   sconf->vip_ip_user = 0;
   sconf->max_conn = -1;
@@ -5461,9 +5497,13 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->header_name == NULL) {
     o->header_name = b->header_name;
+    o->header_name_drop = b->header_name_drop;
+    o->header_name_regex = b->header_name_regex;
   }
   if(o->ip_header_name == NULL) {
     o->ip_header_name = b->ip_header_name;
+    o->ip_header_name_drop = b->ip_header_name_drop;
+    o->ip_header_name_regex = b->ip_header_name_regex;
   }
   if(o->vip_user == 0) {
     o->vip_user = b->vip_user;
@@ -6035,17 +6075,61 @@ const char *qos_key_cmd(cmd_parms *cmd, void *dcfg, const char *seed) {
 /**
  * name of the http header to mark a vip
  */
-const char *qos_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
+const char *qos_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *n, const char *drop) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  sconf->header_name = apr_pstrdup(cmd->pool, name);
+  char *name = apr_pstrdup(cmd->pool, n);
+  char *p = strchr(name, '=');
+  if(p) {
+    p[0] = '\0';
+    p++;
+#ifdef AP_REGEX_H
+    sconf->header_name_regex = ap_pregcomp(cmd->pool, p, AP_REG_EXTENDED);
+#else
+    sconf->header_name_regex = ap_pregcomp(cmd->pool, p, REG_EXTENDED);
+#endif
+    if(sconf->header_name_regex == NULL) {
+      return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
+                          cmd->directive->directive, p);
+    }
+  } else {
+    sconf->header_name_regex = NULL;
+  }
+  if(drop && (strcasecmp(drop, "drop") == 0)) {
+    sconf->header_name_drop = 1;
+  } else {
+    sconf->header_name_drop = 0;
+  }
+  sconf->header_name = name;
   return NULL;
 }
 
-const char *qos_ip_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
+const char *qos_ip_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *n, const char *drop) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  sconf->ip_header_name = apr_pstrdup(cmd->pool, name);
+  char *name = apr_pstrdup(cmd->pool, n);
+  char *p = strchr(name, '=');
+  if(p) {
+    p[0] = '\0';
+    p++;
+#ifdef AP_REGEX_H
+    sconf->ip_header_name_regex = ap_pregcomp(cmd->pool, p, AP_REG_EXTENDED);
+#else
+    sconf->ip_header_name_regex = ap_pregcomp(cmd->pool, p, REG_EXTENDED);
+#endif
+    if(sconf->ip_header_name_regex == NULL) {
+      return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
+                          cmd->directive->directive, p);
+    }
+  } else {
+    sconf->ip_header_name_regex = NULL;
+  }
+  if(drop && (strcasecmp(drop, "drop") == 0)) {
+    sconf->ip_header_name_drop = 1;
+  } else {
+    sconf->ip_header_name_drop = 0;
+  }
+  sconf->ip_header_name = name;
   return NULL;
 }
 
@@ -6627,14 +6711,22 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_SessionKey <string>, defines a key used for session"
                 " cookie encryption."),
-  AP_INIT_TAKE1("QS_VipHeaderName", qos_header_name_cmd, NULL,
-                RSRC_CONF,
-                "QS_VipHeaderName <name>, defines the http header name which is"
-                " used to signalize a very important person (vip)."),
-  AP_INIT_TAKE1("QS_VipIPHeaderName", qos_ip_header_name_cmd, NULL,
-                RSRC_CONF,
-                "QS_VipIPHeaderName <name>, defines the http header name which is"
-                " used to signalize priviledged clients (IP addresses)."),
+  AP_INIT_TAKE12("QS_VipHeaderName", qos_header_name_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_VipHeaderName <name>[=<regex>] [drop], defines the"
+                 " http header name which is"
+                 " used to signalize a very important person (vip)."
+                 " Tests Optionally its value against the provided regular expression."
+                 " Specify the action 'drop' if you want mod_qos to remove this"
+                 " control header from the HTTP response."),
+  AP_INIT_TAKE12("QS_VipIPHeaderName", qos_ip_header_name_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_VipIPHeaderName <name>[=<regex>] [drop], defines the http"
+                 " header name which is"
+                 " used to signalize priviledged clients (IP addresses)."
+                 " Tests Optionally its value against the provided regular expression."
+                 " Specify the action 'drop' if you want mod_qos to remove this"
+                 " control header from the HTTP response."),
   AP_INIT_NO_ARGS("QS_VipUser", qos_vip_u_cmd, NULL,
                   RSRC_CONF,
                   "QS_VipUser, creates a VIP session for users"
@@ -6702,7 +6794,7 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_EventRequestLimit <variable>[=<regex>] <number>, defines the allowed"
                 " number of concurrent requests, having the specified variable set"
-                " (optionally checking its value too)."),
+                " (optionally checking its value against the provided regular expression)."),
   AP_INIT_TAKE2("QS_EventPerSecLimit", qos_event_rs_cmd, NULL,
                 RSRC_CONF,
                 "QS_EventPerSecLimit [!]<variable> <number>, defines the allowed"

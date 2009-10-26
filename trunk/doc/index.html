@@ -389,13 +389,19 @@ Directives:
 
 <ul>
 <li>
-<code>QS_VipHeaderName &lt;header name&gt;</code><br>
+<code>QS_VipHeaderName &lt;header name&gt;[=&lt;regex&gt;] [drop]</code><br>
 Defines a HTTP response header which marks a user as a VIP. mod_qos creates 
 a session for this user by setting a cookie, e.g. after successful user authentication. 
+Tests Optionally its value against the provided regular expression. 
+Specify the action 'drop' if you want mod_qos to remove this 
+control header from the HTTP response.
 </li>
 <li>
-<code>QS_VipIPHeaderName &lt;header name&gt;</code><br>
+<code>QS_VipIPHeaderName &lt;header name&gt;[=&lt;regex&gt;] [drop]</code><br>
 Defines a HTTP response header which marks a client source IP address as a VIP. 
+Tests Optionally its value against the provided regular expression. 
+Specify the action 'drop' if you want mod_qos to remove this 
+control header from the HTTP response.
 </li>
 <li>
 <code>QS_VipUser</code><br>
@@ -968,10 +974,10 @@ and high priority clients when the server has less than 80%
 directive in order to identify VIP clients. The distinction between 
 high and low priority clients is made based on the client data transfer 
 behavior (clients sending slow, using small data packets, or accessing 
-the "unusual" content types (see <code>QS_ClientTolerance</code>), 
+"unusual" content types (see <code>QS_ClientTolerance</code>), 
 get marked as low priority clients, look for "r;" events within the 
 <a href="#accesslog">access log</a> or use the 
-<a href="#statusviewer">status viewer</a> to which client addresses 
+<a href="#statusviewer">status viewer</a> to determine which client addresses 
 are identified as log priority clients). A low priority flag 
 is cleared after 24h hours. Clients identified by 
 <code>QS_SrvMaxConnExcludeIP</code> are excluded from connection 

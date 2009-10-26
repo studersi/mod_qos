@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.86 2009-10-23 21:36:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.87 2009-10-26 21:13:46 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -399,6 +399,13 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipIpUser.htt"
+fi
+
+./ctl.sh restart -D real_ip -D cc -D special-mod-qos-vip-ip > /dev/null
+./htt.sh -se ./scripts/QS_VipIpUser2.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_VipIpUser2.htt"
 fi
 
 # - real ip -------------------------------------------------------

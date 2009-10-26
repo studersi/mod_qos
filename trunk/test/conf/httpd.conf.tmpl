@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.127 2009-10-23 21:36:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.128 2009-10-26 21:13:46 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -200,7 +200,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_SetEnvIf                qsevent !QS_VipRequest          qsmin=event
    QS_EventPerSecLimit        qsmin  5
 
-   QS_VipHeaderName           mod-qos-vip
+   QS_VipHeaderName           mod-qos-vip drop
    QS_SessionTimeout          4
    #QS_SessionCookieName       mm
    #QS_SessionCookiePath       /x
@@ -395,8 +395,11 @@ Listen                  server1:##QS_PORT_BASE1##
    QS_LocRequestPerSecLimitMatch /ccc/.*     75
    QS_LocKBytesPerSecLimit    /ddd/ddd/ddd/ddd 1000
 
-   QS_VipHeaderName           mod-qos-vip
-   QS_VipIPHeaderName         mod-qos-vip-ip
+   QS_VipHeaderName           mod-qos-vip drop
+   QS_VipIPHeaderName         mod-qos-vip-ip drop
+<IfDefine special-mod-qos-vip-ip>
+   QS_VipIPHeaderName         mod-qos-vip-ip=me
+</IfDefine>
    #QS_SrvMaxConnExcludeIP           192.168.32.
 
    BrowserMatch "(MSIE 5\.)"  QS_KeepAliveTimeout=7
