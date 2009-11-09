@@ -1,6 +1,23 @@
 
-- Collecting additional client/connection attributes such as requests per single TCP connection (keep-alive), 304 responses, elapse time between requests, request/response length, etc. would be interesting.
-- More "dynamic" rules: enforce rules on certain conditions only (e.g. overall server usage), adjust metrics dynamically, learning and permissive mode.
-- Re-design/re-implementation of some parts (maybe dropping some features, maybe start the implementation of a separate module).
-- Web interface to configure mod_qos dynamically. 
-- QS_ClientEventRequestLimit limits the number of concurrent events per client source IP.
+- collecting additional client/connection attributes such
+  - as requests per single TCP connection (keep-alive)
+  + 304 responses
+  + respone times (html/css/js/image/...)
+  - elapse time between requests
+  - request/response length
+  - othder
+- more "dynamic" rules:
+  - enforce rules on certain conditions only (e.g. overall server usage)
+  - adjust metrics dynamically
+  - learning and permissive mode (server wide, per function)
+- re-design/re-implementation of some parts
+  + maybe dropping some features
+  + remove other functions
+  - maybe start the implementation of a separate module.
+- web interface to configure mod_qos dynamically
++ QS_ClientEventRequestLimit limits the number of concurrent events per client source IP.
+- improved anomalie detection (thresholds, logging)
+
+----------------
+
+scp index.html pbuchbinder,mod-qos@web.sourceforge.net:htdocs
