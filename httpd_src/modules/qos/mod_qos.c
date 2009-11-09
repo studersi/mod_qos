@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.178 2009-10-26 21:13:46 pbuchbinder Exp $";
-static const char g_revision[] = "9.2";
+static const char revision[] = "$Id: mod_qos.c,v 5.179 2009-11-09 21:54:11 pbuchbinder Exp $";
+static const char g_revision[] = "9.3";
 
 /************************************************************************
  * Includes
@@ -1731,7 +1731,6 @@ static int qos_per_dir_event_rules(request_rec *r, qos_dir_config *dconf) {
   }
   return APR_SUCCESS;
 }
-  
 
 /**
  * processes the per location rules QS_Permit* and QS_Deny*
@@ -2182,6 +2181,20 @@ static void qos_enable_parp(request_rec *r) {
     }
   }
 }
+
+/** generic request validation */
+static apr_status_t qos_request_check(request_rec *r) {
+  if((r->parsed_uri.path == NULL) || (r->unparsed_uri == NULL)) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(045)"access denied, invalid request line:"
+                  " can't parse uri, c=%s, id=%s",
+                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                  qos_unique_id(r, "045"));
+    return HTTP_BAD_REQUEST;
+  }
+  return APR_SUCCESS;
+}
+
 
 /**
  * QS_SetEnvIfParp (prr), enable parp
@@ -3907,16 +3920,11 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
 /**
  * all headers has been read, end/update connection level filters
  */
-static int qos_post_read_request(request_rec * r) {
+static int qos_post_read_request(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
-  if((r->parsed_uri.path == NULL) || (r->unparsed_uri == NULL)) {
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(045)"access denied, invalid request line:"
-                  " can't parse uri, c=%s, id=%s",
-                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
-                  qos_unique_id(r, "045"));
+  if(qos_request_check(r) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;
   }
   qos_parp_prr(r, sconf);
@@ -7017,7 +7025,6 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
   //ap_hook_insert_error_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
-
 }
 
 /************************************************************************

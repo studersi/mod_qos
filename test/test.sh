@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.87 2009-10-26 21:13:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.88 2009-11-09 21:54:12 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -581,7 +581,7 @@ fi
 
 
 if [ $WARNINGS -ne 0 ]; then
-    echo "ERROR: got $WARNINGS warnings and $ERROR errors"
+    echo "ERROR: got $WARNINGS warnings and $ERRORS errors"
     exit 1
 fi
 
