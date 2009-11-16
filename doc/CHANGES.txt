@@ -1,7 +1,5 @@
 Version 9.2
 
-- QS_VipIPHeaderName <name>[=<regex>]
-
 - New syntax:
   QS_VipHeaderName <header name>[=<regex>] [drop]
   QS_VipIPHeaderName <header name>[=<regex>] [drop]
