@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.128 2009-10-26 21:13:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.129 2009-11-19 21:26:39 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -426,9 +426,9 @@ Listen                  server1:##QS_PORT_BASE1##
 NameVirtualHost         server1:##QS_PORT_BASE2##
 Listen                  server1:##QS_PORT_BASE2##
 
-SSLCipherSuite          RC4-MD5:EXP-RC4-MD5
+SSLProtocol             all -SSLv2
+SSLCipherSuite          RC4-SHA:RC4-MD5:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!SSLv2:!EXP
 SSLSessionCacheTimeout  864000
-SSLProtocol             all
 SSLMutex                file:##ROOT##/logs/ssl_mutex
 SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
 SSLRandomSeed           startup builtin
