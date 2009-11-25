@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_1.htt,v 1.3 2009-08-25 07:10:51 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_1.htt,v 1.4 2009-11-25 21:27:28 pbuchbinder Exp $
 #
 # slow post data
 #
@@ -23,7 +23,19 @@ _SLEEP 3000
 __$LN
 _FLUSH
 _SLEEP 6000
-_EXPECT . "500 Internal Server Error"
+__more
+_EXPECT ERROR "connection abort"
+_FLUSH
+#_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "mod_qos.034.: access denied, QS_SrvMinDataRate rule .in.: min=..., this connection="
 _WAIT
 
 END
@@ -56,5 +68,17 @@ __Host: localhost
 __
 _EXPECT . "this is the root index.html"
 _WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+_PIPE
+_EXEC tail -2 ./logs/error_log
 
 END

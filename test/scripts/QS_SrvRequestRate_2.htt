@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_2.htt,v 1.4 2009-08-25 07:10:51 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_2.htt,v 1.5 2009-11-25 21:27:28 pbuchbinder Exp $
 #
 # slow post data, second request on the same connection
 #
@@ -30,8 +30,36 @@ _SLEEP 3000
 __$LN
 _FLUSH
 _SLEEP 7000
-_EXPECT . "500 Internal Server Error"
+# 500/400 depends on the apache version
+_EXPECT . "(500 Internal Server Error)|(400 Bad Request)"
 _WAIT
+
+_CLOSE
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__POST /index.html HTTP/1.1
+__Host: localhost
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: 1012
+__
+__==START==
+__$LN
+_FLUSH
+_SLEEP 3000
+__$LN
+_FLUSH
+_SLEEP 7000
+__more
+_EXPECT ERROR "connection abort"
+_FLUSH
+
 
 END
 
@@ -84,6 +112,6 @@ __Content-Length: AUTO
 __Content-Type: text/html
 __
 _PIPE
-_EXEC tail -3 logs/error_log
+_EXEC tail -2 logs/error_log
 
 END

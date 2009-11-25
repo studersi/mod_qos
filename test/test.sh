@@ -1,13 +1,13 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.88 2009-11-09 21:54:12 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.89 2009-11-25 21:27:28 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2008 Pascal Buchbinder
+# Copyright (C) 2007-2009 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -118,6 +118,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipHeaderName2.htt"
 fi
+sleep 1
 
 # -----------------------------------------------------------------
 echo "-- vip request, QS_VipRequest.htt" >>  logs/error_log
@@ -126,6 +127,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipRequest.htt"
 fi
+sleep 1
 
 # -----------------------------------------------------------------
 echo "-- vip request and graceful restart, QS_VipHeaderName_Graceful.htt" >>  logs/error_log
@@ -323,14 +325,6 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_HeaderFilter.htt"
 fi
 
-### -----------------------------------------------------------------
-##echo "-- mod_qos_control, QS_Control_Server.htt" >>  logs/error_log
-##./htt.sh -s ./scripts/QS_Control_Server.htt
-##if [ $? -ne 0 ]; then
-##    ERRORS=`expr $ERRORS + 1`
-##    echo "FAILED QS_Control_Server.htt"
-##fi
-
 # -----------------------------------------------------------------
 ./ctl.sh restart -D max_clients -D cc > /dev/null
 echo "-- QS_ClientPrefer.htt" >>  logs/error_log
@@ -485,46 +479,53 @@ if [ $? -ne 0 ]; then
 fi
 
 # - DDoS -------------------------------------------------------
-./htt.sh -s ./scripts/QS_SrvRequestRate_0.htt
+./run.sh -s ./scripts/QS_SrvRequestRate_0.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_0.htt"
 fi
-./htt.sh -s ./scripts/QS_SrvRequestRate_1.htt
+echo "-- QS_SrvRequestRate_1.htt" >>  logs/error_log
+./run.sh -s ./scripts/QS_SrvRequestRate_1.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_1.htt"
 fi
-if [ `tail -1 logs/access_log | grep -c ' r; '` -eq 0 ]; then
+if [ `tail -2 logs/access_log | grep -c ' r; '` -eq 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_1.htt (no lowrate)"
+    tail -2 logs/access_log
 fi
-./htt.sh -s ./scripts/QS_SrvRequestRate_2.htt
+echo "-- QS_SrvRequestRate_2.htt" >>  logs/error_log
+./run.sh -s ./scripts/QS_SrvRequestRate_2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_2.htt"
 fi
-if [ `tail -20 logs/error_log | grep -c "mod_qos(034)"` -ne 3 ]; then
+if [ `tail -22 logs/error_log | grep -c "mod_qos(034)"` -ne 4 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_0/1.htt"
+    tail -22 logs/error_log | grep -c "mod_qos(034)"
 fi
-./htt.sh -s ./scripts/QS_SrvRequestRate_3.htt
+echo "-- QS_SrvRequestRate_3.htt" >>  logs/error_log
+./run.sh -s ./scripts/QS_SrvRequestRate_3.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_3.htt"
 fi
 ./ctl.sh restart > /dev/null
+echo "-- QS_SrvRequestRate_4.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_SrvRequestRate_4.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_4.htt"
 fi
+echo "-- QS_SrvRequestRate_5.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_SrvRequestRate_5.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_5.htt"
 fi
-
+echo "-- QS_SrvRequestRate_6.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_SrvRequestRate_6.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -534,6 +535,7 @@ if [ `tail -17 logs/error_log | grep -c "QS_SrvMinDataRate rule (in)"` -eq 0 ]; 
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_6.htt (no error log entry)"
 fi
+echo "-- QS_SrvRequestRate_off.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_SrvRequestRate_off.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
