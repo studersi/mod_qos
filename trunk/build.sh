@@ -1,14 +1,14 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.28 2009-01-19 20:30:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.29 2009-11-25 21:27:27 pbuchbinder Exp $
 #
-# Simple build script using apache and libpng tar.gz from the 3thrdparty directory
+# Simple build script using Apache tar.gz from the 3thrdparty directory
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2008 Pascal Buchbinder
+# Copyright (C) 2007-2009 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -29,7 +29,7 @@
 TOP=`pwd`
 
 #APACHE_VER=2.0.59
-APACHE_VER=2.2.8
+APACHE_VER=2.2.13
 
 echo "build Apache $APACHE_VER"
 if [ ! -d httpd-${APACHE_VER} ]; then

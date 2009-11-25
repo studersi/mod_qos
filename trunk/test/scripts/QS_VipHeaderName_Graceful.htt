@@ -1,5 +1,5 @@
 #
-# $Id: QS_VipHeaderName_Graceful.htt,v 1.1 2008-01-24 15:26:11 pbuchbinder Exp $
+# $Id: QS_VipHeaderName_Graceful.htt,v 1.2 2009-11-25 21:27:28 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -8,6 +8,7 @@ CLIENT
 _REQ localhost $QS_PORT_BASE
 __GET /login/vip.cgi HTTP/1.1
 __Host: localhost
+__Req: 1
 __
 _MATCH headers "MODQOS=(.*); Path" COOKIE_VAL 
 _EXPECT . "200 OK"
@@ -18,6 +19,7 @@ __GET /cgi/sleep.cgi HTTP/1.1
 __Host: localhost
 __Cookie: MODQOS=$COOKIE_VAL
 __Connection: keep-alive
+__Req: 2
 __
 _EXPECT . "200 OK"
 _WAIT
@@ -28,6 +30,7 @@ __GET /cgi/sleep.cgi HTTP/1.1
 __Host: localhost
 __Cookie: MODQOS=$COOKIE_VAL
 __Connection: keep-alive
+__Req: 3
 __
 _EXPECT . "200 OK"
 _WAIT
@@ -45,6 +48,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=5 HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
+__Req: 4x
 __
 _EXPECT . "200 OK"
 _WAIT
