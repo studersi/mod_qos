@@ -1,5 +1,5 @@
 #
-# $Id: QS_PermitUri.htt,v 1.1 2008-01-24 15:26:00 pbuchbinder Exp $
+# $Id: QS_PermitUri.htt,v 1.2 2009-11-26 19:32:06 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -8,6 +8,7 @@ CLIENT
 _REQ localhost $QS_PORT_BASE
 __GET /aaa/index.html HTTP/1.1
 __Host: localhost
+__Req: 01
 __
 _EXPECT . "aaa index.html"
 _WAIT
@@ -15,6 +16,7 @@ _WAIT
 _REQ localhost $QS_PORT_BASE
 __GET /aaa/index%20.html HTTP/1.1
 __Host: localhost
+__Req: 02
 __
 _EXPECT . "403 Forbidden"
 _WAIT
@@ -24,6 +26,7 @@ _CLOSE
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi HTTP/1.1
 __Host: localhost
+__Req: 03
 __
 _EXPECT . "200 OK"
 _WAIT
@@ -31,6 +34,7 @@ _WAIT
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
+__Req: 04
 __
 _EXPECT . "200 OK"
 _WAIT
@@ -38,6 +42,7 @@ _WAIT
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=a HTTP/1.1
 __Host: localhost
+__Req: 05
 __
 _EXPECT . "403 Forbidden"
 _WAIT
