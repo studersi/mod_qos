@@ -7,7 +7,7 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
     RC=$?
     if [ $RC -ne 0 ]; then
 	echo "FAILED"
-	tail .htt.log
+	tail -30 .htt.log
     else
 	echo "OK"
 	rm .htt.log
