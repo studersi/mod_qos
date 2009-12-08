@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.179 2009-11-09 21:54:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.180 2009-12-08 20:42:49 pbuchbinder Exp $";
 static const char g_revision[] = "9.3";
 
 /************************************************************************
@@ -420,6 +420,8 @@ typedef struct {
   int dec_mode;
   apr_off_t maxpost;
   qs_rfilter_action_e urldecoding;
+  char *response_pattern;
+  char *response_pattern_var;
 } qos_dir_config;
 
 /**
@@ -520,6 +522,7 @@ typedef struct {
   apr_off_t maxpostcount;
   int event_kbytes_per_sec_block_rate;
   int cc_event_req_set;
+  char *body_window;
 } qs_req_ctx;
 
 /**
@@ -691,10 +694,9 @@ static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
                            s->error_fname ? s->error_fname : ""
 #ifdef ap_http_scheme
   // Apache 2.2
-                           ,s->server_scheme ? s->server_scheme : "");
-#else
-                           );
+                           ,s->server_scheme ? s->server_scheme : ""
 #endif
+                           );
   int len = strlen(key);
   int i;
   char *p;
@@ -1078,6 +1080,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->maxpostcount = 0;
     rctx->event_kbytes_per_sec_block_rate = 0;
     rctx->cc_event_req_set = 0;
+    rctx->body_window = NULL;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
@@ -3716,10 +3719,11 @@ static void qos_delay(request_rec *r) {
 #ifdef ap_http_scheme
     // Apache 2.2
     char *errp = NULL;
-    if((APR_SUCCESS == apr_strtoff(&s, d, &errp, 10)) && s > 0) {
+    if((APR_SUCCESS == apr_strtoff(&s, d, &errp, 10)) && s > 0)
 #else
-    if((s = apr_atoi64(d)) > 0) {
+    if((s = apr_atoi64(d)) > 0)
 #endif
+      {
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       int sec = s / 1000;
       int nsec = s % 1000;
@@ -3949,10 +3953,11 @@ static int qos_post_read_request(request_rec *r) {
         } else {
 #ifdef ap_http_scheme
           // Apache 2.2
-          if(APR_SUCCESS == apr_strtoff(&inctx->cl_val, cl, NULL, 0)) {
+          if(APR_SUCCESS == apr_strtoff(&inctx->cl_val, cl, NULL, 0))
 #else
-          if((inctx->cl_val = apr_atoi64(cl)) >= 0) {
+          if((inctx->cl_val = apr_atoi64(cl)) >= 0)
 #endif
+            {
             ap_add_input_filter("qos-in-filter2", inctx, r, r->connection);
             inctx->status = QS_CONN_STATE_BODY;
           } else {
@@ -3976,11 +3981,11 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
 #ifdef ap_http_scheme
       // Apache 2.2
       char *errp = NULL;
-      if((APR_SUCCESS != apr_strtoff(&s, l, &errp, 10)) ||
+      if((APR_SUCCESS != apr_strtoff(&s, l, &errp, 10)) || (s < 0))
 #else
-      if(((s = apr_atoi64(l)) < 0) ||
+      if(((s = apr_atoi64(l)) < 0) || (s < 0))
 #endif
-         (s < 0)) {
+        {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
                       " invalid content-length header, c=%s, id=%s",
@@ -4077,6 +4082,11 @@ static int qos_header_parser(request_rec * r) {
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
     qs_req_ctx *rctx = NULL;
+
+    /* QS_SetEnvResBody */
+    if(dconf && dconf->response_pattern) {
+      ap_add_output_filter("qos-out-filter-body", NULL, r, r->connection);
+    }
 
     /* 
      * QS_Permit* / QS_Deny* enforcement (but not QS_DenyEvent)
@@ -4505,6 +4515,64 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     }
   }
   return rv;
+}
+
+/* QS_SetEnvResBody */
+static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) {
+  request_rec *r = f->r;
+  qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
+  if((dconf == NULL) || (dconf->response_pattern == NULL)) {
+    ap_remove_output_filter(f);
+  } else {
+    int len = strlen(dconf->response_pattern);
+    apr_bucket *b;
+    qs_req_ctx *rctx = qos_rctx_config_get(r);
+    for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
+      if(APR_BUCKET_IS_EOS(b)) {
+        /* If we ever see an EOS, make sure to FLUSH. */
+        apr_bucket *flush = apr_bucket_flush_create(f->c->bucket_alloc);
+        APR_BUCKET_INSERT_BEFORE(b, flush);
+      }
+      if(!(APR_BUCKET_IS_METADATA(b))) {
+        const char *buf;
+        apr_size_t nbytes;
+        if(apr_bucket_read(b, &buf, &nbytes, APR_BLOCK_READ) == APR_SUCCESS) {
+          if(nbytes) {
+            char tmp;
+            char *wbuf = (char *)buf;
+            int blen = nbytes > len ? len : nbytes;
+            /* 1. overlap beginning */
+            if(rctx->body_window == NULL) {
+              rctx->body_window = apr_pcalloc(r->pool, (len*2)+1);
+              rctx->body_window[0] = '\0';
+            } else {
+              int wlen = strlen(rctx->body_window);
+              strncpy(&rctx->body_window[wlen], buf, blen);
+              rctx->body_window[wlen+blen] = '\0';
+              if(strstr(rctx->body_window, dconf->response_pattern)) {
+                /* found pattern */
+                apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
+                ap_remove_output_filter(f);
+              }
+            }
+            /* 2. new buffer (don't want to copy the data) */
+            tmp = wbuf[nbytes];  /* @CRX01 */
+            wbuf[nbytes] = '\0';
+            if(strstr(wbuf, dconf->response_pattern)) {
+              /* found pattern */
+              apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
+              ap_remove_output_filter(f);
+            }
+            wbuf[nbytes] = tmp;  /* @CRX01 */
+            /* 3. store the end (for next loop) */
+            strncpy(rctx->body_window, &buf[nbytes-blen], blen);
+            rctx->body_window[blen] = '\0';
+          }
+        }
+      }
+    }
+  }
+  return ap_pass_brigade(f->next, bb);
 }
 
 /**
@@ -5281,6 +5349,8 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->dec_mode = QOS_DEC_MODE_FLAGS_STD;
   dconf->maxpost = -1;
   dconf->urldecoding = QS_OFF_DEFAULT;
+  dconf->response_pattern = NULL;
+  dconf->response_pattern_var = NULL;
   return dconf;
 }
 
@@ -5344,6 +5414,13 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
     dconf->urldecoding = b->urldecoding;
   } else {
     dconf->urldecoding = o->urldecoding;
+  }
+  if(o->response_pattern) {
+    dconf->response_pattern = o->response_pattern;
+    dconf->response_pattern_var = o->response_pattern_var;
+  } else {
+    dconf->response_pattern = b->response_pattern;
+    dconf->response_pattern_var = b->response_pattern_var;
   }
   return dconf;
 }
@@ -5837,6 +5914,19 @@ const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *r
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   apr_table_set(sconf->setenvstatus_t, rc, var);
+  return NULL;
+}
+
+/** QS_SetEnvResBody */
+const char *qos_event_setenvresbody_cmd(cmd_parms *cmd, void *dcfg, const char *pattern,
+                                        const char *var) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  if(dconf->response_pattern) {
+    return apr_psprintf(cmd->pool, "%s: only one pattern must be configured for a location",
+                        cmd->directive->directive);
+  }
+  dconf->response_pattern = apr_pstrdup(cmd->pool, pattern);
+  dconf->response_pattern_var = apr_pstrdup(cmd->pool, var);
   return NULL;
 }
 
@@ -6371,10 +6461,11 @@ const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
   char *errp = NULL;
 #ifdef ap_http_scheme
   // Apache 2.2
-  if(APR_SUCCESS != apr_strtoff(&s, bytes, &errp, 10)) {
+  if(APR_SUCCESS != apr_strtoff(&s, bytes, &errp, 10))
 #else
-  if((s = apr_atoi64(bytes)) < 0) {
+  if((s = apr_atoi64(bytes)) < 0)
 #endif
+    {
     return "QS_LimitRequestBody argument is not parsable";
   }
   if(s < 0) {
@@ -6455,12 +6546,13 @@ const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
 /* QS_RequestHeaderFilterRule: set custom header rules (global only)
    name, action, pcre, size */
 #ifdef AP_TAKE_ARGV
-const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
+const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[])
 #else
 const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg, 
                                       const char *header, const char *action,
-                                      const char *rule) {
+                                      const char *rule)
 #endif
+  {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *errptr = NULL;
@@ -6532,10 +6624,11 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
 }
 
 #ifdef AP_TAKE_ARGV
-const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
+const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[])
 #else
-const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg) {
+const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg)
 #endif
+  {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -6842,7 +6935,13 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_SetEnvStatus <status code> <variable>, adds the defined"
                 " request environment variable if the HTTP status code matches the"
-                " the defined value."),
+                " defined value."),
+  AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvresbody_cmd, NULL,
+                ACCESS_CONF,
+                "QS_SetEnvResBody <string> <variable>, adds the defined"
+                " request environment variable (e.g. QS_Block) if the HTTP"
+                " response body contains the"
+                " defined literal string."),
   AP_INIT_TAKE12("QS_SetEnvResHeader", qos_event_setenvresheader_cmd, NULL,
                  RSRC_CONF,
                  "QS_SetEnvResHeader <header name> [drop], adds the defined"
@@ -7023,6 +7122,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
   ap_register_output_filter("qos-out-filter-min", qos_out_filter_min, NULL, AP_FTYPE_RESOURCE);
   ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE);
+  ap_register_output_filter("qos-out-filter-body", qos_out_filter_body, NULL, AP_FTYPE_RESOURCE);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
   //ap_hook_insert_error_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
 }

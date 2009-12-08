@@ -1,3 +1,7 @@
+Version 9.3
+
+- New directive QS_SetEnvResBody.
+
 Version 9.2
 
 - New syntax:
