@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.89 2009-11-25 21:27:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.90 2009-12-08 20:42:49 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -549,11 +549,18 @@ if [ $? -ne 0 ]; then
 fi
 
 ./ctl.sh restart -D cc -D real_ip > /dev/null
-./htt.sh -s ./scripts/QS_SetEnvResHeadersMatch.htt
+./run.sh -s ./scripts/QS_SetEnvResHeadersMatch.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SetEnvResHeadersMatch.htt"
 fi
+./ctl.sh restart -D cc -D real_ip > /dev/null
+./run.sh -s ./scripts/QS_SetEnvResBody.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SetEnvResBody.htt"
+fi
+
 
 # tools -----------------------------------------------------------
 ./htt.sh -s ./scripts/qslog.htt

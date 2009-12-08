@@ -655,6 +655,13 @@ in conjunction with the <code>QS_ClientEventBlockCount</code>
 directive.
 </li>
 <li>
+<code>QS_SetEnvResBody &lt;string&gt; &lt;variable&gt;</code><br>
+Adds the definedenvironment variable (e.g. <code>QS_Block</code>) if the 
+response body contains the defined literal string. Used on a per 
+location level. Only one directive may be defined per location (one 
+search string per response).
+</li>
+<li>
 <code>QS_SetEnvResHeader &lt;header name&gt; [drop]</code><br>
 Adds the defined HTTP response header to the request environment variables. 
 Deletes the specified header if the action 'drop' has been specified.
