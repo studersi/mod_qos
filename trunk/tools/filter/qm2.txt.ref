@@ -1,5 +1,5 @@
 # ADD line 1: /app/test
-# 001 ^(/[a-zA-Z0-9-_]+)+[/]?\.?[a-zA-Z]{0,4}$
+# 001 ^(/[a-zA-Z0-9\-_]+)+[/]?\.?[a-zA-Z]{0,4}$
 # ADD line 3: /m/this?name=val&more
 # 002 ^[/a-zA-Z]+/this\?((name|more)(=[a-zA-Z]*)*[&]?)*$
 # ADD line 4: /app/mo^"'re?name=value
@@ -64,9 +64,9 @@
 # 020 ^[/a-zA-Z]+/test\?[&]?((n)(=[a-zA-Z]*)*[&]?)*(=[&]?)*$
 
 # --------------------------------------------------------
-# Thu Jan 31 07:23:54 2008
+# Wed Dec 16 20:09:36 2009
 # 20 rules from 30 access log lines
-#  version: 5.8
+#  mod_qos version: 9.4
 #  source (-i): access_log
 #  path depth (-d): 1
 #  disable path only regex (-h): no
@@ -99,4 +99,4 @@ QS_PermitUri +QSF016 deny "^[/a-zA-Z\-]+/test\.php\?(((blah1|blah2)[&]?)*(=[&]?)
 QS_PermitUri +QSF017 deny "^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?((name|n)(=[ \$a-zA-Z\?]*)*[&]?)*$"
 QS_PermitUri +QSF018 deny "^[/]?[/a-zA-Z]+/test[/]?\?((n)(=[a-zA-Z:/\.\?]*)*[&]?)*$"
 QS_PermitUri +QSF019 deny "^/\?((n)(=[a-zA-Z]*)*[&]?)*$"
-QS_PermitUri +QSF020 deny "^(/[a-zA-Z0-9-_]+)+[/]?\.?[a-zA-Z]{0,4}$"
+QS_PermitUri +QSF020 deny "^(/[a-zA-Z0-9\-_]+)+[/]?\.?[a-zA-Z]{0,4}$"
