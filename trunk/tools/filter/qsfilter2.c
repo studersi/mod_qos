@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.119 2009-12-08 20:42:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.120 2009-12-16 16:01:46 pbuchbinder Exp $";
 static const char g_revision[] = "9.3";
 
 /* system */
@@ -57,6 +57,8 @@ static const char g_revision[] = "9.3";
 #include <apr_support.h>
 
 #define MAX_LINE 32768
+/* 1mb */
+#define MAX_LINE_BUFFER 1048576
 #define CR 13
 #define LF 10
 
@@ -1160,12 +1162,12 @@ static char *qos_post_optimization(apr_pool_t *lpool, char *query) {
 static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
 			    apr_table_t *rules_url, apr_table_t *special_rules,
 			    FILE *f, int *ln, int *dc, int first) {
-  char line[MAX_LINE];
+  char *line = apr_pcalloc(pool, MAX_LINE_BUFFER);
   int deny_count = *dc;
   int line_nr = *ln;
   apr_table_t *source_rules = apr_table_make(pool, 10);
   int rule_optimization = 300;
-  while(!qos_fgetline(line, sizeof(line), f)) {
+  while(!qos_fgetline(line, MAX_LINE_BUFFER, f)) {
     int doubleSlash = 0;
     apr_uri_t parsed_uri;
     apr_pool_t *lpool;
@@ -1334,9 +1336,9 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 }
 
 static void qos_measurement(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules, FILE *f, int *ln) {
-  char line[MAX_LINE];
+  char *line = apr_pcalloc(pool, MAX_LINE_BUFFER);
   int line_nr = 0;
-  while(!qos_fgetline(line, sizeof(line), f)) {
+  while(!qos_fgetline(line, MAX_LINE_BUFFER, f)) {
     apr_uri_t parsed_uri;
     apr_pool_t *lpool;
     apr_pool_create(&lpool, NULL);
