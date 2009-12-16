@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.180 2009-12-08 20:42:49 pbuchbinder Exp $";
-static const char g_revision[] = "9.3";
+static const char revision[] = "$Id: mod_qos.c,v 5.181 2009-12-16 19:32:41 pbuchbinder Exp $";
+static const char g_revision[] = "9.4";
 
 /************************************************************************
  * Includes
@@ -3687,7 +3687,7 @@ static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
 static void qos_audit(request_rec *r, qos_dir_config *dconf) {
   const char *q = NULL;
   const char *u = apr_table_get(r->notes, QS_PARP_PATH);
-  if(dconf->bodyfilter_p == 1) {
+  if(dconf->bodyfilter_p == 1 || dconf->bodyfilter_d == 1) {
     q = apr_table_get(r->notes, QS_PARP_QUERY);
   }
   if(u == NULL) {
@@ -3698,7 +3698,7 @@ static void qos_audit(request_rec *r, qos_dir_config *dconf) {
     }
     apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_PATH), u);
   }
-  if(q == 0) {
+  if(q == NULL) {
     if(r->parsed_uri.query) {
       q = apr_pstrcat(r->pool, "?", r->parsed_uri.query, NULL);
     } else {
