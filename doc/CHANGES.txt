@@ -1,3 +1,11 @@
+Version 9.4
+
+- Fixed: Variable %{qos-query} is not set when using the 
+  QS_DenyQueryBody directive (and neither QS_DenyBody nor
+  QS_PermitUriBody has been set).
+
+- Increased line buffer for qsfilter2 (2MB). 
+
 Version 9.3
 
 - New directive QS_SetEnvResBody.
