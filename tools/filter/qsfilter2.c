@@ -24,8 +24,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.120 2009-12-16 16:01:46 pbuchbinder Exp $";
-static const char g_revision[] = "9.3";
+static const char revision[] = "$Id: qsfilter2.c,v 1.121 2009-12-16 19:14:39 pbuchbinder Exp $";
+static const char g_revision[] = "9.4";
 
 /* system */
 #include <stdio.h>
@@ -57,8 +57,8 @@ static const char g_revision[] = "9.3";
 #include <apr_support.h>
 
 #define MAX_LINE 32768
-/* 1mb */
-#define MAX_LINE_BUFFER 1048576
+/* 2mb */
+#define MAX_LINE_BUFFER 2097152
 #define CR 13
 #define LF 10
 

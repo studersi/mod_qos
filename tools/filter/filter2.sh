@@ -37,8 +37,8 @@ if [ -n "$1" ]; then
 fi
 
 ./qsfilter2 -e -i access_log -m > qm2.txt
-diff qm2.txt qm2.txt.ref
+diff qm2.txt.ref qm2.txt
 ./qsfilter2 -e -i access_log  > q2.txt
-diff q2.txt q2.txt.ref
+diff q2.txt.ref q2.txt
 
 rm access_log
