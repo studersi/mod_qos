@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.130 2009-12-08 20:42:49 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.131 2009-12-16 19:32:41 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -322,6 +322,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        SecDefaultAction "nolog,pass,phase:2,status:500,t:urlDecodeUni,t:htmlEntityDecode,t:lowercase"
        SecRule ARGS "trigger" "setenv:argmatch=trigger"
        SecRequestBodyAccess on
+   </Location>
+
+   <Location /app/a/body>
+       QS_DenyQueryBody              on
+       QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
    </Location>
 
    <Location /app/a/resbody/pattern>
