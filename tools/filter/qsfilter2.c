@@ -24,8 +24,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.121 2009-12-16 19:14:39 pbuchbinder Exp $";
-static const char g_revision[] = "9.4";
+static const char revision[] = "$Id: qsfilter2.c,v 1.122 2009-12-21 18:58:12 pbuchbinder Exp $";
+static const char g_revision[] = "9.5";
 
 /* system */
 #include <stdio.h>
@@ -232,6 +232,9 @@ static int qos_unescaping(char *x) {
     x[j] = ch;
   }
   x[j] = '\0';
+  if(strlen(x) != j) {
+    fprintf(stderr, "WARNING, found escaped null char %s\n", x);
+  }
   return j;
 }
 
