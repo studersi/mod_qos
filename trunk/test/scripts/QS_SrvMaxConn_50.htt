@@ -1,7 +1,7 @@
 #
 # test QS_SrvMaxConn directive
 #
-# $Id: QS_SrvMaxConn_50.htt,v 1.1 2008-01-24 15:26:04 pbuchbinder Exp $
+# $Id: QS_SrvMaxConn_50.htt,v 1.2 2010-01-04 20:23:23 pbuchbinder Exp $
 #
 
 
@@ -18,7 +18,7 @@ _WAIT
 END
 
 CLIENT 10
-_SLEEP 1000
+_SLEEP 1500
 _REQ localhost $QS_PORT_BASE
 __GET /cgi100/sleep.cgi HTTP/1.1
 __Host: localhost
