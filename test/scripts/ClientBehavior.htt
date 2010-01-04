@@ -1,6 +1,10 @@
 #
-# $Id: ClientBehavior.htt,v 1.1 2009-09-16 13:20:31 pbuchbinder Exp $
+# $Id: ClientBehavior.htt,v 1.2 2010-01-04 20:23:23 pbuchbinder Exp $
 #
+#ifdef QS_INTERNAL_TEST
+#define QOS_CC_BEHAVIOR_THR 50
+#define QOS_CC_BEHAVIOR_THR_SINGLE 10
+#endif
 
 
 INCLUDE scripts/ports

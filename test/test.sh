@@ -1,13 +1,13 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.91 2009-12-16 19:32:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.92 2010-01-04 20:23:23 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2009 Pascal Buchbinder
+# Copyright (C) 2007-2010 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -152,7 +152,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
-./htt.sh -se ./scripts/QS_SrvMaxConn_50.htt
+./run.sh -se ./scripts/QS_SrvMaxConn_50.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvMaxConn_50.htt"
@@ -198,12 +198,12 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- request/sec limit, QS_LocRequestPerSecLimit_5.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_LocRequestPerSecLimit_5.htt
+./run.sh -se ./scripts/QS_LocRequestPerSecLimit_5.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestPerSecLimit_5.htt"
 fi
-./htt.sh -se ./scripts/QS_LocRequestPerSecLimit_5t.htt
+./run.sh -se ./scripts/QS_LocRequestPerSecLimit_5t.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestPerSecLimit_5t.htt"
@@ -367,7 +367,8 @@ if [ $QDIFF1 -eq 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientPrefer_SP.htt"
 fi
-./ctl.sh restart -D real_ip -D cc > /dev/null
+#./ctl.sh restart -D real_ip -D cc > /dev/null
+./ctl.sh restart -D cc > /dev/null
 ./htt.sh -se ./scripts/ClientBehavior.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -396,7 +397,7 @@ if [ $? -ne 0 ]; then
 fi
 
 ./ctl.sh restart -D real_ip -D cc -D special-mod-qos-vip-ip > /dev/null
-./htt.sh -se ./scripts/QS_VipIpUser2.htt
+./run.sh -se ./scripts/QS_VipIpUser2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipIpUser2.htt"
