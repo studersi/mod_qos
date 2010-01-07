@@ -1,3 +1,7 @@
+Version 9.5
+
+- New directives QS_SetReqHeader and QS_SetEnv.
+
 Version 9.4
 
 - Fixed: Variable %{qos-query} is not set when using the 

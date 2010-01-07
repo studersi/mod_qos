@@ -28,7 +28,7 @@
 
  See http://sourceforge.net/projects/mod-qos/ for further details.
 
- Copyright (C) 2007-2009 Pascal Buchbinder
+ Copyright (C) 2007-2010 Pascal Buchbinder
 
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
@@ -608,6 +608,12 @@ variable list (not case sensitive). This is used to combine multiple
 variables to a new event type.
 </li>
 <li>
+<code>QS_SetEnv &lt;env-variable&gt; &lt;value&gt;</code><br>
+Sets the defined variable with the value where the value string may contain 
+other environment variables surrounded by "${" and "}". The variable is only 
+set if all defined variables within the value have been resolved.
+</li>
+<li>
 <code>QS_SetEnvIfQuery &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Directive works quite similar to the <code>SetEnvIf</code> directive 
 of the Apache module mod_setenvif but the specified regex is 
@@ -655,7 +661,7 @@ in conjunction with the <code>QS_ClientEventBlockCount</code>
 directive.
 </li>
 <li>
-<code>QS_SetEnvResBody &lt;string&gt; &lt;variable&gt;</code><br>
+<code>QS_SetEnvResBody &lt;string&gt; &lt;env-variable&gt;</code><br>
 Adds the definedenvironment variable (e.g. <code>QS_Block</code>) if the 
 response body contains the defined literal string. Used on a per 
 location level. Only one directive may be defined per location (one 
@@ -663,14 +669,19 @@ search string per response).
 </li>
 <li>
 <code>QS_SetEnvResHeader &lt;header name&gt; [drop]</code><br>
-Adds the defined HTTP response header to the request environment variables. 
+Sets the defined HTTP response header to the request environment variables. 
 Deletes the specified header if the action 'drop' has been specified.
 </li>
 <li>
 <code>QS_SetEnvResHeaderMatch &lt;header name&gt; &lt;regex&gt;</code><br>
-Adds the defined HTTP response header to the request environment variables if 
+Sets the defined HTTP response header to the request environment variables if 
 the specified regular expression (pcre not case sensitive) matches 
 the header value. 
+</li>
+<li>
+<code>QS_SetReqHeader &lt;header name&gt; &lt;env-variable&gt;</code><br>
+Sets the defined HTTP request header to the request if the specified 
+environment variable is set.
 </li>
 </ul>
 
@@ -679,7 +690,7 @@ the header value.
 Sample of event rules:<br>
 <pre>
 # marks clients coming from the internal network:
-SetEnvIf    Remote_Addr      "^192\.168\."          QS_Intra
+SetEnvIf    Remote_Addr      ^192\.168\.            QS_Intra
 
 # marks clients neither coming from the internal network
 # nor are VIP clients as low priority clients:
@@ -692,6 +703,11 @@ QS_EventRequestLimit         QS_LowPrio             400
 
 # detects the variable "file" within the query portion of the URL:
 QS_SetEnvIfQuery             file=([a-zA-Z]*)       QS_LowPrio=$1
+
+# combine variables and propagate them to the application via HTTP header:
+SetEnvIf    Content-Length   ([0-9]*)               QS_Length=$1
+QS_SetEnv   QS_Type          "length=${QS_Length}; file=${QS_LowPrio}"
+QS_SetReqHeader              X-File                 QS_Type
 
 # limit the max. body size since mod_parp loads the whole message into
 # the memory servers's:
@@ -1259,6 +1275,6 @@ QS_LimitRequestBody     102400
 <br>
 <hr>
 <a href="http://sourceforge.net/projects/mod-qos/"><img align="right" src="http://sflogo.sourceforge.net/sflogo.php?group_id=196697&amp;type=1" width="88" height="31" border="0" alt="mod_qos at SourceForge.net" /></a>
-<SMALL><SMALL>&copy; 2007-2009, Pascal Buchbinder</SMALL></SMALL>
+<SMALL><SMALL>&copy; 2007-2010, Pascal Buchbinder</SMALL></SMALL>
 </body>
 </html>
