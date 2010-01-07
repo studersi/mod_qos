@@ -15,7 +15,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007-2009 Pascal Buchbinder
+ * Copyright (C) 2007-2010 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.181 2009-12-16 19:32:41 pbuchbinder Exp $";
-static const char g_revision[] = "9.4";
+static const char revision[] = "$Id: mod_qos.c,v 5.182 2010-01-07 20:40:51 pbuchbinder Exp $";
+static const char g_revision[] = "9.5";
 
 /************************************************************************
  * Includes
@@ -435,6 +435,8 @@ typedef struct {
   qs_actable_t *act;
   const char *error_page;
   apr_table_t *location_t;
+  apr_table_t *setenv_t;
+  apr_table_t *setreqheader_t;
   apr_table_t *setenvif_t;
   apr_table_t *setenvifquery_t;
   apr_table_t *setenvifparp_t;
@@ -2305,12 +2307,88 @@ static void qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
+#define QS_VAR_ALLOWED_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+
+/* replace ${var} by the value in var (retruns 1 on success) */
+static int qos_reslove_variable(apr_pool_t *p, apr_table_t *vars, char **string) {
+  int i;
+  int start;
+  int line_end;
+  char *var_name;
+  char *new_line = *string;
+  char *line = *string;
+  const char *val;
+
+ once_again:
+  i = 0;
+  while (line[i] != 0) {
+    if (line[i] == '$') {
+      line_end = i;
+      ++i;
+      if (line[i] == '{') {
+        ++i;
+      }
+      start = i;
+      while (line[i] != 0 && strchr(QS_VAR_ALLOWED_CHARS, line[i])) {
+        ++i;
+      }
+      var_name = apr_pstrndup(p, &line[start], i - start);
+      val = apr_table_get(vars, var_name);
+      if (val) {
+        line[line_end] = 0;
+        if (line[i] == '}') {
+          ++i;
+        }
+        new_line = apr_pstrcat(p, line, val, &line[i], NULL);
+        line = new_line;
+        goto once_again;
+      }
+    }
+    ++i;
+  }
+  if(!new_line[0] || strstr(new_line, "${")) {
+    return 0;
+  }
+  *string = new_line;
+  return 1;
+}
+
 /**
  * QS_SetEnvIfQuery (hp)
  */
 static void qos_setenvifquery(request_rec *r, qos_srv_config *sconf) {
   if(r->parsed_uri.query) {
     qos_setenvif_ex(r, r->parsed_uri.query, sconf->setenvifquery_t);
+  }
+}
+
+/* QS_SetEnv */
+static void qos_setenv(request_rec *r, qos_srv_config *sconf) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenv_t)->elts;
+  for(i = 0; i < apr_table_elts(sconf->setenv_t)->nelts; i++) {
+    char *variable = entry[i].val;
+    char *value = apr_pstrdup(r->pool, strchr(entry[i].key, '='));
+    value++;
+    if(qos_reslove_variable(r->pool, r->subprocess_env, &value)) {
+      apr_table_set(r->subprocess_env, variable, value);
+    }
+  }
+}
+
+/* QS_SetReqHeader */
+static void qos_setreqheader(request_rec *r, qos_srv_config *sconf) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setreqheader_t)->elts;
+  for(i = 0; i < apr_table_elts(sconf->setreqheader_t)->nelts; i++) {
+    char *header = entry[i].val;
+    char *variable = apr_pstrdup(r->pool, strchr(entry[i].key, '='));
+    const char *val;
+    variable++;
+    val = apr_table_get(r->subprocess_env, variable);
+    if(val) {
+      apr_table_set(r->headers_in, header, val);
+    }
   }
 }
 
@@ -4125,7 +4203,8 @@ static int qos_header_parser(request_rec * r) {
     qos_parp_hp_body(r, sconf);
     qos_setenvifquery(r, sconf);
     qos_setenvif(r, sconf);
-
+    qos_setenv(r, sconf);
+    qos_setreqheader(r, sconf);
 
     /*
      * QS_DenyEvent
@@ -5434,6 +5513,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->chroot = NULL;
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
+  sconf->setenv_t = apr_table_make(sconf->pool, 1);
+  sconf->setreqheader_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparp_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparpbody_t = apr_table_make(sconf->pool, 1);
@@ -5561,6 +5642,8 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   qos_table_merge(o->location_t, b->location_t);
   qos_table_merge(o->setenvif_t, b->setenvif_t);
+  qos_table_merge(o->setenv_t, b->setenv_t);
+  qos_table_merge(o->setreqheader_t, b->setreqheader_t);
   qos_table_merge(o->setenvifquery_t, b->setenvifquery_t);
   qos_table_merge(o->setenvifparp_t, b->setenvifparp_t);
   qos_table_merge(o->setenvifparpbody_t, b->setenvifparpbody_t);
@@ -5930,7 +6013,43 @@ const char *qos_event_setenvresbody_cmd(cmd_parms *cmd, void *dcfg, const char *
   return NULL;
 }
 
-const char *qos_event_setenvresheader_cmd(cmd_parms *cmd, void *dcfg, const char *hdr, const char *action) {
+/* QS_SetEnv */
+const char *qos_setenv_cmd(cmd_parms *cmd, void *dcfg, const char *variable,
+                           const char *value) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  if(!variable[0] || !value[0]) {
+    return apr_psprintf(cmd->pool, "%s: invalid parameter",
+                        cmd->directive->directive);
+  }
+  if(strchr(variable, '=')) {
+    return apr_psprintf(cmd->pool, "%s: variable must not contain a '='",
+                        cmd->directive->directive);
+  }
+  apr_table_set(sconf->setenv_t, apr_pstrcat(cmd->pool, variable, "=", value, NULL), variable);
+  return NULL;
+}
+
+/* QS_SetReqHeader */
+const char *qos_setreqheader_cmd(cmd_parms *cmd, void *dcfg, const char *header,
+                                 const char *variable) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+
+  if(!variable[0] || !header[0]) {
+    return apr_psprintf(cmd->pool, "%s: invalid parameter",
+                        cmd->directive->directive);
+  }
+  if(strchr(header, '=')) {
+    return apr_psprintf(cmd->pool, "%s: header name must not contain a '='",
+                        cmd->directive->directive);
+  }
+  apr_table_set(sconf->setreqheader_t, apr_pstrcat(cmd->pool, header, "=", variable, NULL), header);
+  return NULL;
+}
+
+const char *qos_event_setenvresheader_cmd(cmd_parms *cmd, void *dcfg, const char *hdr,
+                                          const char *action) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   apr_table_set(sconf->setenvresheader_t, hdr, action == NULL ? "" : action);
@@ -6942,14 +7061,26 @@ static const command_rec qos_config_cmds[] = {
                 " request environment variable (e.g. QS_Block) if the HTTP"
                 " response body contains the"
                 " defined literal string."),
+  AP_INIT_TAKE2("QS_SetEnv", qos_setenv_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetEnv <variable> <value>, sets the defined variable"
+                " with the value where the value string may contain" 
+                " other environment variables surrounded by \"${\" and \"}\"."
+                " The variable is only set if all defined variables within"
+                " the value can be resolved."),
+  AP_INIT_TAKE2("QS_SetReqHeader", qos_setreqheader_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetReqHeader <header name> <variable>, sets the defined"
+                " HTTP request header to the request if the specified"
+                " environment variable is set."),
   AP_INIT_TAKE12("QS_SetEnvResHeader", qos_event_setenvresheader_cmd, NULL,
                  RSRC_CONF,
-                 "QS_SetEnvResHeader <header name> [drop], adds the defined"
+                 "QS_SetEnvResHeader <header name> [drop], sets the defined"
                  " HTTP response header to the request environment variables."
                  " Deletes the header if the action 'drop' has been specified."),
   AP_INIT_TAKE2("QS_SetEnvResHeaderMatch", qos_event_setenvresheadermatch_cmd, NULL,
                 RSRC_CONF,
-                "QS_SetEnvResHeaderMatch <header name> <regex>, adds the defined"
+                "QS_SetEnvResHeaderMatch <header name> <regex>, sets the defined"
                 " HTTP response header to the request environment variables"
                 " if the specified regular expression (pcre) matches the header value."),
   /* generic request filter */

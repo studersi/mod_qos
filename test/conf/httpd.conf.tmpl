@@ -1,12 +1,12 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.131 2009-12-16 19:32:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.132 2010-01-07 20:41:03 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2009 Pascal Buchbinder
+# Copyright (C) 2007-2010 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -174,8 +174,12 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /cgi-local/   ##ROOT##/htdocs/cgi-local/
    ScriptAlias /cgi-local_s/ ##ROOT##/htdocs/cgi-local/
 
-   QS_SetEnvIfQuery QS_Delay=(.*)   QS_Delay=$1
+   QS_SetEnvIfQuery QS_Delay=([0-9]*)   QS_Delay=$1
    QS_SetEnvIfQuery QS_EventRequest QS_EventRequest
+
+   SetEnvIf    Host          ([a-zA-Z0-9\-\.:]*)    QS_Host=$1
+   QS_SetEnv   QS_Header     "host=${QS_Host}; delay=${QS_Delay}"
+   QS_SetReqHeader           X-Delay                QS_Header
 
    # -----------------------------------------------------------------
    # request level control
