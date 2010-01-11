@@ -11,6 +11,7 @@
   - enforce rules on certain conditions only (e.g. overall server usage)
   - adjust metrics dynamically
   - learning and permissive mode (server wide, per function)
+- dynamic rule adjustment of the generic request filter
 - re-design/re-implementation of some parts/functions
   + maybe dropping some features
   + remove other functions
@@ -21,7 +22,7 @@
 - improved anomalie detection (thresholds, logging)
   - set client event to be used in other rules
 - propagate client information via request header
-- improved variable handling and propagation via header
++ improved variable handling and propagation via header
 
 ----------------
 
