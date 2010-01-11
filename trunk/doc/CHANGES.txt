@@ -1,3 +1,7 @@
+Version
+
+
+
 Version 9.5
 
 - New directives QS_SetReqHeader and QS_SetEnv.
@@ -313,7 +317,7 @@ Version 6.2
 
 Version 6.1
 
- - QS_SetEnvIf supports NOT operator.
+ - QS_SetEnvIf supports "NOT" operator.
 
  - Sets QS_VipRequest variable when receiving valid session
    cookie.
