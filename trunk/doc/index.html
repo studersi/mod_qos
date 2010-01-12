@@ -1237,7 +1237,9 @@ instantaneous  and fast with the server and denies access to slow
 clients sending data irregular in the case the server has not enougth 
 resources.</p>
 <p>A minimal request bandwidth should be enforced too in order 
-to close the connections comming from idle clients.
+to close the connections comming from idle clients. The <code>QS_SrvMinDataRate</code> 
+does this. You may want to combine this with the <code>QS_SrvMaxConnPerIP</code> 
+directive as shown above in the "Client Opens Many Concurrent Connections" example.
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
@@ -1255,11 +1257,14 @@ QS_ClientPrefer
 # handles two hundred thousand different client IP addresses:
 QS_ClientEntries        200000
 
-# minimum request/response speed (deny slow clients blocking the server):
+# minimum request/response speed (deny slow clients blocking the server, 
+# e.g. defending slowloris):
 QS_SrvMinDataRate       150 1200
 # and limit request header and body:
 LimitRequestFields      30
 QS_LimitRequestBody     102400
+# don't allow more than 50 TCP connections per client source address:
+QS_SrvMaxConnPerIP      50
 </pre>
 </td></tr>
 </table>
