@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.25 2009-01-23 07:44:26 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.26 2010-01-15 20:44:30 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -56,6 +56,12 @@ else
 fi
 if [ `grep -c "Version $VERSION" doc/CHANGES.txt` -eq 0 ]; then
   echo "CHANGES.txt check FAILED"
+  exit 1
+fi
+grep \\$\\$\\$ ./httpd_src/modules/qos/*.c
+if [ $? -ne 1 ]; then
+  WARNINGS=`expr $WARNINGS + 1`
+  echo "WARNING: found pattern '\$\$\$'"
   exit 1
 fi
 
