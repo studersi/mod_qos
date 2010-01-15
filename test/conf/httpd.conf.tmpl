@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.132 2010-01-07 20:41:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.133 2010-01-15 20:44:54 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -44,7 +44,7 @@ MaxClients              64
 MaxRequestsPerChild     0
 </IfDefine>
 <IfDefine cont>
-MaxRequestsPerChild     10000
+MaxRequestsPerChild     125
 </IfDefine>
 User                    ##USR##
 Group                   users

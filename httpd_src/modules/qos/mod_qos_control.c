@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.49 2009-10-21 18:12:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.50 2010-01-15 20:44:54 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
@@ -1804,7 +1804,7 @@ static void qosc_qsfilter2_start(request_rec *r, qosc_settings_t *settings) {
           //   cur = cur->next;
           // }
           for(i=3;i<65000;i++) {
-            /* $$$, see ap_listeners above */
+            /* TODO, see ap_listeners above */
             close(i);
           }
           qosc_reopen_locations(r->pool, locations, APR_WRITE|APR_CREATE|APR_APPEND);
@@ -3312,7 +3312,7 @@ static void qosc_new_session(request_rec *r) {
   int len;
   unsigned char ran[16];
   RAND_bytes(ran, sizeof(ran));
-  len = apr_base64_encode(sconf->session->id, ran, sizeof(ran));
+  len = apr_base64_encode(sconf->session->id, (char *)ran, sizeof(ran));
   sconf->session->id[len] = '\0';
   apr_table_add(r->headers_out, "Set-Cookie",
                 apr_psprintf(r->pool, QOSC_COOKIE"%s; path=%s;",

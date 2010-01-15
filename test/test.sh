@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.93 2010-01-07 20:41:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.94 2010-01-15 20:44:54 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -586,6 +586,12 @@ for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk 
 	echo "WARNING: missing message $E $C $C1"
     fi
 done
+
+grep \\$\\$\\$ ../httpd_src/modules/qos/*.c
+if [ $? -ne 1 ]; then
+  WARNINGS=`expr $WARNINGS + 1`
+  echo "WARNING: found pattern '\$\$\$'"
+fi
 
 IPCS2=`ipcs | wc -l`
 echo "ipcs: $IPCS $IPCS2"
