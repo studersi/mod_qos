@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.29 2009-11-25 21:27:27 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.30 2010-01-16 22:36:58 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -77,7 +77,7 @@ export LTCFLAGS
 
 cd httpd
 ./buildconf
-#./configure --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared
+#./configure --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared $ADDMOD
 ./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared $ADDMOD
 # patch ...
 sed <build/rules.mk > build/rules.mk.2 \

@@ -1,13 +1,19 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.12 2008-03-26 19:03:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.13 2010-01-16 22:37:15 pbuchbinder Exp $
 
 ServerName              127.0.0.1
+<IfModule worker.c> 
 StartServers            1
-
+ServerLimit             16
 MinSpareThreads         5
 MaxSpareThreads         75
 ThreadsPerChild         64
-#MinSpareServers         5
-#MaxSpareServers         10
+</IfModule>
+<IfModule prefork.c>
+StartServers            4
+MinSpareServers         4
+MaxSpareServers         16
+ServerLimit             896
+</IfModule>
 
 MaxRequestsPerChild     300000
 User                    ##USR##
