@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.30 2010-01-16 22:36:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.31 2010-01-18 19:50:53 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -77,13 +77,29 @@ export LTCFLAGS
 
 cd httpd
 ./buildconf
+if [ $? -ne 0 ]; then
+  echo "ERROR"
+  exit 1
+fi
+
 #./configure --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared $ADDMOD
 ./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared $ADDMOD
+if [ $? -ne 0 ]; then
+  echo "ERROR"
+  exit 1
+fi
+
 # patch ...
 sed <build/rules.mk > build/rules.mk.2 \
  -e "s;LINK     = \$(LIBTOOL) --mode=link \$(CC) \$(ALL_CFLAGS)  \$(LT_LDFLAGS);LINK     = \$(LIBTOOL) --mode=link \$(CC) \$(ALL_CFLAGS) -static \$(LT_LDFLAGS);g"
 mv build/rules.mk.2 build/rules.mk
+
 make
+if [ $? -ne 0 ]; then
+  echo "ERROR"
+  exit 1
+fi
+
 strip modules/qos/.libs/mod_qos.so
 if [ $? -ne 0 ]; then
   echo "ERROR"
