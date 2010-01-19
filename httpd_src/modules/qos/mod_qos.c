@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.184 2010-01-19 19:50:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.185 2010-01-19 21:28:25 pbuchbinder Exp $";
 static const char g_revision[] = "9.6";
 
 /************************************************************************
@@ -3814,10 +3814,23 @@ static void qos_delay(request_rec *r) {
   }
 }
 
-/** QS_DeflateReqBody */
+/** QS_DeflateReqBody (if parp has been enabled) */
 static void qos_deflate(request_rec *r) {
-  if(apr_table_get(r->subprocess_env, "QS_DeflateReqBody")) {
+  if(apr_table_get(r->subprocess_env, "QS_DeflateReqBody") && 
+     apr_table_get(r->subprocess_env, "parp")) {
     ap_add_input_filter("DEFLATE", NULL, r, r->connection);
+  }
+}
+
+/* adjust the content-length header */
+static void qos_deflate_contentlength(request_rec *r) {
+  if(apr_table_get(r->subprocess_env, "QS_DeflateReqBody") && 
+     apr_table_get(r->subprocess_env, "parp")) {
+    const char *PARPContentLength = apr_table_get(r->subprocess_env, "PARPContentLength");
+    const char *contentLength = apr_table_get(r->headers_in, "Content-Length");
+    if(PARPContentLength && contentLength) {
+      apr_table_set(r->headers_in, "Content-Length", PARPContentLength);
+    }
   }
 }
 
@@ -4170,6 +4183,8 @@ static int qos_header_parser(request_rec * r) {
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
     qs_req_ctx *rctx = NULL;
+
+    qos_deflate_contentlength(r);
 
     /* QS_SetEnvResBody */
     if(dconf && dconf->response_pattern) {
