@@ -1,6 +1,7 @@
 Version
 
-
+- Environment variable QS_DeflateReqBody to deflate request
+  body data.
 
 Version 9.5
 

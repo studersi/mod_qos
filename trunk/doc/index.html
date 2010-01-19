@@ -472,7 +472,8 @@ QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
 <h3>Variables</h3>
 Environment variables are used on a per request level and implement
 additional control mechanisms. Variables may be set using the standard 
-Apache module mod_setenvif. See also the <a href="#eventcontrol">
+Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif</a>. 
+See also the <a href="#eventcontrol">
 <code>QS_SetEnvIf*</code></a> directives in order to combine multiple 
 variable to new variables interpreted by mod_qos rules. <br>
 <br>
@@ -850,8 +851,12 @@ be placed anywhere in the configuration. Alternatively, the limitation
 may be set as an environment variable using mod_setenvif (overriding 
 the directive settings).
 </li>
-
 </ul>
+
+You may want to set the <code>QS_DeflateReqBody</code> variable if the request body 
+data has to be deflated using 
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_deflate.html">mod_deflate</a>.
+
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 Sample configuration:<br>
@@ -863,9 +868,12 @@ CustomLog             logs/qsaudit_log  "%{qos-path}n%{qos-query}n"
 
 # limit the max. body size since mod_parp loads the whole message into the
 # memory servers's:
-SetEnvIf Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=131072
-SetEnvIf Content-Type multipart/form-data               QS_LimitRequestBody=131072
-SetEnvIf Content-Type multipart/mixed                   QS_LimitRequestBody=131072
+SetEnvIfNoCase Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=131072
+SetEnvIfNoCase Content-Type multipart/form-data               QS_LimitRequestBody=131072
+SetEnvIfNoCase Content-Type multipart/mixed                   QS_LimitRequestBody=131072
+
+# enable mod_deflate input filter for compressed request body data:
+SetEnvIfNoCase Content-Encoding gzip|x-gzip|compress|x-compress|deflate|x-deflate QS_DeflateReqBody
 
 &lt;Location /app&gt;
    # don't allow certain string pattern within the request query or

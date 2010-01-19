@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.183 2010-01-15 20:44:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.184 2010-01-19 19:50:59 pbuchbinder Exp $";
 static const char g_revision[] = "9.6";
 
 /************************************************************************
@@ -3814,6 +3814,13 @@ static void qos_delay(request_rec *r) {
   }
 }
 
+/** QS_DeflateReqBody */
+static void qos_deflate(request_rec *r) {
+  if(apr_table_get(r->subprocess_env, "QS_DeflateReqBody")) {
+    ap_add_input_filter("DEFLATE", NULL, r, r->connection);
+  }
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -4097,6 +4104,9 @@ static int qos_header_parser1(request_rec * r) {
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
+
+    qos_deflate(r);
+   
     /** QS_LimitRequestBody */
     rv = qos_limitrequestbody_ctl(r, sconf, dconf);
     if(rv != APR_SUCCESS) {

@@ -23,6 +23,8 @@
   - set client event to be used in other rules
 - propagate client information via request header
 + improved variable handling and propagation via header
++ deflate body
+  - adjust content-length header
 
 ----------------
 
