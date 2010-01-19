@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.134 2010-01-16 22:37:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.135 2010-01-19 19:51:14 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -131,6 +131,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
       Order deny,allow
       Allow from all
    </Proxy>
+
+   # enable mod_deflate input filter
+   SetEnvIfNoCase Content-Encoding gzip|x-gzip|compress|x-compress|deflate|x-deflate QS_DeflateReqBody
 
    QS_SetEnvIfQuery name=([a-z]*)         NAME=mein_name_ist_$1
    QS_SetEnvIfQuery other;value=(.*)match VALUE=$1

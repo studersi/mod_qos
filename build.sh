@@ -1,14 +1,14 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.31 2010-01-18 19:50:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.32 2010-01-19 19:50:18 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2009 Pascal Buchbinder
+# Copyright (C) 2007-2010 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -82,8 +82,8 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-#./configure --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared $ADDMOD
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared $ADDMOD
+#./configure --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared --enable-deflate $ADDMOD
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qos-control=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id --enable-dumpio=shared --enable-deflate $ADDMOD
 if [ $? -ne 0 ]; then
   echo "ERROR"
   exit 1
@@ -100,10 +100,12 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-strip modules/qos/.libs/mod_qos.so
-if [ $? -ne 0 ]; then
-  echo "ERROR"
-  exit 1
+if [ "$1" = "release" ]; then
+  strip modules/qos/.libs/mod_qos.so
+  if [ $? -ne 0 ]; then
+    echo "ERROR"
+    exit 1
+  fi
 fi
 cd ..
 
@@ -113,12 +115,5 @@ cd ..
 cd tools/filter
 make
 cd ../..
-
-if [ -f ./3thrdparty/modsecurity-apache_2.1.1.tar.gz ]; then
-  tar xfz ./3thrdparty/modsecurity-apache_2.1.1.tar.gz modsecurity-apache_2.1.1/rules/modsecurity_crs_40_generic_attacks.conf
-  if [ ! -s modsecurity ]; then
-    ln -s modsecurity-apache_2.1.1 modsecurity
-  fi
-fi
 
 echo "END"

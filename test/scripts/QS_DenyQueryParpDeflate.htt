@@ -1,0 +1,38 @@
+#
+# $Id: QS_DenyQueryParpDeflate.htt,v 1.1 2010-01-19 19:51:14 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Encoding: gZip
+__Content-Type: application/x-www-form-urlencoded
+__
+_PIPE
+_EXEC echo "user=1234&operation=;DECLARE%20@S%20NVARCHAR(4000);SET%20@S=CAST(0x4400450006F007200%20AS%20NVARCHAR(4000));EXEC(@S);--" | gzip
+_EXPECT . "code=040"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+_PIPE
+_EXEC echo "user=1234&operation=;DECLARE%20@S%20NVARCHAR(4000);SET%20@S=CAST(0x4400450006F007200%20AS%20NVARCHAR(4000));EXEC(@S);--" | gzip
+_EXPECT . "!code=040"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+END
