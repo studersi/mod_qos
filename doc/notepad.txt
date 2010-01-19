@@ -24,7 +24,7 @@
 - propagate client information via request header
 + improved variable handling and propagation via header
 + deflate body
-  - adjust content-length header
+  + adjust content-length header (requires parp 0.8)
 
 ----------------
 
