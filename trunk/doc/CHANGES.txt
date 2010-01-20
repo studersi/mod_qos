@@ -1,8 +1,8 @@
 Version 9.6
 
 - Environment variable QS_DeflateReqBody to deflate request
-  body data (you should update to mod_parp 0.8 in order
-  to get a correct content-length header after data deflating).
+  body data (update to mod_parp 0.8 in order to get a correct
+  content-length header after data deflating).
 
 Version 9.5
 
