@@ -878,7 +878,7 @@ SetEnvIfNoCase Content-Type multipart/form-data               QS_LimitRequestBod
 SetEnvIfNoCase Content-Type multipart/mixed                   QS_LimitRequestBody=131072
 
 # enable mod_deflate input filter for compressed request body data:
-SetEnvIfNoCase Content-Encoding gzip|x-gzip|compress|x-compress|deflate|x-deflate QS_DeflateReqBody
+SetEnvIfNoCase Content-Encoding gzip|compress|deflate QS_DeflateReqBody
 
 &lt;Location /app&gt;
    # don't allow certain string pattern within the request query or
