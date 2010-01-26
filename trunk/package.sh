@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.26 2010-01-15 20:44:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.27 2010-01-26 19:54:11 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -96,13 +96,13 @@ cp tools/Makefile.tmpl mod_qos-${VERSION}/tools/Makefile
 cp tools/filter/qsfilter2.c mod_qos-${VERSION}/generators
 cp tools/filter/Makefile mod_qos-${VERSION}/generators
 
-# standard distribution
-echo "std package: mod_qos-${VERSION}-src.tar.gz"
-tar cf mod_qos-${VERSION}-src.tar --owner root --group bin mod_qos-${VERSION}
-gzip mod_qos-${VERSION}-src.tar
+## standard distribution
+#echo "std package: mod_qos-${VERSION}-src.tar.gz"
+#tar cf mod_qos-${VERSION}-src.tar --owner root --group bin mod_qos-${VERSION}
+#gzip mod_qos-${VERSION}-src.tar
 
 # extended distribution
-echo "ext package: mod_qos-${VERSION}.tar.gz"
+echo "package: mod_qos-${VERSION}.tar.gz"
 cp httpd_src/modules/qos/mod_qos.h mod_qos-${VERSION}/apache2
 tar cf mod_qos-${VERSION}.tar --owner root --group bin mod_qos-${VERSION}
 gzip mod_qos-${VERSION}.tar
