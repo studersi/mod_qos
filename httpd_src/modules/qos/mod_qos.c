@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.186 2010-01-21 18:52:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.187 2010-01-26 18:59:32 pbuchbinder Exp $";
 static const char g_revision[] = "9.7";
 
 /************************************************************************
@@ -2307,8 +2307,6 @@ static void qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
-#define QS_VAR_ALLOWED_CHARS "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
-
 /* replace ${var} by the value in var (retruns 1 on success) */
 static int qos_reslove_variable(apr_pool_t *p, apr_table_t *vars, char **string) {
   int i;
@@ -2321,30 +2319,30 @@ static int qos_reslove_variable(apr_pool_t *p, apr_table_t *vars, char **string)
 
  once_again:
   i = 0;
-  while (line[i] != 0) {
-    if (line[i] == '$') {
+  while(line[i] != 0) {
+    if((line[i] == '$') && (line[i+1] == '{')) {
       line_end = i;
-      ++i;
-      if (line[i] == '{') {
-        ++i;
-      }
+      i=i+2;
       start = i;
-      while (line[i] != 0 && strchr(QS_VAR_ALLOWED_CHARS, line[i])) {
-        ++i;
+      while((line[i] != 0) && (line[i] != '}')) {
+        i++;
       }
-      var_name = apr_pstrndup(p, &line[start], i - start);
-      val = apr_table_get(vars, var_name);
-      if (val) {
-        line[line_end] = 0;
-        if (line[i] == '}') {
-          ++i;
-        }
-        new_line = apr_pstrcat(p, line, val, &line[i], NULL);
-        line = new_line;
-        goto once_again;
+      if(line[i] != '}') {
+        /* no end found */
+        break;
+      } else {
+        var_name = apr_pstrndup(p, &line[start], i - start);
+        val = apr_table_get(vars, var_name);
+        if(val) {
+          line[line_end] = 0;
+          i++;
+          new_line = apr_pstrcat(p, line, val, &line[i], NULL);
+          line = new_line;
+          goto once_again;
+        }      
       }
     }
-    ++i;
+    i++;
   }
   if(!new_line[0] || strstr(new_line, "${")) {
     return 0;
@@ -3718,7 +3716,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                          QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
                          " this connection=%d,"
                          " c=%s",
-                         level == APLOG_WARNING ? "log only due QS_SrvMaxConnExcludeIP match" 
+                         level == APLOG_WARNING ? 
+                         "log only due QS_SrvMaxConnExcludeIP match or VIP status" 
                          : "access denied",
                          inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
                          req_rate,
@@ -5217,7 +5216,9 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   fprintf(stdout, "\033[1mmod_qos TEST BINARY, NOT FOR PRODUCTIVE USE\033[0m\n");
   fflush(stdout);
 #endif
+#ifndef QS_NO_STATUS_HOOK
   APR_OPTIONAL_HOOK(ap, status_hook, qos_ext_status_hook, NULL, NULL, APR_HOOK_MIDDLE);
+#endif
 
   return DECLINED;
 }
