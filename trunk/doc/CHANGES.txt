@@ -1,3 +1,8 @@
+Version 9.7
+
+- mod_qos may be compiled defining QS_NO_STATUS_HOOK which
+  prevents mod_qos from registering to mod_status.
+
 Version 9.6
 
 - Environment variable QS_DeflateReqBody to deflate request
