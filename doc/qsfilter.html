@@ -60,7 +60,7 @@ deny access for suspect request lines.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
-Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-h] [-b &lt;num&gt;] [-p|-s|-m] [-l &lt;len&gt;] [-n] [-e] [-t]
+Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-h] [-b &lt;num&gt;] [-p|-s|-m|-o] [-l &lt;len&gt;] [-n] [-e] [-t]
 
 Summary
  mod_qos implements a request filter which validates each request
@@ -132,6 +132,8 @@ Options
      Uses one single pcre for the whole query string.
   -m
      Uses one pcre for multipe query values (recommended mode).
+  -o
+     Does not care the order of query parameters.
   -l &lt;len&gt;
      Outsizes the query length by the defined length ({0,size+len}),
      default is 10.
@@ -182,6 +184,6 @@ Sample Usage and Output
 <br>
 <hr>
 <a href="http://sourceforge.net/projects/mod-qos/"><img align="right" src="http://sflogo.sourceforge.net/sflogo.php?group_id=196697&amp;type=1" width="88" height="31" border="0" alt="mod_qos at SourceForge.net" /></a>
-<SMALL><SMALL>&copy; 2007-2009, Pascal Buchbinder</SMALL></SMALL>
+<SMALL><SMALL>&copy; 2007-2010, Pascal Buchbinder</SMALL></SMALL>
 </body>
 </html>
