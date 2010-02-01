@@ -24,8 +24,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.125 2010-01-26 19:52:48 pbuchbinder Exp $";
-static const char g_revision[] = "9.7";
+static const char revision[] = "$Id: qsfilter2.c,v 1.126 2010-02-01 20:05:05 pbuchbinder Exp $";
+static const char g_revision[] = "9.8";
 
 /* system */
 #include <stdio.h>
@@ -182,7 +182,7 @@ static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
   return ret;
 }
 
-/* hellper for url decoding */
+/* helper for url decoding */
 static int qos_hex2c(const char *x) {
   int i, ch;
   ch = x[0];
@@ -272,7 +272,7 @@ static void usage(char *cmd) {
   printf("existing access log data.\n");
   printf("\n");
   printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", cmd);
-  printf("       %s [-p|-s|-m] [-l <len>] [-n] [-e] [-t] [-v 0|1|2]\n", space);
+  printf("       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-t] [-v 0|1|2]\n", space);
   printf("\n");
   printf("Summary\n");
   printf(" mod_qos implements a request filter which validates each request\n");
@@ -344,6 +344,8 @@ static void usage(char *cmd) {
   printf("     Uses one single pcre for the whole query string.\n");
   printf("  -m\n");
   printf("     Uses one pcre for multipe query values (recommended mode).\n");
+  printf("  -o\n");
+  printf("     Does not care the order of query parameters.\n");
   printf("  -l <len>\n");
   printf("     Outsizes the query length by the defined length ({0,size+len}),\n");
   printf("     default is %d.\n", m_query_len_pcre);
@@ -573,7 +575,7 @@ static char *qos_addstr(apr_pool_t *pool, char *o, char *d, char *n) {
 }
 
 
-/* crate a name=pcre string like this: ((s1|s2)(=[<pcre>]*)*[&]?)*" */
+/* create a name=pcre string like this: ((s1|s2)(=[<pcre>]*)*[&]?)*" */
 static char *qos_qqs(apr_pool_t *pool, char *string, char *query_pcre, int singleEq, int hasEq, int startAmp) {
   char *se = NULL;
   char *s = "";
