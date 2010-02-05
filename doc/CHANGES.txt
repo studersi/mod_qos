@@ -1,3 +1,7 @@
+Version 
+
+- Internal code changes/maintenance (join thread).
+
 Version 9.7
 
 - mod_qos may be compiled defining QS_NO_STATUS_HOOK which

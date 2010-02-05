@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.98 2010-01-21 18:45:45 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.99 2010-02-05 21:34:31 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -113,7 +113,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipHeaderName.htt"
 fi
-./htt.sh -se ./scripts/QS_VipHeaderName2.htt
+./run.sh -se ./scripts/QS_VipHeaderName2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipHeaderName2.htt"
@@ -122,7 +122,7 @@ sleep 1
 
 # -----------------------------------------------------------------
 echo "-- vip request, QS_VipRequest.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_VipRequest.htt
+./run.sh -se ./scripts/QS_VipRequest.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipRequest.htt"
@@ -131,7 +131,7 @@ sleep 1
 
 # -----------------------------------------------------------------
 echo "-- vip request and graceful restart, QS_VipHeaderName_Graceful.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_VipHeaderName_Graceful.htt
+./run.sh -se ./scripts/QS_VipHeaderName_Graceful.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipHeaderName_Graceful.htt"
@@ -139,12 +139,12 @@ fi
 
 # -----------------------------------------------------------------
 echo "-- graceful, QS_Graceful.htt" >> logs/error_log
-./htt.sh -se ./scripts/QS_Graceful.htt
+./run.sh -se ./scripts/QS_Graceful.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_Graceful.htt"
 fi
-./htt.sh -se ./scripts/QS_Graceful2.htt
+./run.sh -se ./scripts/QS_Graceful2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_Graceful2.htt"
@@ -275,7 +275,7 @@ fi
 sleep 1
 # -----------------------------------------------------------------
 echo "-- multiple requests in parallel, MultiRequest.htt" >>  logs/error_log
-./htt.sh -se ./scripts/MultiRequest.htt
+./run.sh -se ./scripts/MultiRequest.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED MultiRequest.htt"
@@ -285,12 +285,12 @@ sleep 1
 ./ctl.sh restart > /dev/null
 # -----------------------------------------------------------------
 echo "-- kbytes/sec limit, QS_EventKBytesPerSecLimit.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_EventKBytesPerSecLimit.htt
+./run.sh -se ./scripts/QS_EventKBytesPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventKBytesPerSecLimit.htt"
 fi
-./htt.sh -se ./scripts/QS_EventKBytesPerSecLimit_t.htt
+./run.sh -se ./scripts/QS_EventKBytesPerSecLimit_t.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventKBytesPerSecLimit_t.htt"
@@ -312,14 +312,14 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_PermitUri.htt"
 fi
 
-./htt.sh -se ./scripts/QS_PermitUriAudit.htt
+./run.sh -se ./scripts/QS_PermitUriAudit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_PermitUri.htt"
 fi
 
 echo "-- header filter, QS_HeaderFilter.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_HeaderFilter.htt
+./run.sh -se ./scripts/QS_HeaderFilter.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_HeaderFilter.htt"
@@ -328,22 +328,22 @@ fi
 # -----------------------------------------------------------------
 ./ctl.sh restart -D max_clients -D cc > /dev/null
 echo "-- QS_ClientPrefer.htt" >>  logs/error_log
-./htt.sh scripts/Log.htt > /dev/null
+./run.sh scripts/Log.htt > /dev/null
 QSTART=`grep -c "mod_qos(063)" logs/error_log`
 echo "run ./scripts/QS_ClientPrefer.htt"
-./htt.sh -s ./scripts/QS_ClientPrefer.htt 2>/dev/null 1>/dev/null
+./run.sh -s ./scripts/QS_ClientPrefer.htt 2>/dev/null 1>/dev/null
 sleep 1
-./htt.sh scripts/Log.htt > /dev/null
+./run.sh scripts/Log.htt > /dev/null
 sleep 1
 QFIRST=`grep -c "mod_qos(063)" logs/error_log`
-./htt.sh -s ./scripts/QS_ClientPrefer2.htt 2>/dev/null 1>/dev/null
+./run.sh -s ./scripts/QS_ClientPrefer2.htt 2>/dev/null 1>/dev/null
 sleep 1
-./htt.sh scripts/Log.htt > /dev/null
+./run.sh scripts/Log.htt > /dev/null
 sleep 1
 QSECOND=`grep -c "mod_qos(063)" logs/error_log`
-./htt.sh -s ./scripts/QS_ClientPrefer_IP.htt 2>/dev/null 1>/dev/null
+./run.sh -s ./scripts/QS_ClientPrefer_IP.htt 2>/dev/null 1>/dev/null
 sleep 1
-./htt.sh scripts/Log.htt > /dev/null
+./run.sh scripts/Log.htt > /dev/null
 sleep 1
 QSTHIRD=`grep -c "mod_qos(063)" logs/error_log`
 QDIFF1=`expr $QFIRST - $QSTART`
