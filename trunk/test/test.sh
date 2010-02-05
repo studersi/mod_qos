@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.99 2010-02-05 21:34:31 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.100 2010-02-05 22:25:52 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -283,6 +283,11 @@ fi
 sleep 1
 
 ./ctl.sh restart > /dev/null
+./run.sh -se ./scripts/Graceful.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED Graceful.htt"
+fi
 # -----------------------------------------------------------------
 echo "-- kbytes/sec limit, QS_EventKBytesPerSecLimit.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_EventKBytesPerSecLimit.htt
