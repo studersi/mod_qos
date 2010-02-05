@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.187 2010-01-26 18:59:32 pbuchbinder Exp $";
-static const char g_revision[] = "9.7";
+static const char revision[] = "$Id: mod_qos.c,v 5.188 2010-02-05 21:34:29 pbuchbinder Exp $";
+static const char g_revision[] = "9.8";
 
 /************************************************************************
  * Includes
@@ -3698,6 +3698,9 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     int i;
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->inctx_t->table)->elts;
     sleep(1);
+    if(sconf->inctx_t->exit) {
+      break;
+    }
     apr_thread_mutex_lock(sconf->inctx_t->lock);   /* @CRT21 */
     for(i = 0; i < apr_table_elts(sconf->inctx_t->table)->nelts; i++) {
       qos_ifctx_t *inctx = (qos_ifctx_t *)entry[i].val;
@@ -3746,6 +3749,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     }
     apr_thread_mutex_unlock(sconf->inctx_t->lock); /* @CRT21 */
   }
+  apr_thread_mutex_lock(sconf->inctx_t->lock);
+  apr_thread_mutex_unlock(sconf->inctx_t->lock);
   apr_thread_mutex_destroy(sconf->inctx_t->lock);
   apr_thread_exit(thread, APR_SUCCESS);
   return NULL;
@@ -3754,9 +3759,10 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
 static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  // apr_status_t status;
+  apr_status_t status;
   sconf->inctx_t->exit = 1;
-  // apr_thread_join(&status, sconf->inctx_t->thread);
+  /* may long up to one second */
+  apr_thread_join(&status, sconf->inctx_t->thread);
   return APR_SUCCESS;
 }
 #endif
@@ -4042,10 +4048,12 @@ static int qos_post_read_request(request_rec *r) {
         if(cl == NULL) {
           inctx->status = QS_CONN_STATE_END;
 #if APR_HAS_THREADS
-          apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT26 */
-          apr_table_unset(sconf->inctx_t->table,
-                          QS_INCTX_ID);
-          apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT26 */
+          if(!sconf->inctx_t->exit) {
+            apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT26 */
+            apr_table_unset(sconf->inctx_t->table,
+                            QS_INCTX_ID);
+            apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT26 */
+          }
 #endif
         } else {
 #ifdef ap_http_scheme
@@ -4513,10 +4521,12 @@ static apr_status_t qos_in_filter2(ap_filter_t *f, apr_bucket_brigade *bb,
                                                                   &qos_module);
     ap_remove_input_filter(f);
 #if APR_HAS_THREADS
-    apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT28 */
-    apr_table_unset(sconf->inctx_t->table,
-                    QS_INCTX_ID);
-    apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT28 */
+    if(!sconf->inctx_t->exit) {
+      apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT28 */
+      apr_table_unset(sconf->inctx_t->table,
+                      QS_INCTX_ID);
+      apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT28 */
+    }
 #endif
   }
   return rv;
@@ -4587,10 +4597,12 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
           qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
                                                                         &qos_module);
 #if APR_HAS_THREADS
-          apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT27 */
-          apr_table_unset(sconf->inctx_t->table,
-                          QS_INCTX_ID);
-          apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT27 */
+          if(!sconf->inctx_t->exit) {
+            apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT27 */
+            apr_table_unset(sconf->inctx_t->table,
+                            QS_INCTX_ID);
+            apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT27 */
+          }
 #endif
         }
       }
@@ -4726,10 +4738,12 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
   if(APR_BUCKET_IS_EOS(APR_BRIGADE_LAST(bb))) {
-    apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
-    apr_table_unset(sconf->inctx_t->table,
-                    QS_INCTX_ID);
-    apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+    if(!sconf->inctx_t->exit) {
+      apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
+      apr_table_unset(sconf->inctx_t->table,
+                      QS_INCTX_ID);
+      apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+    }
     inctx->status = QS_CONN_STATE_END;
     ap_remove_output_filter(f);
   } else {
@@ -4806,10 +4820,12 @@ static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
   if(sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
     qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
     if(inctx) {
-      apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
-      apr_table_unset(sconf->inctx_t->table,
-                      QS_INCTX_ID);
-      apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+      if(!sconf->inctx_t->exit) {
+        apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
+        apr_table_unset(sconf->inctx_t->table,
+                        QS_INCTX_ID);
+        apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+      }
       inctx->status = QS_CONN_STATE_END;
     }
   }
