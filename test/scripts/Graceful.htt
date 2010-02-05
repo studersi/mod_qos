@@ -1,5 +1,5 @@
 #
-# $Id: Graceful.htt,v 1.1 2010-02-05 21:34:31 pbuchbinder Exp $
+# $Id: Graceful.htt,v 1.2 2010-02-05 22:25:52 pbuchbinder Exp $
 #
 # reaches MaxRequestsPerChild (terminating supervisor thread)
 #
@@ -29,9 +29,8 @@ END
 
 CLIENT
 
-_LOOP 10
+_LOOP 9
 _SLEEP 2000
-# ./ctl.sh graceful takes one second
 _EXEC ./ctl.sh graceful 2>/dev/null 1>/dev/null
 _END LOOP
 
