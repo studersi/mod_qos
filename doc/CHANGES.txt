@@ -1,3 +1,7 @@
+Version 
+
+ - Module dependency (execution order) to mod_setenvifplus.
+
 Version 9.8
 
 - Internal code changes/maintenance (join thread).

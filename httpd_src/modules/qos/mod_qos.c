@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.188 2010-02-05 21:34:29 pbuchbinder Exp $";
-static const char g_revision[] = "9.8";
+static const char revision[] = "$Id: mod_qos.c,v 5.189 2010-02-23 22:05:53 pbuchbinder Exp $";
+static const char g_revision[] = "9.9";
 
 /************************************************************************
  * Includes
@@ -7270,10 +7270,10 @@ static const command_rec qos_config_cmds[] = {
  * apache register 
  ***********************************************************************/
 static void qos_register_hooks(apr_pool_t * p) {
-  static const char *pre[] = { "mod_setenvif.c", "mod_parp.c", NULL };
-  static const char *post[] = { "mod_setenvif.c", NULL };
+  static const char *pre[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_parp.c", NULL };
+  static const char *post[] = { "mod_setenvif.c", "mod_setenvifplus.c", NULL };
   static const char *parp[] = { "mod_parp.c", NULL };
-  static const char *prelast[] = { "mod_setenvif.c", "mod_ssl.c", NULL };
+  static const char *prelast[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_ssl.c", NULL };
   ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
 #ifndef QS_HAS_APACHE_PATH
   /* use post config hook only for non-patched Apache server (worker.c/prefork.c) */
