@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.126 2010-02-01 20:05:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.127 2010-02-24 19:24:14 pbuchbinder Exp $";
 static const char g_revision[] = "9.8";
 
 /* system */
@@ -396,6 +396,7 @@ static void usage(char *cmd) {
   printf("  QS_PermitUri +QSF003 deny \"^(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\"\n");
   printf("\n");
   printf("mod_qos %s\n", g_revision);
+  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
 }
 

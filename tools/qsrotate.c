@@ -7,7 +7,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007-2008 Pascal Buchbinder
+ * Copyright (C) 2007-2010 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 2.5 2009-07-09 17:56:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 2.6 2010-02-24 19:24:05 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -95,6 +95,7 @@ static void usage(char *cmd) {
   printf("Note\n");
   printf("  - Each %s instance must use an individual file!\n", cmd);
   printf("\n");
+  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
 }
 
@@ -135,10 +136,10 @@ static void deleteOldFiles(const char *cmd, const char *file_name) {
 	while((de = readdir(dir)) != 0) {
 	  if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
 	    if(strcmp(old, de->d_name) > 0) {
-	      snprintf(old, sizeof(old), de->d_name);
+	      snprintf(old, sizeof(old), "%s", de->d_name);
 	    } else {
 	      if(old[0] == '\0') {
-		snprintf(old, sizeof(old), de->d_name);
+		snprintf(old, sizeof(old), "%s", de->d_name);
 	      }
 	    }
 	  }

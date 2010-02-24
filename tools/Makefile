@@ -1,7 +1,7 @@
 
 CFLAGS=
 
-all: qslog qsrotate
+all: qslog qsrotate qscheck qspng
 
 BASE_OBJECTS = qs_util.o
 
@@ -16,9 +16,13 @@ qsrotate: qsrotate.c $(BASE_OBJECTS)
 	cc $(CFLAGS) -I. $(BASE_OBJECTS) -o qsrotate qsrotate.c -lpthread -lz
 	strip qsrotate
 
-#qscheck: qscheck.c $(BASE_OBJECTS)
-#	cc $(CFLAGS) -o qscheck qscheck.c
-#	strip qscheck
+qscheck: qscheck.c $(BASE_OBJECTS)
+	cc $(CFLAGS) -I. $(BASE_OBJECTS) -o qscheck qscheck.c
+	strip qscheck
+
+qspng: qspng.c $(BASE_OBJECTS)
+	cc $(CFLAGS) -I. -I../libpng $(BASE_OBJECTS) -o qspng qspng.c -L../libpng/.libs -lpng -lz
+	strip qspng
 
 clean:
-	rm -f *.o qslog qstotate
+	rm -f *.o qslog qstotate qscheck qspng
