@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.136 2010-01-21 18:45:47 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.137 2010-02-24 19:28:06 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -112,6 +112,7 @@ LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/
 LoadModule              security2_module libexec/mod_security.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 LoadModule              parp_module libexec/mod_parp.so
+LoadModule              setenvifplus_module libexec/mod_setenvifplus.so
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
