@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 2.1 2010-02-24 19:24:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 2.2 2010-02-24 19:31:13 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -223,7 +223,7 @@ static void qs_png_write_char(int x, int y, png_bytep *row_pointers, char n) {
         /* background */
 	ptr[0] = 250;
 	ptr[1] = 250;
-	ptr[2] = 250;
+	ptr[2] = 255;
       }
     }
   }
@@ -358,7 +358,7 @@ lp_init(int width, int height, int border, png_bytep **start) {
       png_byte* ptr = &(row[x*4]);
       ptr[0] = 250;
       ptr[1] = 250;
-      ptr[2] = 250;
+      ptr[2] = 255;
       ptr[3] = 250;
     }
   }
@@ -368,7 +368,7 @@ lp_init(int width, int height, int border, png_bytep **start) {
       png_byte* ptr = &(row[x*4]);
       ptr[0] = 245;
       ptr[1] = 245;
-      ptr[2] = 245;
+      ptr[2] = 250;
     }
   }
   *start = row_pointers;
