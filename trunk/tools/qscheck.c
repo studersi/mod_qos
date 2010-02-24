@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qscheck.c,v 2.1 2008-10-08 06:13:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: qscheck.c,v 2.2 2010-02-24 19:24:05 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,24 +55,6 @@ static char ServerRoot[1024];
 static char *checkedHosts = NULL;
 
 /**
- * reads the configuration file line by line
- */
-static int getline(char *s, int n, FILE *f) {
-  register int i = 0;
-  while (1) {
-    s[i] = (char) fgetc(f);
-    if (s[i] == CR) {
-      s[i] = fgetc(f);
-    }
-    if ((s[i] == 0x4) || (s[i] == LF) || (i == (n - 1))) {
-      s[i] = '\0';
-      return (feof(f) ? 1 : 0);
-    }
-    ++i;
-  }
-}
-
-/**
  * Prints usage text
  */
 static void usage(char *cmd) {
@@ -85,6 +67,7 @@ static void usage(char *cmd) {
   printf("by the ProxyPass, ProxyPassReverse, or ProxyReverse\n");
   printf("directive used by mod_proxy.\n");
   printf("\n");
+  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
 }
 
@@ -173,8 +156,10 @@ static int checkHost(const char *cmd, const char *filename, int ln, char *abs_ur
   unsigned long address;
   char *x = strstr(abs_url, "://");
   if(x == NULL) {
-    fprintf(stderr,"[%s]: ERROR, wrong syntax <%s> in %s on line %d\n",
-	    cmd, abs_url, filename, ln);
+    if(m_verbose) {
+      fprintf(stderr,"[%s]: ERROR, wrong syntax <%s> in %s on line %d\n",
+	      cmd, abs_url, filename, ln);
+    }
     return 0;
   }
   x[0] = '\0'; x = x + strlen("://");
@@ -263,7 +248,7 @@ static int checkFile(const char *cmd, const char *filename) {
     return 0;
   }
 
-  while(!getline(line, sizeof(line), f)) {
+  while(!qs_getLinef(line, sizeof(line), f)) {
     char *command = NULL;
     int cmd_len = 0;
     int to = 0;
@@ -303,7 +288,7 @@ static int checkFile(const char *cmd, const char *filename) {
       abs_url = &abs_url[i];
 
       /* ping */
-      if(abs_url && abs_url[0] != '\0') {
+      if(abs_url && abs_url[0] != '\0' && abs_url[0] != '!') {
 	status = status & checkHost(cmd, filename, ln, abs_url);
       }
     } else {
