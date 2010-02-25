@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.191 2010-02-25 21:28:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.192 2010-02-25 21:30:22 pbuchbinder Exp $";
 static const char g_revision[] = "9.9";
 
 /************************************************************************
@@ -65,7 +65,6 @@ static const char g_revision[] = "9.9";
 
 #if defined(HAVE_OPENSSL)
 #define QOS_HAS_SSL
-#error requires openssl
 #endif
 
 /* apr / scrlib */

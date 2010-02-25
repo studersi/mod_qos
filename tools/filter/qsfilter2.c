@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.128 2010-02-25 21:15:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.129 2010-02-25 21:30:42 pbuchbinder Exp $";
 static const char g_revision[] = "9.8";
 
 /* system */
@@ -34,10 +34,6 @@ static const char g_revision[] = "9.8";
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
-
-#if defined(HAVE_OPENSSL)
-#define QOS_HAS_SSL
-#endif
 
 /* apr */
 #include <pcre.h>
@@ -56,6 +52,12 @@ static const char g_revision[] = "9.8";
 #include <apr_thread_cond.h>
 #include <apr_thread_mutex.h>
 #include <apr_support.h>
+#include <ap_config.h>
+
+#if defined(HAVE_OPENSSL)
+#define QOS_HAS_SSL
+#endif
+
 
 /* OpenSSL  */
 #ifdef QOS_HAS_SSL
