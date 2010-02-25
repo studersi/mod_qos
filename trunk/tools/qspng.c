@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 2.2 2010-02-24 19:31:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 2.3 2010-02-25 19:45:48 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -53,23 +53,23 @@ typedef struct {
 
 /* known graph types */
 static const qs_png_elt_t qs_png_elts[] = {
-  { "r/s", "requests per second",  20, 30, 135, },
-  { "b/s", "bytes per second",     30, 45, 135 },
-  { "av", "average response time", 40, 95, 185 },
-  { "<1s", "requests faster than 1 second", 35, 95, 185 },
-  { "1s", "requests faster or equal than 1 second", 35, 90, 185 },
-  { "2s", "requests with 2 seconds response time", 30, 85, 185 },
-  { "3s", "requests with 3 seconds response time", 25, 90, 185 },
-  { "4s", "requests with 4 seconds response time", 25, 95, 185 },
-  { "5s", "requests with 5 seconds response time", 15, 90, 185 },
+  { "r/s", "requests per second",  20, 30, 130, },
+  { "b/s", "bytes per second",     30, 45, 130 },
+  { "av", "average response time", 40, 95, 140 },
+  { "<1s", "requests faster than 1 second", 35, 95, 180 },
+  { "1s", "requests faster or equal than 1 second", 35, 90, 180 },
+  { "2s", "requests with 2 seconds response time", 30, 85, 180 },
+  { "3s", "requests with 3 seconds response time", 25, 90, 180 },
+  { "4s", "requests with 4 seconds response time", 25, 95, 180 },
+  { "5s", "requests with 5 seconds response time", 15, 90, 180 },
   { ">5s", "requests slower than 5 seconds", 35, 90, 185 },
-  { "ip", "IP addresses",          55, 60, 190 },
-  { "qv", "created VIP sessions",  55, 50, 190 },
-  { "qs", "session pass",          55, 75, 190 },
-  { "qd", "access denied",         55, 70, 190 },
-  { "qk", "conection closed",      55, 60, 190 },
-  { "qt", "dynamic keep-alive",    55, 55, 190 },
-  { "ql", "slow down",             55, 65, 190 },
+  { "ip", "IP addresses",          55, 60, 150 },
+  { "qv", "created VIP sessions",  55, 50, 155 },
+  { "qs", "session pass",          55, 75, 160 },
+  { "qd", "access denied",         55, 70, 170 },
+  { "qk", "conection closed",      55, 60, 145 },
+  { "qt", "dynamic keep-alive",    55, 55, 153 },
+  { "ql", "slow down",             55, 65, 140 },
   { "sl", "system load",           25, 60, 175 },
   { "m", "free memory", 35, 90, 185 },
   { NULL, NULL, 0, 0, 0 }
@@ -487,9 +487,9 @@ static long qs_png_draw(int width, int height, int border,
     for(y=0; y<(max_req[x]/scale); y++) {
       png_byte* row = row_pointers[height-y-1+border];
       png_byte* ptr = &(row[x*4+(4*border)]);
-      ptr[0] = c_r + 50;
-      ptr[1] = c_g + 50;
-      ptr[2] = c_b + 50;
+      ptr[0] = c_r + 75;
+      ptr[1] = c_g + 75;
+      ptr[2] = c_b + 75;
     }
     /* average */
     for(y=0; y<(req[x]/scale); y++) {
@@ -584,8 +584,8 @@ int main(int argc, char **argv) {
   const char *name = "";
   char *out = NULL;
   int c_r = 20;
-  int c_g = 175;
-  int c_b = 50;
+  int c_g = 50;
+  int c_b = 175;
   const qs_png_elt_t* elt;
   int i, j;
 
