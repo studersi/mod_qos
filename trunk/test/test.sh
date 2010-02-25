@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.100 2010-02-05 22:25:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.101 2010-02-25 18:50:53 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -602,6 +602,12 @@ grep \\$\\$\\$ ../httpd_src/modules/qos/*.c
 if [ $? -ne 1 ]; then
   WARNINGS=`expr $WARNINGS + 1`
   echo "WARNING: found pattern '\$\$\$'"
+fi
+
+grep fprintf ../httpd_src/modules/qos/mod_qos.c | grep -v "NOT FOR PRODUCTIVE USE"
+if [ $? -ne 1 ]; then
+  WARNINGS=`expr $WARNINGS + 1`
+  echo "WARNING: found pattern 'fprintf'"
 fi
 
 IPCS2=`ipcs | wc -l`

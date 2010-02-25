@@ -6,7 +6,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007-2009 Pascal Buchbinder
+ * Copyright (C) 2007-2010 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.15 2009-01-09 08:15:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.16 2010-02-25 18:50:53 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -84,6 +84,7 @@ static regex_t m_trx;
 /* real time mode (default) or offline */
 static int   m_offline = 0;
 static char  m_date_str[MAX_LINE];
+static int   m_mem = 0;
 /* debug */
 static long  m_lines = 0;
 static int   m_verbose = 0;
@@ -183,7 +184,11 @@ static void printAndResetStat(char *timeStr) {
   char mem[256];
   if(!m_offline) {
     getloadavg(av, 1);
-    getFreeMem(mem, sizeof(mem));
+    if(m_mem) {
+      getFreeMem(mem, sizeof(mem));
+    } else {
+      mem[0] = '\0';
+    }
   } else {
     mem[0] = '\0';
   }
@@ -524,7 +529,7 @@ static void usage(char *cmd) {
   printf("\n");
   printf("Utility to collect request statistics from access log data.\n");
   printf("\n");
-  printf("Usage: %s -f <format_string> -o <out_file> [-p [-v]] [-x] [-u <name>]\n", cmd);
+  printf("Usage: %s -f <format_string> -o <out_file> [-p [-v]] [-x] [-u <name>] [-m]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is a real time access log analyzer. It collects\n", cmd);
@@ -567,6 +572,8 @@ static void usage(char *cmd) {
   printf("     Rotates the output file once a day (move).\n");
   printf("  -u <name>\n");
   printf("     Become another user, e.g. nobody.\n");
+  printf("  -m\n");
+  printf("     Calculates free system memory every minute.\n");
   printf("\n");
   printf("Example configuration using pipped logging:\n");
   printf("  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
@@ -611,6 +618,8 @@ int main(int argc, char **argv) {
     } else if(strcmp(*argv,"-p") == 0) { /* activate offline analysis */
       m_offline = 1;
       qs_set2OfflineMode();
+    } else if(strcmp(*argv,"-m") == 0) { /* activate memory usage */
+      m_mem = 1;
     } else if(strcmp(*argv,"-v") == 0) {
       m_verbose = 1;
     } else if(strcmp(*argv,"-x") == 0) { /* activate log rotation */
