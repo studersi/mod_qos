@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.189 2010-02-23 22:05:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.190 2010-02-25 21:15:38 pbuchbinder Exp $";
 static const char g_revision[] = "9.9";
 
 /************************************************************************
@@ -49,9 +49,9 @@ static const char g_revision[] = "9.9";
 #include <arpa/inet.h>
 #include <unistd.h>
 
-/* mod_qos requires OpenSSL */
-#include <openssl/rand.h>
-#include <openssl/evp.h>
+#if defined(HAVE_OPENSSL)
+#define QOS_HAS_SSL
+#endif
 
 /* apache */
 #include <httpd.h>
@@ -73,6 +73,12 @@ static const char g_revision[] = "9.9";
 #include <apr_hooks.h>
 #ifdef AP_NEED_SET_MUTEX_PERMS
 #include <unixd.h>
+#endif
+
+/* mod_qos requires OpenSSL */
+#ifdef QOS_HAS_SSL
+#include <openssl/rand.h>
+#include <openssl/evp.h>
 #endif
 
 /* additional modules */
@@ -129,8 +135,10 @@ static const char g_revision[] = "9.9";
 #define QOS_CC_BEHAVIOR_TOLERANCE_STR "500"
 #define QOS_CC_BEHAVIOR_TOLERANCE_MIN 5
 
+#ifdef QOS_HAS_SSL
 #define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
+#endif
 
 #ifdef QS_MOD_EXT_HOOKS
 APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, path_decode_hook,
@@ -321,6 +329,7 @@ typedef struct qs_conn_st {
   qs_ip_entry_t *ip_free;   /** ip node free list */
 } qs_conn_t;
 
+#ifdef QOS_HAS_SSL
 /**
  * session cookie
  */
@@ -329,6 +338,7 @@ typedef struct {
   char magic[QOS_MAGIC_LEN];
   time_t time;
 } qos_session_t;
+#endif
 
 /** 
  * access control table entry
@@ -447,7 +457,9 @@ typedef struct {
   char *cookie_name;
   char *cookie_path;
   int max_age;
+#ifdef QOS_HAS_SSL
   unsigned char key[EVP_MAX_KEY_LENGTH];
+#endif
   int keyset;
   char *header_name;
   int header_name_drop;
@@ -908,6 +920,7 @@ static char *qos_revision(apr_pool_t *p) {
   return apr_pstrdup(p, g_revision);
 }
 
+#ifdef QOS_HAS_SSL
 /**
  * extract the session cookie from the request
  */
@@ -1066,6 +1079,7 @@ static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
                 QOS_LOG_PFX(025)"failed to create session cookie, id=%s",
                 qos_unique_id(r, "025"));
 }
+#endif
 
 /**
  * returns the request context
@@ -1559,6 +1573,7 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sco
   return ret;
 }
 
+#ifdef QOS_HAS_SSL
 /**
  * checks for VIP user (may pass restrictions)
  */
@@ -1575,6 +1590,7 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
   }
   return 0;
 }
+#endif
 
 // 000-255
 int qos_dec32c(const char *x) {
@@ -4218,6 +4234,7 @@ static int qos_header_parser(request_rec * r) {
     /*
      * VIP control
      */
+#ifdef QOS_HAS_SSL
     if(sconf->header_name || sconf->vip_user) {
       rctx = qos_rctx_config_get(r);
       rctx->is_vip = qos_is_vip(r, sconf);
@@ -4227,7 +4244,7 @@ static int qos_header_parser(request_rec * r) {
         if(cconf) cconf->is_vip = 1;
       }
     }
-
+#endif
     /*
      * additional variables
      */
@@ -4862,6 +4879,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       }
     }
   }
+#ifdef QOS_HAS_SSL
   if(sconf->header_name) {
     /* got a vip header: create new session (if non exists) */
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->header_name);
@@ -4911,6 +4929,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       cconf->is_vip_by_header = 1;
     }
   }
+#endif
   if(sconf->max_conn_close != -1) {
     if(sconf->act->c->connections > sconf->max_conn_close) {
       qs_req_ctx *rctx = qos_rctx_config_get(r);
@@ -5228,6 +5247,10 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     ap_add_version_component(pconf, vs);
   }
                
+#ifndef QOS_HAS_SSL
+  fprintf(stdout, "\033[1mmod_qos, requires OpenSSL, compile Apache using \"--enable-ssl\"\033[0m\n");
+  fflush(stdout);
+#endif
 #ifdef QS_INTERNAL_TEST
   fprintf(stdout, "\033[1mmod_qos TEST BINARY, NOT FOR PRODUCTIVE USE\033[0m\n");
   fflush(stdout);
@@ -5617,6 +5640,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     }
   }
 
+#ifdef QOS_HAS_SSL
   {
     int len = EVP_MAX_KEY_LENGTH;
     unsigned char *rand = apr_pcalloc(p, len);
@@ -5624,6 +5648,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, rand, len, 1, sconf->key, NULL);
     sconf->keyset = 0;
   }
+#endif
 #ifdef QS_INTERNAL_TEST
   {
     int i;
@@ -5702,6 +5727,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   if(o->max_age == atoi(QOS_MAX_AGE)) {
     o->max_age = b->max_age;
   }
+#ifdef QOS_HAS_SSL
   if(o->keyset == 0) {
     memcpy(o->key, b->key, sizeof(o->key));
   }
@@ -5721,6 +5747,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   if(o->vip_ip_user == 0) {
     o->vip_ip_user = b->vip_ip_user;
   }
+#endif
   if(o->max_conn == -1) {
     o->max_conn = b->max_conn;
   }
@@ -6322,6 +6349,7 @@ const char *qos_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
   return NULL;
 }
 
+#ifdef QOS_HAS_SSL
 const char *qos_key_cmd(cmd_parms *cmd, void *dcfg, const char *seed) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -6405,6 +6433,7 @@ const char *qos_vip_ip_u_cmd(cmd_parms *cmd, void *dcfg) {
   sconf->vip_ip_user = 1;
   return NULL;
 }
+#endif
 
 /**
  * max concurrent connections per server
@@ -6958,6 +6987,7 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_ErrorResponseCode <code>, defines the HTTP response code, default is 500."),
   /* vip session */
+#ifdef QOS_HAS_SSL
   AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
                 RSRC_CONF,
                 "QS_SessionCookieName <name>, defines a custom session cookie name,"
@@ -7001,6 +7031,7 @@ static const command_rec qos_config_cmds[] = {
                   " has been authenticated by the Apache server."
                   " May be used in conjunction with the QS_ClientPrefer and"
                   "QS_SrvPreferNet directives only."),
+#endif
   AP_INIT_TAKE1("QS_SrvMaxConn", qos_max_conn_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConn <number>, defines the maximum number of"
