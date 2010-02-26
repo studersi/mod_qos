@@ -1,5 +1,8 @@
 Version 
 
+ - New implementation of the code for QS_SrvMaxConnPerIP
+   to avoid malfunction reported by mod_qos user.
+
  - Module dependency (execution order) to mod_setenvifplus.
 
 Version 9.8

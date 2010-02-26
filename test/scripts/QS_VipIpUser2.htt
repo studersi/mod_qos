@@ -1,5 +1,5 @@
 #
-# $Id: QS_VipIpUser2.htt,v 1.1 2009-10-26 21:13:46 pbuchbinder Exp $
+# $Id: QS_VipIpUser2.htt,v 1.2 2010-02-26 22:01:33 pbuchbinder Exp $
 #
 
 
@@ -59,6 +59,7 @@ _EXPECT . "200"
 _EXPECT . "mod-qos-vip-ip: me"
 _WAIT
 
+_SLEEP 100
 _CLOSE
 
 _REQ server1 $QS_PORT_BASE1
