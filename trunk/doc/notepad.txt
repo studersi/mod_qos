@@ -26,6 +26,7 @@
 + improved variable handling and propagation via header
 + deflate body
   + adjust content-length header (requires parp 0.8)
+- new implementation of the QS_SrvMaxConnPerIP functionality (no tree anymore)
 
 legend:
 - to be documented/not yet decided to implement
