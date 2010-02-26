@@ -1,0 +1,23 @@
+#
+# $Id: simple.htt,v 1.1 2010-02-26 13:13:33 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: 127.0.0.1
+_SLEEP 50
+__Connection: keep-alive
+__
+_MATCH headers "Connection: (.*)" CONNECTION
+_EXPECT . "this is the root index"
+_WAIT
+
+_IF "$CONNECTION" MATCH "close"
+_CLOSE
+_END IF
+
+END
