@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 
 ./ctl.sh stop
@@ -11,7 +11,7 @@ ulimit -c unlimited
 #../httpd/httpd -d `pwd` -f appl_conf/httpd.conf
 sleep 1
 
-./run.sh scripts/simple.htt
+time ./run.sh -s scripts/simple.htt
 
 ./ctl.sh stop
 sleep 1
@@ -20,6 +20,7 @@ echo "Apache"
 #../httpd/httpd -d `pwd` -f appl_conf/httpd.conf
 sleep 1
 
+time ./run.sh -s scripts/simple.htt
 
 ./ctl.sh stop
 echo "normal end"
