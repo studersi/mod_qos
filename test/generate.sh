@@ -35,31 +35,20 @@ if [ ! -f htdocs/image.iso ]; then
     done
 fi
 
-sed <conf/httpd.conf.tmpl >conf/httpd.conf \
-    -e "s;##ROOT##;$ROOT;g" \
-    -e "s;##USR##;$QS_UID_STR;g" \
-    -e "s;##QS_PORT_BASE##;$QS_PORT_BASE;g" \
-    -e "s;##QS_PORT_BASE1##;$QS_PORT_BASE1;g" \
-    -e "s;##QS_PORT_BASE2##;$QS_PORT_BASE2;g" \
-    -e "s;##QS_PORT_BASE3##;$QS_PORT_BASE3;g" \
-    -e "s;##QS_PORT_BASE5##;$QS_PORT_BASE5;g" \
-    -e "s;##QS_PORT_BASE6##;$QS_PORT_BASE6;g" \
-    -e "s;##QS_PORT_BASE8##;$QS_PORT_BASE8;g" \
-    -e "s;##QS_PORT_BASE9##;$QS_PORT_BASE9;g"
-
-sed <appl_conf/httpd.conf.tmpl >appl_conf/httpd.conf \
-    -e "s;##ROOT##;$ROOT;g" \
-    -e "s;##USR##;$QS_UID_STR;g" \
-    -e "s;##QS_PORT_BASE##;$QS_PORT_BASE;g" \
-    -e "s;##QS_PORT_BASE1##;$QS_PORT_BASE1;g" \
-    -e "s;##QS_PORT_BASE2##;$QS_PORT_BASE2;g" \
-    -e "s;##QS_PORT_BASE5##;$QS_PORT_BASE5;g" \
-    -e "s;##QS_PORT_BASE8##;$QS_PORT_BASE8;g"
-
-cp conf/qos_viewer.conf.tmpl conf/qos_viewer.conf
-
-sed <conf/demo.conf.tmpl >conf/demo.conf \
-    -e "s;##ROOT##;$ROOT;g"
+CONFFILES="httpd.conf demo.conf simple.conf qos_viewer.conf"
+for E in $CONFFILES; do
+    sed <conf/$E.tmpl >conf/$E \
+	-e "s;##ROOT##;$ROOT;g" \
+	-e "s;##USR##;$QS_UID_STR;g" \
+	-e "s;##QS_PORT_BASE##;$QS_PORT_BASE;g" \
+	-e "s;##QS_PORT_BASE1##;$QS_PORT_BASE1;g" \
+	-e "s;##QS_PORT_BASE2##;$QS_PORT_BASE2;g" \
+	-e "s;##QS_PORT_BASE3##;$QS_PORT_BASE3;g" \
+	-e "s;##QS_PORT_BASE5##;$QS_PORT_BASE5;g" \
+	-e "s;##QS_PORT_BASE6##;$QS_PORT_BASE6;g" \
+	-e "s;##QS_PORT_BASE8##;$QS_PORT_BASE8;g" \
+	-e "s;##QS_PORT_BASE9##;$QS_PORT_BASE9;g"
+done
 
 if [ ! -d logs ]; then
     mkdir logs

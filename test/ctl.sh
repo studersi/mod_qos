@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.10 2010-02-05 21:34:31 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.11 2010-02-26 13:13:32 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -57,9 +57,11 @@ case "$COMMAND" in
   stop)
 	INST="apache apache1"
 	for E in $INST; do
+	  APID=""
 	  if [ -f logs/${E}.pid ]; then
-	    echo "kill $E `cat logs/${E}.pid`"
-	    kill `cat logs/${E}.pid`
+	    APID=`cat logs/${E}.pid`
+	    echo "kill $E $APID"
+	    kill $APID
 	  fi
 	done
 	for E in $INST; do
