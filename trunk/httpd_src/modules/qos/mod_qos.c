@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.193 2010-02-26 22:01:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.194 2010-02-26 22:56:22 pbuchbinder Exp $";
 static const char g_revision[] = "9.9";
 
 /************************************************************************
@@ -2971,7 +2971,7 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
       e = qos_cc_set(u->qos_cc, &new, time(NULL));
     }
     /* max connections */
-    if(cconf->sconf->qos_cc_prefer) {
+    if(cconf->sconf->has_qos_cc && cconf->sconf->qos_cc_prefer) {
       u->qos_cc->connections++;
       if(!(*e)->vip) {
         if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
