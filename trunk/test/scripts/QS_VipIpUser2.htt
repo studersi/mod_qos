@@ -1,12 +1,12 @@
 #
-# $Id: QS_VipIpUser2.htt,v 1.2 2010-02-26 22:01:33 pbuchbinder Exp $
+# $Id: QS_VipIpUser2.htt,v 1.3 2010-02-27 10:06:28 pbuchbinder Exp $
 #
 
 
 INCLUDE scripts/ports
 
 CLIENT
-
+_SLEEP 1000
 _REQ server1 $QS_PORT_BASE1
 __GET /qos HTTP/1.1
 __Host: localhost
@@ -59,7 +59,7 @@ _EXPECT . "200"
 _EXPECT . "mod-qos-vip-ip: me"
 _WAIT
 
-_SLEEP 100
+_SLEEP 200
 _CLOSE
 
 _REQ server1 $QS_PORT_BASE1
