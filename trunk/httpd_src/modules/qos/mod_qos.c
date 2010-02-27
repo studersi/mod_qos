@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.194 2010-02-26 22:56:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.195 2010-02-27 08:41:28 pbuchbinder Exp $";
 static const char g_revision[] = "9.9";
 
 /************************************************************************
@@ -795,7 +795,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
   int i;
   qos_s_t *s;
   qos_s_entry_t *e;
-  msize = APR_ALIGN_DEFAULT(msize) + 512;
+  msize = APR_ALIGN_DEFAULT(msize) + 1024;
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL, 
                QOS_LOG_PFX(000)"create shared memory (client control): %d bytes", msize);
   /* use anonymous shm by default */
@@ -1207,7 +1207,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   act->size = (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
-    512;
+    1024;
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
                QOS_LOG_PFX(000)"%s(%s), create shared memory (request control): %d bytes (r=%d,ip=%d)", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
