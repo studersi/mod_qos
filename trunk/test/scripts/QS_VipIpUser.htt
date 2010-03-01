@@ -1,11 +1,12 @@
 #
-# $Id: QS_VipIpUser.htt,v 1.4 2009-10-26 21:13:46 pbuchbinder Exp $
+# $Id: QS_VipIpUser.htt,v 1.5 2010-03-01 20:34:35 pbuchbinder Exp $
 #
 
 
 INCLUDE scripts/ports
 
 CLIENT
+_SLEEP 500
 
 _REQ server1 $QS_PORT_BASE1
 __GET /qos HTTP/1.1
@@ -35,6 +36,7 @@ _EXPECT . "!mod-qos-vip-ip"
 _WAIT
 
 _CLOSE
+_SLEEP 500
 
 _REQ server1 $QS_PORT_BASE1
 __GET /qos?address=$IP&action=search HTTP/1.1
