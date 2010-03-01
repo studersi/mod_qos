@@ -61,18 +61,18 @@ __GET /qos HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
-_EXPECT . "<!--0-->.*free ip entries.*4096"
+_EXPECT . "<!--0-->.*free ip entries.*896"
 _EXPECT . "<!--0-->.*current connections.*colspan=.3.>0</td>"
-_EXPECT . "<!--2-->.*free ip entries.*4096"
+_EXPECT . "<!--2-->.*free ip entries.*896"
 _EXPECT . "<!--2-->.*current connections.*colspan=.3.>0</td>"
-_EXPECT . "<!--3-->.*free ip entries.*4096"
+_EXPECT . "<!--3-->.*free ip entries.*896"
 _EXPECT . "<!--3-->.*current connections.*colspan=.3.>0</td>"
 _EXPECT . "<!--3-->.*/no.*<td >0</td>"
 _EXPECT . "<!--3--><td>/cgi</a></td><td>200</td><td >0</td>"
 _EXPECT . "<!--3--><td>/aaa</a></td><td>200</td><td >0</td>"
 _EXPECT . "<!--3--><td>/bbb</a></td><td>200</td><td >0</td>"
 _EXPECT . "<!--3--><td>/ccc/.*</a></td><td>200</td><td >0</td>"
-_EXPECT . "<!--4-->.*free ip entries.*4095"
+_EXPECT . "<!--4-->.*free ip entries.*895"
 _EXPECT . "<!--4-->.*current connections.*colspan=.3.>1</td>"
 _EXPECT . "<!--4-->.*<td>30</td><td >1</td>"
 _EXPECT . "<!--4-->.*<td>5</td><td >0</td>"
