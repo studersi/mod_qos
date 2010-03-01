@@ -1,3 +1,9 @@
+Version 
+
+ - MaxClients overrides ServerLimit/Treads settings when
+   calculating the maximum number of possible client
+   connections.
+
 Version 9.9 
 
  - New implementation of the code for QS_SrvMaxConnPerIP

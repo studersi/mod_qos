@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.196 2010-02-27 22:01:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.197 2010-03-01 17:49:22 pbuchbinder Exp $";
 static const char g_revision[] = "9.10";
 
 /************************************************************************
@@ -1203,7 +1203,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   if(thread_limit == 0) thread_limit = 1; // mpm prefork
   max_ip = thread_limit * server_limit;
-  max_ip = max_ip > maxclients ? max_ip : maxclients;
+  max_ip = maxclients > 0 ? maxclients : max_ip;
   act->size = (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
@@ -1324,7 +1324,11 @@ static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
   int i = cconf->sconf->act->conn->conn_ip_len;
   qs_ip_entry_t *conn_ip = cconf->sconf->act->conn->conn_ip;
   int num = -1;
-  qs_ip_entry_t *free;
+  qs_ip_entry_t *free = NULL;
+  //struct timeval tv;
+  //long long start;
+  //gettimeofday(&tv, NULL);
+  //start = tv.tv_sec * 1000000 + tv.tv_usec;
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT1 */
   while(i) {
     if(conn_ip->ip == 0) {
@@ -1338,12 +1342,14 @@ static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
     conn_ip++;
     i--;
   }
-  if(num == -1) {
+  if(free && (num == -1)) {
     free->ip = cconf->ip;
     free->counter++;
     num = free->counter;
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
+  //gettimeofday(&tv, NULL);
+  //"inc:  %.6lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start
   return num;
 }
 
@@ -5078,7 +5084,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   sconf->base_server = bs;
   sconf->act->timeout = apr_time_sec(bs->timeout);
   if(sconf->act->timeout == 0) sconf->act->timeout = 300;
-  if(qos_init_shm(bs, sconf->act, sconf->location_t, net_prefer  < 0 ? 1 : net_prefer) != APR_SUCCESS) {
+  if(qos_init_shm(bs, sconf->act, sconf->location_t, net_prefer) != APR_SUCCESS) {
     return !OK;
   }
   apr_pool_cleanup_register(sconf->pool, sconf->act,
@@ -5129,7 +5135,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       ssconf->act->timeout = 300;
     }
     if(ssconf->is_virtual) {
-      if(qos_init_shm(s, ssconf->act, ssconf->location_t, net_prefer  < 0 ? 1 : net_prefer) != APR_SUCCESS) {
+      if(qos_init_shm(s, ssconf->act, ssconf->location_t, net_prefer) != APR_SUCCESS) {
         return !OK;
       }
       apr_pool_cleanup_register(ssconf->pool, ssconf->act,
