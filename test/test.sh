@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.103 2010-03-01 20:34:35 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.104 2010-03-02 20:22:04 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -564,6 +564,11 @@ if [ $LINES != "0" ]; then
   echo "WARNING: found pattern 'fprintf'"
 fi
 
+if [ `grep -c "exit signal" logs/error_log"` -gt 0 ]; then
+  WARNINGS=`expr $WARNINGS + 1`
+  echo "WARNING: found 'exit signal' message"
+fi
+    
 IPCS2=`ipcs | wc -l`
 echo "ipcs: $IPCS $IPCS2"
 if [ $IPCS -ne $IPCS2 ]; then
