@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regex.c,v 1.2 2009-01-19 20:30:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: regex.c,v 1.3 2010-03-03 19:18:40 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -58,6 +58,10 @@ static const char revision[] = "$Id: regex.c,v 1.2 2009-01-19 20:30:06 pbuchbind
 
 static void usage() {
   printf("usage: regex <string> <pcre>\n");
+  printf("\n");
+  printf("Regex matching test.\n");
+  printf("\n");
+  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
 }
 

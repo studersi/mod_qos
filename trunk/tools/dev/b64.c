@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: b64.c,v 1.1 2009-01-19 20:30:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.2 2010-03-03 19:18:40 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -37,6 +37,10 @@ static const char revision[] = "$Id: b64.c,v 1.1 2009-01-19 20:30:06 pbuchbinder
 
 static void usage() {
   printf("usage: b64 -e|-d <string>\n");
+  printf("\n");
+  printf("Base64 encoder/decoder.\n");
+  printf("\n");
+  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
 }
 
