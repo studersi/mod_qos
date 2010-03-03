@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: mem.c,v 1.1 2010-03-03 19:18:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: mem.c,v 1.2 2010-03-03 20:10:55 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -37,6 +37,8 @@ static const char revision[] = "$Id: mem.c,v 1.1 2010-03-03 19:18:40 pbuchbinder
 
 #define CR 13
 #define LF 10
+
+static int m_v = 0;
 
 static void usage() {
   printf("usage: mem <pid>\n");
@@ -130,9 +132,12 @@ static void count(apr_pool_t *pool, const char *line,
 	if(off) {
 	  char *dev = getword(pool, &r, ' ');
 	  if(dev) {
+	    unsigned long s = str2hex(start);
+	    unsigned long e = str2hex(end);
+	    if(m_v) {
+	      printf("%s [%lu]\n", line, e-s);
+	    }
 	    if(strcmp(dev, "00:00") == 0) {
-	      unsigned long s = str2hex(start);
-	      unsigned long e = str2hex(end);
 	      if(strcmp(perms, "rw-p") == 0) {
 		*private = *private + (e-s);
 	      } else if(strcmp(perms, "rw-s") == 0) {
@@ -205,8 +210,13 @@ static void test() {
 int main(int argc, const char * const argv[]) {
   argc--;
   argv++;
-  if(argc != 1) {
+  if(argc < 1) {
     usage();
+  }
+  if(argc == 2) {
+    if(strcmp(argv[1], "-v") == 0) {
+      m_v = 1;
+    }
   }
   apr_app_initialize(&argc, &argv, NULL);
   if(strcmp(argv[0], "test") == 0) {
