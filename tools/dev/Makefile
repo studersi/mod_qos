@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex b64 crs
+PROGRAMS = regex b64 crs mem
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -32,9 +32,15 @@ crs: $(crs_OBJECTS)
 	$(LINK) $(crs_LTFLAGS) -static $(crs_OBJECTS) $(crs_LDADD)
 	strip crs
 
+mem_OBJECTS = mem.lo
+mem_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+mem: $(mem_OBJECTS)
+	$(LINK) $(mem_LTFLAGS) -static $(mem_OBJECTS) $(mem_LDADD)
+
+
 
 stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
 clean:
-	rm *.o stack regex b64 crs
+	rm *.o stack regex b64 crs mem
