@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.197 2010-03-01 17:49:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.198 2010-03-04 22:21:14 pbuchbinder Exp $";
 static const char g_revision[] = "9.10";
 
 /************************************************************************
@@ -4389,7 +4389,7 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
     return rv;
   }
   if(!ap_is_initial_req(r) || !r->read_chunked) {
-    ap_remove_output_filter(f);
+    ap_remove_input_filter(f);
     return APR_SUCCESS;
   } else {
     qos_srv_config *sconf = ap_get_module_config(r->server->module_config, &qos_module);
