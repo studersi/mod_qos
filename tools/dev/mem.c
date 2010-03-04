@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: mem.c,v 1.2 2010-03-03 20:10:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: mem.c,v 1.3 2010-03-04 19:46:09 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -41,9 +41,9 @@ static const char revision[] = "$Id: mem.c,v 1.2 2010-03-03 20:10:55 pbuchbinder
 static int m_v = 0;
 
 static void usage() {
-  printf("usage: mem <pid>\n");
+  printf("usage: mem [-v] <pid>\n");
   printf("\n");
-  printf("Calculates the heap used by the specified process\n");
+  printf("Calculates the memory heap in bytes used by the specified process\n");
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
@@ -135,7 +135,7 @@ static void count(apr_pool_t *pool, const char *line,
 	    unsigned long s = str2hex(start);
 	    unsigned long e = str2hex(end);
 	    if(m_v) {
-	      printf("%s [%lu]\n", line, e-s);
+	      printf("%s [%lukb]\n", line, (e-s)/1024);
 	    }
 	    if(strcmp(dev, "00:00") == 0) {
 	      if(strcmp(perms, "rw-p") == 0) {
@@ -152,6 +152,36 @@ static void count(apr_pool_t *pool, const char *line,
   return;
 }
 
+static void readSMaps(const char *pid) {
+  apr_status_t rc;
+  apr_file_t *m;
+  char *fname;
+  apr_pool_t *pool;
+  apr_pool_create(&pool, NULL);
+  fname = apr_pstrcat(pool, "/proc/", pid, "/smaps", NULL);
+  if((rc = apr_file_open(&m, fname, APR_READ, APR_OS_DEFAULT, pool)) == APR_SUCCESS) {
+    char line[4096];
+    while(!fgetline(line, sizeof(line), m)) {
+      if(1) {
+	if(strncmp(line, "Size:", strlen("Size:")) == 0) {
+	  printf("%s\n", line);
+	}
+	if(strstr(line, " 00:00 ")) {
+	  printf("%s\n", line);
+	}
+      } else {
+	printf("%s\n", line);
+      }
+    }
+    apr_file_close(m); 
+  } else {
+    char buf[1024];
+    apr_strerror(rc, buf, sizeof(buf));
+    fprintf(stderr, "ERROR: pid's (%s) maps file not available/readable (%s)\n", pid, buf);
+  }
+  apr_pool_destroy(pool);
+}
+
 static unsigned long readMaps(const char *pid) {
   apr_status_t rc;
   unsigned long shared = 0;
@@ -160,7 +190,7 @@ static unsigned long readMaps(const char *pid) {
   char *fname;
   apr_pool_t *pool;
   apr_pool_create(&pool, NULL);
-  fname = apr_pstrcat(pool, "/proc/", pid, "/maps");
+  fname = apr_pstrcat(pool, "/proc/", pid, "/maps", NULL);
   if((rc = apr_file_open(&m, fname, APR_READ, APR_OS_DEFAULT, pool)) == APR_SUCCESS) {
     char line[4096];
     while(!fgetline(line, sizeof(line), m)) {
@@ -170,7 +200,9 @@ static unsigned long readMaps(const char *pid) {
     printf("shared=%lu\n", shared);
     apr_file_close(m); 
   } else {
-    fprintf(stderr, "ERROR: pid '%s' not available/readable (%d)\n", pid, rc);
+    char buf[1024];
+    apr_strerror(rc, buf, sizeof(buf));
+    fprintf(stderr, "ERROR: pid's (%s) maps file not available/readable (%s)\n", pid, buf);
     shared = 0;
     private = -1;
   }
@@ -178,51 +210,51 @@ static unsigned long readMaps(const char *pid) {
   return shared + private;
 }
 
-static void test() {
-  int status;
-  pid_t pid;
-  char buf[1024];
-  sprintf(buf, "%d", getpid());
-  
-  switch (pid = fork()) {
-  case -1:
-    exit(1);
-  case 0:
-    readMaps(buf);
-    exit(0);
-  default:
-    waitpid(pid, &status, 0);
-  }
-  
-  malloc(1024*1024);
-  switch (pid = fork()) {
-  case -1:
-    exit(1);
-  case 0:
-    readMaps(buf);
-    exit(0);
-  default:
-    waitpid(pid, &status, 0);
-  }  
+static void testFunc() {
+  int m = 1024 * 1024;
+  char ppid[1024];
+  char *v;
+  sprintf(ppid, "%d", getpid());
+  printf(">initial (%s)\n", ppid);
+  readMaps(ppid);
+
+  printf(">calloc %d bytes\n", m);
+  v = calloc(m, 1);
+  readMaps(ppid);
+  readSMaps(ppid);
+
+  printf(">free\n");
+  free(v);
+  readMaps(ppid);
 }
 
 
 int main(int argc, const char * const argv[]) {
+  const char *pid;
+  int test = 0;
+  apr_app_initialize(&argc, &argv, NULL);
   argc--;
   argv++;
   if(argc < 1) {
     usage();
   }
   if(argc == 2) {
-    if(strcmp(argv[1], "-v") == 0) {
-      m_v = 1;
-    }
   }
-  apr_app_initialize(&argc, &argv, NULL);
-  if(strcmp(argv[0], "test") == 0) {
-    test();
+  while(argc >= 1) {
+    if(strcmp(argv[0], "-v") == 0) {
+      m_v = 1;
+    } else if(strcmp(argv[0], "test") == 0) {
+      test = 1;
+    } else {
+      pid = argv[0];
+    }
+    argc--;
+    argv++;
+  }
+  if(test) {
+    testFunc();
   } else {
-    readMaps(argv[0]);
+    readMaps(pid);
   }
   return 0;
 }
