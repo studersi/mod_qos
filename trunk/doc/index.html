@@ -1212,8 +1212,10 @@ of concurrent connections for a singe IP source address.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
-# maximum number of active TCP connections is limited to 256:
-MaxClients              256
+# maximum number of active TCP connections is limited to 896 (limited
+# by the available memory, adjust the sesstings according to the used
+# hardware):
+MaxClients              896
 
 # don't allow a single client to open more than 50 TCP connections:
 QS_SrvMaxConnPerIP      50
@@ -1259,15 +1261,29 @@ directive as shown above in the "Client Opens Many Concurrent Connections" examp
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
-# maximum number of active TCP connections is limited to 256:
-MaxClients              256
+# maximum number of active TCP connections is limited to 896 (limited
+# by the available memory, adjust the sesstings according to the used
+# hardware):
+MaxClients              896
 
-# name of the HTTP response header which marks preferred clients:
+# idle timeout:
+Timeout                 30
+
+# keep alive (for up to 600 connections):
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        5
+QS_SrvMaxConnClose      600
+
+# name of the HTTP response header which marks preferred clients (this
+# may be used to let the application decide which clients are "good",
+# e.g. authenticated users, you may also use QS_VipUser when using an
+# Apache authentication module such as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/">mod_auth_oid</a>):
 QS_VipIPHeaderName      mod-qos-login
 
 # enables the known client perfer mode (server allows new TCP connections
-# to known clients when is has more than 205 open TCP connections):
-QS_ClientPrefer
+# from known/good clients only when is has more than 716 open TCP connections):
+QS_ClientPrefer         80
 
 # handles two hundred thousand different client IP addresses:
 QS_ClientEntries        200000
@@ -1275,11 +1291,13 @@ QS_ClientEntries        200000
 # minimum request/response speed (deny slow clients blocking the server, 
 # e.g. defending slowloris):
 QS_SrvMinDataRate       150 1200
+
 # and limit request header and body:
 LimitRequestFields      30
 QS_LimitRequestBody     102400
-# don't allow more than 50 TCP connections per client source address:
-QS_SrvMaxConnPerIP      50
+
+# don't allow more than 30 TCP connections per client source address:
+QS_SrvMaxConnPerIP      30
 </pre>
 </td></tr>
 </table>
