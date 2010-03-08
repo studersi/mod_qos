@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.104 2010-03-02 20:22:04 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.105 2010-03-08 20:08:54 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -42,11 +42,10 @@ QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 ERRORS=0
 WARNINGS=0
 
-sleep 1
-IPCS=`ipcs | wc -l`
-
 # delete the access log file since it is used to generate permit rules
 ./ctl.sh stop
+sleep 1
+IPCS=`ipcs | wc -l`
 rm -f logs/*
 rm -rf /var/tmp/qosc/server1
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
@@ -136,6 +135,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipHeaderName_Graceful.htt"
 fi
+sleep 1
 
 # -----------------------------------------------------------------
 echo "-- graceful, QS_Graceful.htt" >> logs/error_log
@@ -144,11 +144,14 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_Graceful.htt"
 fi
+sleep 1
+
 ./run.sh -se ./scripts/QS_Graceful2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_Graceful2.htt"
 fi
+sleep 1
 
 # -----------------------------------------------------------------
 echo "-- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
@@ -283,11 +286,14 @@ fi
 sleep 1
 
 ./ctl.sh restart > /dev/null
+sleep 1
 ./run.sh -se ./scripts/Graceful.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED Graceful.htt"
 fi
+sleep 1
+
 # -----------------------------------------------------------------
 echo "-- kbytes/sec limit, QS_EventKBytesPerSecLimit.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_EventKBytesPerSecLimit.htt
@@ -395,6 +401,8 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventBlockCount_Status_graceful.htt"
 fi
+sleep 1
+
 ./ctl.sh restart > /dev/null
 echo "-- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_ClientEventPerSecLimit.htt
@@ -513,6 +521,13 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SrvResponseRate_0.htt"
 fi
 
+./ctl.sh restart -D QS_SrvMaxConn > /dev/null
+./run.sh -s ./scripts/QS_SrvRequestRate.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate.htt"
+fi
+
 ./ctl.sh restart -D cc -D real_ip > /dev/null
 ./run.sh -s ./scripts/QS_SetEnvResHeadersMatch.htt
 if [ $? -ne 0 ]; then
@@ -564,11 +579,11 @@ if [ $LINES != "0" ]; then
   echo "WARNING: found pattern 'fprintf'"
 fi
 
-if [ `grep -c "exit signal" logs/error_log"` -gt 0 ]; then
+if [ `grep -c "exit signal" logs/error_log` -gt 0 ]; then
   WARNINGS=`expr $WARNINGS + 1`
   echo "WARNING: found 'exit signal' message"
 fi
-    
+
 IPCS2=`ipcs | wc -l`
 echo "ipcs: $IPCS $IPCS2"
 if [ $IPCS -ne $IPCS2 ]; then

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.137 2010-02-24 19:28:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.138 2010-03-08 20:08:54 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -406,7 +406,6 @@ Listen                  server1:##QS_PORT_BASE1##
    QS_SrvMaxConnClose                       600
    QS_SrvMaxConnPerIP                        10
 
-
    QS_LocRequestLimit         /no           200
    QS_LocRequestLimit         /cgi          200
    QS_LocRequestLimit         /aaa          200
@@ -476,6 +475,12 @@ SSLRandomSeed           startup builtin
    ProxyPass                  /qos_control !
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+<IfDefine QS_SrvMaxConn>
+   QS_SrvMaxConn                            800
+   QS_SrvMaxConnClose                       600
+   QS_SrvMaxConnPerIP                        10
+</IfDefine>
 
    QS_ErrorPage               /error-docs/error.html
    SetEnvIf   Host (.*):.*    QS_ErrorPage=/error-docs/$1.html
