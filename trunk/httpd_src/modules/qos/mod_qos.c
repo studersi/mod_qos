@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.198 2010-03-04 22:21:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.199 2010-03-08 20:08:31 pbuchbinder Exp $";
 static const char g_revision[] = "9.10";
 
 /************************************************************************
@@ -1295,6 +1295,7 @@ static char *qos_ip_long2str(request_rec *r, unsigned long ip) {
   d = ip % 256;
   return apr_psprintf(r->pool, "%d.%d.%d.%d", a, b, c, d);
 }
+
 /**
  * helper for the status viewer (unsigned long to char)
  */
@@ -1314,6 +1315,23 @@ static void qos_collect_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *e
     i--;
   }
   apr_global_mutex_unlock(sconf->act->lock); /* @CRT8 */
+}
+
+
+static int qos_count_free_ip(qos_srv_config *sconf) {
+  int c = 0;
+  int i = sconf->act->conn->conn_ip_len;
+  qs_ip_entry_t *conn_ip = sconf->act->conn->conn_ip;
+  apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
+  while(i) {
+    if(conn_ip->ip == 0) {
+      c++;
+    }
+    conn_ip++;
+    i--;
+  }
+  apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
+  return c;
 }
 
 /**
@@ -3298,22 +3316,6 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
     ap_rputs(" </tr></td>\n", r);
     ap_rputs("</tbody></table>\n", r);
   }
-}
-
-static int qos_count_free_ip(qos_srv_config *sconf) {
-  int c = 0;
-  int i = sconf->act->conn->conn_ip_len;
-  qs_ip_entry_t *conn_ip = sconf->act->conn->conn_ip;
-  apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
-  while(i) {
-    if(conn_ip->ip == 0) {
-      c++;
-    }
-    conn_ip++;
-    i--;
-  }
-  apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
-  return c;
 }
 
 /**
