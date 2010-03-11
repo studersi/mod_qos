@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.199 2010-03-08 20:08:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.200 2010-03-11 21:46:04 pbuchbinder Exp $";
 static const char g_revision[] = "9.10";
 
 /************************************************************************
@@ -789,13 +789,13 @@ static int qos_cc_comp_time(const void *_pA, const void *_pB) {
 static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
   apr_shm_t *m;
   apr_status_t res;
-  int msize = sizeof(qos_s_t) + 
-    (sizeof(qos_s_entry_t) * size) + 
-    (2 * sizeof(qos_s_entry_t *) * size);
+  int msize = APR_ALIGN_DEFAULT(sizeof(qos_s_t)) + 
+    (APR_ALIGN_DEFAULT(sizeof(qos_s_entry_t)) * size) + 
+    (2 * APR_ALIGN_DEFAULT(sizeof(qos_s_entry_t *)) * size);
   int i;
   qos_s_t *s;
   qos_s_entry_t *e;
-  msize = APR_ALIGN_DEFAULT(msize) + 1024;
+  msize = msize + 1024;
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL, 
                QOS_LOG_PFX(000)"create shared memory (client control): %d bytes", msize);
   /* use anonymous shm by default */
@@ -928,7 +928,7 @@ static char *qos_get_remove_cookie(request_rec *r, qos_srv_config* sconf) {
     if(p) {
       char *value = NULL;
       p[0] = '\0'; /* terminate the beginning of the cookie header */
-      p = p + strlen(cn);
+      p = &p[strlen(cn)];
       value = ap_getword(r->pool, (const char **)&p, ';');
       while(p && (p[0] == ' ')) p++;
       /* skip a path, if there is any */
