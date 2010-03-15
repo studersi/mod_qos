@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.105 2010-03-08 20:08:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.106 2010-03-15 19:54:16 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -169,7 +169,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SrvConnTimeout_body.htt"
 fi
 
-sleep 1
+sleep 2
 # -----------------------------------------------------------------
 echo "-- disable keep alive, QS_SrvMaxConnClose_20.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_SrvMaxConnClose_20.htt
@@ -292,7 +292,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED Graceful.htt"
 fi
-sleep 1
+sleep 2
 
 # -----------------------------------------------------------------
 echo "-- kbytes/sec limit, QS_EventKBytesPerSecLimit.htt" >>  logs/error_log
