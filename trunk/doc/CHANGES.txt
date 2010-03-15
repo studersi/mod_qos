@@ -1,10 +1,12 @@
-Version 
+Version 9.10
 
  - Fixed: ap_remove_input_filter().
 
  - MaxClients overrides ServerLimit/Treads settings when
    calculating the maximum number of possible client
    connections.
+
+ - Log/debug message about used semaphore files.
 
 Version 9.9
 
