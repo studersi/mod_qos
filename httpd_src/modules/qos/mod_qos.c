@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.200 2010-03-11 21:46:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.201 2010-03-15 19:53:43 pbuchbinder Exp $";
 static const char g_revision[] = "9.10";
 
 /************************************************************************
@@ -787,6 +787,7 @@ static int qos_cc_comp_time(const void *_pA, const void *_pB) {
 }
 
 static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
+  char *file = "-";
   apr_shm_t *m;
   apr_status_t res;
   int msize = APR_ALIGN_DEFAULT(sizeof(qos_s_t)) + 
@@ -796,36 +797,42 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
   qos_s_t *s;
   qos_s_entry_t *e;
   msize = msize + 1024;
-  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL, 
-               QOS_LOG_PFX(000)"create shared memory (client control): %d bytes", msize);
   /* use anonymous shm by default */
   res = apr_shm_create(&m, msize, NULL, pool);
   if(APR_STATUS_IS_ENOTIMPL(res)) {
-    char *file = apr_psprintf(pool, "%s_cc.mod_qos",
-                              qos_tmpnam(pool, srec));
+    file = apr_psprintf(pool, "%s_cc.mod_qos",
+                        qos_tmpnam(pool, srec));
 #ifdef ap_http_scheme
     // Apache 2.2
     apr_shm_remove(file, pool);
 #endif
     res = apr_shm_create(&m, msize, file, pool);
   }
+  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, srec, 
+               QOS_LOG_PFX(000)"create shared memory (client control)(%s): %d bytes",
+               file, msize);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
-    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(002)"could not create c-shared memory: %s (%d bytes)", buf, msize);
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, srec,
+                 QOS_LOG_PFX(002)"failed to create shared memory (client control)(%s): %s (%d bytes)",
+                 file, buf, msize);
     return NULL;
   }
   s = apr_shm_baseaddr_get(m);
   s->m = m;
   s->lock_file = apr_psprintf(pool, "%s_ccl.mod_qos", 
                               qos_tmpnam(pool, srec));
+  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, srec, 
+               QOS_LOG_PFX(000)"create mutex (client control)(%s)",
+               s->lock_file);
   res = apr_global_mutex_create(&s->lock, s->lock_file, APR_LOCK_DEFAULT, pool);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
-    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, NULL,
-                 QOS_LOG_PFX(004)"could not create c-mutex: %s", buf);
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, srec,
+                 QOS_LOG_PFX(004)"failed to create mutex (client control)(%s): %s", 
+                 s->lock_file, buf);
     apr_shm_destroy(s->m);
     return NULL;
   }
@@ -1102,7 +1109,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
  * destroy shared memory and mutexes
  */
 static void qos_destroy_act(qs_actable_t *act) {
-  ap_log_error(APLOG_MARK, APLOG_DEBUG|APLOG_NOERRNO, 0, NULL,
+  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL,
                QOS_LOG_PFX(001)"cleanup shared memory: %d bytes",
                act->size);
   act->child_init = 0;
@@ -1193,6 +1200,7 @@ static apr_status_t qos_cleanup_shm(void *p) {
  */
 static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *table,
                                  int maxclients) {
+  char *file = "-";
   apr_status_t res;
   int i;
   int rule_entries = apr_table_elts(table)->nelts;
@@ -1208,26 +1216,30 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
     1024;
-  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
-               QOS_LOG_PFX(000)"%s(%s), create shared memory (request control): %d bytes (r=%d,ip=%d)", 
-               s->server_hostname == NULL ? "-" : s->server_hostname,
-               s->is_virtual ? "v" : "b", act->size, rule_entries, max_ip);
   /* use anonymous shm by default */
   res = apr_shm_create(&act->m, act->size, NULL, act->pool);
   if(APR_STATUS_IS_ENOTIMPL(res)) {
-    char *file = apr_psprintf(act->pool, "%s_m.mod_qos",
-                              qos_tmpnam(act->pool, s));
+    file = apr_psprintf(act->pool, "%s_m.mod_qos",
+                        qos_tmpnam(act->pool, s));
 #ifdef ap_http_scheme
     // Apache 2.2
     apr_shm_remove(file, act->pool);
 #endif
     res = apr_shm_create(&act->m, act->size, file, act->pool);
   }
+  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
+               QOS_LOG_PFX(000)"%s(%s), create shared memory (ACT)(%s): %d bytes (r=%d,ip=%d)", 
+               s->server_hostname == NULL ? "-" : s->server_hostname,
+               s->is_virtual ? "v" : "b",
+               file,
+               act->size,
+               rule_entries, max_ip);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(002)"could not create r-shared memory: %s (%d bytes)", buf, act->size);
+                 QOS_LOG_PFX(002)"failed to create shared memory (ACT)(%s): %s (%d bytes)",
+                 file, buf, act->size);
     return res;
   } else {
     qs_conn_t *c = apr_shm_baseaddr_get(act->m);
@@ -5070,13 +5082,17 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   if(sconf->act->lock_file == NULL) {
     sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
                                          qos_tmpnam(sconf->act->pool, s));
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
+                 QOS_LOG_PFX(000)"create mutex (ACT)(%s)",
+                 sconf->act->lock_file);
     rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
                                  APR_LOCK_DEFAULT, sconf->act->pool);
     if (rv != APR_SUCCESS) {
       char buf[MAX_STRING_LEN];
       apr_strerror(rv, buf, sizeof(buf));
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX(004)"could not create a-mutex: %s", buf);
+                   QOS_LOG_PFX(004)"failed to create mutex (ACT)(%s): %s",
+                   sconf->act->lock_file, buf);
       exit(1);
     }
 #ifdef AP_NEED_SET_MUTEX_PERMS

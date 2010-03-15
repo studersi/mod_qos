@@ -12,22 +12,26 @@
   - adjust metrics dynamically
   - learning and permissive mode (server wide, per function)
 - dynamic rule adjustment of the generic request filter
-- re-design/re-implementation of some parts/functions
-  + maybe dropping some features
-  + remove other functions
-  - maybe start the implementation of a separate module.
-    > see mod_setenvifplus
-- web interface to configure mod_qos dynamically
-+ QS_ClientEventRequestLimit limits the number of concurrent
-  events per client source IP.
 - improved anomalie detection (thresholds, logging)
   - set client event to be used in other rules
+- re-design/re-implementation of some parts/functions
+  + maybe dropping some features
+    + remove QS_SrvPreferNet
+  - maybe start the implementation of a separate module.
+    + see mod_setenvifplus
+    - mod_qos "light"
+- web interface to configure mod_qos dynamically
+  - impoved viewer
++ QS_ClientEventRequestLimit limits the number of concurrent
+  events per client source IP.
 - propagate client information via request header (set additional variables)
 + improved variable handling and propagation via header
 + deflate body
-  + adjust content-length header (requires parp 0.8)
+  + adjust content-length header (requires parp 0.8 or higher)
 + new implementation of the QS_SrvMaxConnPerIP functionality (no tree anymore)
-- initial socket timeout for new connections (tcp open only and no initial request)
+x initial socket timeout for new connections (tcp open only and no initial request)
+- configure file path for mutex/sem files
+  + debug/error message showing if and which file is used
 
 legend:
 - to be documented/not yet decided to implement
