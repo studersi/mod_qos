@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.106 2010-03-15 19:54:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.107 2010-03-16 19:23:44 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -301,11 +301,6 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventKBytesPerSecLimit.htt"
 fi
-./run.sh -se ./scripts/QS_EventKBytesPerSecLimit_t.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_EventKBytesPerSecLimit_t.htt"
-fi
 
 # -----------------------------------------------------------------
 cat logs/access1_log | awk '{print $7}' > logs/loc1.htt
@@ -338,6 +333,10 @@ fi
 # -----------------------------------------------------------------
 ./prefer.sh
 EXT_ERR=$?
+if [ $EXT_ERR -gt 0 ]; then
+    ./prefer.sh
+    EXT_ERR=$?
+fi
 ERRORS=`expr $ERRORS + $EXT_ERR`
 
 echo "-- QS_SetEnvResHeaders" >> logs/error_log

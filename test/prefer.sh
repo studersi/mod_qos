@@ -3,6 +3,7 @@
 ERRORS=0
 
 ./ctl.sh restart -D max_clients -D cc > /dev/null
+sleep 1
 echo "-- QS_ClientPrefer.htt" >>  logs/error_log
 ./run.sh scripts/Log.htt > /dev/null
 QSTART=`grep -c "mod_qos(063)" logs/error_log`
@@ -45,6 +46,7 @@ if [ $QDIFF1 -eq 0 ]; then
 fi
 
 ./ctl.sh restart -D cc > /dev/null
+sleep 1
 ./htt.sh -se ./scripts/ClientBehavior.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
