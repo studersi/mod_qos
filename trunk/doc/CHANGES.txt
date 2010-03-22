@@ -1,3 +1,7 @@
+Version 9.
+
+ - New directive QS_SemMemFile.
+
 Version 9.10
 
  - Fixed: ap_remove_input_filter().

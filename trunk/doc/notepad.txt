@@ -30,7 +30,7 @@
   + adjust content-length header (requires parp 0.8 or higher)
 + new implementation of the QS_SrvMaxConnPerIP functionality (no tree anymore)
 x initial socket timeout for new connections (tcp open only and no initial request)
-- configure file path for mutex/sem files
++ configure file path for mutex/sem files
   + debug/error message showing if and which file is used
 
 legend:
