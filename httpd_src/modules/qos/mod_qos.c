@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.201 2010-03-15 19:53:43 pbuchbinder Exp $";
-static const char g_revision[] = "9.10";
+static const char revision[] = "$Id: mod_qos.c,v 5.202 2010-03-22 21:11:57 pbuchbinder Exp $";
+static const char g_revision[] = "9.11";
 
 /************************************************************************
  * Includes
@@ -108,6 +108,8 @@ static const char g_revision[] = "9.10";
 #define QS_PARP_Q         "qos-parp-query"
 #define QS_PARP_QUERY     "qos-query"
 #define QS_PARP_PATH      "qos-path"
+
+#define QS_MFILE          "/var/tmp/"
 
 #define QS_INCTX_ID inctx->id
 
@@ -437,6 +439,7 @@ typedef struct {
   int is_virtual;
   server_rec *base_server;
   const char *chroot;
+  char *mfile;
   qs_actable_t *act;
   const char *error_page;
   apr_table_t *location_t;
@@ -717,8 +720,13 @@ static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
 
 /** temp file name for the main/virtual server */
 static char *qos_tmpnam(apr_pool_t *pool, server_rec *s) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+  char *path = QS_MFILE;
   char *id;
   char *e;
+  if(sconf && sconf->mfile) {
+    path = sconf->mfile;
+  }
   if(s) {
     unsigned int scode = 0;
     char *key = apr_psprintf(pool, "%u%s.%s.%d",
@@ -732,13 +740,13 @@ static char *qos_tmpnam(apr_pool_t *pool, server_rec *s) {
     for(p = key, i = len; i; i--, p++) {
       scode = scode * 33 + *p;
     }
-    id = apr_psprintf(pool, "/var/tmp/%u", scode);
+    id = apr_psprintf(pool, "%s%u", path, scode);
     
   } else {
-    id = apr_psprintf(pool, "/var/tmp/%u", m_hostcode);
+    id = apr_psprintf(pool, "%s%u", path, m_hostcode);
   }
-  e = strrchr(id, '/');
-  e[1] += 25;
+  e = &id[strlen(path)];
+  e[0] += 25; /* non numeric */
   return id;
 }
 
@@ -800,7 +808,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
   /* use anonymous shm by default */
   res = apr_shm_create(&m, msize, NULL, pool);
   if(APR_STATUS_IS_ENOTIMPL(res)) {
-    file = apr_psprintf(pool, "%s_cc.mod_qos",
+    file = apr_psprintf(pool, "%s_cc_m.mod_qos",
                         qos_tmpnam(pool, srec));
 #ifdef ap_http_scheme
     // Apache 2.2
@@ -5514,6 +5522,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_clients = 1024;
   sconf->has_event_filter = 0;
   sconf->has_event_limit = 0;
+  sconf->mfile = NULL;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
@@ -5638,6 +5647,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_table_merge(o->setenvresheader_t, b->setenvresheader_t);
   qos_table_merge(o->setenvresheadermatch_t, b->setenvresheadermatch_t);
   qos_table_merge(o->exclude_ip, b->exclude_ip);
+  if(o->mfile == NULL) {
+    o->mfile = b->mfile;
+  }
   if(strcmp(o->cookie_name, QOS_COOKIE_NAME) == 0) {
     o->cookie_name = b->cookie_name;
   }
@@ -5687,6 +5699,37 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
     o->maxpost = b->maxpost;
   }
   return o;
+}
+
+const char *qos_mfile_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  apr_finfo_t finfo;
+  apr_status_t rc;
+  if(!path[0]) {
+    return apr_psprintf(cmd->pool, "%s: invalid path",
+                        cmd->directive->directive);
+  }
+  if((rc = apr_stat(&finfo, path, APR_FINFO_TYPE, cmd->pool)) != APR_SUCCESS) {
+    char *p = apr_pstrdup(cmd->pool, path);
+    /* file? */
+    if(p[strlen(p)-1] == '/') {
+      return apr_psprintf(cmd->pool, "%s: path does not exist",
+                          cmd->directive->directive);
+    } else {
+      char *e = strrchr(p, '/');
+      if(e) {
+        e[0] = '\0';
+      }
+      if(((rc = apr_stat(&finfo, p, APR_FINFO_TYPE, cmd->pool)) != APR_SUCCESS) ||
+         (finfo.filetype != APR_DIR)){
+        return apr_psprintf(cmd->pool, "%s: path does not exist",
+                            cmd->directive->directive);
+      }
+    }
+  }
+  sconf->mfile = apr_pstrdup(cmd->pool, path);
+  return NULL;
 }
 
 /**
@@ -6847,6 +6890,11 @@ const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
 #endif
 
 static const command_rec qos_config_cmds[] = {
+  AP_INIT_TAKE1("QS_SemMemFile", qos_mfile_cmd, NULL,
+                RSRC_CONF,
+                "QS_SemMemFile <path>, optional path to a directory or file"
+                " which shall be used samaphores/shared memory."
+                " Default is "QS_MFILE"."),
   /* request limitation per location */
   AP_INIT_TAKE2("QS_LocRequestLimit", qos_loc_con_cmd, NULL,
                 RSRC_CONF,
