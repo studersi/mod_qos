@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.138 2010-03-08 20:08:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.139 2010-04-01 19:49:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -506,7 +506,7 @@ SSLRandomSeed           startup builtin
        Require                valid-user
    </Location>
 
-   Include 	  conf/demo.conf
+   Include 	              conf/demo.conf
 
 </VirtualHost>
 
@@ -514,7 +514,7 @@ NameVirtualHost         127.0.0.1:##QS_PORT_BASE9##
 Listen                  127.0.0.1:##QS_PORT_BASE9##
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE9##>
-   ServerName             127.0.0.1
+   ServerName                 127.0.0.1
 
    BrowserMatch               "event"                           qsmin=limit
    QS_EventPerSecLimit        !qsmin          5
@@ -523,7 +523,18 @@ Listen                  127.0.0.1:##QS_PORT_BASE9##
    QS_SetEnvIf                qsmin           qsvar2            multi=true
    QS_EventPerSecLimit        multi           5
 
-   Include 	  conf/demo.conf
+   Include 	              conf/demo.conf
 
    QS_SrvDataRateOff
 </VirtualHost>
+
+
+<IfDefine v6>
+Listen                  [::1]:##QS_PORT_BASE10##
+
+<VirtualHost [::1]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+
+
+</VirtualHost>
+</IfDefine>
