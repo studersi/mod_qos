@@ -17,6 +17,7 @@ QS_PORT_BASE5=`expr $QS_PORT_BASE + 5`
 QS_PORT_BASE6=`expr $QS_PORT_BASE + 6`
 QS_PORT_BASE8=`expr $QS_PORT_BASE + 8`
 QS_PORT_BASE9=`expr $QS_PORT_BASE + 9`
+QS_PORT_BASE10=`expr $QS_PORT_BASE + 10`
 
 echo "SET QS_PORT_BASE=$QS_PORT_BASE"   >  scripts/ports
 echo "SET QS_PORT_BASE1=$QS_PORT_BASE1" >> scripts/ports
@@ -26,6 +27,7 @@ echo "SET QS_PORT_BASE5=$QS_PORT_BASE5" >> scripts/ports
 echo "SET QS_PORT_BASE6=$QS_PORT_BASE6" >> scripts/ports
 echo "SET QS_PORT_BASE8=$QS_PORT_BASE8" >> scripts/ports
 echo "SET QS_PORT_BASE9=$QS_PORT_BASE9" >> scripts/ports
+echo "SET QS_PORT_BASE10=$QS_PORT_BASE10" >> scripts/ports
 echo "SET QS_HOME=`pwd`" >> scripts/ports
 echo "SET QS_HOME_ENC=`pwd | sed s:/:%2F:g`" >> scripts/ports
 
@@ -47,7 +49,8 @@ for E in $CONFFILES; do
 	-e "s;##QS_PORT_BASE5##;$QS_PORT_BASE5;g" \
 	-e "s;##QS_PORT_BASE6##;$QS_PORT_BASE6;g" \
 	-e "s;##QS_PORT_BASE8##;$QS_PORT_BASE8;g" \
-	-e "s;##QS_PORT_BASE9##;$QS_PORT_BASE9;g"
+	-e "s;##QS_PORT_BASE9##;$QS_PORT_BASE9;g" \
+	-e "s;##QS_PORT_BASE10##;$QS_PORT_BASE10;g"
 done
 
 if [ ! -d logs ]; then

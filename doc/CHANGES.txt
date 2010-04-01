@@ -1,6 +1,8 @@
-Version 9.
+Version 9.11
 
  - New directive QS_SemMemFile.
+
+ - Uses a checksum to represent IPV6 addresses.
 
 Version 9.10
 

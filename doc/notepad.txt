@@ -17,13 +17,20 @@
 - re-design/re-implementation of some parts/functions
   + maybe dropping some features
     + remove QS_SrvPreferNet
+    - other
   - maybe start the implementation of a separate module.
     + see mod_setenvifplus
     - mod_qos "light"
+    - sepatate modules for some function sets
 - web interface to configure mod_qos dynamically
   - impoved viewer
+  - clear per client stats
+  - block clients/IPs
 + QS_ClientEventRequestLimit limits the number of concurrent
   events per client source IP.
+- support IPv6
+  + not really, but using a checksum may be sometimes enougth
+  - "real" IPv6 support
 - propagate client information via request header (set additional variables)
 + improved variable handling and propagation via header
 + deflate body
@@ -32,6 +39,7 @@
 x initial socket timeout for new connections (tcp open only and no initial request)
 + configure file path for mutex/sem files
   + debug/error message showing if and which file is used
+
 
 legend:
 - to be documented/not yet decided to implement

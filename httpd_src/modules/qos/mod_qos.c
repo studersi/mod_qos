@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.202 2010-03-22 21:11:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.203 2010-04-01 19:49:57 pbuchbinder Exp $";
 static const char g_revision[] = "9.11";
 
 /************************************************************************
@@ -3160,6 +3160,22 @@ static void qos_ext_status_short(request_rec *r) {
   }
 }
 
+/* TODO: only ipv4 support */
+static unsigned long qos_inet_addr(const char *address) {
+  long ip = inet_addr(address);
+  if(ip == -1) {
+    /* not a ipv4 address, generate a checksum instead ("kind of" v6 support) */
+    int len = strlen(address);
+    int i;
+    const char *p;
+    ip = 0;
+    for(p = address, i = len; i; i--, p++) {
+      ip = ip * 33 + *p;
+    }
+  }
+  return ip;
+}
+
 /**
  * viewer settings about ip address information
  */
@@ -3215,7 +3231,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
       ap_rputs("</form>\n", r);
       ap_rputs("</td></tr>\n", r);
       if(address) {
-        unsigned long ip = inet_addr(address);
+        unsigned long ip = qos_inet_addr(address);
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
         if(ip) {
           unsigned long long html;
@@ -3362,7 +3378,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   ap_rprintf(r, "<h2>mod_qos %s</h2>\n", ap_escape_html(r->pool, qos_revision(r->pool)));
 #ifdef QS_INTERNAL_TEST
   ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE</p>\n", r);
-  ap_rprintf(r, "<p>client ip=%s</p>\n", qos_ip_long2str(r, inet_addr(r->connection->remote_ip)));
+  ap_rprintf(r, "<p>client ip=%s</p>\n", qos_ip_long2str(r, qos_inet_addr(r->connection->remote_ip)));
 #endif
   qos_show_ip(r, bsconf, qt);
   if(strcmp(r->handler, "qos-viewer") == 0) {
@@ -3857,13 +3873,13 @@ static int qos_process_connection(conn_rec *c) {
     /* evaluates client ip */
     if((sconf->max_conn_per_ip != -1) ||
        sconf->has_qos_cc) {
-      cconf->ip = inet_addr(cconf->c->remote_ip); /* v4 */
+      cconf->ip = qos_inet_addr(cconf->c->remote_ip);
 #ifdef QS_INTERNAL_TEST
       /* use one of the predefined ip addresses */
       if(cconf->sconf->enable_testip) {
         char *testid = apr_psprintf(c->pool, "%d", rand()%(QS_SIM_IP_LEN-1));
         const char *testip = apr_table_get(cconf->sconf->testip, testid);
-        cconf->ip = inet_addr(testip);
+        cconf->ip = qos_inet_addr(testip);
       }
 #endif
     }
@@ -4559,7 +4575,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         qos_s_entry_t **e = NULL;
         qos_s_entry_t new;
         apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
-        new.ip = inet_addr(inctx->c->remote_ip); /* v4 */
+        new.ip = qos_inet_addr(inctx->c->remote_ip);
         e = qos_cc_get0(u->qos_cc, &new);
         if(!e) {
           e = qos_cc_set(u->qos_cc, &new, time(NULL));
@@ -7013,8 +7029,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
-                " concurrent TCP connections per IP source address "
-                " (IP v4 only)."),
+                " concurrent TCP connections per IP source address."),
   AP_INIT_TAKE1("QS_SrvMaxConnExcludeIP", qos_max_conn_ex_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an ip address or"
@@ -7221,18 +7236,22 @@ static const command_rec qos_config_cmds[] = {
                 " Directive is allowed in global server context only."),
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_ClientPrefer", qos_client_pref_cmd, NULL,
-                  RSRC_CONF,
-                  "QS_ClientPrefer [<percent>], prefers known VIP clients when server has"
-                  " less than 80% of free TCP connections. Preferred clients"
-                  " are VIP clients only, see QS_VipHeaderName directive."
-                  " Directive is allowed in global server context only."),
+                    RSRC_CONF,
+                    "QS_ClientPrefer [<percent>], prefers known VIP clients"
+                    " when server has"
+                    " less than 80% of free TCP connections. Preferred clients"
+                    " are VIP clients only, see QS_VipHeaderName directive."
+                    " Directive is allowed in global server context only."
+                    ""),
 #else
   AP_INIT_NO_ARGS("QS_ClientPrefer", qos_client_pref_cmd, NULL,
                   RSRC_CONF,
-                  "QS_ClientPrefer [<percent>], prefers known VIP clients when server has"
+                  "QS_ClientPrefer [<percent>], prefers known VIP clients"
+                  " when server has"
                   " less than 80% of free TCP connections. Preferred clients"
                   " are VIP clients only, see QS_VipHeaderName directive."
-                  " Directive is allowed in global server context only."),
+                  " Directive is allowed in global server context only."
+                  ""),
 #endif
   AP_INIT_TAKE1("QS_ClientTolerance", qos_client_tolerance_cmd, NULL,
                 RSRC_CONF,
@@ -7254,7 +7273,8 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ClientEventRequestLimit", qos_client_event_req_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientEventRequestLimit <number>, defines the allowed"
-                " number of concurrent requests comming from the same client source IP address"
+                " number of concurrent requests comming from the same client"
+                " source IP address"
                 " having the QS_EventRequest variable set."
                 " Directive is allowed in global server context only."),
 #ifdef QS_INTERNAL_TEST
