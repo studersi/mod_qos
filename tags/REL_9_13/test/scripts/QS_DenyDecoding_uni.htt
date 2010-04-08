@@ -1,0 +1,30 @@
+#
+# $Id: QS_DenyDecoding_uni.htt,v 1.1 2010-04-08 18:37:38 pbuchbinder Exp $
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/query/uni/get?name=%u0053elEcT HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "code=040"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+_CLOSE 
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/query/get?name=%u0053elEcT HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "!code=040"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+_CLOSE 
+
+END
