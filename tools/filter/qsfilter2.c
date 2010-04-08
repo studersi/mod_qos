@@ -24,8 +24,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.133 2010-04-02 19:51:50 pbuchbinder Exp $";
-static const char g_revision[] = "9.12";
+static const char revision[] = "$Id: qsfilter2.c,v 1.134 2010-04-08 18:37:38 pbuchbinder Exp $";
+static const char g_revision[] = "9.13";
 
 /* system */
 #include <stdio.h>
@@ -91,7 +91,13 @@ pcre *pcre_b64;
 pcre *pcre_hx;
 pcre *pcre_simple_path;
 
+#define QOS_DEC_MODE_FLAGS_URL        0x00
+#define QOS_DEC_MODE_FLAGS_HTML       0x01
+#define QOS_DEC_MODE_FLAGS_UNI        0x02
+#define QOS_DEC_MODE_FLAGS_ANSI       0x04
+
 /* global variables to store settings */
+static int m_mode = QOS_DEC_MODE_FLAGS_URL;
 static int m_base64 = 5;
 static int m_verbose = 1;
 static int m_path_depth = 1;
@@ -231,6 +237,21 @@ static int qos_unescaping(char *x) {
     if(ch == '%' && qos_ishex(x[i + 1]) && qos_ishex(x[i + 2])) {
       ch = qos_hex2c(&x[i + 1]);
       i += 2;
+    } else if((m_mode & QOS_DEC_MODE_FLAGS_UNI) && 
+	      (ch == '%') &&
+	      ((x[i + 1] == 'u') || (x[i + 1] == 'U')) &&
+	      qos_ishex(x[i + 2]) &&
+	      qos_ishex(x[i + 3]) &&
+	      qos_ishex(x[i + 4]) &&
+	      qos_ishex(x[i + 5])) {
+      /* unicode %uXXXX */
+      ch = qos_hex2c(&x[i + 4]);
+      if((ch > 0x00) && (ch < 0x5f) &&
+	 ((x[i + 2] == 'f') || (x[i + 2] == 'F')) &&
+	 ((x[i + 3] == 'f') || (x[i + 3] == 'F'))) {
+	ch += 0x20;
+      }
+      i += 5;
     } else if (ch == '\\' && (x[i + 1] == 'x') && qos_ishex(x[i + 2]) && qos_ishex(x[i + 3])) {
       ch = qos_hex2c(&x[i + 2]);
       i += 3;
@@ -280,7 +301,7 @@ static void usage(char *cmd) {
   printf("existing access log data.\n");
   printf("\n");
   printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", cmd);
-  printf("       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-t] [-v 0|1|2]\n", space);
+  printf("       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-u 'uni'] [-t] [-v 0|1|2]\n", space);
   printf("\n");
   printf("Summary\n");
   printf(" mod_qos implements a request filter which validates each request\n");
@@ -361,7 +382,10 @@ static void usage(char *cmd) {
   printf("     Disables redundant rules elimination.\n");
   printf("  -e\n");
   printf("     Exit on error.\n");
-  printf("  -t\n");
+  printf("  -u 'uni'\n");
+  printf("     Use the same settings as you have used for the QS_Decoding directive.\n");
+  printf("  -p\n");
+  printf("     Repesents query by pcre only (no literal strings).\n");
   printf("     Determines the worst case performance for the generated whitelist\n");
   printf("     by applying each rule for each request line (output is real time\n");
   printf("     filter duration per request line in milliseconds).\n");
@@ -1433,6 +1457,19 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	m_path_depth = atoi(*(++argv));
       }
+    } else if(strcmp(*argv,"-u") == 0) {
+      if (--argc >= 1) {
+	const char *coders = *(++argv);
+	if(strstr(coders, "uni")) {
+	  m_mode |= QOS_DEC_MODE_FLAGS_UNI;
+	}
+	if(strstr(coders, "ansi")) {
+	  m_mode |= QOS_DEC_MODE_FLAGS_ANSI;
+	}
+	if(strstr(coders, "html")) {
+	  m_mode |= QOS_DEC_MODE_FLAGS_HTML;
+	}
+      }
     } else if(strcmp(*argv,"-n") == 0) {
       m_redundant = 0;
     } else if(strcmp(*argv,"-b") == 0) {
@@ -1539,6 +1576,17 @@ int main(int argc, const char * const argv[]) {
   printf("#  base64 detection level (-b): %d\n", m_base64);
   printf("#  redundancy check (-n): %s\n", m_redundant == 1 ? "on" : "off");
   printf("#  pcre only for query (-p): %s\n", m_query_pcre == 1 ? "yes" : "no");
+  printf("#  decoding (-u): url");
+  if(m_mode & QOS_DEC_MODE_FLAGS_UNI) {
+    printf(" uni");
+  }
+  if(m_mode & QOS_DEC_MODE_FLAGS_HTML) {
+    printf(" html");
+  }
+  if(m_mode & QOS_DEC_MODE_FLAGS_ANSI) {
+    printf(" ansi");
+  }
+  printf("\n");
   printf("#  one pcre for query value (-m): %s\n", m_query_multi_pcre == 1 ? "yes" : "no");
   if(m_query_o_pcre) {
     printf("#  ignore query order (-o): yes\n");

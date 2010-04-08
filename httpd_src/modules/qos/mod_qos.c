@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.204 2010-04-02 19:51:50 pbuchbinder Exp $";
-static const char g_revision[] = "9.12";
+static const char revision[] = "$Id: mod_qos.c,v 5.205 2010-04-08 18:37:38 pbuchbinder Exp $";
+static const char g_revision[] = "9.13";
 
 /************************************************************************
  * Includes
@@ -121,11 +121,10 @@ static const char g_revision[] = "9.12";
 
 #define QS_MAX_DELAY 5000
 
-#define QOS_DEC_MODE_FLAGS_STD        0x00
+#define QOS_DEC_MODE_FLAGS_URL        0x00
 #define QOS_DEC_MODE_FLAGS_HTML       0x01
 #define QOS_DEC_MODE_FLAGS_UNI        0x02
-#define QOS_DEC_MODE_FLAGS_ESC        0x04
-#define QOS_DEC_MODE_FLAGS_CHARSET    0x08
+#define QOS_DEC_MODE_FLAGS_ANSI       0x04
 
 #define QOS_CC_BEHAVIOR_THR 10000
 #define QOS_CC_BEHAVIOR_THR_SINGLE 50
@@ -429,6 +428,7 @@ typedef struct {
   qs_rfilter_action_e urldecoding;
   char *response_pattern;
   char *response_pattern_var;
+  int decodings; 
 } qos_dir_config;
 
 /**
@@ -695,7 +695,7 @@ static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
 static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
   char *key = apr_psprintf(ptemp, "%s%s%s%d%s"
 #ifdef ap_http_scheme
-  // Apache 2.2
+/* Apache 2.2 */
                            "%s"
 #endif
                            "%s",
@@ -706,7 +706,7 @@ static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
                            s->path ? s->path : "",
                            s->error_fname ? s->error_fname : ""
 #ifdef ap_http_scheme
-  // Apache 2.2
+/* Apache 2.2 */
                            ,s->server_scheme ? s->server_scheme : ""
 #endif
                            );
@@ -757,7 +757,7 @@ static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_conf
     if(bytes) {
       apr_off_t s;
 #ifdef ap_http_scheme
-      // Apache 2.2
+      /* Apache 2.2 */
       char *errp = NULL;
       if(APR_SUCCESS == apr_strtoff(&s, bytes, &errp, 10)) {
         return s;
@@ -811,7 +811,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
     file = apr_psprintf(pool, "%s_cc_m.mod_qos",
                         qos_tmpnam(pool, srec));
 #ifdef ap_http_scheme
-    // Apache 2.2
+    /* Apache 2.2 */
     apr_shm_remove(file, pool);
 #endif
     res = apr_shm_create(&m, msize, file, pool);
@@ -1217,7 +1217,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   int server_limit, thread_limit, max_ip;
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
-  if(thread_limit == 0) thread_limit = 1; // mpm prefork
+  if(thread_limit == 0) thread_limit = 1; /* mpm prefork */
   max_ip = thread_limit * server_limit;
   max_ip = maxclients > 0 ? maxclients : max_ip;
   act->size = (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
@@ -1230,7 +1230,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     file = apr_psprintf(act->pool, "%s_m.mod_qos",
                         qos_tmpnam(act->pool, s));
 #ifdef ap_http_scheme
-    // Apache 2.2
+    /* Apache 2.2 */
     apr_shm_remove(file, act->pool);
 #endif
     res = apr_shm_create(&act->m, act->size, file, act->pool);
@@ -1363,10 +1363,6 @@ static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
   qs_ip_entry_t *conn_ip = cconf->sconf->act->conn->conn_ip;
   int num = -1;
   qs_ip_entry_t *free = NULL;
-  //struct timeval tv;
-  //long long start;
-  //gettimeofday(&tv, NULL);
-  //start = tv.tv_sec * 1000000 + tv.tv_usec;
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT1 */
   while(i) {
     if(conn_ip->ip == 0) {
@@ -1386,8 +1382,6 @@ static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
     num = free->counter;
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
-  //gettimeofday(&tv, NULL);
-  //"inc:  %.6lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start
   return num;
 }
 
@@ -1543,7 +1537,7 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
 }
 #endif
 
-// 000-255
+/* 000-255 */
 int qos_dec32c(const char *x) {
   char buf[4];
   strncpy(buf, x, 3);
@@ -1585,15 +1579,17 @@ int qos_hex2c(const char *x) {
                       ((x >= 'a') && (x <= 'f')) || \
                       ((x >= 'A') && (x <= 'F')))
 
+
 /**
  * url unescaping (%xx, \xHH, '+')
- * other decoding:
- * - html (amp/angelbr, &#xHH;, &#DDD;, &#DD;), not implemented ('&' is delimiter)
- * - unicode, not implemented
- * - ansi c esc (\n, \r, ...), not implemented
- * - charset conv, not implemented
+ * optional decoding:
+ * - uni: MS IIS unicode %uXXXX
+ * - ansi: ansi c esc (\n, \r, ...), not implemented
+ * - char: charset conv, not implemented
+ * - html: (amp/angelbr, &#xHH;, &#DDD;, &#DD;), not implemented ('&' is delimiter)
  */
 static int qos_unescaping(char *x, int mode, int *error) {
+  /* start with standard url decoding*/
   int i, j, ch;
   if(x == 0) {
     return 0;
@@ -1605,13 +1601,29 @@ static int qos_unescaping(char *x, int mode, int *error) {
     ch = x[i];
     if(ch == '%') {
       if(QOS_ISHEX(x[i + 1]) && QOS_ISHEX(x[i + 2])) {
+        /* url %xx */
         ch = qos_hex2c(&x[i + 1]);
         i += 2;
+      } else if((mode & QOS_DEC_MODE_FLAGS_UNI) && 
+                ((x[i + 1] == 'u') || (x[i + 1] == 'U')) &&
+                QOS_ISHEX(x[i + 2]) &&
+                QOS_ISHEX(x[i + 3]) &&
+                QOS_ISHEX(x[i + 4]) &&
+                QOS_ISHEX(x[i + 5])) {
+        /* unicode %uXXXX */
+        ch = qos_hex2c(&x[i + 4]);
+        if((ch > 0x00) && (ch < 0x5f) &&
+           ((x[i + 2] == 'f') || (x[i + 2] == 'F')) &&
+           ((x[i + 3] == 'f') || (x[i + 3] == 'F'))) {
+          ch += 0x20;
+        }
+        i += 5;
       } else {
         (*error)++;
       }
     } else if(ch == '\\' && (x[i + 1] == 'x')) {
       if(QOS_ISHEX(x[i + 2]) && QOS_ISHEX(x[i + 3])) {
+        /* url \xHH */
         ch = qos_hex2c(&x[i + 2]);
         i += 3;
       } else {
@@ -1750,7 +1762,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
       }
     }
     if(q) {
-      // prepare unescaped body query (parp)
+      /* prepare unescaped body query (parp) */
       char *q1 = apr_pstrdup(r->pool, q);
       int q1_len = 0;
       q1 = apr_pstrdup(r->pool, q);
@@ -1759,11 +1771,11 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
       qos_run_query_decode_hook(r, &q1, &q1_len);
 #endif
       if(dconf->bodyfilter_d == 1) {
-        // use body for query deny filter
+        /* use body for query deny filter */
         query = q1;
         query_len = q1_len;
       } else {
-        // don't use body for query deny filter
+        /* don't use body for query deny filter */
         if(r->parsed_uri.query) {
           query = apr_pstrdup(r->pool, r->parsed_uri.query);
           query_len = qos_unescaping(query, dconf->dec_mode, &escerr);
@@ -1773,7 +1785,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
         }
       }
       if(dconf->bodyfilter_p != 1) {
-        // don' use body for permit filter
+        /* don' use body for permit filter */
         if(r->parsed_uri.query) {
           q1 = apr_pstrdup(r->pool, r->parsed_uri.query);
           q1_len = qos_unescaping(q1, dconf->dec_mode, &escerr);
@@ -3815,7 +3827,7 @@ static void qos_delay(request_rec *r) {
   if(d) {
     apr_off_t s;
 #ifdef ap_http_scheme
-    // Apache 2.2
+    /* Apache 2.2 */
     char *errp = NULL;
     if((APR_SUCCESS == apr_strtoff(&s, d, &errp, 10)) && s > 0)
 #else
@@ -4072,7 +4084,7 @@ static int qos_post_read_request(request_rec *r) {
 #endif
         } else {
 #ifdef ap_http_scheme
-          // Apache 2.2
+          /* Apache 2.2 */
           if(APR_SUCCESS == apr_strtoff(&inctx->cl_val, cl, NULL, 0))
 #else
           if((inctx->cl_val = apr_atoi64(cl)) >= 0)
@@ -4081,7 +4093,7 @@ static int qos_post_read_request(request_rec *r) {
             ap_add_input_filter("qos-in-filter2", inctx, r, r->connection);
             inctx->status = QS_CONN_STATE_BODY;
           } else {
-            // header filter should block this request
+            /* header filter should block this request */
           }
         }
       }
@@ -4099,7 +4111,7 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
     if(l != NULL) {
       apr_off_t s;
 #ifdef ap_http_scheme
-      // Apache 2.2
+      /* Apache 2.2 */
       char *errp = NULL;
       if((APR_SUCCESS != apr_strtoff(&s, l, &errp, 10)) || (s < 0))
 #else
@@ -5380,7 +5392,6 @@ static int qos_handler(request_rec * r) {
     return qos_favicon(r);
   }
   ap_set_content_type(r, "text/html");
-  //  apr_table_set(r->headers_out,"Cache-Control","no-cache");
   if(!r->header_only) {
     ap_rputs("<html><head><title>mod_qos</title>\n", r);
     ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n",
@@ -5493,7 +5504,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
   dconf->bodyfilter_p = -1;
   dconf->bodyfilter_d = -1;
-  dconf->dec_mode = QOS_DEC_MODE_FLAGS_STD;
+  dconf->dec_mode = QOS_DEC_MODE_FLAGS_URL;
   dconf->maxpost = -1;
   dconf->urldecoding = QS_OFF_DEFAULT;
   dconf->response_pattern = NULL;
@@ -5523,7 +5534,8 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   } else {
     dconf->bodyfilter_d = b->bodyfilter_d;
   }
-  if(o->dec_mode != QOS_DEC_MODE_FLAGS_STD) {
+  if((o->dec_mode != QOS_DEC_MODE_FLAGS_URL) ||
+     (o->inheritoff)) {
     dconf->dec_mode = o->dec_mode;
   } else {
     dconf->dec_mode = b->dec_mode;
@@ -6688,7 +6700,7 @@ const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
   apr_off_t s;
   char *errp = NULL;
 #ifdef ap_http_scheme
-  // Apache 2.2
+  /* Apache 2.2 */
   if(APR_SUCCESS != apr_strtoff(&s, bytes, &errp, 10))
 #else
   if((s = apr_atoi64(bytes)) < 0)
@@ -6711,15 +6723,22 @@ const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
   return NULL;
 }
 
-/*
-const char *qos_denydec_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
+/* QS_Decoding */
+const char *qos_dec_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
-  if(strcasecmp(arg, "html") == 0) {
-    dconf->dec_mode |= QOS_DEC_MODE_FLAGS_HTML;
+//  if(strcasecmp(arg, "html") == 0) {
+//    dconf->dec_mode |= QOS_DEC_MODE_FLAGS_HTML;
+//  } else 
+  if(strcasecmp(arg, "uni") == 0) {
+    dconf->dec_mode |= QOS_DEC_MODE_FLAGS_UNI;
+//  } if(strcasecmp(arg, "ansi") == 0) {
+//    dconf->dec_mode |= QOS_DEC_MODE_FLAGS_ANSI;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: unknown decoding '%s'",
+                        cmd->directive->directive, arg);
   }
   return NULL;
 }
-*/
 
 const char *qos_denyinheritoff_cmd(cmd_parms *cmd, void *dcfg) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
@@ -7242,13 +7261,12 @@ static const command_rec qos_config_cmds[] = {
                 ACCESS_CONF|RSRC_CONF,
                 "QS_LimitRequestBody <bytes>, limits the allowed size"
                 " of an HTTP request message body."),
-  /*
-  AP_INIT_ITERATE("QS_DenyDecoding", qos_denydec_cmd, NULL,
+  AP_INIT_ITERATE("QS_Decoding", qos_dec_cmd, NULL,
                   ACCESS_CONF,
-                  "QS_DenyDecoding <html>, enabled additional string decoding functions which"
-                  " are applied before matching QS_Deny* and QS_Permit* directives."
+                  "QS_DenyDecoding 'uni', enabled additional string decoding"
+                  " functions which are applied before"
+                  " matching QS_Deny* and QS_Permit* directives."
                   " Default is URL decoding (%xx, \\xHH, '+')."),
-  */
   AP_INIT_NO_ARGS("QS_DenyInheritanceOff", qos_denyinheritoff_cmd, NULL,
                   ACCESS_CONF,
                   "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"

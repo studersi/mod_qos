@@ -35,6 +35,9 @@
 + improved variable handling and propagation via header
 + deflate body
   + adjust content-length header (requires parp 0.8 or higher)
+- decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
+  - enhance qos_unescaping()
+  - document path_decode_hook()/query_decode_hook()
 + new implementation of the QS_SrvMaxConnPerIP functionality (no tree anymore)
 x initial socket timeout for new connections (tcp open only and no initial request)
 + configure file path for mutex/sem files
