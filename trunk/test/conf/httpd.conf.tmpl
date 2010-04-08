@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.139 2010-04-01 19:49:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.140 2010-04-08 18:37:38 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -311,6 +311,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    </Location>
    <Location /qos/path>
        QS_DenyPath        +p01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+   </Location>
+   <Location /qos/query/uni>
+       QS_Decoding        uni
    </Location>
 
    <Location /cgi-local>

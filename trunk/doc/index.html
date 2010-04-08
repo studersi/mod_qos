@@ -767,6 +767,16 @@ Enforces correct URL decoding in conjunction with the <code>QS_DenyRequestLine</
 "off" which means that incorrect encodings are ignored.
 </li>
 <li>
+<code>QS_Decoding 'uni'</code><br>
+Enableds additional string decoding functions which are applied before 
+matching <code>QS_Deny*</code> and <code>QS_Permit*</code> directives. 
+Default is URL decoding (%xx, \\xHH, '+'). <br>Available additional decodings: 
+<ul>
+<li>uni: unicode decoding for MS IIS (%uXXXX) encoded characters.
+</li>
+</ul>
+</li>
+<li>
 <code>QS_DenyEvent '+'|'-'&lt;id&gt; 'log'|'deny' [!]&lt;env-variable&gt;</code><br>
 Rule matching requests having the defined process environment variable set 
 (or NOT set if prefixed by a '!'). 
