@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.108 2010-04-08 18:37:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.109 2010-04-09 18:35:06 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -334,8 +334,12 @@ fi
 ./prefer.sh
 EXT_ERR=$?
 if [ $EXT_ERR -gt 0 ]; then
+    echo "run again ..."
     ./prefer.sh
     EXT_ERR=$?
+    if [ $EXT_ERR -eq 0 ]; then
+	echo "                 OK"
+    fi
 fi
 ERRORS=`expr $ERRORS + $EXT_ERR`
 
