@@ -24,8 +24,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.134 2010-04-08 18:37:38 pbuchbinder Exp $";
-static const char g_revision[] = "9.13";
+static const char revision[] = "$Id: qsfilter2.c,v 1.135 2010-04-09 19:00:38 pbuchbinder Exp $";
+static const char g_revision[] = "9.14";
 
 /* system */
 #include <stdio.h>
@@ -238,7 +238,7 @@ static int qos_unescaping(char *x) {
       ch = qos_hex2c(&x[i + 1]);
       i += 2;
     } else if((m_mode & QOS_DEC_MODE_FLAGS_UNI) && 
-	      (ch == '%') &&
+	      ((ch == '%') || (ch == '\\')) &&
 	      ((x[i + 1] == 'u') || (x[i + 1] == 'U')) &&
 	      qos_ishex(x[i + 2]) &&
 	      qos_ishex(x[i + 3]) &&
