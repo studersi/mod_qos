@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.205 2010-04-08 18:37:38 pbuchbinder Exp $";
-static const char g_revision[] = "9.13";
+static const char revision[] = "$Id: mod_qos.c,v 5.206 2010-04-09 19:00:38 pbuchbinder Exp $";
+static const char g_revision[] = "9.14";
 
 /************************************************************************
  * Includes
@@ -1611,6 +1611,24 @@ static int qos_unescaping(char *x, int mode, int *error) {
                 QOS_ISHEX(x[i + 4]) &&
                 QOS_ISHEX(x[i + 5])) {
         /* unicode %uXXXX */
+        ch = qos_hex2c(&x[i + 4]);
+        if((ch > 0x00) && (ch < 0x5f) &&
+           ((x[i + 2] == 'f') || (x[i + 2] == 'F')) &&
+           ((x[i + 3] == 'f') || (x[i + 3] == 'F'))) {
+          ch += 0x20;
+        }
+        i += 5;
+      } else {
+        (*error)++;
+      }
+    } else if((ch == '\\') &&
+              (mode & QOS_DEC_MODE_FLAGS_UNI) &&
+              ((x[i + 1] == 'u') || (x[i + 1] == 'U'))) {
+      if(QOS_ISHEX(x[i + 2]) &&
+         QOS_ISHEX(x[i + 3]) &&
+         QOS_ISHEX(x[i + 4]) &&
+         QOS_ISHEX(x[i + 5])) {
+        /* unicode \uXXXX */
         ch = qos_hex2c(&x[i + 4]);
         if((ch > 0x00) && (ch < 0x5f) &&
            ((x[i + 2] == 'f') || (x[i + 2] == 'F')) &&
