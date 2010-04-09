@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.140 2010-04-08 18:37:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.141 2010-04-09 18:35:07 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -314,6 +314,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    </Location>
    <Location /qos/query/uni>
        QS_Decoding        uni
+   </Location>
+   <Location /qos/query/uni/strict>
+       QS_InvalidUrlEncoding         deny
    </Location>
 
    <Location /cgi-local>
