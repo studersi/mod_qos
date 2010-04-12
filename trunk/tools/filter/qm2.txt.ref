@@ -28,7 +28,7 @@
 # 014 ^[/]?[/a-zA-Z]+/test[/]?\?((n)(=[a-zA-Z:/\.\?]*)*[&]?)*$
 # ADD line 19: /?n=n
 # 015 ^/\?((n)(=[a-zA-Z]*)*[&]?)*$
-# ADD line 20: /app/test?l=x/\\\"oM=\"javascript:alert(true)\"\"
+# ADD line 20: /app/test?l=x/\\"oM=\"javascript:alert(true)\"\"
 # 016 ^[/a-zA-Z]+/test\?((l)(=[a-zA-Z/\\\"=:\(\)]*)*[&]?)*$
 # ADD line 21: /app/test?n&m=1
 # 017 ^[/a-zA-Z]+/test\?((n|m)(=[0-9]*)*[&]?)*$
@@ -56,7 +56,7 @@
 # DEL rule: ^[/a-zA-Z]+/test\?((l)(=[a-zA-Z/\\\"=:\(\)]*)*[&]?)*$
 # DEL rule: ^[/a-zA-Z]+/ervlet\?((other|ret|name||name)(=[a-zA-Z:/]*)*[&]?)*$
 # DEL rule: ^[/a-zA-Z]+/ervlet\?((action|ret|name||name)(=[a-zA-Z:/]*)*[&]?)*$
-# [9][10][11][12][13][14][15][16][17][0][1][2][3][4][5][6][7][8] done
+# [0][9][1][10][2][11][3][12][4][13][5][14][6][15][7][16][8][17] done
 # verfiy new rules ...
 # ADD line 22: /app/test?n=m&=
 # 019 ^[/a-zA-Z]+/test\?((n)(=[a-zA-Z]*)*[&]?)*(=[&]?)*$
@@ -64,15 +64,16 @@
 # 020 ^[/a-zA-Z]+/test\?[&]?((n)(=[a-zA-Z]*)*[&]?)*(=[&]?)*$
 
 # --------------------------------------------------------
-# Wed Dec 16 20:09:36 2009
+# Mon Apr 12 23:05:00 2010
 # 20 rules from 30 access log lines
-#  mod_qos version: 9.4
+#  mod_qos version: 9.14
 #  source (-i): access_log
 #  path depth (-d): 1
 #  disable path only regex (-h): no
 #  base64 detection level (-b): 5
 #  redundancy check (-n): on
 #  pcre only for query (-p): no
+#  decoding (-u): url
 #  one pcre for query value (-m): yes
 #  single pcre for query (-s): no
 #  query outsize (-l): 10
