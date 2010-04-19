@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.4 2008-12-17 22:02:14 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.5 2010-04-19 20:11:06 pbuchbinder Exp $
 #
 
 
@@ -95,6 +95,10 @@ _EXPECT . "!HTTP_ACCEPT"
 _EXPECT . "!HTTP_OTHER"
 _EXPECT . "!HTTP_KEEP_ALIVE"
 _WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC " mod_qos\(042\): drop request header: 'Keep-Alive: 3000"
+_EXEC tail -3 logs/error_log
 
 # deny
 _REQ localhost $QS_PORT_BASE
@@ -149,11 +153,178 @@ __Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/@html;level=2;q
 __Keep-Alive: 3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __Other: text
 __
+_EXPECT . "Date: .*"
+_EXPECT . "Server: Apache.*"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_EXPECT . "Content-Type: text/plain"
 _EXPECT . "200 OK"
 _EXPECT . "HTTP Headers:"
 _EXPECT . "HTTP_ACCEPT"
 _EXPECT . "!HTTP_OTHER"
 _EXPECT . "!HTTP_KEEP_ALIVE"
+_EXPECT . "!3000000000000000"
 _WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "==AS1=="
+_EXPECT . "Date: .*"
+_EXPECT . "Server: myApache"
+_EXPECT . "Content-Length: 9"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "X-PoweredBy: Special"
+_EXPECT . "ServerHeader: 10"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/resheaderfilter/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "==AS1=="
+_EXPECT . "Date: .*"
+_EXPECT . "Server: myApache"
+_EXPECT . "Content-Length: 9"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "!X-PoweredBy: Special"
+_EXPECT . "ServerHeader: 10"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'Other: text'"
+_EXPECT EXEC "mod_qos\(042\): drop response header: 'X-PoweredBy: Special'"
+_EXEC tail -2 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/resheaderfilter/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "==AS1=="
+_EXPECT . "Date: .*"
+_EXPECT . "Server: myApache"
+_EXPECT . "Content-Length: 9"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "!ServerHeader: 10"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop response header: 'ServerHeader: 1000000000000000000000'"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/resheaderfilter/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "==AS1=="
+_EXPECT . "Date: .*"
+_EXPECT . "Server: myApache"
+_EXPECT . "Content-Length: 9"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "!ServerHeader: 10"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop response header: 'ServerHeader: aa'"
+_EXEC tail -1 logs/error_log
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "Host: localhost"
+_EXPECT . "Accept: text/\*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, \*/\*; q=0.5 , application/vnd.ms-powerpoint"
+_EXPECT . "Accept-Charset: ISO-8859-1,utf-8;q=0.7,\*;q=0.7"
+_EXPECT . "Accept-Encoding: gzip,deflate"
+_EXPECT . "ACCEPT-LANGUAGE: en-us,en;q=0.5"
+_EXPECT . "CACHE-CONTROL: max-age=0"
+_EXPECT . "User-Agent: Mozilla/5.0 \(X11; U; Linux i686; en-US; rv:1.8.1.5\) Gecko/20070713 Firefox/2.0.0.5"
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__X-PoweredBy: Special 
+__ServerHeader: 10
+__
+__==AS1==
+
+_RES
+_EXPECT . "Host: localhost"
+_EXPECT . "Accept: text/\*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, \*/\*; q=0.5 , application/vnd.ms-powerpoint"
+_EXPECT . "Accept-Charset: ISO-8859-1,utf-8;q=0.7,\*;q=0.7"
+_EXPECT . "Accept-Encoding: gzip,deflate"
+_EXPECT . "ACCEPT-LANGUAGE: en-us,en;q=0.5"
+_EXPECT . "CACHE-CONTROL: max-age=0"
+_EXPECT . "User-Agent: Mozilla/5.0 \(X11; U; Linux i686; en-US; rv:1.8.1.5\) Gecko/20070713 Firefox/2.0.0.5"
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__X-PoweredBy: Special 
+__ServerHeader: 10
+__
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__ServerHeader: 1000000000000000000000
+__
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__ServerHeader: aa
+__
+__==AS1==
+_CLOSE
 
 END

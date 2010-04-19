@@ -1,3 +1,7 @@
+Version 9.15
+
+ - New directives QS_ResponseHeaderFilter and QS_ResponseHeaderFilterRule.
+
 Version 9.14
 
  - New directive QS_Decoding.

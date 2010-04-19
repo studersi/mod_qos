@@ -822,6 +822,21 @@ case sensitive. The size parameter defines the maximum length of a header value.
 The action 'drop' removes a header not matching the pcre, the action 'deny' 
 rejects a request including such a header not matching the pcre.
 </li>
+<li>
+<code>QS_ResponseHeaderFilter 'on'|'off'</code><br>
+Filters response headers using validation rules provided by mod_qos. Suspicious 
+headers (not matching the pattern or those which are too long) are removed 
+from the response. Only the defined headers are allowed. Filter 
+is activated ('on') or deactivated ('off') on a per location basis.
+</li>
+<li>
+<code>QS_ResponseHeaderFilterRule &lt;header name&gt; &lt;pcre&gt; &lt;size&gt;</code><br>
+Used to add custom response header filter rules, e.g. to override the internal 
+rules (different pcre or size) or to add additional headers which should be allowed. 
+Definitions are made globally (outside VirtualHost). A list of all rules 
+is shown at server startup when using <code>LogLevel debug</code>. pcre is 
+case sensitive. The size parameter defines the maximum length of a header value. 
+</li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
