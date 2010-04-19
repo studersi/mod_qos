@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.206 2010-04-09 19:00:38 pbuchbinder Exp $";
-static const char g_revision[] = "9.14";
+static const char revision[] = "$Id: mod_qos.c,v 5.207 2010-04-19 20:11:06 pbuchbinder Exp $";
+static const char g_revision[] = "9.15";
 
 /************************************************************************
  * Includes
@@ -421,6 +421,7 @@ typedef struct {
   apr_table_t *rfilter_table;
   int inheritoff;
   qs_headerfilter_mode_e headerfilter;
+  qs_headerfilter_mode_e resheaderfilter;
   int bodyfilter_d;
   int bodyfilter_p;
   int dec_mode;
@@ -481,6 +482,7 @@ typedef struct {
   apr_table_t *exclude_ip;
   qos_ifctx_list_t *inctx_t;
   apr_table_t *hfilter_table; /* GLOBAL ONLY */
+  apr_table_t *reshfilter_table; /* GLOBAL ONLY */
   /* event rule (enables rule validation) */
   int has_event_filter;
   int has_event_limit;
@@ -617,11 +619,11 @@ static const qos_her_t qs_header_rules[] = {
 #define QS_H_IFMATCH       "[a-zA-Z0-9\\-=@;\\.,\\*\"]"
 #define QS_H_DATE          "[a-zA-Z0-9 :,]"
 #define QS_H_TE            "[a-zA-Z0-9\\-\\*]+(;[ ]?q=[0-9\\.]+)?"
-  { "Accept", "^("QS_H_ACCEPT"){1}([ ]?,[ ]?"QS_H_ACCEPT")*$", QS_FLT_ACTION_DROP, 200 },
-  { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}([ ]?,[ ]?"QS_H_ACCEPT_C")*$", QS_FLT_ACTION_DROP, 200 },
-  { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}([ ]?,[ ]?"QS_H_ACCEPT_E")*$", QS_FLT_ACTION_DROP, 200 },
-  { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?"QS_H_ACCEPT_L")*$", QS_FLT_ACTION_DROP, 100 },
-  { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 100 },
+  { "Accept", "^("QS_H_ACCEPT"){1}([ ]?,[ ]?"QS_H_ACCEPT")*$", QS_FLT_ACTION_DROP, 300 },
+  { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}([ ]?,[ ]?"QS_H_ACCEPT_C")*$", QS_FLT_ACTION_DROP, 300 },
+  { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}([ ]?,[ ]?"QS_H_ACCEPT_E")*$", QS_FLT_ACTION_DROP, 300 },
+  { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?"QS_H_ACCEPT_L")*$", QS_FLT_ACTION_DROP, 200 },
+  { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 400 },
   { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?"QS_H_CACHE")*$", QS_FLT_ACTION_DROP, 100 },
   { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?[teTE]+)?$", QS_FLT_ACTION_DROP, 100 },
   { "Content-Encoding", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DENY, 100 },
@@ -643,7 +645,7 @@ static const qos_her_t qs_header_rules[] = {
   { "If-Unmodified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "Keep-Alive", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { "Max-Forwards", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
-  { "Proxy-Authorization", "^"QS_B64_SP"$", QS_FLT_ACTION_DROP, 100 },
+  { "Proxy-Authorization", "^"QS_B64_SP"$", QS_FLT_ACTION_DROP, 400 },
   { "Pragma", "^"QS_H_PRAGMA"+$", QS_FLT_ACTION_DROP, 200 },
   { "Range", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 200 },
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
@@ -657,14 +659,48 @@ static const qos_her_t qs_header_rules[] = {
   { NULL, NULL, 0, 0 }
 };
 
+/* list of allowed response headers */
+static const qos_her_t qs_res_header_rules[] = {
+  { "Age", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Accept-Ranges", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Allow", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Cache-Control", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Content-Disposition", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Content-Encoding", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Content-Language", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Content-Length", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Content-Location", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Content-MD5", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Content-Range", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Content-Type", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Connection", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Date", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "ETag", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Expect", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Expires", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Keep-Alive", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Last-Modified", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Location", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Proxy-Authenticate", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Retry-After", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Pragma", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Server", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Set-Cookie", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Set-Cookie2", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Vary", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "WWW-Authenticate", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { NULL, NULL, 0, 0 }
+};
+
 /**
  * loads the default header rules into the server configuration (see rules above)
  */
-static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table) {
+static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table,
+                                   const qos_her_t *hs) {
   const char *errptr = NULL;
   int erroffset;
   const qos_her_t* elt;
-  for(elt = qs_header_rules; elt->name != NULL ; ++elt) {
+  for(elt = hs; elt->name != NULL ; ++elt) {
     qos_fhlt_r_t *he = apr_pcalloc(pool, sizeof(qos_fhlt_r_t));
     he->text = apr_pstrdup(pool, elt->pcre);
     he->pcre = pcre_compile(elt->pcre, PCRE_DOTALL, &errptr, &erroffset, NULL);
@@ -1916,15 +1952,18 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
 }
 
 /**
- * request header filter, drops headers which are not allowed
+ * request/response header filter, drops headers which are not allowed
  */
-static int qos_header_filter(request_rec *r, qos_srv_config *sconf, qs_headerfilter_mode_e mode) {
+static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
+                             apr_table_t *headers, const char *type,
+                             apr_table_t *hfilter_table,
+                             qs_headerfilter_mode_e mode) {
   apr_table_t *delete = apr_table_make(r->pool, 1);
   apr_table_t *reason = NULL;
   int i;
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(r->headers_in)->elts;
-  for(i = 0; i < apr_table_elts(r->headers_in)->nelts; i++) {
-    qos_fhlt_r_t *he = (qos_fhlt_r_t *)apr_table_get(sconf->hfilter_table, entry[i].key);
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(headers)->elts;
+  for(i = 0; i < apr_table_elts(headers)->nelts; i++) {
+    qos_fhlt_r_t *he = (qos_fhlt_r_t *)apr_table_get(hfilter_table, entry[i].key);
     int denied = 0;
     if(he) {
       if(mode != QS_HEADERFILTER_SIZE_ONLY) {
@@ -1940,7 +1979,8 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf, qs_headerfil
                                      he->text, he->size);
         if(he->action == QS_FLT_ACTION_DENY) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX(043)"access denied, header: \'%s: %s\', %s, c=%s, id=%s",
+                        QOS_LOG_PFX(043)"access denied, %s header: \'%s: %s\', %s, c=%s, id=%s",
+                        type,
                         entry[i].key, entry[i].val,
                         pattern,
                         r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
@@ -1964,12 +2004,13 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf, qs_headerfil
   entry = (apr_table_entry_t *)apr_table_elts(delete)->elts;
   for(i = 0; i < apr_table_elts(delete)->nelts; i++) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                  QOS_LOG_PFX(042)"drop header: \'%s: %s\', %s, c=%s, id=%s",
+                  QOS_LOG_PFX(042)"drop %s header: \'%s: %s\', %s, c=%s, id=%s",
+                  type,
                   entry[i].key, entry[i].val,
                   apr_table_get(reason, entry[i].key),
                   r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                   qos_unique_id(r, "042"));
-    apr_table_unset(r->headers_in, entry[i].key);
+    apr_table_unset(headers, entry[i].key);
   }
   return APR_SUCCESS;
 }
@@ -2424,7 +2465,8 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
  */
 static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   if(dconf->headerfilter > QS_HEADERFILTER_OFF) {
-    apr_status_t rv = qos_header_filter(r, sconf, dconf->headerfilter);
+    apr_status_t rv = qos_header_filter(r, sconf, r->headers_in, "request",
+                                        sconf->hfilter_table, dconf->headerfilter);
     if(rv != APR_SUCCESS) {
       const char *error_page = sconf->error_page;
       qs_req_ctx *rctx = qos_rctx_config_get(r);
@@ -4879,11 +4921,15 @@ static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
 
 /**
  * process response:
+ * - start min data measure
+ * - setenvif header
  * - detects vip header and create session
+ * - header filter
  */
 static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
   qos_start_res_rate(r, sconf);
   qos_setenvresheader(r, sconf);
   if(sconf->ip_header_name) {
@@ -4966,9 +5012,13 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       r->connection->keepalive = AP_CONN_CLOSE;
     }
   }
-
+  /* don't handle response status since response header filter use "drop" action only */
+  if(dconf->resheaderfilter > QS_HEADERFILTER_OFF) {
+    qos_header_filter(r, sconf, r->headers_out, "response",
+                      sconf->reshfilter_table, dconf->headerfilter);
+  }
   ap_remove_output_filter(f);
-  return ap_pass_brigade(f->next, bb); 
+  return ap_pass_brigade(f->next, bb);
 }
 
 /**
@@ -5239,7 +5289,15 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     for(i = 0; i < apr_table_elts(sconf->hfilter_table)->nelts; i++) {
       qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
       ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                   QOS_LOG_PFX(000)"header filter rule (%s) %s: %s{0,%d}",
+                   QOS_LOG_PFX(000)"request header filter rule (%s) %s: %s{0,%d}",
+                   he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key,
+                   he->text, he->size);
+    }
+    entry = (apr_table_entry_t *)apr_table_elts(sconf->reshfilter_table)->elts;
+    for(i = 0; i < apr_table_elts(sconf->reshfilter_table)->nelts; i++) {
+      qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
+      ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
+                   QOS_LOG_PFX(000)"response header filter rule (%s) %s: %s{0,%d}",
                    he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key,
                    he->text, he->size);
     }
@@ -5520,6 +5578,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->rfilter_table = apr_table_make(p, 1);
   dconf->inheritoff = 0;
   dconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
+  dconf->resheaderfilter = QS_HEADERFILTER_OFF_DEFAULT;
   dconf->bodyfilter_p = -1;
   dconf->bodyfilter_d = -1;
   dconf->dec_mode = QOS_DEC_MODE_FLAGS_URL;
@@ -5541,6 +5600,11 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
     dconf->headerfilter = o->headerfilter;
   } else {
     dconf->headerfilter = b->headerfilter;
+  }
+  if(o->resheaderfilter != QS_HEADERFILTER_OFF_DEFAULT) {
+    dconf->resheaderfilter = o->resheaderfilter;
+  } else {
+    dconf->resheaderfilter = b->resheaderfilter;
   }
   if(o->bodyfilter_p != -1) {
     dconf->bodyfilter_p = o->bodyfilter_p;
@@ -5652,7 +5716,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
-  sconf->hfilter_table = apr_table_make(p, 1);
+  sconf->hfilter_table = apr_table_make(p, 5);
+  sconf->reshfilter_table = apr_table_make(p, 5);
   sconf->has_qos_cc = 0;
   sconf->qos_cc_size = 50000;
   sconf->qos_cc_prefer = 0;
@@ -5666,10 +5731,16 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_block_time = 600;
   sconf->maxpost = -1;
   if(!s->is_virtual) {
-    char *msg = qos_load_headerfilter(p, sconf->hfilter_table);
+    char *msg = qos_load_headerfilter(p, sconf->hfilter_table, qs_header_rules);
     if(msg) {
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                   QOS_LOG_PFX(006)"could not compile header filter rules: %s", msg);
+                   QOS_LOG_PFX(006)"could not compile request header filter rules: %s", msg);
+      exit(1);
+    }
+    msg = qos_load_headerfilter(p, sconf->reshfilter_table, qs_res_header_rules);
+    if(msg) {
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+                   QOS_LOG_PFX(006)"could not compile response header filter rules: %s", msg);
       exit(1);
     }
   }
@@ -5720,6 +5791,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   /* GLOBAL ONLY directives: */
   o->chroot = b->chroot;
   o->hfilter_table = b->hfilter_table;
+  o->reshfilter_table = b->reshfilter_table;
   o->has_qos_cc = b->has_qos_cc;
   o->qos_cc_size = b->qos_cc_size;
   o->qos_cc_prefer = b->qos_cc_prefer;
@@ -6792,7 +6864,7 @@ const char *qos_denybody_p_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   return NULL;
 }
 
-/* enables/disables header filter */
+/* QS_RequestHeaderFilter enables/disables header filter */
 const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
   if(strcasecmp(flag, "on") == 0) {
@@ -6801,6 +6873,20 @@ const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
     dconf->headerfilter = QS_HEADERFILTER_OFF;
   } else if(strcasecmp(flag, "size") == 0) {
     dconf->headerfilter = QS_HEADERFILTER_SIZE_ONLY;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: invalid argument",
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
+/* QS_ResponseHeaderFilter */
+const char *qos_resheaderfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  if(strcasecmp(flag, "on") == 0) {
+    dconf->resheaderfilter = QS_HEADERFILTER_ON;
+  } else if(strcasecmp(flag, "off") == 0) {
+    dconf->resheaderfilter = QS_HEADERFILTER_OFF;
   } else {
     return apr_psprintf(cmd->pool, "%s: invalid argument",
                         cmd->directive->directive);
@@ -6871,6 +6957,39 @@ const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg,
   apr_table_setn(sconf->hfilter_table, apr_pstrdup(cmd->pool, header), (char *)he);
   apr_pool_cleanup_register(cmd->pool, he->pcre, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   return NULL;
+}
+
+const char *qos_resheaderfilter_rule_cmd(cmd_parms *cmd, void *dcfg, 
+                                         const char *header,
+                                         const char *rule, const char *size) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *errptr = NULL;
+  int erroffset;
+  qos_fhlt_r_t *he;
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  he = apr_pcalloc(cmd->pool, sizeof(qos_fhlt_r_t));
+  he->size = atoi(size);
+  he->text = apr_pstrdup(cmd->pool, rule);
+  he->pcre = pcre_compile(rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
+  he->action = QS_FLT_ACTION_DROP;
+  if(he->pcre == NULL) {
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
+                        " reason: %s", 
+                        cmd->directive->directive,
+                        rule,
+                        erroffset, errptr);
+  }
+  if(he->size <= 0) {
+    return apr_psprintf(cmd->pool, "%s: size must be numeric value >0",
+                        cmd->directive->directive);
+  }
+  apr_table_setn(sconf->reshfilter_table, apr_pstrdup(cmd->pool, header), (char *)he);
+  apr_pool_cleanup_register(cmd->pool, he->pcre, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  return NULL;  
 }
 
 const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
@@ -7299,21 +7418,33 @@ static const command_rec qos_config_cmds[] = {
                 " directive. Using the 'size' option, the header field max. size"
                 " is verified only (similar to LimitRequestFieldsize but using"
                 " individual values for each header type) while the pattern is ignored."),
+  AP_INIT_TAKE1("QS_ResponseHeaderFilter", qos_resheaderfilter_cmd, NULL,
+                ACCESS_CONF,
+                "QS_ResponseHeaderFilter 'on'|'off', filters response headers by allowing"
+                " only these headers which match the request header rules defined by"
+                " mod_qos. Request headers which do not conform these definitions"
+                " are dropped."),
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
                     RSRC_CONF,
                     "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>  <size>, used"
-                    " to add custom header filter rules which override the internal"
+                    " to add custom request header filter rules which override the internal"
                     " filter rules of mod_qos."
                     " Directive is allowed in global server context only."),
 #else
   AP_INIT_TAKE3("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
                     RSRC_CONF,
                     "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>, used"
-                    " to add custom header filter rules which override the internal"
+                    " to add custom request header filter rules which override the internal"
                     " filter rules of mod_qos."
                     " Directive is allowed in global server context only."),
 #endif
+  AP_INIT_TAKE3("QS_ResponseHeaderFilterRule", qos_resheaderfilter_rule_cmd, NULL,
+                RSRC_CONF,
+                "QS_ResponseHeaderFilterRule <header name> <pcre> <size>, used"
+                " to add custom response header filter rules which override the internal"
+                " filter rules of mod_qos."
+                " Directive is allowed in global server context only."),
   AP_INIT_FLAG("QS_DenyBody", qos_denybody_cmd, NULL,
                ACCESS_CONF,
                "QS_DenyBody 'on'|'off', enabled body data filter (obsolete)."),

@@ -24,8 +24,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.135 2010-04-09 19:00:38 pbuchbinder Exp $";
-static const char g_revision[] = "9.14";
+static const char revision[] = "$Id: qsfilter2.c,v 1.136 2010-04-19 20:11:06 pbuchbinder Exp $";
+static const char g_revision[] = "9.15";
 
 /* system */
 #include <stdio.h>
