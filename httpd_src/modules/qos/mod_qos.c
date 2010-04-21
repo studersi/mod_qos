@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.207 2010-04-19 20:11:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.208 2010-04-21 20:48:46 pbuchbinder Exp $";
 static const char g_revision[] = "9.15";
 
 /************************************************************************
@@ -292,6 +292,7 @@ typedef struct {
   apr_size_t nbytes;
   int shutdown;
   int errors;
+  int disabled;
   /* packet recv size rate: */
   apr_size_t bytes;
   int count;
@@ -430,6 +431,7 @@ typedef struct {
   char *response_pattern;
   char *response_pattern_var;
   int decodings; 
+  apr_table_t *disable_reqrate_events;
 } qos_dir_config;
 
 /**
@@ -2204,7 +2206,7 @@ static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
 }
 
 /**
- * QS_SetEnvStatus (logger)
+ * QS_SetEnvIfStatus
  */
 static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
   char *code = apr_psprintf(r->pool, "%d", r->status);
@@ -2741,6 +2743,7 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c) {
   inctx->time = 0;
   inctx->nbytes = 0;
   inctx->shutdown = 0;
+  inctx->disabled = 0;
   inctx->count = 5;
   inctx->bytes = QS_PKT_RATE_INIT;
   inctx->lowrate = -1;
@@ -3781,7 +3784,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   while(!sconf->inctx_t->exit) {
     int req_rate = qos_req_rate_calc(sconf);
-    time_t interval = time(NULL) - QS_REQ_RATE_TM;
+    time_t now = time(NULL);
+    time_t interval = now - QS_REQ_RATE_TM;
     int i;
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->inctx_t->table)->elts;
     sleep(1);
@@ -3791,46 +3795,90 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     apr_thread_mutex_lock(sconf->inctx_t->lock);   /* @CRT21 */
     for(i = 0; i < apr_table_elts(sconf->inctx_t->table)->nelts; i++) {
       qos_ifctx_t *inctx = (qos_ifctx_t *)entry[i].val;
-      if(interval > inctx->time) {
-        int rate = inctx->nbytes / QS_REQ_RATE_TM;
-        if(rate < req_rate) {
-          if(inctx->client_socket) {
-            qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
-                                                                    &qos_module);
-            int level = APLOG_ERR;
-            if(cconf && cconf->is_vip) {
-              level = APLOG_WARNING;
-              cconf->has_lowrate = 1; /* mark connection low rate */
-            }
-            ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                         QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
-                         " this connection=%d,"
-                         " c=%s",
-                         level == APLOG_WARNING ? 
-                         "log only due QS_SrvMaxConnExcludeIP match or VIP status" 
-                         : "access denied",
-                         inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
-                         req_rate,
-                         rate,
-                         inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
-            if(cconf && cconf->is_vip) {
-              inctx->time = interval + QS_REQ_RATE_TM;
-              inctx->nbytes = 0;
-            } else {
-              if(inctx->status == QS_CONN_STATE_RESPONSE) {
-                apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
-                /* close out socket (the hard way) */
-                apr_socket_close(inctx->client_socket);
-              } else {
-                apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
-              }
-            }
-            /* mark slow clients (QS_ClientPrefer) even they are VIP */
-            inctx->shutdown = 1;
+      if(inctx->status == QS_CONN_STATE_KEEP) {
+        /* enforce keep alive */
+        apr_interval_time_t current_timeout = 0;
+        apr_socket_timeout_get(inctx->client_socket, &current_timeout);
+        if(now > (apr_time_sec(current_timeout) + 1 + inctx->time)) {
+          qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
+                                                                  &qos_module);
+          int level = APLOG_ERR;
+          if(cconf && cconf->is_vip) {
+            level = APLOG_INFO;
+            cconf->has_lowrate = 1; /* mark connection low rate */
           }
-        } else {
-          inctx->time = interval + QS_REQ_RATE_TM;
-          inctx->nbytes = 0;
+          if(inctx->disabled) {
+            level = APLOG_INFO;
+            cconf->has_lowrate = 1; /* mark connection low rate */
+          }
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
+                       QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
+                       " c=%s",
+                       level == APLOG_INFO ? 
+                       "log only (allowed)" 
+                       : "access denied",
+                       inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+          if(cconf && cconf->is_vip) {
+            inctx->time = interval + QS_REQ_RATE_TM;
+            inctx->nbytes = 0;
+          } else if(inctx->disabled) {
+            inctx->time = interval + QS_REQ_RATE_TM;
+            inctx->nbytes = 0;
+          } else {
+            apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+          }
+          /* mark slow clients (QS_ClientPrefer) even they are VIP */
+          inctx->shutdown = 1;
+        }
+      } else {
+        if(interval > inctx->time) {
+          int rate = inctx->nbytes / QS_REQ_RATE_TM;
+          if(rate < req_rate) {
+            if(inctx->client_socket) {
+              qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
+                                                                      &qos_module);
+              int level = APLOG_ERR;
+              if(cconf && cconf->is_vip) {
+                level = APLOG_INFO;
+                cconf->has_lowrate = 1; /* mark connection low rate */
+              }
+              if(inctx->disabled) {
+                level = APLOG_INFO;
+                cconf->has_lowrate = 1; /* mark connection low rate */
+              }
+              ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
+                           QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
+                           " this connection=%d,"
+                           " c=%s",
+                           level == APLOG_INFO ? 
+                           "log only (allowed)" 
+                           : "access denied",
+                           inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
+                           req_rate,
+                           rate,
+                           inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+              if(cconf && cconf->is_vip) {
+                inctx->time = interval + QS_REQ_RATE_TM;
+                inctx->nbytes = 0;
+              } else if(inctx->disabled) {
+                inctx->time = interval + QS_REQ_RATE_TM;
+                inctx->nbytes = 0;
+              } else {
+                if(inctx->status == QS_CONN_STATE_RESPONSE) {
+                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
+                  /* close out socket (the hard way) */
+                  apr_socket_close(inctx->client_socket);
+                } else {
+                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+                }
+              }
+              /* mark slow clients (QS_ClientPrefer) even they are VIP */
+              inctx->shutdown = 1;
+            }
+          } else {
+            inctx->time = interval + QS_REQ_RATE_TM;
+            inctx->nbytes = 0;
+          }
         }
       }
     }
@@ -4845,6 +4893,29 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
   return ap_pass_brigade(f->next, bb); 
 }
 
+/* QS_SrvMinDataRateOffEvent */
+#if APR_HAS_THREADS
+static void qos_disable_rate(request_rec *r, qos_srv_config *sconf,
+                             qos_dir_config *dconf) {
+  if(sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
+    if(apr_table_elts(dconf->disable_reqrate_events)->nelts > 0) {
+      qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
+      if(inctx) {
+        apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(dconf->disable_reqrate_events)->elts;
+        int i;
+        for(i = 0; i < apr_table_elts(dconf->disable_reqrate_events)->nelts; i++) {
+          char *v = entry[i].key;
+          if(apr_table_get(r->subprocess_env, &v[1])) {
+            inctx->disabled = 1;
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+#endif
+
 static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
   if(sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
     qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
@@ -4908,13 +4979,26 @@ static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
   if(sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
     qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
     if(inctx) {
-      if(!sconf->inctx_t->exit) {
-        apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
-        apr_table_unset(sconf->inctx_t->table,
-                        QS_INCTX_ID);
-        apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+      inctx->time = time(NULL);
+      inctx->nbytes = 0;
+      if(r->connection->keepalive == AP_CONN_CLOSE) {
+        inctx->status = QS_CONN_STATE_END;
+        if(!sconf->inctx_t->exit) {
+          apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
+          apr_table_unset(sconf->inctx_t->table,
+                         QS_INCTX_ID);
+          apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+        }
+      } else {
+        inctx->status = QS_CONN_STATE_KEEP;
+        if(!sconf->inctx_t->exit) {
+          apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
+          apr_table_setn(sconf->inctx_t->table,
+                         QS_INCTX_ID, (char *)inctx);
+          apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+        }
       }
-      inctx->status = QS_CONN_STATE_END;
+      // $$$ CHANGED!
     }
   }
 }
@@ -5017,6 +5101,11 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     qos_header_filter(r, sconf, r->headers_out, "response",
                       sconf->reshfilter_table, dconf->headerfilter);
   }
+  qos_setenvstatus(r, sconf);
+  /* disable request rate for certain connections */
+#if APR_HAS_THREADS
+  qos_disable_rate(r, sconf, dconf);
+#endif
   ap_remove_output_filter(f);
   return ap_pass_brigade(f->next, bb);
 }
@@ -5048,7 +5137,6 @@ static int qos_logger(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qos_propagate_notes(r);
   qos_end_res_rate(r, sconf);
-  qos_setenvstatus(r, sconf);
   qos_setenvif(r, sconf);
   qos_logger_cc(r, sconf, rctx);
   if(cconf && cconf->evmsg) {
@@ -5586,7 +5674,33 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->urldecoding = QS_OFF_DEFAULT;
   dconf->response_pattern = NULL;
   dconf->response_pattern_var = NULL;
+  dconf->disable_reqrate_events = apr_table_make(p, 1);
   return dconf;
+}
+
+apr_table_t *qos_merge_table(apr_pool_t *p, apr_table_t *b_rfilter_table,
+                             apr_table_t *o_rfilter_table) {
+  int i;
+  apr_table_t *rfilter_table = apr_table_make(p, 1);
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b_rfilter_table)->elts;
+  for(i = 0; i < apr_table_elts(b_rfilter_table)->nelts; ++i) {
+    if(entry[i].key[0] == '+') {
+      apr_table_setn(rfilter_table, entry[i].key, entry[i].val);
+    }
+  }
+  entry = (apr_table_entry_t *)apr_table_elts(o_rfilter_table)->elts;
+  for(i = 0; i < apr_table_elts(o_rfilter_table)->nelts; ++i) {
+    if(entry[i].key[0] == '+') {
+      apr_table_setn(rfilter_table, entry[i].key, entry[i].val);
+    }
+  }
+  for(i = 0; i < apr_table_elts(o_rfilter_table)->nelts; ++i) {
+    if(entry[i].key[0] == '-') {
+      char *id = apr_psprintf(p, "+%s", &entry[i].key[1]);
+      apr_table_unset(rfilter_table, id);
+    }
+  }
+  return rfilter_table;
 }
 
 /**
@@ -5625,26 +5739,7 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   if(o->inheritoff) {
     dconf->rfilter_table = o->rfilter_table;
   } else {
-    int i;
-    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b->rfilter_table)->elts;
-    dconf->rfilter_table = apr_table_make(p, 1);
-    for(i = 0; i < apr_table_elts(b->rfilter_table)->nelts; ++i) {
-      if(entry[i].key[0] == '+') {
-        apr_table_setn(dconf->rfilter_table, entry[i].key, entry[i].val);
-      }
-    }
-    entry = (apr_table_entry_t *)apr_table_elts(o->rfilter_table)->elts;
-    for(i = 0; i < apr_table_elts(o->rfilter_table)->nelts; ++i) {
-      if(entry[i].key[0] == '+') {
-        apr_table_setn(dconf->rfilter_table, entry[i].key, entry[i].val);
-      }
-    }
-    for(i = 0; i < apr_table_elts(o->rfilter_table)->nelts; ++i) {
-      if(entry[i].key[0] == '-') {
-        char *id = apr_psprintf(p, "+%s", &entry[i].key[1]);
-        apr_table_unset(dconf->rfilter_table, id);
-      }
-    }
+    dconf->rfilter_table = qos_merge_table(p, b->rfilter_table, o->rfilter_table);
   }
   if(o->maxpost != -1) {
     dconf->maxpost = o->maxpost;
@@ -5663,6 +5758,8 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
     dconf->response_pattern = b->response_pattern;
     dconf->response_pattern_var = b->response_pattern_var;
   }
+  dconf->disable_reqrate_events = qos_merge_table(p, b->disable_reqrate_events,
+                                                  o->disable_reqrate_events);
   return dconf;
 }
 
@@ -6682,6 +6779,16 @@ const char *qos_req_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const 
   return NULL;
 }
 
+const char *qos_min_rate_off_cmd(cmd_parms *cmd, void *dcfg, const char *var) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  if(((var[0] != '+') && (var[0] != '-')) || (strlen(var) < 2)) {
+    return apr_psprintf(cmd->pool, "%s: invalid variable (requires +/- prefix)", 
+                        cmd->directive->directive);
+  }
+  apr_table_set(dconf->disable_reqrate_events, var, "");
+  return NULL;
+}
+
 const char *qos_min_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const char *secmax) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -7279,6 +7386,14 @@ static const command_rec qos_config_cmds[] = {
                  " setting is reached when the number of sending/receiving"
                  " clients is equal to the MaxClients< setting."
                  " No limitation is set by default."),
+  AP_INIT_TAKE1("QS_SrvMinDataRateOffEvent", qos_min_rate_off_cmd, NULL,
+                ACCESS_CONF,
+                "QS_SrvMinDataRateOffEvent  '+'|'-'<env-variable>,"
+                " disables the minimal data rate enfocement (QS_SrvMinDataRate)"
+                " for a certain connection if the defined environment variable"
+                " has been set. The '+' prefix is used to add a variable"
+                " of a per location configuration while the '-' prefix is used"
+                " to remove a variable."),
 #endif
   /* event */
   AP_INIT_TAKE2("QS_EventRequestLimit", qos_event_req_cmd, NULL,
@@ -7323,12 +7438,18 @@ static const command_rec qos_config_cmds[] = {
                 " mod_parp."),
   AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF,
-                "QS_SetEnvStatus <status code> <variable>, adds the defined"
+                "QS_SetEnvIfStatus"),
+  AP_INIT_TAKE2("QS_SetEnvIfStatus", qos_event_setenvstatus_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetEnvIfStatus <status code> <variable>, adds the defined"
                 " request environment variable if the HTTP status code matches the"
                 " defined value."),
   AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,
-                "QS_SetEnvResBody <string> <variable>, adds the defined"
+                "see QS_SetEnvIfResBody"),
+  AP_INIT_TAKE2("QS_SetEnvIfResBody", qos_event_setenvresbody_cmd, NULL,
+                ACCESS_CONF,
+                "QS_SetEnvIfResBody <string> <variable>, adds the defined"
                 " request environment variable (e.g. QS_Block) if the HTTP"
                 " response body contains the"
                 " defined literal string."),
