@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.208 2010-04-21 20:48:46 pbuchbinder Exp $";
-static const char g_revision[] = "9.15";
+static const char revision[] = "$Id: mod_qos.c,v 5.209 2010-04-22 17:02:49 pbuchbinder Exp $";
+static const char g_revision[] = "9.16";
 
 /************************************************************************
  * Includes
@@ -209,7 +209,8 @@ typedef enum  {
   QS_CONN_STATE_CHUNKED,
   QS_CONN_STATE_KEEP,
   QS_CONN_STATE_RESPONSE,
-  QS_CONN_STATE_END
+  QS_CONN_STATE_END,
+  QS_CONN_STATE_DESTROY
 } qs_conn_state_e;
 
 typedef enum  {
@@ -2720,6 +2721,7 @@ static apr_status_t qos_cleanup_inctx(void *p) {
 #if APR_HAS_THREADS
   if(sconf->inctx_t && !sconf->inctx_t->exit) {
     apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT25 */
+    inctx->status = QS_CONN_STATE_DESTROY;
     apr_table_unset(sconf->inctx_t->table,
                     QS_INCTX_ID);
     apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT25 */
@@ -3799,7 +3801,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
         /* enforce keep alive */
         apr_interval_time_t current_timeout = 0;
         apr_socket_timeout_get(inctx->client_socket, &current_timeout);
-        if(now > (apr_time_sec(current_timeout) + 1 + inctx->time)) {
+        /* add 5sec tolerance to receive the request line or let Apache close the connection */
+        if(now > (apr_time_sec(current_timeout) + 5 + inctx->time)) {
           qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
                                                                   &qos_module);
           int level = APLOG_ERR;
@@ -3819,10 +3822,10 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                        : "access denied",
                        inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
           if(cconf && cconf->is_vip) {
-            inctx->time = interval + QS_REQ_RATE_TM;
+            inctx->time = now;
             inctx->nbytes = 0;
           } else if(inctx->disabled) {
-            inctx->time = interval + QS_REQ_RATE_TM;
+            inctx->time = now;
             inctx->nbytes = 0;
           } else {
             apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
@@ -4688,9 +4691,9 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   if(inctx->status == QS_CONN_STATE_KEEP) {
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
                                                                   &qos_module);
-    inctx->status = QS_CONN_STATE_HEAD;
     inctx->time = time(NULL);
     inctx->nbytes = 0;
+    inctx->status = QS_CONN_STATE_HEAD;
 #if APR_HAS_THREADS
     if(sconf->inctx_t && !sconf->inctx_t->exit && sconf->min_rate_off == 0) {
       apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT23 */
@@ -4982,23 +4985,24 @@ static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
       inctx->time = time(NULL);
       inctx->nbytes = 0;
       if(r->connection->keepalive == AP_CONN_CLOSE) {
-        inctx->status = QS_CONN_STATE_END;
         if(!sconf->inctx_t->exit) {
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
+          inctx->status = QS_CONN_STATE_END;
           apr_table_unset(sconf->inctx_t->table,
                          QS_INCTX_ID);
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
         }
       } else {
-        inctx->status = QS_CONN_STATE_KEEP;
         if(!sconf->inctx_t->exit) {
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
-          apr_table_setn(sconf->inctx_t->table,
-                         QS_INCTX_ID, (char *)inctx);
+          if(inctx->status != QS_CONN_STATE_DESTROY) {
+            inctx->status = QS_CONN_STATE_KEEP;
+            apr_table_setn(sconf->inctx_t->table,
+                           QS_INCTX_ID, (char *)inctx);
+          }
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
         }
       }
-      // $$$ CHANGED!
     }
   }
 }
@@ -7664,6 +7668,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_output_filter("qos-out-filter-body", qos_out_filter_body, NULL, AP_FTYPE_RESOURCE);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
   //ap_hook_insert_error_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
+
 }
 
 /************************************************************************
