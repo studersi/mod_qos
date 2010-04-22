@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.110 2010-04-22 17:02:49 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.111 2010-04-22 18:11:38 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -539,7 +539,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SrvResponseRate_0.htt"
 fi
 
-./ctl.sh restart -D QS_SrvMaxConn > /dev/null
+#./ctl.sh restart -D QS_SrvMaxConn > /dev/null
 ./run.sh -s ./scripts/QS_SrvRequestRate.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
