@@ -1,3 +1,12 @@
+Version 9.16
+
+ - New directive QS_SrvMinDataRateOffEvent.
+
+ - Changes directive process order (QS_SetEnvIfStatus).
+
+ - QS_SrvMinDataRate enforces keep-alive timeout (request line
+   must be received within the keep-alive timeout).
+
 Version 9.15
 
  - New directives QS_ResponseHeaderFilter and QS_ResponseHeaderFilterRule.

@@ -33,7 +33,7 @@
   - "real" IPv6 support
 - propagate client information via request header (set additional variables)
 + improved variable handling and propagation via header
-- response header filter (std headers only)
++ response header filter (std headers only)
 + deflate body
   + adjust content-length header (requires parp 0.8 or higher)
 - decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)

@@ -567,8 +567,9 @@ QS_CondLocRequestLimitMatch   "^(/app/b/|/app/c/).*$"  10   spider
 mod_qos may control the frequency of "events". An event may be any 
 request attribute which can be represented by an environment variable. 
 Such variables may be set by 
-<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif</a> 
-or by other Apache modules. 
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif</a>, 
+<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus</a>, or 
+by other Apache module.
 Please attend to the <a href="mod_qos_seq.gif">order</a> of command 
 execution to ensure the necessary variables are set.
 
@@ -658,14 +659,14 @@ the variable value and replaces it by the subexpressions of the defined regex
 pattern.
 </li>
 <li>
-<code>QS_SetEnvStatus &lt;code&gt; &lt;env-variable&gt;</code><br>
+<code>QS_SetEnvIfStatus &lt;code&gt; &lt;env-variable&gt;</code><br>
 Sets the defined variable in the request environment if the HTTP 
 response status code matches the defined value. This may be used 
 in conjunction with the <code>QS_ClientEventBlockCount</code> 
 directive.
 </li>
 <li>
-<code>QS_SetEnvResBody &lt;string&gt; &lt;env-variable&gt;</code><br>
+<code>QS_SetEnvIfResBody &lt;string&gt; &lt;env-variable&gt;</code><br>
 Adds the definedenvironment variable (e.g. <code>QS_Block</code>) if the 
 response body contains the defined literal string. Used on a per 
 location level. Only one directive may be defined per location (one 
@@ -1062,7 +1063,7 @@ QS_ClientEventBlockCount                          20
 
 # don't allow more than 20 "403" status code responses
 # (forbidden) for a client within 10 minutes:
-QS_SetEnvStatus          403                      QS_Block
+QS_SetEnvIfStatus        403                      QS_Block
 </pre>
 </td></tr>
 </table>

@@ -1,5 +1,5 @@
 #
-# $Id: QS_PermitUriAudit.htt,v 1.1 2009-09-18 07:23:55 pbuchbinder Exp $
+# $Id: QS_PermitUriAudit.htt,v 1.2 2010-04-22 17:02:49 pbuchbinder Exp $
 #
 
 
@@ -15,6 +15,8 @@ __
 _EXPECT . "==AS1=="
 _WAIT
 
+_SLEEP 200
+
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /app/d/special/permit/url/audit/static.html HTTP/1.1
 __Host: 127.0.0.1
@@ -23,6 +25,8 @@ __
 _EXPECT . "==AS1=="
 _EXPECT . "200 /app/d/special/permit/url/audit/static.html"
 _WAIT
+
+_SLEEP 200
 
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /app/d/special/permit/url/audit/static_forbidden.html HTTP/1.1
@@ -34,6 +38,7 @@ _EXPECT . "code=041"
 _WAIT
 
 _CLOSE
+_SLEEP 200
 
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /app/d/special/permit/url/audit/static.html HTTP/1.1
