@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_conn_off.htt,v 1.1 2010-04-22 17:02:49 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_conn_off.htt,v 1.2 2010-04-23 19:05:49 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -59,7 +59,8 @@ _SLEEP 200
 _EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(enforce keep-alive\)"
 _EXEC tail -1 logs/error_log
 
-# same test using a privileged connection
+# ------------------------------------------------------------------------
+# same test using a privileged connection (response code)
 _REQ server1 SSL:$QS_PORT_BASE2
 __GET /htt/active-sync/inbox HTTP/1.1
 __Host: localhost
@@ -108,6 +109,116 @@ _EXPECT . "this is the root index.html"
 _EXPECT . "200 OK"
 _WAIT
 
+# ------------------------------------------------------------------------
+# same test using a privileged connection (body pattern)
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/active-sync-plus/inbox HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__
+_EXPECT . "==AS1=="
+_EXPECT . "200 OK"
+_WAIT
+
+_SLEEP 3000
+
+_REQ server1 SSL:$QS_PORT_BASE2
+_-GET /
+_-i
+_FLUSH
+_SLEEP $TME
+_-n
+_FLUSH
+_SLEEP $TME
+_-d
+_FLUSH
+_SLEEP $TME
+_-e
+_FLUSH
+_SLEEP $TME
+_-x
+_FLUSH
+_SLEEP 2000
+_SLEEP $TME
+_-.
+_FLUSH
+_SLEEP $TME
+_-h
+_FLUSH
+_SLEEP $TME
+_-t
+_FLUSH
+_SLEEP $TME
+_-m
+__l HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_EXPECT . "200 OK"
+_WAIT
+
+# ------------------------------------------------------------------------
+# same test using a privileged connection (mod_setenvifplus)
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/active-sync-plus/inbox HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__
+_EXPECT . "==AS1=="
+_EXPECT . "200 OK"
+_WAIT
+
+_SLEEP 3000
+
+_REQ server1 SSL:$QS_PORT_BASE2
+_-GET /
+_-i
+_FLUSH
+_SLEEP $TME
+_-n
+_FLUSH
+_SLEEP $TME
+_-d
+_FLUSH
+_SLEEP $TME
+_-e
+_FLUSH
+_SLEEP $TME
+_-x
+_FLUSH
+_SLEEP 2000
+_SLEEP $TME
+_-.
+_FLUSH
+_SLEEP $TME
+_-h
+_FLUSH
+_SLEEP $TME
+_-t
+_FLUSH
+_SLEEP $TME
+_-m
+__l HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_EXPECT . "200 OK"
+_WAIT
+
+# end ---------------------------------------------
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__
+_EXPECT . "==AS1=="
+_EXPECT . "200 OK"
+_WAIT
+
 END
 
 SERVER $QS_PORT_BASE6
@@ -118,6 +229,35 @@ __Content-Length: AUTO
 __Content-Type: text/plain
 __
 _-==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+_-==AS1==
+
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__Login Successful
+_-==AS1==
+
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+_-000==AS1==
 
 _RES
 _WAIT
