@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.143 2010-04-22 17:02:49 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.144 2010-04-23 19:05:49 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -524,6 +524,12 @@ SSLRandomSeed           startup builtin
    QS_SetEnvIfStatus             200 QS_Sync
    <Location /htt/active-sync>
        QS_SrvMinDataRateOffEvent +QS_Sync
+   </Location>
+   <Location /htt/active-sync-plus>
+       QS_SetEnvIfResBody        "Login Successful" QS_BodyConnAll
+       QS_SrvMinDataRateOffEvent +QS_BodyConnAll
+       ResponseSetEnvIfPlus      Content-Length (10) VAR_CL=$1
+       QS_SrvMinDataRateOffEvent +VAR_CL
    </Location>
 
 </VirtualHost>

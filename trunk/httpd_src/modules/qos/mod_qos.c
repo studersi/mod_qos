@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.209 2010-04-22 17:02:49 pbuchbinder Exp $";
-static const char g_revision[] = "9.16";
+static const char revision[] = "$Id: mod_qos.c,v 5.210 2010-04-23 19:05:49 pbuchbinder Exp $";
+static const char g_revision[] = "9.17";
 
 /************************************************************************
  * Includes
@@ -4331,7 +4331,7 @@ static int qos_header_parser(request_rec * r) {
 
     qos_deflate_contentlength(r);
 
-    /* QS_SetEnvResBody */
+    /* QS_SetEnvIfResBody */
     if(dconf && dconf->response_pattern) {
       ap_add_output_filter("qos-out-filter-body", NULL, r, r->connection);
     }
@@ -4771,7 +4771,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   return rv;
 }
 
-/* QS_SetEnvResBody */
+/* QS_SetEnvIfResBody */
 static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
@@ -4900,7 +4900,7 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
 #if APR_HAS_THREADS
 static void qos_disable_rate(request_rec *r, qos_srv_config *sconf,
                              qos_dir_config *dconf) {
-  if(sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
+  if(dconf && sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
     if(apr_table_elts(dconf->disable_reqrate_events)->nelts > 0) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
       if(inctx) {
@@ -5018,6 +5018,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
+
   qos_start_res_rate(r, sconf);
   qos_setenvresheader(r, sconf);
   if(sconf->ip_header_name) {
@@ -5139,6 +5140,7 @@ static int qos_logger(request_rec *r) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
   time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
   qos_propagate_notes(r);
   qos_end_res_rate(r, sconf);
   qos_setenvif(r, sconf);
@@ -5201,6 +5203,7 @@ static int qos_logger(request_rec *r) {
       apr_table_set(r->next->subprocess_env, "mod_qos_ev", rctx->evmsg);
     }
   }
+  qos_disable_rate(r, sconf, dconf);
   return DECLINED;
 }
 
@@ -6310,7 +6313,7 @@ const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *r
   return NULL;
 }
 
-/** QS_SetEnvResBody */
+/** QS_SetEnvIfResBody */
 const char *qos_event_setenvresbody_cmd(cmd_parms *cmd, void *dcfg, const char *pattern,
                                         const char *var) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
@@ -7455,8 +7458,8 @@ static const command_rec qos_config_cmds[] = {
                 ACCESS_CONF,
                 "QS_SetEnvIfResBody <string> <variable>, adds the defined"
                 " request environment variable (e.g. QS_Block) if the HTTP"
-                " response body contains the"
-                " defined literal string."),
+                " response body contains the defined literal string."
+                " Supports only one pattern per location."),
   AP_INIT_TAKE2("QS_SetEnv", qos_setenv_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnv <variable> <value>, sets the defined variable"
@@ -7662,10 +7665,11 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_input_filter("qos-in-filter", qos_in_filter, NULL, AP_FTYPE_CONNECTION);
   ap_register_input_filter("qos-in-filter2", qos_in_filter2, NULL, AP_FTYPE_RESOURCE);
   ap_register_input_filter("qos-in-filter3", qos_in_filter3, NULL, AP_FTYPE_CONTENT_SET);
-  ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE);
-  ap_register_output_filter("qos-out-filter-min", qos_out_filter_min, NULL, AP_FTYPE_RESOURCE);
-  ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE);
-  ap_register_output_filter("qos-out-filter-body", qos_out_filter_body, NULL, AP_FTYPE_RESOURCE);
+  /* AP_FTYPE_RESOURCE+1 ensures the filter are executed after mod_setenvifplus */
+  ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE+1);
+  ap_register_output_filter("qos-out-filter-min", qos_out_filter_min, NULL, AP_FTYPE_RESOURCE+1);
+  ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE+1);
+  ap_register_output_filter("qos-out-filter-body", qos_out_filter_body, NULL, AP_FTYPE_RESOURCE+1);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
   //ap_hook_insert_error_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
 
