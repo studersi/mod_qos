@@ -1,6 +1,7 @@
 /*
-./send_arp eth2 192.168.1.166 ff:ff:ff:ff:ff:ff
-*/
+ * gratuitous arp:
+ * ./send_arp eth1 192.168.1.166 ff:ff:ff:ff:ff:ff
+ */
 
 #include <arpa/inet.h>
 #include <netpacket/packet.h>
