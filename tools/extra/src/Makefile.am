@@ -1,7 +1,7 @@
-# $Id: Makefile.am,v 1.1 2010-05-02 11:48:46 pbuchbinder Exp $
+# $Id: Makefile.am,v 1.2 2010-05-03 19:27:08 pbuchbinder Exp $
 
-bin_PROGRAMS=send_arp
+bin_PROGRAMS=garp
 
-send_arp_SOURCES= \
-	send_arp.c
+garp_SOURCES= \
+	garp.c
 
