@@ -41,6 +41,9 @@ public class Httpd {
 				} else if(line.isLocationMatch()) {
 					LocationMatch l = new LocationMatch(br, line);
 					this.entries.put(l);
+				} else if(line.isDirectory()) {
+					Directory l = new Directory(br, line);
+					this.entries.put(l);
 				} else if(line.isVirtualHost()) {
 					VirtualHost v = new VirtualHost(br, line);
 					this.entries.put(v);
@@ -73,15 +76,20 @@ public class Httpd {
 	public void save(String httpdConf) throws IOException {
 		OutputStream out = new FileOutputStream(httpdConf);
 		PrintStream pm = new PrintStream(out);
-		Iterator <String>i = this.entries.keySet().iterator();
+		this.save(pm, this.entries);
+		out.close();
+	}
+	
+	private void save(PrintStream pm, Entries e) {
+		Iterator <String>i = e.keySet().iterator();
 		TreeSet<String> sm = new TreeSet<String>();
 		while(i.hasNext()) {
 			sm.add(i.next());
 		}
 		Iterator<String> it = sm.iterator();
 		while(it.hasNext()) {
-			this.entries.get(it.next()).save(pm);
-		}
-		out.close();
+			e.get(it.next()).save(pm);
+		}		
 	}
+	
 }
