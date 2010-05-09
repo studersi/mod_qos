@@ -31,6 +31,9 @@ public class VirtualHost extends Entry {
 				} else if(line.isLocationMatch()) {
 					LocationMatch l = new LocationMatch(br, line);
 					this.entries.put(l);
+				} else if(line.isDirectory()) {
+					Directory l = new Directory(br, line);
+					this.entries.put(l);
 				} else if(line.isDirective()) {
 					Directive d = new Directive(br, line);
 					this.entries.put(d);
