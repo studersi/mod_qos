@@ -47,6 +47,10 @@ public class Httpd {
 				} else if(line.isDirective()) {
 					Directive d = new Directive(br, line);
 					this.entries.put(d);
+				} else if(line.isInclude()) {
+					// TODO
+					Entry e = new Entry(br, line);
+					this.entries.put(e);
 				} else {
 					Entry e = new Entry(br, line);
 					this.entries.put(e);
