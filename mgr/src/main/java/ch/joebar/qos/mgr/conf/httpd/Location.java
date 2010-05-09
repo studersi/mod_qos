@@ -25,18 +25,13 @@ public class Location extends Entry {
 				if(this.end(line)) {
 					line = null;
 					break;
-				} else if(line.isLocation()) {
-					Location l = new Location(br, line);
-					this.entries.put(l);
-				} else if(line.isLocationMatch()) {
-					LocationMatch l = new LocationMatch(br, line);
-					this.entries.put(l);
-				} else if(line.isVirtualHost()) {
-					VirtualHost v = new VirtualHost(br, line);
-					this.entries.put(v);
 				} else if(line.isDirective()) {
 					Directive d = new Directive(br, line);
 					this.entries.put(d);
+				} else if(line.isInclude()) {
+					// TODO
+					Entry e = new Entry(br, line);
+					this.entries.put(e);
 				} else {
 					Entry e = new Entry(br, line);
 					this.entries.put(e);

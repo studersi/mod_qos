@@ -63,7 +63,14 @@ public class Line {
 				!this.isVirtualHost() &&
 				!this.isLocation() &&
 				!this.isLocationMatch() &&
-				!this.isDirectory();
+				!this.isDirectory() &&
+				!this.isInclude();
+	}
+	
+	public boolean isInclude() {
+		Pattern p = Pattern.compile("^[ \t]*Include[ \t]+.*", Pattern.CASE_INSENSITIVE);
+		Matcher m = p.matcher(this.line);
+		return m.matches();
 	}
 	
 	public boolean isVirtualHost() {

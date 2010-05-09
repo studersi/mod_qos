@@ -6,11 +6,13 @@ import java.util.Set;
 
 public class Entries {
 
+	protected int key = 0;
 	protected HashMap <String,Entry>entries = new HashMap<String, Entry>();
 
 	public void put(Entry entry) {
-		DecimalFormat fmt = new DecimalFormat("0000");
-		this.entries.put(fmt.format(this.entries.size()), entry);
+		DecimalFormat fmt = new DecimalFormat("00000");
+		this.entries.put(fmt.format(this.key), entry);
+		this.key += 10;
 	}
 	
 	public Entry get(String key) {

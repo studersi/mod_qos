@@ -3,17 +3,18 @@ package ch.joebar.qos.mgr.conf.httpd;
 import java.io.BufferedReader;
 import java.io.IOException;
 
-public class LocationMatch extends Location {
+public class Directory extends Location {
 
-	LocationMatch(BufferedReader br, Line line) throws IOException {
+	Directory(BufferedReader br, Line line) throws IOException {
 		super(br, line);
 	}
 
 	protected boolean end(Line line) {
-		return line.isLocationMatchEnd();
+		return line.isDirectoryEnd();
 	}
 	
 	protected String tag() {
-		return "LocationMatch";
+		return "Directory";
 	}
+
 }
