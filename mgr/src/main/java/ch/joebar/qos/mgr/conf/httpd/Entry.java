@@ -7,7 +7,8 @@ import java.io.PrintStream;
 public class Entry extends Line {
 
 	protected String name;
-
+	protected String key = null;
+	
 	Entry(BufferedReader br, Line line) throws IOException {
 		super(null);
 		this.line = line.get();
@@ -31,6 +32,18 @@ public class Entry extends Line {
 	
 	public String getName() {
 		return this.name;
+	}
+	
+	/**
+	 * Key of the object within an Entries table of a Httpd, VirtualHost, Location object.
+	 * @return
+	 */
+	public String getKey() {
+		return this.key;
+	}
+	
+	public void setKey(String key) {
+		this.key = key;
 	}
 	
 	public void save(PrintStream pm) {

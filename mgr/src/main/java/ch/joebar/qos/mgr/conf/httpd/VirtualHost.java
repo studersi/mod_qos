@@ -51,6 +51,14 @@ public class VirtualHost extends Entry {
 		} while(line != null);
 	}
 
+	public Locations getLocations() {
+		return this.entries.getLocations();
+	}
+
+	public Directives getDirectives() {
+		return this.entries.getDirectives();
+	}
+	
 	protected String tag() {
 		return "VirtualHost";
 	}

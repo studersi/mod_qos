@@ -42,6 +42,11 @@ public class Location extends Entry {
 		} while(line != null);
 	}
 
+
+	public Directives getDirectives() {
+		return this.entries.getDirectives();
+	}
+	
 	protected boolean end(Line line) {
 		return line.isLocationEnd();
 	}

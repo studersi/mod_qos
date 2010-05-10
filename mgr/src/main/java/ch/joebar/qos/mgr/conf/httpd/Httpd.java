@@ -68,6 +68,18 @@ public class Httpd {
 		s.close();
 	}
 	
+	public Locations getLocations() {
+		return this.entries.getLocations();
+	}
+
+	public Directives getDirectives() {
+		return this.entries.getDirectives();
+	}
+	
+	public VirtualHosts getVirtualHosts() {
+		return this.entries.getVirtualHosts();
+	}
+	
 	/**
 	 * Writes a file to the disk.
 	 * @param httpdConf path of the file
