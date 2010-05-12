@@ -1,3 +1,7 @@
+Version
+
+ - Update built-in filter pattern of QS_HeaderFilter.
+
 Version 9.17
 
  - Output filters are executed after mod_setenvifplus.
