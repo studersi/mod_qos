@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.211 2010-05-12 18:25:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.212 2010-05-13 18:49:06 pbuchbinder Exp $";
 static const char g_revision[] = "9.18";
 
 /************************************************************************
@@ -654,10 +654,10 @@ static const qos_her_t qs_header_rules[] = {
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
   { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?"QS_H_TE")*$", QS_FLT_ACTION_DROP, 100 },
   { "User-Agent", "^[a-zA-Z0-9]+[a-zA-Z0-9\\-_\\.:;\\(\\)@ /\\+!=,]+$", QS_FLT_ACTION_DROP, 300 },
-  { "Via", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 50 },
-  { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+(, [a-zA-Z0-9\\-_\\.:]+)*$", QS_FLT_ACTION_DROP, 50 },
-  { "X-Forwarded-Host", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 50 },
-  { "X-Forwarded-Server", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 50 },
+  { "Via", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 100 },
+  { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+(, [a-zA-Z0-9\\-_\\.:]+)*$", QS_FLT_ACTION_DROP, 100 },
+  { "X-Forwarded-Host", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 100 },
+  { "X-Forwarded-Server", "^[a-zA-Z0-9\\-_\\.:]+$", QS_FLT_ACTION_DROP, 100 },
   { "X-lori-time-1", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { NULL, NULL, 0, 0 }
 };
