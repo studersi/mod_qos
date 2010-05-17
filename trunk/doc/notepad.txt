@@ -44,6 +44,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 + configure file path for mutex/sem files
   + debug/error message showing if and which file is used
 + disable min data rate for certain connections (response conditions)
+  - QS_SrvMinDataRateOffEvent at server level
 
 legend:
 - to be documented/not yet decided to implement

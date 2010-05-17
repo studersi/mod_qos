@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.212 2010-05-13 18:49:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.213 2010-05-17 18:05:13 pbuchbinder Exp $";
 static const char g_revision[] = "9.18";
 
 /************************************************************************
@@ -641,18 +641,21 @@ static const qos_her_t qs_header_rules[] = {
   { "Expect", "^"QS_H_EXPECT"+$", QS_FLT_ACTION_DROP, 200 },
   { "From", "^"QS_H_FROM"+$", QS_FLT_ACTION_DROP, 100 },
   { "Host", "^"QS_H_HOST"+$", QS_FLT_ACTION_DROP, 100 },
+  { "If-Invalid", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 500 },
   { "If-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-None-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Range", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Unmodified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
+  { "If-Valid", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 500 },
   { "Keep-Alive", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { "Max-Forwards", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { "Proxy-Authorization", "^"QS_B64_SP"$", QS_FLT_ACTION_DROP, 400 },
   { "Pragma", "^"QS_H_PRAGMA"+$", QS_FLT_ACTION_DROP, 200 },
-  { "Range", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 200 },
+  { "Range", "^[a-zA-Z0-9\\-=_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 200 },
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
   { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?"QS_H_TE")*$", QS_FLT_ACTION_DROP, 100 },
+  { "Unless-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "User-Agent", "^[a-zA-Z0-9]+[a-zA-Z0-9\\-_\\.:;\\(\\)@ /\\+!=,]+$", QS_FLT_ACTION_DROP, 300 },
   { "Via", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 100 },
   { "X-Forwarded-For", "^[a-zA-Z0-9\\-_\\.:]+(, [a-zA-Z0-9\\-_\\.:]+)*$", QS_FLT_ACTION_DROP, 100 },
@@ -662,7 +665,7 @@ static const qos_her_t qs_header_rules[] = {
   { NULL, NULL, 0, 0 }
 };
 
-/* list of allowed response headers */
+/* list of allowed standard response headers */
 static const qos_her_t qs_res_header_rules[] = {
   { "Age", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Accept-Ranges", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
@@ -6694,7 +6697,7 @@ const char *qos_max_conn_cmd(cmd_parms *cmd, void *dcfg, const char *number) {
 }
 
 /**
- * disable keep-alive
+ * QS_SrvMaxConnClose, disable keep-alive
  */
 const char *qos_max_conn_close_cmd(cmd_parms *cmd, void *dcfg, const char *number) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
