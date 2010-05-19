@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.144 2010-04-23 19:05:49 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.145 2010-05-19 18:01:06 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -414,7 +414,8 @@ Listen                  server1:##QS_PORT_BASE1##
    # -----------------------------------------------------------------
 
    QS_SrvMaxConn                            800
-   QS_SrvMaxConnClose                       600
+   # 67% of MaxClients 896 = 600
+   QS_SrvMaxConnClose                        67%
    QS_SrvMaxConnPerIP                        10
 
    QS_LocRequestLimit         /no           200
