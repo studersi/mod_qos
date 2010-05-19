@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.111 2010-04-22 18:11:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.112 2010-05-19 18:01:06 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -171,12 +171,15 @@ fi
 
 sleep 2
 # -----------------------------------------------------------------
-echo "-- disable keep alive, QS_SrvMaxConnClose_20.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_SrvMaxConnClose_20.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_SrvMaxConnClose_20.htt"
-fi
+CLT="QS_SrvMaxConnClosePercent.htt QS_SrvMaxConnClose_20.htt"
+echo "-- disable keep alive, QS_SrvMaxConnClose*" >>  logs/error_log
+for E in $CLR; do
+    ./htt.sh -se ./scripts/$E
+    if [ $? -ne 0 ]; then
+	ERRORS=`expr $ERRORS + 1`
+	echo "FAILED $E"
+    fi
+done
 
 # -----------------------------------------------------------------
 echo "-- static filter, QS_DenyRequestLine.htt" >>  logs/error_log
