@@ -810,8 +810,9 @@ request blocking. Only the defined headers are allowed. Custom rules
 added using the <code>QS_RequestHeaderFilterRule</code> directive. Filter 
 is activated ('on') or deactivated ('off') on a per location basis. The 
 mode 'size' does not verify the pattern but limits the maximum length 
-of request header values (replaces the Apache directive 
-<code>LimitRequestFieldsize</code>).
+of request header values (similar to the Apache directive 
+<code>LimitRequestFieldsize</code> but with an individual rule for each 
+header field).
 </li>
 <li>
 <code>QS_RequestHeaderFilterRule &lt;header name&gt; 'drop'|'deny' &lt;pcre&gt; &lt;size&gt;</code><br>
@@ -929,10 +930,11 @@ and for port based virtual hosts (don't use them for name based virtual hosts).
 Defines the maximum number of concurrent TCP connections for this server (virtual host).
 </li>
 <li>
-<code>QS_SrvMaxConnClose &lt;number&gt;</code><br>
+<code>QS_SrvMaxConnClose &lt;number&gt;[%]</code><br>
 Defines the maximum number of connections supporting keep-alive. If the number 
 of concurrent connections exceeds this threshold, the TCP connection gets closed 
-after each request.
+after each request. You may specify the number of connections as a percentage 
+of MaxClients if adding the suffix '%' to the specified value.
 </li>
 <li>
 <code>QS_SrvMaxConnPerIP &lt;number&gt;</code><br>
@@ -1226,7 +1228,7 @@ support when reaching a defined connection threshold.
 MaxClients              256
 
 # disables keep-alive when 70% of the TCP connections are occupied:
-QS_SrvMaxConnClose      180
+QS_SrvMaxConnClose      70%
 </pre>
 </td></tr>
 </table>
@@ -1300,11 +1302,11 @@ MaxClients              896
 # idle timeout:
 Timeout                 30
 
-# keep alive (for up to 600 connections):
+# keep alive (for up to 70% of all connections):
 KeepAlive               on
 MaxKeepAliveRequests    100
 KeepAliveTimeout        5
-QS_SrvMaxConnClose      600
+QS_SrvMaxConnClose      70%
 
 # name of the HTTP response header which marks preferred clients (this
 # may be used to let the application decide which clients are "good",

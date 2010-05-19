@@ -1,4 +1,7 @@
-Version
+Version 9.18
+
+ - QS_SrvMaxConnClose supports the definition of the number
+   of keep-alive connections as a percentage of MaxClients.
 
  - Update built-in filter pattern of QS_HeaderFilter.
 
