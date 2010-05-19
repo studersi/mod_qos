@@ -1,0 +1,26 @@
+#
+# $Id: QS_ClientPrefer.htt,v 1.1 2008-03-22 19:42:52 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 50
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+
+END
+
+CLIENT 20
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+
+END
+
