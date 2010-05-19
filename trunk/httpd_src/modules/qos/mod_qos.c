@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.213 2010-05-17 18:05:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.214 2010-05-19 16:53:53 pbuchbinder Exp $";
 static const char g_revision[] = "9.18";
 
 /************************************************************************
@@ -481,6 +481,7 @@ typedef struct {
   int vip_ip_user;
   int max_conn;
   int max_conn_close;
+  int max_conn_close_percent;
   int max_conn_per_ip;
   apr_table_t *exclude_ip;
   qos_ifctx_list_t *inctx_t;
@@ -626,7 +627,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}([ ]?,[ ]?"QS_H_ACCEPT_C")*$", QS_FLT_ACTION_DROP, 300 },
   { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}([ ]?,[ ]?"QS_H_ACCEPT_E")*$", QS_FLT_ACTION_DROP, 500 },
   { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?"QS_H_ACCEPT_L")*$", QS_FLT_ACTION_DROP, 200 },
-  { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 1200 },
+  { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 4000 },
   { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?"QS_H_CACHE")*$", QS_FLT_ACTION_DROP, 100 },
   { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?[teTE]+)?$", QS_FLT_ACTION_DROP, 100 },
   { "Content-Encoding", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DENY, 100 },
@@ -636,8 +637,8 @@ static const qos_her_t qs_header_rules[] = {
   { "Content-md5", "^"QS_B64_SP"$", QS_FLT_ACTION_DENY, 50 },
   { "Content-Range", "^.*$", QS_FLT_ACTION_DENY, 50 },
   { "Content-Type", "^("QS_H_CONTENT"){1}([ ]?,[ ]?"QS_H_CONTENT")*$", QS_FLT_ACTION_DENY, 200 },
-  { "Cookie", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 500 },
-  { "Cookie2", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 500 },
+  { "Cookie", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 3000 },
+  { "Cookie2", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 3000 },
   { "Expect", "^"QS_H_EXPECT"+$", QS_FLT_ACTION_DROP, 200 },
   { "From", "^"QS_H_FROM"+$", QS_FLT_ACTION_DROP, 100 },
   { "Host", "^"QS_H_HOST"+$", QS_FLT_ACTION_DROP, 100 },
@@ -5328,6 +5329,9 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
                  QOS_LOG_PFX(007)"could not determine MaxClients");
   }
+  if(sconf->max_conn_close_percent) {
+    sconf->max_conn_close = net_prefer * sconf->max_conn_close_percent / 100;
+  }
   cc_net_prefer_limit = net_prefer * sconf->qos_cc_prefer / 100;
   if(sconf->qos_cc_prefer && net_prefer) {
     sconf->qos_cc_prefer = net_prefer;
@@ -5387,7 +5391,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     for(i = 0; i < apr_table_elts(sconf->hfilter_table)->nelts; i++) {
       qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
       ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                   QOS_LOG_PFX(000)"request header filter rule (%s) %s: %s{0,%d}",
+                   QOS_LOG_PFX(000)"request header filter rule (%s) %s: %s max=%d",
                    he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key,
                    he->text, he->size);
     }
@@ -5395,7 +5399,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     for(i = 0; i < apr_table_elts(sconf->reshfilter_table)->nelts; i++) {
       qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
       ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                   QOS_LOG_PFX(000)"response header filter rule (%s) %s: %s{0,%d}",
+                   QOS_LOG_PFX(000)"response header filter rule (%s) %s: %s max=%d",
                    he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key,
                    he->text, he->size);
     }
@@ -5418,6 +5422,9 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     ssconf->qos_cc_prefer = sconf->qos_cc_prefer;
     ssconf->qos_cc_prefer_limit = sconf->qos_cc_prefer_limit;
     ssconf->max_clients = sconf->max_clients;
+    if(ssconf->max_conn_close_percent) {
+      ssconf->max_conn_close = net_prefer * ssconf->max_conn_close_percent / 100;
+    }
     if(ssconf->act->timeout == 0) {
       ssconf->act->timeout = 300;
     }
@@ -5969,6 +5976,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->max_conn_close == -1) {
     o->max_conn_close = b->max_conn_close;
+    o->max_conn_close_percent = b->max_conn_close_percent;
   }
   if(o->max_conn_per_ip == -1) {
     o->max_conn_per_ip = b->max_conn_per_ip;
@@ -6702,7 +6710,20 @@ const char *qos_max_conn_cmd(cmd_parms *cmd, void *dcfg, const char *number) {
 const char *qos_max_conn_close_cmd(cmd_parms *cmd, void *dcfg, const char *number) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  sconf->max_conn_close = atoi(number);
+  char *n = apr_pstrdup(cmd->temp_pool, number);
+  if((strlen(n) > 1) &&
+     (n[strlen(n)-1] == '%')) {
+    n[strlen(n)-1] = '\0';
+    sconf->max_conn_close = atoi(n);
+    sconf->max_conn_close_percent = sconf->max_conn_close;
+    if(sconf->max_conn_close > 99) {
+      return apr_psprintf(cmd->pool, "%s: number must be a percentage <99", 
+                          cmd->directive->directive);
+    }
+  } else {
+    sconf->max_conn_close = atoi(n);
+    sconf->max_conn_close_percent = 0;
+  }
   if(sconf->max_conn_close == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
@@ -7357,7 +7378,9 @@ static const command_rec qos_config_cmds[] = {
                 "QS_SrvMaxConnClose <number>, defines the maximum number of"
                 " concurrent TCP connections until the server disables"
                 " keep-alive for this server (closes the connection after"
-                " each requests."),
+                " each requests. You may specify the number of connections"
+                " as a percentage of MaxClients if adding the suffix '%'"
+                " to the specified value."),
   AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnPerIP <number>, defines the maximum number of"

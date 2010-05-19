@@ -45,6 +45,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
   + debug/error message showing if and which file is used
 + disable min data rate for certain connections (response conditions)
   - QS_SrvMinDataRateOffEvent at server level
+- QS_SrvMaxConnClose to support "percentage" of the MaxClient sesstings instead of abs. value
 
 legend:
 - to be documented/not yet decided to implement
