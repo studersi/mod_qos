@@ -44,4 +44,8 @@ public class Heartbeat implements Runnable {
 	public void setStatus(Status status)  {
 		this.status = status;
 	}
+	
+	public Status getStatus() {
+		return this.status;
+	}
 }
