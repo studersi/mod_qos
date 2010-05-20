@@ -1,11 +1,15 @@
 package ch.joebar.qos.mgr.test;
 
+import org.apache.log4j.BasicConfigurator;
+
 import junit.framework.TestCase;
 import ch.joebar.qos.mgr.net.ha.Controller;
 
 public class HaTest extends TestCase {
 
 	public void testHeartbeat() throws Exception {
+	    BasicConfigurator.configure();
+	    //PropertyConfigurator.configure(args[0]);
 		System.out.println("start");
 		String[] addresses = { "127.0.0.3", "127.0.0.4" };
 
