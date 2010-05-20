@@ -24,10 +24,18 @@ public class Status {
 		}
 	}
 	
+	/**
+	 * Returns the connectivity
+	 * @return either STATUS_UP or STATUS_DOWN
+	 */
 	public String getConnectivity() {
 		return this.connectivity;
 	}
 	
+	/**
+	 * Returns the state
+	 * @return either STATE_ACTIVE or STATE_STANDBY
+	 */
 	public String getState() {
 		return this.state;
 	}
