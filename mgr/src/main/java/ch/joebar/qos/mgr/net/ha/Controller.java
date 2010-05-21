@@ -4,6 +4,9 @@ import java.net.UnknownHostException;
 
 import org.apache.log4j.Logger;
 
+/**
+ * HA Controller 
+ */
 public class Controller implements Runnable {
 	private static Logger log = Logger.getLogger(Controller.class);
 	
@@ -14,21 +17,32 @@ public class Controller implements Runnable {
 	private Thread ht = null;
 	private String peer;
 	private String listen;
-	// how long we wait for udp packets
+	/** how many times (Hearbeat.INTERVAL) we wait for udp packets until we decide
+	 * that the peer is down due we don't receive any packets anymore */
 	private int counter = 3;
 
+	/**
+	 * Creates a new controller and start a listener and heartbeat thread.
+	 * 
+	 * @param iface Inteface name, e.g. eth0
+	 * @param mask Netmask (required for plumbing the interface)
+	 * @param addresses Ip addresses to set for the sub interfaces
+	 * @param listen Ip address (or hostname) we listen for heartbeat packages comming from the peer
+	 * @param peer Ip Address (or hostname) of the peer node
+	 * @throws UnknownHostException 
+	 */
 	public Controller(String iface, String mask, String[] addresses, 
-			String listen, String peer) {
+			String listen, String peer) throws UnknownHostException {
 		this.peer = peer;
 		this.listen = listen;
-		try {
-			this.l = new Listener(listen);
-		} catch (UnknownHostException e) {
-			log.info("init failed: " + e.toString());
-		}
+		this.l = new Listener(listen);
+		log.info(this.listen + ": start");
 		if(listen.compareTo(peer) > 0) {
-			this.counter = (this.counter * 2) + 1;
+			// ensure we don't resonate (the two controllers use different intervall) 
+			this.counter = this.counter + 2;
 		}
+		this.initCommand();
+		this.standbyCommand(); // start at standby mode and become active, if peer is down or standby
 		this.initHeartbeat();
 		this.start();
 	}
@@ -67,19 +81,52 @@ public class Controller implements Runnable {
 	private void active() {
 		if(this.status.getState().equals(State.STANDBY) &&
 				this.status.getRequest() != Transition.TRANSFER) {
-			// TODO
 			log.info(this.listen + ": change state to ACTIVE");
 			this.setStatus(new Status(Connectivity.UP, State.ACTIVE, this.status.getRequest()));
+			try {
+				Thread.sleep(Heartbeat.INTERVAL);
+			} catch (InterruptedException e) {
+				// nop
+			}
+			this.activeCommand();
 		}
 	}
 	
+	/**
+	 * Inital setup command execution (plumb the interface).
+	 */
+	private void initCommand() {
+		// TODO
+	}
+	
+	/**
+	 * Executes the commands to become active (interface UP)
+	 */
+	private void activeCommand() {
+		// TODO
+	}
+
+	/**
+	 * Executes the commands to become standby (interface DOWN)
+	 */
+	private void standbyCommand() {
+		// TODO		
+	}
+
 	private void standby() {
 		if(this.status.getState().equals(State.ACTIVE)) {
 			// TODO
+			this.standbyCommand();
+			try {
+				Thread.sleep(Heartbeat.INTERVAL);
+			} catch (InterruptedException e) {
+				// nop
+			}
 			log.info(this.listen + ": change state to STANDBY");
 			this.setStatus(new Status(Connectivity.UP, State.STANDBY, this.status.getRequest()));
 		}
 	}
+
 
 	/**
 	 * Indicates if this instance is currently active or standby.
@@ -102,7 +149,8 @@ public class Controller implements Runnable {
 			// become standby, peer will become active automatically
 			this.standby();
 		} else {
-			// signalize only that we want to become active 
+			/* signalize only that we want to become active
+			 * controller switches to standby as soon as the peer becomes active */
 		}
 	}
 	
@@ -118,23 +166,26 @@ public class Controller implements Runnable {
 				this.start();
 			}
 			Status s = this.l.getPeerStatus();
-			// clear transition
+			
+			/* clear transition */
 			if(this.status.getRequest() == Transition.TRANSFER) {
 				if(s.getState() == State.ACTIVE) {
-					// done
+					// done, peer is now active
 					this.status.setRequest(Transition.NOP);
 				}
 			}
 			if(this.status.getRequest() == Transition.TAKEOVER) {
 				if(this.status.getState() == State.ACTIVE) {
+					// done, this instance is now active
 					this.status.setRequest(Transition.NOP);
 				}
 			}
+			
 			/* check connectivity:
 			 * 1) become active, if peer is down
 			 * 2) go down if peer is active
 			 * 3) become active, if peer is standby 
-			 * check transition:
+			 * check for peer's transition request:
 			 * 4) become standby if peer indicates takeover
 			 */
 			if(s.getConnectivity().equals(Connectivity.DOWN)) {
