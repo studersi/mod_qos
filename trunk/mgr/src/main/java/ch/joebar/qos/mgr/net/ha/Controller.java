@@ -4,10 +4,10 @@ import java.net.UnknownHostException;
 
 import org.apache.log4j.Logger;
 
-public class Controller {
+public class Controller implements Runnable {
 	private static Logger log = Logger.getLogger(Controller.class);
 	
-	private Status status = new Status(Status.STATUS_DOWN, Status.STATE_STANDBY); 
+	private Status status = new Status(); 
 	private Listener l = null;
 	private Heartbeat h = null;
 	private Thread lt = null;
@@ -23,6 +23,7 @@ public class Controller {
 		}
 		this.peer = peer;
 		this.initHeartbeat();
+		this.start();
 	}
 
 	private void initHeartbeat() {
@@ -36,7 +37,7 @@ public class Controller {
 		}
 	}
 	
-	public void start() {
+	private void start() {
 		if(this.l != null && this.lt == null) {
 			this.lt = new Thread(l);
 			this.lt.start();
@@ -56,25 +57,48 @@ public class Controller {
 		}
 	}
 	
-	public void active() {
-		if(this.status.getState().equals(Status.STATE_STANDBY)) {
+	private void active() {
+		if(this.status.getState().equals(State.STANDBY)) {
 			// TODO
 			log.info("change state to ACTIVE");
-			this.setStatus(new Status(Status.STATUS_UP, Status.STATE_ACTIVE));
+			this.setStatus(new Status(Connectivity.UP, State.ACTIVE, null));
 		}
 	}
 	
-	public void standby() {
-		if(status.getState().equals(Status.STATE_ACTIVE)) {
+	private void standby() {
+		if(status.getState().equals(State.ACTIVE)) {
 			// TODO
 			log.info("change state to STANDBY");
-			this.setStatus(new Status(Status.STATUS_UP, Status.STATE_STANDBY));
+			this.setStatus(new Status(Connectivity.UP, State.STANDBY, null));
 		}
 	}
+
+	/**
+	 * Indicates if this instance is currently active or standby.
+	 * @return
+	 */
+	public boolean isActive() {
+		if(this.status.getState() == State.ACTIVE) {
+			return true;
+		}
+		return false;
+	}
 	
-	public void run() throws InterruptedException {
-		for(int i = 0; i < 5; i++) {
-			Thread.sleep(Heartbeat.INTERVAL*3);
+	/**
+	 * Start transition to become active (takeover) or standby (transfer)
+	 * @param request
+	 */
+	public void setTransition(Transition request) {
+		// TODO
+	}
+	
+	public void run() {
+		while(!Thread.interrupted()){
+			try {
+				Thread.sleep(Heartbeat.INTERVAL*3);
+			} catch (InterruptedException e) {
+				return;
+			}
 			if(this.h == null) {
 				this.initHeartbeat();
 				this.start();
@@ -83,11 +107,13 @@ public class Controller {
 			/* check connectivity
 			 * 1) become active, if peer is down
 			 * 2) go down if peer is active 
+			 * check transition
+			 * TODO
 			 */
-			if(s.getConnectivity().equals(Status.STATUS_DOWN)) {
+			if(s.getConnectivity().equals(Connectivity.DOWN)) {
 				this.active();
 			} else {
-				if(s.getState().equals(Status.STATE_ACTIVE)) {
+				if(s.getState().equals(State.ACTIVE)) {
 						this.standby();
 				} else {
 					this.active();

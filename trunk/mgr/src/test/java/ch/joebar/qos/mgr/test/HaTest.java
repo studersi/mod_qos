@@ -17,10 +17,11 @@ public class HaTest extends TestCase {
 				"127.0.0.1", "127.0.0.2");
 		Controller c2 = new Controller("lo", "255.0.0.0", addresses,
 				"127.0.0.2", "127.0.0.1");
-		c1.start();
-		c2.start();
-		
-		c1.run();
+		Thread t1 = new Thread(c1);
+		t1.start();
+		for(int i = 0; i < 10; i++) {
+			Thread.sleep(1000);
+		}
 		
 		System.out.println("end");
 		c1.end();

@@ -15,7 +15,7 @@ public class Listener implements Runnable {
 	private static Logger log = Logger.getLogger(Listener.class);
 
 	public final static int UDP_PORT = 2619;
-	private Status status = new Status(Status.STATUS_DOWN, Status.STATE_STANDBY);
+	private Status status = new Status();
 	private InetAddress a;
 
 	/**
@@ -31,14 +31,16 @@ public class Listener implements Runnable {
 	 * Run the listener (until receiving an interrupt)
 	 */
 	public void run() {
+		 String ip = this.a.getHostAddress();
+		 log.debug("listen at " + ip);
 		try {
 			DatagramSocket socket = new DatagramSocket(UDP_PORT, a);
 			while(!Thread.interrupted()){
 			    DatagramPacket packet = new DatagramPacket(new byte[512],512);
 				socket.receive(packet);
 				String received = new String(packet.getData(), 0, packet.getLength());
-				// shared secret
-				this.status = new Status(received);
+				// TODO shared secret
+				this.status = new Message("", received).getStatus();
 			}
 		} catch (IOException e) {
 			log.error("failed to listen on " + this.a.getHostName() + ":" + Listener.UDP_PORT +
@@ -53,7 +55,7 @@ public class Listener implements Runnable {
 	 */
 	public Status getPeerStatus() {
 		Status s = this.status;
-		this.status = new Status(Status.STATUS_DOWN, Status.STATE_STANDBY);
+		this.status = new Status();
 		return s;
 	}
 }
