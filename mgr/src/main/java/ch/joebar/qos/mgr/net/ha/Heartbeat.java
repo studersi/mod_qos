@@ -16,7 +16,7 @@ public class Heartbeat implements Runnable {
 
 	public static final long INTERVAL = 1000;
 	private InetAddress a;
-	private Status status = new Status(Status.STATUS_DOWN, Status.STATE_STANDBY);
+	private Status status = new Status();
 	
 	/**
 	 * Resolves peer address.
@@ -25,15 +25,18 @@ public class Heartbeat implements Runnable {
 	 */
 	public Heartbeat(String address) throws UnknownHostException {
 		 this.a = InetAddress.getByName(address);
+
 	}
 	
 	/**
 	 * Starts the heartbeat (until receiving an interrupt)
 	 */
 	public void run() {
-		while(!Thread.interrupted()){
-			String m = status.getConnectivity() + ":" + status.getState();
-			byte[]  message = m.getBytes();
+		 String ip = this.a.getHostAddress();
+		 log.debug("start heartbeat to " + ip);
+		 while(!Thread.interrupted()){
+			// TODO shared secret
+			byte[]  message = new Message("", this.status).getMessage().getBytes();
 		    DatagramPacket packet = new DatagramPacket(message, message.length, this.a, Listener.UDP_PORT);
 			DatagramSocket dsocket;
 			try {
