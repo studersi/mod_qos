@@ -25,11 +25,12 @@ public class Controller implements Runnable {
 	private String iface;
 	private String mask;
 	private String[] addresses;
+	private String bcast;
 
 	/**
 	 * Creates a new controller and start a listener and heartbeat thread.
 	 * 
-	 * @param cmd Command to execute on state change (init, active, standby)
+	 * @param cmd Command to execute on state change (init, start, stop)
 	 * @param iface Inteface name, e.g. eth0
 	 * @param mask Netmask (required for plumbing the interface)
 	 * @param addresses Ip addresses to set for the sub interfaces
@@ -37,11 +38,12 @@ public class Controller implements Runnable {
 	 * @param peer Ip Address (or hostname) of the peer node
 	 * @throws UnknownHostException 
 	 */
-	public Controller(String cmd, String iface, String mask, String[] addresses, 
+	public Controller(String cmd, String iface, String mask, String bcast, String[] addresses, 
 			String listen, String peer) throws UnknownHostException {
 		this.cmd = cmd;
 		this.iface = iface;
 		this.mask = mask;
+		this.bcast = bcast;
 		this.addresses = addresses;
 		this.peer = peer;
 		this.listen = listen;
@@ -102,34 +104,39 @@ public class Controller implements Runnable {
 		}
 	}
 	
+	private void exec(String action) {
+		String[] a = new String[this.addresses.length + 5];
+		a[0] = this.cmd;
+		a[1] = action;
+		a[2] = this.iface;
+		a[3] = this.mask;
+		a[4] = this.bcast;
+		for(int i = 0; i < this.addresses.length; i++) {
+			a[i+5] = this.addresses[i];
+		}
+		CommandStarter c = new CommandStarter(-1, 10000, 10000);
+		c.callCommandToString(a);		
+	}
+	
 	/**
 	 * Inital setup command execution (plumb the interface).
 	 */
 	private void initCommand() {
-		String[] a = new String[this.addresses.length + 4];
-		a[0] = this.cmd;
-		a[1] = "init";
-		a[2] = this.iface;
-		a[3] = this.mask;
-		for(int i = 0; i < this.addresses.length; i++) {
-			a[i+4] = this.addresses[i];
-		}
-		CommandStarter c = new CommandStarter(-1, 10000, 10000);
-		c.callCommandToString(a);
+		this.exec("init");
 	}
 	
 	/**
 	 * Executes the commands to become active (interface UP)
 	 */
 	private void activeCommand() {
-		// TODO
+		this.exec("start");
 	}
 
 	/**
 	 * Executes the commands to become standby (interface DOWN)
 	 */
 	private void standbyCommand() {
-		// TODO		
+		this.exec("stop");
 	}
 
 	private void standby() {

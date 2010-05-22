@@ -16,9 +16,9 @@ public class HaTest extends TestCase {
 		System.out.println("start");
 		String[] addresses = { "127.0.0.3", "127.0.0.4" };
 
-		Controller c1 = new Controller(cmd, "lo", "255.0.0.0", addresses,
+		Controller c1 = new Controller(cmd, "lo", "255.0.0.0", "127.255.255.255", addresses,
 				"127.0.0.1", "127.0.0.2");
-		Controller c2 = new Controller(cmd, "lo", "255.0.0.0", addresses,
+		Controller c2 = new Controller(cmd, "lo", "255.0.0.0", "127.255.255.255", addresses,
 				"127.0.0.2", "127.0.0.1");
 
 		Thread t1 = new Thread(c1);
