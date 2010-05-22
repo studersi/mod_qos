@@ -1,8 +1,8 @@
 package ch.joebar.qos.mgr.net.ha;
 
 import java.net.UnknownHostException;
-
 import org.apache.log4j.Logger;
+import ch.joebar.qos.mgr.util.CommandStarter;
 
 /**
  * HA Controller 
@@ -21,6 +21,11 @@ public class Controller implements Runnable {
 	 * that the peer is down due we don't receive any packets anymore */
 	private int counter = 3;
 
+	private String cmd;
+	private String iface;
+	private String mask;
+	private String[] addresses;
+
 	/**
 	 * Creates a new controller and start a listener and heartbeat thread.
 	 * 
@@ -34,6 +39,10 @@ public class Controller implements Runnable {
 	 */
 	public Controller(String cmd, String iface, String mask, String[] addresses, 
 			String listen, String peer) throws UnknownHostException {
+		this.cmd = cmd;
+		this.iface = iface;
+		this.mask = mask;
+		this.addresses = addresses;
 		this.peer = peer;
 		this.listen = listen;
 		this.l = new Listener(listen);
@@ -97,7 +106,16 @@ public class Controller implements Runnable {
 	 * Inital setup command execution (plumb the interface).
 	 */
 	private void initCommand() {
-		// TODO
+		String[] a = new String[this.addresses.length + 4];
+		a[0] = this.cmd;
+		a[1] = "init";
+		a[2] = this.iface;
+		a[3] = this.mask;
+		for(int i = 0; i < this.addresses.length; i++) {
+			a[i+4] = this.addresses[i];
+		}
+		CommandStarter c = new CommandStarter(-1, 10000, 10000);
+		c.callCommandToString(a);
 	}
 	
 	/**
