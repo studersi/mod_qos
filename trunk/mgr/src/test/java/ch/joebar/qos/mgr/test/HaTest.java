@@ -14,11 +14,13 @@ public class HaTest extends TestCase {
 	    BasicConfigurator.configure();
 	    //PropertyConfigurator.configure(args[0]);
 		System.out.println("start");
-		String[] addresses = { "127.0.0.3", "127.0.0.4" };
+		String[] addresses1 = { "172.17.2.5", "172.17.2.6" };
 
-		Controller c1 = new Controller(cmd, "lo", "255.0.0.0", "127.255.255.255", addresses,
+		Controller c1 = new Controller(cmd, "eth2", "255.255.255.0", "172.17.2.255", "172.17.2.1",
+				addresses1,
 				"127.0.0.1", "127.0.0.2");
-		Controller c2 = new Controller(cmd, "lo", "255.0.0.0", "127.255.255.255", addresses,
+		Controller c2 = new Controller(cmd, "eth2", "255.255.255.0", "172.17.2.255", "172.17.2.1",
+				addresses1,
 				"127.0.0.2", "127.0.0.1");
 
 		Thread t1 = new Thread(c1);

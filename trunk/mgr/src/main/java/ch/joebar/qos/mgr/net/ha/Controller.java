@@ -26,6 +26,7 @@ public class Controller implements Runnable {
 	private String mask;
 	private String[] addresses;
 	private String bcast;
+	private String gateway;
 
 	/**
 	 * Creates a new controller and start a listener and heartbeat thread.
@@ -33,18 +34,22 @@ public class Controller implements Runnable {
 	 * @param cmd Command to execute on state change (init, start, stop)
 	 * @param iface Inteface name, e.g. eth0
 	 * @param mask Netmask (required for plumbing the interface)
+	 * @param bcast Broadcast address
+	 * @param gateway Default gateway
 	 * @param addresses Ip addresses to set for the sub interfaces
 	 * @param listen Ip address (or hostname) we listen for heartbeat packages comming from the peer
 	 * @param peer Ip Address (or hostname) of the peer node
 	 * @throws UnknownHostException 
 	 */
-	public Controller(String cmd, String iface, String mask, String bcast, String[] addresses, 
+	public Controller(String cmd, String iface, String mask, String bcast, String gateway,
+			String[] addresses, 
 			String listen, String peer) throws UnknownHostException {
 		this.cmd = cmd;
 		this.iface = iface;
 		this.mask = mask;
 		this.bcast = bcast;
 		this.addresses = addresses;
+		this.gateway = gateway;
 		this.peer = peer;
 		this.listen = listen;
 		this.l = new Listener(listen);
@@ -105,14 +110,15 @@ public class Controller implements Runnable {
 	}
 	
 	private void exec(String action) {
-		String[] a = new String[this.addresses.length + 5];
+		String[] a = new String[this.addresses.length + 6];
 		a[0] = this.cmd;
 		a[1] = action;
 		a[2] = this.iface;
 		a[3] = this.mask;
 		a[4] = this.bcast;
+		a[5] = this.gateway;
 		for(int i = 0; i < this.addresses.length; i++) {
-			a[i+5] = this.addresses[i];
+			a[i+6] = this.addresses[i];
 		}
 		CommandStarter c = new CommandStarter(-1, 10000, 10000);
 		c.callCommandToString(a);		
