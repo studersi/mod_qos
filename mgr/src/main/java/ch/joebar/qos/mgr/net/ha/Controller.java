@@ -24,6 +24,7 @@ public class Controller implements Runnable {
 	/**
 	 * Creates a new controller and start a listener and heartbeat thread.
 	 * 
+	 * @param cmd Command to execute on state change (init, active, standby)
 	 * @param iface Inteface name, e.g. eth0
 	 * @param mask Netmask (required for plumbing the interface)
 	 * @param addresses Ip addresses to set for the sub interfaces
@@ -31,15 +32,15 @@ public class Controller implements Runnable {
 	 * @param peer Ip Address (or hostname) of the peer node
 	 * @throws UnknownHostException 
 	 */
-	public Controller(String iface, String mask, String[] addresses, 
+	public Controller(String cmd, String iface, String mask, String[] addresses, 
 			String listen, String peer) throws UnknownHostException {
 		this.peer = peer;
 		this.listen = listen;
 		this.l = new Listener(listen);
 		log.info(this.listen + ": start");
 		if(listen.compareTo(peer) > 0) {
-			// ensure we don't resonate (the two controllers use different intervall) 
-			this.counter = this.counter + 2;
+			// ensure we don't resonate (the two controllers use different intervals) 
+			this.counter = (this.counter * 2) + 1;
 		}
 		this.initCommand();
 		this.standbyCommand(); // start at standby mode and become active, if peer is down or standby

@@ -9,14 +9,16 @@ import ch.joebar.qos.mgr.net.ha.Transition;
 public class HaTest extends TestCase {
 
 	public void testHeartbeat() throws Exception {
+		String cmd = "./src/test/bin/ha.sh";
+
 	    BasicConfigurator.configure();
 	    //PropertyConfigurator.configure(args[0]);
 		System.out.println("start");
 		String[] addresses = { "127.0.0.3", "127.0.0.4" };
 
-		Controller c1 = new Controller("lo", "255.0.0.0", addresses,
+		Controller c1 = new Controller(cmd, "lo", "255.0.0.0", addresses,
 				"127.0.0.1", "127.0.0.2");
-		Controller c2 = new Controller("lo", "255.0.0.0", addresses,
+		Controller c2 = new Controller(cmd, "lo", "255.0.0.0", addresses,
 				"127.0.0.2", "127.0.0.1");
 
 		Thread t1 = new Thread(c1);
