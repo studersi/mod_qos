@@ -1,5 +1,7 @@
 package ch.joebar.qos.mgr.util;
 
+import java.io.IOException;
+
 public class CommandStarter {
 
 	
@@ -7,6 +9,12 @@ public class CommandStarter {
 	}
 	
 	public String callCommandToString(String[] cmdArray) {
+		try {
+			Runtime.getRuntime().exec(cmdArray);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return "";
 	}
 }
