@@ -6,6 +6,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import javax.crypto.SecretKey;
+
 import org.apache.log4j.Logger;
 
 /**
@@ -17,14 +19,18 @@ public class Listener implements Runnable {
 	public final static int UDP_PORT = 2619;
 	private Status status = new Status();
 	private InetAddress a;
+	private SecretKey secretKey;
+
 
 	/**
 	 * Resolve local address to listen.
 	 * @param address
+	 * @param secretKey 
 	 * @throws UnknownHostException
 	 */
-	public Listener(String address) throws UnknownHostException {
-		 this.a = InetAddress.getByName(address);
+	public Listener(String address, SecretKey secretKey) throws UnknownHostException {
+		this.secretKey = secretKey;
+		this.a = InetAddress.getByName(address);
 	}
 	
 	/**
@@ -39,8 +45,11 @@ public class Listener implements Runnable {
 			    DatagramPacket packet = new DatagramPacket(new byte[512],512);
 				socket.receive(packet);
 				String received = new String(packet.getData(), 0, packet.getLength());
-				// TODO shared secret
-				this.status = new Message("", received).getStatus();
+				Message m = new Message(this.secretKey, received);
+				Status t = m.getStatus();
+				if(t != null) {
+					this.status = t;
+				}
 			}
 		} catch (IOException e) {
 			log.error("failed to listen on " + this.a.getHostName() + ":" + Listener.UDP_PORT +
