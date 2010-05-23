@@ -1,6 +1,16 @@
 package ch.joebar.qos.mgr.net.ha;
 
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+
+import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.DESedeKeySpec;
+import javax.crypto.spec.IvParameterSpec;
+
+import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
 import ch.joebar.qos.mgr.util.CommandStarter;
 
@@ -9,7 +19,8 @@ import ch.joebar.qos.mgr.util.CommandStarter;
  */
 public class Controller implements Runnable {
 	private static Logger log = Logger.getLogger(Controller.class);
-	
+	private static int RANLEN = 10;
+
 	private Status status = new Status(); 
 	private Listener l = null;
 	private Heartbeat h = null;
@@ -27,6 +38,7 @@ public class Controller implements Runnable {
 	private String[] addresses;
 	private String bcast;
 	private String gateway;
+	private SecretKey secretKey;
 
 	/**
 	 * Creates a new controller and start a listener and heartbeat thread.
@@ -52,7 +64,8 @@ public class Controller implements Runnable {
 		this.gateway = gateway;
 		this.peer = peer;
 		this.listen = listen;
-		this.l = new Listener(listen);
+		this.generateKey("1234"); // TODO
+		this.l = new Listener(listen, this.secretKey);
 		log.info(this.listen + ": start");
 		if(listen.compareTo(peer) > 0) {
 			// ensure we don't resonate (the two controllers use different intervals) 
@@ -67,7 +80,7 @@ public class Controller implements Runnable {
 	private void initHeartbeat() {
 		if(this.h == null) {
 			try {
-				this.h = new Heartbeat(this.peer);
+				this.h = new Heartbeat(this.peer, this.secretKey);
 			} catch (UnknownHostException e) {
 				this.h = null;
 				log.warn("can't start heartbeat to " + this.peer + "," + e.toString());
@@ -239,6 +252,69 @@ public class Controller implements Runnable {
 			}
 		}
 	
+	}
+		
+	public static String encrypt(SecretKey key, String value) {
+        String enc = null;
+        return value;
+        /*
+        SecureRandom srn = new SecureRandom();
+        byte[] bytes = srn.generateSeed(Controller.RANLEN*2);
+        String rnd = new String(Base64.encodeBase64(bytes)).substring(0, Controller.RANLEN);
+        try {
+        	IvParameterSpec params = new IvParameterSpec(new byte[] { 33, 83, 95, 66, 20, 15, 11, 93 });
+        	Cipher cipher = Cipher.getInstance("DESede/CBC/PKCS5Padding");
+        	cipher.init(Cipher.ENCRYPT_MODE, key, params);
+        	byte[] raw = new String(rnd + value).getBytes();
+        	byte[] cipherText = new byte[cipher.getOutputSize(raw.length)];
+        	int ctLength = cipher.update(raw, 0, raw.length, cipherText, 0);
+        	ctLength += cipher.doFinal(cipherText, ctLength);
+        	enc = new String(Base64.encodeBase64(cipherText));
+        } catch (Exception e) {
+        	log.debug("could not encrypt value", e);
+        }
+        return enc;
+        */
+	}
+	
+	public static String decrypt(SecretKey key, String value) {
+		String dec = null;
+		return value;
+		/*
+		try {
+			IvParameterSpec params = new IvParameterSpec(new byte[] { 33, 83, 95, 66, 20, 15, 11, 93 });
+			Cipher cipher = Cipher.getInstance("DESede/CBC/PKCS5Padding");
+			cipher.init(Cipher.DECRYPT_MODE, key, params);
+			byte[] cipherText = Base64.decodeBase64(value.getBytes());
+			int ctLength = cipherText.length;
+			byte[] plainText = new byte[cipher.getOutputSize(ctLength)];
+			int ptLength = cipher.update(cipherText, 0, ctLength, plainText, 0);
+			ptLength += cipher.doFinal(plainText, ptLength);
+			String all = new String(plainText);
+			if(all.length() > Controller.RANLEN) {
+				dec = all.substring(Controller.RANLEN);
+			}
+		} catch (Exception e) {
+			log.debug("could not decrypt value", e);
+		}
+		return dec;
+		*/
+	}
+	
+	private void generateKey(String passphrase) {
+		try {
+			MessageDigest md = MessageDigest.getInstance("SHA1");
+			md.update(passphrase.getBytes());
+			byte[] mdbytes = md.digest();
+			/* add some bytes (des key requires 24 bytes) */
+			/* IMPORTANT: never change these constants!!! */
+			String key_seed = new String(mdbytes) + "lkjd8_.F48kaD700nh_sjchTTTa7sd5Hbbbbbd";
+            DESedeKeySpec spec = new DESedeKeySpec(key_seed.getBytes());
+            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DESede");
+            this.secretKey = keyFactory.generateSecret(spec);
+		} catch (Exception e) {
+			log.error("could not create key: " + e.toString());
+        }
 	}
 	
 	public void end() {

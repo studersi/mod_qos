@@ -29,9 +29,11 @@ public class HaTest extends TestCase {
 		t2.start();
 		Thread.sleep(20000);
 
+		System.out.println("start transfer");
 		c1.setTransition(Transition.TRANSFER);
 		Thread.sleep(20000);
 
+		System.out.println("end controller 2");
 		c2.end();
 		Thread.sleep(20000);
 				

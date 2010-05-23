@@ -1,18 +1,26 @@
 package ch.joebar.qos.mgr.net.ha;
 
+import javax.crypto.SecretKey;
+
 public class Message {
 
-	private Status s;
-	private String secret;
+	private Status s = null;
+	private SecretKey secretKey;
+	private static final String MAGIC = "XDDMSG";
 	
-	public Message(String secret, Status status) {
-		this.secret = secret;
+	public Message(SecretKey secretKey, Status status) {
+		this.secretKey = secretKey;
 		this.s = status;
 	}
 	
-	public Message(String secret, String message) {
-		// TODO decrypt
-		this.s = Status.d2i(message);
+	public Message(SecretKey secret, String message) {
+		String msg = Controller.decrypt(secret, message);
+		//System.out.println("MSG <[" + msg + "]");
+		if(msg != null && msg.startsWith(MAGIC)) {
+			this.s = Status.d2i(msg);
+		} else {
+			System.out.println("$$$ ERROR dec");
+		}
 	}
 	
 	public Status getStatus() {
@@ -20,7 +28,8 @@ public class Message {
 	}
 	
 	public String getMessage() {
-		// TODO encrypt with shared secret
-		return Status.i2d(this.s);
+		String msg = MAGIC + ":" + Status.i2d(this.s); 
+		//System.out.println("MSG >[" + msg + "]");
+		return Controller.encrypt(this.secretKey, msg);
 	}
 }

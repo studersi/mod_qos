@@ -6,6 +6,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import javax.crypto.SecretKey;
+
 import org.apache.log4j.Logger;
 
 /**
@@ -17,15 +19,18 @@ public class Heartbeat implements Runnable {
 	public static final long INTERVAL = 1000;
 	private InetAddress a;
 	private Status status = new Status();
+	private SecretKey secretKey;
+
 	
 	/**
 	 * Resolves peer address.
 	 * @param address
+	 * @param secretKey 
 	 * @throws UnknownHostException
 	 */
-	public Heartbeat(String address) throws UnknownHostException {
-		 this.a = InetAddress.getByName(address);
-
+	public Heartbeat(String address, SecretKey secretKey) throws UnknownHostException {
+		this.secretKey = secretKey;
+		this.a = InetAddress.getByName(address);
 	}
 	
 	/**
@@ -35,8 +40,7 @@ public class Heartbeat implements Runnable {
 		 String ip = this.a.getHostAddress();
 		 log.debug("start heartbeat to " + ip);
 		 while(!Thread.interrupted()){
-			// TODO shared secret
-			byte[]  message = new Message("", this.status).getMessage().getBytes();
+			byte[] message = new Message(this.secretKey, this.status).getMessage().getBytes();
 		    DatagramPacket packet = new DatagramPacket(message, message.length, this.a, Listener.UDP_PORT);
 			DatagramSocket dsocket;
 			try {
