@@ -1,14 +1,11 @@
 package ch.joebar.qos.mgr.net.ha;
 
 import java.net.UnknownHostException;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
+import java.util.Random;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.DESedeKeySpec;
-import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
@@ -253,65 +250,64 @@ public class Controller implements Runnable {
 		}
 	
 	}
-		
+	
+	/**
+	 * Encypts the provided string.
+	 * @param key Secret key which is used encryption/decryption
+	 * @param value String to encrypt
+	 * @return Encrypted and b64 encoded string or null on error
+	 */
 	public static String encrypt(SecretKey key, String value) {
         String enc = null;
-        return value;
-        /*
-        SecureRandom srn = new SecureRandom();
-        byte[] bytes = srn.generateSeed(Controller.RANLEN*2);
+        //SecureRandom srn = new SecureRandom();
+        //byte[] bytes = srn.generateSeed(Controller.RANLEN);
+        Random rand = new Random();
+        long r = rand.nextLong();
+        byte[] bytes = new Long(r).toString().getBytes();
         String rnd = new String(Base64.encodeBase64(bytes)).substring(0, Controller.RANLEN);
         try {
-        	IvParameterSpec params = new IvParameterSpec(new byte[] { 33, 83, 95, 66, 20, 15, 11, 93 });
-        	Cipher cipher = Cipher.getInstance("DESede/CBC/PKCS5Padding");
-        	cipher.init(Cipher.ENCRYPT_MODE, key, params);
-        	byte[] raw = new String(rnd + value).getBytes();
-        	byte[] cipherText = new byte[cipher.getOutputSize(raw.length)];
-        	int ctLength = cipher.update(raw, 0, raw.length, cipherText, 0);
-        	ctLength += cipher.doFinal(cipherText, ctLength);
+        	Cipher cipher = Cipher.getInstance("DESede");
+        	cipher.init(Cipher.ENCRYPT_MODE, key);
+        	byte[] cipherText = cipher.doFinal(new String(rnd + value).getBytes());
         	enc = new String(Base64.encodeBase64(cipherText));
         } catch (Exception e) {
         	log.debug("could not encrypt value", e);
         }
         return enc;
-        */
 	}
-	
+
+	/**
+	 * Decrypts the provides string.
+	 * 
+	 * @param key Secret key which is used encryption/decryption
+	 * @param value b64 encoded data to decrypt
+	 * @return Decrypted string or null on error
+	 */
 	public static String decrypt(SecretKey key, String value) {
 		String dec = null;
-		return value;
-		/*
 		try {
-			IvParameterSpec params = new IvParameterSpec(new byte[] { 33, 83, 95, 66, 20, 15, 11, 93 });
-			Cipher cipher = Cipher.getInstance("DESede/CBC/PKCS5Padding");
-			cipher.init(Cipher.DECRYPT_MODE, key, params);
 			byte[] cipherText = Base64.decodeBase64(value.getBytes());
-			int ctLength = cipherText.length;
-			byte[] plainText = new byte[cipher.getOutputSize(ctLength)];
-			int ptLength = cipher.update(cipherText, 0, ctLength, plainText, 0);
-			ptLength += cipher.doFinal(plainText, ptLength);
-			String all = new String(plainText);
+			Cipher cipher = Cipher.getInstance("DESede");
+			cipher.init(Cipher.DECRYPT_MODE, key);
+			byte[] decryptedMessage = cipher.doFinal(cipherText);
+			String all = new String(decryptedMessage);
 			if(all.length() > Controller.RANLEN) {
 				dec = all.substring(Controller.RANLEN);
 			}
 		} catch (Exception e) {
-			log.debug("could not decrypt value", e);
+			log.error("could not decrypt value", e);
 		}
 		return dec;
-		*/
 	}
 	
+	/**
+	 * 3DES key from passphrase.
+	 * @param passphrase
+	 */
 	private void generateKey(String passphrase) {
 		try {
-			MessageDigest md = MessageDigest.getInstance("SHA1");
-			md.update(passphrase.getBytes());
-			byte[] mdbytes = md.digest();
-			/* add some bytes (des key requires 24 bytes) */
-			/* IMPORTANT: never change these constants!!! */
-			String key_seed = new String(mdbytes) + "lkjd8_.F48kaD700nh_sjchTTTa7sd5Hbbbbbd";
-            DESedeKeySpec spec = new DESedeKeySpec(key_seed.getBytes());
-            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DESede");
-            this.secretKey = keyFactory.generateSecret(spec);
+			byte[] tripleDesKeyData = new String(passphrase + "ksjD700ndh_*%sbF4ky>s1hdnc").substring(0, 24).getBytes();
+			this.secretKey = new SecretKeySpec(tripleDesKeyData, "DESede");
 		} catch (Exception e) {
 			log.error("could not create key: " + e.toString());
         }

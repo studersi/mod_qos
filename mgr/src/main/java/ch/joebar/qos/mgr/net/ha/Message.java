@@ -2,11 +2,14 @@ package ch.joebar.qos.mgr.net.ha;
 
 import javax.crypto.SecretKey;
 
+import org.apache.log4j.Logger;
+
 public class Message {
+	private static Logger log = Logger.getLogger(Message.class);
 
 	private Status s = null;
 	private SecretKey secretKey;
-	private static final String MAGIC = "XDDMSG";
+	private static final String MAGIC = "QOSHAMSG";
 	
 	public Message(SecretKey secretKey, Status status) {
 		this.secretKey = secretKey;
@@ -15,11 +18,10 @@ public class Message {
 	
 	public Message(SecretKey secret, String message) {
 		String msg = Controller.decrypt(secret, message);
-		//System.out.println("MSG <[" + msg + "]");
 		if(msg != null && msg.startsWith(MAGIC)) {
 			this.s = Status.d2i(msg);
 		} else {
-			System.out.println("$$$ ERROR dec");
+			log.debug("failed to read message (no magic): '" + msg + "'");
 		}
 	}
 	
@@ -29,7 +31,6 @@ public class Message {
 	
 	public String getMessage() {
 		String msg = MAGIC + ":" + Status.i2d(this.s); 
-		//System.out.println("MSG >[" + msg + "]");
 		return Controller.encrypt(this.secretKey, msg);
 	}
 }
