@@ -56,21 +56,32 @@ do_init() {
 
 # instance becomes active:
 # - start the interfaces (UP)
-# - gratuitous arp
 # - add default route
 # - restart services
+# - gratuitous arp
 do_start() {
+  IPL=""
   id=0
   ADDR=$1
   while [ -n "$ADDR" ]; do
     echo "$PFX start $INT:$id $ADDR"
     ifconfig $INT:$id $ADDR netmask $MASK broadcast $BCAST up
-    #garp $$$
+    IPL="$IPL $ADDR"
     id=`expr $id + 1`
     shift
     ADDR=$1
   done
   route add default gw $GW $INT
+  # TODO, start the service here
+  PAT="HWaddr"
+  if [ `uname -s` = "SunOS" ]; then
+    PAT="ether"
+  fi
+  MAC=`ifconfig $INT | grep $PAT`
+  MAC=`expr "$MAC" : ".*$PAT \(.*\)"`
+  for E in $IPL; do
+    garp $INT $E $MAC
+  done
 }
 
 # instance becomes standby:
