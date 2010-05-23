@@ -52,7 +52,8 @@ public class Controller implements Runnable {
 	 */
 	public Controller(String cmd, String iface, String mask, String bcast, String gateway,
 			String[] addresses, 
-			String listen, String peer) throws UnknownHostException {
+			String listen, String peer,
+			String passphrase) throws UnknownHostException {
 		this.cmd = cmd;
 		this.iface = iface;
 		this.mask = mask;
@@ -61,7 +62,7 @@ public class Controller implements Runnable {
 		this.gateway = gateway;
 		this.peer = peer;
 		this.listen = listen;
-		this.generateKey("1234"); // TODO
+		this.generateKey(passphrase);
 		this.l = new Listener(listen, this.secretKey);
 		log.info(this.listen + ": start");
 		if(listen.compareTo(peer) > 0) {
@@ -295,7 +296,7 @@ public class Controller implements Runnable {
 				dec = all.substring(Controller.RANLEN);
 			}
 		} catch (Exception e) {
-			log.error("could not decrypt value", e);
+			log.debug("could not decrypt value", e);
 		}
 		return dec;
 	}
