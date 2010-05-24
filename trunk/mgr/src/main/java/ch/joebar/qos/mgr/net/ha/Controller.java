@@ -18,23 +18,30 @@ public class Controller implements Runnable {
 	private static Logger log = Logger.getLogger(Controller.class);
 	private static int RANLEN = 10;
 
+	/** status of this instance */
 	private Status status = new Status(); 
 	private Listener l = null;
 	private Heartbeat h = null;
 	private Thread lt = null;
 	private Thread ht = null;
+	/** hostname/address of the peer node */
 	private String peer;
+	/** hostname/address of this instance */
 	private String listen;
+	
 	/** how many times (Hearbeat.INTERVAL) we wait for udp packets until we decide
 	 * that the peer is down due we don't receive any packets anymore */
 	private int counter = 3;
 
+	/** command attributes (executed on status change) */
 	private String cmd;
 	private String iface;
 	private String mask;
 	private String[] addresses;
 	private String bcast;
 	private String gateway;
+	
+	/** shared secret for communication */
 	private SecretKey secretKey;
 
 	/**
@@ -75,6 +82,10 @@ public class Controller implements Runnable {
 		this.start();
 	}
 
+	/**
+	 * Init the heartbeat to send udp packets (instance starts even
+	 * heartbeat init fails and tries to initialize it later).
+	 */
 	private void initHeartbeat() {
 		if(this.h == null) {
 			try {
@@ -86,6 +97,9 @@ public class Controller implements Runnable {
 		}
 	}
 	
+	/**
+	 * Start listener (receiver) and hearbeat (sender).
+	 */
 	private void start() {
 		if(this.l != null && this.lt == null) {
 			this.lt = new Thread(l);
@@ -97,6 +111,10 @@ public class Controller implements Runnable {
 		}
 	}
 
+	/**
+	 * Updates the status of this instance.
+	 * @param s
+	 */
 	private void setStatus(Status s) {
 		// set local status
 		this.status = s;
@@ -106,20 +124,47 @@ public class Controller implements Runnable {
 		}
 	}
 	
+	/**
+	 * Change state to active (start the interface and services).
+	 */
 	private void active() {
 		if(this.status.getState().equals(State.STANDBY) &&
 				this.status.getRequest() != Transition.TRANSFER) {
 			log.info(this.listen + ": change state to ACTIVE");
+			// inform peer first
 			this.setStatus(new Status(Connectivity.UP, State.ACTIVE, this.status.getRequest()));
 			try {
 				Thread.sleep(Heartbeat.INTERVAL);
 			} catch (InterruptedException e) {
 				// nop
 			}
+			// then active interface and services
 			this.activeCommand();
 		}
 	}
 	
+	/**
+	 * Change state to standby (stop the interface).
+	 */
+	private void standby() {
+		if(this.status.getState().equals(State.ACTIVE)) {
+			log.info(this.listen + ": change state to STANDBY");
+			// stop interface first
+			this.standbyCommand();
+			try {
+				Thread.sleep(Heartbeat.INTERVAL);
+			} catch (InterruptedException e) {
+				// nop
+			}
+			// than inform peer about our status
+			this.setStatus(new Status(Connectivity.UP, State.STANDBY, this.status.getRequest()));
+		}
+	}
+
+	/**
+	 * Command execution (either init, start or stop).
+	 * @param action
+	 */
 	private void exec(String action) {
 		String[] a = new String[this.addresses.length + 6];
 		a[0] = this.cmd;
@@ -156,21 +201,6 @@ public class Controller implements Runnable {
 		this.exec("stop");
 	}
 
-	private void standby() {
-		if(this.status.getState().equals(State.ACTIVE)) {
-			// TODO
-			this.standbyCommand();
-			try {
-				Thread.sleep(Heartbeat.INTERVAL);
-			} catch (InterruptedException e) {
-				// nop
-			}
-			log.info(this.listen + ": change state to STANDBY");
-			this.setStatus(new Status(Connectivity.UP, State.STANDBY, this.status.getRequest()));
-		}
-	}
-
-
 	/**
 	 * Indicates if this instance is currently active or standby.
 	 * @return
@@ -197,6 +227,10 @@ public class Controller implements Runnable {
 		}
 	}
 	
+	/**
+	 * Executes the controller which polls the status of the peer
+	 * and controls the local state.
+	 */
 	public void run() {
 		while(!Thread.interrupted()){
 			try {
