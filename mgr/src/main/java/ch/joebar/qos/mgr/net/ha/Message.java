@@ -4,6 +4,11 @@ import javax.crypto.SecretKey;
 
 import org.apache.log4j.Logger;
 
+/**
+ * Messages are string representations of the instance status to be transmitted
+ * to the peer as an udp packet. 
+ *
+ */
 public class Message {
 	private static Logger log = Logger.getLogger(Message.class);
 
@@ -11,11 +16,21 @@ public class Message {
 	private SecretKey secretKey;
 	private static final String MAGIC = "QOSHAMSG";
 	
+	/**
+	 * Now message based on the current local status.
+	 * @param secretKey
+	 * @param status
+	 */
 	public Message(SecretKey secretKey, Status status) {
 		this.secretKey = secretKey;
 		this.s = status;
 	}
 	
+	/**
+	 * New message based on received message data.
+	 * @param secret
+	 * @param message
+	 */
 	public Message(SecretKey secret, String message) {
 		String msg = Controller.decrypt(secret, message);
 		if(msg != null && msg.startsWith(MAGIC)) {
@@ -25,10 +40,18 @@ public class Message {
 		}
 	}
 	
+	/**
+	 * Get the received status (may be null if status message was not valid).
+	 * @return
+	 */
 	public Status getStatus() {
 		return this.s;
 	}
 	
+	/**
+	 * Create a message string from the local status.
+	 * @return
+	 */
 	public String getMessage() {
 		String msg = MAGIC + ":" + Status.i2d(this.s); 
 		return Controller.encrypt(this.secretKey, msg);

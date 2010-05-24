@@ -213,7 +213,7 @@ public class Controller implements Runnable {
 	}
 	
 	/**
-	 * Start transition to become active (takeover) or standby (transfer)
+	 * Start transition to become active (takeover) or standby (transfer).
 	 * @param request
 	 */
 	public void setTransition(Transition request) {
