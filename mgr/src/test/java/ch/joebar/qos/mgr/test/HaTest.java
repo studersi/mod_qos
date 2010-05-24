@@ -1,5 +1,7 @@
 package ch.joebar.qos.mgr.test;
 
+import java.io.File;
+
 import org.apache.log4j.BasicConfigurator;
 
 import junit.framework.TestCase;
@@ -10,7 +12,11 @@ public class HaTest extends TestCase {
 
 	public void testHeartbeat() throws Exception {
 		String cmd = "./src/test/bin/ha.sh";
-
+		String log = "./src/test/bin/ha.log";
+		File f = new File(log);
+		if(f.exists()) {
+			f.delete();
+		}
 	    BasicConfigurator.configure();
 	    //PropertyConfigurator.configure(args[0]);
 		System.out.println("start");
