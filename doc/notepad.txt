@@ -12,7 +12,7 @@
   - adjust metrics dynamically
   - learning and permissive mode (server wide, per function)
 - dynamic rule adjustment of the generic request filter
-- improved anomalie detection (thresholds, logging)
+- improved anomaly detection (thresholds, logging)
   - set client event to be used in other rules
 - re-design/re-implementation of some parts/functions
   + maybe dropping some features
@@ -39,13 +39,13 @@
 - decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
   - enhance qos_unescaping()
   - document path_decode_hook()/query_decode_hook()
-+ new implementation of the QS_SrvMaxConnPerIP functionality (no tree anymore)
++ new implementation of the QS_SrvMaxConnPerIP functionality (linear, no tree anymore)
 x initial socket timeout for new connections (tcp open only and no initial request)
 + configure file path for mutex/sem files
   + debug/error message showing if and which file is used
 + disable min data rate for certain connections (response conditions)
   - QS_SrvMinDataRateOffEvent at server level
-- QS_SrvMaxConnClose to support "percentage" of the MaxClient sesstings instead of abs. value
++ QS_SrvMaxConnClose to support "percentage" of the MaxClient sesstings instead of abs. value
 
 legend:
 - to be documented/not yet decided to implement
