@@ -16,10 +16,10 @@ import org.apache.log4j.Logger;
 public class Heartbeat implements Runnable {
 	private static Logger log = Logger.getLogger(Heartbeat.class);
 
-	public static final long INTERVAL = 1000;
 	private InetAddress a;
 	private Status status = new Status();
 	private SecretKey secretKey;
+	private long interval;
 
 	
 	/**
@@ -28,8 +28,9 @@ public class Heartbeat implements Runnable {
 	 * @param secretKey 
 	 * @throws UnknownHostException
 	 */
-	public Heartbeat(String address, SecretKey secretKey) throws UnknownHostException {
+	public Heartbeat(String address, SecretKey secretKey, long interval) throws UnknownHostException {
 		this.secretKey = secretKey;
+		this.interval = interval;
 		this.a = InetAddress.getByName(address);
 	}
 	
@@ -52,7 +53,7 @@ public class Heartbeat implements Runnable {
 						", " + e.toString());
 			}
 			try {
-				Thread.sleep(INTERVAL);
+				Thread.sleep(this.interval);
 			} catch (InterruptedException e) {
 				return;
 			}

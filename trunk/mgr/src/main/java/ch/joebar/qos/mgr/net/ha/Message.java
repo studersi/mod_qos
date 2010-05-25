@@ -4,6 +4,8 @@ import javax.crypto.SecretKey;
 
 import org.apache.log4j.Logger;
 
+import ch.joebar.qos.mgr.util.Crypto;
+
 /**
  * Messages are string representations of the instance status to be transmitted
  * to the peer as an udp packet. 
@@ -32,7 +34,7 @@ public class Message {
 	 * @param message
 	 */
 	public Message(SecretKey secret, String message) {
-		String msg = Controller.decrypt(secret, message);
+		String msg = Crypto.decrypt(secret, message);
 		if(msg != null && msg.startsWith(MAGIC)) {
 			this.s = Status.d2i(msg);
 		} else {
@@ -54,6 +56,6 @@ public class Message {
 	 */
 	public String getMessage() {
 		String msg = MAGIC + ":" + Status.i2d(this.s); 
-		return Controller.encrypt(this.secretKey, msg);
+		return Crypto.encrypt(this.secretKey, msg);
 	}
 }

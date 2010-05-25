@@ -1,22 +1,17 @@
 package ch.joebar.qos.mgr.net.ha;
 
 import java.net.UnknownHostException;
-import java.util.Random;
-
-import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 
-import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
 import ch.joebar.qos.mgr.util.CommandStarter;
+import ch.joebar.qos.mgr.util.Crypto;
 
 /**
  * HA Controller 
  */
 public class Controller implements Runnable {
 	private static Logger log = Logger.getLogger(Controller.class);
-	private static int RANLEN = 10;
 
 	/** status of this instance */
 	private Status status = new Status(); 
@@ -31,7 +26,11 @@ public class Controller implements Runnable {
 	
 	/** how many times (Hearbeat.INTERVAL) we wait for udp packets until we decide
 	 * that the peer is down due we don't receive any packets anymore */
-	private int counter = 3;
+	public static final int RATE = 2;
+	private int counter = Controller.RATE;
+	/** heartbeat interval */
+	private static final long INTERVAL = 10000;
+	private long interval = INTERVAL;
 
 	/** command attributes (executed on status change) */
 	private String cmd;
@@ -43,7 +42,7 @@ public class Controller implements Runnable {
 	
 	/** shared secret for communication */
 	private SecretKey secretKey;
-
+	
 	/**
 	 * Creates a new controller and start a listener and heartbeat thread.
 	 * 
@@ -58,6 +57,23 @@ public class Controller implements Runnable {
 	 * @throws UnknownHostException 
 	 */
 	public Controller(String cmd, String iface, String mask, String bcast, String gateway,
+			String[] addresses, 
+			String listen, String peer,
+			String passphrase) throws UnknownHostException {
+		this.create(cmd, iface, mask, bcast, gateway, addresses, listen, peer, 
+				passphrase);
+	}
+	
+	public Controller(String cmd, String iface, String mask, String bcast, String gateway,
+			String[] addresses, 
+			String listen, String peer,
+			String passphrase, long interval) throws UnknownHostException {
+		this.interval = interval;
+		this.create(cmd, iface, mask, bcast, gateway, addresses, listen, peer, 
+				passphrase);
+	}
+
+	private void create(String cmd, String iface, String mask, String bcast, String gateway,
 			String[] addresses, 
 			String listen, String peer,
 			String passphrase) throws UnknownHostException {
@@ -79,9 +95,8 @@ public class Controller implements Runnable {
 		this.initCommand();
 		this.standbyCommand(); // start at standby mode and become active, if peer is down or standby
 		this.initHeartbeat();
-		this.start();
+		this.start();			
 	}
-
 	/**
 	 * Init the heartbeat to send udp packets (instance starts even
 	 * heartbeat init fails and tries to initialize it later).
@@ -89,7 +104,7 @@ public class Controller implements Runnable {
 	private void initHeartbeat() {
 		if(this.h == null) {
 			try {
-				this.h = new Heartbeat(this.peer, this.secretKey);
+				this.h = new Heartbeat(this.peer, this.secretKey, this.interval);
 			} catch (UnknownHostException e) {
 				this.h = null;
 				log.warn("can't start heartbeat to " + this.peer + "," + e.toString());
@@ -98,7 +113,7 @@ public class Controller implements Runnable {
 	}
 	
 	/**
-	 * Start listener (receiver) and hearbeat (sender).
+	 * Start listener (receiver) and heartbeat (sender).
 	 */
 	private void start() {
 		if(this.l != null && this.lt == null) {
@@ -126,18 +141,15 @@ public class Controller implements Runnable {
 	
 	/**
 	 * Change state to active (start the interface and services).
+	 * @throws InterruptedException 
 	 */
-	private void active() {
+	private void active() throws InterruptedException {
 		if(this.status.getState().equals(State.STANDBY) &&
 				this.status.getRequest() != Transition.TRANSFER) {
 			log.info(this.listen + ": change state to ACTIVE");
 			// inform peer first
 			this.setStatus(new Status(Connectivity.UP, State.ACTIVE, this.status.getRequest()));
-			try {
-				Thread.sleep(Heartbeat.INTERVAL);
-			} catch (InterruptedException e) {
-				// nop
-			}
+			Thread.sleep(this.interval);
 			// then active interface and services
 			this.activeCommand();
 		}
@@ -145,17 +157,14 @@ public class Controller implements Runnable {
 	
 	/**
 	 * Change state to standby (stop the interface).
+	 * @throws InterruptedException 
 	 */
-	private void standby() {
+	private void standby() throws InterruptedException {
 		if(this.status.getState().equals(State.ACTIVE)) {
 			log.info(this.listen + ": change state to STANDBY");
 			// stop interface first
 			this.standbyCommand();
-			try {
-				Thread.sleep(Heartbeat.INTERVAL);
-			} catch (InterruptedException e) {
-				// nop
-			}
+			Thread.sleep(this.interval);
 			// than inform peer about our status
 			this.setStatus(new Status(Connectivity.UP, State.STANDBY, this.status.getRequest()));
 		}
@@ -215,8 +224,9 @@ public class Controller implements Runnable {
 	/**
 	 * Start transition to become active (takeover) or standby (transfer).
 	 * @param request
+	 * @throws InterruptedException 
 	 */
-	public void setTransition(Transition request) {
+	public void setTransition(Transition request) throws InterruptedException {
 		this.status.setRequest(request);
 		if(request == Transition.TRANSFER) {
 			// become standby, peer will become active automatically
@@ -234,9 +244,10 @@ public class Controller implements Runnable {
 	public void run() {
 		while(!Thread.interrupted()){
 			try {
-				Thread.sleep(Heartbeat.INTERVAL*this.counter);
+				Thread.sleep(this.interval*this.counter);
 			} catch (InterruptedException e) {
-				return;
+				log.info("end controller (" + e.getMessage() + ")");
+				return; // end controller
 			}
 			if(this.h == null) {
 				this.initHeartbeat();
@@ -265,74 +276,30 @@ public class Controller implements Runnable {
 			 * check for peer's transition request:
 			 * 4) become standby if peer indicates takeover
 			 */
-			if(s.getConnectivity().equals(Connectivity.DOWN)) {
-				// 1)
-				this.active();
-			} else {
-				if(s.getRequest() == Transition.TAKEOVER) {
-					// 4
-					this.standby();
+			try {
+				if(s.getConnectivity().equals(Connectivity.DOWN)) {
+					// 1)
+					this.active();
 				} else {
-					if(s.getState().equals(State.ACTIVE)) {
-						// 2
+					if(s.getRequest() == Transition.TAKEOVER) {
+						// 4
 						this.standby();
 					} else {
-						// 3
-						this.active();
+						if(s.getState().equals(State.ACTIVE)) {
+							// 2
+							this.standby();
+						} else {
+							// 3
+							this.active();
+						}
 					}
 				}
+			} catch (InterruptedException e) {
+				log.info("end controller (" + e.getMessage() + ")");
+				return; // end controller
 			}
 		}
 	
-	}
-	
-	/**
-	 * Encypts the provided string.
-	 * @param key Secret key which is used encryption/decryption
-	 * @param value String to encrypt
-	 * @return Encrypted and b64 encoded string or null on error
-	 */
-	public static String encrypt(SecretKey key, String value) {
-        String enc = null;
-        //SecureRandom srn = new SecureRandom();
-        //byte[] bytes = srn.generateSeed(Controller.RANLEN);
-        Random rand = new Random();
-        long r = rand.nextLong();
-        byte[] bytes = new Long(r).toString().getBytes();
-        String rnd = new String(Base64.encodeBase64(bytes)).substring(0, Controller.RANLEN);
-        try {
-        	Cipher cipher = Cipher.getInstance("DESede");
-        	cipher.init(Cipher.ENCRYPT_MODE, key);
-        	byte[] cipherText = cipher.doFinal(new String(rnd + value).getBytes());
-        	enc = new String(Base64.encodeBase64(cipherText));
-        } catch (Exception e) {
-        	log.debug("could not encrypt value", e);
-        }
-        return enc;
-	}
-
-	/**
-	 * Decrypts the provides string.
-	 * 
-	 * @param key Secret key which is used encryption/decryption
-	 * @param value b64 encoded data to decrypt
-	 * @return Decrypted string or null on error
-	 */
-	public static String decrypt(SecretKey key, String value) {
-		String dec = null;
-		try {
-			byte[] cipherText = Base64.decodeBase64(value.getBytes());
-			Cipher cipher = Cipher.getInstance("DESede");
-			cipher.init(Cipher.DECRYPT_MODE, key);
-			byte[] decryptedMessage = cipher.doFinal(cipherText);
-			String all = new String(decryptedMessage);
-			if(all.length() > Controller.RANLEN) {
-				dec = all.substring(Controller.RANLEN);
-			}
-		} catch (Exception e) {
-			log.debug("could not decrypt value", e);
-		}
-		return dec;
 	}
 	
 	/**
@@ -340,14 +307,12 @@ public class Controller implements Runnable {
 	 * @param passphrase
 	 */
 	private void generateKey(String passphrase) {
-		try {
-			byte[] tripleDesKeyData = new String(passphrase + "ksjD700ndh_*%sbF4ky>s1hdnc").substring(0, 24).getBytes();
-			this.secretKey = new SecretKeySpec(tripleDesKeyData, "DESede");
-		} catch (Exception e) {
-			log.error("could not create key: " + e.toString());
-        }
+		this.secretKey = Crypto.generateKey(passphrase);
 	}
-	
+
+	/**
+	 * Stopps listener and heartbeat.
+	 */
 	public void end() {
 		log.info(this.listen + ": end");
 		this.lt.interrupt();
