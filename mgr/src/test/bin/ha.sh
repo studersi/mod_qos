@@ -17,7 +17,7 @@ PFX="[`basename $0`]:"
 PATH=$PATH
 export PATH
 
-echo "`date` $@" >> ha.log
+#echo "`date` $@" >> ha.log
 
 if [ -z "$6" ]; then
   echo "$PFX ERROR, to few arguments"

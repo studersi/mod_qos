@@ -16,16 +16,17 @@ import org.apache.log4j.Logger;
 public class Listener implements Runnable {
 	private static Logger log = Logger.getLogger(Listener.class);
 
-	public final static int UDP_PORT = 2619;
+	//public final static int UDP_PORT = 694;
+	public final static int UDP_PORT = 2694;
 	private Status status = new Status();
 	private InetAddress a;
 	private SecretKey secretKey;
-
 
 	/**
 	 * Resolve local address to listen.
 	 * @param address
 	 * @param secretKey 
+	 * @param interval 
 	 * @throws UnknownHostException
 	 */
 	public Listener(String address, SecretKey secretKey) throws UnknownHostException {
