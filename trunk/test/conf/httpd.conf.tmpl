@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.145 2010-05-19 18:01:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.146 2010-05-26 20:14:21 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -523,6 +523,8 @@ SSLRandomSeed           startup builtin
    Include 	              conf/demo.conf
 
    QS_SetEnvIfStatus             200 QS_Sync
+   QS_SetEnvIfQuery              priv=conn QS_SyncSrv
+   QS_SrvMinDataRateOffEvent     +QS_SyncSrv
    <Location /htt/active-sync>
        QS_SrvMinDataRateOffEvent +QS_Sync
    </Location>

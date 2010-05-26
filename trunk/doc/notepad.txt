@@ -12,8 +12,12 @@
   - adjust metrics dynamically
   - learning and permissive mode (server wide, per function)
 - dynamic rule adjustment of the generic request filter
+  - "in module" learing (instead of qsfilter2)
+  - or use separate application (java?) to generate rules (ICAP?)
+  - privileged users/ip to learn from
 - improved anomaly detection (thresholds, logging)
   - set client event to be used in other rules
+  - log event
 - re-design/re-implementation of some parts/functions
   + maybe dropping some features
     + remove QS_SrvPreferNet
@@ -44,7 +48,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 + configure file path for mutex/sem files
   + debug/error message showing if and which file is used
 + disable min data rate for certain connections (response conditions)
-  - QS_SrvMinDataRateOffEvent at server level
+  + QS_SrvMinDataRateOffEvent at server level
 + QS_SrvMaxConnClose to support "percentage" of the MaxClient sesstings instead of abs. value
 
 legend:

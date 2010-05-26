@@ -1,3 +1,8 @@
+Version 
+
+ - QS_SrvMinDataRateOffEvent may be used at server and/or
+   location level.
+
 Version 9.18
 
  - QS_SrvMaxConnClose supports the definition of the number

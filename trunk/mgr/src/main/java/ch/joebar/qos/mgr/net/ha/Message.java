@@ -35,6 +35,7 @@ public class Message {
 	 */
 	public Message(SecretKey secret, String message) {
 		String msg = Crypto.decrypt(secret, message);
+		log.trace("msg r< " + msg);
 		if(msg != null && msg.startsWith(MAGIC)) {
 			this.s = Status.d2i(msg);
 		} else {
@@ -56,6 +57,7 @@ public class Message {
 	 */
 	public String getMessage() {
 		String msg = MAGIC + ":" + Status.i2d(this.s); 
+		log.trace("msg s> " + msg);
 		return Crypto.encrypt(this.secretKey, msg);
 	}
 }

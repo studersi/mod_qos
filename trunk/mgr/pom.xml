@@ -9,7 +9,7 @@
 	<packaging>war</packaging>
 	<name>Apache QoS Manager</name>
 	<description>
-        Manages Apache server instances using mod_qos.
+        Manages Apache server instances using mod_qos (some experimental code).
         </description>
 
 	<prerequisites>
@@ -127,13 +127,11 @@
 		<testSourceDirectory>src/test/java</testSourceDirectory>
 
 		<plugins>
-			<!-- compile with 1.4 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>2.0.1</version>
 				<configuration>
-					<!-- verbose>true</verbose -->
 					<source>1.5</source>
 					<target>1.5</target>
 				</configuration>
@@ -147,7 +145,6 @@
 						<include>**/*Test.java</include>
 					</includes>
 					<reportFormat>plain</reportFormat>
-					<!-- we specify the german locale for all tests -->
 					<systemProperties>
 						<property>
 							<name>user.language</name>
@@ -157,12 +154,13 @@
 
 				</configuration>
 			</plugin>
+
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-war-plugin</artifactId>
 				<version>2.0.2</version>
 				<configuration>
-					<warSourceExcludes>WEB-INF/123-protect.properties</warSourceExcludes>
+					<warSourceExcludes>WEB-INF/protect.properties</warSourceExcludes>
 				</configuration>
 			</plugin>
 
@@ -188,12 +186,14 @@
 			<artifactId>itext</artifactId>
 			<version>1.3</version>
 		</dependency>
+
 		<dependency>
 			<type>jar</type>
 			<groupId>commons-http</groupId>
 			<artifactId>commons-http</artifactId>
 			<version>1.1</version>
 		</dependency>
+
 		<dependency>
 			<type>jar</type>
 			<groupId>commons-httpclient</groupId>
@@ -219,7 +219,7 @@
                      <artifactId>httpunit</artifactId>
                      <version>1.6.2</version>
                      <scope>test</scope>
-              </dependency>
+               </dependency>
         
 		<dependency>
 			<groupId>jtidy</groupId>
@@ -227,11 +227,13 @@
 			<version>4aug2000r7-dev</version>
 			<scope>test</scope>
 		</dependency>
+
 		<dependency>
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
 			<version>1.3.2</version>
 		</dependency>
+
 		<dependency>
 			<groupId>commons-fileupload</groupId>
 			<artifactId>commons-fileupload</artifactId>
@@ -242,7 +244,7 @@
 	        <groupId>it.sauronsoftware</groupId>
 	        <artifactId>cron4j</artifactId>
 	        <version>1.0</version>
-	    </dependency>
+	        </dependency>
 		-->
         <dependency>
             <groupId>javax.servlet</groupId>

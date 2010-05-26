@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_conn_off.htt,v 1.2 2010-04-23 19:05:49 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_conn_off.htt,v 1.3 2010-05-26 20:14:21 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -209,6 +209,60 @@ _EXPECT . "this is the root index.html"
 _EXPECT . "200 OK"
 _WAIT
 
+_CLOSE
+
+# ------------------------------------------------------------------------
+# same test using a privileged connection (mod_setenvifplus at server level)
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/inbox?priv=conn HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__
+_EXPECT . "==AS1=="
+_EXPECT . "200 OK"
+_WAIT
+
+_SLEEP 3000
+
+_REQ server1 SSL:$QS_PORT_BASE2
+_-GET /
+_-i
+_FLUSH
+_SLEEP $TME
+_-n
+_FLUSH
+_SLEEP $TME
+_-d
+_FLUSH
+_SLEEP $TME
+_-e
+_FLUSH
+_SLEEP $TME
+_-x
+_FLUSH
+_SLEEP 2000
+_SLEEP $TME
+_-.
+_FLUSH
+_SLEEP $TME
+_-h
+_FLUSH
+_SLEEP $TME
+_-t
+_FLUSH
+_SLEEP $TME
+_-m
+__l HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_EXPECT . "200 OK"
+_WAIT
+
+_CLOSE
+
 # end ---------------------------------------------
 _REQ server1 SSL:$QS_PORT_BASE2
 __GET /htt/index.html HTTP/1.1
@@ -258,6 +312,18 @@ __Content-Length: AUTO
 __Content-Type: text/plain
 __
 _-000==AS1==
+
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+_-==AS1==
+
+_CLOSE
 
 _RES
 _WAIT

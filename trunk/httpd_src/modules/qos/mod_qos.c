@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.214 2010-05-19 16:53:53 pbuchbinder Exp $";
-static const char g_revision[] = "9.18";
+static const char revision[] = "$Id: mod_qos.c,v 5.215 2010-05-26 20:14:21 pbuchbinder Exp $";
+static const char g_revision[] = "9.19";
 
 /************************************************************************
  * Includes
@@ -470,6 +470,7 @@ typedef struct {
 #else
   regex_t *header_name_regex;
 #endif
+  apr_table_t *disable_reqrate_events;
   char *ip_header_name;
   int ip_header_name_drop;
 #ifdef AP_REGEX_H
@@ -4900,17 +4901,47 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
   return ap_pass_brigade(f->next, bb); 
 }
 
+apr_table_t *qos_table_merge_create(apr_pool_t *p, apr_table_t *b_rfilter_table,
+                                    apr_table_t *o_rfilter_table) {
+  int i;
+  apr_table_t *rfilter_table = apr_table_make(p, 1);
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b_rfilter_table)->elts;
+  for(i = 0; i < apr_table_elts(b_rfilter_table)->nelts; ++i) {
+    if(entry[i].key[0] == '+') {
+      apr_table_setn(rfilter_table, entry[i].key, entry[i].val);
+    }
+  }
+  entry = (apr_table_entry_t *)apr_table_elts(o_rfilter_table)->elts;
+  for(i = 0; i < apr_table_elts(o_rfilter_table)->nelts; ++i) {
+    if(entry[i].key[0] == '+') {
+      apr_table_setn(rfilter_table, entry[i].key, entry[i].val);
+    }
+  }
+  for(i = 0; i < apr_table_elts(o_rfilter_table)->nelts; ++i) {
+    if(entry[i].key[0] == '-') {
+      char *id = apr_psprintf(p, "+%s", &entry[i].key[1]);
+      apr_table_unset(rfilter_table, id);
+    }
+  }
+  return rfilter_table;
+}
+
 /* QS_SrvMinDataRateOffEvent */
 #if APR_HAS_THREADS
 static void qos_disable_rate(request_rec *r, qos_srv_config *sconf,
                              qos_dir_config *dconf) {
   if(dconf && sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
-    if(apr_table_elts(dconf->disable_reqrate_events)->nelts > 0) {
+    apr_table_t *disable_reqrate_events = dconf->disable_reqrate_events;
+    if(apr_table_elts(sconf->disable_reqrate_events)->nelts > 0) {
+      disable_reqrate_events = qos_table_merge_create(r->pool, sconf->disable_reqrate_events,
+                                                      dconf->disable_reqrate_events);
+    }
+    if(apr_table_elts(disable_reqrate_events)->nelts > 0) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
       if(inctx) {
-        apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(dconf->disable_reqrate_events)->elts;
+        apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(disable_reqrate_events)->elts;
         int i;
-        for(i = 0; i < apr_table_elts(dconf->disable_reqrate_events)->nelts; i++) {
+        for(i = 0; i < apr_table_elts(disable_reqrate_events)->nelts; i++) {
           char *v = entry[i].key;
           if(apr_table_get(r->subprocess_env, &v[1])) {
             inctx->disabled = 1;
@@ -5695,31 +5726,6 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   return dconf;
 }
 
-apr_table_t *qos_merge_table(apr_pool_t *p, apr_table_t *b_rfilter_table,
-                             apr_table_t *o_rfilter_table) {
-  int i;
-  apr_table_t *rfilter_table = apr_table_make(p, 1);
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b_rfilter_table)->elts;
-  for(i = 0; i < apr_table_elts(b_rfilter_table)->nelts; ++i) {
-    if(entry[i].key[0] == '+') {
-      apr_table_setn(rfilter_table, entry[i].key, entry[i].val);
-    }
-  }
-  entry = (apr_table_entry_t *)apr_table_elts(o_rfilter_table)->elts;
-  for(i = 0; i < apr_table_elts(o_rfilter_table)->nelts; ++i) {
-    if(entry[i].key[0] == '+') {
-      apr_table_setn(rfilter_table, entry[i].key, entry[i].val);
-    }
-  }
-  for(i = 0; i < apr_table_elts(o_rfilter_table)->nelts; ++i) {
-    if(entry[i].key[0] == '-') {
-      char *id = apr_psprintf(p, "+%s", &entry[i].key[1]);
-      apr_table_unset(rfilter_table, id);
-    }
-  }
-  return rfilter_table;
-}
-
 /**
  * merges dir config, inheritoff disables merge of rfilter_table.
  */
@@ -5756,7 +5762,7 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   if(o->inheritoff) {
     dconf->rfilter_table = o->rfilter_table;
   } else {
-    dconf->rfilter_table = qos_merge_table(p, b->rfilter_table, o->rfilter_table);
+    dconf->rfilter_table = qos_table_merge_create(p, b->rfilter_table, o->rfilter_table);
   }
   if(o->maxpost != -1) {
     dconf->maxpost = o->maxpost;
@@ -5775,8 +5781,8 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
     dconf->response_pattern = b->response_pattern;
     dconf->response_pattern_var = b->response_pattern_var;
   }
-  dconf->disable_reqrate_events = qos_merge_table(p, b->disable_reqrate_events,
-                                                  o->disable_reqrate_events);
+  dconf->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
+                                                         o->disable_reqrate_events);
   return dconf;
 }
 
@@ -5832,6 +5838,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->hfilter_table = apr_table_make(p, 5);
   sconf->reshfilter_table = apr_table_make(p, 5);
+  sconf->disable_reqrate_events = apr_table_make(p, 1);
   sconf->has_qos_cc = 0;
   sconf->qos_cc_size = 50000;
   sconf->qos_cc_prefer = 0;
@@ -5938,6 +5945,8 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_table_merge(o->setenvresheader_t, b->setenvresheader_t);
   qos_table_merge(o->setenvresheadermatch_t, b->setenvresheadermatch_t);
   qos_table_merge(o->exclude_ip, b->exclude_ip);
+  o->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
+                                                     o->disable_reqrate_events);
   if(o->mfile == NULL) {
     o->mfile = b->mfile;
   }
@@ -6810,13 +6819,22 @@ const char *qos_req_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const 
   return NULL;
 }
 
+/* QS_SrvMinDataRateOffEvent */
 const char *qos_min_rate_off_cmd(cmd_parms *cmd, void *dcfg, const char *var) {
-  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  apr_table_t *disable_reqrate_events;
+  if(cmd->path) {
+    qos_dir_config *dconf = (qos_dir_config*)dcfg;
+    disable_reqrate_events = dconf->disable_reqrate_events;
+  } else {
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                  &qos_module);
+    disable_reqrate_events = sconf->disable_reqrate_events; 
+  }
   if(((var[0] != '+') && (var[0] != '-')) || (strlen(var) < 2)) {
     return apr_psprintf(cmd->pool, "%s: invalid variable (requires +/- prefix)", 
                         cmd->directive->directive);
   }
-  apr_table_set(dconf->disable_reqrate_events, var, "");
+  apr_table_set(disable_reqrate_events, var, "");
   return NULL;
 }
 
@@ -7420,12 +7438,12 @@ static const command_rec qos_config_cmds[] = {
                  " clients is equal to the MaxClients< setting."
                  " No limitation is set by default."),
   AP_INIT_TAKE1("QS_SrvMinDataRateOffEvent", qos_min_rate_off_cmd, NULL,
-                ACCESS_CONF,
+                RSRC_CONF|ACCESS_CONF,
                 "QS_SrvMinDataRateOffEvent  '+'|'-'<env-variable>,"
                 " disables the minimal data rate enfocement (QS_SrvMinDataRate)"
                 " for a certain connection if the defined environment variable"
                 " has been set. The '+' prefix is used to add a variable"
-                " of a per location configuration while the '-' prefix is used"
+                " to the configuration while the '-' prefix is used"
                 " to remove a variable."),
 #endif
   /* event */
