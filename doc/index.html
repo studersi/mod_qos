@@ -669,8 +669,9 @@ directive.
 <code>QS_SetEnvIfResBody &lt;string&gt; &lt;env-variable&gt;</code><br>
 Adds the definedenvironment variable (e.g. <code>QS_Block</code>) if the 
 response body contains the defined literal string. Used on a per 
-location level. Only one directive may be defined per location (one 
-search string per response).
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> 
+level. Only one directive may be defined per location 
+(one search string per response).
 </li>
 <li>
 <code>QS_SetEnvResHeader &lt;header name&gt; [drop]</code><br>
@@ -730,8 +731,10 @@ SetEnvIf    Request_URI      /main/.*               !parp
 
 <a name="filter"></a>
 <h3>Request Level, Generic Filter</h3>
-These filter are defined on a per location level and are used to restrict 
-access to resources in general albeit of any server resource availability. 
+These filter are defined on a per 
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> 
+level and are used to restrict access to resources in 
+general albeit of any server resource availability. 
 New rules are added by defining a rule id prefixed by a '+'. Rules are merged 
 to sub locations. If a rule should not be active for a sub location, the 
 very same rule must be defined but using a '-' prefix at the rule id. 
@@ -808,8 +811,10 @@ dropped (removed from the request). Abnormal content-* headers cause
 request blocking. Only the defined headers are allowed. Custom rules 
 (additional headers or different pattern/size definitions) may be 
 added using the <code>QS_RequestHeaderFilterRule</code> directive. Filter 
-is activated ('on') or deactivated ('off') on a per location basis. The 
-mode 'size' does not verify the pattern but limits the maximum length 
+is activated ('on') or deactivated ('off') on a per 
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> 
+basis. The mode 'size' does not verify 
+the pattern but limits the maximum length 
 of request header values (similar to the Apache directive 
 <code>LimitRequestFieldsize</code> but with an individual rule for each 
 header field).
@@ -829,7 +834,8 @@ rejects a request including such a header not matching the pcre.
 Filters response headers using validation rules provided by mod_qos. Suspicious 
 headers (not matching the pattern or those which are too long) are removed 
 from the response. Only the defined headers are allowed. Filter 
-is activated ('on') or deactivated ('off') on a per location basis.
+is activated ('on') or deactivated ('off') on a per 
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> basis.
 </li>
 <li>
 <code>QS_ResponseHeaderFilterRule &lt;header name&gt; &lt;pcre&gt; &lt;size&gt;</code><br>
@@ -970,9 +976,12 @@ Disables the <code>QS_SrvMinDataRate</code> and <code>QS_SrvMinDataRate</code> e
 for a virtual host.
 </li>
 <li>
-<code>QS_SrvMinDataRateOffEvent &lt;env-variable&gt;</code><br>
+<code>QS_SrvMinDataRateOffEvent '+'|'-'&lt;env-variable&gt;</code><br>
 Disables the <code>QS_SrvMinDataRate</code> and <code>QS_SrvMinDataRate</code> enforcement 
-for a connection when the defined process environment variable is set.
+for a connection when the defined process environment variable is set. 
+The '+' prefix is used to add a variable to the configuration while the '-' prefix 
+is used to remove a variable. Directive may be used on a per 
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> basis.
 </li>
 </ul>
 

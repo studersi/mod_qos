@@ -2,6 +2,7 @@ package ch.joebar.qos.mgr.util;
 
 import java.io.IOException;
 
+/** dummy class for command execution - DOES NOT REALLY WORK !!! */
 public class CommandStarter {
 
 	
