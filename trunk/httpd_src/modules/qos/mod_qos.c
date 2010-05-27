@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.215 2010-05-26 20:14:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.216 2010-05-27 18:42:31 pbuchbinder Exp $";
 static const char g_revision[] = "9.19";
 
 /************************************************************************
@@ -963,7 +963,7 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
  */
 static const char *qos_unique_id(request_rec *r, const char *eid) {
   const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
-  apr_table_set(r->notes, "error-notes", eid);
+  apr_table_set(r->notes, "error-notes", eid ? eid : "-");
   if(uid == NULL) {
     return apr_pstrdup(r->pool, "-");
   }
@@ -1162,7 +1162,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
  */
 static void qos_destroy_act(qs_actable_t *act) {
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL,
-               QOS_LOG_PFX(001)"cleanup shared memory: %d bytes",
+               QOS_LOG_PFX(001)"cleanup shared memory: %"APR_SIZE_T_FMT" bytes",
                act->size);
   act->child_init = 0;
   if(act->lock_file && act->lock_file[0]) {
@@ -1280,7 +1280,8 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     res = apr_shm_create(&act->m, act->size, file, act->pool);
   }
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
-               QOS_LOG_PFX(000)"%s(%s), create shared memory (ACT)(%s): %d bytes (r=%d,ip=%d)", 
+               QOS_LOG_PFX(000)"%s(%s), create shared memory (ACT)(%s): %"APR_SIZE_T_FMT" bytes"
+               " (r=%d,ip=%d)", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->is_virtual ? "v" : "b",
                file,
@@ -4034,7 +4035,7 @@ static int qos_process_connection(conn_rec *c) {
   if(cconf == NULL) {
     int client_control = DECLINED;
     int connections = 0;
-    int current;
+    int current = 0;
     char *msg = NULL;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                   &qos_module);
@@ -4089,7 +4090,7 @@ static int qos_process_connection(conn_rec *c) {
     if(sconf->max_conn_per_ip != -1) {
       current = qos_inc_ip(c->pool, cconf);
     }
-    /* check for vip (by ip) */
+    /* Check for vip (by ip) */
     if(apr_table_elts(sconf->exclude_ip)->nelts > 0) {
       int i;
       apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->exclude_ip)->elts;
@@ -4321,8 +4322,8 @@ static int qos_header_parser0(request_rec * r) {
 static int qos_header_parser(request_rec * r) {
   /* apply rules only to main request (avoid filtering of error documents) */
   if(ap_is_initial_req(r)) {
-    char *msg;
-    char *uid;
+    char *msg = NULL;
+    char *uid = NULL;
     int req_per_sec_block = 0;
     int kbytes_per_sec_block = 0;
     int status;
