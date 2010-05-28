@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.217 2010-05-28 18:47:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.218 2010-05-28 19:00:00 pbuchbinder Exp $";
 static const char g_revision[] = "9.19";
 
 /************************************************************************
@@ -5345,7 +5345,6 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   char *rev = qos_revision(ptemp);
-  server_rec *s = bs->next;
   qos_user_t *u;
   int net_prefer = 0;
   int cc_net_prefer_limit = 0;
@@ -5359,7 +5358,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     }
   }
   if(net_prefer <= 1) {
-    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                  QOS_LOG_PFX(007)"could not determine MaxClients");
   }
   if(sconf->max_conn_close_percent) {
@@ -5379,8 +5378,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   /* mutex init */
   if(sconf->act->lock_file == NULL) {
     sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
-                                         qos_tmpnam(sconf->act->pool, s));
-    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
+                                         qos_tmpnam(sconf->act->pool, bs));
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
                  QOS_LOG_PFX(000)"create mutex (ACT)(%s)",
                  sconf->act->lock_file);
     rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
@@ -5388,7 +5387,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     if (rv != APR_SUCCESS) {
       char buf[MAX_STRING_LEN];
       apr_strerror(rv, buf, sizeof(buf));
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                    QOS_LOG_PFX(004)"failed to create mutex (ACT)(%s): %s",
                    sconf->act->lock_file, buf);
       exit(1);
@@ -5410,7 +5409,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   if(m_requires_parp) {
     if(qos_parp_check() != APR_SUCCESS) {
       qos_parp_hp_table_fn = NULL;
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
+      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                    QOS_LOG_PFX(009)"mod_parp not available"
                    " (required by some directives)");
     } else {
@@ -5443,32 +5442,35 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       return !OK;
     }
   }
-  while(s) {
-    qos_srv_config *ssconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    /* mutex init */
-    if(ssconf->act->lock_file == NULL) {
-      ssconf->act->lock_file = sconf->act->lock_file;
-      ssconf->act->lock = sconf->act->lock;
-    }
-    ssconf->base_server = bs;
-    ssconf->act->timeout = apr_time_sec(s->timeout);
-    ssconf->qos_cc_prefer = sconf->qos_cc_prefer;
-    ssconf->qos_cc_prefer_limit = sconf->qos_cc_prefer_limit;
-    ssconf->max_clients = sconf->max_clients;
-    if(ssconf->max_conn_close_percent) {
-      ssconf->max_conn_close = net_prefer * ssconf->max_conn_close_percent / 100;
-    }
-    if(ssconf->act->timeout == 0) {
-      ssconf->act->timeout = 300;
-    }
-    if(ssconf->is_virtual) {
-      if(qos_init_shm(s, ssconf->act, ssconf->location_t, net_prefer) != APR_SUCCESS) {
-        return !OK;
+  {
+    server_rec *s = bs->next;
+    while(s) {
+      qos_srv_config *ssconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+      /* mutex init */
+      if(ssconf->act->lock_file == NULL) {
+        ssconf->act->lock_file = sconf->act->lock_file;
+        ssconf->act->lock = sconf->act->lock;
       }
-      apr_pool_cleanup_register(ssconf->pool, ssconf->act,
-                                qos_cleanup_shm, apr_pool_cleanup_null);
+      ssconf->base_server = bs;
+      ssconf->act->timeout = apr_time_sec(s->timeout);
+      ssconf->qos_cc_prefer = sconf->qos_cc_prefer;
+      ssconf->qos_cc_prefer_limit = sconf->qos_cc_prefer_limit;
+      ssconf->max_clients = sconf->max_clients;
+      if(ssconf->max_conn_close_percent) {
+        ssconf->max_conn_close = net_prefer * ssconf->max_conn_close_percent / 100;
+      }
+      if(ssconf->act->timeout == 0) {
+        ssconf->act->timeout = 300;
+      }
+      if(ssconf->is_virtual) {
+        if(qos_init_shm(s, ssconf->act, ssconf->location_t, net_prefer) != APR_SUCCESS) {
+          return !OK;
+        }
+        apr_pool_cleanup_register(ssconf->pool, ssconf->act,
+                                  qos_cleanup_shm, apr_pool_cleanup_null);
+      }
+      s = s->next;
     }
-    s = s->next;
   }
 
   {
