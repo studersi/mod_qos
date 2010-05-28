@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.216 2010-05-27 18:42:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.217 2010-05-28 18:47:03 pbuchbinder Exp $";
 static const char g_revision[] = "9.19";
 
 /************************************************************************
@@ -1291,7 +1291,8 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, s, 
-                 QOS_LOG_PFX(002)"failed to create shared memory (ACT)(%s): %s (%d bytes)",
+                 QOS_LOG_PFX(002)"failed to create shared memory (ACT)(%s): %s"
+                 " (%"APR_SIZE_T_FMT" bytes)",
                  file, buf, act->size);
     return res;
   } else {
