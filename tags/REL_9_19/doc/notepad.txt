@@ -1,0 +1,63 @@
+
+- collecting additional client/connection attributes such as
+  - requests per single TCP connection (keep-alive)
+  + 304 responses
+  + respone content types (html/css/js/image/...)
+  - elapse time between requests
+  - request/response length (body)
+  - request/response headers (types, length)
+  - other
+- more "dynamic" rules:
+  - enforce rules on certain conditions only (e.g. overall server usage)
+  - adjust metrics dynamically
+  - learning and permissive mode (server wide, per function)
+- dynamic rule adjustment of the generic request filter
+  - "in module" learing (instead of qsfilter2)
+  - or use separate application (java?) to generate rules (ICAP?)
+  - privileged users/ip to learn from
+- improved anomaly detection (thresholds, logging)
+  - set client event to be used in other rules
+  - log event
+- re-design/re-implementation of some parts/functions
+  + maybe dropping some features
+    + remove QS_SrvPreferNet
+    - other
+  - maybe start the implementation of a separate module.
+    + see mod_setenvifplus
+    - mod_qos "light"
+    - sepatate modules for some function sets
+- web interface to configure mod_qos dynamically
+  - impoved viewer
+  - clear per client stats
+  - block clients/IPs
++ QS_ClientEventRequestLimit limits the number of concurrent
+  events per client source IP.
+- support IPv6
+  + not really, but using a checksum may be sometimes enougth
+  - "real" IPv6 support
+- propagate client information via request header (set additional variables)
++ improved variable handling and propagation via header
++ response header filter (std headers only)
++ deflate body
+  + adjust content-length header (requires parp 0.8 or higher)
+- decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
+  - enhance qos_unescaping()
+  - document path_decode_hook()/query_decode_hook()
++ new implementation of the QS_SrvMaxConnPerIP functionality (linear, no tree anymore)
+x initial socket timeout for new connections (tcp open only and no initial request)
++ configure file path for mutex/sem files
+  + debug/error message showing if and which file is used
++ disable min data rate for certain connections (response conditions)
+  + QS_SrvMinDataRateOffEvent at server level
++ QS_SrvMaxConnClose to support "percentage" of the MaxClient sesstings instead of abs. value
+
+legend:
+- to be documented/not yet decided to implement
+* documented but not implememted
++ implemented
+. definition/open issue/option
+x we are not going implement this
+
+----------------
+
+scp index.html pbuchbinder,mod-qos@web.sourceforge.net:htdocs

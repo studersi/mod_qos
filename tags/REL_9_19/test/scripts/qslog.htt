@@ -1,0 +1,46 @@
+#
+# $Id: qslog.htt,v 1.2 2009-08-11 10:55:07 pbuchbinder Exp $
+#
+# test the qsrotate tool
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_EXEC rm -f qs.log*
+# wait for the next full 5 Seconds
+_TIME T
+_OP $T DIV 5000 TMP
+_OP $TMP MUL 5000 TMP
+_OP $TMP ADD 5000 TMP
+_OP $TMP SUB $T T
+_SLEEP $T
+_SLEEP 3000
+_EXEC date
+# test for at least 5 seconds
+_EXEC ./qslog.sh run
+_EXEC date
+
+_REQ server1 $QS_PORT_BASE6
+__GET /count HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "count"
+# 94 lines, 2 files
+_EXPECT . "94 2"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==count==
+_PIPE
+_EXEC ./qslog.sh count
+
+END
