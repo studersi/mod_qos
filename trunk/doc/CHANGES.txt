@@ -1,4 +1,7 @@
-Version 
+Version 9.19
+
+ - Fixed: segfault at server start if no vhost has been
+   defined.
 
  - QS_SrvMinDataRateOffEvent may be used at server and/or
    location level.
