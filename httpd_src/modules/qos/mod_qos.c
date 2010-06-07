@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.218 2010-05-28 19:00:00 pbuchbinder Exp $";
-static const char g_revision[] = "9.19";
+static const char revision[] = "$Id: mod_qos.c,v 5.219 2010-06-07 19:54:44 pbuchbinder Exp $";
+static const char g_revision[] = "9.20";
 
 /************************************************************************
  * Includes
@@ -693,10 +693,11 @@ static const qos_her_t qs_res_header_rules[] = {
   { "Retry-After", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Pragma", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Server", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
-  { "Set-Cookie", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Set-Cookie", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 }, 
   { "Set-Cookie2", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Vary", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "WWW-Authenticate", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "X-Frame-Options", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { NULL, NULL, 0, 0 }
 };
 
