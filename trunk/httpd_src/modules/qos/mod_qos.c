@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.219 2010-06-07 19:54:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.220 2010-06-09 06:20:43 pbuchbinder Exp $";
 static const char g_revision[] = "9.20";
 
 /************************************************************************
@@ -3797,12 +3797,13 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     time_t now = time(NULL);
     time_t interval = now - QS_REQ_RATE_TM;
     int i;
-    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->inctx_t->table)->elts;
+    apr_table_entry_t *entry;
     sleep(1);
     if(sconf->inctx_t->exit) {
       break;
     }
     apr_thread_mutex_lock(sconf->inctx_t->lock);   /* @CRT21 */
+    entry = (apr_table_entry_t *)apr_table_elts(sconf->inctx_t->table)->elts;
     for(i = 0; i < apr_table_elts(sconf->inctx_t->table)->nelts; i++) {
       qos_ifctx_t *inctx = (qos_ifctx_t *)entry[i].val;
       if(inctx->status == QS_CONN_STATE_KEEP) {
