@@ -1,3 +1,7 @@
+Version 9.20
+
+ - Bug: racing condition when using QS_SrvMinDataRate.
+
 Version 9.19
 
  - Fixed: segfault at server start if no vhost has been
