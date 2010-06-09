@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.16 2010-02-25 18:50:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.17 2010-06-09 07:52:34 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -167,6 +167,47 @@ static void getFreeMem(char *buf, int sz) {
     }
     fclose(f);
     snprintf(buf, sz, "%d", mem);
+  } else {
+    /* experimental code using vmstat */
+    char vmstat[] = "/usr/bin/vmstat";
+    struct stat attr;
+    if(stat(vmstat, &attr) == 0) {
+      char command[1024];
+      char outfile[1024];
+      snprintf(outfile, sizeof(outfile), "/tmp/qslog.%d", getpid());
+      snprintf(command, sizeof(command), "%s 1 2 1>%s", vmstat, outfile);
+      system(command);
+      f = fopen(outfile, "r");
+      if(f) {
+        char line[MAX_LINE];
+        int i = 1;
+        while(!qs_getLinef(line, sizeof(line), f)) {
+          if(i == 4) {
+	    // free memory only (ignores cache on linux)
+	    int j = 0;
+            char *p = line;
+            while(p && j < 4) {
+              p++;
+              p = strchr(p, ' ');
+              j++;
+            }
+            if(p && (j == 4)) {
+              char *e;
+              p++;
+              e = strchr(p, ' ');
+              if(e) {
+                e[0] = '\0';
+		snprintf(buf, sz, "%s", p);
+              }
+            }
+            break;
+          }
+          i++;
+        }
+        fclose(f);
+	unlink(outfile);
+      }
+    }
   }
 }
 
