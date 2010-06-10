@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_0.htt,v 1.2 2010-06-07 19:54:44 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_0.htt,v 1.3 2010-06-10 07:39:39 pbuchbinder Exp $
 #
 # client which is not sending a complete request line within 8 seconds
 #
@@ -37,7 +37,7 @@ _FLUSH
 _SLEEP $TME
 _-m
 __l HTTP/1.1
-__Host: localhost.host.ch
+__Host: server1
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
@@ -65,7 +65,7 @@ _-x
 _FLUSH
 _SLEEP $TME
 __.html HTTP/1.1
-__Host: localhost.host.ch
+__Host: server1
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __

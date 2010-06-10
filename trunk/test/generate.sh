@@ -37,7 +37,7 @@ if [ ! -f htdocs/image.iso ]; then
     done
 fi
 
-CONFFILES="httpd.conf demo.conf simple.conf qos_viewer.conf"
+CONFFILES="httpd.conf demo.conf simple.conf dos.conf qos_viewer.conf"
 for E in $CONFFILES; do
     sed <conf/$E.tmpl >conf/$E \
 	-e "s;##ROOT##;$ROOT;g" \

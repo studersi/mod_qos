@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.112 2010-05-19 18:01:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.113 2010-06-10 07:39:39 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -576,9 +576,13 @@ if [ $? -ne 0 ]; then
     echo "FAILED qslog.htt"
 fi
 
-# -----------------------------------------------------------------
-./ctl.sh stop > /dev/null
-sleep 2
+# end -------------------------------------------------------------
+./dos.sh
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED dos.sh (minimal DoS prevention test)"
+fi
+
 for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062"`; do
     C=`grep -c $E logs/error_log`
     C1=`grep -c $E logs/error1_log`
