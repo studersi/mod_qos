@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.146 2010-05-26 20:14:21 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.147 2010-06-10 07:39:39 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -160,23 +160,23 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /cgi-local !
    ProxyPass                  /cgi-local_s !
 
-   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
 
-   ProxyPass                  /app/a http://localhost:##QS_PORT_BASE6##/app/a
+   ProxyPass                  /app/a http://localhost:##QS_PORT_BASE6##/app/a retry=0
    ProxyPassReverse           /app/a http://localhost:##QS_PORT_BASE6##/app/a
-   ProxyPass                  /app/b http://localhost:##QS_PORT_BASE6##/app/b
+   ProxyPass                  /app/b http://localhost:##QS_PORT_BASE6##/app/b retry=0
    ProxyPassReverse           /app/b http://localhost:##QS_PORT_BASE6##/app/b
-   ProxyPass                  /app/c http://localhost:##QS_PORT_BASE6##/app/c
+   ProxyPass                  /app/c http://localhost:##QS_PORT_BASE6##/app/c retry=0
    ProxyPassReverse           /app/c http://localhost:##QS_PORT_BASE6##/app/c
-   ProxyPass                  /app/d http://localhost:##QS_PORT_BASE6##/app/d
+   ProxyPass                  /app/d http://localhost:##QS_PORT_BASE6##/app/d retry=0
    ProxyPassReverse           /app/d http://localhost:##QS_PORT_BASE6##/app/d
-   ProxyPass                  /app/e http://localhost:9999/app/e
+   ProxyPass                  /app/e http://localhost:9999/app/e retry=0
    ProxyPassReverse           /app/e http://localhost:9999/app/e
-   ProxyPass                  /support http://localhost:##QS_PORT_BASE6##/support
+   ProxyPass                  /support http://localhost:##QS_PORT_BASE6##/support retry=0
    ProxyPassReverse           /support http://localhost:##QS_PORT_BASE6##/support
 
-   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
    ProxyReceiveBufferSize     1024
@@ -404,9 +404,9 @@ Listen                  server1:##QS_PORT_BASE1##
    ProxyPass                  /info !
    ProxyPass                  /qos !
    ProxyPass                  /qos_control !
-   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
-   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
    # -----------------------------------------------------------------
@@ -485,9 +485,9 @@ SSLRandomSeed           startup builtin
    ProxyPass                  /info !
    ProxyPass                  /qos !
    ProxyPass                  /qos_control !
-   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/ retry=0
    ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/
-   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
 <IfDefine QS_SrvMaxConn>
