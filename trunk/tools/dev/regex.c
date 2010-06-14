@@ -2,7 +2,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007-2009 Pascal Buchbinder
+ * Copyright (C) 2007-2010 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regex.c,v 1.3 2010-03-03 19:18:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: regex.c,v 1.4 2010-06-14 05:52:05 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -55,11 +55,13 @@ static const char revision[] = "$Id: regex.c,v 1.3 2010-03-03 19:18:40 pbuchbind
 #define MAX_LINE 32768
 #define CR 13
 #define LF 10
+#define QS_OVECCOUNT 100
+
 
 static void usage() {
   printf("usage: regex <string> <pcre>\n");
   printf("\n");
-  printf("Regex matching test.\n");
+  printf("Regular expression matching test tool (pcre pattern, case less).\n");
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
@@ -69,23 +71,39 @@ int main(int argc, char **argv) {
   const char *errptr = NULL;
   int erroffset;
   pcre *pcre;
-  int rc_c;
+  int rc_c = -1;
+  int ovector[QS_OVECCOUNT];
+  const char *line;
+  const char *pattern;
 
   argc--;
   argv++;
   if(argc != 2) {
     usage();
   }
+  line = argv[0];
+  pattern = argv[1];
 
-  pcre = pcre_compile(argv[1], PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+  //pcre = pcre_compile(pattern, PCRE_CASELESS, &errptr, &erroffset, NULL);
+  pcre = pcre_compile(pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(pcre == NULL) {
     fprintf(stderr, "ERROR, rule <%s> could not compile pcre at position %d,"
-	    " reason: %s\n", argv[1], erroffset, errptr);
+	    " reason: %s\n", pattern, erroffset, errptr);
     exit(1);
   }
-  
-  rc_c = pcre_exec(pcre, NULL, argv[0], strlen(argv[0]), 0, 0, NULL, 0);
 
-  printf("%d\n", rc_c);
+  do {
+    int rc = pcre_exec(pcre, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
+    if(rc >= 0) {
+      rc_c = 0;
+      printf("[%.*s]\n", ovector[1] - ovector[0], &line[ovector[0]]);
+      line = &line[ovector[1]];
+    } else {
+      line = NULL;
+    }
+  } while(line);
+  if(rc_c < 0) {
+    printf("no match\n");
+  }
   return rc_c;
 }
