@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regex.c,v 1.4 2010-06-14 05:52:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: regex.c,v 1.5 2010-06-15 19:08:53 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -67,7 +67,7 @@ static void usage() {
   exit(1);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, const char *const argv[]) {
   const char *errptr = NULL;
   int erroffset;
   pcre *pcre;

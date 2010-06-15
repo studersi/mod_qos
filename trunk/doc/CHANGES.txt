@@ -1,6 +1,7 @@
 Version 9.20
 
- - Bug: racing condition when using QS_SrvMinDataRate.
+ - Fixed: racing condition when using QS_SrvMinDataRate
+   and ThreadsPerChild > 64 may cause segfault.
 
 Version 9.19
 

@@ -2,7 +2,7 @@
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2007-2009 Pascal Buchbinder
+ * Copyright (C) 2007-2010 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: b64.c,v 1.2 2010-03-03 19:18:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.3 2010-06-15 19:08:53 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -44,7 +44,7 @@ static void usage() {
   exit(1);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, const char *const argv[]) {
   apr_pool_t *pool;
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
@@ -57,7 +57,14 @@ int main(int argc, char **argv) {
     char *dec = (char *)apr_palloc(pool, 1 + apr_base64_decode_len(argv[1]));
     int dec_len = apr_base64_decode(dec, argv[1]);
     if(dec_len > 0) {
+      int i;
       dec[dec_len] = '\0';
+      for(i = 0; i < dec_len; i++) {
+	if(dec[i] < 32) {
+	  /* printable only */
+	  dec[i] = '.';
+	}
+      }
       printf("%s\n", dec);
     }
   } else if(strcmp(argv[0], "-e") == 0) {
