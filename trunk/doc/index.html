@@ -130,7 +130,7 @@ Generic request line and header filter to deny unauthorized operations.
 </li>
 <li type=square>
 Request body data limitation and filtering (requires 
-<a href="http://parp.sourceforge.net">mod_parp</a>).
+<a href="http://parp.sourceforge.net" target="_blank">mod_parp</a>).
 </li>
 <li type=square>
 Limitations on the TCP connection level, e.g. the maximum of allowed connections from 
@@ -144,7 +144,7 @@ Prefers known IP addresses when server runs out of free TCP connections.
 </p>
 <p>
 mod_qos is available at <a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a> 
-under the <a href="LICENSE.txt">GNU General Public License</a>.
+under the <a href="LICENSE.txt" target="_blank">GNU General Public License</a>.
 </p>
 <hr>
 <p>
@@ -335,7 +335,9 @@ than <code>QS_LocKBytesPerSecLimitMatch</code>.
 </li>
 <li>
 <code>QS_ErrorPage &lt;URL&gt;</code><br>Defines an error page to be returned when 
-a request is denied. The defined URL must be a HTML document accessible by the client. 
+a request is denied. The defined URL must be a (S)HTML document accessible by the client. 
+You may enable <a href="http://httpd.apache.org/docs/2.2/howto/ssi.html" target="_blank">server-side includes</a> in order to present detailed error messages based on the <a href="#errorlog">error codes</a> 
+provided by mod_qos.
 </li>
 <li>
 <code>QS_ErrorResponseCode &lt;code&gt;</code><br>Defines the HTTP response code which 
@@ -472,8 +474,8 @@ QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
 <h3>Variables</h3>
 Environment variables are used on a per request level and implement
 additional control mechanisms. Variables may be set using the standard 
-Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif</a> or 
-<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus</a>.
+Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a> or 
+<a href="http://modsetenvifplus.sourceforge.net/" target="_blank">mod_setenvifplus</a>.
 See also the <a href="#eventcontrol">
 <code>QS_SetEnvIf*</code></a> directives in order to combine multiple 
 variable to new variables interpreted by mod_qos rules. <br>
@@ -567,8 +569,8 @@ QS_CondLocRequestLimitMatch   "^(/app/b/|/app/c/).*$"  10   spider
 mod_qos may control the frequency of "events". An event may be any 
 request attribute which can be represented by an environment variable. 
 Such variables may be set by 
-<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif</a>, 
-<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus</a>, or 
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a>, 
+<a href="http://modsetenvifplus.sourceforge.net/" target="_blank">mod_setenvifplus</a>, or 
 by other Apache module.
 Please attend to the <a href="mod_qos_seq.gif">order</a> of command 
 execution to ensure the necessary variables are set.
@@ -619,7 +621,7 @@ set if all defined variables within the value have been resolved.
 <li>
 <code>QS_SetEnvIfQuery &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Directive works quite similar to the <code>SetEnvIf</code> directive 
-of the Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif</a> 
+of the Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a> 
 but the specified regex is 
 applied against the query string portion of the request line. The directive 
 recognizes the occurrences of $1..$9 within value and replaces them by 
@@ -628,7 +630,7 @@ the subexpressions of the defined regex pattern.
 <li>
 <code>QS_SetEnvIfParp &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Directive parsing the request payload using the Apache module 
-<a href="http://parp.sourceforge.net">mod_parp</a>. It matches 
+<a href="http://parp.sourceforge.net" target="_blank">mod_parp</a>. It matches 
 the request URL query and the HTTP request message body data as well 
 (<code>application/x-www-form-urlencoded</code>, 
 <code>multipart/form-data</code>, and <code>multipart/mixed</code>) 
@@ -648,10 +650,10 @@ when using <code>QS_SetEnvIfParp</code>!
 <li>
 <code>QS_SetEnvIfBody &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Directive parsing the request body using the Apache module 
-<a href="http://parp.sourceforge.net">mod_parp</a>. Specify the content 
+<a href="http://parp.sourceforge.net" target="_blank">mod_parp</a>. Specify the content 
 types to process using the mod_parp directive <code>PARP_BodyData</code> 
 and ensure that mod_parp is enabled using the <code>SetEnvIf</code> directive 
-of the Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif</a>. 
+of the Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a>. 
 You should limit the allowed size of HTTP 
 requests message body using the <code>QS_LimitRequestBody</code> directive 
 when using mod_parp. The directive recognizes the occurrence of $1 within 
@@ -669,7 +671,7 @@ directive.
 <code>QS_SetEnvIfResBody &lt;string&gt; &lt;env-variable&gt;</code><br>
 Adds the definedenvironment variable (e.g. <code>QS_Block</code>) if the 
 response body contains the defined literal string. Used on a per 
-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> 
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a> 
 level. Only one directive may be defined per location 
 (one search string per response).
 </li>
@@ -732,7 +734,7 @@ SetEnvIf    Request_URI      /main/.*               !parp
 <a name="filter"></a>
 <h3>Request Level, Generic Filter</h3>
 These filter are defined on a per 
-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> 
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a> 
 level and are used to restrict access to resources in 
 general albeit of any server resource availability. 
 New rules are added by defining a rule id prefixed by a '+'. Rules are merged 
@@ -812,7 +814,7 @@ request blocking. Only the defined headers are allowed. Custom rules
 (additional headers or different pattern/size definitions) may be 
 added using the <code>QS_RequestHeaderFilterRule</code> directive. Filter 
 is activated ('on') or deactivated ('off') on a per 
-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> 
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a> 
 basis. The mode 'size' does not verify 
 the pattern but limits the maximum length 
 of request header values (similar to the Apache directive 
@@ -835,7 +837,7 @@ Filters response headers using validation rules provided by mod_qos. Suspicious
 headers (not matching the pattern or those which are too long) are removed 
 from the response. Only the defined headers are allowed. Filter 
 is activated ('on') or deactivated ('off') on a per 
-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> basis.
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a> basis.
 </li>
 <li>
 <code>QS_ResponseHeaderFilterRule &lt;header name&gt; &lt;pcre&gt; &lt;size&gt;</code><br>
@@ -867,7 +869,7 @@ QS_RequestHeaderFilterRule       UA-CPU drop "^[a-zA-Z0-9]+$" 20
 </td></tr>
 </table>
 
-Body data filtering requires <a href="http://parp.sourceforge.net">mod_parp</a> 
+Body data filtering requires <a href="http://parp.sourceforge.net" target="_blank">mod_parp</a> 
 which processes the request's message body of the following HTTP request content types: 
 <code>application/x-www-form-urlencoded</code>, 
 <code>multipart/form-data</code>, and <code>multipart/mixed</code>. The body 
@@ -887,14 +889,14 @@ Enables request body data filtering for the <code>QS_PermitUri</code> directive.
 Limits the allowed size of an HTTP request message body. This directive may 
 be placed anywhere in the configuration. Alternatively, the limitation 
 may be set as an environment variable using 
-<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif</a> 
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a> 
 (overriding the directive settings).
 </li>
 </ul>
 
 You may want to set the <code>QS_DeflateReqBody</code> variable if the request body 
 data has to be deflated using 
-<a href="http://httpd.apache.org/docs/2.2/mod/mod_deflate.html">mod_deflate</a>.
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_deflate.html" target="_blank">mod_deflate</a>.
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
@@ -981,7 +983,7 @@ Disables the <code>QS_SrvMinDataRate</code> and <code>QS_SrvMinDataRate</code> e
 for a connection when the defined process environment variable is set. 
 The '+' prefix is used to add a variable to the configuration while the '-' prefix 
 is used to remove a variable. Directive may be used on a per 
-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">Location</a> basis.
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a> basis.
 </li>
 </ul>
 
@@ -1031,7 +1033,7 @@ client source IP address having the QS_EventRequest variable set.
 Defines how often a client may cause a <code>QS_Event</code> 
 per second. Such events are requests having the 
 <code>QS_Event</code> variable set, e.g. defined by 
-<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif</a> 
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a> 
 or using the <code>QS_SetEnvIf</code> directive. 
 The rule is enforced by adding a delay to requests causing 
 the event (similar to the <code>QS_LocRequestPerSecLimit</code> 
@@ -1093,7 +1095,7 @@ QS_SetEnvIfStatus        403                      QS_Block
 mod_qos writes messages to Apache's error log when enforcing a rule. Each 
 error messages is prefixed by an id: <code>mod_qos(&lt;number&gt;)</code>. These 
 error codes (number only) are also written to the error notes in order 
-to be processed within error pages using server side includes (SSI).
+to be processed within error pages using server-side includes (<a href="http://httpd.apache.org/docs/2.2/howto/ssi.html" target="_blank">SSI</a>).
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
@@ -1320,7 +1322,7 @@ QS_SrvMaxConnClose      70%
 # name of the HTTP response header which marks preferred clients (this
 # may be used to let the application decide which clients are "good",
 # e.g. authenticated users, you may also use QS_VipUser when using an
-# Apache authentication module such as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/">mod_auth_oid</a>):
+# Apache authentication module such as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/" target="_blank">mod_auth_oid</a>):
 QS_VipIPHeaderName      mod-qos-login
 
 # enables the known client perfer mode (server allows new TCP connections

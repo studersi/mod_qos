@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.17 2010-06-09 07:52:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.18 2010-06-16 17:38:55 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -595,17 +595,17 @@ static void usage(char *cmd) {
   printf("     See to the 'LogFormat' directive of the httpd.conf file\n");
   printf("     to see the format defintions of the servers access log\n");
   printf("     data. %s knows the following elements:\n", cmd);
-  printf("     . defines an element to skip (string)\n");
   printf("     T defines the request duration (%%T)\n");
   printf("     B defines the transferred bytes (%%b)\n");
   printf("     R defines the request line (%%r)\n");
   printf("     I defines the client ip address (%%h)\n");
   printf("     Q defines the mod_qos_ev event message (%%{mod_qos_ev}o)\n");
+  printf("     . defines an element to ignore (unknown string)\n");
   printf("  -o <out_file>\n");
   printf("     Specifies the file to store the output to.\n");
   printf("  -p\n");
-  printf("     Reads the log data from a file. Used to start the\n");
-  printf("     utility in offline mode in order to process existing log\n");
+  printf("     Used when reading the log data from a file (cat/pipe). %s is\n", cmd);
+  printf("     started using it's offline mode in order to process existing log\n");
   printf("     files (post processing).\n");
   printf("  -v\n");
   printf("     Verbose mode.\n");
