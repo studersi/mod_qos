@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.220 2010-06-09 06:20:43 pbuchbinder Exp $";
-static const char g_revision[] = "9.20";
+static const char revision[] = "$Id: mod_qos.c,v 5.221 2010-06-16 17:38:55 pbuchbinder Exp $";
+static const char g_revision[] = "9.21";
 
 /************************************************************************
  * Includes
@@ -980,10 +980,10 @@ static char *qos_revision(apr_pool_t *p) {
 /**
  * extract the session cookie from the request
  */
-static char *qos_get_remove_cookie(request_rec *r, qos_srv_config* sconf) {
+static char *qos_get_remove_cookie(request_rec *r, const char *cookie_name) {
   const char *cookie_h = apr_table_get(r->headers_in, "cookie");
   if(cookie_h) {
-    char *cn = apr_pstrcat(r->pool, sconf->cookie_name, "=", NULL);
+    char *cn = apr_pstrcat(r->pool, cookie_name, "=", NULL);
     char *p = ap_strcasestr(cookie_h, cn);
     if(p) {
       char *value = NULL;
@@ -1018,7 +1018,7 @@ static char *qos_get_remove_cookie(request_rec *r, qos_srv_config* sconf) {
  * verifies the session cookie 0=failed, 1=succeeded
  */
 static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
-  char *value = qos_get_remove_cookie(r, sconf);
+  char *value = qos_get_remove_cookie(r, sconf->cookie_name);
   EVP_CIPHER_CTX cipher_ctx;
   if(value == NULL) return 0;
 
