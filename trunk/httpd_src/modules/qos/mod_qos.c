@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.221 2010-06-16 17:38:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.222 2010-06-17 19:28:23 pbuchbinder Exp $";
 static const char g_revision[] = "9.21";
 
 /************************************************************************
@@ -97,6 +97,8 @@ static const char g_revision[] = "9.21";
 #define QOS_RAN 10
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
+#define QOS_USER_TRACKING "QOS_USER_ID"
+#define QOS_USER_TRACKING_NEW "QOS_USER_ID_NEW"
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
 #define QS_REC_COOKIE "mod_qos::gc"
@@ -458,6 +460,7 @@ typedef struct {
   apr_table_t *setenvresheadermatch_t;
   char *cookie_name;
   char *cookie_path;
+  char *user_tracking_cookie;
   int max_age;
 #ifdef QOS_HAS_SSL
   unsigned char key[EVP_MAX_KEY_LENGTH];
@@ -977,6 +980,115 @@ static char *qos_revision(apr_pool_t *p) {
 }
 
 #ifdef QOS_HAS_SSL
+static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned char *b, int l) {
+  EVP_CIPHER_CTX cipher_ctx;
+  int buf_len = 0;
+  int len = 0;
+  unsigned char *buf = apr_pcalloc(r->pool, l + EVP_CIPHER_block_size(EVP_des_ede3_cbc()));
+
+  /* sym enc, should be sufficient for this use case */
+  EVP_CIPHER_CTX_init(&cipher_ctx);
+  EVP_EncryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
+  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, b, l)) {
+    goto failed;
+  }
+  buf_len+=len;
+  if(!EVP_EncryptFinal(&cipher_ctx, &buf[buf_len], &len)) {
+    goto failed;
+  }
+  buf_len+=len;
+  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+  
+  /* encode */
+  {
+    char *data = (char *)apr_pcalloc(r->pool, 1 + apr_base64_encode_len(buf_len));
+    len = apr_base64_encode(data, (const char *)buf, buf_len);
+    data[len] = '\0';
+    return data;
+  }
+
+ failed:
+  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+  return NULL;
+}
+
+static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **ret_buf, const char *value) {
+  EVP_CIPHER_CTX cipher_ctx;
+  /* decode */
+  char *dec = (char *)apr_palloc(r->pool, 1 + apr_base64_decode_len(value));
+  int dec_len = apr_base64_decode(dec, value);
+  *ret_buf = NULL;
+  if(dec_len == 0) {
+    return 0;
+  } else {
+    /* decrypt */
+    int len = 0;
+    int buf_len = 0;
+    unsigned char *buf = apr_pcalloc(r->pool, dec_len);
+    EVP_CIPHER_CTX_init(&cipher_ctx);
+    EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
+    if(!EVP_DecryptUpdate(&cipher_ctx, (unsigned char *)&buf[buf_len], &len,
+                          (const unsigned char *)dec, dec_len)) {
+      goto failed;
+    }
+    buf_len+=len;
+    if(!EVP_DecryptFinal(&cipher_ctx, (unsigned char *)&buf[buf_len], &len)) {
+      goto failed;
+    }
+    buf_len+=len;
+    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+    *ret_buf = buf;
+    return buf_len;
+  }
+ failed:
+  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+  return 0;
+}
+
+static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf) {
+  const char *new_user = apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW);
+  if(new_user) {
+    int len = QOS_RAN + QOS_MAGIC_LEN + strlen(new_user);
+    unsigned char *value = apr_pcalloc(r->pool, len + 1);
+    char *c;
+    RAND_bytes(value, QOS_RAN);
+    memcpy(&value[QOS_RAN], qs_magic, QOS_MAGIC_LEN);
+    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], new_user, strlen(new_user));
+    value[len] = '\0';
+    c = qos_encrypt(r, sconf, value, len + 1);
+    apr_table_add(r->headers_out, "Set-Cookie",
+                  apr_psprintf(r->pool, "%s=%s; Path=/; Max-Age=31536000",
+                               sconf->user_tracking_cookie, c));
+  }
+  return;
+}
+
+/** user tracking cookie: b64(enc(<rand><magic><UNIQUE_ID>)) */
+static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, const char *value) {
+  const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
+  const char *verified = NULL;
+  if(uid == NULL) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                  QOS_LOG_PFX(066)"user tracking requires mod_unique_id");
+  } else {
+    if(value != NULL) {
+      int buf_len = 0;
+      unsigned char *buf;
+      buf_len = qos_decrypt(r, sconf, &buf, value);
+      if((buf_len > (QOS_MAGIC_LEN + QOS_RAN)) &&
+         (strncmp((char *)&buf[QOS_RAN], qs_magic, QOS_MAGIC_LEN) == 0)) {
+        verified = (char *)&buf[QOS_RAN+QOS_MAGIC_LEN];
+      }
+    }
+    if(verified == NULL) {
+      verified = uid;
+      apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
+    }
+    apr_table_set(r->subprocess_env, QOS_USER_TRACKING, verified);
+  }
+  return;
+}
+
 /**
  * extract the session cookie from the request
  */
@@ -986,8 +1098,14 @@ static char *qos_get_remove_cookie(request_rec *r, const char *cookie_name) {
     char *cn = apr_pstrcat(r->pool, cookie_name, "=", NULL);
     char *p = ap_strcasestr(cookie_h, cn);
     if(p) {
+      char *sp = p;
       char *value = NULL;
-      p[0] = '\0'; /* terminate the beginning of the cookie header */
+      p[0] = '\0'; /* terminates the beginning of the cookie header */
+      sp--; /* deletes spaces "in front" of the qos cookie */
+      while((sp > cookie_h) && (sp[0] == ' ')) {
+        sp[0] = '\0';
+        sp--;
+      }
       p = &p[strlen(cn)];
       value = ap_getword(r->pool, (const char **)&p, ';');
       while(p && (p[0] == ' ')) p++;
@@ -1018,72 +1136,35 @@ static char *qos_get_remove_cookie(request_rec *r, const char *cookie_name) {
  * verifies the session cookie 0=failed, 1=succeeded
  */
 static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
+  int buf_len = 0;
+  unsigned char *buf;
   char *value = qos_get_remove_cookie(r, sconf->cookie_name);
-  EVP_CIPHER_CTX cipher_ctx;
   if(value == NULL) return 0;
-
-  {
-    /* decode */
-    char *dec = (char *)apr_palloc(r->pool, 1 + apr_base64_decode_len(value));
-    int dec_len = apr_base64_decode(dec, value);
-    if(dec_len == 0) {
+  buf_len = qos_decrypt(r, sconf, &buf, value);
+  if(buf_len != sizeof(qos_session_t)) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                  QOS_LOG_PFX(021)"session cookie verification failed, "
+                  "decoding failed, id=%s", qos_unique_id(r, "021"));
+    return 0;
+  } else {
+    qos_session_t *s = (qos_session_t *)buf;
+    s->magic[QOS_MAGIC_LEN-1] = '\0';
+    if(strcmp(qs_magic, s->magic) != 0) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                    QOS_LOG_PFX(020)"session cookie verification failed, "
-                    "invalid base64 encoding, id=%s", qos_unique_id(r, "020"));
+                    QOS_LOG_PFX(022)"session cookie verification failed, "
+                    "invalid magic, id=%s", qos_unique_id(r, "022"));
       return 0;
     }
-
-    {
-      /* decrypt */
-      int len = 0;
-      int buf_len = 0;
-      unsigned char *buf = apr_pcalloc(r->pool, dec_len);
-      EVP_CIPHER_CTX_init(&cipher_ctx);
-      EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
-      if(!EVP_DecryptUpdate(&cipher_ctx, (unsigned char *)&buf[buf_len], &len,
-                            (const unsigned char *)dec, dec_len)) {
-        goto failed;
-      }
-      buf_len+=len;
-      if(!EVP_DecryptFinal(&cipher_ctx, (unsigned char *)&buf[buf_len], &len)) {
-        goto failed;
-      }
-      buf_len+=len;
-      EVP_CIPHER_CTX_cleanup(&cipher_ctx);
-      if(buf_len != sizeof(qos_session_t)) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                      QOS_LOG_PFX(021)"session cookie verification failed, "
-                      "invalid size, id=%s", qos_unique_id(r, "021"));
-        return 0;
-      } else {
-        qos_session_t *s = (qos_session_t *)buf;
-        s->magic[QOS_MAGIC_LEN-1] = '\0';
-        if(strcmp(qs_magic, s->magic) != 0) {
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX(022)"session cookie verification failed, "
-                        "invalid magic, id=%s", qos_unique_id(r, "022"));
-          return 0;
-        }
-        if(s->time < (apr_time_sec(r->request_time) - sconf->max_age)) {
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                        QOS_LOG_PFX(023)"session cookie verification failed, "
-                        "expired, id=%s", qos_unique_id(r, "023"));
-          return 0;
-        }
-      }
+    if(s->time < (apr_time_sec(r->request_time) - sconf->max_age)) {
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                    QOS_LOG_PFX(023)"session cookie verification failed, "
+                    "expired, id=%s", qos_unique_id(r, "023"));
+      return 0;
     }
-
-    /* success */
-    apr_table_set(r->notes, QS_REC_COOKIE, "");
-    return 1;
-  
-  failed:
-    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                  QOS_LOG_PFX(024)"session cookie verification failed, "
-                  "could not decrypt data, id=%s", qos_unique_id(r, "024"));
-    return 0;
   }
+  /* success */
+  apr_table_set(r->notes, QS_REC_COOKIE, "");
+  return 1;
 }
 
 /**
@@ -1091,49 +1172,25 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
  */
 static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
   qos_session_t *s = (qos_session_t *)apr_pcalloc(r->pool, sizeof(qos_session_t));
-  EVP_CIPHER_CTX cipher_ctx;
-  int buf_len = 0;
-  int len = 0;
-  unsigned char *buf = apr_pcalloc(r->pool, sizeof(qos_session_t) +
-                                   EVP_CIPHER_block_size(EVP_des_ede3_cbc()));
-    
+  char *cookie;
+  char *session;
   /* payload */
   strcpy(s->magic, qs_magic);
   s->magic[QOS_MAGIC_LEN-1] = '\0';
   s->time = time(NULL);
   RAND_bytes(s->ran, sizeof(s->ran));
-  
-  /* sym enc, should be sufficient for this use case */
-  EVP_CIPHER_CTX_init(&cipher_ctx);
-  EVP_EncryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
-  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, (const unsigned char *)s, sizeof(qos_session_t))) {
-    goto failed;
+  session = qos_encrypt(r, sconf, (const unsigned char *)s, sizeof(qos_session_t));
+  if(session == NULL) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                  QOS_LOG_PFX(025)"failed to create session cookie, id=%s",
+                  qos_unique_id(r, "025"));
+    return;
   }
-  buf_len+=len;
-  if(!EVP_EncryptFinal(&cipher_ctx, &buf[buf_len], &len)) {
-    goto failed;
-  }
-  buf_len+=len;
-  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
-  
-  /* encode and set data */
-  {
-    char *cookie;
-    char *session = (char *)apr_pcalloc(r->pool, 1 + apr_base64_encode_len(buf_len));
-    len = apr_base64_encode(session, (const char *)buf, buf_len);
-    session[len] = '\0';
-    cookie = apr_psprintf(r->pool, "%s=%s; Path=%s; Max-Age=%d",
-                          sconf->cookie_name, session,
-                          sconf->cookie_path, sconf->max_age);
-    apr_table_add(r->headers_out,"Set-Cookie", cookie);
-  }
+  cookie = apr_psprintf(r->pool, "%s=%s; Path=%s; Max-Age=%d",
+                        sconf->cookie_name, session,
+                        sconf->cookie_path, sconf->max_age);
+  apr_table_add(r->headers_out,"Set-Cookie", cookie);
   return;
-  
- failed:
-  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
-  ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                QOS_LOG_PFX(025)"failed to create session cookie, id=%s",
-                qos_unique_id(r, "025"));
 }
 #endif
 
@@ -4178,6 +4235,10 @@ static int qos_post_read_request(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
+  if(sconf && sconf->user_tracking_cookie) {
+    char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
+    qos_get_create_user_tracking(r, sconf, value);
+  }
   if(qos_request_check(r) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;
   }
@@ -5060,6 +5121,9 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 
   qos_start_res_rate(r, sconf);
   qos_setenvresheader(r, sconf);
+  if(sconf && sconf->user_tracking_cookie) {
+    qos_send_user_tracking_cookie(r, sconf);
+  }
   if(sconf->ip_header_name) {
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->ip_header_name);
     if(ctrl_h) {
@@ -5829,6 +5893,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->is_virtual = s->is_virtual;
   sconf->cookie_name = apr_pstrdup(sconf->pool, QOS_COOKIE_NAME);
   sconf->cookie_path = apr_pstrdup(sconf->pool, "/");
+  sconf->user_tracking_cookie = NULL;
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
   sconf->header_name_drop = 0;
@@ -5964,6 +6029,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->max_age == atoi(QOS_MAX_AGE)) {
     o->max_age = b->max_age;
+  }
+  if(o->user_tracking_cookie == NULL) {
+    o->user_tracking_cookie = b->user_tracking_cookie;
   }
 #ifdef QOS_HAS_SSL
   if(o->keyset == 0) {
@@ -6588,6 +6656,14 @@ const char *qos_error_code_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
     return apr_psprintf(cmd->pool, "%s: error code must be a numeric value between 400 and 599", 
                         cmd->directive->directive);
   }
+  return NULL;
+}
+
+/** QS_UserTrackingCookieName */
+const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->user_tracking_cookie = apr_pstrdup(cmd->pool, name);
   return NULL;
 }
 
@@ -7347,8 +7423,13 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ErrorResponseCode", qos_error_code_cmd, NULL,
                 RSRC_CONF,
                 "QS_ErrorResponseCode <code>, defines the HTTP response code, default is 500."),
-  /* vip session */
 #ifdef QOS_HAS_SSL
+  AP_INIT_TAKE1("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
+                RSRC_CONF,
+                "QS_UserTrackingCookieName <name>, enables the user tracking cookie by"
+                " defining a cookie name. User tracking requires mod_unique_id."
+                " This feature is disabled by default."),
+  /* vip session */
   AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
                 RSRC_CONF,
                 "QS_SessionCookieName <name>, defines a custom session cookie name,"

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.113 2010-06-10 07:39:39 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.114 2010-06-17 19:28:23 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -358,6 +358,11 @@ echo "-- QS_VipUser" >> logs/error_log
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipUser.htt"
+fi
+./run.sh -se ./scripts/QS_VipCookie.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_VipCookie.htt"
 fi
 
 ./ctl.sh restart -D real_ip -D cc > /dev/null
