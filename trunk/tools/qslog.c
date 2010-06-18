@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.18 2010-06-16 17:38:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.19 2010-06-18 18:58:54 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -75,6 +75,7 @@ static long m_qos_t = 0;
 static long m_qos_l = 0;
 
 static qs_event_t *m_ip_list = NULL;
+static qs_event_t *m_user_list = NULL;
 /* output file */
 static FILE *m_f = NULL;
 static char  m_file_name[MAX_LINE];
@@ -246,6 +247,7 @@ static void printAndResetStat(char *timeStr) {
           "5s;%ld;"
           ">5s;%ld;"
 	  "ip;%ld;"
+	  "usr;%ld;"
 	  "qv;%ld;"
 	  "qs;%ld;"
 	  "qd;%ld;"
@@ -265,6 +267,7 @@ static void printAndResetStat(char *timeStr) {
           m_duration_5,
           m_duration_6,
           qs_countEvent(&m_ip_list),
+          qs_countEvent(&m_user_list),
 	  m_qos_v,
 	  m_qos_s,
 	  m_qos_d,
@@ -316,6 +319,7 @@ static void updateStat(const char *cstr, char *line) {
   char *B = NULL; /* bytes */
   char *R = NULL; /* request line */
   char *I = NULL; /* client ip */
+  char *U = NULL; /* user */
   char *Q = NULL; /* mod_qos event message */
   const char *c = cstr;
   char *l = line;
@@ -341,6 +345,10 @@ static void updateStat(const char *cstr, char *line) {
       if(l != NULL && l[0] != '\0') {
         I = cutNext(&l);
       }
+    } else if(strncmp(c, "U", 1) == 0) {
+      if(l != NULL && l[0] != '\0') {
+        U = cutNext(&l);
+      }
     } else if(strncmp(c, "Q", 1) == 0) {
       if(l != NULL && l[0] != '\0') {
         Q = cutNext(&l);
@@ -357,8 +365,9 @@ static void updateStat(const char *cstr, char *line) {
   }
   if(m_offline && m_verbose) {
     m_lines++;
-    printf("[%ld] I=%s B=%s T=%s Q=%s\n", m_lines,
+    printf("[%ld] I=%s U=%s B=%s T=%s Q=%s\n", m_lines,
 	   I == NULL ? "(null)" : I,
+	   U == NULL ? "(null)" : U,
 	   B == NULL ? "(null)" : B,
 	   T == NULL ? "(null)" : T,
 	   Q == NULL ? "(null)" : Q
@@ -389,6 +398,10 @@ static void updateStat(const char *cstr, char *line) {
   if(I != NULL) {
     /* update/store client IP */
     qs_insertEvent(&m_ip_list, I);
+  }
+  if(U != NULL) {
+    /* update/store user */
+    qs_insertEvent(&m_user_list, U);
   }
   if(B != NULL) {
     /* transferred bytes */
@@ -584,6 +597,7 @@ static void usage(char *cmd) {
   printf("  - average system load (sl)\n");
   printf("  - free memory (m) (not available for all platforms)\n");
   printf("  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
+  printf("  - number of different users seen withn the last %d seconds (usr)\n", ACTIVE_TIME);
   printf("  - number of mod_qos events within the last minute (qv=create session,\n");
   printf("    qs=session pass, qd=access denied, qk=connection closed, qt=dynamic\n");
   printf("    keep-alive, ql=request/response slow down)\n");
@@ -599,6 +613,7 @@ static void usage(char *cmd) {
   printf("     B defines the transferred bytes (%%b)\n");
   printf("     R defines the request line (%%r)\n");
   printf("     I defines the client ip address (%%h)\n");
+  printf("     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   printf("     Q defines the mod_qos_ev event message (%%{mod_qos_ev}o)\n");
   printf("     . defines an element to ignore (unknown string)\n");
   printf("  -o <out_file>\n");

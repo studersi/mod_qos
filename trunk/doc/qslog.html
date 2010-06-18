@@ -72,6 +72,7 @@ every minute. The output includes the following entries:
   - average system load (sl)
   - free memory (m) (not available for all platforms)
   - number of client ip addresses seen withn the last 600 seconds (ip)
+  - number of different users seen withn the last 600 seconds (usr)
   - number of mod_qos events within the last minute (qv=create session,
     qs=session pass, qd=access denied, qk=connection closed, qt=dynamic
     keep-alive, ql=request/response slow down)
@@ -87,6 +88,7 @@ Options
      B defines the transferred bytes (%b)
      R defines the request line (%r)
      I defines the client ip address (%h)
+     U defines the user tracking id (%{mod_qos_user_id}e)
      Q defines the mod_qos_ev event message (%{mod_qos_ev}o)
      . defines an element to ignore (unknown string)
   -o &lt;out_file&gt;
@@ -108,7 +110,7 @@ Example configuration using pipped logging:
   LogFormat "%t %h \"%r\" %&gt;s %b \"%{User-Agent}i\" %T"
   TransferLog "|./bin/qslog -f ..IR.B.T -o ./logs/stat_log"
 
-Example for post processing:
+Example for post processing (option -p):
   cat access_log | ./bin/qslog -f ..IR.B.T -o ./logs/stat_log -p
 </pre>
 </td></tr>
