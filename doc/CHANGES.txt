@@ -1,3 +1,7 @@
+Version 9.21
+
+ - New directive QS_UserTrackingCookieName.
+
 Version 9.20
 
  - Fixed: racing condition when using QS_SrvMinDataRate

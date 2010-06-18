@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.222 2010-06-17 19:28:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.223 2010-06-18 18:58:54 pbuchbinder Exp $";
 static const char g_revision[] = "9.21";
 
 /************************************************************************
@@ -97,7 +97,7 @@ static const char g_revision[] = "9.21";
 #define QOS_RAN 10
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
-#define QOS_USER_TRACKING "QOS_USER_ID"
+#define QOS_USER_TRACKING "mod_qos_user_id"
 #define QOS_USER_TRACKING_NEW "QOS_USER_ID_NEW"
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"

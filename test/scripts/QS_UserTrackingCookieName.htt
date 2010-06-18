@@ -1,0 +1,144 @@
+#
+# $Id: QS_UserTrackingCookieName.htt,v 1.1 2010-06-18 18:58:54 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__
+_MATCH headers "Set-Cookie: stat=(.*); Path=/; Max-Age=3" UTC
+_EXPECT . "AS1"
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: stat=$UTC
+__
+_MATCH body "id=.* \- \- (.*) " USERID
+_EXPECT . "AS1"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: stat=$UTC; name=value
+__
+_MATCH body "id=.* \- \- (.*) " USERID2
+_EXPECT . "AS1"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_IF "$USERID" NOT MATCH "$USERID2"
+_EXIT FAILED
+_END IF
+
+# QS_SessionKey              12345678
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: stat=5oOjnKbvPoMuBriaPOmWx8cOfLBhjelvSs80THd+mBmy2H9BzRC4sgW+HSA4W44b; name=value 
+__
+_EXPECT . "AS1"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: stat=5oOjnKbvPoMuBriaPOmWx8cOfLBhjelvSs80THd+mBmy2H9BzRC4sgW+HSA4W44b; name=value 
+__
+_EXPECT . "AS1"
+_EXPECT . "TBuAB38AAQEAAHuhL0sAAAAC"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+# QS_SessionKey              abcdefg
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: stat=/2MIBZXpjRQG0YiyEvbdWPsMXL+gippKoxKnj7EHNrFpm5it6A/l3kyZAb5e05+M 
+__
+_EXPECT . "AS1"
+_EXPECT . "Set-Cookie"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_PIPE
+_EXEC tail -1 ./logs/access_log
+
+_RES
+_EXPECT . "Cookie: name=value"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_PIPE
+_EXEC tail -1 ./logs/access_log
+
+_RES
+_EXPECT . "Cookie: name=value"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_PIPE
+_EXEC tail -1 ./logs/access_log
+
+_RES
+_EXPECT . "Cookie: name=value"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_PIPE
+_EXEC tail -1 ./logs/access_log
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_PIPE
+_EXEC tail -1 ./logs/access_log
+
+END
