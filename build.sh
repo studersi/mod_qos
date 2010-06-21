@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.35 2010-03-09 21:33:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.36 2010-06-21 19:04:33 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -38,7 +38,7 @@ fi
 rm -f httpd
 ln -s httpd-${APACHE_VER} httpd
 
-PNG=1.2.15
+PNG=1.4.2
 if [ -f ./3thrdparty/libpng-${PNG}.tar.gz ]; then
   if [ ! -d libpng-${PNG} ]; then
     gzip -c -d ./3thrdparty/libpng-${PNG}.tar.gz | tar xf -

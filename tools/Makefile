@@ -21,7 +21,7 @@ qscheck: qscheck.c $(BASE_OBJECTS)
 	strip qscheck
 
 qspng: qspng.c $(BASE_OBJECTS)
-	cc $(CFLAGS) -I. -I../libpng $(BASE_OBJECTS) -o qspng qspng.c -L../libpng/.libs -lpng -lz
+	cc $(CFLAGS) -I. -I../libpng $(BASE_OBJECTS) -o qspng qspng.c -L../libpng/.libs -lpng14 -lz
 	strip qspng
 
 clean:
