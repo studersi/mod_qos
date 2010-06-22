@@ -37,9 +37,9 @@ if [ ! -f htdocs/image.iso ]; then
     done
 fi
 
-CONFFILES="httpd.conf demo.conf simple.conf dos.conf qos_viewer.conf"
+CONFFILES="conf/httpd.conf conf/demo.conf conf/simple.conf conf/dos.conf conf/qos_viewer.conf appl_conf/httpd.conf"
 for E in $CONFFILES; do
-    sed <conf/$E.tmpl >conf/$E \
+    sed <$E.tmpl >$E \
 	-e "s;##ROOT##;$ROOT;g" \
 	-e "s;##USR##;$QS_UID_STR;g" \
 	-e "s;##QS_PORT_BASE##;$QS_PORT_BASE;g" \
