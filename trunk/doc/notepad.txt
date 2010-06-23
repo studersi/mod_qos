@@ -18,6 +18,10 @@
 - improved anomaly detection (thresholds, logging)
   - set client event to be used in other rules
   - log event
+- more user friendly error handling for QS_ClientEventBlockCount directive
+  - show the error page for the more than only the first occurences
+    e.g. answer the next 5 (or more) requests with an error page too
+    (instead of closing the TCP connection)
 - re-design/re-implementation of some parts/functions
   + maybe dropping some features
     + remove QS_SrvPreferNet
@@ -26,10 +30,13 @@
     + see mod_setenvifplus
     - mod_qos "light"
     - sepatate modules for some function sets
-- web interface to configure mod_qos dynamically
+- web interface (handler) to configure mod_qos dynamically
   - impoved viewer
   - clear per client stats
   - block clients/IPs
+- management tool (sep. application)
+  - configuration guidance
+  - log management/rule generation
 + QS_ClientEventRequestLimit limits the number of concurrent
   events per client source IP.
 - support IPv6
@@ -41,14 +48,16 @@
 + deflate body
   + adjust content-length header (requires parp 0.8 or higher)
 - decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
-  - enhance qos_unescaping()
+  - enhance qos_unescaping() (partial done)
   - document path_decode_hook()/query_decode_hook()
 + new implementation of the QS_SrvMaxConnPerIP functionality (linear, no tree anymore)
 x initial socket timeout for new connections (tcp open only and no initial request)
 + configure file path for mutex/sem files
   + debug/error message showing if and which file is used
 + disable min data rate for certain connections (response conditions)
-  + QS_SrvMinDataRateOffEvent at server level
+  + QS_SrvMinDataRateOffEvent
+    + at server level
+    + per location
 + QS_SrvMaxConnClose to support "percentage" of the MaxClient sesstings instead of abs. value
 + user tracking cookie (for statistics)
   - timeout/renew

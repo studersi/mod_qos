@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: qslog.sh,v 2.1 2009-07-31 21:49:48 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.2 2010-06-23 18:54:16 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -11,7 +11,7 @@ case "$1" in
       echo "$LINES $FILES"
     ;;
     run)
-      ./htt.sh scripts/_qslog.htt 2>&1 | ../tools/qsrotate -o qs.log -s 5
+      ./run.sh scripts/_qslog.htt 2>&1 | ../tools/qsrotate -o qs.log -s 5
     ;;
     *)
       echo "Usage: `basename $0` run|count"

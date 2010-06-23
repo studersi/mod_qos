@@ -1030,7 +1030,7 @@ client source IP address having the QS_EventRequest variable set.
 </li>
 <li>
 <code>QS_ClientEventPerSecLimit &lt;number&gt;</code><br>
-Defines how often a client may cause a <code>QS_Event</code> 
+Defines how often a client may cause a <code>QS_Event</code>  
 per second. Such events are requests having the 
 <code>QS_Event</code> variable set, e.g. defined by 
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a> 
@@ -1218,6 +1218,8 @@ assure the availability of other resources.
 <tr><td bgcolor="#EBE5E0">
 <pre>
 # maximum number of active TCP connections is limited to 256:
+# (limited by the available memory, adjust the sesstings according to the
+# used hardware):
 MaxClients              256
 
 # limits the maximum of concurrent requests per application to 100:
@@ -1232,7 +1234,7 @@ QS_LocRequestLimitMatch "^(/dd1/|/dd2/).*$" 100
 
 <h3>HTTP Keep-Alive</h3>
 <p>
-The keep-alive extension to HTTP 1.1 allows persistent TCP connections for 
+The keep-alive extension of HTTP 1.1 allows persistent TCP connections for 
 multiple request/responses. This accelerates access to the web server due 
 less and optimized network traffic. The disadvantage of these persistent 
 connections is, that server resources are blocked even no data is exchanged 
@@ -1244,6 +1246,8 @@ support when reaching a defined connection threshold.
 <tr><td bgcolor="#EBE5E0">
 <pre>
 # maximum number of active TCP connections is limited to 256:
+# (limited by the available memory, adjust the sesstings according to the
+# used hardware):
 MaxClients              256
 
 # disables keep-alive when 70% of the TCP connections are occupied:
@@ -1264,9 +1268,9 @@ of concurrent connections for a singe IP source address.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
-# maximum number of active TCP connections is limited to 896 (limited
-# by the available memory, adjust the sesstings according to the used
-# hardware):
+# maximum number of active TCP connections is limited to 896
+# (limited by the available memory, adjust the sesstings according to the
+# used hardware):
 MaxClients              896
 
 # don't allow a single client to open more than 50 TCP connections:
@@ -1287,6 +1291,9 @@ an URL by adding a delay to requests accessing this resource.
 <pre>
 # does not allow more than 150 requests/sec:
 QS_LocRequestPerSecLimit /download/mod_qos.so.gz 150
+
+# but do not allow more than 600 concurrent requests:
+QS_LocRequestLimit       /download/mod_qos.so.gz 600
 </pre>
 </td></tr>
 </table>

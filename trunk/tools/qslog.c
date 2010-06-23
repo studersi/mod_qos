@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.19 2010-06-18 18:58:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.20 2010-06-23 18:54:16 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -323,6 +323,7 @@ static void updateStat(const char *cstr, char *line) {
   char *Q = NULL; /* mod_qos event message */
   const char *c = cstr;
   char *l = line;
+  if(!line[0]) return;
   while(c[0]) {
     /* process known types */
     if(strncmp(c, ".", 1) == 0) {
@@ -430,6 +431,7 @@ static void updateStat(const char *cstr, char *line) {
   /* request counter */
   m_line_count++;
   qs_csUnLock();
+  line[0] = '\0';
 }
 
 /*
@@ -516,7 +518,6 @@ static void readStdinOffline(const char *cstr) {
   char line[MAX_LINE];
   char buf[32];
   time_t unitTime = 0;
-  fprintf(m_f, "start -----------------\n");
   while(qs_getLine(line, sizeof(line))) {
     time_t l_time = getMinutes(line);
     if(unitTime == 0) {
