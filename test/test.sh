@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.116 2010-06-18 19:46:10 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.117 2010-06-23 18:54:16 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -581,7 +581,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # tools -----------------------------------------------------------
-./htt.sh -s ./scripts/qslog.htt
+./run.sh -s ./scripts/qslog.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED qslog.htt"

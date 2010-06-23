@@ -37,8 +37,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.223 2010-06-18 18:58:54 pbuchbinder Exp $";
-static const char g_revision[] = "9.21";
+static const char revision[] = "$Id: mod_qos.c,v 5.224 2010-06-23 18:54:16 pbuchbinder Exp $";
+static const char g_revision[] = "9.22";
 
 /************************************************************************
  * Includes
@@ -3079,6 +3079,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
             if((*e)->req_per_sec_block_rate > QS_MAX_DELAY) {
               (*e)->req_per_sec_block_rate = QS_MAX_DELAY;
             }
+            /* QS_ClientEventPerSecLimit */
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                           QOS_LOG_PFX(061)"request rate limit, rule: QS_Event(%d), req/sec=%ld,"
                           " delay=%dms%s",
