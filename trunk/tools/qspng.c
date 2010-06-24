@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 2.3 2010-02-25 19:45:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 2.4 2010-06-24 16:32:00 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -54,6 +54,7 @@ typedef struct {
 /* known graph types */
 static const qs_png_elt_t qs_png_elts[] = {
   { "r/s", "requests per second",  20, 30, 130, },
+  { "req", "requests per minute",  20, 30, 130, },
   { "b/s", "bytes per second",     30, 45, 130 },
   { "av", "average response time", 40, 95, 140 },
   { "<1s", "requests faster than 1 second", 35, 95, 180 },
@@ -64,6 +65,7 @@ static const qs_png_elt_t qs_png_elts[] = {
   { "5s", "requests with 5 seconds response time", 15, 90, 180 },
   { ">5s", "requests slower than 5 seconds", 35, 90, 185 },
   { "ip", "IP addresses",          55, 60, 150 },
+  { "usr", "active users",         55, 66, 150 },
   { "qv", "created VIP sessions",  55, 50, 155 },
   { "qs", "session pass",          55, 75, 160 },
   { "qd", "access denied",         55, 70, 170 },
