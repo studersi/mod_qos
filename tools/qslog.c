@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 2.20 2010-06-23 18:54:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 2.21 2010-06-24 16:32:00 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -237,6 +237,7 @@ static void printAndResetStat(char *timeStr) {
   qs_csLock();
   fprintf(m_f, "%s;"
           NRS";%ld;"
+	  "req;%ld;"
           NBS";%lld;"
           NAV";%ld;"
           "<1s;%ld;"
@@ -257,6 +258,7 @@ static void printAndResetStat(char *timeStr) {
 	  ,
 	  timeStr,
           m_line_count/LOG_INTERVAL,
+	  m_line_count,
           m_byte_count/LOG_INTERVAL,
           m_duration_count/(m_line_count == 0 ? 1 : m_line_count),
           m_duration_0,
@@ -628,7 +630,7 @@ static void usage(char *cmd) {
   printf("  -x\n");
   printf("     Rotates the output file once a day (move).\n");
   printf("  -u <name>\n");
-  printf("     Become another user, e.g. nobody.\n");
+  printf("     Become another user, e.g. www-data.\n");
   printf("  -m\n");
   printf("     Calculates free system memory every minute.\n");
   printf("\n");
