@@ -1,6 +1,6 @@
-Version 9.21
+Version
 
- - qslog shows total number of requests.
+ - qslog shows total number of requests within a minute.
 
 Version 9.21
 

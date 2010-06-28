@@ -334,6 +334,7 @@ only (you must use the same location for both directives). Has lower priority
 than <code>QS_LocKBytesPerSecLimitMatch</code>.
 </li>
 <li>
+<a name="QS_ErrorPage"></a>
 <code>QS_ErrorPage &lt;URL&gt;</code><br>Defines an error page to be returned when 
 a request is denied. The defined URL must be a (S)HTML document accessible by the client. 
 You may enable <a href="http://httpd.apache.org/docs/2.2/howto/ssi.html" target="_blank">server-side includes</a> in order to present detailed error messages based on the <a href="#errorlog">error codes</a> 
@@ -480,7 +481,7 @@ See also the <a href="#eventcontrol">
 <code>QS_SetEnvIf*</code></a> directives in order to combine multiple 
 variable to new variables interpreted by mod_qos rules. <br>
 <br>
-These are the standard mod_qos variables:
+These are the variables recoginzed by mod_qos:
 <ul>
 <li>
 <code>QS_VipRequest=yes</code><br>
@@ -499,11 +500,28 @@ Applies dynamic connection keep-alive settings overriding the Apache
 <li>
 <code>QS_ErrorPage=&lt;URL&gt;</code><br>
 Defines the error page overriding the setting made by the 
-<code>QS_ErrorPage</code> directive.
+<code><a href="#QS_ErrorPage">QS_ErrorPage</a>x</code> directive.
 </li>
 <li>
 <code>QS_Delay=&lt;milliseconds&gt;</code><br>
 Defines a number of milliseconds to deleay the request processing.
+</li>
+<li>
+<code>QS_Event</code><br>
+The variale processed by the <code><a href="#QS_ClientEventPerSecLimit">QS_ClientEventPerSecLimit</a></code> directive.
+</li>
+<li>
+<code>QS_Block</code><br>
+Variable processed by the <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> 
+directve.
+</li>
+<li>
+<code>QS_Cond</code><br>
+Variable prcoessed by the <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLocRequestLimitMatch</a></code> directive.
+</li>
+<li>
+<code>QS_EventRequest</code><br>
+Variable processed by the <code><a href="#QS_ClientEventRequestLimit">QS_ClientEventRequestLimit</a></code> directive.
 </li>
 </ul>
 
@@ -511,13 +529,13 @@ Defines a number of milliseconds to deleay the request processing.
 <tr><td bgcolor="#EBE5E0">
 Sample of variable usage:<br>
 <pre>
-# unlimited access for curl clients:
+# privileged access for curl clients:
 BrowserMatch             "curl"                   QS_VipRequest=yes
 
-# allows unlimited access to a single resource:
+# allows privileged access to a single resource:
 SetEnvIf     Request_URI /app/start.html          QS_VipRequest=yes
 
-# allows unlimited access from a specified source address
+# allows privileged access from a specified source address
 # or source address range:
 SetEnvIf     Remote_Addr 172.18.3.32              QS_VipRequest=yes
 SetEnvIf     Remote_Addr 192.168.10.              QS_VipRequest=yes
@@ -537,6 +555,7 @@ Conditional rules are only enforced if a the <code>QS_Cond</code>
 variable matches the specified pattern.
 <ul>
 <li>
+<a name="QS_CondLocRequestLimitMatch"></a>
 <code>QS_CondLocRequestLimitMatch &lt;regex&gt; &lt;number&gt; &lt;condition&gt;</code><br>
 Rule works similar to <code>QS_LocRequestLimitMatch</code> but it is only 
 enforced for requests whose <code>QS_Cond</code> variable matches the 
@@ -1024,11 +1043,13 @@ on a 64bit system respectively. Client IP source address store
 survives graceful server restart.
 </li>
 <li>
+<a name="QS_ClientEventRequestLimit"></a>
 <code>QS_ClientEventRequestLimit &lt;number&gt;</code><br>
 Defines the allowed number of concurrent requests comming from the same 
-client source IP address having the QS_EventRequest variable set.
+client source IP address having the <code>QS_EventRequest</code> variable set.
 </li>
 <li>
+<a name="QS_ClientEventPerSecLimit"></a>
 <code>QS_ClientEventPerSecLimit &lt;number&gt;</code><br>
 Defines how often a client may cause a <code>QS_Event</code>  
 per second. Such events are requests having the 
@@ -1040,6 +1061,7 @@ the event (similar to the <code>QS_LocRequestPerSecLimit</code>
 directive.
 </li>
 <li>
+<a name="QS_ClientEventBlockCount"></a>
 <code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
 Defines the maximum number of <code>QS_Block</code> events allowed 
 within the defined time (default is 600 seconds). Client IP is blocked 
