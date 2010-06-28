@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.224 2010-06-23 18:54:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.225 2010-06-28 18:38:53 pbuchbinder Exp $";
 static const char g_revision[] = "9.22";
 
 /************************************************************************
@@ -4074,6 +4074,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT15 */
   }
+  /* QS_SrvMaxConn */
   if((cconf->sconf->max_conn != -1) || (cconf->sconf->min_rate_max != -1)) {
     apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT3 */
     if(cconf->sconf->act->conn) {
@@ -4138,7 +4139,7 @@ static int qos_process_connection(conn_rec *c) {
      */
     /* client control */
     client_control = qos_cc_pc_filter(cconf, u, &msg);
-    /* vhost connections */
+    /* QS_SrvMaxConn: vhost connections */
     if((sconf->max_conn != -1) || (sconf->min_rate_max != -1)) {
       apr_global_mutex_lock(cconf->sconf->act->lock);    /* @CRT4 */
       if(cconf->sconf->act->conn) {
@@ -4185,7 +4186,7 @@ static int qos_process_connection(conn_rec *c) {
       c->keepalive = AP_CONN_CLOSE;
       return qos_return_error(c);
     }
-    /* vhost connections */
+    /* QS_SrvMaxConn: vhost connections */
     if((sconf->max_conn != -1) && !vip) {
       if(connections > sconf->max_conn) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,

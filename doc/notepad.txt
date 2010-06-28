@@ -11,6 +11,7 @@
   - enforce rules on certain conditions only (e.g. overall server usage)
   - adjust metrics dynamically
   - learning and permissive mode (server wide, per function)
+  - store metrics as environment variables (used by QS_EventRequestLimit and others)
 - dynamic rule adjustment of the generic request filter
   - "in module" learing (instead of qsfilter2)
   - or use separate application (java?) to generate rules (ICAP?)
