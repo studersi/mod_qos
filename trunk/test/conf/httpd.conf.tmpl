@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.149 2010-06-18 18:58:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.150 2010-07-09 18:54:08 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -212,8 +212,9 @@ QS_UserTrackingCookieName stat
    QS_LocRequestLimitMatch    "^/app/e/.*$"                   1
 
    BrowserMatch                "slurp"                        QS_Cond=spider
+<IfDefine !COND_CONNECTIONS>
    QS_CondLocRequestLimitMatch "^/cgi.*$"     2               spider
-
+</IfDefine>
    BrowserMatch               "event"                         qsevent=yes
    QS_SetEnvIf                qsevent !QS_VipRequest          qsmin=event
    QS_EventPerSecLimit        qsmin  5
@@ -238,6 +239,12 @@ QS_UserTrackingCookieName stat
    QS_EventRequestLimit       queryv=abc      3
    QS_EventRequestLimit       PARP_PATTERN    3
    QS_EventPerSecLimit        query         100
+
+<IfDefine COND_CONNECTIONS>
+   # conditional based on concurrent connections (more than 9 concurrent connections)
+   SetEnvIf                   QS_SrvConn   [0-9]{2,10}          QS_Cond=onloadonly
+   QS_CondLocRequestLimitMatch "^/cgi100/sleep.cgi" 7           onloadonly
+</IfDefine>
 
    # -----------------------------------------------------------------
    # client control
