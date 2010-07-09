@@ -1,4 +1,6 @@
-Version
+Version 2.22
+
+ - New variable: QS_SrvConn
 
  - qslog shows total number of requests within a minute.
 

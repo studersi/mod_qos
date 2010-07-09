@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.117 2010-06-23 18:54:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.118 2010-07-09 19:11:52 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -578,6 +578,13 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED MaxRequestsPerChild.htt"
+fi
+
+./ctl.sh restart -D COND_CONNECTIONS >/dev/null
+./run.sh -s ./scripts/QS_SrvConn.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvConn.htt"
 fi
 
 # tools -----------------------------------------------------------
