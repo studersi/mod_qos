@@ -421,6 +421,7 @@ the <code>QS_VipIPHeaderName</code> directive.
 Defines the session life time for a VIP. It is only used for session based (cookie) 
 VIP identification (not for IP based). Default is 3600 seconds.
 </li>
+<a name="QS_SessionCookieName"></a>
 <li>
 <code>QS_SessionCookieName &lt;name&gt;</code><br>
 A cookie is used to identify requests coming from a user which has 
@@ -490,7 +491,8 @@ Requires the definition of a VIP header using the
 <code>QS_VipHeaderName</code> directive (this activates VIP 
 verification). However, such an event does not create a VIP 
 session. The user has the VIP status only for a single 
-request.
+request. <br>The variable is set by mod_qos when receiving a valid 
+VIP <a href="#QS_SessionCookieName">session cookie</a>.
 </li>
 <li>
 <code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
@@ -522,6 +524,15 @@ Variable prcoessed by the <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLo
 <li>
 <code>QS_EventRequest</code><br>
 Variable processed by the <code><a href="#QS_ClientEventRequestLimit">QS_ClientEventRequestLimit</a></code> directive.
+</li>
+</ul>
+
+Variables set by mod_qos which may be processed by conditional or event based rules:
+<ul>
+<li>
+<code>QS_SrvConn</code><br>
+Number of concurrent connections. Value is set when using the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code> 
+directive.
 </li>
 </ul>
 
@@ -561,7 +572,8 @@ Rule works similar to <code>QS_LocRequestLimitMatch</code> but it is only
 enforced for requests whose <code>QS_Cond</code> variable matches the 
 specified condition (regular expression). Every request matching the defined 
 pattern is counted but the defined limitation is only enforced for those requests 
-matching the specified condition.
+matching the specified condition. <br>
+Only one <code>QS_CondLocRequestLimitMatch</code> rule is evaluated per request
 </li>
 </ul>
 
@@ -953,6 +965,7 @@ The module features the following directives to control server access on a per s
 and for port based virtual hosts (don't use them for name based virtual hosts).
 <ul>
 <li>
+<a name="QS_SrvMaxConn"></a>
 <code>QS_SrvMaxConn &lt;number&gt;</code><br>
 Defines the maximum number of concurrent TCP connections for this server (virtual host).
 </li>

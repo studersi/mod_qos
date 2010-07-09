@@ -37,7 +37,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.225 2010-06-28 18:38:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.226 2010-07-09 18:54:08 pbuchbinder Exp $";
 static const char g_revision[] = "9.22";
 
 /************************************************************************
@@ -4145,6 +4145,7 @@ static int qos_process_connection(conn_rec *c) {
       if(cconf->sconf->act->conn) {
         cconf->sconf->act->conn->connections++;
         connections = cconf->sconf->act->conn->connections; /* @CRT4 */
+        apr_table_set(c->notes, "QS_SrvConn", apr_psprintf(c->pool, "%d", connections));
       }
       apr_global_mutex_unlock(cconf->sconf->act->lock);
     }
@@ -4237,9 +4238,18 @@ static int qos_post_read_request(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
+#ifdef QOS_HAS_SSL
   if(sconf && sconf->user_tracking_cookie) {
     char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
     qos_get_create_user_tracking(r, sconf, value);
+  }
+#endif
+  /* QS_SrvMaxConn: propagate connection to env vars */
+  if(sconf && ((sconf->max_conn != -1) || (sconf->min_rate_max != -1))) {
+    const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
+    if(connections) {
+      apr_table_set(r->subprocess_env, "QS_SrvConn", connections);
+    }
   }
   if(qos_request_check(r) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;
@@ -5123,9 +5133,11 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 
   qos_start_res_rate(r, sconf);
   qos_setenvresheader(r, sconf);
+#ifdef QOS_HAS_SSL
   if(sconf && sconf->user_tracking_cookie) {
     qos_send_user_tracking_cookie(r, sconf);
   }
+#endif
   if(sconf->ip_header_name) {
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->ip_header_name);
     if(ctrl_h) {
@@ -5541,10 +5553,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     }
   }
 
-  {
-    char *vs = apr_psprintf(pconf, "mod_qos/%s", rev);
-    ap_add_version_component(pconf, vs);
-  }
+  ap_add_version_component(pconf, apr_psprintf(pconf, "mod_qos/%s", rev));
                
 #ifndef QOS_HAS_SSL
   fprintf(stdout, "\033[1mmod_qos, requires OpenSSL, compile Apache using \"--enable-ssl\"\033[0m\n");
@@ -7777,10 +7786,11 @@ static const command_rec qos_config_cmds[] = {
  ***********************************************************************/
 static void qos_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_parp.c", NULL };
+  static const char *preconf[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_parp.c", "mod_ssl.c", NULL };
   static const char *post[] = { "mod_setenvif.c", "mod_setenvifplus.c", NULL };
   static const char *parp[] = { "mod_parp.c", NULL };
   static const char *prelast[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_ssl.c", NULL };
-  ap_hook_post_config(qos_post_config, pre, NULL, APR_HOOK_MIDDLE);
+  ap_hook_post_config(qos_post_config, preconf, NULL, APR_HOOK_MIDDLE);
 #ifndef QS_HAS_APACHE_PATH
   /* use post config hook only for non-patched Apache server (worker.c/prefork.c) */
   ap_hook_post_config(qos_chroot, prelast, NULL, APR_HOOK_REALLY_LAST);
