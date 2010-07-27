@@ -66,6 +66,11 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 + user tracking cookie (for statistics)
   - timeout/renew
 
+other:
+- crawler
+- response filter (e.g. "bad" js code)
+- forceful browsing. client MUST access some resources before he is allowed to proceed
+
 legend:
 - to be documented/not yet decided to implement
 * documented but not implememted

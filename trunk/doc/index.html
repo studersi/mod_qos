@@ -957,6 +957,29 @@ SetEnvIfNoCase Content-Encoding gzip|compress|deflate QS_DeflateReqBody
 </td></tr>
 </table>
 
+<p>
+Milestones: you may define a number of resources (request line patterns) in order to
+allow a client to access a specific resource (a client must access each milestone 
+in the correct order: 0, 1, 2 ... n).
+<ul>
+<li>
+<code>QS_MileStone &lt;number&gt; &lt;pattern&gt;</code>
+</li>
+</ul>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+Sample configuration:<br>
+<pre>
+&lt;Location /app&gt;
+   # client must start with /app/index.html and then reading some images before posting data
+   QS_MileStone       0          "^GET /app/index.html"
+   QS_MileStone       1          "^GET /app/images/.*"
+   QS_MileStone       2          "^POST /app/.*"
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+</p>
 
 <a name="connectionlevelcontrol"></a>
 <h3>Connection Level Control</h3>
