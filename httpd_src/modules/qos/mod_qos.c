@@ -22,6 +22,9 @@
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
  *
+ * This program is released under the GPL with the additional
+ * exemption that compiling, linking, and/or using OpenSSL is allowed.
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
@@ -37,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.226 2010-07-09 18:54:08 pbuchbinder Exp $";
-static const char g_revision[] = "9.22";
+static const char revision[] = "$Id: mod_qos.c,v 5.227 2010-07-27 17:07:09 pbuchbinder Exp $";
+static const char g_revision[] = "9.23";
 
 /************************************************************************
  * Includes
@@ -435,6 +438,7 @@ typedef struct {
   char *response_pattern_var;
   int decodings; 
   apr_table_t *disable_reqrate_events;
+  apr_table_t *milestones;
 } qos_dir_config;
 
 /**
@@ -674,6 +678,7 @@ static const qos_her_t qs_header_rules[] = {
 static const qos_her_t qs_res_header_rules[] = {
   { "Age", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Accept-Ranges", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Access-Control-Allow-Origin", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Allow", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Cache-Control", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Content-Disposition", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
@@ -5804,6 +5809,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->response_pattern = NULL;
   dconf->response_pattern_var = NULL;
   dconf->disable_reqrate_events = apr_table_make(p, 1);
+  dconf->milestones = NULL;
   return dconf;
 }
 
@@ -5864,6 +5870,16 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   dconf->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
                                                          o->disable_reqrate_events);
+
+  if(o->milestones == NULL) {
+    dconf->milestones = b->milestones;
+  } else if(b->milestones == NULL) {
+    dconf->milestones = o->milestones;
+  } else {
+    dconf->milestones = qos_table_merge_create(p, b->milestones,
+                                               o->milestones);
+  }
+
   return dconf;
 }
 
@@ -7035,6 +7051,14 @@ const char *qos_deny_urlenc_cmd(cmd_parms *cmd, void *dcfg, const char *mode) {
   return NULL;
 }
 
+const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *number, const char *pattern) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  if(dconf->milestones == NULL) {
+    dconf->milestones = apr_table_make(cmd->pool, 10);
+  }
+  return NULL;
+}
+
 const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
   apr_off_t s;
   char *errp = NULL;
@@ -7668,6 +7692,9 @@ static const command_rec qos_config_cmds[] = {
                 ACCESS_CONF|RSRC_CONF,
                 "QS_LimitRequestBody <bytes>, limits the allowed size"
                 " of an HTTP request message body."),
+  AP_INIT_TAKE2("QS_MileStone", qos_milestone_cmd, NULL,
+                ACCESS_CONF,
+                "QS_MileStone <number> <pattern>"),
   AP_INIT_ITERATE("QS_Decoding", qos_dec_cmd, NULL,
                   ACCESS_CONF,
                   "QS_DenyDecoding 'uni', enabled additional string decoding"

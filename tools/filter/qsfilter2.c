@@ -12,6 +12,9 @@
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
  *
+ * This program is released under the GPL with the additional
+ * exemption that compiling, linking, and/or using OpenSSL is allowed.
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
@@ -24,8 +27,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.143 2010-07-09 19:12:50 pbuchbinder Exp $";
-static const char g_revision[] = "9.22";
+static const char revision[] = "$Id: qsfilter2.c,v 1.144 2010-07-27 17:07:09 pbuchbinder Exp $";
+static const char g_revision[] = "9.23";
 
 /* system */
 #include <stdio.h>
