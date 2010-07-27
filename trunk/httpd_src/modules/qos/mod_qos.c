@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.227 2010-07-27 17:07:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.228 2010-07-27 19:55:35 pbuchbinder Exp $";
 static const char g_revision[] = "9.23";
 
 /************************************************************************
@@ -102,6 +102,8 @@ static const char g_revision[] = "9.23";
 #define QOS_COOKIE_NAME "MODQOS"
 #define QOS_USER_TRACKING "mod_qos_user_id"
 #define QOS_USER_TRACKING_NEW "QOS_USER_ID_NEW"
+#define QOS_MILESTONE "mod_qos_milestone"
+#define QOS_MILESTONE_COOKIE "QSSCD"
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
 #define QS_REC_COOKIE "mod_qos::gc"
@@ -438,7 +440,6 @@ typedef struct {
   char *response_pattern_var;
   int decodings; 
   apr_table_t *disable_reqrate_events;
-  apr_table_t *milestones;
 } qos_dir_config;
 
 /**
@@ -521,6 +522,7 @@ typedef struct {
   int cc_tolerance;           /* GLOBAL ONLY */
   int cc_tolerance_max;       /* GLOBAL ONLY */
   int cc_tolerance_min;       /* GLOBAL ONLY */
+  apr_table_t *milestones;
 } qos_srv_config;
 
 /**
@@ -1092,6 +1094,71 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, 
     apr_table_set(r->subprocess_env, QOS_USER_TRACKING, verified);
   }
   return;
+}
+
+static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
+  const char *new_ms = apr_table_get(r->subprocess_env, QOS_MILESTONE_COOKIE);
+  if(new_ms) {
+    int len = QOS_RAN + QOS_MAGIC_LEN + strlen(new_ms);
+    unsigned char *value = apr_pcalloc(r->pool, len + 1);
+    char *c;
+    RAND_bytes(value, QOS_RAN);
+    memcpy(&value[QOS_RAN], qs_magic, QOS_MAGIC_LEN);
+    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], new_ms, strlen(new_ms));
+    value[len] = '\0';
+    c = qos_encrypt(r, sconf, value, len + 1);
+    apr_table_add(r->headers_out, "Set-Cookie",
+                  apr_psprintf(r->pool, "%s=%s; Path=/;",
+                               QOS_MILESTONE_COOKIE, c));
+  }
+  return;
+}
+
+/** milestone cookie: b64(enc(<rand><magic><milestone>)) */
+static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const char *value) {
+  // TODO add a timestamp
+  apr_table_entry_t *entry;
+  int i;
+  int ms = -1; // milestone the user has reached
+  int required = -1; // required for this request
+  if(value != NULL) {
+    int buf_len = 0;
+    unsigned char *buf;
+    buf_len = qos_decrypt(r, sconf, &buf, value);
+    if((buf_len > (QOS_MAGIC_LEN + QOS_RAN)) &&
+       (strncmp((char *)&buf[QOS_RAN], qs_magic, QOS_MAGIC_LEN) == 0)) {
+      ms = atoi((char *)&buf[QOS_RAN+QOS_MAGIC_LEN]);
+    }
+  }
+  entry = (apr_table_entry_t *)apr_table_elts(sconf->milestones)->elts;
+  for(i = 0; i < apr_table_elts(sconf->milestones)->nelts; i++) {
+#ifdef AP_REGEX_H
+    ap_regex_t *preg = (ap_regex_t *)entry[i].val;
+#else
+    regex_t *preg = (regex_t *preg)entry[i].val;
+#endif  
+    if(ap_regexec(preg, r->the_request, 0, NULL, 0) == 0) {
+      required = atoi(entry[i].key);
+    }
+  }
+  if(required >= 0) {
+    if(ms < (required - 1)) {
+      /* not allowed */
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                    QOS_LOG_PFX(047)"access denied, milestone %d,"
+                    " action=%s, c=%s, id=%s",
+                    required,
+                    "deny",
+                    r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                    qos_unique_id(r, "047"));
+      return HTTP_FORBIDDEN;
+    }
+    if(required > ms) {
+      /* update milestone */
+      apr_table_set(r->notes, QOS_MILESTONE_COOKIE, apr_psprintf(r->pool, "%d", required));
+    }
+  }
+  return APR_SUCCESS;
 }
 
 /**
@@ -2219,24 +2286,34 @@ static int qos_hp_event_deny_filter(request_rec *r, qos_srv_config *sconf, qos_d
  * QS_Permit* / QS_Deny* enforcement
  */
 static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
+  apr_status_t rv = APR_SUCCESS;
+
+#ifdef QOS_HAS_SSL
+  if(sconf && sconf->milestones) {
+    char *value = qos_get_remove_cookie(r, QOS_MILESTONE_COOKIE);
+    rv = qos_verify_milestone(r, sconf, value);
+  }
+#endif
+
   if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
-    apr_status_t rv = qos_per_dir_rules(r, dconf);
-    if(rv != APR_SUCCESS) {
-      const char *error_page = sconf->error_page;
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
-      if(r->subprocess_env) {
-        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-        if(v) {
-          error_page = v;
-        }
+    rv = qos_per_dir_rules(r, dconf);
+  }
+
+  if(rv != APR_SUCCESS) {
+    const char *error_page = sconf->error_page;
+    qs_req_ctx *rctx = qos_rctx_config_get(r);
+    if(r->subprocess_env) {
+      const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+      if(v) {
+        error_page = v;
       }
-      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-      if(error_page) {
-        qos_error_response(r, error_page);
-        return DONE;
-      }
-      return rv;
     }
+    rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+    if(error_page) {
+      qos_error_response(r, error_page);
+      return DONE;
+    }
+    return rv;
   }
   return DECLINED;
 }
@@ -5142,6 +5219,9 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   if(sconf && sconf->user_tracking_cookie) {
     qos_send_user_tracking_cookie(r, sconf);
   }
+  if(sconf && sconf->milestones) {
+    qos_update_milestone(r, sconf);
+  }
 #endif
   if(sconf->ip_header_name) {
     const char *ctrl_h = apr_table_get(r->headers_out, sconf->ip_header_name);
@@ -5809,7 +5889,6 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->response_pattern = NULL;
   dconf->response_pattern_var = NULL;
   dconf->disable_reqrate_events = apr_table_make(p, 1);
-  dconf->milestones = NULL;
   return dconf;
 }
 
@@ -5870,15 +5949,6 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   dconf->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
                                                          o->disable_reqrate_events);
-
-  if(o->milestones == NULL) {
-    dconf->milestones = b->milestones;
-  } else if(b->milestones == NULL) {
-    dconf->milestones = o->milestones;
-  } else {
-    dconf->milestones = qos_table_merge_create(p, b->milestones,
-                                               o->milestones);
-  }
 
   return dconf;
 }
@@ -5949,6 +6019,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->cc_tolerance_min = QOS_CC_BEHAVIOR_TOLERANCE_MIN;
   sconf->qos_cc_block_time = 600;
   sconf->maxpost = -1;
+  sconf->milestones = NULL;
   if(!s->is_virtual) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table, qs_header_rules);
     if(msg) {
@@ -6099,6 +6170,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->maxpost == -1) {
     o->maxpost = b->maxpost;
+  }
+  if(o->milestones == NULL) {
+    o->milestones = b->milestones;
   }
   return o;
 }
@@ -7051,11 +7125,28 @@ const char *qos_deny_urlenc_cmd(cmd_parms *cmd, void *dcfg, const char *mode) {
   return NULL;
 }
 
-const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *number, const char *pattern) {
-  qos_dir_config *dconf = (qos_dir_config*)dcfg;
-  if(dconf->milestones == NULL) {
-    dconf->milestones = apr_table_make(cmd->pool, 10);
+const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *pattern) {
+  qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
+#ifdef AP_REGEX_H
+  ap_regex_t *preg;
+#else
+  regex_t *preg;
+#endif
+  if(sconf->milestones == NULL) {
+    sconf->milestones = apr_table_make(cmd->pool, 10);
   }
+#ifdef AP_REGEX_H
+  preg = ap_pregcomp(cmd->pool, pattern, AP_REG_EXTENDED);
+#else
+  preg = ap_pregcomp(cmd->pool, pattern, REG_EXTENDED);
+#endif
+  if(preg == NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
+                        cmd->directive->directive, pattern);
+  }
+  apr_table_setn(sconf->milestones,
+                 apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->milestones)->nelts),
+                 (char *)preg);
   return NULL;
 }
 
@@ -7692,9 +7783,11 @@ static const command_rec qos_config_cmds[] = {
                 ACCESS_CONF|RSRC_CONF,
                 "QS_LimitRequestBody <bytes>, limits the allowed size"
                 " of an HTTP request message body."),
-  AP_INIT_TAKE2("QS_MileStone", qos_milestone_cmd, NULL,
-                ACCESS_CONF,
-                "QS_MileStone <number> <pattern>"),
+#ifdef QOS_HAS_SSL
+  AP_INIT_TAKE1("QS_MileStone", qos_milestone_cmd, NULL,
+                RSRC_CONF,
+                "QS_MileStone <pattern>"),
+#endif
   AP_INIT_ITERATE("QS_Decoding", qos_dec_cmd, NULL,
                   ACCESS_CONF,
                   "QS_DenyDecoding 'uni', enabled additional string decoding"
