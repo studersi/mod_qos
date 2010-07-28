@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.151 2010-07-28 05:51:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.152 2010-07-28 19:43:48 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -241,9 +241,14 @@ QS_UserTrackingCookieName stat
    QS_EventPerSecLimit        query         100
 
 <IfDefine MILESTONES>
-   QS_MileStone "^GET /htt/index.html"
-   QS_MileStone "^GET /htt/logo.gif"
-   QS_MileStone "^POST /htt/login"
+   QS_MileStone deny "^GET /htt/index.html"
+   QS_MileStone deny "^GET /htt/logo.gif"
+   QS_MileStone deny "^POST /htt/login"
+</IfDefine>
+<IfDefine MILESTONES_LOG>
+   QS_MileStone log "^GET /htt/index.html"
+   QS_MileStone log "^GET /htt/logo.gif"
+   QS_MileStone log "^POST /htt/login"
 </IfDefine>
 
 <IfDefine COND_CONNECTIONS>

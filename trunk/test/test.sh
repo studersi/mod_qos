@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.118 2010-07-09 19:11:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.119 2010-07-28 19:43:48 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -586,6 +586,16 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvConn.htt"
 fi
+
+./ctl.sh restart -D MILESTONES >/dev/null
+TEST="QS_MileStone.htt QS_MileStone2.htt"
+for E in $TEST; do 
+    ./run.sh -s ./scripts/$E
+    if [ $? -ne 0 ]; then
+	ERRORS=`expr $ERRORS + 1`
+	echo "FAILED $E"
+    fi
+done
 
 # tools -----------------------------------------------------------
 ./run.sh -s ./scripts/qslog.htt
