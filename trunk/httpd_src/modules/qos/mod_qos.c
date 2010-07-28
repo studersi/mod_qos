@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.231 2010-07-28 20:41:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.232 2010-07-28 21:00:14 pbuchbinder Exp $";
 static const char g_revision[] = "9.23";
 
 /************************************************************************
@@ -7147,6 +7147,16 @@ const char *qos_deny_urlenc_cmd(cmd_parms *cmd, void *dcfg, const char *mode) {
   return NULL;
 }
 
+const char *qos_milestone_tmo_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
+  qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
+  sconf->milestone_timeout = atoi(sec);
+  if(sconf->milestone_timeout <= 0) {
+    return apr_psprintf(cmd->pool, "%s: timeout must be numeric value >0",
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
 const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
                               const char *pattern) {
   qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
@@ -7817,6 +7827,11 @@ static const command_rec qos_config_cmds[] = {
                 "QS_MileStone 'log'|'deny' <pattern>, defines request line patterns"
                 " a client must access in the defined order as they are defined in the"
                 " configuration file."),
+  AP_INIT_TAKE1("QS_MileStoneTimeout", qos_milestone_tmo_cmd, NULL,
+                RSRC_CONF,
+                "QS_MileStone <seconds>, defines the time in seconds"
+                " within a client must reach the next milestone."
+                " Default are 3600 seconds."),
 #endif
   AP_INIT_ITERATE("QS_Decoding", qos_dec_cmd, NULL,
                   ACCESS_CONF,
