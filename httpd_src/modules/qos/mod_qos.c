@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.228 2010-07-27 19:55:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.229 2010-07-28 05:51:44 pbuchbinder Exp $";
 static const char g_revision[] = "9.23";
 
 /************************************************************************
@@ -1099,11 +1099,12 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, 
 static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
   const char *new_ms = apr_table_get(r->subprocess_env, QOS_MILESTONE_COOKIE);
   if(new_ms) {
-    int len = QOS_RAN + QOS_MAGIC_LEN + strlen(new_ms);
+    int len = QOS_RAN + QOS_MAGIC_LEN  + strlen(new_ms);
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
     RAND_bytes(value, QOS_RAN);
     memcpy(&value[QOS_RAN], qs_magic, QOS_MAGIC_LEN);
+    // TODO add time stamp (expiration)
     memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], new_ms, strlen(new_ms));
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
@@ -1116,7 +1117,7 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
 
 /** milestone cookie: b64(enc(<rand><magic><milestone>)) */
 static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const char *value) {
-  // TODO add a timestamp
+  // TODO verify time stamp (expiration)
   apr_table_entry_t *entry;
   int i;
   int ms = -1; // milestone the user has reached
@@ -1141,21 +1142,21 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
       required = atoi(entry[i].key);
     }
   }
+  // TODO: different actions (deny/log)
   if(required >= 0) {
     if(ms < (required - 1)) {
       /* not allowed */
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                     QOS_LOG_PFX(047)"access denied, milestone %d,"
-                    " action=%s, c=%s, id=%s",
+                    " action=deny, c=%s, id=%s",
                     required,
-                    "deny",
                     r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                     qos_unique_id(r, "047"));
       return HTTP_FORBIDDEN;
     }
     if(required > ms) {
       /* update milestone */
-      apr_table_set(r->notes, QOS_MILESTONE_COOKIE, apr_psprintf(r->pool, "%d", required));
+      apr_table_set(r->subprocess_env, QOS_MILESTONE_COOKIE, apr_psprintf(r->pool, "%d", required));
     }
   }
   return APR_SUCCESS;
@@ -2295,7 +2296,7 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
   }
 #endif
 
-  if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
+  if((rv == APR_SUCCESS) && (apr_table_elts(dconf->rfilter_table)->nelts > 0)) {
     rv = qos_per_dir_rules(r, dconf);
   }
 
