@@ -1,0 +1,115 @@
+#
+# $Id: QS_MileStone.htt,v 1.1 2010-07-28 05:51:44 pbuchbinder Exp $
+#
+#   QS_MileStone "^GET /htt/index.html"
+#   QS_MileStone "^GET /htt/logo.gif"
+#   QS_MileStone "^POST /htt/login"
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/ HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path" QSSCD
+_EXPECT . "200"
+_EXPECT . "Set-Cookie"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/any.gif HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__
+_EXPECT . "200"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/logo.gif HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path" QSSCD
+_EXPECT . "200"
+_EXPECT . "Set-Cookie"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /htt/login HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+_-id=pascal&pwd=1234
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path" QSSCD
+_EXPECT . "200"
+_EXPECT . "Set-Cookie"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: image/gif
+__
+__==AS1==
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: image/gif
+__
+__==AS1==
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+END
