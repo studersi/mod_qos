@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.230 2010-07-28 19:43:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.231 2010-07-28 20:41:36 pbuchbinder Exp $";
 static const char g_revision[] = "9.23";
 
 /************************************************************************
@@ -103,6 +103,7 @@ static const char g_revision[] = "9.23";
 #define QOS_USER_TRACKING "mod_qos_user_id"
 #define QOS_USER_TRACKING_NEW "QOS_USER_ID_NEW"
 #define QOS_MILESTONE "mod_qos_milestone"
+#define QOS_MILESTONE_TIMEOUT 3600
 #define QOS_MILESTONE_COOKIE "QSSCD"
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
@@ -523,6 +524,7 @@ typedef struct {
   int cc_tolerance_max;       /* GLOBAL ONLY */
   int cc_tolerance_min;       /* GLOBAL ONLY */
   apr_table_t *milestones;
+  time_t milestone_timeout;
 } qos_srv_config;
 
 /**
@@ -1109,13 +1111,14 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, 
 static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
   const char *new_ms = apr_table_get(r->subprocess_env, QOS_MILESTONE_COOKIE);
   if(new_ms) {
-    int len = QOS_RAN + QOS_MAGIC_LEN  + strlen(new_ms);
+    time_t now = apr_time_sec(r->request_time);
+    int len = QOS_RAN + QOS_MAGIC_LEN  + sizeof(time_t) + strlen(new_ms);
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
     RAND_bytes(value, QOS_RAN);
     memcpy(&value[QOS_RAN], qs_magic, QOS_MAGIC_LEN);
-    // TODO add time stamp (expiration)
-    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], new_ms, strlen(new_ms));
+    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], &now, sizeof(time_t));
+    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN+sizeof(time_t)], new_ms, strlen(new_ms));
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
     apr_table_add(r->headers_out, "Set-Cookie",
@@ -1125,9 +1128,8 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
   return;
 }
 
-/** milestone cookie: b64(enc(<rand><magic><milestone>)) */
+/** milestone cookie: b64(enc(<rand><magic><time><milestone>)) */
 static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const char *value) {
-  // TODO verify time stamp (expiration)
   qos_milestone_t *milestone = NULL;
   apr_table_entry_t *entry;
   int i;
@@ -1139,7 +1141,11 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
     buf_len = qos_decrypt(r, sconf, &buf, value);
     if((buf_len > (QOS_MAGIC_LEN + QOS_RAN)) &&
        (strncmp((char *)&buf[QOS_RAN], qs_magic, QOS_MAGIC_LEN) == 0)) {
-      ms = atoi((char *)&buf[QOS_RAN+QOS_MAGIC_LEN]);
+      time_t *t = (time_t *)&buf[QOS_RAN+QOS_MAGIC_LEN];
+      time_t now = apr_time_sec(r->request_time);
+      if(now <= (*t + sconf->milestone_timeout)) {
+        ms = atoi((char *)&buf[QOS_RAN+QOS_MAGIC_LEN+sizeof(time_t)]);
+      }
     }
   }
   entry = (apr_table_entry_t *)apr_table_elts(sconf->milestones)->elts;
@@ -1150,7 +1156,6 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
       break;
     }
   }
-  // TODO: different actions (deny/log)
   if(milestone && (required >= 0)) {
     if(ms < (required - 1)) {
       /* not allowed */
@@ -6035,6 +6040,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_block_time = 600;
   sconf->maxpost = -1;
   sconf->milestones = NULL;
+  sconf->milestone_timeout = QOS_MILESTONE_TIMEOUT;
   if(!s->is_virtual) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table, qs_header_rules);
     if(msg) {
@@ -6188,6 +6194,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->milestones == NULL) {
     o->milestones = b->milestones;
+    o->milestone_timeout = b->milestone_timeout;
   }
   return o;
 }
