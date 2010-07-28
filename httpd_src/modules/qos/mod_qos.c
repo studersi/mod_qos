@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.229 2010-07-28 05:51:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.230 2010-07-28 19:43:48 pbuchbinder Exp $";
 static const char g_revision[] = "9.23";
 
 /************************************************************************
@@ -584,6 +584,16 @@ typedef struct {
 } qos_her_t;
 
 typedef struct {
+  const char* pattern;
+#ifdef AP_REGEX_H
+  ap_regex_t *preg;
+#else
+  regex_t *preg;
+#endif
+  qs_rfilter_action_e action;
+} qos_milestone_t;
+
+typedef struct {
   char *text;
   pcre *pcre;
   qs_flt_action_e action;
@@ -1118,6 +1128,7 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
 /** milestone cookie: b64(enc(<rand><magic><milestone>)) */
 static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const char *value) {
   // TODO verify time stamp (expiration)
+  qos_milestone_t *milestone = NULL;
   apr_table_entry_t *entry;
   int i;
   int ms = -1; // milestone the user has reached
@@ -1133,26 +1144,29 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
   }
   entry = (apr_table_entry_t *)apr_table_elts(sconf->milestones)->elts;
   for(i = 0; i < apr_table_elts(sconf->milestones)->nelts; i++) {
-#ifdef AP_REGEX_H
-    ap_regex_t *preg = (ap_regex_t *)entry[i].val;
-#else
-    regex_t *preg = (regex_t *preg)entry[i].val;
-#endif  
-    if(ap_regexec(preg, r->the_request, 0, NULL, 0) == 0) {
+    milestone = (qos_milestone_t *)entry[i].val;
+    if(ap_regexec(milestone->preg, r->the_request, 0, NULL, 0) == 0) {
       required = atoi(entry[i].key);
+      break;
     }
   }
   // TODO: different actions (deny/log)
-  if(required >= 0) {
+  if(milestone && (required >= 0)) {
     if(ms < (required - 1)) {
       /* not allowed */
-      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                    QOS_LOG_PFX(047)"access denied, milestone %d,"
-                    " action=deny, c=%s, id=%s",
-                    required,
+      int severity = milestone->action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
+                    QOS_LOG_PFX(047)"access denied, reached milestone '%d' (%s),"
+                    " user has already passed '%s',"
+                    " action=%s, c=%s, id=%s",
+                    required, milestone->pattern,
+                    ms == -1 ? "none" : apr_psprintf(r->pool, "%d", ms),
+                    milestone->action == QS_DENY ? "deny" : "log only (pass milestone)",
                     r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                     qos_unique_id(r, "047"));
-      return HTTP_FORBIDDEN;
+      if(milestone->action == QS_DENY) {
+        return HTTP_FORBIDDEN;
+      }
     }
     if(required > ms) {
       /* update milestone */
@@ -7126,28 +7140,34 @@ const char *qos_deny_urlenc_cmd(cmd_parms *cmd, void *dcfg, const char *mode) {
   return NULL;
 }
 
-const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *pattern) {
+const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
+                              const char *pattern) {
   qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
-#ifdef AP_REGEX_H
-  ap_regex_t *preg;
-#else
-  regex_t *preg;
-#endif
+  qos_milestone_t *ms = apr_pcalloc(cmd->pool, sizeof(qos_milestone_t));
   if(sconf->milestones == NULL) {
     sconf->milestones = apr_table_make(cmd->pool, 10);
   }
 #ifdef AP_REGEX_H
-  preg = ap_pregcomp(cmd->pool, pattern, AP_REG_EXTENDED);
+  ms->preg = ap_pregcomp(cmd->pool, pattern, AP_REG_EXTENDED);
 #else
-  preg = ap_pregcomp(cmd->pool, pattern, REG_EXTENDED);
+  ms->preg = ap_pregcomp(cmd->pool, pattern, REG_EXTENDED);
 #endif
-  if(preg == NULL) {
+  if(ms->preg == NULL) {
     return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
                         cmd->directive->directive, pattern);
   }
+  ms->pattern = apr_pstrdup(cmd->pool, pattern);
+  if(strcasecmp(action, "deny") == 0) {
+    ms->action = QS_DENY;
+  } else if(strcasecmp(action, "log") == 0) {
+    ms->action = QS_LOG;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: invalid action %s",
+                        cmd->directive->directive, action);
+  }
   apr_table_setn(sconf->milestones,
                  apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->milestones)->nelts),
-                 (char *)preg);
+                 (char *)ms);
   return NULL;
 }
 
@@ -7785,9 +7805,11 @@ static const command_rec qos_config_cmds[] = {
                 "QS_LimitRequestBody <bytes>, limits the allowed size"
                 " of an HTTP request message body."),
 #ifdef QOS_HAS_SSL
-  AP_INIT_TAKE1("QS_MileStone", qos_milestone_cmd, NULL,
+  AP_INIT_TAKE2("QS_MileStone", qos_milestone_cmd, NULL,
                 RSRC_CONF,
-                "QS_MileStone <pattern>"),
+                "QS_MileStone 'log'|'deny' <pattern>, defines request line patterns"
+                " a client must access in the defined order as they are defined in the"
+                " configuration file."),
 #endif
   AP_INIT_ITERATE("QS_Decoding", qos_dec_cmd, NULL,
                   ACCESS_CONF,

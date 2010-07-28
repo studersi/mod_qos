@@ -1,5 +1,5 @@
 #
-# $Id: QS_MileStone.htt,v 1.1 2010-07-28 05:51:44 pbuchbinder Exp $
+# $Id: QS_MileStone.htt,v 1.2 2010-07-28 19:43:48 pbuchbinder Exp $
 #
 #   QS_MileStone "^GET /htt/index.html"
 #   QS_MileStone "^GET /htt/logo.gif"
@@ -51,6 +51,16 @@ _EXPECT . "Set-Cookie"
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
+__GET /htt/logo.gif HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__
+_EXPECT . "200"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
 __POST /htt/login HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
@@ -82,6 +92,15 @@ _WAIT
 __HTTP/1.1 200 OK
 __Content-Length: AUTO 
 __Content-Type: text/html
+__
+__==AS1==
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: image/gif
 __
 __==AS1==
 

@@ -65,6 +65,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 + QS_SrvMaxConnClose to support "percentage" of the MaxClient sesstings instead of abs. value
 + user tracking cookie (for statistics)
   - timeout/renew
+- don't log every QS_SrvMinConnPerIP event (if many)
 
 other:
 - crawler

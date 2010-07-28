@@ -1,9 +1,9 @@
 #
-# $Id: QS_MileStone2.htt,v 1.1 2010-07-28 05:51:44 pbuchbinder Exp $
+# $Id: QS_MileStone2.htt,v 1.2 2010-07-28 19:43:48 pbuchbinder Exp $
 #
-#   QS_MileStone "^GET /htt/index.html"
-#   QS_MileStone "^GET /htt/logo.gif"
-#   QS_MileStone "^POST /htt/login"
+#   QS_MileStone deny "^GET /htt/index.html"
+#   QS_MileStone deny "^GET /htt/logo.gif"
+#   QS_MileStone deny "^POST /htt/login"
 #
 
 INCLUDE scripts/ports
