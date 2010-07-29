@@ -1,8 +1,8 @@
 Version 9.23
 
- - New directive: QS_MileStone
+ - New directives: QS_MileStone*.
 
- - Q3032708, see http://www.openssl.org/support/faq.html#LEGAL2
+ - Q3032708, see http://www.openssl.org/support/faq.html#LEGAL2.
 
  - Add Access-Control-Allow-Origin to the default response header rules.
 

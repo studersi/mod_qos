@@ -432,6 +432,7 @@ for the mod_qos session cookie. Default is MODQOS.
 <code>QS_SessionCookiePath &lt;path&gt;</code><br>
 Defines a the cookie path. Default is "/".
 </li>
+<a name="QS_SessionKey"></a>
 <li>
 <code>QS_SessionKey &lt;string&gt;</code><br>
 Secret key used for cookie encryption. Used when using the same 
@@ -958,15 +959,17 @@ SetEnvIfNoCase Content-Encoding gzip|compress|deflate QS_DeflateReqBody
 </table>
 
 <p>
-Milestones: you may define a number of resources (request line patterns) in order to
-allow a client to access a specific resource (a client must access each milestone 
-in the correct order).
+Milestones: you may define a number of resources (request line patterns) as milestones. A 
+client must access these resources in the correct order as they are defined within 
+the server configuration. A client is not allowed to skip these milestones (but may access 
+any other resource not covered by a milestone in between requests to milestones).
 <ul>
 <li>
 <code>QS_MileStone 'log'|'deny' &lt;pattern&gt;</code><br>
 Defines request line patterns a client must access in the defined order as they are defined in the 
 configuration file. Milestones are defined on a per server basis, outside 
-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a>.
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a>. 
+Access to milestones is tracked by a dedicated <a href="#QS_SessionKey">session cookie</a>.
 </li>
 <li>
 <code>QS_MileStoneTimeout &lt;seconds&gt;</code><br>
@@ -977,10 +980,15 @@ Defines the time in seconds within a client must reach the next milestone. Defau
 <tr><td bgcolor="#EBE5E0">
 Sample configuration:<br>
 <pre>
-# client must start with /app/index.html and then reading some images before posting data
+# four milestones:
+# 1) client must start with /app/index.html
+# 2) and then read some images
+# 3) before posting data to /app/register
+# 4) afterwards, the user may download zip files
 QS_MileStone          deny       "^GET /app/index.html"
 QS_MileStone          deny       "^GET /app/images/.*"
-QS_MileStone          deny       "^POST /app/.*"
+QS_MileStone          deny       "^POST /app/register*"
+QS_MileStone          deny       "^GET /app/.*\.zip HTTP/..."
 </pre>
 </td></tr>
 </table>
