@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.233 2010-08-02 17:47:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.234 2010-08-02 19:23:58 pbuchbinder Exp $";
 static const char g_revision[] = "9.24";
 
 /************************************************************************
@@ -65,6 +65,7 @@ static const char g_revision[] = "9.24";
 #include <ap_mpm.h>
 #include <scoreboard.h>
 #include <ap_config.h>
+#include <mpm_common.h>
 
 #if defined(HAVE_OPENSSL)
 #define QOS_HAS_SSL
@@ -4082,10 +4083,14 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
 static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+#ifdef WORKER_MPM
   apr_status_t status;
+#endif
   sconf->inctx_t->exit = 1;
   /* may long up to one second */
+#ifdef WORKER_MPM
   apr_thread_join(&status, sconf->inctx_t->thread);
+#endif
   return APR_SUCCESS;
 }
 #endif
