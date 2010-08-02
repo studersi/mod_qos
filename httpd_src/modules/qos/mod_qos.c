@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.232 2010-07-28 21:00:14 pbuchbinder Exp $";
-static const char g_revision[] = "9.23";
+static const char revision[] = "$Id: mod_qos.c,v 5.233 2010-08-02 17:47:38 pbuchbinder Exp $";
+static const char g_revision[] = "9.24";
 
 /************************************************************************
  * Includes
@@ -112,6 +112,10 @@ static const char g_revision[] = "9.23";
 #define QS_PKT_RATE_INIT  220
 #define QS_PKT_RATE_MIN   30
 #define QS_PKT_RATE_TH    3
+
+#ifndef QS_LOG_REPEAT
+#define QS_LOG_REPEAT     20
+#endif
 
 #define QS_PARP_Q         "qos-parp-query"
 #define QS_PARP_QUERY     "qos-query"
@@ -327,6 +331,7 @@ typedef struct {
 typedef struct qs_ip_entry_st {
   unsigned long ip;
   int counter;
+  int error;
 } qs_ip_entry_t;
 
 typedef struct {
@@ -1455,6 +1460,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     for(i = 0; i < act->conn->conn_ip_len; i++) {
       ce->ip = 0;
       ce->counter = 0;
+      ce->error = 0;
       ce++;
     }
     if(rule_entries) {
@@ -1554,7 +1560,7 @@ static int qos_count_free_ip(qos_srv_config *sconf) {
  * adds an ip entry (insert or increment)
  * returns the number of connections open by this ip
  */
-static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
+static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf, qs_ip_entry_t **e) {
   int i = cconf->sconf->act->conn->conn_ip_len;
   qs_ip_entry_t *conn_ip = cconf->sconf->act->conn->conn_ip;
   int num = -1;
@@ -1567,6 +1573,7 @@ static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
     if(conn_ip->ip == cconf->ip) {
       conn_ip->counter++;
       num = conn_ip->counter;
+      *e = conn_ip;
       break;
     }
     conn_ip++;
@@ -1576,6 +1583,7 @@ static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf) {
     free->ip = cconf->ip;
     free->counter++;
     num = free->counter;
+    *e = free;
   }
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
   return num;
@@ -1593,6 +1601,7 @@ static void qos_dec_ip(qs_conn_ctx *cconf) {
       conn_ip->counter--;
       if(conn_ip->counter == 0) {
         conn_ip->ip = 0;
+        conn_ip->error = 0;
       }
       break;
     }
@@ -3065,6 +3074,13 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
   return penalty;
 }
 
+//static void qos_error_log(const char *file, int line, int level,
+//                          apr_status_t status, const server_rec *s,
+//                          const request_rec *r, apr_pool_t *pool,
+//                          const char *errstr) {
+//  return;
+//}
+
 /**
  * client contol rules at log transaction
  */
@@ -4200,6 +4216,7 @@ static int qos_process_connection(conn_rec *c) {
     int client_control = DECLINED;
     int connections = 0;
     int current = 0;
+    qs_ip_entry_t *e = NULL;
     char *msg = NULL;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                   &qos_module);
@@ -4253,7 +4270,7 @@ static int qos_process_connection(conn_rec *c) {
     }
     /* single source ip */
     if(sconf->max_conn_per_ip != -1) {
-      current = qos_inc_ip(c->pool, cconf);
+      current = qos_inc_ip(c->pool, cconf, &e);
     }
     /* Check for vip (by ip) */
     if(apr_table_elts(sconf->exclude_ip)->nelts > 0) {
@@ -4305,14 +4322,41 @@ static int qos_process_connection(conn_rec *c) {
     /* single source ip */
     if((sconf->max_conn_per_ip != -1) && !vip) {
       if(current > sconf->max_conn_per_ip) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                     QOS_LOG_PFX(031)"access denied, QS_SrvMaxConnPerIP rule: max=%d,"
-                     " concurrent connections=%d,"
-                     " c=%s",
-                     sconf->max_conn_per_ip, current,
-                     c->remote_ip == NULL ? "-" : c->remote_ip);
+        e->error++;
+        /* only print the first 20 messages for this client */
+        if(e->error <= QS_LOG_REPEAT) {
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                       QOS_LOG_PFX(031)"access denied, QS_SrvMaxConnPerIP rule: max=%d,"
+                       " concurrent connections=%d,"
+                       " c=%s",
+                       sconf->max_conn_per_ip, current,
+                       c->remote_ip == NULL ? "-" : c->remote_ip);
+        } else {
+          if((e->error % QS_LOG_REPEAT) == 0) {
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                         QOS_LOG_PFX(031)"access denied, QS_SrvMaxConnPerIP rule: max=%d,"
+                         " concurrent connections=%d,"
+                         " message repeated %d times,"
+                         " c=%s",
+                         sconf->max_conn_per_ip, current,
+                         QS_LOG_REPEAT,
+                         c->remote_ip == NULL ? "-" : c->remote_ip);
+          }
+        }
         c->keepalive = AP_CONN_CLOSE;
         return qos_return_error(c);
+      } else {
+        if(e->error > 0) {
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                       QOS_LOG_PFX(031)"access denied, QS_SrvMaxConnPerIP rule: max=%d,"
+                       " concurrent connections=%d,"
+                       " message repeated %d times,"
+                       " c=%s",
+                       sconf->max_conn_per_ip, current,
+                       e->error % QS_LOG_REPEAT,
+                       c->remote_ip == NULL ? "-" : c->remote_ip);
+        }
+        e->error = 0;
       }
     }
   }
@@ -7969,6 +8013,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(qos_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
+  //ap_hook_error_log(qos_error_log, NULL, NULL, APR_HOOK_LAST);
 
   ap_register_input_filter("qos-in-filter", qos_in_filter, NULL, AP_FTYPE_CONNECTION);
   ap_register_input_filter("qos-in-filter2", qos_in_filter2, NULL, AP_FTYPE_RESOURCE);

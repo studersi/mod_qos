@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.120 2010-07-29 17:45:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.121 2010-08-02 17:47:38 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -56,7 +56,7 @@ echo "-- start `date` --" >>  logs/error_log
 
 # -----------------------------------------------------------------
 echo "-- client opens more than 10 connections, QS_SrvMaxConnPerIP_10.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_SrvMaxConnPerIP_10.htt
+./run.sh -se ./scripts/QS_SrvMaxConnPerIP_10.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_QS_SrvMaxConnPerIP_10.htt"

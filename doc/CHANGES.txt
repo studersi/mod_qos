@@ -1,3 +1,8 @@
+Version
+
+ - QS_SrvMinConnPerIP: don't log every rule violation (consolidate log
+   messages and log only every 20th event, see QS_LOG_REPEAT).
+
 Version 9.23
 
  - New directives: QS_MileStone*.
