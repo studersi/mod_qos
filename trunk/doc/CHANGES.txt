@@ -1,7 +1,9 @@
-Version
+Version 9.24
 
  - QS_SrvMinConnPerIP: don't log every rule violation (consolidate log
    messages and log only every 20th event, see QS_LOG_REPEAT).
+
+ - Fixed: remove thread_join for MPM prefork binaries.
 
 Version 9.23
 
