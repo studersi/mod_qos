@@ -41,37 +41,22 @@
 - management tool (sep. application)
   - configuration guidance
   - log management/rule generation
-+ QS_ClientEventRequestLimit limits the number of concurrent
-  events per client source IP.
 - support IPv6
   + not really, but using a checksum may be sometimes enougth
   - "real" IPv6 support
 - propagate client information via request header (set additional variables)
-+ improved variable handling and propagation via header
-+ response header filter (std headers only)
-+ deflate body
-  + adjust content-length header (requires parp 0.8 or higher)
 - decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
   - enhance qos_unescaping() (partial done)
   - document path_decode_hook()/query_decode_hook()
 + new implementation of the QS_SrvMaxConnPerIP functionality (linear, no tree anymore)
+  - improved search alg.
 x initial socket timeout for new connections (tcp open only and no initial request)
-+ configure file path for mutex/sem files
-  + debug/error message showing if and which file is used
-+ disable min data rate for certain connections (response conditions)
-  + QS_SrvMinDataRateOffEvent
-    + at server level
-    + per location
 + QS_SrvMaxConnClose to support "percentage" of the MaxClient settings instead of abs. value
   - set variable mod_qos_con_ip (see mod_qos_con)
 + user tracking cookie (for statistics)
   - timeout/renew
-+ don't log every QS_SrvMinConnPerIP event (if many)
-+ milestones: client MUST access some resources before he is allowed to proceed
-
-other:
 - crawler
-- response filter (e.g. "bad" js code)
+- response filter (e.g. detecting "bad" js code)
 
 ----------------
 legend:
