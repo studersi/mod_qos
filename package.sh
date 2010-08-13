@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.27 2010-01-26 19:54:11 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.28 2010-08-13 19:43:14 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -65,6 +65,9 @@ if [ $? -ne 1 ]; then
   exit 1
 fi
 
+set -e
+set -u
+
 rm -rf mod_qos-${VERSION}*
 mkdir -p mod_qos-${VERSION}/doc
 mkdir -p mod_qos-${VERSION}/apache2
@@ -92,6 +95,7 @@ echo "tools"
 cp tools/qs_util.h mod_qos-${VERSION}/tools
 cp tools/qs_util.c mod_qos-${VERSION}/tools
 cp tools/qslog.c mod_qos-${VERSION}/tools
+cp tools/qsrotate.c mod_qos-${VERSION}/tools
 cp tools/Makefile.tmpl mod_qos-${VERSION}/tools/Makefile
 cp tools/filter/qsfilter2.c mod_qos-${VERSION}/generators
 cp tools/filter/Makefile mod_qos-${VERSION}/generators

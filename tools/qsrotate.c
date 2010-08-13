@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 2.6 2010-02-24 19:24:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 2.7 2010-08-13 19:43:14 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -64,12 +64,13 @@ static char *m_file_name = NULL;
 static long m_messages = 0;
 static char *m_cmd = NULL;
 static int m_compress = 0;
+static int m_stdout = 0;
 
 static void usage(char *cmd) {
   printf("\n");
   printf("Log rotation tool (similar to Apache's rotatelogs).\n");
   printf("\n");
-  printf("Usage: %s -o <file> [-s <sec>] [-f] [-z] [-g <num>] [-u <name>]\n", cmd);
+  printf("Usage: %s -o <file> [-s <sec>] [-f] [-z] [-g <num>] [-u <name>] [-p]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("Example:\n");
@@ -91,6 +92,8 @@ static void usage(char *cmd) {
   printf("     Generations (number of files to keep).\n");
   printf("  -u <name>\n");
   printf("     Become another user, e.g. www-data.\n");
+  printf("  -p\n");
+  printf("     Writes data also to stdout (for piped logging).\n");
   printf("\n");
   printf("Note\n");
   printf("  - Each %s instance must use an individual file!\n", cmd);
@@ -292,6 +295,8 @@ int main(int argc, char **argv) {
       } 
     } else if(strcmp(*argv,"-z") == 0) {
       m_compress = 1;
+    } else if(strcmp(*argv,"-p") == 0) {
+      m_stdout = 1;
     } else if(strcmp(*argv,"-f") == 0) {
       m_force_rotation = 1;
     }
@@ -351,6 +356,9 @@ int main(int argc, char **argv) {
     if(m_nLogFD >= 0) {
       do {
 	nWrite = write(m_nLogFD, buf, nRead);
+	if(m_stdout) {
+	  printf("%.*s", nRead, buf);
+	}
       } while (nWrite < 0 && errno == EINTR);
     }
     if(nWrite != nRead) {
