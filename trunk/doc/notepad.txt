@@ -40,9 +40,13 @@
   - block clients/IPs
 - management tool (sep. application)
   - configuration guidance
-  - log management/rule generation
+  - log data management
+  - rule generation
+  - utilities (ha/lb/...)
+  - log data signing |sig |qsrotate <file>
+  - nms plugin (OpenNMS? Nagios?)
 - support IPv6
-  + not really, but using a checksum may be sometimes enougth
+  + not really (checksum only)
   - "real" IPv6 support
 - propagate client information via request header (set additional variables)
 - decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
