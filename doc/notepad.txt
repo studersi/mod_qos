@@ -43,7 +43,7 @@
   - log data management
   - rule generation
   - utilities (ha/lb/...)
-  - log data signing |sig |qsrotate <file>
+  - log data signing (using pipe: "|sig |qsrotate <file>")
   - nms plugin (OpenNMS? Nagios?)
 - support IPv6
   + not really (checksum only)
@@ -61,6 +61,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
   - timeout/renew
 - crawler
 - response filter (e.g. detecting "bad" js code)
+- automake to build tools
 
 ----------------
 legend:
