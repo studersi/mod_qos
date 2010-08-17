@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.38 2010-08-04 18:59:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.39 2010-08-17 19:04:00 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -110,11 +110,10 @@ if [ "$1" = "release" ]; then
 fi
 cd ..
 
-cd tools
+cd util
+./buildconf.sh
+./configure
 make
 cd ..
-cd tools/filter
-make
-cd ../..
 
 echo "END"
