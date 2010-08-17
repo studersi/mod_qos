@@ -12,7 +12,7 @@ DA=`head -1 $CSV | awk '{print $1}'`
 echo "<html><head><title>$DA</title></head><body>" > index.html
 for E in $ELEMENTS; do
   FILE=`echo $E | sed -e "s:>:gt:g" -e "s:/:_:g"`
-  ./qspng -i $CSV -o tmp/${FILE}.png -p "$E"
+  ../util/src/qspng -i $CSV -o tmp/${FILE}.png -p "$E"
   echo "<img src=\"tmp/${FILE}.png\" /><br>" >> index.html
 done
 
