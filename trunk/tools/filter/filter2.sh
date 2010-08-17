@@ -32,13 +32,13 @@ echo "/app/k.x/umlhex\xc3\xbcurl%C3%BC/?Cmd=new" >> access_log
 echo "/o-b/test.php?blah1=&blah2=" >> access_log
 
 if [ -n "$1" ]; then
-    ./qsfilter2 -e -i access_log $@
+    ../../util/src/qsfilter2 -e -i access_log $@
     exit 0
 fi
 
-./qsfilter2 -e -i access_log -m > qm2.txt
+../../util/src/qsfilter2 -e -i access_log -m > qm2.txt
 diff qm2.txt.ref qm2.txt
-./qsfilter2 -e -i access_log  > q2.txt
+../../util/src/qsfilter2 -e -i access_log  > q2.txt
 diff q2.txt.ref q2.txt
 
 rm access_log

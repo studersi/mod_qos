@@ -15,7 +15,7 @@ echo "/app/this/sep?v=a&n=1" >> access_log
 echo "/app/this/sep%20arate?v=a&n=1" >> access_log
 echo "/app/this/seP%u0020arate?v=a&n=1" >> access_log
 
-./qsfilter2 -i access_log -m $@
+../../util/src/qsfilter2 -i access_log -m $@
 
 rm access_log
 
