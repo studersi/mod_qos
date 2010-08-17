@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.1 2010-08-17 18:32:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.2 2010-08-17 20:19:31 pbuchbinder Exp $";
 static const char g_revision[] = "9.24";
 
 /* system */
@@ -59,15 +59,8 @@ static const char g_revision[] = "9.24";
 #include <apr_support.h>
 //#include <ap_config.h>
 
-#if defined(HAVE_OPENSSL)
-#define QOS_HAS_SSL
-#endif
-
-
 /* OpenSSL  */
-#ifdef QOS_HAS_SSL
 #include <openssl/stack.h>
-#endif
 
 #define MAX_LINE 32768
 /* 2mb */
@@ -1608,7 +1601,6 @@ int main(int argc, const char * const argv[]) {
   printf("#  duration: %ld minutes\n", (end - start) / 60);
   printf("# --------------------------------------------------------\n");
 
-#ifdef QOS_HAS_SSL
   {
     STACK *st = sk_new(STACK_qs_cmp);
     qs_rule_t *r;
@@ -1628,7 +1620,7 @@ int main(int argc, const char * const argv[]) {
       j++;
     }
   }
-#endif
+
   apr_pool_destroy(pool);
   return 0;
 }

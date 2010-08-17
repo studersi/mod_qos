@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.123 2010-08-17 19:04:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.124 2010-08-17 20:19:31 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -311,9 +311,9 @@ cat logs/access1_log | awk '{print $7}' > logs/loc1.htt
 ../util/src/qsfilter2 -i logs/loc1.htt -v 0 -c appl_conf/qos_deny_filter.conf | grep QS_PermitUri > appl_conf/qos_permit_filter.conf
 rm -f logs/loc1.htt
 ./ctl.sh stop > /dev/null
-sleep 2
+sleep 3
 ./ctl.sh start -D permit_filter > /dev/null
-sleep 1
+sleep 2
 echo "-- permit filter QS_PermitUri.htt" >>  logs/error_log
 echo "-- permit filter QS_PermitUri.htt" >>  logs/error1_log
 ./htt.sh -se ./scripts/QS_PermitUri.htt
