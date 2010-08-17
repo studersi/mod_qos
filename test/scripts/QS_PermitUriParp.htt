@@ -1,5 +1,5 @@
 #
-# $Id: QS_PermitUriParp.htt,v 1.2 2009-12-21 18:58:11 pbuchbinder Exp $
+# $Id: QS_PermitUriParp.htt,v 1.3 2010-08-17 19:04:00 pbuchbinder Exp $
 #
 
 
@@ -119,7 +119,7 @@ _SLEEP 100
 
 _EXEC cat logs/qsaudit_log | awk '{print $5}' > logs/qsaudit_log.2
 _EXPECT EXEC "\^\[/a\-zA\-Z\]\+/permit..\(name=\[a\-zA\-Z\]\{0,15\}\[&\]\?\)\?\(id=\[0\-9a\-zA\-Z\]\{0,13\}\[&\]\?\)\?\$"
-_EXEC ../tools/filter/qsfilter2 -i logs/qsaudit_log.2 -v 0 2>&1
+_EXEC ../util/src/qsfilter2 -i logs/qsaudit_log.2 -v 0 2>&1
 
 
 END

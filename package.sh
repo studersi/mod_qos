@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.28 2010-08-13 19:43:14 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.29 2010-08-17 19:04:00 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -37,7 +37,7 @@
 
 TOP=`pwd`
 VERSION=`grep "char g_revision" httpd_src/modules/qos/mod_qos.c | awk '{print $6}' | awk -F'"' '{print $2}'`
-F_VERSION=`grep "char g_revision" tools/filter/qsfilter2.c | awk '{print $6}' | awk -F'"' '{print $2}'`
+F_VERSION=`grep "char g_revision" util/src/qsfilter2.c | awk '{print $6}' | awk -F'"' '{print $2}'`
 echo "build mod_dos version $VERSION distribution package"
 if [ "$VERSION" != "$F_VERSION" ]; then
   echo "FAILED, wrong version!"
@@ -71,7 +71,7 @@ set -u
 rm -rf mod_qos-${VERSION}*
 mkdir -p mod_qos-${VERSION}/doc
 mkdir -p mod_qos-${VERSION}/apache2
-mkdir -p mod_qos-${VERSION}/tools
+mkdir -p mod_qos-${VERSION}/tools/src
 mkdir -p mod_qos-${VERSION}/generators
 
 echo "install documentation"
@@ -92,13 +92,20 @@ grep -v qos_control httpd_src/modules/qos/config.m4 > mod_qos-${VERSION}/apache2
 cp httpd_src/modules/qos/Makefile.in mod_qos-${VERSION}/apache2
 
 echo "tools"
-cp tools/qs_util.h mod_qos-${VERSION}/tools
-cp tools/qs_util.c mod_qos-${VERSION}/tools
-cp tools/qslog.c mod_qos-${VERSION}/tools
-cp tools/qsrotate.c mod_qos-${VERSION}/tools
-cp tools/Makefile.tmpl mod_qos-${VERSION}/tools/Makefile
-cp tools/filter/qsfilter2.c mod_qos-${VERSION}/generators
-cp tools/filter/Makefile mod_qos-${VERSION}/generators
+cp util/configure.in mod_qos-${VERSION}/tools
+cp util/config.h.in mod_qos-${VERSION}/tools
+cp util/configure mod_qos-${VERSION}/tools
+cp util/install-sh mod_qos-${VERSION}/tools
+cp util/config.sub mod_qos-${VERSION}/tools
+cp util/config.guess mod_qos-${VERSION}/tools
+cp util/ltmain.sh mod_qos-${VERSION}/tools
+cp util/missing mod_qos-${VERSION}/tools
+cp util/Makefile.am mod_qos-${VERSION}/tools
+cp util/Makefile.in mod_qos-${VERSION}/tools
+cp util/src/*.c mod_qos-${VERSION}/tools/src
+cp util/src/*.h mod_qos-${VERSION}/tools/src
+cp util/src/Makefile.am mod_qos-${VERSION}/tools/src
+cp util/src/Makefile.in mod_qos-${VERSION}/tools/src
 
 ## standard distribution
 #echo "std package: mod_qos-${VERSION}-src.tar.gz"

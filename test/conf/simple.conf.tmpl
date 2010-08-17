@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/simple.conf.tmpl,v 2.3 2010-03-01 19:31:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/simple.conf.tmpl,v 2.4 2010-08-17 19:04:00 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -73,8 +73,8 @@ LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_q
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
-TransferLog             "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
-TransferLog             "|##ROOT##/../tools/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
+TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
 PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 

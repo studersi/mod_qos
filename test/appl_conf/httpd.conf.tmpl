@@ -1,4 +1,4 @@
-# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.13 2010-01-16 22:37:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/appl_conf/httpd.conf.tmpl,v 2.14 2010-08-17 19:04:00 pbuchbinder Exp $
 
 ServerName              127.0.0.1
 <IfModule worker.c> 
@@ -36,9 +36,9 @@ DefaultType             text/plain
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}o #%P"
 
 LogLevel                info
-ErrorLog                "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/error1_log -z -g 4 -s 3600 -f"
-TransferLog             "|##ROOT##/../tools/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 600 -f"
-TransferLog             "|##ROOT##/../tools/qslog -o ##ROOT##/logs/qs1_log -f I....R.B.T"
+ErrorLog                "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error1_log -z -g 4 -s 3600 -f"
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 600 -f"
+TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs1_log -f I....R.B.T"
 PidFile                 ##ROOT##/logs/apache1.pid
 CoreDumpDirectory       ##ROOT##/logs/
 
