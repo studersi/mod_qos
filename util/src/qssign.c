@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.1 2010-08-17 18:32:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.2 2010-08-19 19:44:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -38,16 +38,20 @@ static const char revision[] = "$Id: qssign.c,v 1.1 2010-08-17 18:32:34 pbuchbin
 #include <openssl/hmac.h>
 
 /* apr/apr-util */
+#include <apr.h>
 #include <apr_base64.h>
+#include <apr_pools.h>
+#include <apr_strings.h>
+#include <apr_thread_proc.h>
+#include <apr_file_io.h>
 
 #define MAX_LINE 65536
 #define CR 13
 #define LF 10
 #define SEQDIG "12"
-/*
- * reads a line from stdin
- */
-int qs_getLine(char *s, int n) {
+#define MAX_STRING_LEN 32768
+
+static int qs_getLine(char *s, int n) {
   int i = 0;
   while (1) {
     s[i] = (char)getchar();
@@ -120,7 +124,7 @@ static long qs_verify(const char *sec) {
       m[data_len] = '\0';
       if(strcmp(m, sig) != 0) {
 	err++;
-	fprintf(stderr, "ERROR line %ld: invalid signature\n", lnr);
+	fprintf(stderr, "ERROR on line %ld: invalid signature\n", lnr);
       } else {
 	valid = 1;
       }
@@ -130,12 +134,12 @@ static long qs_verify(const char *sec) {
       ns = atol(seq);
       if(ns == 0) {
 	err++;
-	fprintf(stderr, "ERROR line %ld: invalid sequence\n", lnr);
+	fprintf(stderr, "ERROR on line %ld: invalid sequence\n", lnr);
       } else {
 	if(nr != -1) {
 	  if(nr != ns) {
 	    err++;
-	    fprintf(stderr, "ERROR line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lnr, nr);
+	    fprintf(stderr, "ERROR on line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lnr, nr);
 	  }
 	}
 	if(valid) {
@@ -144,7 +148,7 @@ static long qs_verify(const char *sec) {
       }
     } else {
       err++;
-      fprintf(stderr, "ERROR line %ld: missing signature/sequence\n", lnr);
+      fprintf(stderr, "ERROR on line %ld: missing signature/sequence\n", lnr);
     }
     if(valid) {
       nr++;
@@ -153,11 +157,85 @@ static long qs_verify(const char *sec) {
   return err;
 }
 
+static void qs_failedexec(const char *msg, const char *cmd, apr_status_t status) {
+  char buf[MAX_STRING_LEN];
+  apr_strerror(status, buf, sizeof(buf));
+  fprintf(stderr, "ERROR %s '%s': '%s'\n", msg, cmd, buf);
+  exit(1);
+}
+
+static apr_table_t *qs_args(apr_pool_t *pool, const char *line) {
+  char *last = apr_pstrdup(pool, line);
+  apr_table_t* table = apr_table_make(pool, 10);
+  char *val;
+  while((val = apr_strtok(NULL, " ", &last))) {
+    apr_table_addn(table, val, "");
+  }
+  return table;
+}
+
+static char *qs_readpwd(apr_pool_t *pool, const char *prg) {
+  apr_status_t status;
+  apr_proc_t proc;
+  const char **args;
+  apr_table_entry_t *entry;
+  char *last;
+  char *copy = apr_pstrdup(pool, prg);
+  char *cmd = apr_strtok(copy, " ", &last);
+  apr_table_t *a = qs_args(pool, prg);
+  int i;
+  apr_procattr_t *attr;
+  apr_size_t len = MAX_STRING_LEN;
+  char *buf = apr_pcalloc(pool, len);
+
+  args = apr_pcalloc(pool, (apr_table_elts(a)->nelts + 1) * sizeof(const char *));
+  entry = (apr_table_entry_t *) apr_table_elts(a)->elts;
+  for(i = 0; i < apr_table_elts(a)->nelts; i++) {
+    args[i] = entry[i].key;
+  }
+  args[i] = NULL;
+
+  if((status = apr_procattr_create(&attr, pool)) != APR_SUCCESS) {
+    qs_failedexec("while reading password from executable", prg, status);
+  }
+  if((status = apr_procattr_cmdtype_set(attr, APR_PROGRAM_PATH)) != APR_SUCCESS) {
+    qs_failedexec("while reading password from executable", prg, status);
+  }
+  if((status = apr_procattr_detach_set(attr, 0)) != APR_SUCCESS) {
+    qs_failedexec("while reading password from executable", prg, status);
+  }
+  if((status = apr_procattr_io_set(attr, APR_FULL_BLOCK, APR_FULL_BLOCK, APR_NO_PIPE)) != APR_SUCCESS) {
+    qs_failedexec("while reading password from executable", prg, status);
+  }
+  if((status = apr_proc_create(&proc, cmd, args, NULL, attr, pool)) != APR_SUCCESS) {
+    qs_failedexec("could not execute program", prg, status);
+  } else {
+    char *e;
+    status = apr_proc_wait(&proc, NULL, NULL, APR_WAIT);
+    if(status != APR_CHILD_DONE && status != APR_SUCCESS) {
+      qs_failedexec("while reading password from executable", prg, status);
+    }
+    status = apr_file_read(proc.out, buf, &len);
+    if(status != APR_SUCCESS) {
+      qs_failedexec("failed to read password from program", prg, status);
+    }
+    e = buf;
+    while(e && e[0]) {
+      if((e[0] == LF) || (e[0] == CR)) {
+	e[0] = '\0';
+      } else {
+	e++;
+      }
+    }
+  }
+  return buf;
+}
+
 static void usage(char *cmd) {
   printf("\n");
   printf("Utility to sign/verify log data.\n");
   printf("\n");
-  printf("Usage: %s -s <secret> [-v]\n", cmd);
+  printf("Usage: %s -s|S <secret> [-v]\n", cmd);
   printf("\n");
   printf("Summary\n");
   printf("%s is a log data integrity check tool. It reads log data\n", cmd);
@@ -166,6 +244,8 @@ static void usage(char *cmd) {
   printf("Options\n");
   printf("  -s <secret>\n");
   printf("     Passphrase used for calculate signature.\n");
+  printf("  -S <program>\n");
+  printf("     Specifies a program which writes the passphrase to stdout.\n");
   printf("  -v\n");
   printf("     Verification mode checking the integrity of signed data.\n");
   printf("\n");
@@ -180,6 +260,7 @@ static void usage(char *cmd) {
 }
 
 int main(int argc, const char * const argv[]) {
+  apr_pool_t *pool;
   int verify = 0;
   const char *sec = NULL;
   char *cmd = strrchr(argv[0], '/');
@@ -188,6 +269,8 @@ int main(int argc, const char * const argv[]) {
   } else {
     cmd++;
   }
+  apr_app_initialize(&argc, &argv, NULL);
+  apr_pool_create(&pool, NULL);
 
   argc--;
   argv++;
@@ -195,6 +278,10 @@ int main(int argc, const char * const argv[]) {
     if(strcmp(*argv,"-s") == 0) {
       if (--argc >= 1) {
 	sec = *(++argv);
+      }
+    } else if(strcmp(*argv,"-S") == 0) {
+      if (--argc >= 1) {
+	sec = qs_readpwd(pool, *(++argv));
       } 
     } else if(strcmp(*argv,"-v") == 0) {
       verify = 1;
@@ -218,5 +305,7 @@ int main(int argc, const char * const argv[]) {
   } else {
     qs_sign(sec);
   }
+
+  apr_pool_destroy(pool);
   return 0;
 }
