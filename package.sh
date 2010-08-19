@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.29 2010-08-17 19:04:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.30 2010-08-19 19:45:23 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -42,7 +42,6 @@ echo "build mod_dos version $VERSION distribution package"
 if [ "$VERSION" != "$F_VERSION" ]; then
   echo "FAILED, wrong version!"
   echo " mod_qos: $VERSION"
-  echo " qsfilter2: $F_VERSION"
   exit 1
 fi
 
@@ -61,7 +60,13 @@ fi
 grep \\$\\$\\$ ./httpd_src/modules/qos/*.c
 if [ $? -ne 1 ]; then
   WARNINGS=`expr $WARNINGS + 1`
-  echo "WARNING: found pattern '\$\$\$'"
+  echo "WARNING: found pattern '\$\$\$' in module"
+  exit 1
+fi
+grep \\$\\$\\$ ./util/src/*.c
+if [ $? -ne 1 ]; then
+  WARNINGS=`expr $WARNINGS + 1`
+  echo "WARNING: found pattern '\$\$\$' in utility"
   exit 1
 fi
 

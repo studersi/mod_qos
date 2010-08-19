@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.124 2010-08-17 20:19:31 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.125 2010-08-19 19:45:23 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -630,6 +630,12 @@ for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk 
 	echo "WARNING: missing message $E $C $C1"
     fi
 done
+
+./qssign.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qssign test failed"
+fi
 
 grep \\$\\$\\$ ../httpd_src/modules/qos/*.c
 if [ $? -ne 1 ]; then

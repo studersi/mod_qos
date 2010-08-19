@@ -43,7 +43,7 @@
   - log data management
   - rule generation
   - utilities (ha/lb/...)
-  - log data signing (using pipe: "|sig |qsrotate <file>")
+  + log data signing (using pipe: "|sig |qsrotate <file>")
   - nms plugin (OpenNMS? Nagios?)
 - support IPv6
   + not really (checksum only)
