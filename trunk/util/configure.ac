@@ -1,37 +1,30 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.53)
-AC_INIT(mod_qos, 0.0.1, pbuchbinder@users.sourceforge.net)
-#AC_CONFIG_AUX_DIR([config])
+AC_PREREQ([2.50])
+AC_INIT(mod_qos, 9.0, pbuchbinder@users.sourceforge.net)
+AC_CONFIG_SRCDIR([src/qscheck.c])
+AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER([config.h])
 
-dnl This is a Hack to deal with a Macro name descrpency between Autoconf
-dnl Versions. 
-m4_ifdef([AC_INIT_AUTOMAKE], [AC_INIT_AUTOMAKE]) dnl 2.53
-m4_ifdef([AM_INIT_AUTOMAKE], [AM_INIT_AUTOMAKE]) dnl 2.57
-
-# Setting up C compiler stuff 
+# Checks for programs.
 AC_PROG_CC
-AC_PROG_CPP
-AC_AIX
-AC_ISC_POSIX
-AC_HEADER_STDC
-AC_CHECK_HEADERS([unistd.h])
-AC_PROG_LIBTOOL
+
+# Checks for libraries.
+
+# Checks for header files.
+AC_CHECK_HEADERS([fcntl.h netdb.h stdlib.h string.h strings.h sys/socket.h unistd.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
-dnl 2.53 also doesn't have this
-m4_ifdef([AC_HEADER_STDBOOL], [AC_HEADER_STDBOOL])
-AC_C_CONST
-AC_HEADER_TIME
+AC_TYPE_PID_T
+AC_TYPE_UID_T
 
 # Checks for library functions.
+AC_FUNC_FORK
 AC_FUNC_MALLOC
-AC_FUNC_SELECT_ARGTYPES
-AC_CHECK_FUNCS([bzero select socket])
+AC_CHECK_FUNCS([ftruncate gethostbyname memset regcomp select socket strchr strerror strrchr strstr])
 
-# customize settings
+# START customize settings
 AC_ARG_ENABLE([use-static], AS_HELP_STRING(--enable-use-static,Try to use archives instead of shared libraries))
 AC_ARG_ENABLE([full-static], AS_HELP_STRING(--enable-full-static,Try to compile a statical linked executable))
 AC_ARG_ENABLE([ssl], AS_HELP_STRING(--disable-ssl,Disable ssl support (not supported yet)))
@@ -54,12 +47,12 @@ AC_ARG_WITH(ssl,AS_HELP_STRING(--with-ssl=PATH,path to openssl source),
 
 APR_VERSION=`$APR_CONFIG --version`
 if test ! "$?" = "0"; then
-  echo "libapr is missing"
+  echo "libapr is missing, use --with-apr=PATH"
   exit -1
 fi
 APU_VERSION=`$APU_CONFIG --version`
 if test ! "$?" = "0"; then
-  echo "libaprutil is missing"
+  echo "libaprutil is missing, use --with-apr-util=PATH"
   exit -1
 fi
 PCRE_VERSION=`$PCRE_CONFIG --version`
@@ -88,8 +81,8 @@ fi
 if test "$enable_use_static" = "yes"; then
   LDFLAGS="-static"
 fi
+# END	 customize settings
 
-# generate makefiles
 AC_CONFIG_FILES([Makefile
                  src/Makefile])
 AC_OUTPUT
