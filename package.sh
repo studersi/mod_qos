@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.30 2010-08-19 19:45:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.31 2010-08-23 18:59:59 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -97,20 +97,19 @@ grep -v qos_control httpd_src/modules/qos/config.m4 > mod_qos-${VERSION}/apache2
 cp httpd_src/modules/qos/Makefile.in mod_qos-${VERSION}/apache2
 
 echo "tools"
-cp util/configure.in mod_qos-${VERSION}/tools
-cp util/config.h.in mod_qos-${VERSION}/tools
-cp util/configure mod_qos-${VERSION}/tools
-cp util/install-sh mod_qos-${VERSION}/tools
-cp util/config.sub mod_qos-${VERSION}/tools
-cp util/config.guess mod_qos-${VERSION}/tools
-cp util/ltmain.sh mod_qos-${VERSION}/tools
-cp util/missing mod_qos-${VERSION}/tools
-cp util/Makefile.am mod_qos-${VERSION}/tools
-cp util/Makefile.in mod_qos-${VERSION}/tools
-cp util/src/*.c mod_qos-${VERSION}/tools/src
-cp util/src/*.h mod_qos-${VERSION}/tools/src
-cp util/src/Makefile.am mod_qos-${VERSION}/tools/src
-cp util/src/Makefile.in mod_qos-${VERSION}/tools/src
+DES=mod_qos-${VERSION}/tools
+cp util/Makefile.in ${DES}/
+cp util/src/Makefile.in ${DES}/src/
+cp util/Makefile.am ${DES}/
+cp util/src/Makefile.am ${DES}/src/
+cp util/configure ${DES}/
+cp util/configure.ac ${DES}/
+cp util/config.h.in ${DES}/
+cp util/install-sh ${DES}/
+cp util/missing ${DES}/
+cp util/depcomp ${DES}/
+cp util/src/*.c ${DES}/src/
+cp util/src/*.h ${DES}/src/
 
 ## standard distribution
 #echo "std package: mod_qos-${VERSION}-src.tar.gz"
