@@ -230,8 +230,10 @@ cd ../..
 </p>
 
 <p>
-The support tools may be build using the GNU automake/autconf tools. Some of these 
-utilities requires libraries such as apr, apr-util, pcre, libpng, and OpenSSL.
+The <a href="#utilities">support tools</a> may be build (at least on some 
+Linux platforms) using the GNU autotools. Some of these 
+utilities requires third-party libraries such as apr, apr-util, pcre, 
+libpng, and OpenSSL.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
@@ -1272,6 +1274,25 @@ mod_qos features a handler showing the current connection and request status.
 </table>
 
 </p>
+
+<a name="utilities"></a>
+<h3>Utilities</h3>
+<p>
+mod_qos provides optional tools for log data processing and analysis:
+<ul>
+<li><code><a href="qslog.html">qslog</a></code><br>A real time TransferLog/CustomLog 
+data analyzer. It reads the per request log data from stdin and generates statistic 
+records every minute.</li>
+<li><code>qspng</code><br>Creates graphics (png images) from the output of <code>qslog</code>.</li>
+<li><code>qsrotate</code><br>Log rotation tool similar to Apache's <code>rotatelogs</code>.</li>
+<li><code>qssign</code><br>A log data integrity check tool. It reads log data 
+from stdin (pipe) and writes the signed data to stdout.</li>
+<li><code><a href="qsfilter.html">qsfilter2</a></code><br>Rule generator for <code>QS_Permit*</code> directives.</li>
+<li><code>qscheck</code><br>Monitoring tool for tcp connectivity tests to remote servers.</li>
+</ul>
+
+</p>
+
 
 <a name="usecases"></a>
 <h2>Use Cases</h2>
