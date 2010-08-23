@@ -1,17 +1,39 @@
 #!/bin/bash
 
 cd `dirname $0`
-if [ ! -f ltmain.sh ]; then
-    if [ -f /usr/share/libtool/config/ltmain.sh ]; then
-	ln -s /usr/share/libtool/config/ltmain.sh .
-    fi
-fi
 
-echo aclocal
+# input:
+# Makefile.am src/Makefile.am
+# autoscan has created configure.ac
+
+echo "create aclocal.m4"
 aclocal
-echo autoconf
-autoconf
-echo autoheader
+
+echo "create config.h.in"
 autoheader
-echo automake -i -f -a
-automake -i -f -a
+
+echo "create Makefile.in"
+automake -ac
+
+echo "create configure"
+autoconf
+
+# test
+#DES=../_u
+#rm -rf $DES
+#mkdir -p ${DES}/src
+#cp Makefile.in ${DES}/
+#cp src/Makefile.in ${DES}/src/
+#cp Makefile.am ${DES}/
+#cp src/Makefile.am ${DES}/src/
+#cp configure ${DES}/
+#cp configure.ac ${DES}/
+#cp config.h.in ${DES}/
+#cp install-sh ${DES}/
+#cp missing ${DES}/
+#cp depcomp ${DES}/
+#cp src/*.c ${DES}/src/
+#cp src/*.h ${DES}/src/
+#cd $DES
+#./configure
+#make
