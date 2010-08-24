@@ -1,7 +1,7 @@
 #
-# $Id: qslog.htt,v 1.5 2010-08-17 19:04:00 pbuchbinder Exp $
+# $Id: qslog.htt,v 1.6 2010-08-24 18:32:39 pbuchbinder Exp $
 #
-# test the qsrotate tool
+# test the qslog and qsrotate tools
 
 INCLUDE scripts/ports
 

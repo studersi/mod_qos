@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.2 2010-08-19 19:44:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.3 2010-08-24 18:32:39 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -250,7 +250,7 @@ static void usage(char *cmd) {
   printf("     Verification mode checking the integrity of signed data.\n");
   printf("\n");
   printf("Example (sign):\n");
-  printf(" TransferLog \"|./bin/%s -s password |qsrotate -o /var/log/apache/access_log\"\n", cmd);
+  printf(" TransferLog \"|./bin/%s -s password |./bin/qsrotate -o /var/log/apache/access_log\"\n", cmd);
   printf("\n");
   printf("Ecample (verify):\n");
   printf(" cat access_log | %s -s password -v\n", cmd);

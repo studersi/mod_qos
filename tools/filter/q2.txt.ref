@@ -55,7 +55,6 @@
 # --------------------------------------------------------
 # Mon Apr 12 23:05:05 2010
 # 21 rules from 30 access log lines
-#  mod_qos version: 9.14
 #  source (-i): access_log
 #  path depth (-d): 1
 #  disable path only regex (-h): no

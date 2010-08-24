@@ -184,14 +184,14 @@ mod_qos requires OpenSSL, PCRE (don't use the version which comes with the
 Apache distribution), threading and shared memory support. mod_qos works 
 with Apache version 2.2 (tested in mpm worker and prefork mode).<br>
 Just copy the module into the modules directory of the Apache server's source code and 
-compile it using the following commands (all examples are using Apache 2.2.8 and 
+compile it using the following commands (all examples are using Apache 2.2.16 and 
 mod_qos 4.15):
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
-tar xfz httpd-2.2.8.tar.gz
+tar xfz httpd-2.2.16.tar.gz
 tar xfz mod_qos-4.15-src.tar.gz
-ln -s httpd-2.2.8 httpd
+ln -s httpd-2.2.16 httpd
 cd httpd
 mkdir modules/qos
 cp ../mod_qos-4.15/apache2/* modules/qos
