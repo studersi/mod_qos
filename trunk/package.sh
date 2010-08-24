@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.32 2010-08-23 19:38:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.33 2010-08-24 18:32:38 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -123,4 +123,4 @@ tar cf mod_qos-${VERSION}.tar --owner root --group bin mod_qos-${VERSION}
 gzip mod_qos-${VERSION}.tar
 rm -r mod_qos-${VERSION}
 
-echo "END"
+echo "normal end"

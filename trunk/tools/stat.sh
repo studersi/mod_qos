@@ -1,6 +1,9 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 
+set -e
+set -u
+
 cd `dirname $0`
 ELEMENTS="r/s req b/s av <1s 1s 2s 3s 4s 5s >5s ip usr qv qs qd qk qt ql sl m"
 CSV=qslog.csv
@@ -17,3 +20,5 @@ for E in $ELEMENTS; do
 done
 
 echo "</body></html>" >> index.html
+echo "starting firefox..."
+firefox index.html &

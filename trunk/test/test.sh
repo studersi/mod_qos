@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.125 2010-08-19 19:45:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.126 2010-08-24 18:32:39 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -309,7 +309,7 @@ fi
 # -----------------------------------------------------------------
 cat logs/access1_log | awk '{print $7}' > logs/loc1.htt
 ../util/src/qsfilter2 -i logs/loc1.htt -v 0 -c appl_conf/qos_deny_filter.conf | grep QS_PermitUri > appl_conf/qos_permit_filter.conf
-rm -f logs/loc1.htt
+#rm -f logs/loc1.htt
 ./ctl.sh stop > /dev/null
 sleep 3
 ./ctl.sh start -D permit_filter > /dev/null
@@ -635,6 +635,18 @@ done
 if [ $? -ne 0 ]; then
   ERRORS=`expr $ERRORS + 1`
   echo "FAILED qssign test failed"
+fi
+
+../tools/stat.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qspng test failed"
+fi
+
+../tools/filter/filter2.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qsfilter2 test failed"
 fi
 
 grep \\$\\$\\$ ../httpd_src/modules/qos/*.c

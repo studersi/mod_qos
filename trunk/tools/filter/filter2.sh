@@ -36,9 +36,19 @@ if [ -n "$1" ]; then
     exit 0
 fi
 
-../../util/src/qsfilter2 -e -i access_log -m > qm2.txt
-diff qm2.txt.ref qm2.txt
-../../util/src/qsfilter2 -e -i access_log  > q2.txt
-diff q2.txt.ref q2.txt
+../../util/src/qsfilter2 -e -i access_log -m 2>&1 | grep -v "mod_qos version" > qm2.txt
+DLINES=`diff qm2.txt.ref qm2.txt | wc -l`
+if [ $DLINES -ne 4 ]; then
+    echo "ERROR diff qm2.txt.ref qm2.txt"
+    diff qm2.txt.ref qm2.txt
+    exit 1
+fi
+../../util/src/qsfilter2 -e -i access_log 2>&1 | grep -v "mod_qos version" > q2.txt
+DLINES=`diff q2.txt.ref q2.txt | wc -l`
+if [ $DLINES -ne 4 ]; then
+    echo "ERROR diff q2.txt.ref q2.txt"
+    diff q2.txt.ref q2.txt
+    exit 1
+fi
 
 rm access_log
