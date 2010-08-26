@@ -1,3 +1,7 @@
+Version
+
+ - Renew user tracking cookie once every month.
+
 Version 9.25
 
  - Compile utilities using GNU autotools (hope this works at least on

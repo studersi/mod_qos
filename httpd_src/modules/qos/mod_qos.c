@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.235 2010-08-04 18:59:22 pbuchbinder Exp $";
-static const char g_revision[] = "9.25";
+static const char revision[] = "$Id: mod_qos.c,v 5.236 2010-08-26 18:40:44 pbuchbinder Exp $";
+static const char g_revision[] = "9.26";
 
 /************************************************************************
  * Includes
@@ -1073,22 +1073,29 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
 static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf) {
   const char *new_user = apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW);
   if(new_user) {
-    int len = QOS_RAN + QOS_MAGIC_LEN + strlen(new_user);
+    apr_size_t retcode;
+    char tstr[MAX_STRING_LEN];
+    apr_time_exp_t n;
+    int len = QOS_RAN + QOS_MAGIC_LEN + 2 + strlen(new_user);
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
+    apr_time_exp_gmt(&n, r->request_time);
+    apr_strftime(tstr, &retcode, sizeof(tstr), "%m", &n);
     RAND_bytes(value, QOS_RAN);
     memcpy(&value[QOS_RAN], qs_magic, QOS_MAGIC_LEN);
-    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], new_user, strlen(new_user));
+    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], tstr, 2);
+    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN+2], new_user, strlen(new_user));
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
+    /* valid for 300 days */
     apr_table_add(r->headers_out, "Set-Cookie",
-                  apr_psprintf(r->pool, "%s=%s; Path=/; Max-Age=31536000",
+                  apr_psprintf(r->pool, "%s=%s; Path=/; Max-Age=25920000",
                                sconf->user_tracking_cookie, c));
   }
   return;
 }
 
-/** user tracking cookie: b64(enc(<rand><magic><UNIQUE_ID>)) */
+/** user tracking cookie: b64(enc(<rand><magic><month><UNIQUE_ID>)) */
 static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, const char *value) {
   const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
   const char *verified = NULL;
@@ -1106,6 +1113,20 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, 
       }
     }
     if(verified == NULL) {
+      verified = uid;
+      apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
+    } else if(strlen(verified) > 2) {
+      /* renew, if not from this month */
+      apr_size_t retcode;
+      char tstr[MAX_STRING_LEN];
+      apr_time_exp_t n;
+      apr_time_exp_gmt(&n, r->request_time);
+      apr_strftime(tstr, &retcode, sizeof(tstr), "%m", &n);
+      if(strncmp(tstr, verified, 2) != 0) {
+        apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, &verified[2]);
+      }
+      verified = &verified[2];
+    } else {
       verified = uid;
       apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
     }

@@ -182,8 +182,8 @@ More information about mod_qos:
 <p>
 mod_qos requires OpenSSL, PCRE (don't use the version which comes with the 
 Apache distribution), threading and shared memory support. mod_qos works 
-with Apache version 2.2 (tested in mpm worker and prefork mode).<br>
-Just copy the module into the modules directory of the Apache server's source code and 
+with Apache version 2.2 (MPM worker mode is recommended).<br>
+Just copy the module into the <code>modules</code> directory of the Apache server's source code and 
 compile it using the following commands (all examples are using Apache 2.2.16 and 
 mod_qos 4.15):
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -214,10 +214,11 @@ LoadModule qos_module &lt;path to module&gt;/mod_qos.so
 </p>
 
 <p>
-You can also compile the module using apxs alternatively. Your httpd must support 
-dynamically loaded objects (DSO). Verify this by checking the availability 
-of mod_so: The command <code>httpd -l</code> must list the mod_so.c module. 
-The following command compiles the module and installs the mod_qos into the 
+You can also compile the module using <code>apxs</code> alternatively. Your httpd 
+binary must support dynamically loaded objects (DSO). Verify this by checking 
+the availability of mod_so: The command <code>httpd -l</code> must list the 
+mod_so.c module. 
+The following command compiles the module and installs mod_qos into the 
 server's modules directory.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
@@ -244,6 +245,11 @@ make
 </pre>
 </td></tr>
 </table>
+<small><small>Note: 
+If you have a different version of <code>aclocal</code> or <code>automake</code> on 
+your system (you get a message like "aclocal-1.11 is missing on your system"), try 
+to execute <code>aclocal</code> manually and execute <code>make</code> again.
+</small></small>
 </p>
 
 <a name="source"></a>
