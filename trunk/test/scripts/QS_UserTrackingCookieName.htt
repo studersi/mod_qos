@@ -1,5 +1,5 @@
 #
-# $Id: QS_UserTrackingCookieName.htt,v 1.1 2010-06-18 18:58:54 pbuchbinder Exp $
+# $Id: QS_UserTrackingCookieName.htt,v 1.2 2010-08-26 18:40:45 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -7,7 +7,7 @@ INCLUDE scripts/ports
 CLIENT
 
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /htt/index.html HTTP/1.1
+__GET /htt/index.html?id=1 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
 __
@@ -16,7 +16,7 @@ _EXPECT . "AS1"
 _WAIT
 
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /htt/index.html HTTP/1.1
+__GET /htt/index.html?id=2 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
 __Cookie: stat=$UTC
@@ -27,7 +27,7 @@ _EXPECT . "!Set-Cookie"
 _WAIT
 
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /htt/index.html HTTP/1.1
+__GET /htt/index.html?id=3 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
 __Cookie: stat=$UTC; name=value
@@ -42,33 +42,40 @@ _EXIT FAILED
 _END IF
 
 # QS_SessionKey              12345678
+_DEBUG "note: test fails executed in July"
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /htt/index.html HTTP/1.1
+__GET /htt/index.html?id=4 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
-__Cookie: stat=5oOjnKbvPoMuBriaPOmWx8cOfLBhjelvSs80THd+mBmy2H9BzRC4sgW+HSA4W44b; name=value 
+# 07:
+__Cookie: stat=BqGJIzX5OO53pXOoyI9oLlvHeokAy7eCOTIJMZ02er0NRp2oDlXKEiYPJAOAyPN4; name=value 
+## 08
+#__Cookie: stat=P23SwNj3qiqdvjZdGVq4MDobFRsp/WMpET2Da2wLiB3BS2SD49dn0SQvGTJ8adf7; name=value 
 __
 _EXPECT . "AS1"
-_EXPECT . "!Set-Cookie"
+_EXPECT . "Set-Cookie"
 _WAIT
 
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /htt/index.html HTTP/1.1
+__GET /htt/index.html?id=5 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
-__Cookie: stat=5oOjnKbvPoMuBriaPOmWx8cOfLBhjelvSs80THd+mBmy2H9BzRC4sgW+HSA4W44b; name=value 
+__Cookie: stat=$UTC; name=value 
 __
 _EXPECT . "AS1"
-_EXPECT . "TBuAB38AAQEAAHuhL0sAAAAC"
+# 07:
+_EXPECT . "cexKon8AAQEAAE2OcncAAAAE"
+## 08:
+#_EXPECT . "THX7mX8AAQEAAE2OclIAAAAA"
 _EXPECT . "!Set-Cookie"
 _WAIT
 
 # QS_SessionKey              abcdefg
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /htt/index.html HTTP/1.1
+__GET /htt/index.html?id=6 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
-__Cookie: stat=/2MIBZXpjRQG0YiyEvbdWPsMXL+gippKoxKnj7EHNrFpm5it6A/l3kyZAb5e05+M 
+__Cookie: stat=kVY7Mrss6Eqmxcj5RdDQIHG9cAz+W4t5L3I3M/GVm7fBuTi3Ju7Iw8QJxy8OU22M 
 __
 _EXPECT . "AS1"
 _EXPECT . "Set-Cookie"

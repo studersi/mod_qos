@@ -58,10 +58,10 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 + QS_SrvMaxConnClose to support "percentage" of the MaxClient settings instead of abs. value
   - set variable mod_qos_con_ip (see mod_qos_con)
 + user tracking cookie (for statistics)
-  - timeout/renew
+  + timeout/renew
 - crawler
 - response filter (e.g. detecting "bad" js code)
-- automake to build tools
++ gnu autotools to build tools
 
 ----------------
 legend:
