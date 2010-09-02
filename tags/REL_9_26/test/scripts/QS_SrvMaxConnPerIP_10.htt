@@ -1,0 +1,94 @@
+#
+# $Id: QS_SrvMaxConnPerIP_10.htt,v 1.2 2010-08-02 17:47:38 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 5
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=6 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "done"
+_WAIT
+
+END
+
+CLIENT 5
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=4 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "done"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 1000
+
+# 1
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "\[error\] mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=10, concurrent connections=1., c=127.0.0.1"
+_EXEC tail -1 logs/error_log
+
+_MATCH EXEC "(.*)" NUM
+_EXEC grep -c 'mod_qos(031)' logs/error_log
+
+# 11
+_LOOP 10
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_END LOOP
+
+_MATCH EXEC "(.*)" NUMA
+_EXEC grep -c 'mod_qos(031)' logs/error_log
+_OP $NUMA SUB $NUM TOT
+_IF "$TOT" NOT MATCH "10"
+_EXIT FAILED
+_END IF
+
+_SLEEP 1000
+
+# 77
+_LOOP 66
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_END LOOP
+
+_SLEEP 200
+_EXPECT EXEC "\[error\] mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=10, concurrent connections=1., message repeated 20 times"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 3000
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+_SLEEP 200
+_EXPECT EXEC "\[error\] mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=10, concurrent connections=.*, message repeated 17 times"
+_EXEC tail -1 logs/error_log
+
+END
