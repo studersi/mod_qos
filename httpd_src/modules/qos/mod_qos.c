@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.236 2010-08-26 18:40:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.237 2010-09-02 18:45:59 pbuchbinder Exp $";
 static const char g_revision[] = "9.26";
 
 /************************************************************************
@@ -942,7 +942,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
 
 static void qos_cc_free(qos_s_t *s) {
   if(s->lock) {
-    apr_global_mutex_destroy(s->lock);
+    // called by apr_pool_cleanup_register() apr_global_mutex_destroy(s->lock);
   }
   if(s->m) {
     apr_shm_destroy(s->m);
@@ -1343,7 +1343,7 @@ static void qos_destroy_act(qs_actable_t *act) {
                act->size);
   act->child_init = 0;
   if(act->lock_file && act->lock_file[0]) {
-    apr_global_mutex_destroy(act->lock);
+    // called by apr_pool_cleanup_register() apr_global_mutex_destroy(act->lock);
     act->lock_file[0] = '\0';
     act->lock_file = NULL;
   }
@@ -4094,10 +4094,12 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     }
     apr_thread_mutex_unlock(sconf->inctx_t->lock); /* @CRT21 */
   }
-  apr_thread_mutex_lock(sconf->inctx_t->lock);
-  apr_thread_mutex_unlock(sconf->inctx_t->lock);
-  apr_thread_mutex_destroy(sconf->inctx_t->lock);
+  // apr_thread_mutex_lock(sconf->inctx_t->lock);
+  // apr_thread_mutex_unlock(sconf->inctx_t->lock);
+  // called via apr_pool_cleanup_register() apr_thread_mutex_destroy(sconf->inctx_t->lock);
+#ifdef WORKER_MPM
   apr_thread_exit(thread, APR_SUCCESS);
+#endif
   return NULL;
 }
 

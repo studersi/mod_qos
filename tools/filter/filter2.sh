@@ -1,4 +1,5 @@
 #!/bin/sh
+cd `dirname $0` 
 
 echo "/app/test" > access_log
 echo "/other" >> access_log

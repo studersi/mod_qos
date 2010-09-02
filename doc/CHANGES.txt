@@ -1,4 +1,8 @@
-Version
+Version 9.26
+
+ - Fix: no mutex destroy (called by register cleanup when
+   destroying pools). Should fix the restart issues with
+   MPM prefork binaries.
 
  - Renew user tracking cookie once every month.
 
