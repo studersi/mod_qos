@@ -1,3 +1,8 @@
+Version
+
+ - Several adaptions/fixes to the machine-readable version of
+   the status viewer.
+
 Version 9.26
 
  - Fix: no mutex destroy (called by register cleanup when
