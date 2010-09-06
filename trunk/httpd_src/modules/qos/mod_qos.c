@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.237 2010-09-02 18:45:59 pbuchbinder Exp $";
-static const char g_revision[] = "9.26";
+static const char revision[] = "$Id: mod_qos.c,v 5.238 2010-09-06 19:42:23 pbuchbinder Exp $";
+static const char g_revision[] = "9.27";
 
 /************************************************************************
  * Includes
@@ -149,6 +149,8 @@ static const char g_revision[] = "9.26";
 #endif
 #define QOS_CC_BEHAVIOR_TOLERANCE_STR "500"
 #define QOS_CC_BEHAVIOR_TOLERANCE_MIN 5
+
+#define QOS_DELIM "_"
 
 #ifdef QOS_HAS_SSL
 #define QOS_MAGIC_LEN 8
@@ -3382,7 +3384,7 @@ static void qos_ext_status_short(request_rec *r) {
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config,
                                                                  &qos_module);
   while(s) {
-    char *sn = apr_psprintf(r->pool, "%s.%s.%d",
+    char *sn = apr_psprintf(r->pool, "%s"QOS_DELIM"%s"QOS_DELIM"%d",
                             s->is_virtual ? "v" : "b",
                             s->server_hostname == NULL ? "-" :
                             ap_escape_html(r->pool, s->server_hostname),
@@ -3393,50 +3395,68 @@ static void qos_ext_status_short(request_rec *r) {
       if(!s->is_virtual && sconf->has_qos_cc && sconf->qos_cc_prefer_limit) {
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
         int hc = u->qos_cc->connections; /* not synchronized ... */
-        ap_rprintf(r, "%s.QS_ClientPrefer.%d[]: %d\n", sn,
+        ap_rprintf(r, "%s"QOS_DELIM"QS_ClientPrefer"QOS_DELIM"%d[]: %d\n", sn,
                    sconf->qos_cc_prefer_limit, hc);
       }
       /* request level */
       e = sconf->act->entry;
       while(e) {
-        if((e->limit > 0) && !e->condition) {
-          ap_rprintf(r, "%s.QS_LocRequestLimit%s.%d[%s]: %d\n", sn,
+        if((e->limit > 0) && !e->condition && !e->event) {
+          ap_rprintf(r, "%s"QOS_DELIM"QS_LocRequestLimit%s"QOS_DELIM"%d[%s]: %d\n", sn,
                      e->regex == NULL ? "" : "Match", 
                      e->limit,
                      e->url, 
                      e->counter);
         }
-        if(e->req_per_sec_limit > 0) {
-          ap_rprintf(r, "%s.QS_LocRequestPerSecLimit%s.%ld[%s]: %ld\n", sn,
+        if((e->req_per_sec_limit > 0) && !e->event) {
+          ap_rprintf(r, "%s"QOS_DELIM"QS_LocRequestPerSecLimit%s"QOS_DELIM"%ld[%s]: %ld\n", sn,
                      e->regex == NULL ? "" : "Match", 
                      e->req_per_sec_limit,
                      e->url,
                      e->req_per_sec);
         }
-        if(e->kbytes_per_sec_limit > 0) {
-          ap_rprintf(r, "%s.QS_LocKBytesPerSecLimit%s.%ld[%s]: %ld\n", sn,
+        if((e->kbytes_per_sec_limit > 0) && !e->event) {
+          ap_rprintf(r, "%s"QOS_DELIM"QS_LocKBytesPerSecLimit%s"QOS_DELIM"%ld[%s]: %ld\n", sn,
                      e->regex == NULL ? "" : "Match",
                      e->kbytes_per_sec_limit,
                      e->url, 
                      e->kbytes_per_sec);
         }
-        if(e->condition) {
-          ap_rprintf(r, "%s.QS_CondLocRequestLimitMatch.%d[%s]: %d\n", sn,
+        if(e->condition && !e->event) {
+          ap_rprintf(r, "%s"QOS_DELIM"QS_CondLocRequestLimitMatch"QOS_DELIM"%d[%s]: %d\n", sn,
                      e->limit,
                      e->url, 
                      e->counter);
         }
+        if(e->event && (e->limit != -1)) {
+          ap_rprintf(r, "%s"QOS_DELIM"QS_EventRequestLimit"QOS_DELIM"%d[%s]: %d\n", sn,
+                     e->limit,
+                     e->url, 
+                     e->counter);
+        }
+        if(e->event && (e->kbytes_per_sec_limit != 0)) {
+          ap_rprintf(r, "%s"QOS_DELIM"QS_EventKBytesPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
+                     e->kbytes_per_sec_limit,
+                     e->url, 
+                     e->kbytes_per_sec);
+        }
+        if(e->event && (e->req_per_sec_limit > 0)) {
+          ap_rprintf(r, "%s"QOS_DELIM"QS_EventPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
+                     e->req_per_sec_limit,
+                     e->url, 
+                     e->req_per_sec);
+        }
         e = e->next;
       }
       if(sconf->max_conn != -1) {
-          ap_rprintf(r, "%s.QS_SrvMaxConn.%d[]: %d\n", sn,
-                     sconf->max_conn,
-                     sconf->act->conn->connections);
+        ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConn"QOS_DELIM"%d[]: %d\n", sn,
+                   sconf->max_conn,
+                   sconf->act->conn->connections);
       }
       if(sconf->max_conn_close != -1) {
-          ap_rprintf(r, "%s.QS_SrvMaxConnClose.%d[]: %d\n", sn,
-                     sconf->max_conn_close,
-                     sconf->act->conn->connections);
+        ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConnClose"QOS_DELIM"%d[]: %d\n", sn,
+                   sconf->max_conn_close,
+                   sconf->act->conn->connections);
       }
     }
     s = s->next;

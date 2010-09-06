@@ -18,7 +18,8 @@
 - dynamic rule adjustment of the generic request filter
   - "in module" learing (instead of qsfilter2)
   - or use separate application (java?) to generate rules (ICAP?)
-  - privileged users/ip to learn from
+  - automatic rule adjustment
+    - privileged users/ip/??? to learn from automatically
 - improved anomaly detection (thresholds, logging)
   - set client event to be used in other rules
   - log event

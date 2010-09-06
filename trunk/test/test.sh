@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.126 2010-08-24 18:32:39 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.127 2010-09-06 19:42:23 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -637,12 +637,6 @@ if [ $? -ne 0 ]; then
   echo "FAILED qssign test failed"
 fi
 
-../tools/stat.sh
-if [ $? -ne 0 ]; then
-  ERRORS=`expr $ERRORS + 1`
-  echo "FAILED qspng test failed"
-fi
-
 ../tools/filter/filter2.sh
 if [ $? -ne 0 ]; then
   ERRORS=`expr $ERRORS + 1`
@@ -673,6 +667,11 @@ if [ $IPCS -ne $IPCS2 ]; then
     WARNINGS=`expr $WARNINGS + 1`
 fi
 
+../tools/stat.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qspng test failed"
+fi
 
 if [ $WARNINGS -ne 0 ]; then
     echo "ERROR: got $WARNINGS warnings and $ERRORS errors"
