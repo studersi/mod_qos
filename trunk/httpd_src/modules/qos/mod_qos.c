@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.238 2010-09-06 19:42:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.239 2010-09-08 20:11:36 pbuchbinder Exp $";
 static const char g_revision[] = "9.27";
 
 /************************************************************************
@@ -3739,8 +3739,8 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   }
   ap_rprintf(r, "<h2>mod_qos %s</h2>\n", ap_escape_html(r->pool, qos_revision(r->pool)));
 #ifdef QS_INTERNAL_TEST
-  ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE</p>\n", r);
-  ap_rprintf(r, "<p>client ip=%s</p>\n", qos_ip_long2str(r, qos_inet_addr(r->connection->remote_ip)));
+  ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE<br>\n", r);
+  ap_rprintf(r, "client ip=%s</p>\n", qos_ip_long2str(r, qos_inet_addr(r->connection->remote_ip)));
 #endif
   qos_show_ip(r, bsconf, qt);
   if(strcmp(r->handler, "qos-viewer") == 0) {
@@ -3817,7 +3817,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       e = sconf->act->entry;
       if(e) {
         ap_rputs("<tr class=\"rowt\">"
-                 "<td colspan=\"1\">location</td>"
+                 "<td colspan=\"1\">rule</td>"
                  "<td colspan=\"2\">"
                  "<div title=\"QS_LocRequestLimitMatch|QS_LocRequestLimit"
                  "|QS_CondLocRequestLimitMatch|QS_EventRequestLimit\">"
@@ -3831,7 +3831,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                  "kbytes/second</div></td>", r);
         ap_rputs("</tr>\n", r);
         ap_rputs("<tr class=\"rowt\">"
-                 "<td ></td>"
+                 "<td >&nbsp;</td>"
                  "<td >limit</td>"
                  "<td >current</td>"
                    "<td >wait rate</td>"
