@@ -1,5 +1,8 @@
 Version
 
+ - qsfilter2 may process "standard" Apache access log (TransferLog)
+   files files too (automatically detecting the request line).
+
  - Several adaptions/fixes to the machine-readable version of
    the status viewer.
 

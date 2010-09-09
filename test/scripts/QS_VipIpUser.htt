@@ -1,5 +1,5 @@
 #
-# $Id: QS_VipIpUser.htt,v 1.5 2010-03-01 20:34:35 pbuchbinder Exp $
+# $Id: QS_VipIpUser.htt,v 1.6 2010-09-09 17:55:26 pbuchbinder Exp $
 #
 
 
@@ -13,7 +13,7 @@ __GET /qos HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __
-_MATCH body ".p.client ip.(.*)..p." IP
+_MATCH body "client ip.(.*)..p." IP
 _EXPECT . "200 OK"
 _WAIT
 

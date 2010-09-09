@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.5 2010-09-06 19:42:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.6 2010-09-09 17:55:26 pbuchbinder Exp $";
 static const char g_revision[] = "9.27";
 
 /* system */
@@ -85,6 +85,8 @@ typedef enum  {
 
 #define QS_OVECCOUNT 3
 
+#define QOSC_REQ          "(OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PROPFIND|PROPPATCH|MKCOL|COPY|MOVE|LOCK|UNLOCK|VERSION-CONTROL|REPORT|CHECKOUT|CHECKIN|UNCHECKOUT|MKWORKSPACE|UPDATE|LABEL|MERGE|BASELINE-CONTROL|MKACTIVITY|ORDERPATCH|ACL|PATCH|SEARCH|BCOPY|BDELETE|BMOVE|BPROPFIND|BPROPPATCH|NOTIFY|POLL|SUBSCRIBE|UNSUBSCRIBE|X-MS-ENUMATTS|RPC_IN_DATA|RPC_OUT_DATA) /[\x20-\x21\x23-\xFF]* HTTP/"
+
 pcre *pcre_b64;
 pcre *pcre_hx;
 pcre *pcre_simple_path;
@@ -107,6 +109,8 @@ static int m_query_single_pcre = 0;
 static int m_query_len_pcre = 10;
 static int m_exit_on_error = 0;
 static int m_handler = 0;
+static pcre *m_req_regex;
+static int m_log_req_regex = 0;
 
 typedef struct {
   pcre *pcre;
@@ -288,6 +292,7 @@ static void qos_init_pcre() {
   sprintf(buf, "%s{%d,}", QS_HX, m_base64);
   pcre_hx = qos_pcre_compile(buf, 0);
   pcre_simple_path = qos_pcre_compile("^"QS_SIMPLE_PATH_PCRE"$", 0);
+  m_req_regex = qos_pcre_compile(QOSC_REQ, 0);
 }
 
 static void usage(char *cmd) {
@@ -1212,6 +1217,29 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
     if((strlen(line) > 1) && line[1] == '/') {
       doubleSlash = 1;
       strcpy(line, &line[1]);
+    }
+    if(line[0] != '/') {
+      /* no request line, maybe raw Apache access log? */
+      if(m_req_regex) {
+	int ovector[QS_OVECCOUNT];
+	int rc_c = pcre_exec(m_req_regex, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
+	if(!m_log_req_regex) {
+	  m_log_req_regex = 1;
+	  fprintf(stderr, "WARNING, line %d: "
+		  "unexpected data format, try to detect request lines automatically\n",
+		  line_nr);
+	}
+	if(rc_c >= 0) {
+	  char *sr;
+	  strncpy(line, &line[ovector[0]], ovector[1] - ovector[0]);
+	  line[ovector[1] - ovector[0]] = '\0';
+	  sr = strchr(line, ' ');
+	  while(sr[0] == ' ')sr++;
+	  strcpy(line, sr);
+	  sr = strrchr(line, ' ');
+	  sr[0] = '\0';
+	}
+      }
     }
     if(apr_uri_parse(lpool, line, &parsed_uri) != APR_SUCCESS) {
       fprintf(stderr, "ERROR, could parse uri %s\n", line);
