@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.6 2010-09-09 17:55:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.7 2010-09-14 20:01:19 pbuchbinder Exp $";
 static const char g_revision[] = "9.27";
 
 /* system */
@@ -301,7 +301,7 @@ static void usage(char *cmd) {
   space[strlen(cmd)] = '\0';
   printf("\n");
   printf("Utility to generate mod_qos request line rules out from\n");
-  printf("existing access log data.\n");
+  printf("existing access/audit log data.\n");
   printf("\n");
   printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", cmd);
   printf("       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-u 'uni'] [-t] [-v 0|1|2]\n", space);
@@ -318,11 +318,11 @@ static void usage(char *cmd) {
   printf(" These directives are used to define allowed request line patterns.\n");
   printf(" Request which do not match any of thses patterns are not allowed\n");
   printf(" to access the server.\n");
-  printf(" %s is an access log analyzer used to generate filter\n", cmd);
+  printf(" %s is an audit log analyzer used to generate filter\n", cmd);
   printf(" rules (perl compatible regular expressions) which may be used\n");
-  printf(" with mod_qos to deny access for suspect request lines\n");
-  printf(" (QS_PermitUri). It parses existing access log files in order to\n");
-  printf(" generate request line patterns cover all allowed request URIs.\n");
+  printf(" by mod_qos to deny access for suspect requests (QS_PermitUri rules).\n");
+  printf(" It parses existing audit log files in order to generate request\n");
+  printf(" patterns covering all allowed requests.\n");
   printf("\n");
   printf("Options\n");
   printf("  -i <path>\n");

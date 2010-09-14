@@ -51,7 +51,7 @@
 <tr><td>&nbsp;</td><td style="vertical-align: bottom;"><h2>mod_qos, qsfilter2</h2></td></tr>
 <tr><td>&nbsp;</td><td>
 <p>
-qsfilter2 is an access log analyzer used to generate filter rules (perl 
+qsfilter2 is an log analyzer used to generate filter rules (perl 
 compatible regular expressions) which may be used with mod_qos to
 deny access for suspect request lines.
 </p>
@@ -74,11 +74,11 @@ Summary
  These directives are used to define allowed request line patterns.
  Request which do not match any of thses patterns are not allowed
  to access the server.
- qsfilter2 is an access log analyzer used to generate filter
- rules (perl compatible regular expressions) which may be used
- with mod_qos to deny access for suspect request lines
- (QS_PermitUri). It parses existing access log files in order to
- generate request line patterns cover all allowed request URIs.
+ qsfilter2 is used used to generate filter rules based on audit log
+ data. It parses existing audit or access log files in order to
+ generate rule patterns covering all allowed request. These rules
+ (QS_PermitUri directives and patterns) may be used by mod_qos to
+ deny access for suspect request lines.
 
 Options
   -i &lt;path&gt;
