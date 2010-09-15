@@ -1,9 +1,6 @@
-# $Id: Makefile.am,v 1.1 2010-08-17 18:32:34 pbuchbinder Exp $
+# $Id: Makefile.am,v 1.2 2010-09-15 18:04:55 pbuchbinder Exp $
 
-bin_PROGRAMS=qscheck qsfilter2 qslog qspng qsrotate qssign
-
-qscheck_SOURCES= \
-	qscheck.c qs_util.c
+bin_PROGRAMS=qsfilter2 qslog qspng qsrotate qssign
 
 qsfilter2_SOURCES= \
 	qsfilter2.c

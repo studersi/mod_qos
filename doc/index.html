@@ -943,9 +943,18 @@ data has to be deflated using
 Sample configuration:<br>
 <pre>
 # configure the audit log writing the request body data to a file
-# (use this log to generate a whitelist rules using <a href="qsfilter.html">qsfilter2</a>
+# (use this log to generate whitelist rules using <a href="qsfilter.html">qsfilter2</a>
 # when QS_PermitUriBody has been enabled)
-CustomLog             logs/qsaudit_log  "%{qos-path}n%{qos-query}n"
+# format:
+#   %h:
+#   The remote host (used to filter by IP adress).
+#   %>s:
+#   The HTTP response status code.
+#   %{qos-loc}n
+#   The matching Location to generate the rules for.
+#   %{qos-path}n%{qos-query}n
+#   The request data required by qsfilter2 to generate rules.
+CustomLog             logs/qsaudit_log  "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
 
 # limit the max. body size since mod_parp loads the whole message into the
 # memory servers's:
@@ -1299,7 +1308,6 @@ records every minute.</li>
 <li><code>qssign</code><br>A log data integrity check tool. It reads log data 
 from stdin (pipe) and writes the signed data to stdout.</li>
 <li><code><a href="qsfilter.html">qsfilter2</a></code><br>Rule generator. Creates <code>QS_Permit*</code> directives and rule patterns from audit log files.</li>
-<li><code>qscheck</code><br>Monitoring tool for tcp connectivity tests to remote servers.</li>
 </ul>
 
 </p>

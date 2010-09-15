@@ -25,13 +25,13 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.3 2010-08-24 18:32:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.4 2010-09-15 18:04:55 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
-#include <config.h>
+//#include <config.h>
 
 /* openssl */
 #include <openssl/evp.h>

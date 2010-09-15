@@ -1,18 +1,16 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.34 2010-08-31 06:09:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.35 2010-09-15 18:04:55 pbuchbinder Exp $
 #
 # Script to build file release
 #
 # ./doc
 # contains the index.html/readme about mod_qos
-# ./apache
+# ./apache2
 # contains the source code
 # ./tools
 # supplemental code
-# ./generators
-# rule generators
 #
 # See http://sourceforge.net/projects/mod-qos/ for further
 # details about mod_qos.
@@ -77,7 +75,6 @@ rm -rf mod_qos-${VERSION}*
 mkdir -p mod_qos-${VERSION}/doc
 mkdir -p mod_qos-${VERSION}/apache2
 mkdir -p mod_qos-${VERSION}/tools/src
-mkdir -p mod_qos-${VERSION}/generators
 
 echo "install documentation"
 cp doc/README.TXT mod_qos-${VERSION}
