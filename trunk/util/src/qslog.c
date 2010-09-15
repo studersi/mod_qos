@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.1 2010-08-17 18:32:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.2 2010-09-15 18:04:55 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -41,7 +41,7 @@ static const char revision[] = "$Id: qslog.c,v 1.1 2010-08-17 18:32:34 pbuchbind
 #include <regex.h>
 #include <time.h>
 
-#include <config.h>
+//#include <config.h>
 
 #include "qs_util.h"
 
@@ -582,6 +582,7 @@ static void *loggerThread(void *argv) {
       }
     }
   }
+  return NULL;
 }
 
 static void usage(char *cmd) {

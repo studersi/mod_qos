@@ -23,14 +23,14 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.1 2010-08-17 18:32:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.2 2010-09-15 18:04:55 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <config.h>
+//#include <config.h>
 
 #include "qs_util.h"
 

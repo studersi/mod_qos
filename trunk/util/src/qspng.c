@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.1 2010-08-17 18:32:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.2 2010-09-15 18:04:55 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -32,7 +32,7 @@ static const char revision[] = "$Id: qspng.c,v 1.1 2010-08-17 18:32:34 pbuchbind
 #include <unistd.h>
 #include <png.h>
 
-#include <config.h>
+//#include <config.h>
 
 #include "qs_util.h"
 #include "char.h"
@@ -122,7 +122,7 @@ void lp_write_data(png_structp png_ptr, png_bytep data, png_size_t length) {
 
 /* png io callback (not used) */
 void lp_flush_data(png_structp png_ptr) {
-  FILE *f = png_get_io_ptr(png_ptr);
+  png_get_io_ptr(png_ptr);
   fprintf(stderr, "flush\n");
 }
 
@@ -344,7 +344,7 @@ static void qs_png_label(int width, int height, int border,
                         
 }
 
-lp_init(int width, int height, int border, png_bytep **start) {
+static void lp_init(int width, int height, int border, png_bytep **start) {
   png_bytep *row_pointers;
   int b_width = width + (2 * border);
   int b_height = height + (2 * border);
@@ -567,14 +567,13 @@ static void usage(char *cmd) {
 }
 
 int main(int argc, char **argv) {
-  int x, y;
+  int y;
   int width, height, b_width, b_height;
   png_byte color_type;
   png_byte bit_depth;
 
   int scale;
 
-  char nameBuffer[1024];
   png_structp png_ptr;
   png_infop info_ptr;
 
@@ -592,7 +591,6 @@ int main(int argc, char **argv) {
   int c_g = 50;
   int c_b = 175;
   const qs_png_elt_t* elt;
-  int i, j;
 
   if(cmd == NULL) {
     cmd = argv[0];

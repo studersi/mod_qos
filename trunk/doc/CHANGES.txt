@@ -1,4 +1,10 @@
-Version
+Version 9.27
+
+ - Remove qscheck utility (don't compile it by default).
+
+ - New variable %{qos-loc}n indicating the Location matching a
+   request (may be used to filter the audit log for dedicated
+   locations in order to generate QS_PermitUri rules).
 
  - qsfilter2 may process "standard" Apache access log (TransferLog)
    files files too (automatically detecting the request line).
