@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.239 2010-09-08 20:11:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.240 2010-09-15 18:04:34 pbuchbinder Exp $";
 static const char g_revision[] = "9.27";
 
 /************************************************************************
@@ -121,6 +121,7 @@ static const char g_revision[] = "9.27";
 #define QS_PARP_Q         "qos-parp-query"
 #define QS_PARP_QUERY     "qos-query"
 #define QS_PARP_PATH      "qos-path"
+#define QS_PARP_LOC       "qos-loc"
 
 #define QS_MFILE          "/var/tmp/"
 
@@ -436,6 +437,7 @@ typedef struct {
  * directory config
  */
 typedef struct {
+  char *path;
   apr_table_t *rfilter_table;
   int inheritoff;
   qs_headerfilter_mode_e headerfilter;
@@ -4160,9 +4162,11 @@ static void qos_audit(request_rec *r, qos_dir_config *dconf) {
     }
     apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
   }
+  apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_LOC), dconf->path);
   if(r->next) {
     apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_PATH), u);
     apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_QUERY), q);
+    apr_table_setn(r->next->notes, apr_pstrdup(r->pool, QS_PARP_LOC), dconf->path);
   }
 }
 
@@ -4617,7 +4621,7 @@ static int qos_header_parser(request_rec * r) {
      */
     status = qos_hp_filter(r, sconf, dconf);
     /* prepare audit log */
-    if(m_enable_audit) {
+    if(m_enable_audit && dconf) {
       qos_audit(r, dconf);
     }
     if(status != DECLINED) {
@@ -5524,7 +5528,9 @@ static int qos_logger(request_rec *r) {
 static void qos_audit_check(ap_directive_t * node) {
   ap_directive_t *pdir;
   for(pdir = node; pdir != NULL; pdir = pdir->next) {
-    if(pdir->args && strstr(pdir->args, "%{qos-path}n%{qos-query}n")) {
+    if(pdir->args && 
+       strstr(pdir->args, "%{"QS_PARP_PATH"}n") &&
+       strstr(pdir->args, "%{"QS_PARP_QUERY"}n")) {
       m_enable_audit = 1;
     }
     if(pdir->first_child != NULL) {
@@ -5989,6 +5995,7 @@ static void qos_insert_filter(request_rec *r) {
 
 static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_dir_config));
+  dconf->path = d;
   dconf->rfilter_table = apr_table_make(p, 1);
   dconf->inheritoff = 0;
   dconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
@@ -6011,6 +6018,7 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_dir_config *b = (qos_dir_config *)basev;
   qos_dir_config *o = (qos_dir_config *)addv;
   qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_dir_config));
+  dconf->path = o->path;
   if(o->headerfilter != QS_HEADERFILTER_OFF_DEFAULT) {
     dconf->headerfilter = o->headerfilter;
   } else {

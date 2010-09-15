@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.155 2010-08-17 19:04:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.156 2010-09-15 18:04:45 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -97,7 +97,7 @@ LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
 TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
 TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q....U"
-CustomLog               "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/qsaudit_log -z -g 4 -s 3600 -f" "%h %t %>s %{qos-path}n%{qos-query}n"
+CustomLog               "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/qsaudit_log -z -g 4 -s 3600 -f" "%h %t %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
 PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 

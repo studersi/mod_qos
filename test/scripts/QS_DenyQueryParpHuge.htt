@@ -1,5 +1,5 @@
 #
-# $Id: QS_DenyQueryParpHuge.htt,v 1.1 2009-12-16 19:32:41 pbuchbinder Exp $
+# $Id: QS_DenyQueryParpHuge.htt,v 1.2 2010-09-15 18:04:45 pbuchbinder Exp $
 #
 
 
@@ -24,7 +24,7 @@ _WAIT
 _CLOSE
 _SLEEP 200
 
-_EXPECT EXEC "200 /app/a/body\?user=1234&operation=sell2"
+_EXPECT EXEC "200 /app/a/body /app/a/body\?user=1234&operation=sell2"
 _EXEC tail -1 logs/qsaudit_log
 
 # 65494 bytes
@@ -43,7 +43,7 @@ _WAIT
 _CLOSE
 _SLEEP 200
 
-_EXPECT EXEC "200 /app/a/body\?user=1234&operation=sell.*END_OF_DATA"
+_EXPECT EXEC "200 /app/a/body /app/a/body\?user=1234&operation=sell.*END_OF_DATA"
 _EXEC tail -1 logs/qsaudit_log
 
 END
