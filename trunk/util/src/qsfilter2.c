@@ -27,8 +27,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.8 2010-09-15 18:04:55 pbuchbinder Exp $";
-static const char g_revision[] = "9.27";
+static const char revision[] = "$Id: qsfilter2.c,v 1.9 2010-09-17 18:57:20 pbuchbinder Exp $";
+static const char g_revision[] = "9.28";
 
 /* system */
 #include <stdio.h>
@@ -111,6 +111,7 @@ static int m_exit_on_error = 0;
 static int m_handler = 0;
 static pcre *m_req_regex;
 static int m_log_req_regex = 0;
+static const char *m_pfx = NULL;
 
 typedef struct {
   pcre *pcre;
@@ -386,12 +387,15 @@ static void usage(char *cmd) {
   printf("  -e\n");
   printf("     Exit on error.\n");
   printf("  -u 'uni'\n");
-  printf("     Use the same settings as you have used for the QS_Decoding directive.\n");
+  printf("     Enables additional decoding methods. Use the same settings as you have\n");
+  printf("     used for the QS_Decoding directive.\n");
   printf("  -p\n");
   printf("     Repesents query by pcre only (no literal strings).\n");
   printf("     Determines the worst case performance for the generated whitelist\n");
   printf("     by applying each rule for each request line (output is real time\n");
   printf("     filter duration per request line in milliseconds).\n");
+  printf("  -k <prefix>\n");
+  printf("     Prefix used to generate rule identifiers (QSF by default).\n");
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
   printf("     Don't use rules you haven't checked the request data used to\n");
@@ -1479,6 +1483,10 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	access_log = *(++argv);
       }
+    } else if(strcmp(*argv,"-k") == 0) {
+      if (--argc >= 1) {
+	m_pfx = *(++argv);
+      }
     } else if(strcmp(*argv,"-d") == 0) {
       if (--argc >= 1) {
 	m_path_depth = atoi(*(++argv));
@@ -1644,7 +1652,9 @@ int main(int argc, const char * const argv[]) {
     i = sk_num(st);
     for(; i > 0; i--) {
       r = (qs_rule_t *)sk_value(st, i-1);
-      printf("QS_PermitUri +QSF%.3d deny \"%s\"\n", j, r->rule);
+      printf("QS_PermitUri +%s%.3d deny \"%s\"\n",
+	     m_pfx ? m_pfx : "QSF",
+	     j, r->rule);
       j++;
     }
   }

@@ -1,3 +1,7 @@
+Version
+
+ - qsfilter2 features a rule id prefix (-k <prefix>).
+
 Version 9.27
 
  - Remove qscheck utility (don't compile it by default).
