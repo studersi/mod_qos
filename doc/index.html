@@ -1447,9 +1447,10 @@ KeepAliveTimeout        5
 QS_SrvMaxConnClose      70%
 
 # name of the HTTP response header which marks preferred clients (this
-# may be used to let the application decide which clients are "good",
-# e.g. authenticated users, you may also use QS_VipUser when using an
-# Apache authentication module such as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/" target="_blank">mod_auth_oid</a>):
+# may be used to let the application decide which clients are "good" and
+# have higher privileges, e.g. authenticated users. you may also use
+# the QS_VipUser directive when using an Apache authentication module such
+# as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/" target="_blank">mod_auth_oid</a>):
 QS_VipIPHeaderName      mod-qos-login
 
 # enables the known client perfer mode (server allows new TCP connections
