@@ -20,6 +20,8 @@
   - or use separate application (java?) to generate rules (ICAP?)
   - automatic rule adjustment
     - privileged users/ip/??? to learn from automatically
+  - crawler
+- response filter (e.g. detecting "bad" js code)
 - improved anomaly detection (thresholds, logging)
   - set client event to be used in other rules
   - log event
@@ -60,8 +62,6 @@ x initial socket timeout for new connections (tcp open only and no initial reque
   - set variable mod_qos_con_ip (see mod_qos_con)
 + user tracking cookie (for statistics)
   + timeout/renew
-- crawler
-- response filter (e.g. detecting "bad" js code)
 + gnu autotools to build tools
 
 ----------------

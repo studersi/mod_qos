@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.9 2010-09-17 18:57:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.10 2010-09-22 20:39:08 pbuchbinder Exp $";
 static const char g_revision[] = "9.28";
 
 /* system */
@@ -85,6 +85,7 @@ typedef enum  {
 
 #define QS_OVECCOUNT 3
 
+/* request line detection */
 #define QOSC_REQ          "(OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PROPFIND|PROPPATCH|MKCOL|COPY|MOVE|LOCK|UNLOCK|VERSION-CONTROL|REPORT|CHECKOUT|CHECKIN|UNCHECKOUT|MKWORKSPACE|UPDATE|LABEL|MERGE|BASELINE-CONTROL|MKACTIVITY|ORDERPATCH|ACL|PATCH|SEARCH|BCOPY|BDELETE|BMOVE|BPROPFIND|BPROPPATCH|NOTIFY|POLL|SUBSCRIBE|UNSUBSCRIBE|X-MS-ENUMATTS|RPC_IN_DATA|RPC_OUT_DATA) /[\x20-\x21\x23-\xFF]* HTTP/"
 
 pcre *pcre_b64;
@@ -1207,41 +1208,58 @@ static char *qos_post_optimization(apr_pool_t *lpool, char *query) {
 static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
 			    apr_table_t *rules_url, apr_table_t *special_rules,
 			    FILE *f, int *ln, int *dc, int first) {
-  char *line = apr_pcalloc(pool, MAX_LINE_BUFFER);
+  char *readline = apr_pcalloc(pool, MAX_LINE_BUFFER);
   int deny_count = *dc;
   int line_nr = *ln;
   apr_table_t *source_rules = apr_table_make(pool, 10);
   int rule_optimization = 300;
-  while(!qos_fgetline(line, MAX_LINE_BUFFER, f)) {
+  while(!qos_fgetline(readline, MAX_LINE_BUFFER, f)) {
     int doubleSlash = 0;
     apr_uri_t parsed_uri;
     apr_pool_t *lpool;
+    char *line = readline;
     apr_pool_create(&lpool, NULL);
     line_nr++;
     if((strlen(line) > 1) && line[1] == '/') {
       doubleSlash = 1;
-      strcpy(line, &line[1]);
+      line++;
     }
     if(line[0] != '/') {
-      /* no request line, maybe raw Apache access log? */
+      int ovector[QS_OVECCOUNT];
+      int rc_c = -1;
+      if(!m_log_req_regex) {
+	m_log_req_regex = 1;
+	fprintf(stderr, "WARNING, line %d: "
+		"unexpected data format, try to detect request lines automatically\n",
+		line_nr);
+      }
       if(m_req_regex) {
-	int ovector[QS_OVECCOUNT];
-	int rc_c = pcre_exec(m_req_regex, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
-	if(!m_log_req_regex) {
-	  m_log_req_regex = 1;
-	  fprintf(stderr, "WARNING, line %d: "
-		  "unexpected data format, try to detect request lines automatically\n",
-		  line_nr);
-	}
+	/* no request line, maybe raw Apache access log? */
+	rc_c = pcre_exec(m_req_regex, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
 	if(rc_c >= 0) {
 	  char *sr;
-	  strncpy(line, &line[ovector[0]], ovector[1] - ovector[0]);
+	  line = &line[ovector[0]];
 	  line[ovector[1] - ovector[0]] = '\0';
 	  sr = strchr(line, ' ');
 	  while(sr[0] == ' ')sr++;
-	  strcpy(line, sr);
+	  line = sr;
 	  sr = strrchr(line, ' ');
 	  sr[0] = '\0';
+	}
+      }
+      if(rc_c < 0) {
+	/* or an audit log like "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n" */
+	char *pe = line;
+	int pi = 3;
+	while(pe && (pi > 0)) {
+	  pi--;
+	  pe = strchr(pe, ' ');
+	  if(pe) {
+	    pe++;
+	  }
+	}
+	if(pe && pe[0] == '/' && (pi == 0)) {
+	  line = pe;
 	}
       }
     }
