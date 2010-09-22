@@ -2,6 +2,9 @@ Version
 
  - qsfilter2 features a rule id prefix (-k <prefix>).
 
+ - qsfilter2 may process audit log using the sample log
+   format "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
+
 Version 9.27
 
  - Remove qscheck utility (don't compile it by default).

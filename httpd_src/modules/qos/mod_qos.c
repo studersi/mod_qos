@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.240 2010-09-15 18:04:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.241 2010-09-22 20:39:07 pbuchbinder Exp $";
 static const char g_revision[] = "9.27";
 
 /************************************************************************
@@ -5759,7 +5759,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   ap_add_version_component(pconf, apr_psprintf(pconf, "mod_qos/%s", rev));
                
 #ifndef QOS_HAS_SSL
-  fprintf(stdout, "\033[1mmod_qos, requires OpenSSL, compile Apache using \"--enable-ssl\"\033[0m\n");
+  fprintf(stdout, "\033[1mmod_qos requires OpenSSL, compile Apache using \"--enable-ssl\"\033[0m\n");
   fflush(stdout);
 #endif
 #ifdef QS_INTERNAL_TEST
