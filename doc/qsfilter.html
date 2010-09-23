@@ -60,7 +60,8 @@ deny access for suspect request lines.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
 <pre>
-Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-h] [-b &lt;num&gt;] [-p|-s|-m|-o] [-l &lt;len&gt;] [-n] [-e] [-u 'uni'] [-t]
+Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-h] [-b &lt;num&gt;] [-p|-s|-m|-o] [-l &lt;len&gt;] [-n] [-e] [-u 'uni'] [-k &lt;prefix&gt;] [-t]
+
 
 Summary
  mod_qos implements a request filter which validates each request
@@ -144,6 +145,8 @@ Options
   -u 'uni'
      Defines additional decoding methods. Use the same setting as you
      have used for the QS_Decoding directive.
+  -k
+     Prefix used to generate rule identifiers (QSF by default).
   -t
      Determines the worst case performance for the generated whitelist
      by applying each rule for each request line (output is real time

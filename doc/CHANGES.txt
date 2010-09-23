@@ -4,6 +4,7 @@ Version
 
  - qsfilter2 may process audit log using the sample log
    format "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
+   without pre-processing.
 
 Version 9.27
 

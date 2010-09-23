@@ -59,7 +59,7 @@
 #  path depth (-d): 1
 #  disable path only regex (-h): no
 #  base64 detection level (-b): 5
-#  redundancy check (-n): on
+#  redundancy check (-n): yes
 #  pcre only for query (-p): no
 #  decoding (-u): url
 #  one pcre for query value (-m): no

@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.10 2010-09-22 20:39:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.11 2010-09-23 17:56:59 pbuchbinder Exp $";
 static const char g_revision[] = "9.28";
 
 /* system */
@@ -306,7 +306,8 @@ static void usage(char *cmd) {
   printf("existing access/audit log data.\n");
   printf("\n");
   printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", cmd);
-  printf("       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-u 'uni'] [-t] [-v 0|1|2]\n", space);
+  printf("       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-u 'uni']\n", space);
+  printf("       %s [-k <prefix>] [-t] [-v 0|1|2]\n", space);
   printf("\n");
   printf("Summary\n");
   printf(" mod_qos implements a request filter which validates each request\n");
@@ -397,6 +398,9 @@ static void usage(char *cmd) {
   printf("     filter duration per request line in milliseconds).\n");
   printf("  -k <prefix>\n");
   printf("     Prefix used to generate rule identifiers (QSF by default).\n");
+  printf("  -t\n");
+  printf("     Calculates the maximal latency per request (worst case) using the\n");
+  printf("     generated rules.\n");
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
   printf("     Don't use rules you haven't checked the request data used to\n");
@@ -1204,6 +1208,42 @@ static char *qos_post_optimization(apr_pool_t *lpool, char *query) {
   return query;
 }
 
+static void qos_auto_detect(char **raw) {
+  char *line = *raw;
+  int rc_c = -1;
+  if(m_req_regex) {
+    int ovector[QS_OVECCOUNT];
+    /* no request line, maybe raw Apache access log? */
+    rc_c = pcre_exec(m_req_regex, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
+    if(rc_c >= 0) {
+      char *sr;
+      line = &line[ovector[0]];
+      line[ovector[1] - ovector[0]] = '\0';
+      sr = strchr(line, ' ');
+      while(sr[0] == ' ')sr++;
+      *raw = sr;
+      sr = strrchr(line, ' ');
+      sr[0] = '\0';
+    }
+  }
+  if(rc_c < 0) {
+    /* or an audit log like "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n" */
+    char *pe = line;
+    int pi = 3;
+    while(pe && (pi > 0)) {
+      pi--;
+      pe = strchr(pe, ' ');
+      if(pe) {
+	pe++;
+      }
+    }
+    if(pe && pe[0] == '/' && (pi == 0)) {
+      *raw = pe;
+    }
+  }
+  return;
+}
+
 /* process the input file line by line */
 static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
 			    apr_table_t *rules_url, apr_table_t *special_rules,
@@ -1225,43 +1265,13 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
       line++;
     }
     if(line[0] != '/') {
-      int ovector[QS_OVECCOUNT];
-      int rc_c = -1;
       if(!m_log_req_regex) {
 	m_log_req_regex = 1;
 	fprintf(stderr, "WARNING, line %d: "
 		"unexpected data format, try to detect request lines automatically\n",
 		line_nr);
       }
-      if(m_req_regex) {
-	/* no request line, maybe raw Apache access log? */
-	rc_c = pcre_exec(m_req_regex, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
-	if(rc_c >= 0) {
-	  char *sr;
-	  line = &line[ovector[0]];
-	  line[ovector[1] - ovector[0]] = '\0';
-	  sr = strchr(line, ' ');
-	  while(sr[0] == ' ')sr++;
-	  line = sr;
-	  sr = strrchr(line, ' ');
-	  sr[0] = '\0';
-	}
-      }
-      if(rc_c < 0) {
-	/* or an audit log like "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n" */
-	char *pe = line;
-	int pi = 3;
-	while(pe && (pi > 0)) {
-	  pi--;
-	  pe = strchr(pe, ' ');
-	  if(pe) {
-	    pe++;
-	  }
-	}
-	if(pe && pe[0] == '/' && (pi == 0)) {
-	  line = pe;
-	}
-      }
+      qos_auto_detect(&line);
     }
     if(apr_uri_parse(lpool, line, &parsed_uri) != APR_SUCCESS) {
       fprintf(stderr, "ERROR, could parse uri %s\n", line);
@@ -1422,15 +1432,19 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 }
 
 static void qos_measurement(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules, FILE *f, int *ln) {
-  char *line = apr_pcalloc(pool, MAX_LINE_BUFFER);
+  char *readline = apr_pcalloc(pool, MAX_LINE_BUFFER);
   int line_nr = 0;
-  while(!qos_fgetline(line, MAX_LINE_BUFFER, f)) {
+  while(!qos_fgetline(readline, MAX_LINE_BUFFER, f)) {
     apr_uri_t parsed_uri;
     apr_pool_t *lpool;
+    char *line = readline;
     apr_pool_create(&lpool, NULL);
     line_nr++;
     if((strlen(line) > 1) && line[1] == '/') {
       strcpy(line, &line[1]);
+    }
+    if(line[0] != '/') {
+      qos_auto_detect(&line);
     }
     if(apr_uri_parse(lpool, line, &parsed_uri) != APR_SUCCESS) {
       fprintf(stderr, "ERROR, could parse uri %s\n", line);
@@ -1626,7 +1640,7 @@ int main(int argc, const char * const argv[]) {
   printf("#  path depth (-d): %d\n", m_path_depth);
   printf("#  disable path only regex (-h): %s\n", m_handler == 1 ? "yes" : "no");
   printf("#  base64 detection level (-b): %d\n", m_base64);
-  printf("#  redundancy check (-n): %s\n", m_redundant == 1 ? "on" : "off");
+  printf("#  redundancy check (-n): %s\n", m_redundant == 1 ? "yes" : "no");
   printf("#  pcre only for query (-p): %s\n", m_query_pcre == 1 ? "yes" : "no");
   printf("#  decoding (-u): url");
   if(m_mode & QOS_DEC_MODE_FLAGS_UNI) {
