@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.242 2010-09-23 17:56:56 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.243 2010-09-24 18:07:08 pbuchbinder Exp $";
 static const char g_revision[] = "9.28";
 
 /************************************************************************
@@ -1655,20 +1655,36 @@ static int qos_return_error(conn_rec *c) {
 /**
  * returns custom error page
  */
-static void qos_error_response(request_rec *r, const char *error_page) {
-  /* do (almost) the same as ap_die() does */
-  const char *error_notes;
-  r->status = m_retcode;
-  r->connection->keepalive = AP_CONN_CLOSE;
-  r->no_local_copy = 1;
-  apr_table_setn(r->subprocess_env, "REQUEST_METHOD", r->method);
-  if ((error_notes = apr_table_get(r->notes, 
-                                   "error-notes")) != NULL) {
-    apr_table_setn(r->subprocess_env, "ERROR_NOTES", error_notes);
+static int qos_error_response(request_rec *r, const char *error_page) {
+  if(r->subprocess_env) {
+    const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
+    if(v) {
+      error_page = v;
+    }
   }
-  r->method = apr_pstrdup(r->pool, "GET");
-  r->method_number = M_GET;
-  ap_internal_redirect(error_page, r);
+  if(error_page) {
+    /* do (almost) the same as ap_die() does */
+    const char *error_notes;
+    r->status = m_retcode;
+    r->connection->keepalive = AP_CONN_CLOSE;
+    r->no_local_copy = 1;
+    apr_table_setn(r->subprocess_env, "REQUEST_METHOD", r->method);
+    if ((error_notes = apr_table_get(r->notes, 
+                                     "error-notes")) != NULL) {
+      apr_table_setn(r->subprocess_env, "ERROR_NOTES", error_notes);
+    }
+    /* external or internal redirect */
+    if(strncasecmp(error_page, "http", 4) == 0) {
+      apr_table_set(r->headers_out, "Location", error_page);
+      return HTTP_MOVED_TEMPORARILY;
+    } else {
+      r->method = apr_pstrdup(r->pool, "GET");
+      r->method_number = M_GET;
+      ap_internal_redirect(error_page, r);
+      return DONE;
+    }
+  }
+  return DECLINED;
 }
 
 /**
@@ -2318,18 +2334,13 @@ static int qos_hp_event_deny_filter(request_rec *r, qos_srv_config *sconf, qos_d
   if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
     apr_status_t rv = qos_per_dir_event_rules(r, dconf);
     if(rv != APR_SUCCESS) {
+      int rc;
       const char *error_page = sconf->error_page;
       qs_req_ctx *rctx = qos_rctx_config_get(r);
-      if(r->subprocess_env) {
-        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-        if(v) {
-          error_page = v;
-        }
-      }
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-      if(error_page) {
-        qos_error_response(r, error_page);
-        return DONE;
+      rc = qos_error_response(r, error_page);
+      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+        return rc;
       }
       return rv;
     }
@@ -2355,18 +2366,13 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
   }
 
   if(rv != APR_SUCCESS) {
+    int rc;
     const char *error_page = sconf->error_page;
     qs_req_ctx *rctx = qos_rctx_config_get(r);
-    if(r->subprocess_env) {
-      const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-      if(v) {
-        error_page = v;
-      }
-    }
     rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-    if(error_page) {
-      qos_error_response(r, error_page);
-      return DONE;
+    rc = qos_error_response(r, error_page);
+    if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+      return rc;
     }
     return rv;
   }
@@ -2673,18 +2679,13 @@ static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_c
     apr_status_t rv = qos_header_filter(r, sconf, r->headers_in, "request",
                                         sconf->hfilter_table, dconf->headerfilter);
     if(rv != APR_SUCCESS) {
+      int rc;
       const char *error_page = sconf->error_page;
       qs_req_ctx *rctx = qos_rctx_config_get(r);
-      if(r->subprocess_env) {
-        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-        if(v) {
-          error_page = v;
-        }
-      }
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-      if(error_page) {
-        qos_error_response(r, error_page);
-        return DONE;
+      rc = qos_error_response(r, error_page);
+      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+        return rc;
       }
       return rv;
     }
@@ -2804,18 +2805,13 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
     }
   }
   if(rv != DECLINED) {
+    int rc;
     const char *error_page = sconf->error_page;
     qs_req_ctx *rctx = qos_rctx_config_get(r);
-    if(r->subprocess_env) {
-      const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-      if(v) {
-        error_page = v;
-      }
-    }
     rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-    if(error_page) {
-      qos_error_response(r, error_page);
-      rv = DONE;
+    rc = qos_error_response(r, error_page);
+    if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+      rv = rc;
     }
   }
   return rv;
@@ -2853,11 +2849,8 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
       if(vip) {
         rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
       } else {
+        int rc;
         const char *error_page = sconf->error_page;
-        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-        if(v) {
-          error_page = v;
-        }
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX(065)"access denied, QS_ClientEventBlockCount rule: "
                       "max=%d, current=%d, c=%s, id=%s",
@@ -2866,9 +2859,9 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
                       r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                       qos_unique_id(r, "065"));
         rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-        if(error_page) {
-          qos_error_response(r, error_page);
-          return DONE;
+        rc = qos_error_response(r, error_page);
+        if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+          return rc;
         }
         return m_retcode;
       }
@@ -4548,18 +4541,13 @@ static int qos_header_parser1(request_rec * r) {
     /** QS_LimitRequestBody */
     rv = qos_limitrequestbody_ctl(r, sconf, dconf);
     if(rv != APR_SUCCESS) {
+      int rc;
       const char *error_page = sconf->error_page;
       qs_req_ctx *rctx = qos_rctx_config_get(r);
-      if(r->subprocess_env) {
-        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-        if(v) {
-          error_page = v;
-        }
-      }
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-      if(error_page) {
-        qos_error_response(r, error_page);
-        return DONE;
+      rc = qos_error_response(r, error_page);
+      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+        return rc;
       }
       return rv;
     }
@@ -4696,6 +4684,7 @@ static int qos_header_parser(request_rec * r) {
      * client control
      */
     if(qos_hp_cc(r, sconf, &msg, &uid) != DECLINED) {
+      int rc;
       const char *error_page = sconf->error_page;
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                     "%s, id=%s", msg == NULL ? "-" : msg,
@@ -4703,16 +4692,10 @@ static int qos_header_parser(request_rec * r) {
       if(!rctx) {
         rctx = qos_rctx_config_get(r);
       }
-      if(r->subprocess_env) {
-        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-        if(v) {
-          error_page = v;
-        }
-      }
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-      if(error_page) {
-        qos_error_response(r, error_page);
-        return DONE;
+      rc = qos_error_response(r, error_page);
+      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+        return rc;
       }
       return m_retcode;
     }
@@ -4730,12 +4713,6 @@ static int qos_header_parser(request_rec * r) {
       const char *error_page = sconf->error_page;
       if(!rctx) {
         rctx = qos_rctx_config_get(r);
-      }
-      if(r->subprocess_env) {
-        const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-        if(v) {
-          error_page = v;
-        }
       }
       rctx->entry_cond = e_cond;
       rctx->entry = e;
@@ -4764,6 +4741,7 @@ static int qos_header_parser(request_rec * r) {
             rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
           } else {
             /* std user */
+            int rc;
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                           QOS_LOG_PFX(010)"access denied, QS_LocRequestLimit* rule: %s(%d),"
                           " concurrent requests=%d,"
@@ -4772,9 +4750,9 @@ static int qos_header_parser(request_rec * r) {
                           r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                           qos_unique_id(r, "010"));
             rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-            if(error_page) {
-              qos_error_response(r, error_page);
-              return DONE;
+            rc = qos_error_response(r, error_page);
+            if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+              return rc;
             }
             return m_retcode;
           }
@@ -4835,6 +4813,7 @@ static int qos_header_parser(request_rec * r) {
                 rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
               } else {
                 /* std user */
+                int rc;
                 ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                               QOS_LOG_PFX(011)"access denied, QS_CondLocRequestLimitMatch"
                               " rule: %s(%d),"
@@ -4844,9 +4823,9 @@ static int qos_header_parser(request_rec * r) {
                               r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                               qos_unique_id(r, "011"));
                 rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-                if(error_page) {
-                  qos_error_response(r, error_page);
-                  return DONE;
+                rc = qos_error_response(r, error_page);
+                if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+                  return rc;
                 }
                 return m_retcode;
               }
@@ -4904,6 +4883,7 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
       }
       rctx->maxpostcount += bytes;
       if(rctx->maxpostcount > maxpost) {
+        int rc;
         const char *error_page = sconf->error_page;
         qs_req_ctx *rctx = qos_rctx_config_get(r);
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -4912,16 +4892,10 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
                       maxpost, rctx->maxpostcount,
                       r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                       qos_unique_id(r, "044"));
-        if(r->subprocess_env) {
-          const char *v = apr_table_get(r->subprocess_env, "QS_ErrorPage");
-          if(v) {
-            error_page = v;
-          }
-        }
         rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-        if(error_page) {
-          qos_error_response(r, error_page);
-          return DONE;
+        rc = qos_error_response(r, error_page);
+        if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+          return rc;
         }
         return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }

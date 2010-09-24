@@ -345,7 +345,9 @@ than <code>QS_LocKBytesPerSecLimitMatch</code>.
 <code>QS_ErrorPage &lt;URL&gt;</code><br>Defines an error page to be returned when 
 a request is denied. The defined URL must be a (S)HTML document accessible by the client. 
 You may enable <a href="http://httpd.apache.org/docs/2.2/howto/ssi.html" target="_blank">server-side includes</a> in order to present detailed error messages based on the <a href="#errorlog">error codes</a> 
-provided by mod_qos.
+provided by mod_qos.<br>
+Alternatively, a HTTP redirect (302) to a dedicated error page may be defined using 
+an absolute URL defining schema, hostname, and path.
 </li>
 <li>
 <code>QS_ErrorResponseCode &lt;code&gt;</code><br>Defines the HTTP response code which 
@@ -565,6 +567,8 @@ BrowserMatch             "(MSIE 5\.)"             QS_KeepAliveTimeout=65
 
 # dynamic error page URL (per host error page):
 SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.html
+# external redirect to a sever hosting the error page:
+SetEnvIf     Request_URI /app                     QS_ErrorPage=http://server/error.html
 </pre>
 </td></tr>
 </table>

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.157 2010-09-22 20:39:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.158 2010-09-24 18:07:08 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -200,6 +200,7 @@ QS_UserTrackingCookieName stat
    # -----------------------------------------------------------------
 
    QS_ErrorPage               /error-docs/error.shtml
+   SetEnvIf                   Request_URI /qos/parp/err302  QS_ErrorPage=http://server1/error.html
 
    QS_LocRequestLimitDefault                 30
    QS_LocRequestLimit         /cgi            5
