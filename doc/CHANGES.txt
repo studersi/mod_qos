@@ -1,4 +1,6 @@
-Version
+Version 9.28
+
+ - QS_ErrorPage supports external HTTP redirect (302).
 
  - qsfilter2 features a rule id prefix (-k <prefix>).
 
