@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.243 2010-09-24 18:07:08 pbuchbinder Exp $";
-static const char g_revision[] = "9.28";
+static const char revision[] = "$Id: mod_qos.c,v 5.244 2010-09-27 20:14:16 pbuchbinder Exp $";
+static const char g_revision[] = "9.29";
 
 /************************************************************************
  * Includes
@@ -6806,7 +6806,8 @@ const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->error_page = apr_pstrdup(cmd->pool, path);
-  if(sconf->error_page[0] != '/') {
+  if((sconf->error_page[0] != '/') &&
+     (strncmp(sconf->error_page, "http", 4) != 0)) {
     return apr_psprintf(cmd->pool, "%s: requires absolute path (%s)", 
                         cmd->directive->directive, sconf->error_page);
   }
