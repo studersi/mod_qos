@@ -1,3 +1,7 @@
+Version
+
+ - Fix: syntax check for QS_ErrorPage.
+
 Version 9.28
 
  - QS_ErrorPage supports external HTTP redirect (302).
