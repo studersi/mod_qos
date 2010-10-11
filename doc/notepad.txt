@@ -63,6 +63,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 + user tracking cookie (for statistics)
   + timeout/renew
 + gnu autotools to build tools
++ create request id if mod_uniqueid is not available
 
 ----------------
 legend:

@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.244 2010-09-27 20:14:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.245 2010-10-11 18:46:26 pbuchbinder Exp $";
 static const char g_revision[] = "9.29";
 
 /************************************************************************
@@ -626,6 +626,7 @@ APR_DECLARE_OPTIONAL_FN(char *, parp_body_data, (request_rec *, apr_size_t *));
 static APR_OPTIONAL_FN_TYPE(parp_hp_table) *qos_parp_hp_table_fn = NULL;
 static APR_OPTIONAL_FN_TYPE(parp_body_data) *parp_appl_body_data_fn = NULL;
 static int m_requires_parp = 0;
+static int m_has_unique_id = 0;
 static int m_enable_audit = 0;
 
 /************************************************************************
@@ -997,8 +998,14 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
 static const char *qos_unique_id(request_rec *r, const char *eid) {
   const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
   apr_table_set(r->notes, "error-notes", eid ? eid : "-");
-  if(uid == NULL) {
+  if((uid == NULL) && m_has_unique_id) {
+    /* error,  module loaded but no id available? */
     return apr_pstrdup(r->pool, "-");
+  } else if(uid == NULL) {
+    /* generate simple id (not more than one error per pid/tid within a microsecond) */
+    uid = apr_psprintf(r->pool, "%"APR_TIME_T_FMT"%"APR_PID_T_FMT"%lu",
+                       r->request_time, getpid(), apr_os_thread_current());
+    apr_table_set(r->subprocess_env, "UNIQUE_ID", uid);
   }
   return uid;
 }
@@ -5513,10 +5520,10 @@ static void qos_audit_check(ap_directive_t * node) {
   }
 }
 
-static int qos_parp_check() {
+static int qos_module_check(const char *m) {
   module *modp = NULL;
   for(modp = ap_top_module; modp; modp = modp->next) {
-    if(strcmp(modp->name, "mod_parp.c") == 0) {
+    if(strcmp(modp->name, m) == 0) {
       return APR_SUCCESS;
     }
   }
@@ -5662,9 +5669,17 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   apr_pool_cleanup_register(sconf->pool, sconf->act,
                             qos_cleanup_shm, apr_pool_cleanup_null);
 
+  if(qos_module_check("mod_unique_id.c") != APR_SUCCESS) {
+    m_has_unique_id = 0;
+    ap_log_error(APLOG_MARK, APLOG_WARNING, 0, bs, 
+                 QOS_LOG_PFX(009)"mod_unique_id not available (mod_qos generates simple"
+                 " request id if required)");
+  } else {
+    m_has_unique_id = 1;
+  }
   qos_audit_check(ap_conftree);
   if(m_requires_parp) {
-    if(qos_parp_check() != APR_SUCCESS) {
+    if(qos_module_check("mod_parp.c") != APR_SUCCESS) {
       qos_parp_hp_table_fn = NULL;
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                    QOS_LOG_PFX(009)"mod_parp not available"
