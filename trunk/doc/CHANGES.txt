@@ -1,5 +1,8 @@
 Version
 
+ - Generates a simple request id (unique per pid/tid within a
+   microsecond) if mod_unique_id has not been loaded.
+
  - Fix: syntax check for QS_ErrorPage.
 
 Version 9.28
