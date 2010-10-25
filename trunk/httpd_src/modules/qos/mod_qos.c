@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.246 2010-10-25 18:47:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.247 2010-10-25 19:17:37 pbuchbinder Exp $";
 static const char g_revision[] = "9.29";
 
 /************************************************************************
@@ -4550,17 +4550,19 @@ static int qos_post_read_request(request_rec *r) {
           }
         } /* else, grant access to the error page */
       } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
-        /* no valid cookie in request */
-        char *redirect_page = apr_pstrcat(r->pool, qos_this_host(r),
-                                          sconf->user_tracking_cookie_force,
-                                          "?r=",
-                                          qos_encrypt(r, sconf,
-                                                      (unsigned char *)r->unparsed_uri,
-                                                      strlen(r->unparsed_uri)),
-                                          NULL);
-        apr_table_set(r->headers_out, "Location", redirect_page);
-        qos_send_user_tracking_cookie(r, sconf);
-        return HTTP_MOVED_TEMPORARILY;
+        if(r->method_number == M_GET) {
+          /* no valid cookie in request, redirect to check page */
+          char *redirect_page = apr_pstrcat(r->pool, qos_this_host(r),
+                                            sconf->user_tracking_cookie_force,
+                                            "?r=",
+                                            qos_encrypt(r, sconf,
+                                                        (unsigned char *)r->unparsed_uri,
+                                                        strlen(r->unparsed_uri)),
+                                            NULL);
+          apr_table_set(r->headers_out, "Location", redirect_page);
+          qos_send_user_tracking_cookie(r, sconf);
+          return HTTP_MOVED_TEMPORARILY;
+        }
       }
     }
   }
