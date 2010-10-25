@@ -1,5 +1,7 @@
 Version 9.29
 
+ - Add Strict-Transport-Security to the default response header rules.
+
  - Directive QS_UserTrackingCookieName features an optional
    "path" attribute. This path specifies a local error page
    which is shown to users not accepting the user tracking

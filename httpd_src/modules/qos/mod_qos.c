@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.247 2010-10-25 19:17:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.248 2010-10-25 19:42:28 pbuchbinder Exp $";
 static const char g_revision[] = "9.29";
 
 /************************************************************************
@@ -732,6 +732,7 @@ static const qos_her_t qs_res_header_rules[] = {
   { "Server", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Set-Cookie", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 }, 
   { "Set-Cookie2", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Strict-Transport-Security", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Vary", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "WWW-Authenticate", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "X-Frame-Options", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
