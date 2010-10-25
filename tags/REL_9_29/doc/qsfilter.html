@@ -1,0 +1,195 @@
+<html>
+<head>
+ <title>mod_qos, qsfilter2</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<meta name="author" content="Pascal Buchbinder">
+<link rel="shortcut icon" href="favicon.ico" />
+<style TYPE="text/css">
+<!--  
+  body {
+	background-color: white;
+	color: black;
+	font-family: arial, helvetica, verdana, sans-serif;
+	font-weight: normal;
+	text-align: left;
+  }
+  a:link    { color: rgb(95,10,15); }
+  a:visited { color:black; }
+  a:focus   { color:black; text-decoration:underline; }
+  a:hover   { color:black; text-decoration:none; }
+  a:active  { color:black; text-decoration:underline; }
+-->
+</style>
+</head>
+<body>
+<!--
+
+ Quality of service module for Apache Web Server.
+
+ See http://sourceforge.net/projects/mod-qos/ for further details.
+
+ Copyright (C) 2007-2010 Pascal Buchbinder
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 2
+ of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ MA 02110-1301, USA.
+
+-->
+<table>
+<tbody>
+<tr><td>&nbsp;</td><td style="vertical-align: bottom;"><h2>mod_qos, qsfilter2</h2></td></tr>
+<tr><td>&nbsp;</td><td>
+<p>
+qsfilter2 is an log analyzer used to generate filter rules (perl 
+compatible regular expressions) which may be used with mod_qos to
+deny access for suspect request lines.
+</p>
+<img src="qsfilter2_process.gif" alt="qsfilter2 usage, overview">
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+<pre>
+Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-h] [-b &lt;num&gt;] [-p|-s|-m|-o] [-l &lt;len&gt;] [-n] [-e] [-u 'uni'] [-k &lt;prefix&gt;] [-t]
+
+
+Summary
+ mod_qos implements a request filter which validates each request
+ line. The module supports both, negative and positive security
+ model. The QS_Deny* directives are used to specify request line
+ patterns which are not allowed to access the server (negative
+ security model / blacklist). These rules are used to restrict
+ access to certain resources which should not be available to
+ users or to protect the server from malicious patterns. The
+ QS_Permit* rules implement a positive security model (whitelist).
+ These directives are used to define allowed request line patterns.
+ Request which do not match any of thses patterns are not allowed
+ to access the server.
+ qsfilter2 is used used to generate filter rules based on audit log
+ data. It parses existing audit or access log files in order to
+ generate rule patterns covering all allowed request. These rules
+ (QS_PermitUri directives and patterns) may be used by mod_qos to
+ deny access for suspect request lines.
+
+Options
+  -i &lt;path&gt;
+     Input file containing request URIs.
+     The URIs for this file have to be extracted from the servers
+     access logs. Each line of the input file contains a request
+     URI consiting of a path and and query.
+     Example:
+
+       /aaa/index.do
+       /aaa/edit?image=1.jpg
+       /aaa/image/1.jpg
+       /aaa/view?page=1
+       /aaa/edit?document=1
+
+     These access log data must include current request URIs but
+     also request lines from previous rule generation steps. It
+     must also include request lines which cover manually generated
+     rules.
+  -c &lt;path&gt;
+     mod_qos configuration file defining QS_DenyRequestLine and
+     QS_PermitUri directives.
+     qsfilter2 generates rules from access log data automatically.
+     Manually generated rules (QS_PermitUri) may be provided from
+     this file. Note: each manual rule must be represented by a
+     request URI in the input data (-i) in order to make sure not
+     to be deleted by the rule optimisation algorithm.
+     QS_Deny* rules from this file are used to filter request lines
+     which should not be used for whitelist rule generation.
+     Example:
+
+       # manually defined whitelist rule:
+       QS_PermitUri +view deny "^[/a-zA-Z0-9]+/view\?(page=[0-9]+)?$"
+       # filter unwanted request line patterns:
+       QS_DenyRequestLine +printable deny ".*[\x00-\x19].*"
+
+  -d &lt;num&gt;
+     Depth (sub locations) of the path string which is defined as a
+     literal string. Default is 1.
+  -h
+     Always use a string representing the handler name in the path even
+     the url does not have a query. See also -d option.
+  -b &lt;num&gt;
+     Replaces url pattern by the regular expression when detecting
+     a base64/hex encoded string. Detecting sensibility is defined by
+     a numeric value. You should use values higher than 5 (default)
+     or 0 to disable this function.
+  -p
+     Repesents query by pcre only (no literal strings).
+  -s
+     Uses one single pcre for the whole query string.
+  -m
+     Uses one pcre for multipe query values (recommended mode).
+  -o
+     Does not care the order of query parameters.
+  -l &lt;len&gt;
+     Outsizes the query length by the defined length ({0,size+len}),
+     default is 10.
+  -n
+     Disables redundant rules elimination.
+  -e
+     Exit on error.
+  -u 'uni'
+     Defines additional decoding methods. Use the same setting as you
+     have used for the QS_Decoding directive.
+  -k
+     Prefix used to generate rule identifiers (QSF by default).
+  -t
+     Determines the worst case performance for the generated whitelist
+     by applying each rule for each request line (output is real time
+     filter duration per request line in milliseconds).
+
+Output
+ The output of qsfilter2 is written to stdout. The output
+ contains the generated QS_PermitUri directives but also
+ information about the source which has been used to generate
+ these rules. It is very important to check the validity of
+ each request line which has been used to calculate the
+ QS_PermitUri rules. Each request line which has been used to
+ generate a new rule is shown in the output prefixed by
+ "ADD line &lt;line number&gt;:". These request lines should be
+ stored and reused at any later rule generation (add them to
+ the URI input file). The subsequent line shows the generated
+ rule.
+ At the end of data processing a list of all generated
+ QS_PermitUri rules is shown. These directives may be used
+ withn the configuration file used by mod_qos.
+
+Sample Usage and Output
+  ./qsfilter2 -i loc.txt -c httpd.conf -m -e
+  ...
+  # ADD line 1: /aaa/index.do
+  # 003 ^(/[a-zA-Z0-9-_]+)+[/]?\.?[a-zA-Z]{0,4}$
+  # ADD line 3: /aaa/view?page=1
+  # --- ^[/a-zA-Z0-9]+/view\?(page=[0-9]+)?$
+  # ADD line 4: /aaa/edit?document=1
+  # 004 ^[/a-zA-Z]+/edit\?((document)(=[0-9]*)*[&]?)*$
+  # ADD line 5: /aaa/edit?image=1.jpg
+  # 005 ^[/a-zA-Z]+/edit\?((image)(=[0-9\.a-zA-Z]*)*[&]?)*$
+  ...
+  QS_PermitUri +QSF001 deny "^[/a-zA-Z]+/edit\?((document|image)(=[0-9\.a-zA-Z]*)*[&]?)*$"
+  QS_PermitUri +QSF002 deny "^[/a-zA-Z0-9]+/view\?(page=[0-9]+)?$"
+  QS_PermitUri +QSF003 deny "^(/[a-zA-Z0-9-_]+)+[/]?\.?[a-zA-Z]{0,4}$"
+</pre>
+</td></tr>
+</table>
+</p>
+<br>
+<hr>
+<a href="http://sourceforge.net/projects/mod-qos/"><img align="right" src="http://sflogo.sourceforge.net/sflogo.php?group_id=196697&amp;type=1" width="88" height="31" border="0" alt="mod_qos at SourceForge.net" /></a>
+<SMALL><SMALL>&copy; 2007-2010, Pascal Buchbinder</SMALL></SMALL>
+</body>
+</html>

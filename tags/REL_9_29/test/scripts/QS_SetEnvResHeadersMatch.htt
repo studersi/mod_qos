@@ -1,0 +1,93 @@
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_SLEEP 100
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "500"
+_EXPECT . "code=060"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__Set-Cookie: JSessionID=1111
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__Set-Cookie: JSessionID=1112
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__Set-Cookie: language=session
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__Set-Cookie: JSessionID=1113
+__
+__==AS1==
+
+
+END
