@@ -66,6 +66,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 + create request id if mod_uniqueid is not available
 + enforce cookie support (redirect until client sends cookie), option for
   user tracking cookie or seperate cookie?
+  - disable for certain user-agent headers
 
 ----------------
 legend:

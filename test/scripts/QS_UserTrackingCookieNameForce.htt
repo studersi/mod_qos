@@ -1,5 +1,5 @@
 #
-# $Id: QS_UserTrackingCookieNameForce.htt,v 1.1 2010-10-25 18:47:33 pbuchbinder Exp $
+# $Id: QS_UserTrackingCookieNameForce.htt,v 1.2 2010-10-25 19:17:38 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -12,7 +12,7 @@ __Host: 127.0.0.1
 __Connection: keep-alive
 __
 _MATCH headers "Set-Cookie: stat=(.*); Path=/; Max-Age=2" UTC
-_MATCH headers "Location: (.*)" LOC
+_MATCH headers "Location: .*:[0-9]+(.*)" LOC
 _EXPECT . "302"
 _WAIT
 _CLOSE
@@ -23,7 +23,7 @@ __Host: 127.0.0.1
 __Connection: keep-alive
 __Cookie: stat=$UTC
 __
-_MATCH headers "Location: (.*)" LOC
+_MATCH headers "Location: .*:[0-9]+(.*)" LOC
 _EXPECT . "302"
 _WAIT
 _CLOSE
@@ -45,7 +45,7 @@ __Host: 127.0.0.1
 __Connection: keep-alive
 __
 _MATCH headers "Set-Cookie: stat=(.*); Path=/; Max-Age=2" UTC
-_MATCH headers "Location: (.*)" LOC
+_MATCH headers "Location: .*:[0-9]+(.*)" LOC
 _EXPECT . "302"
 _WAIT
 _CLOSE
