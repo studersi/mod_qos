@@ -1,4 +1,10 @@
-Version
+Version 9.29
+
+ - Directive QS_UserTrackingCookieName features an optional
+   "path" attribute. This path specifies a local error page
+   which is shown to users not accepting the user tracking
+   cookie (note: search engines do not support this cookie
+   enforcement and won't be able to crawl the site).
 
  - Generates a simple request id (unique per pid/tid within a
    microsecond) if mod_unique_id has not been loaded.
