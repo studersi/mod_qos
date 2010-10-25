@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.159 2010-10-11 18:46:26 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.160 2010-10-25 18:47:33 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -121,6 +121,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
 <IfDefine usertrack>
 QS_UserTrackingCookieName stat
+</IfDefine>
+<IfDefine usertrack_force>
+QS_UserTrackingCookieName stat /error-docs/cookie.html
 </IfDefine>
 
 #DumpIOInput             On

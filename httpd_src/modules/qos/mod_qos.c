@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.245 2010-10-11 18:46:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.246 2010-10-25 18:47:33 pbuchbinder Exp $";
 static const char g_revision[] = "9.29";
 
 /************************************************************************
@@ -477,6 +477,7 @@ typedef struct {
   char *cookie_name;
   char *cookie_path;
   char *user_tracking_cookie;
+  char *user_tracking_cookie_force;
   int max_age;
 #ifdef QOS_HAS_SSL
   unsigned char key[EVP_MAX_KEY_LENGTH];
@@ -628,6 +629,9 @@ static APR_OPTIONAL_FN_TYPE(parp_body_data) *parp_appl_body_data_fn = NULL;
 static int m_requires_parp = 0;
 static int m_has_unique_id = 0;
 static int m_enable_audit = 0;
+/* mod_ssl, forward and optional function */
+APR_DECLARE_OPTIONAL_FN(int, ssl_is_https, (conn_rec *));
+static APR_OPTIONAL_FN_TYPE(ssl_is_https) *qos_is_https = NULL;
 
 /************************************************************************
  * private functions
@@ -1084,6 +1088,7 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
 static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf) {
   const char *new_user = apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW);
   if(new_user) {
+    char *sc;
     apr_size_t retcode;
     char tstr[MAX_STRING_LEN];
     apr_time_exp_t n;
@@ -1099,18 +1104,19 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf)
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
     /* valid for 300 days */
-    apr_table_add(r->headers_out, "Set-Cookie",
-                  apr_psprintf(r->pool, "%s=%s; Path=/; Max-Age=25920000",
-                               sconf->user_tracking_cookie, c));
+    sc = apr_psprintf(r->pool, "%s=%s; Path=/; Max-Age=25920000",
+                      sconf->user_tracking_cookie, c);
+    apr_table_add(r->headers_out, "Set-Cookie", sc);
+    apr_table_add(r->err_headers_out, "Set-Cookie", sc);
   }
   return;
 }
 
 /** user tracking cookie: b64(enc(<rand><magic><month><UNIQUE_ID>)) */
 static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, const char *value) {
-  const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
+  const char *uid = qos_unique_id(r, NULL);
   const char *verified = NULL;
-  if(uid == NULL) {
+  if((uid == NULL) || (strcmp(uid, "-") == 0)) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                   QOS_LOG_PFX(066)"user tracking requires mod_unique_id");
   } else {
@@ -4214,6 +4220,78 @@ static void qos_deflate_contentlength(request_rec *r) {
   }
 }
 
+static char *qos_server_alias(request_rec *r, const char *server_hostname) {
+  char *server = apr_pstrdup(r->pool, r->server->server_hostname);
+  char *p;
+  if(server_hostname) {
+    if(strcasecmp(server_hostname, r->server->server_hostname) == 0) {
+      /* match ServerName */
+      server = apr_pstrdup(r->pool, r->server->server_hostname);
+    } else if(r->server->names) {
+      int i;
+      apr_array_header_t *names = r->server->names;
+      char **name = (char **)names->elts;
+      for(i = 0; i < names->nelts; ++i) {
+        if(!name[i]) continue;
+        if(strcasecmp(server_hostname, name[i]) == 0) {
+          /* match ServerAlias */
+          server = apr_pstrdup(r->pool, name[i]);
+        }
+      }
+    } else if(r->server->wild_names) {
+      int i;
+      apr_array_header_t *names = r->server->wild_names;
+      char **name = (char **)names->elts;
+      for(i = 0; i < names->nelts; ++i) {
+        if(!name[i]) continue;
+        if(!ap_strcasecmp_match(server_hostname, name[i]))
+          /* match ServerAlias using wildcards */
+          server = apr_pstrdup(r->pool, server_hostname);
+      }
+    }
+  }
+  p = strchr(server, ':');
+  if(p) {
+    p[0] = '\0';
+  }
+  return server;
+}
+
+/** returns the url to this server, e.g. https://server1 or http://server1:8080 */
+static char *qos_this_host(request_rec *r) {
+  const char *hostport= apr_table_get(r->headers_in, "Host");
+  int port = 0;
+  int ssl = 0;
+  const char *server_hostname = r->server->server_hostname;
+  if(qos_is_https) {
+    ssl = qos_is_https(r->connection);
+  }
+  if(hostport) {
+    char *p;
+    hostport = apr_pstrdup(r->pool, hostport);
+    if((p = strchr(hostport, ':')) != NULL) {
+      server_hostname = qos_server_alias(r, hostport);
+      p[0] = '\0';
+      p++;
+      port = atoi(p);
+    } else {
+      server_hostname = qos_server_alias(r, hostport);
+    }
+  }
+  if(port == 0) {
+    int default_port = ssl ? 443 : 80;
+    if(r->server->addrs->host_port == default_port) {
+      return apr_psprintf(r->pool, "%s%s",
+                          ssl ? "https://" : "http://",
+                          server_hostname);
+    }
+  }
+  return apr_psprintf(r->pool, "%s%s:%d",
+                      ssl ? "https://" : "http://",
+                      server_hostname,
+                      r->server->addrs->host_port);
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -4436,12 +4514,6 @@ static int qos_post_read_request(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
-#ifdef QOS_HAS_SSL
-  if(sconf && sconf->user_tracking_cookie) {
-    char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
-    qos_get_create_user_tracking(r, sconf, value);
-  }
-#endif
   /* QS_SrvMaxConn: propagate connection to env vars */
   if(sconf && ((sconf->max_conn != -1) || (sconf->min_rate_max != -1))) {
     const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
@@ -4452,6 +4524,47 @@ static int qos_post_read_request(request_rec *r) {
   if(qos_request_check(r) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;
   }
+  /* QS_UserTrackingCookieName */
+#ifdef QOS_HAS_SSL
+  if(sconf && sconf->user_tracking_cookie) {
+    char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
+    qos_get_create_user_tracking(r, sconf, value);
+    if(sconf->user_tracking_cookie_force) {
+      if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
+        /* access to check url */
+        if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) == NULL) {
+          if(r->parsed_uri.query && (strncmp(r->parsed_uri.query, "r=", 2) == 0)) {
+            /* client has send a cookie, redirect to original url */
+            char *redirect_page;
+            int buf_len = 0;
+            unsigned char *buf;
+            char *q = r->parsed_uri.query;
+            buf_len = qos_decrypt(r, sconf, &buf, &q[2]);
+            if(buf_len > 0) {
+              redirect_page = apr_psprintf(r->pool, "%s%.*s",
+                                           qos_this_host(r),
+                                           buf_len, buf);
+              apr_table_set(r->headers_out, "Location", redirect_page);
+              return HTTP_MOVED_TEMPORARILY;
+            }
+          }
+        } /* else, grant access to the error page */
+      } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
+        /* no valid cookie in request */
+        char *redirect_page = apr_pstrcat(r->pool, qos_this_host(r),
+                                          sconf->user_tracking_cookie_force,
+                                          "?r=",
+                                          qos_encrypt(r, sconf,
+                                                      (unsigned char *)r->unparsed_uri,
+                                                      strlen(r->unparsed_uri)),
+                                          NULL);
+        apr_table_set(r->headers_out, "Location", redirect_page);
+        qos_send_user_tracking_cookie(r, sconf);
+        return HTTP_MOVED_TEMPORARILY;
+      }
+    }
+  }
+#endif
   qos_parp_prr(r, sconf);
   if(sconf && (sconf->req_rate != -1)) {
     inctx = qos_get_ifctx(r->connection->input_filters);
@@ -5678,6 +5791,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     m_has_unique_id = 1;
   }
   qos_audit_check(ap_conftree);
+  qos_is_https = APR_RETRIEVE_OPTIONAL_FN(ssl_is_https);
   if(m_requires_parp) {
     if(qos_module_check("mod_parp.c") != APR_SUCCESS) {
       qos_parp_hp_table_fn = NULL;
@@ -6240,6 +6354,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->user_tracking_cookie == NULL) {
     o->user_tracking_cookie = b->user_tracking_cookie;
+    o->user_tracking_cookie_force = b->user_tracking_cookie_force;
   }
 #ifdef QOS_HAS_SSL
   if(o->keyset == 0) {
@@ -6873,10 +6988,19 @@ const char *qos_error_code_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
 }
 
 /** QS_UserTrackingCookieName */
-const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg, const char *name) {
+const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg, const char *name,
+                                         const char *force) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->user_tracking_cookie = apr_pstrdup(cmd->pool, name);
+  sconf->user_tracking_cookie_force = NULL;
+  if(force) {
+    if(force[0] != '/') {
+      return apr_psprintf(cmd->pool, "%s: invalid path '%s'", 
+                          cmd->directive->directive, force);
+    }
+    sconf->user_tracking_cookie_force = apr_pstrdup(cmd->pool, force);
+  }
   return NULL;
 }
 
@@ -7678,11 +7802,11 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_ErrorResponseCode <code>, defines the HTTP response code, default is 500."),
 #ifdef QOS_HAS_SSL
-  AP_INIT_TAKE1("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
-                RSRC_CONF,
-                "QS_UserTrackingCookieName <name>, enables the user tracking cookie by"
-                " defining a cookie name. User tracking requires mod_unique_id."
-                " This feature is disabled by default."),
+  AP_INIT_TAKE12("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_UserTrackingCookieName <name> [<path>], enables the user tracking cookie by"
+                 " defining a cookie name. User tracking requires mod_unique_id."
+                 " This feature is disabled by default."),
   /* vip session */
   AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
                 RSRC_CONF,

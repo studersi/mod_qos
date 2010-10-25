@@ -64,6 +64,8 @@ x initial socket timeout for new connections (tcp open only and no initial reque
   + timeout/renew
 + gnu autotools to build tools
 + create request id if mod_uniqueid is not available
++ enforce cookie support (redirect until client sends cookie), option for
+  user tracking cookie or seperate cookie?
 
 ----------------
 legend:

@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.129 2010-09-24 18:07:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.130 2010-10-25 18:47:33 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -567,7 +567,6 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SetEnvResBody.htt"
 fi
-
 ./run.sh -s ./scripts/QS_UserTrackingCookieName.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -577,6 +576,12 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_UserTrackingCookieName2.htt"
+fi
+./ctl.sh restart -D cc -D real_ip -D usertrack_force> /dev/null
+./run.sh -s ./scripts/QS_UserTrackingCookieNameForce.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_UserTrackingCookieNameForce.htt"
 fi
 
 # MaxRequestsPerChild&QS_SrvMinDataRate

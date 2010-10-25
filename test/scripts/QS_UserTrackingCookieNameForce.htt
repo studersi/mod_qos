@@ -1,0 +1,87 @@
+#
+# $Id: QS_UserTrackingCookieNameForce.htt,v 1.1 2010-10-25 18:47:33 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html?id=1 HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__
+_MATCH headers "Set-Cookie: stat=(.*); Path=/; Max-Age=2" UTC
+_MATCH headers "Location: (.*)" LOC
+_EXPECT . "302"
+_WAIT
+_CLOSE
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET $LOC HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: stat=$UTC
+__
+_MATCH headers "Location: (.*)" LOC
+_EXPECT . "302"
+_WAIT
+_CLOSE
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET $LOC HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: stat=$UTC
+__
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+# client does not accept cookies -----------------
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html?id=1 HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__
+_MATCH headers "Set-Cookie: stat=(.*); Path=/; Max-Age=2" UTC
+_MATCH headers "Location: (.*)" LOC
+_EXPECT . "302"
+_WAIT
+_CLOSE
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET $LOC HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__
+_EXPECT . "Cookie Check Page"
+_EXPECT . "!302"
+_WAIT
+_CLOSE
+
+# invalid request page -----------------------------
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /error-docs/cookie.html?r=8haaJtlnxqyfHG4tUAcrD2YY/LLO HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: stat=$UTC
+__
+_EXPECT . "Cookie Check Page"
+_EXPECT . "!302"
+_WAIT
+_CLOSE
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "GET /htt/index.html\?id=1 HTTP/1.1"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+END
