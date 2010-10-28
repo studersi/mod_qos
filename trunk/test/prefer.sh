@@ -4,7 +4,7 @@ ERRORS=0
 
 ./ctl.sh restart -D max_clients -D cc > /dev/null
 sleep 1
-echo "-- QS_ClientPrefer.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientPrefer.htt" >>  logs/error_log
 ./run.sh scripts/Log.htt > /dev/null
 QSTART=`grep -c "mod_qos(063)" logs/error_log`
 echo "run ./scripts/QS_ClientPrefer.htt"

@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.130 2010-10-25 18:47:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.131 2010-10-28 19:42:30 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -50,13 +50,13 @@ IPCS=`ipcs | wc -l`
 rm -f logs/*
 rm -rf /var/tmp/qosc/server1
 echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
-echo "-- start `date` --" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- start --" >>  logs/error_log
 # -----------------------------------------------------------------
 ./ctl.sh start -D real_ip > /dev/null
 (echo "GET /test/index.html HTTP/1.0";  echo ""; echo "") | telnet localhost $QS_PORT_BASE 2>/dev/null 1>/dev/null
 
 # -----------------------------------------------------------------
-echo "-- client opens more than 10 connections, QS_SrvMaxConnPerIP_10.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- client opens more than 10 connections, QS_SrvMaxConnPerIP_10.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_SrvMaxConnPerIP_10.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -67,7 +67,7 @@ sleep 2
 ./ctl.sh start > /dev/null
 
 # -----------------------------------------------------------------
-echo "-- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_LocRequestLimit_5.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -80,7 +80,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- 3 requests with matching regex rule max 2 (overrides location rule), QS_LocRequestLimitMatch_2.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 3 requests with matching regex rule max 2 (overrides location rule), QS_LocRequestLimitMatch_2.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_LocRequestLimitMatch_2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -99,7 +99,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- conditional rule QS_CondLocRequestLimitMatch.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- conditional rule QS_CondLocRequestLimitMatch.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_CondLocRequestLimitMatch.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -107,7 +107,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- vip session, QS_VipHeaderName.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- vip session, QS_VipHeaderName.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_VipHeaderName.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -121,7 +121,7 @@ fi
 sleep 1
 
 # -----------------------------------------------------------------
-echo "-- vip request, QS_VipRequest.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- vip request, QS_VipRequest.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_VipRequest.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -130,7 +130,7 @@ fi
 sleep 1
 
 # -----------------------------------------------------------------
-echo "-- vip request and graceful restart, QS_VipHeaderName_Graceful.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- vip request and graceful restart, QS_VipHeaderName_Graceful.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_VipHeaderName_Graceful.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -139,7 +139,7 @@ fi
 sleep 1
 
 # -----------------------------------------------------------------
-echo "-- graceful, QS_Graceful.htt" >> logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- graceful, QS_Graceful.htt" >> logs/error_log
 ./run.sh -se ./scripts/QS_Graceful.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -155,7 +155,7 @@ fi
 sleep 1
 
 # -----------------------------------------------------------------
-echo "-- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
 ./run.sh -se ./scripts/QS_SrvMaxConn_50.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -163,7 +163,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- connection timeout, QS_SrvConnTimeout_body.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- connection timeout, QS_SrvConnTimeout_body.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_SrvConnTimeout_body.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -173,7 +173,7 @@ fi
 sleep 2
 # -----------------------------------------------------------------
 CLT="QS_SrvMaxConnClosePercent.htt QS_SrvMaxConnClose_20.htt"
-echo "-- disable keep alive, QS_SrvMaxConnClose*" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- disable keep alive, QS_SrvMaxConnClose*" >>  logs/error_log
 for E in $CLR; do
     ./htt.sh -se ./scripts/$E
     if [ $? -ne 0 ]; then
@@ -183,7 +183,7 @@ for E in $CLR; do
 done
 
 # -----------------------------------------------------------------
-echo "-- static filter, QS_DenyRequestLine.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- static filter, QS_DenyRequestLine.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_DenyRequestLine.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -196,7 +196,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- dynamic keep alive, QS_KeepAliveTimeout" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- dynamic keep alive, QS_KeepAliveTimeout" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_KeepAliveTimeout.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -204,7 +204,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- request/sec limit, QS_LocRequestPerSecLimit_5.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- request/sec limit, QS_LocRequestPerSecLimit_5.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_LocRequestPerSecLimit_5.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -217,7 +217,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- kbytes/sec limit, QS_LocKBytesPerSecLimit.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- kbytes/sec limit, QS_LocKBytesPerSecLimit.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_LocKBytesPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -230,37 +230,37 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- QS_EventRequestLimit.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_EventRequestLimit.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_EventRequestLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventRequestLimit.htt"
 fi
-echo "-- req/sec limit, QS_EventPerSecLimit0.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit0.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_EventPerSecLimit0.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit0.htt"
 fi
-echo "-- req/sec limit, QS_EventPerSecLimit.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_EventPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit.htt"
 fi
-echo "-- req/sec limit, QS_EventPerSecLimit2.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit2.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_EventPerSecLimit2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit2.htt"
 fi
-echo "-- req/sec limit, QS_EventPerSecLimit3.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit3.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_EventPerSecLimit3.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit3.htt"
 fi
-echo "-- req/sec limit, QS_EventPerSecLimit4.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit4.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_EventPerSecLimit4.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -268,7 +268,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
-echo "-- req/sec limit, QS_LocRequestPerSecLimitMatch.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_LocRequestPerSecLimitMatch.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_LocRequestPerSecLimitMatch.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -281,7 +281,7 @@ if [ $? -ne 0 ]; then
 fi
 sleep 1
 # -----------------------------------------------------------------
-echo "-- multiple requests in parallel, MultiRequest.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- multiple requests in parallel, MultiRequest.htt" >>  logs/error_log
 ./run.sh -se ./scripts/MultiRequest.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -299,7 +299,7 @@ fi
 sleep 2
 
 # -----------------------------------------------------------------
-echo "-- kbytes/sec limit, QS_EventKBytesPerSecLimit.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- kbytes/sec limit, QS_EventKBytesPerSecLimit.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_EventKBytesPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -314,7 +314,7 @@ cat logs/access1_log | awk '{print $7}' > logs/loc1.htt
 sleep 3
 ./ctl.sh start -D permit_filter > /dev/null
 sleep 2
-echo "-- permit filter QS_PermitUri.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- permit filter QS_PermitUri.htt" >>  logs/error_log
 echo "-- permit filter QS_PermitUri.htt" >>  logs/error1_log
 ./htt.sh -se ./scripts/QS_PermitUri.htt
 if [ $? -ne 0 ]; then
@@ -328,7 +328,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_PermitUriAudit.htt"
 fi
 
-echo "-- header filter, QS_HeaderFilter.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- header filter, QS_HeaderFilter.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_HeaderFilter.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -347,14 +347,14 @@ if [ $EXT_ERR -gt 0 ]; then
 fi
 ERRORS=`expr $ERRORS + $EXT_ERR`
 
-echo "-- QS_SetEnvResHeaders" >> logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SetEnvResHeaders" >> logs/error_log
 ./htt.sh -se ./scripts/QS_SetEnvResHeaders.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SetEnvResHeaders.htt"
 fi
 ./ctl.sh restart -D real_ip -D cc > /dev/null
-echo "-- QS_VipUser" >> logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_VipUser" >> logs/error_log
 ./htt.sh -se ./scripts/QS_VipUser.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -383,14 +383,14 @@ fi
 
 # - real ip -------------------------------------------------------
 ./ctl.sh restart -D real_ip > /dev/null
-echo "-- QS_ClientEventBlockCount.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventBlockCount.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_ClientEventBlockCount.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventBlockCount.htt"
 fi
 sleep 3
-echo "-- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_ClientEventPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -402,7 +402,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_ClientEventPerSecLimit_t.htt"
 fi
 ./ctl.sh restart -D real_ip > /dev/null
-echo "-- QS_ClientEventBlockCount_Status.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventBlockCount_Status.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_ClientEventBlockCount_Status.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -417,7 +417,7 @@ fi
 sleep 1
 
 ./ctl.sh restart > /dev/null
-echo "-- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
 ./htt.sh -se ./scripts/QS_ClientEventPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -470,7 +470,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_0.htt"
 fi
-echo "-- QS_SrvRequestRate_1.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_1.htt" >>  logs/error_log
 ./run.sh -s ./scripts/QS_SrvRequestRate_1.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -481,7 +481,7 @@ if [ `tail -2 logs/access_log | grep -c ' r; '` -eq 0 ]; then
     echo "FAILED QS_SrvRequestRate_1.htt (no lowrate)"
     tail -2 logs/access_log
 fi
-echo "-- QS_SrvRequestRate_2.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_2.htt" >>  logs/error_log
 ./run.sh -s ./scripts/QS_SrvRequestRate_2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -492,26 +492,26 @@ if [ `tail -22 logs/error_log | grep -c "mod_qos(034)"` -ne 4 ]; then
     echo "FAILED QS_SrvRequestRate_0/1.htt"
     tail -22 logs/error_log | grep -c "mod_qos(034)"
 fi
-echo "-- QS_SrvRequestRate_3.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_3.htt" >>  logs/error_log
 ./run.sh -s ./scripts/QS_SrvRequestRate_3.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_3.htt"
 fi
 ./ctl.sh restart > /dev/null
-echo "-- QS_SrvRequestRate_4.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_4.htt" >>  logs/error_log
 ./run.sh -s ./scripts/QS_SrvRequestRate_4.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_4.htt"
 fi
-echo "-- QS_SrvRequestRate_5.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_5.htt" >>  logs/error_log
 ./run.sh -s ./scripts/QS_SrvRequestRate_5.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_5.htt"
 fi
-echo "-- QS_SrvRequestRate_6.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_6.htt" >>  logs/error_log
 ./run.sh -s ./scripts/QS_SrvRequestRate_6.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -521,21 +521,21 @@ if [ `tail -17 logs/error_log | grep -c "QS_SrvMinDataRate rule (in)"` -eq 0 ]; 
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_6.htt (no error log entry)"
 fi
-echo "-- QS_SrvRequestRate_7.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_7.htt" >>  logs/error_log
 ./run.sh -s ./scripts/QS_SrvRequestRate_7.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_7.htt"
 fi
 
-echo "-- QS_SrvRequestRate_conn_off.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_conn_off.htt" >>  logs/error_log
 ./run.sh -s ./scripts/QS_SrvRequestRate_conn_off.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_conn_off.htt"
 fi
 
-echo "-- QS_SrvRequestRate_off.htt" >>  logs/error_log
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_off.htt" >>  logs/error_log
 ./htt.sh -s ./scripts/QS_SrvRequestRate_off.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
