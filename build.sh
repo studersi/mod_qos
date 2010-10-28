@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.40 2010-10-11 18:46:26 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.41 2010-10-28 19:42:30 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -29,7 +29,7 @@
 TOP=`pwd`
 
 #APACHE_VER=2.0.59
-APACHE_VER=2.2.16
+APACHE_VER=2.2.17
 
 echo "build Apache $APACHE_VER"
 if [ ! -d httpd-${APACHE_VER} ]; then
