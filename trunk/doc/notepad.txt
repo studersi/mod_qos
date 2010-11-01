@@ -67,7 +67,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 + enforce cookie support (redirect until client sends cookie), option for
   user tracking cookie or seperate cookie?
   - disable for certain user-agent headers
-- OpenSSL 1.0 support for qsfilter2 (safestack).
++ OpenSSL 1.0 support for qsfilter2 (safestack).
 
 ----------------
 legend:

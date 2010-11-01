@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex b64 crs mem
+PROGRAMS = regex b64 crs mem json
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -37,10 +37,15 @@ mem_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 mem: $(mem_OBJECTS)
 	$(LINK) $(mem_LTFLAGS) -static $(mem_OBJECTS) $(mem_LDADD)
 
+json_OBJECTS = json.lo
+json_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+json: $(json_OBJECTS)
+	$(LINK) $(json_LTFLAGS) -static $(json_OBJECTS) $(json_LDADD)
+	strip json
 
 
 stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
 clean:
-	rm *.o stack regex b64 crs mem
+	rm *.o stack regex b64 crs mem json

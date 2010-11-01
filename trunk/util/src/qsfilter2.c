@@ -27,8 +27,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.12 2010-10-25 19:18:49 pbuchbinder Exp $";
-static const char g_revision[] = "9.29";
+static const char revision[] = "$Id: qsfilter2.c,v 1.13 2010-11-01 20:11:15 pbuchbinder Exp $";
+static const char g_revision[] = "9.30";
 
 /* system */
 #include <stdio.h>
@@ -60,7 +60,7 @@ static const char g_revision[] = "9.29";
 //#include <ap_config.h>
 
 /* OpenSSL  */
-#include <openssl/stack.h>
+#include <openssl/safestack.h>
 
 #define MAX_LINE 32768
 /* 2mb */
@@ -985,13 +985,13 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
     return ret;
   } else {
     return ret;
-    /* it woud be nice to use:
+    /* it woud be nice to use (see -o):
      *  ((a=b)?(c=d)?)* 
      * instead of:
      *  (a=b)?(c=d)? and (c=d)?(a=b)?
      * but in this case, two rules are much faster than one
-     * it's better to use the -m option */
-    //return apr_psprintf(pool, "(%s)*", ret);
+     * it's probably better to use the -m option
+     */
   }
 }
 
@@ -1670,7 +1670,7 @@ int main(int argc, const char * const argv[]) {
   printf("# --------------------------------------------------------\n");
 
   {
-    STACK *st = sk_new(STACK_qs_cmp);
+    STACK_OF(qs_rule_t) *st = sk_new(STACK_qs_cmp);
     qs_rule_t *r;
     int j = 1;
     entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
