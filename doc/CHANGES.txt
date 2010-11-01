@@ -1,3 +1,7 @@
+Version 9.30
+
+ - Fixed: qsfilter2 did not compile with OpenSSL 1.0.0.
+
 Version 9.29
 
  - Add Strict-Transport-Security to the default response header rules.
