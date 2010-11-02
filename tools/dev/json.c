@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.2 2010-11-02 19:26:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.3 2010-11-02 19:52:34 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -54,6 +54,7 @@ static const char revision[] = "$Id: json.c,v 1.2 2010-11-02 19:26:28 pbuchbinde
 
 const char data00[] = " \"mein name (\\\"oder was\\\")\"";
 const char data01[] = " { \"name\" : \"value\" , \"und noch\" : \"mehr text\" }";
+const char data02[] = " { \"name\" : true , \"nummer\" : -1000e+12 }";
 const char data10[] = " {\n" \
 "    \"name\": \"Jack (\\\"Bee\\\") Nimble\", \n" \
 "    \"format\": {\n" \
@@ -61,7 +62,7 @@ const char data10[] = " {\n" \
 "        \"width\":      1920, \n" \
 "        \"height\":     1080,\n" \
 "        \"interlace\":  false, \n" \
-"        \"frame rate\": 24\n" \
+"        \"frame rates\": [ 24 , 30 , 60, 72 ]\n" \
 "    }\n" \
 "}\n" \
 "";
@@ -139,7 +140,19 @@ static int j_string(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, c
   return APR_SUCCESS;
 }
 
-static int j_num(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+static int j_num(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, char **n) {
+  char *s = *val;
+  char *d = *val;
+  while(d && ((d[0] >= '0' && d[0] <= '9') ||
+	      d[0] == '.' ||
+	      d[0] == 'e' ||
+	      d[0] == 'E' ||
+	      d[0] == '+' ||
+	      d[0] == '-')) {
+    d++;
+  }
+  *n = apr_pstrndup(pool, s, d-s);
+  *val = d;
   return APR_SUCCESS;
 }
 
@@ -186,12 +199,35 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
 	return HTTP_BAD_REQUEST;
       }
     }
-    //  apr_table_add(tl, name, j_escape_url(pool, v));
   }
   return APR_SUCCESS;
 }
 
 static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+  char *d = j_skip(*val);
+  int rc;
+  while(d && d[0]) {
+    rc = j_val(pool, &d, tl, name);
+    if(rc != APR_SUCCESS) {
+      return rc;
+    }
+    d = j_skip(d);
+    if(!d) {
+      apr_table_add(tl, QOS_J_ERROR, "error while parsing array (unexpected end)");
+      return HTTP_BAD_REQUEST;
+    }
+    if(d[0] == ']') {
+      d++;
+      *val = d;
+      return APR_SUCCESS;
+    } else if(d[0] == ',') {
+      d++;
+      d = j_skip(d);
+    } else {
+      apr_table_add(tl, QOS_J_ERROR, "error while parsing array (unexpected end/wrong delimiter)");
+      return HTTP_BAD_REQUEST;
+    }
+  }
   return APR_SUCCESS;
 }
 
@@ -207,21 +243,28 @@ static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
     rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, ".a", NULL));
   } else if(strncmp(d,"null",4) == 0) {
     d+=4;
-    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".v", NULL), "null");
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "null");
   } else if(strncmp(d,"true",4) == 0) {
-    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".v", NULL), "true");
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "true");
     d+=4;
   } else if(strncmp(d,"false",5) == 0) {
-    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".v", NULL), "false");
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "false");
     d+=5;
   } else if(*d == '-' || (*d >= '0' && *d <= '9')) {
-    rc = j_num(pool, &d, tl, apr_pstrcat(pool, name, ".v", NULL));
+    char *n = apr_pstrcat(pool, name, ".n", NULL);
+    char *v = NULL;
+    rc = j_num(pool, &d, tl, n, &v);
+    if(rc == APR_SUCCESS) {
+      apr_table_addn(tl, j_escape_url(pool, n), j_escape_url(pool, v));
+    }
   } else if(*d == '\"') {
     char *n = apr_pstrcat(pool, name, ".v", NULL);
     char *v = NULL;
     d++;
     rc = j_string(pool, &d, tl, n, &v);
-    apr_table_addn(tl, j_escape_url(pool, n), j_escape_url(pool, v));
+    if(rc == APR_SUCCESS) {
+      apr_table_addn(tl, j_escape_url(pool, n), j_escape_url(pool, v));
+    }
   } else {
     /* error */
     apr_table_add(tl, QOS_J_ERROR, "error while parsing value (invalid type)");
@@ -251,6 +294,7 @@ void process(apr_pool_t *pool, const char *msg) {
   }
   if(rc != APR_SUCCESS) {
     printf("ERROR\n");
+    exit(1);
   }
 }
 
@@ -261,9 +305,12 @@ int main(int argc, const char *const argv[]) {
 
   process(pool, data00);
   process(pool, data01);
-  //process(pool, data01);
-  //process(pool, data02);
+  process(pool, data02);
+  process(pool, data10);
+  //process(pool, data11);
 
   apr_pool_destroy(pool);
+  printf("-----------------------------------------------------\n");
+  printf("normal end\n");
   return 0;
 }
