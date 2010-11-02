@@ -41,7 +41,6 @@ json_OBJECTS = json.lo
 json_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 json: $(json_OBJECTS)
 	$(LINK) $(json_LTFLAGS) -static $(json_OBJECTS) $(json_LDADD)
-	strip json
 
 
 stack: stack.c
