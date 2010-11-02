@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.4 2010-11-02 20:00:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.5 2010-11-02 20:40:48 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -50,7 +50,6 @@ static const char revision[] = "$Id: json.c,v 1.4 2010-11-02 20:00:07 pbuchbinde
 #include <apr_base64.h>
 
 #define HTTP_BAD_REQUEST                   400
-#define QOS_J_ERROR "HTTP_BAD_REQUEST QOS JSON PARSER: FORMAT ERROR"
 
 const char data00[] = " \"mein name (\\\"oder was\\\")\"";
 const char data01[] = " { \"name\" : \"value\" , \"und noch\" : \"mehr text\" }";
@@ -67,6 +66,9 @@ const char data10[] = " {\n" \
 "}\n" \
 "";
 const char data11[] = "[\"Label 0\",{\"type\":\"Text\",\"label\":\"text label 1\",\"title\":\"this is the tooltip for text label 1\",\"editable\":true},{\"type\":\"Text\",\"label\":\"branch 1\",\"title\":\"there should be children here\",\"expanded\":true,\"children\":[\"Label 1-0\"]},{\"type\":\"Text\",\"label\":\"text label 2\",\"title\":\"this should be an href\",\"href\":\"http://www.yahoo.com\",\"target\":\"something\"},{\"type\":\"HTML\",\"html\":\"<a href=\\\"developer.yahoo.com/yui\\\">YUI</a>\",\"hasIcon\":false},{\"type\":\"MenuNode\",\"label\":\"branch 3\",\"title\":\"this is a menu node\",\"expanded\":false,\"children\":[\"Label 3-0\",\"Label 3-1\"]}]";
+
+/* json parser start ------------------------------------------------------- */
+#define QOS_J_ERROR "HTTP_BAD_REQUEST QOS JSON PARSER: FORMAT ERROR"
 
 static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name);
 
@@ -276,8 +278,10 @@ static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
   *val = d;
   return APR_SUCCESS;
 }
+/* json parser end --------------------------------------------------------- */
 
 void process(apr_pool_t *pool, const char *msg) {
+  char *res = NULL;
   int rc;
   apr_table_entry_t *entry;
   int i;
@@ -290,8 +294,13 @@ void process(apr_pool_t *pool, const char *msg) {
   rc = j_val(pool, &p, tl, "");
   entry = (apr_table_entry_t *)apr_table_elts(tl)->elts;
   for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
-    printf(" [%s=%s]\n", entry[i].key, entry[i].val);
+    if(res == NULL) {
+      res = apr_pstrcat(pool, entry[i].key, "=", entry[i].val, NULL);
+    } else {
+      res = apr_pstrcat(pool, res, "&", entry[i].key, "=", entry[i].val, NULL);
+    }
   }
+  printf("/?%s\n", res);
   if(rc != APR_SUCCESS) {
     printf("ERROR\n");
     exit(1);
