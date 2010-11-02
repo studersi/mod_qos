@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.3 2010-11-02 19:52:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.4 2010-11-02 20:00:07 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -307,7 +307,7 @@ int main(int argc, const char *const argv[]) {
   process(pool, data01);
   process(pool, data02);
   process(pool, data10);
-  //process(pool, data11);
+  process(pool, data11);
 
   apr_pool_destroy(pool);
   printf("-----------------------------------------------------\n");
