@@ -926,7 +926,8 @@ Enables request  body data filtering for the <code>QS_DenyQuery</code> directive
 </li>
 <li>
 <code>QS_PermitUriBody 'on|'off'</code><br>
-Enables request body data filtering for the <code>QS_PermitUri</code> directive.
+Enables request body data filtering for the <code>QS_PermitUri</code> directive. This directive 
+enables also the built-in parser of mod_qos for the content type <code>application/json</code>.
 </li>
 <li>
 <code>QS_LimitRequestBody &lt;bytes&gt;</code><br>
@@ -965,7 +966,7 @@ CustomLog             logs/qsaudit_log  "%h %>s %{qos-loc}n %{qos-path}n%{qos-qu
 SetEnvIfNoCase Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=131072
 SetEnvIfNoCase Content-Type multipart/form-data               QS_LimitRequestBody=131072
 SetEnvIfNoCase Content-Type multipart/mixed                   QS_LimitRequestBody=131072
-<!--SetEnvIfNoCase Content-Type application/json                  QS_LimitRequestBody=131072-->
+SetEnvIfNoCase Content-Type application/json                  QS_LimitRequestBody=65536
 
 # enable mod_deflate input filter for compressed request body data:
 SetEnvIfNoCase Content-Encoding gzip|compress|deflate QS_DeflateReqBody

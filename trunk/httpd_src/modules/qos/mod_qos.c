@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.249 2010-11-01 20:11:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.250 2010-11-02 20:40:48 pbuchbinder Exp $";
 static const char g_revision[] = "9.30";
 
 /************************************************************************
@@ -76,6 +76,7 @@ static const char g_revision[] = "9.30";
 #include <apr_strings.h>
 #include <apr_base64.h>
 #include <apr_hooks.h>
+#include <apr_lib.h>
 #ifdef AP_NEED_SET_MUTEX_PERMS
 #include <unixd.h>
 #endif
@@ -1995,6 +1996,254 @@ static int qos_per_dir_event_rules(request_rec *r, qos_dir_config *dconf) {
   return APR_SUCCESS;
 }
 
+/* json parser start ------------------------------------------------------- */
+#define QOS_J_ERROR "HTTP_BAD_REQUEST QOS JSON PARSER: FORMAT ERROR"
+
+static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name);
+
+static char *j_escape_url(apr_pool_t *pool, const char *c) {
+  char buf[4];
+  char special[] = " \t()<>@,;:\\/[]?={}\"'&%+";
+  char *r = apr_pcalloc(pool, 3 * strlen(c));
+  const char *p = c;
+  int i = 0;
+  while(p && p[0]) {
+    char c = p[0];
+    if(!apr_isprint(c) || strchr(special, c)) {
+      sprintf(buf, "%02x", p[0]);
+      r[i] = '%'; i++;
+      r[i] = buf[0]; i++;
+      r[i] = buf[1]; i++;
+    } else {
+      r[i] = c;
+      i++;
+    }
+    p++;
+  }
+  return r;
+}
+
+static char *j_strchr(char *data, char d) {
+  char *q = data;
+  if(!q) {
+    return NULL;
+  }
+  if(q[0] == d) {
+    return q;
+  }
+  while(q[0]) {
+    if((q[0] == d) && (q[-1] != '\\')) {
+      return q;
+    }
+    q++;
+  }
+  return NULL;
+}
+
+static char *j_skip(char *in) {
+  if(!in) return NULL;
+  while(in[0] && (in[0] <= ' ')) {
+    in++;
+  }
+  return in;
+}
+
+static int j_string(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, char **n) {
+  char *d = *val;
+  char *v = d;
+  char *end = j_strchr(d, '"');
+  if(!end) {
+    apr_table_add(tl, QOS_J_ERROR, "error while parsing string (no ending double quote)");
+    return HTTP_BAD_REQUEST;
+  }
+  end[0] = '\0';
+  end++;
+  *val = j_skip(end);
+  /* TODO, improve string format validation */
+  while(v[0]) {
+    if(v[0] < ' ') {
+      apr_table_add(tl, QOS_J_ERROR, "error while parsing string (invalid character)");
+      return HTTP_BAD_REQUEST;
+    }
+    v++;
+  }
+  *n = d;
+  return APR_SUCCESS;
+}
+
+static int j_num(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, char **n) {
+  char *s = *val;
+  char *d = *val;
+  while(d && ((d[0] >= '0' && d[0] <= '9') ||
+	      d[0] == '.' ||
+	      d[0] == 'e' ||
+	      d[0] == 'E' ||
+	      d[0] == '+' ||
+	      d[0] == '-')) {
+    d++;
+  }
+  *n = apr_pstrndup(pool, s, d-s);
+  *val = d;
+  return APR_SUCCESS;
+}
+
+static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+  char *d = j_skip(*val);
+  int rc;
+  while(d && d[0]) {
+    if(*d != '\"') {
+      apr_table_add(tl, QOS_J_ERROR, "error while parsing object (missing string)");
+      return HTTP_BAD_REQUEST;
+    } else {
+      /* list of string ":" value pairs (sepated by ',') */
+      char *v = NULL;
+      char *thisname;
+      d++;
+      rc = j_string(pool, &d, tl, name, &v);
+      if(rc != APR_SUCCESS) {
+	return rc;
+      }
+      thisname = apr_pstrcat(pool, name, "." , v, NULL);
+      d = j_strchr(d, ':');
+      if(!d) {
+	apr_table_add(tl, QOS_J_ERROR, "error while parsing object (missing value)");
+	return HTTP_BAD_REQUEST;
+      }
+      d++;
+      rc = j_val(pool, &d, tl, thisname);
+      if(rc != APR_SUCCESS) {
+	return rc;
+      }
+      d = j_skip(d);
+      if(!d) {
+	apr_table_add(tl, QOS_J_ERROR, "error while parsing object (unexpected end)");
+	return HTTP_BAD_REQUEST;
+      }
+      if(d[0] == '}') {
+	d++;
+	*val = d;
+	return APR_SUCCESS;
+      } else if(d[0] == ',') {
+	d = j_strchr(d, '"');
+      } else {
+	apr_table_add(tl, QOS_J_ERROR, "error while parsing object (unexpected end/wrong delimiter)");
+	return HTTP_BAD_REQUEST;
+      }
+    }
+  }
+  return APR_SUCCESS;
+}
+
+static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+  char *d = j_skip(*val);
+  int rc;
+  while(d && d[0]) {
+    rc = j_val(pool, &d, tl, name);
+    if(rc != APR_SUCCESS) {
+      return rc;
+    }
+    d = j_skip(d);
+    if(!d) {
+      apr_table_add(tl, QOS_J_ERROR, "error while parsing array (unexpected end)");
+      return HTTP_BAD_REQUEST;
+    }
+    if(d[0] == ']') {
+      d++;
+      *val = d;
+      return APR_SUCCESS;
+    } else if(d[0] == ',') {
+      d++;
+      d = j_skip(d);
+    } else {
+      apr_table_add(tl, QOS_J_ERROR, "error while parsing array (unexpected end/wrong delimiter)");
+      return HTTP_BAD_REQUEST;
+    }
+  }
+  return APR_SUCCESS;
+}
+
+static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+  char *d = j_skip(*val);
+  int rc;
+  /* either object, array, string, number, "true", "false", or "null" */
+  if(d[0] == '{') {
+    d++;
+    rc = j_obj(pool, &d, tl, apr_pstrcat(pool, name, ".o", NULL));
+  } else if(d[0] == '[') {
+    d++;
+    rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, ".a", NULL));
+  } else if(strncmp(d,"null",4) == 0) {
+    d+=4;
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "null");
+  } else if(strncmp(d,"true",4) == 0) {
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "true");
+    d+=4;
+  } else if(strncmp(d,"false",5) == 0) {
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "false");
+    d+=5;
+  } else if(*d == '-' || (*d >= '0' && *d <= '9')) {
+    char *n = apr_pstrcat(pool, name, ".n", NULL);
+    char *v = NULL;
+    rc = j_num(pool, &d, tl, n, &v);
+    if(rc == APR_SUCCESS) {
+      apr_table_addn(tl, j_escape_url(pool, n), j_escape_url(pool, v));
+    }
+  } else if(*d == '\"') {
+    char *n = apr_pstrcat(pool, name, ".v", NULL);
+    char *v = NULL;
+    d++;
+    rc = j_string(pool, &d, tl, n, &v);
+    if(rc == APR_SUCCESS) {
+      apr_table_addn(tl, j_escape_url(pool, n), j_escape_url(pool, v));
+    }
+  } else {
+    /* error */
+    apr_table_add(tl, QOS_J_ERROR, "error while parsing value (invalid type)");
+    return HTTP_BAD_REQUEST;
+  }
+  if(rc != APR_SUCCESS) {
+    return rc;
+  }
+  *val = d;
+  return APR_SUCCESS;
+}
+/* json parser end --------------------------------------------------------- */
+
+static int qos_json(request_rec *r, const char **query, const char **msg) {
+  const char *contenttype = apr_table_get(r->headers_in, "Content-Type");
+  if(contenttype && (strncasecmp(contenttype, "application/json", 16) == 0)) {
+    /* check if parp has body data to process (requires "PARP_BodyData application/json") */
+    if(parp_appl_body_data_fn) {
+      apr_size_t len;
+      const char *data = parp_appl_body_data_fn(r, &len);
+      if(data && (len > 0)) {
+        char *value = apr_pstrndup(r->pool, data, len);
+        apr_table_t *tl = apr_table_make(r->pool, 200);
+        const char *q = NULL;
+        int rc = j_val(r->pool, &value, tl, "");
+        if(rc != APR_SUCCESS) {
+          *msg = apr_table_get(tl, QOS_J_ERROR); 
+          return rc;
+        }
+        if(value && value) {
+          value = j_skip(value);
+          if(value && value) {
+            /* error, there is still some data */
+            *msg = apr_pstrdup(r->pool, "more than one element");
+          }
+        }
+        q = qos_parp_query(r, tl);
+        if(query && query[0] && q) {
+          *query = apr_pstrcat(r->pool, query, "&", q, NULL);
+        } else if(q) {
+          *query = q;
+        }
+      }
+    }
+  }
+  return APR_SUCCESS;
+}
+
 /**
  * processes the per location rules QS_Permit* and QS_Deny*
  */
@@ -2033,10 +2282,23 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
           }
         }
       } else {
+        const char *msg = NULL;
         /* no table provided by mod_parp (unsupported content type?),
            use query string if available */
         if(r->parsed_uri.query) {
           q = r->parsed_uri.query;
+        }
+        if(dconf->bodyfilter_p == 1) {
+          if(qos_json(r, &q, &msg) != APR_SUCCESS) {
+            /* parser error */
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                          QOS_LOG_PFX(048)"access denied, invalid JSON syntax (%s),"
+                          " action=deny, c=%s, id=%s",
+                          msg ? msg : "-",
+                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                          qos_unique_id(r, "048"));
+            return HTTP_FORBIDDEN;
+          }
         }
       }
     }
