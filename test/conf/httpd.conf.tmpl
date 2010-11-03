@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.163 2010-11-03 21:08:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.164 2010-11-03 21:19:18 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -334,7 +334,7 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    </Location>
    <Location /qos/parp/json>
        QS_PermitUriBody              on
-       QS_PermitUri       +QSFJ002   deny "^[/a-zA-Z]+/json\?(session=[0-9]{0,12}[&]?)?(_o_name_v=[a-zA-Z \(\x5c\x22\)]{0,31}[&]?)?(_o_format_o_type_v=[a-zA-Z]{0,14}[&]?)?(_o_format_o_width_n=[0-9]{0,14}[&]?)?(_o_format_o_height_n=[0-9]{0,14}[&]?)?(_o_format_o_interlace_b=[a-zA-Z]{0,15}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?$"
+       QS_PermitUri       +QSFJ002   deny "^[/a-zA-Z]+/json\?(session=[0-9]{0,12}[&]?)?(J_o_name_v=[a-zA-Z \(\x5c\x22\)]{0,31}[&]?)?(J_o_format_o_type_v=[a-zA-Z]{0,14}[&]?)?(J_o_format_o_width_n=[0-9]{0,14}[&]?)?(J_o_format_o_height_n=[0-9]{0,14}[&]?)?(J_o_format_o_interlace_b=[a-zA-Z]{0,15}[&]?)?(J_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(J_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(J_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(J_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?$"
        Include                       conf/json.conf
    </Location>
    <Location /qos/parp/permit/off>
