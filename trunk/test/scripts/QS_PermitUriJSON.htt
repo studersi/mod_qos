@@ -1,0 +1,102 @@
+#
+# $Id: QS_PermitUriJSON.htt,v 1.1 2010-11-03 07:17:04 pbuchbinder Exp $
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+# invalid type (string without quotes)
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/json?session=123 HTTP/1.1
+__Host: localhost
+__Content-Type: application/json
+__Content-Length: AUTO
+__Req: 1
+__
+__ {
+__    "name": "Jack (\"Bee\") Nimble", 
+__    "format": {
+__        "type":       "rect",
+__        "width":      1920, 
+__        "height":     huge,
+__        "interlace":  false, 
+__        "frame rates": [ 24 , 30 , 60, 72 ]
+__    }
+__ }
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "code=048"
+_WAIT
+_CLOSE
+
+# rule violation (json)
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/json?session=123 HTTP/1.1
+__Host: localhost
+__Content-Type: application/json
+__Content-Length: AUTO
+__Req: 1
+__
+__ {
+__    "name": "Jack (\"Bee\") Nimble", 
+__    "format": {
+__        "type":       "0000",
+__        "width":      1920, 
+__        "height":     1080,
+__        "interlace":  false, 
+__        "frame rates": [ 24 , 30 , 60, 72 ]
+__    }
+__ }
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "code=041"
+_WAIT
+_CLOSE
+
+# rule violation (query)
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/json?session=abc HTTP/1.1
+__Host: localhost
+__Content-Type: application/json
+__Content-Length: AUTO
+__Req: 1
+__
+__ {
+__    "name": "Jack (\"Bee\") Nimble", 
+__    "format": {
+__        "type":       "rect",
+__        "width":      1920, 
+__        "height":     1080,
+__        "interlace":  false, 
+__        "frame rates": [ 24 , 30 , 60, 72 ]
+__    }
+__ }
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "code=041"
+_WAIT
+_CLOSE
+
+# valid message
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/json?session=123 HTTP/1.1
+__Host: localhost
+__Content-Type: application/json
+__Content-Length: AUTO
+__Req: 1
+__
+__ {
+__    "name": "Jack (\"Bee\") Nimble", 
+__    "format": {
+__        "type":       "rect",
+__        "width":      1920, 
+__        "height":     1080,
+__        "interlace":  false, 
+__        "frame rates": [ 24 , 30 , 60, 72 ]
+__    }
+__ }
+_EXPECT . "200 OK"
+_EXPECT . "<h2>mod_qos"
+_WAIT
+_CLOSE
+
+END

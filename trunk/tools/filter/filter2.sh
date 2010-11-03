@@ -31,6 +31,7 @@ echo "/app/ervlet?action=search&ret=http%3A%2F%2Fserver%2Fapp&name=value&&name=v
 echo "/app/ervlet?other=search&ret=http%3A%2F%2Fserver%2Fapp&name=value&&name=value" >> access_log
 echo "/app/k.x/umlhex\xc3\xbcurl%C3%BC/?Cmd=new" >> access_log
 echo "/o-b/test.php?blah1=&blah2=" >> access_log
+echo "/qos/parp/json /qos/parp/json?session=12&_o_name_v=Jack%20%28%5c%22Bee%5c%22%29%20Nimble&_o_format_o_type_v=rect&_o_format_o_width_n=1920&_o_format_o_height_n=1080&_o_format_o_interlace_b=false&_o_format_o_frame%20rates_a_n=24&_o_format_o_frame%20rates_a_n=30&_o_format_o_frame%20rates_a_n=60&_o_format_o_frame%20rates_a_n=72" >> access_log
 
 if [ -n "$1" ]; then
     ../../util/src/qsfilter2 -e -i access_log $@

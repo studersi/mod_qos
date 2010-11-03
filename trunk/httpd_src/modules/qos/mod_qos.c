@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.250 2010-11-02 20:40:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.251 2010-11-03 07:17:04 pbuchbinder Exp $";
 static const char g_revision[] = "9.30";
 
 /************************************************************************
@@ -1921,7 +1921,8 @@ static int qos_unescaping(char *x, int mode, int *error) {
 /**
  * writes the parp table to a single query line
  */
-static const char *qos_parp_query(request_rec *r, apr_table_t *tl) {
+static const char *qos_parp_query(request_rec *r, apr_table_t *tl, const char *add) {
+  int add_len = 0;
   char *query = NULL;
   int len = 0;
   char *p;
@@ -1933,9 +1934,19 @@ static const char *qos_parp_query(request_rec *r, apr_table_t *tl) {
       (entry[i].val == NULL ? 0 : strlen(entry[i].val)) +
       2;
   }
+  if(add && add[0]) {
+    add_len = strlen(add);
+    len = len + add_len + 1;
+  }
   query = apr_palloc(r->pool, len + 2);
   query[0] = '?';
-  p = &query[1];
+  if(add_len) {
+    memcpy(&query[1], add, add_len);
+    p = &query[add_len];
+  } else {
+    p = &query[1];
+  }
+  p[0] = '\0';
   for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
     int l = strlen(entry[i].key);
     if(p != &query[1]) {
@@ -2103,7 +2114,7 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
       if(rc != APR_SUCCESS) {
 	return rc;
       }
-      thisname = apr_pstrcat(pool, name, "." , v, NULL);
+      thisname = apr_pstrcat(pool, name, "_" , v, NULL);
       d = j_strchr(d, ':');
       if(!d) {
 	apr_table_add(tl, QOS_J_ERROR, "error while parsing object (missing value)");
@@ -2168,28 +2179,28 @@ static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
   /* either object, array, string, number, "true", "false", or "null" */
   if(d[0] == '{') {
     d++;
-    rc = j_obj(pool, &d, tl, apr_pstrcat(pool, name, ".o", NULL));
+    rc = j_obj(pool, &d, tl, apr_pstrcat(pool, name, "_o", NULL));
   } else if(d[0] == '[') {
     d++;
-    rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, ".a", NULL));
+    rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, "_a", NULL));
   } else if(strncmp(d,"null",4) == 0) {
     d+=4;
-    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "null");
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), "_b", NULL), "null");
   } else if(strncmp(d,"true",4) == 0) {
-    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "true");
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), "_b", NULL), "true");
     d+=4;
   } else if(strncmp(d,"false",5) == 0) {
-    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "false");
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), "_b", NULL), "false");
     d+=5;
   } else if(*d == '-' || (*d >= '0' && *d <= '9')) {
-    char *n = apr_pstrcat(pool, name, ".n", NULL);
+    char *n = apr_pstrcat(pool, name, "_n", NULL);
     char *v = NULL;
     rc = j_num(pool, &d, tl, n, &v);
     if(rc == APR_SUCCESS) {
       apr_table_addn(tl, j_escape_url(pool, n), j_escape_url(pool, v));
     }
   } else if(*d == '\"') {
-    char *n = apr_pstrcat(pool, name, ".v", NULL);
+    char *n = apr_pstrcat(pool, name, "_v", NULL);
     char *v = NULL;
     d++;
     rc = j_string(pool, &d, tl, n, &v);
@@ -2219,10 +2230,15 @@ static int qos_json(request_rec *r, const char **query, const char **msg) {
       if(data && (len > 0)) {
         char *value = apr_pstrndup(r->pool, data, len);
         apr_table_t *tl = apr_table_make(r->pool, 200);
-        const char *q = NULL;
-        int rc = j_val(r->pool, &value, tl, "");
+        int rc;
+        if(strlen(value) != len) {
+          *msg = apr_pstrdup(r->pool, "null chracter within data structure");
+          return HTTP_BAD_REQUEST;
+        }
+        rc = j_val(r->pool, &value, tl, "");
         if(rc != APR_SUCCESS) {
           *msg = apr_table_get(tl, QOS_J_ERROR); 
+          apr_table_unset(tl, QOS_J_ERROR);
           return rc;
         }
         if(value && value) {
@@ -2232,11 +2248,9 @@ static int qos_json(request_rec *r, const char **query, const char **msg) {
             *msg = apr_pstrdup(r->pool, "more than one element");
           }
         }
-        q = qos_parp_query(r, tl);
-        if(query && query[0] && q) {
-          *query = apr_pstrcat(r->pool, query, "&", q, NULL);
-        } else if(q) {
-          *query = q;
+        *query = qos_parp_query(r, tl, *query);
+        if(*query) {
+          apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_Q), *query);
         }
       }
     }
@@ -2273,33 +2287,31 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
   if(dconf->bodyfilter_p == 1 || dconf->bodyfilter_d == 1) {
     const char *q = apr_table_get(r->notes, QS_PARP_Q);
     if((q == NULL) && qos_parp_hp_table_fn) {
+      const char *msg = NULL;
       apr_table_t *tl = qos_parp_hp_table_fn(r);
       if(tl) {
         if(apr_table_elts(tl)->nelts > 0) {
-          q = qos_parp_query(r, tl);
+          q = qos_parp_query(r, tl, NULL);
           if(q) {
             apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_Q), q);
           }
         }
       } else {
-        const char *msg = NULL;
         /* no table provided by mod_parp (unsupported content type?),
            use query string if available */
         if(r->parsed_uri.query) {
           q = r->parsed_uri.query;
         }
-        if(dconf->bodyfilter_p == 1) {
-          if(qos_json(r, &q, &msg) != APR_SUCCESS) {
-            /* parser error */
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOS_LOG_PFX(048)"access denied, invalid JSON syntax (%s),"
-                          " action=deny, c=%s, id=%s",
-                          msg ? msg : "-",
-                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
-                          qos_unique_id(r, "048"));
-            return HTTP_FORBIDDEN;
-          }
-        }
+      }
+      if(qos_json(r, &q, &msg) != APR_SUCCESS) {
+        /* parser error */
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOS_LOG_PFX(048)"access denied, invalid JSON syntax (%s),"
+                      " action=deny, c=%s, id=%s",
+                      msg ? msg : "-",
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      qos_unique_id(r, "048"));
+        return HTTP_FORBIDDEN;
       }
     }
     if(q) {
@@ -2706,7 +2718,8 @@ static void qos_enable_parp(request_rec *r) {
   if(ct) {
     if(ap_strcasestr(ct, "application/x-www-form-urlencoded") ||
        ap_strcasestr(ct, "multipart/form-data") ||
-       ap_strcasestr(ct, "multipart/mixed")) {
+       ap_strcasestr(ct, "multipart/mixed") ||
+       ap_strcasestr(ct, "application/json")) {
       apr_table_set(r->subprocess_env, "parp", "mod_qos");
     }
   }
@@ -2813,7 +2826,7 @@ static void qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
       apr_table_t *tl = qos_parp_hp_table_fn(r);
       if(tl) {
         if(apr_table_elts(tl)->nelts > 0) {
-          query = qos_parp_query(r, tl);
+          query = qos_parp_query(r, tl, NULL);
           if(query) {
             apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_Q), query);
           }

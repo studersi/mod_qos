@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.5 2010-11-02 20:40:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.6 2010-11-03 07:17:04 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -174,7 +174,7 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
       if(rc != APR_SUCCESS) {
 	return rc;
       }
-      thisname = apr_pstrcat(pool, name, "." , v, NULL);
+      thisname = apr_pstrcat(pool, name, "_" , v, NULL);
       d = j_strchr(d, ':');
       if(!d) {
 	apr_table_add(tl, QOS_J_ERROR, "error while parsing object (missing value)");
@@ -239,28 +239,28 @@ static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
   /* either object, array, string, number, "true", "false", or "null" */
   if(d[0] == '{') {
     d++;
-    rc = j_obj(pool, &d, tl, apr_pstrcat(pool, name, ".o", NULL));
+    rc = j_obj(pool, &d, tl, apr_pstrcat(pool, name, "_o", NULL));
   } else if(d[0] == '[') {
     d++;
-    rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, ".a", NULL));
+    rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, "_a", NULL));
   } else if(strncmp(d,"null",4) == 0) {
     d+=4;
-    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "null");
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), "_b", NULL), "null");
   } else if(strncmp(d,"true",4) == 0) {
-    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "true");
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), "_b", NULL), "true");
     d+=4;
   } else if(strncmp(d,"false",5) == 0) {
-    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), ".b", NULL), "false");
+    apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), "_b", NULL), "false");
     d+=5;
   } else if(*d == '-' || (*d >= '0' && *d <= '9')) {
-    char *n = apr_pstrcat(pool, name, ".n", NULL);
+    char *n = apr_pstrcat(pool, name, "_n", NULL);
     char *v = NULL;
     rc = j_num(pool, &d, tl, n, &v);
     if(rc == APR_SUCCESS) {
       apr_table_addn(tl, j_escape_url(pool, n), j_escape_url(pool, v));
     }
   } else if(*d == '\"') {
-    char *n = apr_pstrcat(pool, name, ".v", NULL);
+    char *n = apr_pstrcat(pool, name, "_v", NULL);
     char *v = NULL;
     d++;
     rc = j_string(pool, &d, tl, n, &v);
