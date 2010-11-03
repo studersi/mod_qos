@@ -53,6 +53,8 @@ for E in $CONFFILES; do
 	-e "s;##QS_PORT_BASE10##;$QS_PORT_BASE10;g"
 done
 
+echo "" > conf/json.conf
+
 if [ ! -d logs ]; then
     mkdir logs
 fi
