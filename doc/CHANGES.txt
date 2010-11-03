@@ -2,6 +2,8 @@ Version 9.31
 
  - JSON parser which may be used in conjunction with QS_PermitUri.
 
+ - qsfilter2: escape double quotes (\\") in printed rules.
+
 Version 9.30
 
  - Fixed: qsfilter2 did not compile with OpenSSL 1.0.0.

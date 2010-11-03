@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.160 2010-10-25 18:47:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.161 2010-11-03 07:17:04 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -150,6 +150,7 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    QS_SetEnvIfQuery ok                    EMPTY
 
    PARP_BodyData              text/html
+   PARP_BodyData              application/json
    SetEnvIf     Content-Type  text/html.*   parp
    QS_SetEnvIfBody  "<data>(.*)</data>" PARP_PATTERN=$1
 
@@ -330,6 +331,11 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    <Location /qos/parp/permit>
        QS_PermitUriBody              on
        QS_PermitUri       +p01       deny ^/qos/parp/permit(\?name=[a-z]{0,10}&id=[a-z]{0,10})?$
+   </Location>
+   <Location /qos/parp/json>
+       QS_PermitUriBody              on
+       QS_PermitUri       +QSFJ001   deny "^[/a-zA-Z]+/json\?(session=[0-9]{0,12}[&]?)?(_o_name_v=[a-zA-Z \(\\\\\"\)]{0,31}[&]?)?(_o_format_o_type_v=[a-zA-Z]{0,14}[&]?)?(_o_format_o_width_n=[0-9]{0,14}[&]?)?(_o_format_o_height_n=[0-9]{0,14}[&]?)?(_o_format_o_interlace_b=[a-zA-Z]{0,15}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?$"
+#       QS_PermitUri       +QSFJ001   deny "^[/a-zA-Z]+/json\?((session|_o_name_v|_o_format_o_type_v|_o_format_o_width_n|_o_format_o_height_n|_o_format_o_interlace_b|_o_format_o_frame rates_a_n|_o_format_o_frame rates_a_n|_o_format_o_frame rates_a_n|_o_format_o_frame rates_a_n)(=[0-9a-zA-Z \(\\\"\)]*)*[&]?)*$"
    </Location>
    <Location /qos/parp/permit/off>
        QS_PermitUriBody              off
