@@ -2,7 +2,8 @@ Version 9.31
 
  - JSON parser which may be used in conjunction with QS_PermitUri.
 
- - qsfilter2: escape double quotes (\\") in printed rules.
+ - qsfilter2: encode double quotes and backslashes using their hex
+   values (no escaping within Apache configuration necessary).
 
 Version 9.30
 

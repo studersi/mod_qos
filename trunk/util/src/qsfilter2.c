@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.13 2010-11-01 20:11:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.14 2010-11-03 19:14:04 pbuchbinder Exp $";
 static const char g_revision[] = "9.30";
 
 /* system */
@@ -73,7 +73,10 @@ typedef enum  {
   QS_UT_QUERY
 } qs_url_type_e;
 
-/* reserved (to be escaped): {}[]()^$.|*+?\ */
+#define QS_PCRE_RESERVED      "{}[]()^$.|*+?\\-"
+//#define QS_PCRE_RESERVED      "{}[]()^$.|*+?\"'\\-"
+
+/* reserved (to be escaped): {}[]()^$.|*+?\- */
 #define QS_UNRESERVED         "a-zA-Z0-9-\\._~% "
 #define QS_GEN                ":/\\?#\\[\\]@"
 #define QS_SUB                "!$&'\\(\\)\\*\\+,;="
@@ -163,6 +166,40 @@ static char *qos_detect_b64(char *line, int silent) {
   return NULL;
 }
 
+/* escape double quotes and backslash (to be used for Apache directive) */
+static char *qs_apache_escape(apr_pool_t *pool, const char *line) {
+  char *ret = apr_pcalloc(pool, strlen(line) * 4);
+  int i = 0;
+  const char *in = line;
+  while(in && in[0]) {
+    if(in[0] == '"') {
+      ret[i] = '\\';
+      i++;
+      ret[i] = 'x';
+      i++;
+      ret[i] = '2';
+      i++;
+      ret[i] = '2';
+      i++;
+    } else if(in[0] == '\\' && in[1] == '\\') {
+      ret[i] = '\\';
+      i++;
+      ret[i] = 'x';
+      i++;
+      ret[i] = '5';
+      i++;
+      ret[i] = 'c';
+      i++;
+      in++;
+    } else {
+      ret[i] = (char)in[0];
+      i++;
+    }
+    in++;
+  }
+  return ret;
+}
+
 /* escape a string in order to be used withn a pcre */
 static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
   int i = 0;
@@ -172,12 +209,12 @@ static char *qos_escape_pcre(apr_pool_t *pool, char *line) {
   int reti = 0;
   if(strlen(line) == 0) return "";
   while(in[i]) {
-    if(strchr("{}[]()^$.|*+?\"'\\-", in[i]) != NULL) {
+    if(strchr(QS_PCRE_RESERVED, in[i]) != NULL) {
       if(prev && (prev == '\\')) {
 	/* already escaped */
 	ret[reti] = in[i];
 	reti++;
-      } else if(prev && (in[i] == '\\') && (strchr("{}[]()^$.|*+?\"'\\-", in[i+1]) != NULL)) {
+      } else if(prev && (in[i] == '\\') && (strchr(QS_PCRE_RESERVED, in[i+1]) != NULL)) {
 	/* escape char */
 	ret[reti] = in[i];
 	reti++;
@@ -531,7 +568,7 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
 	reti = reti + 2;
       }
     } else if(strchr(ret, in[i]) == NULL) {
-      if(strchr("{}[]()^$.|*+?\"'", in[i]) != NULL) {
+      if(strchr(QS_PCRE_RESERVED, in[i]) != NULL) {
 	ret[reti] = '\\';
 	reti++;
 	ret[reti] = in[i];
@@ -1603,7 +1640,7 @@ int main(int argc, const char * const argv[]) {
     qos_delete_obsolete_rules(pool, rules, rules_url);
     // ensure, we have not deleted to many!
     if(m_verbose) {
-      printf("# verfiy new rules ...\n"); 
+      printf("# verify new rules ...\n"); 
       fflush(stdout);
     }
     //    if(httpdconf) {
@@ -1686,7 +1723,7 @@ int main(int argc, const char * const argv[]) {
       r = (qs_rule_t *)sk_value(st, i-1);
       printf("QS_PermitUri +%s%.3d deny \"%s\"\n",
 	     m_pfx ? m_pfx : "QSF",
-	     j, r->rule);
+	     j, qs_apache_escape(pool, r->rule));
       j++;
     }
   }
