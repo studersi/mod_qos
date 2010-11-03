@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.252 2010-11-03 19:52:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.253 2010-11-03 21:19:18 pbuchbinder Exp $";
 static const char g_revision[] = "9.31";
 
 /************************************************************************
@@ -2235,7 +2235,7 @@ static int qos_json(request_rec *r, const char **query, const char **msg) {
           *msg = apr_pstrdup(r->pool, "null chracter within data structure");
           return HTTP_BAD_REQUEST;
         }
-        rc = j_val(r->pool, &value, tl, "");
+        rc = j_val(r->pool, &value, tl, "J");
         if(rc != APR_SUCCESS) {
           *msg = apr_table_get(tl, QOS_J_ERROR); 
           apr_table_unset(tl, QOS_J_ERROR);
