@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.6 2010-11-03 07:17:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.7 2010-11-03 21:37:34 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -55,18 +55,58 @@ const char data00[] = " \"mein name (\\\"oder was\\\")\"";
 const char data01[] = " { \"name\" : \"value\" , \"und noch\" : \"mehr text\" }";
 const char data02[] = " { \"name\" : true , \"nummer\" : -1000e+12 }";
 const char data10[] = " {\n" \
-"    \"name\": \"Jack (\\\"Bee\\\") Nimble\", \n" \
-"    \"format\": {\n" \
-"        \"type\":       \"rect\",\n" \
-"        \"width\":      1920, \n" \
-"        \"height\":     1080,\n" \
-"        \"interlace\":  false, \n" \
-"        \"frame rates\": [ 24 , 30 , 60, 72 ]\n" \
-"    }\n" \
-"}\n" \
-"";
+  "    \"name\": \"Jack (\\\"Bee\\\") Nimble\", \n"	\
+  "    \"format\": {\n"					\
+  "        \"type\":       \"rect\",\n"			\
+  "        \"width\":      1920, \n"			\
+  "        \"height\":     1080,\n"			\
+  "        \"interlace\":  false, \n"			\
+  "        \"frame rates\": [ 24 , 30 , 60, 72 ]\n"	\
+  "    }\n"						\
+  "}\n"							\
+  "";
 const char data11[] = "[\"Label 0\",{\"type\":\"Text\",\"label\":\"text label 1\",\"title\":\"this is the tooltip for text label 1\",\"editable\":true},{\"type\":\"Text\",\"label\":\"branch 1\",\"title\":\"there should be children here\",\"expanded\":true,\"children\":[\"Label 1-0\"]},{\"type\":\"Text\",\"label\":\"text label 2\",\"title\":\"this should be an href\",\"href\":\"http://www.yahoo.com\",\"target\":\"something\"},{\"type\":\"HTML\",\"html\":\"<a href=\\\"developer.yahoo.com/yui\\\">YUI</a>\",\"hasIcon\":false},{\"type\":\"MenuNode\",\"label\":\"branch 3\",\"title\":\"this is a menu node\",\"expanded\":false,\"children\":[\"Label 3-0\",\"Label 3-1\"]}]";
+const char data12[] = "{"			\
+  "     \"firstName\": \"John\",  \n"		\
+  "     \"lastName\": \"Smith\",  \n"		\
+  "     \"age\": 25,\n"				\
+  "     \"address\": \n"			\
+  "     {\n"					   \
+  "         \"streetAddress\": \"21 2nd Street\",\n"	\
+  "         \"city\": \"New York\",\n"			\
+  "         \"state\": \"NY\",\n"			\
+  "         \"postalCode\": \"10021\"\n"		\
+  "     },  \n"						\
+  "     \"phoneNumber\": \n"				\
+  "     [\n"						\
+  "         {\n"					\
+  "           \"type\": \"home\",\n"			\
+  "           \"number\": \"212 555-1234\"\n"		\
+  "         },\n"					\
+  "         {\n"					\
+  "           \"type\": \"fax\",\n"			\
+  "           \"number\": \"646 555-4567\"\n"		\
+  "         }\n"					\
+  "     ]\n"						\
+  " }";
 
+const char data13[] = "{\n" \
+  "    \"_to\": \"1.2.3.4:5678\",\n"		\
+  "    \"_line\": 63546230,\n"						\
+  "    \"profile_image_url\": \"http://a3.twimg.com/profile_images/852841481/Untitled_3_normal.jpg\",\n" \
+  "    \"created_at\": \"Sat, 08 May 2010 21:46:23 +0000\",\n"		\
+  "    \"from_user\": \"pelchiie\",\n"					\
+  "    \"metadata\": {\n"						\
+  "        \"result_type\": \"recent\"\n"				\
+  "    },\n"								\
+  "    \"to_user_id\": null,\n"						\
+  "    \"text\": \"twitter is dead today.\",\n"				\
+  "    \"id\": 13630378882,\n"						\
+  "    \"from_user_id\": 12621761,\n"					\
+  "    \"geo\": null,\n"						\
+  "    \"iso_language_code\": \"en\",\n"				\
+  "    \"source\": \"<a href=\\\"http://twitter.com/\\\">web</a>\"\n"	\
+  "}";
 /* json parser start ------------------------------------------------------- */
 #define QOS_J_ERROR "HTTP_BAD_REQUEST QOS JSON PARSER: FORMAT ERROR"
 
@@ -291,7 +331,7 @@ void process(apr_pool_t *pool, const char *msg) {
   printf("-----------------------------------------------------\n");
   printf("process:\n%s\n", msg);
   printf("result:\n");
-  rc = j_val(pool, &p, tl, "");
+  rc = j_val(pool, &p, tl, "J");
   entry = (apr_table_entry_t *)apr_table_elts(tl)->elts;
   for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
     if(res == NULL) {
@@ -317,6 +357,8 @@ int main(int argc, const char *const argv[]) {
   process(pool, data02);
   process(pool, data10);
   process(pool, data11);
+  process(pool, data12);
+  process(pool, data13);
 
   apr_pool_destroy(pool);
   printf("-----------------------------------------------------\n");
