@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.254 2010-11-04 07:17:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.255 2010-11-04 18:41:32 pbuchbinder Exp $";
 static const char g_revision[] = "9.31";
 
 /************************************************************************
@@ -2116,9 +2116,9 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int 
 	return rc;
       }
       thisname = apr_pstrcat(pool, name, "_" , v, NULL);
-      d = j_strchr(d, ':');
-      if(!d) {
-	apr_table_add(tl, QOS_J_ERROR, "error while parsing object (missing value)");
+      d = j_skip(d);
+      if(!d || d[0] != ':') {
+	apr_table_add(tl, QOS_J_ERROR, "error while parsing object (missing value/wrong delimiter)");
 	return HTTP_BAD_REQUEST;
       }
       d++;

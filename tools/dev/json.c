@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.8 2010-11-04 07:17:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.9 2010-11-04 18:41:33 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -58,8 +58,8 @@ const char data10[] = " {\n" \
   "    \"name\": \"Jack (\\\"Bee\\\") Nimble\", \n"	\
   "    \"format\": {\n"					\
   "        \"type\":       \"rect\",\n"			\
-  "        \"width\":      1920, \n"			\
-  "        \"height\":     1080,\n"			\
+  "\t\"width\":      1920, \n"			\
+  "\t\"height\":     1080,\n"			\
   "        \"interlace\":  false, \n"			\
   "        \"frame rates\": [ 24 , 30 , 60, 72 ]\n"	\
   "    }\n"						\
@@ -109,6 +109,10 @@ const char data13[] = "{\n" \
   "}";
 const char data20[] = "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ \"name\", 123 ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]";
 const char data21[] = "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ \"name\", 123 ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]";
+const char data30[] = " { \"name\" : true , \"nummer\" : -100fe+12 }";
+const char data31[] = " { \"name \"first\"\" : true , \"nummer\" : -100e+12 }";
+const char data32[] = "[ 2 ,3,4,5  ,  \t 9 ]";
+const char data33[] = "[ 2 ,3,4 5  ,  \t 9 ]";
 
 
 /* json parser start ------------------------------------------------------- */
@@ -220,9 +224,9 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int 
 	return rc;
       }
       thisname = apr_pstrcat(pool, name, "_" , v, NULL);
-      d = j_strchr(d, ':');
-      if(!d) {
-	apr_table_add(tl, QOS_J_ERROR, "error while parsing object (missing value)");
+      d = j_skip(d);
+      if(!d || d[0] != ':') {
+	apr_table_add(tl, QOS_J_ERROR, "error while parsing object (missing value/wrong delimiter)");
 	return HTTP_BAD_REQUEST;
       }
       d++;
@@ -338,12 +342,15 @@ void process(apr_pool_t *pool, const char *msg, int expecterror) {
   int i;
   char *p;
   apr_table_t *tl = apr_table_make(pool, 200);
+  const char *err = NULL;
   p = apr_pstrdup(pool, msg);
   printf("-----------------------------------------------------\n");
   printf("process:\n%s\n", msg);
   printf("result:\n");
   rc = j_val(pool, &p, tl, "J", 0);
   entry = (apr_table_entry_t *)apr_table_elts(tl)->elts;
+  err = apr_table_get(tl, QOS_J_ERROR);
+  apr_table_unset(tl, QOS_J_ERROR);
   for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
     if(res == NULL) {
       res = apr_pstrcat(pool, entry[i].key, "=", entry[i].val, NULL);
@@ -351,15 +358,15 @@ void process(apr_pool_t *pool, const char *msg, int expecterror) {
       res = apr_pstrcat(pool, res, "&", entry[i].key, "=", entry[i].val, NULL);
     }
   }
-  printf("/?%s\n", res);
+  printf("/?%s\n", res ? res : "(null)");
   if(rc != APR_SUCCESS) {
-    printf("ERROR\n");
+    printf("ERROR: %s\n", err ? err : "-");
     if(!expecterror) {
       exit(1);
     }
   } else {
     if(expecterror) {
-      printf("ERROR expected\n");
+      printf("ERROR expected (but no one detected)\n");
       exit(1);
     }
   }
@@ -379,6 +386,10 @@ int main(int argc, const char *const argv[]) {
   process(pool, data13, 0);
   process(pool, data20, 1);
   process(pool, data21, 0);
+  process(pool, data30, 1);
+  process(pool, data31, 1);
+  process(pool, data32, 0);
+  process(pool, data33, 1);
 
   apr_pool_destroy(pool);
   printf("-----------------------------------------------------\n");
