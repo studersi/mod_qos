@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.253 2010-11-03 21:19:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.254 2010-11-04 07:17:13 pbuchbinder Exp $";
 static const char g_revision[] = "9.31";
 
 /************************************************************************
@@ -2009,8 +2009,9 @@ static int qos_per_dir_event_rules(request_rec *r, qos_dir_config *dconf) {
 
 /* json parser start ------------------------------------------------------- */
 #define QOS_J_ERROR "HTTP_BAD_REQUEST QOS JSON PARSER: FORMAT ERROR"
+#define QOS_j_RECURSION 80
 
-static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name);
+static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec);
 
 static char *j_escape_url(apr_pool_t *pool, const char *c) {
   char buf[4];
@@ -2098,7 +2099,7 @@ static int j_num(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, char
   return APR_SUCCESS;
 }
 
-static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec) {
   char *d = j_skip(*val);
   int rc;
   while(d && d[0]) {
@@ -2121,7 +2122,7 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
 	return HTTP_BAD_REQUEST;
       }
       d++;
-      rc = j_val(pool, &d, tl, thisname);
+      rc = j_val(pool, &d, tl, thisname, rec);
       if(rc != APR_SUCCESS) {
 	return rc;
       }
@@ -2145,11 +2146,11 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
   return APR_SUCCESS;
 }
 
-static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec) {
   char *d = j_skip(*val);
   int rc;
   while(d && d[0]) {
-    rc = j_val(pool, &d, tl, name);
+    rc = j_val(pool, &d, tl, name, rec);
     if(rc != APR_SUCCESS) {
       return rc;
     }
@@ -2173,16 +2174,21 @@ static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
   return APR_SUCCESS;
 }
 
-static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec) {
   char *d = j_skip(*val);
   int rc;
+  rec++;
+  if(rec > QOS_j_RECURSION) {
+    apr_table_add(tl, QOS_J_ERROR, "error while parsing string (reached recursion limit)");
+    return HTTP_BAD_REQUEST;
+  }
   /* either object, array, string, number, "true", "false", or "null" */
   if(d[0] == '{') {
     d++;
-    rc = j_obj(pool, &d, tl, apr_pstrcat(pool, name, "_o", NULL));
+    rc = j_obj(pool, &d, tl, apr_pstrcat(pool, name, "_o", NULL), rec);
   } else if(d[0] == '[') {
     d++;
-    rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, "_a", NULL));
+    rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, "_a", NULL), rec);
   } else if(strncmp(d,"null",4) == 0) {
     d+=4;
     apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), "_b", NULL), "null");
@@ -2216,6 +2222,7 @@ static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
     return rc;
   }
   *val = d;
+  rec--;
   return APR_SUCCESS;
 }
 /* json parser end --------------------------------------------------------- */
@@ -2235,7 +2242,7 @@ static int qos_json(request_rec *r, const char **query, const char **msg) {
           *msg = apr_pstrdup(r->pool, "null chracter within data structure");
           return HTTP_BAD_REQUEST;
         }
-        rc = j_val(r->pool, &value, tl, "J");
+        rc = j_val(r->pool, &value, tl, "J", 0);
         if(rc != APR_SUCCESS) {
           *msg = apr_table_get(tl, QOS_J_ERROR); 
           apr_table_unset(tl, QOS_J_ERROR);

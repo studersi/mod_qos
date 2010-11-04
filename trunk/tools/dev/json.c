@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.7 2010-11-03 21:37:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.8 2010-11-04 07:17:13 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -107,10 +107,15 @@ const char data13[] = "{\n" \
   "    \"iso_language_code\": \"en\",\n"				\
   "    \"source\": \"<a href=\\\"http://twitter.com/\\\">web</a>\"\n"	\
   "}";
+const char data20[] = "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ \"name\", 123 ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]";
+const char data21[] = "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[ \"name\", 123 ]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]";
+
+
 /* json parser start ------------------------------------------------------- */
 #define QOS_J_ERROR "HTTP_BAD_REQUEST QOS JSON PARSER: FORMAT ERROR"
+#define QOS_j_RECURSION 80
 
-static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name);
+static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec);
 
 static char *j_escape_url(apr_pool_t *pool, const char *c) {
   char buf[4];
@@ -198,7 +203,7 @@ static int j_num(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, char
   return APR_SUCCESS;
 }
 
-static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec) {
   char *d = j_skip(*val);
   int rc;
   while(d && d[0]) {
@@ -221,7 +226,7 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
 	return HTTP_BAD_REQUEST;
       }
       d++;
-      rc = j_val(pool, &d, tl, thisname);
+      rc = j_val(pool, &d, tl, thisname, rec);
       if(rc != APR_SUCCESS) {
 	return rc;
       }
@@ -245,11 +250,11 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
   return APR_SUCCESS;
 }
 
-static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec) {
   char *d = j_skip(*val);
   int rc;
   while(d && d[0]) {
-    rc = j_val(pool, &d, tl, name);
+    rc = j_val(pool, &d, tl, name, rec);
     if(rc != APR_SUCCESS) {
       return rc;
     }
@@ -273,16 +278,21 @@ static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
   return APR_SUCCESS;
 }
 
-static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
+static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec) {
   char *d = j_skip(*val);
   int rc;
+  rec++;
+  if(rec > QOS_j_RECURSION) {
+    apr_table_add(tl, QOS_J_ERROR, "error while parsing string (reached recursion limit)");
+    return HTTP_BAD_REQUEST;
+  }
   /* either object, array, string, number, "true", "false", or "null" */
   if(d[0] == '{') {
     d++;
-    rc = j_obj(pool, &d, tl, apr_pstrcat(pool, name, "_o", NULL));
+    rc = j_obj(pool, &d, tl, apr_pstrcat(pool, name, "_o", NULL), rec);
   } else if(d[0] == '[') {
     d++;
-    rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, "_a", NULL));
+    rc = j_ar(pool, &d, tl, apr_pstrcat(pool, name, "_a", NULL), rec);
   } else if(strncmp(d,"null",4) == 0) {
     d+=4;
     apr_table_add(tl, apr_pstrcat(pool, j_escape_url(pool, name), "_b", NULL), "null");
@@ -316,11 +326,12 @@ static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name) {
     return rc;
   }
   *val = d;
+  rec--;
   return APR_SUCCESS;
 }
 /* json parser end --------------------------------------------------------- */
 
-void process(apr_pool_t *pool, const char *msg) {
+void process(apr_pool_t *pool, const char *msg, int expecterror) {
   char *res = NULL;
   int rc;
   apr_table_entry_t *entry;
@@ -331,7 +342,7 @@ void process(apr_pool_t *pool, const char *msg) {
   printf("-----------------------------------------------------\n");
   printf("process:\n%s\n", msg);
   printf("result:\n");
-  rc = j_val(pool, &p, tl, "J");
+  rc = j_val(pool, &p, tl, "J", 0);
   entry = (apr_table_entry_t *)apr_table_elts(tl)->elts;
   for(i = 0; i < apr_table_elts(tl)->nelts; i++) {
     if(res == NULL) {
@@ -343,7 +354,14 @@ void process(apr_pool_t *pool, const char *msg) {
   printf("/?%s\n", res);
   if(rc != APR_SUCCESS) {
     printf("ERROR\n");
-    exit(1);
+    if(!expecterror) {
+      exit(1);
+    }
+  } else {
+    if(expecterror) {
+      printf("ERROR expected\n");
+      exit(1);
+    }
   }
 }
 
@@ -352,13 +370,15 @@ int main(int argc, const char *const argv[]) {
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
 
-  process(pool, data00);
-  process(pool, data01);
-  process(pool, data02);
-  process(pool, data10);
-  process(pool, data11);
-  process(pool, data12);
-  process(pool, data13);
+  process(pool, data00, 0);
+  process(pool, data01, 0);
+  process(pool, data02, 0);
+  process(pool, data10, 0);
+  process(pool, data11, 0);
+  process(pool, data12, 0);
+  process(pool, data13, 0);
+  process(pool, data20, 1);
+  process(pool, data21, 0);
 
   apr_pool_destroy(pool);
   printf("-----------------------------------------------------\n");
