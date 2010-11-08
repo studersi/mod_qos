@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.255 2010-11-04 18:41:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.256 2010-11-08 19:24:09 pbuchbinder Exp $";
 static const char g_revision[] = "9.31";
 
 /************************************************************************
@@ -2054,7 +2054,11 @@ static char *j_strchr(char *data, char d) {
 
 static char *j_skip(char *in) {
   if(!in) return NULL;
-  while(in[0] && (in[0] <= ' ')) {
+  while(in[0] && ((in[0] == ' ') ||
+		  (in[0] == '\t') ||
+		  (in[0] == '\r') ||
+		  (in[0] == '\n') ||
+		  (in[0] == '\f'))) {
     in++;
   }
   return in;
