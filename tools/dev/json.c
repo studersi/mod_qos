@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.9 2010-11-04 18:41:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.10 2010-11-08 19:24:09 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -84,7 +84,7 @@ const char data12[] = "{"			\
   "           \"number\": \"212 555-1234\"\n"		\
   "         },\n"					\
   "         {\n"					\
-  "           \"type\": \"fax\",\n"			\
+  "           \"type\": \"fax\\tnumber\",\n"			\
   "           \"number\": \"646 555-4567\"\n"		\
   "         }\n"					\
   "     ]\n"						\
@@ -162,7 +162,11 @@ static char *j_strchr(char *data, char d) {
 
 static char *j_skip(char *in) {
   if(!in) return NULL;
-  while(in[0] && (in[0] <= ' ')) {
+  while(in[0] && ((in[0] == ' ') ||
+		  (in[0] == '\t') ||
+		  (in[0] == '\r') ||
+		  (in[0] == '\n') ||
+		  (in[0] == '\f'))) {
     in++;
   }
   return in;
