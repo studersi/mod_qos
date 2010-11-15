@@ -1,9 +1,13 @@
-Version 9.31
+Version 9.32
 
- - JSON parser which may be used in conjunction with QS_PermitUri.
+ - Status viewer returns "text/plain" for request query 'auto'.
+
+Version 9.31
 
  - qsfilter2: encode double quotes and backslashes using their hex
    values (no escaping within Apache configuration necessary).
+
+ - Featuring JSON parser which may be used in conjunction with QS_PermitUri.
 
 Version 9.30
 

@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.256 2010-11-08 19:24:09 pbuchbinder Exp $";
-static const char g_revision[] = "9.31";
+static const char revision[] = "$Id: mod_qos.c,v 5.257 2010-11-15 20:34:27 pbuchbinder Exp $";
+static const char g_revision[] = "9.32";
 
 /************************************************************************
  * Includes
@@ -1008,7 +1008,7 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
     /* error,  module loaded but no id available? */
     return apr_pstrdup(r->pool, "-");
   } else if(uid == NULL) {
-    /* generate simple id (not more than one error per pid/tid within a microsecond) */
+    /* generate simple id (not more than one error per pid/tid within a millisecond) */
     uid = apr_psprintf(r->pool, "%"APR_TIME_T_FMT"%"APR_PID_T_FMT"%lu",
                        r->request_time, getpid(), apr_os_thread_current());
     apr_table_set(r->subprocess_env, "UNIQUE_ID", uid);
@@ -6273,11 +6273,17 @@ static int qos_favicon(request_rec *r) {
  * handler which may be used as an alternative to mod_status
  */
 static int qos_handler(request_rec * r) {
+  apr_table_t *qt = qos_get_query_table(r);
   if (strcmp(r->handler, "qos-viewer") != 0) {
     return DECLINED;
   } 
   if(r->parsed_uri.path && (strstr(r->parsed_uri.path, "favicon.ico") != NULL)) {
     return qos_favicon(r);
+  }
+  if(qt && (apr_table_get(qt, "auto") != NULL)) {
+    ap_set_content_type(r, "text/plain");
+    qos_ext_status_short(r);
+    return OK;
   }
   ap_set_content_type(r, "text/html");
   if(!r->header_only) {
