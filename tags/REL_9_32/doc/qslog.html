@@ -1,0 +1,125 @@
+<html>
+<head>
+ <title>mod_qos, qslog</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<meta name="author" content="Pascal Buchbinder">
+<link rel="shortcut icon" href="favicon.ico" />
+<style TYPE="text/css">
+<!--  
+  body {
+	background-color: white;
+	color: black;
+	font-family: arial, helvetica, verdana, sans-serif;
+	font-weight: normal;
+	text-align: left;
+  }
+  a:link    { color: rgb(95,10,15); }
+  a:visited { color:black; }
+  a:focus   { color:black; text-decoration:underline; }
+  a:hover   { color:black; text-decoration:none; }
+  a:active  { color:black; text-decoration:underline; }
+-->
+</style>
+</head>
+<body>
+<!--
+
+ Quality of service module for Apache Web Server.
+
+ See http://sourceforge.net/projects/mod-qos/ for further details.
+
+ Copyright (C) 2007-2010 Pascal Buchbinder
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 2
+ of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ MA 02110-1301, USA.
+
+-->
+<table>
+<tbody>
+<tr><td>&nbsp;</td><td style="vertical-align: bottom;"><h2>mod_qos, qslog</h2></td></tr>
+<tr><td>&nbsp;</td><td>
+<p>
+qslog is a support utility of mod_qos. It may be used to gather 
+request statistics from Apache's access log data.
+</p>
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+<pre>
+Usage: qslog -f &lt;format_string&gt; -o &lt;out_file&gt; [-p [-v]] [-x] [-u &lt;name&gt;] [-m]
+
+Summary
+qslog is a real time access log analyzer. It collects data
+data from stdin. The output is written to the specified file
+every minute. The output includes the following entries:
+  - requests per second (r/s)
+  - bytes (http body data) sent to the client per second (b/s)
+  - average response duration (av)
+  - distribution of response durations within the last minute
+    (&lt;1s,1s,2s,3s,4s,5s,&gt;5)
+  - average system load (sl)
+  - free memory (m) (not available for all platforms)
+  - number of client ip addresses seen withn the last 600 seconds (ip)
+  - number of different users seen withn the last 600 seconds (usr)
+  - number of mod_qos events within the last minute (qv=create session,
+    qs=session pass, qd=access denied, qk=connection closed, qt=dynamic
+    keep-alive, ql=request/response slow down)
+
+Options
+  -f &lt;format_string&gt;
+     Defines the log data format and the positions of data
+     elements processed by this utility.
+     See to the 'LogFormat' directive of the httpd.conf file
+     to see the format defintions of the servers access log
+     data. qslog knows the following elements:
+     T defines the request duration (%T)
+     B defines the transferred bytes (%b)
+     R defines the request line (%r)
+     I defines the client ip address (%h)
+     U defines the user tracking id (%{mod_qos_user_id}e)
+     Q defines the mod_qos_ev event message (%{mod_qos_ev}o)
+     . defines an element to ignore (unknown string)
+  -o &lt;out_file&gt;
+     Specifies the file to store the output to.
+  -p
+     Used when reading the log data from a file (cat/pipe). qslog is
+     started using it's offline mode in order to process existing log
+     files (post processing).
+  -v
+     Verbose mode.
+  -x
+     Rotates the output file once a day (move).
+  -u &lt;name&gt;
+     Become another user, e.g. nobody.
+  -m
+     Calculates free system memory every minute.
+
+Example configuration using pipped logging:
+  LogFormat "%t %h \"%r\" %&gt;s %b \"%{User-Agent}i\" %T"
+  TransferLog "|./bin/qslog -f ..IR.B.T -o ./logs/stat_log"
+
+Example for post processing (option -p):
+  cat access_log | ./bin/qslog -f ..IR.B.T -o ./logs/stat_log -p
+</pre>
+</td></tr>
+</table>
+</p>
+<br>
+<hr>
+<a href="http://sourceforge.net/projects/mod-qos/"><img align="right" src="http://sflogo.sourceforge.net/sflogo.php?group_id=196697&amp;type=1" width="88" height="31" border="0" alt="mod_qos at SourceForge.net" /></a>
+<SMALL><SMALL>&copy; 2007-2010, Pascal Buchbinder</SMALL></SMALL>
+</body>
+</html>
+

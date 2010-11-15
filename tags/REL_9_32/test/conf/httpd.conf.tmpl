@@ -1,0 +1,603 @@
+#
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.165 2010-11-15 20:34:27 pbuchbinder Exp $
+#
+# mod_qos test configuration using mod_proxy
+#
+# See http://sourceforge.net/projects/mod-qos/ for further
+# details about mod_qos.
+#
+# Copyright (C) 2007-2010 Pascal Buchbinder
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301, USA.
+#
+
+ServerName              127.0.0.1
+<IfModule worker.c> 
+StartServers            1
+ServerLimit             16
+MinSpareThreads         5
+MaxSpareThreads         75
+ThreadsPerChild         64
+</IfModule>
+<IfModule prefork.c>
+StartServers            4
+MinSpareServers         4
+MaxSpareServers         16
+ServerLimit             896
+</IfModule>
+
+<IfDefine !max_clients>
+MaxClients              896
+</IfDefine>
+<IfDefine max_clients>
+MaxClients              64
+</IfDefine>
+<IfDefine !cont>
+MaxRequestsPerChild     0
+</IfDefine>
+<IfDefine cont>
+MaxRequestsPerChild     125
+</IfDefine>
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/htdocs
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept.lock
+Timeout                 30
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        5
+
+LimitRequestFields      30
+QS_LimitRequestBody     65536
+<IfDefine !no_reqrate>
+QS_SrvMinDataRate       120 3000
+</IfDefine>
+<IfDefine cc>
+QS_ClientPrefer         80
+</IfDefine>
+QS_ClientEventBlockCount 3 10
+QS_ClientEventPerSecLimit  5
+
+QS_RequestHeaderFilterRule myheader deny "^static_content$" 20
+QS_ResponseHeaderFilterRule serverheader  "^[0-9]+$" 20
+
+<IfDefine real_ip>
+QS_EnableInternalIPSimulation off
+</IfDefine>
+
+QS_ClientEventRequestLimit 2
+
+Options                 FollowSymLinks Indexes Includes
+DefaultType             text/plain
+AddType                 text/html .shtml
+AddOutputFilter         INCLUDES .shtml
+
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e #%P"
+
+LogLevel                warn
+#ErrorLog                "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 3600 -f"
+ErrorLog                ##ROOT##/logs/error_log
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
+TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q....U"
+CustomLog               "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/qsaudit_log -z -g 4 -s 3600 -f" "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
+PidFile                 ##ROOT##/logs/apache.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+#QS_Chroot               ##ROOT##
+#LoadFile                /lib/libgcc_s.so.1
+
+TypesConfig             conf/mime.types
+#LoadModule              dumpio_module ##ROOT##/../httpd/modules/debug/.libs/mod_dumpio.so
+LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
+LoadModule              unique_id_module ##ROOT##/../httpd/modules/metadata/.libs/mod_unique_id.so
+LoadModule              info_module ##ROOT##/../httpd/modules/generators/.libs/mod_info.so
+LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
+LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
+LoadModule              security2_module libexec/mod_security.so
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+LoadModule              parp_module libexec/mod_parp.so
+LoadModule              setenvifplus_module libexec/mod_setenvifplus.so
+
+NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
+Listen                  127.0.0.1:##QS_PORT_BASE##
+
+<IfDefine usertrack>
+QS_UserTrackingCookieName stat
+</IfDefine>
+<IfDefine usertrack_force>
+QS_UserTrackingCookieName stat /error-docs/cookie.html
+</IfDefine>
+
+#DumpIOInput             On
+#DumpIOLogLevel          warn
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE##>
+   ServerName                 127.0.0.1
+
+   # -----------------------------------------------------------------
+   # sample configuration using mod_proxy
+   # -----------------------------------------------------------------
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   # enable mod_deflate input filter
+   SetEnvIfNoCase Content-Encoding gzip|compress|deflate QS_DeflateReqBody
+
+   QS_SetEnvIfQuery name=([a-z]*)         NAME=mein_name_ist_$1
+   QS_SetEnvIfQuery other;value=(.*)match VALUE=$1
+   QS_SetEnvIfQuery ok                    EMPTY
+
+   PARP_BodyData              text/html
+   PARP_BodyData              application/json
+   SetEnvIf     Content-Type  text/html.*   parp
+   QS_SetEnvIfBody  "<data>(.*)</data>" PARP_PATTERN=$1
+
+   # disable mod_parp for header filter test
+   # SetEnvIf         Request_URI /cgi-local/index.cgi !parp
+   # mod_parp:
+   QS_SetEnvIfParp  body=([a-z]*)         BODY=parp[$1]
+   QS_SetEnvIfParp  postdata=([a-z]*)     PARP_PATTERN=parp[$1]
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /info !
+   ProxyPass                  /demo !
+   ProxyPass                  /qos !
+   ProxyPass                  /qos_control !
+   ProxyPass                  /cgi-local !
+   ProxyPass                  /cgi-local_s !
+
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+   ProxyPass                  /app/a http://localhost:##QS_PORT_BASE6##/app/a retry=0
+   ProxyPassReverse           /app/a http://localhost:##QS_PORT_BASE6##/app/a
+   ProxyPass                  /app/b http://localhost:##QS_PORT_BASE6##/app/b retry=0
+   ProxyPassReverse           /app/b http://localhost:##QS_PORT_BASE6##/app/b
+   ProxyPass                  /app/c http://localhost:##QS_PORT_BASE6##/app/c retry=0
+   ProxyPassReverse           /app/c http://localhost:##QS_PORT_BASE6##/app/c
+   ProxyPass                  /app/d http://localhost:##QS_PORT_BASE6##/app/d retry=0
+   ProxyPassReverse           /app/d http://localhost:##QS_PORT_BASE6##/app/d
+   ProxyPass                  /app/e http://localhost:9999/app/e retry=0
+   ProxyPassReverse           /app/e http://localhost:9999/app/e
+   ProxyPass                  /support http://localhost:##QS_PORT_BASE6##/support retry=0
+   ProxyPassReverse           /support http://localhost:##QS_PORT_BASE6##/support
+
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
+   ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+   ProxyReceiveBufferSize     1024
+
+   ScriptAlias /cgi-local/   ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /cgi-local_s/ ##ROOT##/htdocs/cgi-local/
+
+   QS_SetEnvIfQuery QS_Delay=([0-9]*)   QS_Delay=$1
+   QS_SetEnvIfQuery QS_EventRequest QS_EventRequest
+
+   SetEnvIf    Host          ([a-zA-Z0-9\-\.:]*)    QS_Host=$1
+   QS_SetEnv   QS_Header     "host=${QS_Host}; delay=${QS_Delay}"
+   QS_SetReqHeader           X-Delay                QS_Header
+
+   # -----------------------------------------------------------------
+   # request level control
+   # -----------------------------------------------------------------
+
+   QS_ErrorPage               /error-docs/error.shtml
+   SetEnvIf                   Request_URI /qos/parp/err302  QS_ErrorPage=http://server1/error.html
+
+   QS_LocRequestLimitDefault                 30
+   QS_LocRequestLimit         /cgi            5
+   QS_LocRequestLimit         /cgi100       100
+   QS_LocRequestLimit         /test          50
+   QS_LocRequestLimitMatch    "^.*\.gif$"     2
+
+   QS_LocRequestLimitMatch    "^(/app/a/|/app/b/|/app/c/).*$" 1
+   QS_LocRequestLimitMatch    "^/app/d/.*$"                   1
+   QS_LocRequestLimitMatch    "^/app/e/.*$"                   1
+
+   BrowserMatch                "slurp"                        QS_Cond=spider
+<IfDefine !COND_CONNECTIONS>
+   QS_CondLocRequestLimitMatch "^/cgi.*$"     2               spider
+</IfDefine>
+   BrowserMatch               "event"                         qsevent=yes
+   QS_SetEnvIf                qsevent !QS_VipRequest          qsmin=event
+   QS_EventPerSecLimit        qsmin  5
+
+   QS_VipHeaderName           mod-qos-vip drop
+   QS_SessionTimeout          4
+   #QS_SessionCookieName       mm
+   #QS_SessionCookiePath       /x
+   QS_SessionKey              12345678
+
+   QS_SetEnvResHeader         qs_special       drop
+
+   # detect new session (implements session dos prevention
+   # using QS_ClientEventBlockCount)
+   QS_SetEnvResHeaderMatch    Set-Cookie        JSESSIONID=
+   QS_SetEnvIf                Set-Cookie !QSNOT QS_Block=yes
+
+   # concurrent requests with certain event
+   QS_SetEnvIfQuery           QS_EventRequestLimit query
+   QS_SetEnvIfQuery           QS_EventRequestV=([a-z]*) queryv=$1
+   QS_EventRequestLimit       query           3
+   QS_EventRequestLimit       queryv=abc      3
+   QS_EventRequestLimit       PARP_PATTERN    3
+   QS_EventPerSecLimit        query         100
+
+<IfDefine MILESTONES>
+   QS_MileStoneTimeout 4
+   QS_MileStone deny "^GET /htt/index.html"
+   QS_MileStone deny "^GET /htt/logo.gif"
+   QS_MileStone deny "^POST /htt/login"
+   QS_MileStone deny "^GET /htt/.*\.zip HTTP/..."
+</IfDefine>
+<IfDefine MILESTONES_LOG>
+   QS_MileStone log "^GET /htt/index.html"
+   QS_MileStone log "^GET /htt/logo.gif"
+   QS_MileStone log "^POST /htt/login"
+</IfDefine>
+
+<IfDefine COND_CONNECTIONS>
+   # conditional based on concurrent connections (more than 9 concurrent connections)
+   SetEnvIf                   QS_SrvConn   [0-9]{2,10}          QS_Cond=onloadonly
+   QS_CondLocRequestLimitMatch "^/cgi100/sleep.cgi" 7           onloadonly
+</IfDefine>
+
+   # -----------------------------------------------------------------
+   # client control
+   # -----------------------------------------------------------------
+   QS_SetEnvIfStatus 404       QS_Block
+   SetEnvIf Referer  /block    QS_Block=yes
+   BrowserMatch      qs_cc_eps QS_Event=yes
+
+   # -----------------------------------------------------------------
+   # connection level control
+   # -----------------------------------------------------------------
+   QS_SrvMaxConn                             40
+   QS_SrvMaxConnClose                        20
+<IfDefine !cont>
+   QS_SrvMaxConnPerIP                        10
+</IfDefine>
+
+   BrowserMatch "pass"                       QS_VipRequest=yes
+   SetEnvIf     Request_URI /cgi/index2.cgi  QS_VipRequest=yes
+   #SetEnvIf     Remote_Addr 127.0.0.1       QS_VipRequest=yes
+   <Directory /error-docs>
+      SetHandler              default
+   </Directory>
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
+   <Location /info>
+       SetHandler server-info
+   </Location>
+
+   Include 	  conf/qos_viewer.conf
+   <Location /qos/merged>
+       QS_DenyRequestLine -restrict    deny                .*private.*
+       QS_DenyRequestLine +l01         log                 .*sample.*
+       SetEnvIf           Content-Type multipart/form-data QS_EV=1
+       QS_DenyEvent       +event       deny                QS_EV
+   </Location>
+   <Location /qos/urlenc>
+       QS_InvalidUrlEncoding           deny
+   </Location>
+   <Location /qos/urlenc/sub>
+   </Location>
+   <Location /qos/urlenc/sub/off>
+       QS_InvalidUrlEncoding           off
+   </Location>
+   <Location /qos/notev>
+       SetEnvIf           Content-Type multipart/form-data QS_EV=1
+       QS_DenyEvent       +notevent    deny                !QS_EV
+   </Location>
+   <Location /qos/off>
+       QS_DenyInheritanceOff
+       QS_DenyRequestLine +restrict deny ".*simple.*"
+   </Location>
+   <Location /qos/parp>
+       QS_DenyQueryBody              on
+       QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+       QS_DenyQuery       +s02       deny "<script>"
+   </Location>
+   <Location /qos/parp/off>
+       QS_DenyQueryBody              off
+   </Location>
+   <Location /qos/parp/sub>
+   </Location>
+   <Location /qos/parp/permit>
+       QS_PermitUriBody              on
+       QS_PermitUri       +p01       deny ^/qos/parp/permit(\?name=[a-z]{0,10}&id=[a-z]{0,10})?$
+   </Location>
+   <Location /qos/parp/json>
+       QS_Decoding                   uni
+       QS_PermitUriBody              on
+       QS_PermitUri       +QSFJ002   deny "^[/a-zA-Z]+/json\?(session=[0-9]{0,12}[&]?)?(J_o_name_v=[a-zA-Z \(\x5c\x22\)]{0,31}[&]?)?(J_o_format_o_type_v=[a-zA-Z]{0,14}[&]?)?(J_o_format_o_width_n=[0-9]{0,14}[&]?)?(J_o_format_o_height_n=[0-9]{0,14}[&]?)?(J_o_format_o_interlace_b=[a-zA-Z]{0,15}[&]?)?(J_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(J_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(J_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(J_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?$"
+       Include                       conf/json.conf
+   </Location>
+   <Location /qos/parp/permit/off>
+       QS_PermitUriBody              off
+       QS_DenyQueryBody              on
+       QS_PermitUri       +p02       deny ^/qos/parp/permit/off(\?name=[a-z]{0,10}&id=[a-z]{0,10})?$
+   </Location>
+   <Location /qos/query>
+       QS_DenyQuery       +q01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+   </Location>
+   <Location /qos/path>
+       QS_DenyPath        +p01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+   </Location>
+   <Location /qos/query/uni>
+       QS_Decoding        uni
+   </Location>
+   <Location /qos/query/uni/strict>
+       QS_InvalidUrlEncoding         deny
+   </Location>
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+
+       QS_RequestHeaderFilter on
+   </Location>
+
+   <Location /cgi-local_s>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+
+       QS_RequestHeaderFilter size
+   </Location>
+
+   QS_EventPerSecLimit argmatch 1
+   <Location /app/a/args>
+       SecRuleEngine on
+       SecDefaultAction "nolog,pass,phase:2,status:500,t:urlDecodeUni,t:htmlEntityDecode,t:lowercase"
+       SecRule ARGS "trigger" "setenv:argmatch=trigger"
+       SecRequestBodyAccess on
+   </Location>
+
+   <Location /app/a/body>
+       QS_DenyQueryBody              on
+       QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+   </Location>
+
+   <Location /app/a/resbody/pattern>
+      QS_SetEnvIfResBody "Login Failed" QS_Block
+   </Location>
+
+   <Location /app/a/maxpost/dynamic>
+      # allow only 10 bytes for application/x-www-form-urlencoded POST's
+      SetEnvIf Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=10
+   </Location>
+   
+   #ProxyPass              /support http://localhost:##QS_PORT_BASE6##/support
+   #ProxyPassReverse       /support http://localhost:##QS_PORT_BASE6##/support
+   PARP_BodyData                       text/xml
+   SetEnvIf               Content-Type text/xml.* parp
+   QS_SetEnvIfBody        <codeApplication>(A1|A2|A3)</codeApplication> CODEAPPLI=$1
+   QS_EventRequestLimit   CODEAPPLI=A1       1
+   QS_EventRequestLimit   CODEAPPLI=A2       5
+   QS_EventRequestLimit   CODEAPPLI=A3       10
+   <Location /support>
+     QS_DenyEvent        +BADCODEAPPLI deny !CODEAPPLI
+   </Location>
+
+   Include 	  conf/demo.conf
+
+   <Location /app/d/special/permit/url/audit>
+       QS_PermitUri +s01 deny "^/app/d/special/permit/url/audit/static.html$"
+   </Location>
+
+   <Location /htt/resheaderfilter>
+       QS_ResponseHeaderFilter on
+   </Location>
+
+</VirtualHost>
+
+NameVirtualHost         server1:##QS_PORT_BASE1##
+Listen                  server1:##QS_PORT_BASE1##
+
+<VirtualHost server1:##QS_PORT_BASE1##>
+   ServerName                 server1
+
+   # -----------------------------------------------------------------
+   # sample configuration using mod_proxy
+   # -----------------------------------------------------------------
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /demo !
+   ProxyPass                  /info !
+   ProxyPass                  /qos !
+   ProxyPass                  /qos_control !
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
+   ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+   # -----------------------------------------------------------------
+   # connection level control
+   # -----------------------------------------------------------------
+
+   QS_SrvMaxConn                            800
+   # 67% of MaxClients 896 = 600
+   QS_SrvMaxConnClose                        67%
+   QS_SrvMaxConnPerIP                        10
+
+   QS_LocRequestLimit         /no           200
+   QS_LocRequestLimit         /cgi          200
+   QS_LocRequestLimit         /aaa          200
+   QS_LocRequestPerSecLimit   /aaa          100
+   QS_LocRequestLimit         /bbb          200
+   QS_LocKBytesPerSecLimit    /bbb          1000
+   QS_LocRequestLimitMatch    /ccc/.*       200
+   QS_LocRequestPerSecLimitMatch /ccc/.*     75
+   QS_LocKBytesPerSecLimit    /ddd/ddd/ddd/ddd 1000
+
+   QS_VipHeaderName           mod-qos-vip drop
+   QS_VipIPHeaderName         mod-qos-vip-ip drop
+<IfDefine special-mod-qos-vip-ip>
+   QS_VipIPHeaderName         mod-qos-vip-ip=me
+</IfDefine>
+   #QS_SrvMaxConnExcludeIP           192.168.32.
+
+   BrowserMatch "(MSIE 5\.)"  QS_KeepAliveTimeout=7
+
+   BrowserMatch QS_EventKBytesPerSecLimit  eventkbytespersec
+   QS_EventKBytesPerSecLimit  eventkbytespersec 202
+
+   <Directory /error-docs>
+      SetHandler              default
+   </Directory>
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
+   <Location /info>
+       SetHandler server-info
+   </Location>
+
+   Include 	  conf/qos_viewer.conf
+   Include 	  conf/demo.conf
+
+</VirtualHost>
+
+NameVirtualHost         server1:##QS_PORT_BASE2##
+Listen                  server1:##QS_PORT_BASE2##
+
+SSLProtocol             all -SSLv2
+SSLCipherSuite          RC4-SHA:RC4-MD5:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!SSLv2:!EXP
+SSLSessionCacheTimeout  864000
+SSLMutex                file:##ROOT##/logs/ssl_mutex
+SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
+SSLRandomSeed           startup builtin
+
+<VirtualHost server1:##QS_PORT_BASE2##>
+   SSLCertificateKeyFile  ssl/key.pem
+   SSLCertificateFile     ssl/cert.pem
+   SSLVerifyDepth         10
+   SSLEngine              on
+   ServerName             server1
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /demo !
+   ProxyPass                  /info !
+   ProxyPass                  /qos !
+   ProxyPass                  /qos_control !
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/ retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/
+   ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
+   ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+<IfDefine QS_SrvMaxConn>
+   QS_SrvMaxConn                            800
+   QS_SrvMaxConnClose                       600
+   QS_SrvMaxConnPerIP                        10
+</IfDefine>
+
+   QS_ErrorPage               /error-docs/error.html
+   SetEnvIf   Host (.*):.*    QS_ErrorPage=/error-docs/$1.html
+   QS_LocRequestLimit         /cgi            5
+   QS_VipUser
+
+   <Location /status>
+       SetHandler             server-status
+   </Location>
+   <Location /info>
+       SetHandler             server-info
+   </Location>
+
+   <Location /qos>
+       SetHandler             qos-viewer
+   </Location>
+
+   <Location /qos_control>
+       # basic authentication
+       AuthType               Basic 
+       AuthUserFile           ##ROOT##/conf/qos.htpasswd
+       AuthName               "QoS Control, htpasswd"
+       Require                valid-user
+   </Location>
+
+   Include 	              conf/demo.conf
+
+   QS_SetEnvIfStatus             200 QS_Sync
+   QS_SetEnvIfQuery              priv=conn QS_SyncSrv
+   QS_SrvMinDataRateOffEvent     +QS_SyncSrv
+   <Location /htt/active-sync>
+       QS_SrvMinDataRateOffEvent +QS_Sync
+   </Location>
+   <Location /htt/active-sync-plus>
+       QS_SetEnvIfResBody        "Login Successful" QS_BodyConnAll
+       QS_SrvMinDataRateOffEvent +QS_BodyConnAll
+       ResponseSetEnvIfPlus      Content-Length (10) VAR_CL=$1
+       QS_SrvMinDataRateOffEvent +VAR_CL
+   </Location>
+
+</VirtualHost>
+
+NameVirtualHost         127.0.0.1:##QS_PORT_BASE9##
+Listen                  127.0.0.1:##QS_PORT_BASE9##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE9##>
+   ServerName                 127.0.0.1
+
+   BrowserMatch               "event"                           qsmin=limit
+   QS_EventPerSecLimit        !qsmin          5
+
+   SetEnvIf                   Request_URI     "/aaa/index.html" qsvar2
+   QS_SetEnvIf                qsmin           qsvar2            multi=true
+   QS_EventPerSecLimit        multi           5
+
+   Include 	              conf/demo.conf
+
+   QS_SrvDataRateOff
+</VirtualHost>
+
+
+<IfDefine v6>
+Listen                  [::1]:##QS_PORT_BASE10##
+
+<VirtualHost [::1]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+
+
+</VirtualHost>
+</IfDefine>
