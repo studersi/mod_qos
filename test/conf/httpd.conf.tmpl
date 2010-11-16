@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.165 2010-11-15 20:34:27 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.166 2010-11-16 21:00:05 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -119,6 +119,7 @@ LoadModule              setenvifplus_module libexec/mod_setenvifplus.so
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
 
+BrowserMatch googlebot DISABLE_UTC_ENFORCEMENT=allow
 <IfDefine usertrack>
 QS_UserTrackingCookieName stat
 </IfDefine>
