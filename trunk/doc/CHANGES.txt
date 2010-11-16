@@ -1,3 +1,9 @@
+Version 9.33
+
+ - User tracking cookie enforcement may be disabled by setting the 
+   DISABLE_UTC_ENFORCEMENT environment variable, e.g. for certain
+   User-Agent headers.
+
 Version 9.32
 
  - Status viewer returns "text/plain" for request query 'auto'.
@@ -20,11 +26,11 @@ Version 9.29
  - Directive QS_UserTrackingCookieName features an optional
    "path" attribute. This path specifies a local error page
    which is shown to users not accepting the user tracking
-   cookie (note: search engines do not support this cookie
+   cookie (note: search engines do probably not support this cookie
    enforcement and won't be able to crawl the site).
 
  - Generates a simple request id (unique per pid/tid within a
-   microsecond) if mod_unique_id has not been loaded.
+   millisecond) if mod_unique_id has not been loaded.
 
  - Fix: syntax check for QS_ErrorPage.
 

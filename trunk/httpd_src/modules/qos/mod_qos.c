@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.257 2010-11-15 20:34:27 pbuchbinder Exp $";
-static const char g_revision[] = "9.32";
+static const char revision[] = "$Id: mod_qos.c,v 5.258 2010-11-16 21:00:04 pbuchbinder Exp $";
+static const char g_revision[] = "9.33";
 
 /************************************************************************
  * Includes
@@ -4794,6 +4794,58 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   return DECLINED;
 }
 
+static int qos_post_read_request_later(request_rec *r) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
+                                                                &qos_module);
+  /* QS_UserTrackingCookieName */
+#ifdef QOS_HAS_SSL
+  if(sconf && sconf->user_tracking_cookie) {
+    char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
+    qos_get_create_user_tracking(r, sconf, value);
+    if(sconf->user_tracking_cookie_force) {
+      const char *ignore = apr_table_get(r->subprocess_env, "DISABLE_UTC_ENFORCEMENT");
+      if(!ignore) {
+        if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
+          /* access to check url */
+          if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) == NULL) {
+            if(r->parsed_uri.query && (strncmp(r->parsed_uri.query, "r=", 2) == 0)) {
+              /* client has send a cookie, redirect to original url */
+              char *redirect_page;
+              int buf_len = 0;
+              unsigned char *buf;
+              char *q = r->parsed_uri.query;
+              buf_len = qos_decrypt(r, sconf, &buf, &q[2]);
+              if(buf_len > 0) {
+                redirect_page = apr_psprintf(r->pool, "%s%.*s",
+                                             qos_this_host(r),
+                                             buf_len, buf);
+                apr_table_set(r->headers_out, "Location", redirect_page);
+                return HTTP_MOVED_TEMPORARILY;
+              }
+            }
+          } /* else, grant access to the error page */
+        } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
+          if(r->method_number == M_GET) {
+            /* no valid cookie in request, redirect to check page */
+            char *redirect_page = apr_pstrcat(r->pool, qos_this_host(r),
+                                              sconf->user_tracking_cookie_force,
+                                              "?r=",
+                                              qos_encrypt(r, sconf,
+                                                          (unsigned char *)r->unparsed_uri,
+                                                          strlen(r->unparsed_uri)),
+                                              NULL);
+            apr_table_set(r->headers_out, "Location", redirect_page);
+            qos_send_user_tracking_cookie(r, sconf);
+            return HTTP_MOVED_TEMPORARILY;
+          }
+        }
+      }
+    }
+  }
+#endif
+  return DECLINED;
+}
+
 /**
  * all headers has been read, end/update connection level filters
  */
@@ -4811,49 +4863,6 @@ static int qos_post_read_request(request_rec *r) {
   if(qos_request_check(r) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;
   }
-  /* QS_UserTrackingCookieName */
-#ifdef QOS_HAS_SSL
-  if(sconf && sconf->user_tracking_cookie) {
-    char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
-    qos_get_create_user_tracking(r, sconf, value);
-    if(sconf->user_tracking_cookie_force) {
-      if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
-        /* access to check url */
-        if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) == NULL) {
-          if(r->parsed_uri.query && (strncmp(r->parsed_uri.query, "r=", 2) == 0)) {
-            /* client has send a cookie, redirect to original url */
-            char *redirect_page;
-            int buf_len = 0;
-            unsigned char *buf;
-            char *q = r->parsed_uri.query;
-            buf_len = qos_decrypt(r, sconf, &buf, &q[2]);
-            if(buf_len > 0) {
-              redirect_page = apr_psprintf(r->pool, "%s%.*s",
-                                           qos_this_host(r),
-                                           buf_len, buf);
-              apr_table_set(r->headers_out, "Location", redirect_page);
-              return HTTP_MOVED_TEMPORARILY;
-            }
-          }
-        } /* else, grant access to the error page */
-      } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
-        if(r->method_number == M_GET) {
-          /* no valid cookie in request, redirect to check page */
-          char *redirect_page = apr_pstrcat(r->pool, qos_this_host(r),
-                                            sconf->user_tracking_cookie_force,
-                                            "?r=",
-                                            qos_encrypt(r, sconf,
-                                                        (unsigned char *)r->unparsed_uri,
-                                                        strlen(r->unparsed_uri)),
-                                            NULL);
-          apr_table_set(r->headers_out, "Location", redirect_page);
-          qos_send_user_tracking_cookie(r, sconf);
-          return HTTP_MOVED_TEMPORARILY;
-        }
-      }
-    }
-  }
-#endif
   qos_parp_prr(r, sconf);
   if(sconf && (sconf->req_rate != -1)) {
     inctx = qos_get_ifctx(r->connection->input_filters);
@@ -8473,6 +8482,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);
+  ap_hook_post_read_request(qos_post_read_request_later, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_header_parser(qos_header_parser0, NULL, post, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser1, post, parp, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);
