@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.2 2010-09-15 18:04:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.3 2010-11-21 18:28:56 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -68,6 +68,12 @@ static long m_duration_3 = 0;
 static long m_duration_4 = 0;
 static long m_duration_5 = 0;
 static long m_duration_6 = 0;
+
+static long m_status_1 = 0;
+static long m_status_2 = 0;
+static long m_status_3 = 0;
+static long m_status_4 = 0;
+static long m_status_5 = 0;
 
 static long m_qos_v = 0;
 static long m_qos_s = 0;
@@ -241,6 +247,11 @@ static void printAndResetStat(char *timeStr) {
           NRS";%ld;"
 	  "req;%ld;"
           NBS";%lld;"
+	  "1xx;%ld;"
+	  "2xx;%ld;"
+	  "3xx;%ld;"
+	  "4xx;%ld;"
+	  "5xx;%ld;"
           NAV";%ld;"
           "<1s;%ld;"
           "1s;%ld;"
@@ -262,6 +273,11 @@ static void printAndResetStat(char *timeStr) {
           m_line_count/LOG_INTERVAL,
 	  m_line_count,
           m_byte_count/LOG_INTERVAL,
+	  m_status_1,
+	  m_status_2,
+	  m_status_3,
+	  m_status_4,
+	  m_status_5,
           m_duration_count/(m_line_count == 0 ? 1 : m_line_count),
           m_duration_0,
           m_duration_1,
@@ -281,6 +297,11 @@ static void printAndResetStat(char *timeStr) {
           );
   m_line_count = 0;
   m_byte_count = 0;
+  m_status_1 = 0;
+  m_status_2 = 0;
+  m_status_3 = 0;
+  m_status_4 = 0;
+  m_status_5 = 0;
   m_duration_count = 0;
   m_duration_0 = 0;
   m_duration_1 = 0;
@@ -320,6 +341,7 @@ static void printAndResetStat(char *timeStr) {
  */
 static void updateStat(const char *cstr, char *line) {
   char *T = NULL; /* time */
+  char *S = NULL; /* status */
   char *B = NULL; /* bytes */
   char *R = NULL; /* request line */
   char *I = NULL; /* client ip */
@@ -337,6 +359,10 @@ static void updateStat(const char *cstr, char *line) {
     } else if(strncmp(c, "T", 1) == 0) {
       if(l != NULL && l[0] != '\0') {
         T = cutNext(&l);
+      }
+    } else if(strncmp(c, "S", 1) == 0) {
+      if(l != NULL && l[0] != '\0') {
+        S = cutNext(&l);
       }
     } else if(strncmp(c, "B", 1) == 0) {
       if(l != NULL && l[0] != '\0') {
@@ -370,10 +396,11 @@ static void updateStat(const char *cstr, char *line) {
   }
   if(m_offline && m_verbose) {
     m_lines++;
-    printf("[%ld] I=%s U=%s B=%s T=%s Q=%s\n", m_lines,
+    printf("[%ld] I=%s U=%s B=%s S=%s T=%s Q=%s\n", m_lines,
 	   I == NULL ? "(null)" : I,
 	   U == NULL ? "(null)" : U,
 	   B == NULL ? "(null)" : B,
+	   S == NULL ? "(null)" : S,
 	   T == NULL ? "(null)" : T,
 	   Q == NULL ? "(null)" : Q
 	   );
@@ -411,6 +438,21 @@ static void updateStat(const char *cstr, char *line) {
   if(B != NULL) {
     /* transferred bytes */
     m_byte_count = m_byte_count + atoi(B);
+  }
+  if(S != NULL) {
+    if(S[0] == '1') {
+      m_status_1++;
+    } else if(S[0] == '1') {
+      m_status_1++;
+    } else if(S[0] == '2') {
+      m_status_2++;
+    } else if(S[0] == '3') {
+      m_status_3++;
+    } else if(S[0] == '4') {
+      m_status_4++;
+    } else {
+      m_status_5++;
+    }
   }
   if(T != NULL) {
     /* response duration */
@@ -597,6 +639,7 @@ static void usage(char *cmd) {
   printf("file every minute. The output includes the following entries:\n");
   printf("  - requests per second ("NRS")\n");
   printf("  - bytes (http body data) sent to the client per second ("NBS")\n");
+  printf("  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");
   printf("  - average response duration ("NAV")\n");
   printf("  - distribution of response durations within the last minute\n");
   printf("    (<1s,1s,2s,3s,4s,5s,>5)\n");
@@ -617,6 +660,7 @@ static void usage(char *cmd) {
   printf("     data. %s knows the following elements:\n", cmd);
   printf("     T defines the request duration (%%T)\n");
   printf("     B defines the transferred bytes (%%b)\n");
+  printf("     S defines HTTP response status code (%%s)\n");
   printf("     R defines the request line (%%r)\n");
   printf("     I defines the client ip address (%%h)\n");
   printf("     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
@@ -639,10 +683,10 @@ static void usage(char *cmd) {
   printf("\n");
   printf("Example configuration using pipped logging:\n");
   printf("  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
-  printf("  TransferLog \"|./bin/%s -f ..IR.B.T -o ./logs/stat_log\"\n", cmd);
+  printf("  TransferLog \"|./bin/%s -f ..IRSB.T -o ./logs/stat_log\"\n", cmd);
   printf("\n");
   printf("Example for post processing:\n");
-  printf("  cat access_log | ./bin/%s -f ..IR.B.T -o ./logs/stat_log -p\n", cmd);
+  printf("  cat access_log | ./bin/%s -f ..IRSB.T -o ./logs/stat_log -p\n", cmd);
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
