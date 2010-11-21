@@ -66,6 +66,7 @@ data from stdin. The output is written to the specified file
 every minute. The output includes the following entries:
   - requests per second (r/s)
   - bytes (http body data) sent to the client per second (b/s)
+  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)
   - average response duration (av)
   - distribution of response durations within the last minute
     (&lt;1s,1s,2s,3s,4s,5s,&gt;5)
@@ -86,6 +87,7 @@ Options
      data. qslog knows the following elements:
      T defines the request duration (%T)
      B defines the transferred bytes (%b)
+     S defines HTTP response status code (%s)
      R defines the request line (%r)
      I defines the client ip address (%h)
      U defines the user tracking id (%{mod_qos_user_id}e)
@@ -111,7 +113,7 @@ Example configuration using pipped logging:
   TransferLog "|./bin/qslog -f ..IR.B.T -o ./logs/stat_log"
 
 Example for post processing (option -p):
-  cat access_log | ./bin/qslog -f ..IR.B.T -o ./logs/stat_log -p
+  cat access_log | ./bin/qslog -f ..IRSB.T -o ./logs/stat_log -p
 </pre>
 </td></tr>
 </table>

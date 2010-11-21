@@ -1,3 +1,7 @@
+Version
+
+ - qslog counts response status codes per minute.
+
 Version 9.33
 
  - User tracking cookie enforcement may be disabled by setting the 
