@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.258 2010-11-16 21:00:04 pbuchbinder Exp $";
-static const char g_revision[] = "9.33";
+static const char revision[] = "$Id: mod_qos.c,v 5.259 2010-11-23 20:03:24 pbuchbinder Exp $";
+static const char g_revision[] = "9.34";
 
 /************************************************************************
  * Includes
@@ -1157,14 +1157,14 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, 
 static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
   const char *new_ms = apr_table_get(r->subprocess_env, QOS_MILESTONE_COOKIE);
   if(new_ms) {
-    time_t now = apr_time_sec(r->request_time);
-    int len = QOS_RAN + QOS_MAGIC_LEN  + sizeof(time_t) + strlen(new_ms);
+    apr_time_t now = apr_time_sec(r->request_time);
+    int len = QOS_RAN + QOS_MAGIC_LEN  + sizeof(apr_time_t) + strlen(new_ms);
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
     RAND_bytes(value, QOS_RAN);
     memcpy(&value[QOS_RAN], qs_magic, QOS_MAGIC_LEN);
-    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], &now, sizeof(time_t));
-    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN+sizeof(time_t)], new_ms, strlen(new_ms));
+    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], &now, sizeof(apr_time_t));
+    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN+sizeof(apr_time_t)], new_ms, strlen(new_ms));
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
     apr_table_add(r->headers_out, "Set-Cookie",
@@ -1187,10 +1187,10 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
     buf_len = qos_decrypt(r, sconf, &buf, value);
     if((buf_len > (QOS_MAGIC_LEN + QOS_RAN)) &&
        (strncmp((char *)&buf[QOS_RAN], qs_magic, QOS_MAGIC_LEN) == 0)) {
-      time_t *t = (time_t *)&buf[QOS_RAN+QOS_MAGIC_LEN];
-      time_t now = apr_time_sec(r->request_time);
+      apr_time_t *t = (apr_time_t *)&buf[QOS_RAN+QOS_MAGIC_LEN];
+      apr_time_t now = apr_time_sec(r->request_time);
       if(now <= (*t + sconf->milestone_timeout)) {
-        ms = atoi((char *)&buf[QOS_RAN+QOS_MAGIC_LEN+sizeof(time_t)]);
+        ms = atoi((char *)&buf[QOS_RAN+QOS_MAGIC_LEN+sizeof(apr_time_t)]);
       }
     }
   }
@@ -3022,12 +3022,12 @@ static void qos_hp_keepalive(request_rec *r) {
 /**
  * QS_EventPerSecLimit
  */
-static void qos_lg_event_update(request_rec *r, time_t *t) {
+static void qos_lg_event_update(request_rec *r, apr_time_t *t) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
   qs_actable_t *act = sconf->act;
   if(act->has_events) {
-    time_t now = apr_time_sec(r->request_time);
+    apr_time_t now = apr_time_sec(r->request_time);
     qs_acentry_t *e = act->entry;
     *t = now;
     if(e) {
@@ -3413,7 +3413,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     qos_s_entry_t **e = NULL;
     qos_s_entry_t new;
-    time_t now = apr_time_sec(r->request_time);
+    apr_time_t now = apr_time_sec(r->request_time);
 
     if(sconf->qos_cc_prefer_limit || (sconf->req_rate != -1)) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
@@ -3500,7 +3500,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       (*e)->time = apr_time_sec(r->request_time);
     }
     if(sconf->qos_cc_event) {
-      time_t now = apr_time_sec(r->request_time);
+      apr_time_t now = apr_time_sec(r->request_time);
       const char *v = apr_table_get(r->subprocess_env, "QS_Event");
       if(v) {
         (*e)->req++;
@@ -3541,7 +3541,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       }
     }
     if(sconf->qos_cc_block) {
-      time_t now = apr_time_sec(r->request_time);
+      apr_time_t now = apr_time_sec(r->request_time);
       const char *v = apr_table_get(r->subprocess_env, "QS_Block");
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
@@ -3621,7 +3621,7 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
     /* blocked by event */
     if(cconf->sconf->qos_cc_block) {
       if((*e)->block >= cconf->sconf->qos_cc_block) {
-        time_t now = time(NULL);
+        apr_time_t now = time(NULL);
         if(((*e)->block_time + cconf->sconf->qos_cc_block_time) > now) {
           /* still blocking */
           *msg = apr_psprintf(cconf->c->pool, 
@@ -4019,7 +4019,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                                                                 &qos_module);
   server_rec *s = sconf->base_server;
   int i = 0;
-  time_t now = apr_time_sec(r->request_time);
+  apr_time_t now = apr_time_sec(r->request_time);
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config,
                                                                  &qos_module);
   apr_table_t *qt = qos_get_query_table(r);
@@ -4307,8 +4307,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   while(!sconf->inctx_t->exit) {
     int req_rate = qos_req_rate_calc(sconf);
-    time_t now = time(NULL);
-    time_t interval = now - QS_REQ_RATE_TM;
+    apr_time_t now = apr_time_sec(apr_time_now());
+    apr_time_t interval = now - QS_REQ_RATE_TM;
     int i;
     apr_table_entry_t *entry;
     sleep(1);
@@ -5848,7 +5848,7 @@ static int qos_logger(request_rec *r) {
   qs_acentry_t *e = rctx->entry;
   qs_acentry_t *e_cond = rctx->entry_cond;
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
-  time_t now = 0;
+  apr_time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
   qos_propagate_notes(r);

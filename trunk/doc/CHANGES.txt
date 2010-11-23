@@ -1,4 +1,6 @@
-Version
+Version 9.34
+
+ - Use apr_time_t for division operations (instead of time_t).
 
  - qslog counts response status codes per minute.
 
