@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.3 2010-11-21 18:28:56 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.4 2010-11-25 18:50:16 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -352,39 +352,39 @@ static void updateStat(const char *cstr, char *line) {
   if(!line[0]) return;
   while(c[0]) {
     /* process known types */
-    if(strncmp(c, ".", 1) == 0) {
+    if(c[0] == '.') {
       if(l != NULL && l[0] != '\0') {
         l = skipElement(l);
       }
-    } else if(strncmp(c, "T", 1) == 0) {
+    } else if(c[0] == 'T') {
       if(l != NULL && l[0] != '\0') {
         T = cutNext(&l);
       }
-    } else if(strncmp(c, "S", 1) == 0) {
+    } else if(c[0] == 'S') {
       if(l != NULL && l[0] != '\0') {
         S = cutNext(&l);
       }
-    } else if(strncmp(c, "B", 1) == 0) {
+    } else if(c[0] == 'B') {
       if(l != NULL && l[0] != '\0') {
         B = cutNext(&l);
       }
-    } else if(strncmp(c, "R", 1) == 0) {
+    } else if(c[0] == 'R') {
       if(l != NULL && l[0] != '\0') {
         R = cutNext(&l);
       }
-    } else if(strncmp(c, "I", 1) == 0) {
+    } else if(c[0] == 'I') {
       if(l != NULL && l[0] != '\0') {
         I = cutNext(&l);
       }
-    } else if(strncmp(c, "U", 1) == 0) {
+    } else if(c[0] == 'U') {
       if(l != NULL && l[0] != '\0') {
         U = cutNext(&l);
       }
-    } else if(strncmp(c, "Q", 1) == 0) {
+    } else if(c[0] == 'Q') {
       if(l != NULL && l[0] != '\0') {
         Q = cutNext(&l);
       }
-    } else if(strncmp(c, " ", 1) == 0) {
+    } else if(c[0] == ' ') {
       /* do nothing */
     } else {
       /* undedined char, skip it */
