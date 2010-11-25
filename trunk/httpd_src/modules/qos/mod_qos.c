@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.259 2010-11-23 20:03:24 pbuchbinder Exp $";
-static const char g_revision[] = "9.34";
+static const char revision[] = "$Id: mod_qos.c,v 5.260 2010-11-25 18:50:37 pbuchbinder Exp $";
+static const char g_revision[] = "9.35";
 
 /************************************************************************
  * Includes
@@ -5840,6 +5840,17 @@ static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
   apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
 }
 
+static int qos_fixup(request_rec * r) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                &qos_module);
+  qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
+                                                                &qos_module);
+#if APR_HAS_THREADS
+  qos_disable_rate(r, sconf, dconf);
+#endif
+  return DECLINED;
+}
+
 /**
  * "free resources" and update stats
  */
@@ -5913,7 +5924,9 @@ static int qos_logger(request_rec *r) {
       apr_table_set(r->next->subprocess_env, "mod_qos_ev", rctx->evmsg);
     }
   }
+#if APR_HAS_THREADS
   qos_disable_rate(r, sconf, dconf);
+#endif
   return DECLINED;
 }
 
@@ -8486,6 +8499,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_header_parser(qos_header_parser0, NULL, post, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser1, post, parp, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);
+  ap_hook_fixups(qos_fixup, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_handler(qos_handler, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
   //ap_hook_error_log(qos_error_log, NULL, NULL, APR_HOOK_LAST);
