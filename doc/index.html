@@ -215,10 +215,11 @@ LoadModule qos_module &lt;path to module&gt;/mod_qos.so
 </p>
 
 <p>
-You can also compile the module using <code>apxs</code> alternatively. Your httpd 
-binary must support dynamically loaded objects (DSO). Verify this by checking 
-the availability of mod_so: The command <code>httpd -l</code> must list the 
-mod_so.c module. 
+You can also compile the module using 
+<code><a target="_blank" href="http://httpd.apache.org/docs/2.2/programs/apxs.html">apxs</a></code> 
+alternatively. Your httpd binary must support dynamically loaded objects (DSO). 
+Verify this by checking the availability of mod_so: The command <code>httpd -l</code> 
+must list the mod_so.c module. 
 The following command compiles the module and installs mod_qos into the 
 server's modules directory.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -230,6 +231,10 @@ cd ../..
 </pre>
 </td></tr>
 </table>
+If the the necessary header files of OpenSSL, PCRE, etc. cannot be found, add the <code>-I</code> 
+option to the <code>apxs</code> command to specify the directory where header files can be found and 
+if any of the required libraries (may happen if you use mod_qos without mod_ssl) 
+cannot be found, add the <code>-L</code> option to specify the directory where libraries can be found.
 </p>
 
 <p>
@@ -939,8 +944,8 @@ may be set as an environment variable using
 </li>
 </ul>
 
-You may want to set the <code>QS_DeflateReqBody</code> variable if the request body 
-data has to be deflated using 
+Set the <code>QS_DeflateReqBody</code> variable if the request body data has to 
+be deflated (compressed data) using 
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_deflate.html" target="_blank">mod_deflate</a>.
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -972,13 +977,37 @@ SetEnvIfNoCase Content-Type multipart/mixed                   QS_LimitRequestBod
 SetEnvIfNoCase Content-Type application/json                  QS_LimitRequestBody=65536
 
 # enable mod_deflate input filter for compressed request body data:
-SetEnvIfNoCase Content-Encoding gzip|compress|deflate QS_DeflateReqBody
+SetEnvIfNoCase Content-Encoding gzip|compress|deflate         QS_DeflateReqBody
 
 &lt;Location /app&gt;
    # don't allow certain string pattern within the request query or
    # the request message body data:
    QS_DenyQueryBody              on
    QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+You may enable request body filtering for arbitrary content types:
+<ul>
+<li>Regsiter the <a href="http://parp.sourceforge.net" target="_blank">mod_parp</a> raw parser 
+using the <code>PARP_BodyData</code> directive.</li>
+<li>Enable mod_parp for the content type using the <code>SetEnvIfNoCase</code> directive.</li>
+<li>Use <code>QS_SetEnvIfBody</code> to detect patterns within the HTTP request body.</li>
+<li>The <code>QS_DenyEvent</code> directive denies access for the request.</li>
+</ul>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+Sample configuration:<br>
+<pre>
+# sample (using the raw body parser of mod_parp) which denies XML documents
+# containing the pattern "&lt;code&gt;delete&lt;/code&gt;":
+PARP_BodyData               text/xml
+SetEnvIfNoCase Content-Type text/xml.*                        parp
+SetEnvIfNoCase Content-Type application/xml                   QS_LimitRequestBody=65536
+QS_SetEnvIfBody             &lt;code&gt;delete&lt;/code&gt;               DENYACTION
+&lt;Location /app/web&gt;
+   QS_DenyEvent             +BADCODE deny                     DENYACTION
 &lt;/Location&gt;
 </pre>
 </td></tr>

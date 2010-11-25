@@ -1,3 +1,7 @@
+Version 9.35
+
+ - QS_SrvMinDataRateOffEvent processing at fixup (request).
+
 Version 9.34
 
  - Use apr_time_t for division operations (instead of time_t).
