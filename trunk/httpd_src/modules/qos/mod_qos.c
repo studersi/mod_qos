@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.260 2010-11-25 18:50:37 pbuchbinder Exp $";
-static const char g_revision[] = "9.35";
+static const char revision[] = "$Id: mod_qos.c,v 5.261 2010-11-26 07:23:30 pbuchbinder Exp $";
+static const char g_revision[] = "9.36";
 
 /************************************************************************
  * Includes
@@ -379,7 +379,7 @@ typedef struct qs_acentry_st {
   int counter;
   int limit;
   /* measurement */
-  time_t interval;
+  apr_time_t interval;
   long req;
   long req_per_sec;
   long req_per_sec_limit;
@@ -1532,7 +1532,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
                        e->url);
         }
       }
-      e->interval = time(NULL);
+      e->interval = apr_time_sec(apr_time_now());
       e->req_per_sec_limit = rule->req_per_sec_limit;
       e->kbytes_per_sec_limit = rule->kbytes_per_sec_limit;
       e->counter = 0;
@@ -3045,7 +3045,7 @@ static void qos_lg_event_update(request_rec *r, apr_time_t *t) {
                 e->req = 0;
                 e->interval = now;
                 qos_cal_req_sec(r, e);
-              } else {
+              } else if(e->kbytes_per_sec_limit) {
                 /* QS_EventKBytesPerSecLimit */
                 e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
                 e->bytes = 0;
