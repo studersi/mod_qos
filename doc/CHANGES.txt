@@ -1,12 +1,14 @@
-Version 9.35
+Version 9.36
 
  - QS_SrvMinDataRateOffEvent processing at fixup (request).
 
+ - Use apr_time_t instead of time_t.
+
 Version 9.34
 
- - Use apr_time_t for division operations (instead of time_t).
-
  - qslog counts response status codes per minute.
+
+ - Use apr_time_t instead of time_t.
 
 Version 9.33
 
