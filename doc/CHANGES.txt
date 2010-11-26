@@ -65,7 +65,7 @@ Version 9.27
    locations in order to generate QS_PermitUri rules).
 
  - qsfilter2 may process "standard" Apache access log (TransferLog)
-   files files too (automatically detecting the request line).
+   files too (automatically detecting the request line).
 
  - Several adaptions/fixes to the machine-readable version of
    the status viewer.
