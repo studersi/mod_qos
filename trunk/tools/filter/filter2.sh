@@ -34,21 +34,35 @@ echo "/o-b/test.php?blah1=&blah2=" >> access_log
 echo "/qos/parp/json /qos/parp/json?session=12&_o_name_v=Jack%20%28%5c%22Bee%5c%22%29%20Nimble&_o_format_o_type_v=rect&_o_format_o_width_n=1920&_o_format_o_height_n=1080&_o_format_o_interlace_b=false&_o_format_o_frame%20rates_a_n=24&_o_format_o_frame%20rates_a_n=30&_o_format_o_frame%20rates_a_n=60&_o_format_o_frame%20rates_a_n=72" >> access_log
 
 if [ -n "$1" ]; then
+    # manual mode
     ../../util/src/qsfilter2 -e -i access_log $@
-    exit 0
+    exit $?
 fi
 
 ../../util/src/qsfilter2 -e -i access_log -m 2>&1 | grep -v "mod_qos version" > qm2.txt
 DLINES=`diff qm2.txt.ref qm2.txt | wc -l`
-if [ $DLINES -ne 4 ]; then
+DCONF=`diff qm2.txt.ref qm2.txt | grep QS_`
+if [ $DLINES -ne 4 -a $DLINES -ne 8 ]; then
     echo "ERROR diff qm2.txt.ref qm2.txt"
     diff qm2.txt.ref qm2.txt
     exit 1
 fi
+if [ -n "$DCONF" ]; then
+    echo "ERROR diff qm2.txt.ref qm2.txt"
+    diff qm2.txt.ref qm2.txt
+    exit 1
+fi
+
 ../../util/src/qsfilter2 -e -i access_log 2>&1 | grep -v "mod_qos version" > q2.txt
 DLINES=`diff q2.txt.ref q2.txt | wc -l`
-if [ $DLINES -ne 4 ]; then
+DCONF=`diff q2.txt.ref q2.txt | grep QS_`
+if [ $DLINES -ne 4 -a $DLINES -ne 8 ]; then
     echo "ERROR diff q2.txt.ref q2.txt"
+    diff q2.txt.ref q2.txt
+    exit 1
+fi
+if [ -n "$DCONF" ]; then
+    echo "ERROR diff qm2.txt.ref qm2.txt"
     diff q2.txt.ref q2.txt
     exit 1
 fi
