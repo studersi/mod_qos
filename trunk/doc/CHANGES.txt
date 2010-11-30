@@ -1,3 +1,7 @@
+Version
+
+ - Update built-in header validation pattern.
+
 Version 9.36
 
  - QS_SrvMinDataRateOffEvent processing at fixup (request).

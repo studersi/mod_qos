@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.261 2010-11-26 07:23:30 pbuchbinder Exp $";
-static const char g_revision[] = "9.36";
+static const char revision[] = "$Id: mod_qos.c,v 5.262 2010-11-30 21:26:42 pbuchbinder Exp $";
+static const char g_revision[] = "9.37";
 
 /************************************************************************
  * Includes
@@ -642,9 +642,9 @@ static APR_OPTIONAL_FN_TYPE(ssl_is_https) *qos_is_https = NULL;
    extensions which are used rarely) */
 /* reserved (to be escaped): {}[]()^$.|*+?\ */
 static const qos_her_t qs_header_rules[] = {
-#define QS_URL_UNRESERVED  "a-zA-Z0-9-\\._~% "
+#define QS_URL_UNRESERVED  "a-zA-Z0-9\\-\\._~% "
 #define QS_URL_GEN         ":/\\?#\\[\\]@"
-#define QS_URL_SUB         "!$&'\\(\\)\\*\\+,;="
+#define QS_URL_SUB         "!\\$&'\\(\\)\\*\\+,;="
 #define QS_URL             "["QS_URL_UNRESERVED""QS_URL_GEN""QS_URL_SUB"]"
 #define QS_B64_SP          "[a-zA-Z0-9 \\+/\\$=:]"
 #define QS_H_ACCEPT        "[a-zA-Z0-9\\-_\\*\\+]+/[a-zA-Z0-9\\-_\\*\\+\\.]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9\\.]+)?"
