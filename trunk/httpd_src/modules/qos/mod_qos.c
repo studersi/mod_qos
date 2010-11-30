@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.262 2010-11-30 21:26:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.263 2010-11-30 21:53:47 pbuchbinder Exp $";
 static const char g_revision[] = "9.37";
 
 /************************************************************************
@@ -672,7 +672,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Content-Language", "^[a-zA-Z0-9\\-]+$", QS_FLT_ACTION_DROP, 100 },
   { "Content-Length", "^[0-9]+$", QS_FLT_ACTION_DENY, 10 },
   { "Content-Location", "^"QS_URL"+$", QS_FLT_ACTION_DENY, 200 },
-  { "Content-md5", "^"QS_B64_SP"$", QS_FLT_ACTION_DENY, 50 },
+  { "Content-md5", "^"QS_B64_SP"+$", QS_FLT_ACTION_DENY, 50 },
   { "Content-Range", "^.*$", QS_FLT_ACTION_DENY, 50 },
   { "Content-Type", "^("QS_H_CONTENT"){1}([ ]?,[ ]?"QS_H_CONTENT")*$", QS_FLT_ACTION_DENY, 200 },
   { "Cookie", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 3000 },
@@ -689,7 +689,7 @@ static const qos_her_t qs_header_rules[] = {
   { "If-Valid", "^[a-zA-Z0-9\\-_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 500 },
   { "Keep-Alive", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { "Max-Forwards", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
-  { "Proxy-Authorization", "^"QS_B64_SP"$", QS_FLT_ACTION_DROP, 400 },
+  { "Proxy-Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 400 },
   { "Pragma", "^"QS_H_PRAGMA"+$", QS_FLT_ACTION_DROP, 200 },
   { "Range", "^[a-zA-Z0-9\\-=_\\.:;\\(\\) /\\+!]+$", QS_FLT_ACTION_DROP, 200 },
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
