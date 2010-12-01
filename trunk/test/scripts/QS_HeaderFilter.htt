@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.6 2010-05-17 18:05:13 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.7 2010-12-01 20:44:03 pbuchbinder Exp $
 #
 
 
@@ -290,6 +290,21 @@ _EXPECT . "HTTP_USER_AGENT: Mozilla"
 _EXPECT . "HTTP_VIA"
 _EXPECT . "X_FORWARDED_FOR"
 _WAIT
+
+
+# allowed headers
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__Accept: t\ext/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__
+_EXPECT . "200 OK"
+_EXPECT . "!ACCEPT:"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'Accept: t"
+_EXEC tail -1 logs/error_log
 
 END
 
