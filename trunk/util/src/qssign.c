@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.4 2010-09-15 18:04:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.5 2010-12-02 20:31:56 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -139,7 +139,11 @@ static long qs_verify(const char *sec) {
 	if(nr != -1) {
 	  if(nr != ns) {
 	    err++;
-	    fprintf(stderr, "ERROR on line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lnr, nr);
+	    if(ns == 1) {
+	      fprintf(stderr, "ERROR on line %ld: wrong sequence, server restart? (expect %."SEQDIG"ld)\n", lnr, nr);
+	    } else {
+	      fprintf(stderr, "ERROR on line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lnr, nr);
+	    }
 	  }
 	}
 	if(valid) {
