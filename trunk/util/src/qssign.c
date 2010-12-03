@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.5 2010-12-02 20:31:56 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.6 2010-12-03 07:06:33 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -88,6 +88,7 @@ static void qs_sign(const char *sec) {
     data_len = apr_base64_encode(m, (char *)data, len);
     m[data_len] = '\0';
     printf("%s#%s\n", line, m);
+    fflush(stdout);
     free(m);
     nr++;
   }
