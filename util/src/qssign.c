@@ -25,11 +25,12 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.6 2010-12-03 07:06:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.7 2010-12-03 22:24:21 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <regex.h>
 
 //#include <config.h>
 
@@ -51,6 +52,11 @@ static const char revision[] = "$Id: qssign.c,v 1.6 2010-12-03 07:06:33 pbuchbin
 #define SEQDIG "12"
 #define MAX_STRING_LEN 32768
 
+#define QS_END "qssign---end-of-data"
+
+static long m_nr = 1;
+static void (*m_end)(const char *) = NULL;
+
 static int qs_getLine(char *s, int n) {
   int i = 0;
   while (1) {
@@ -67,30 +73,114 @@ static int qs_getLine(char *s, int n) {
   }
 }
 
+static void qs_write(char *line, int line_size, const char *sec, int sec_len) {
+  HMAC_CTX ctx;
+  unsigned char data[HMAC_MAX_MD_CBLOCK];
+  unsigned int len;
+  char *m;
+  int data_len;
+  sprintf(&line[strlen(line)], " %."SEQDIG"ld", m_nr);
+  HMAC_Init(&ctx, sec, sec_len, EVP_sha1());
+  HMAC_Update(&ctx, (const unsigned char *)line, strlen(line));
+  HMAC_Final(&ctx, data, &len);
+  m = calloc(1, apr_base64_encode_len(len) + 1);
+  data_len = apr_base64_encode(m, (char *)data, len);
+  m[data_len] = '\0';
+  printf("%s#%s\n", line, m);
+  fflush(stdout);
+  free(m);
+  m_nr++;
+  return;
+}
+
+static void qs_end_apache_err(const char *sec) {
+  time_t t;
+  char *time_string;
+  int sec_len = strlen(sec);
+  char line[MAX_LINE];
+  int dig = atoi(SEQDIG);
+  /* <data> ' ' <sequence number> '#' <hmac>*/
+  int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
+  t = time(NULL);
+  time_string = ctime(&t);
+  time_string[strlen(time_string) - 1] = '\0';
+  sprintf(line, "[%s] [notice] "QS_END, time_string);
+  qs_write(line, line_size, sec, sec_len);
+  return;
+}
+
+static void qs_end_apache_acc(const char *sec) {
+  int sec_len = strlen(sec);
+  char line[MAX_LINE];
+  int dig = atoi(SEQDIG);
+  /* <data> ' ' <sequence number> '#' <hmac>*/
+  int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
+  sprintf(line, "0.0.0.0 - - [] %s", QS_END);
+  qs_write(line, line_size, sec, sec_len);
+  return;
+}
+
+static void qs_end_nj(const char *sec) {
+  int sec_len = strlen(sec);
+  char line[MAX_LINE];
+  int dig = atoi(SEQDIG);
+  /* <data> ' ' <sequence number> '#' <hmac>*/
+  int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
+  sprintf(line, "%s", QS_END);
+  qs_write(line, line_size, sec, sec_len);
+  return;
+}
+
+/*
+ * known pattern
+ * [Fri Dec 03 07:37:40 2010] [notice] .........
+ * 12.12.12.12 - - [03/Dec/2010:07:36:51 +0100] ...............
+ * 2010 12 03 17:00:30.425 web    IW4E 32189.4046011280-DDD 3-ERROR :  ..............
+ * TODO: check apr_date_parse_http() for other date formats
+ */
+static void qs_set_format(char *s) {
+  regex_t r_apache_err; 
+  regex_t r_apache_acc;
+  regex_t r_nj;
+  if(regcomp(&r_apache_err,
+	     "^\\[[a-zA-Z]{3} [a-zA-Z]{3} [0-9]+ [0-9]+:[0-9]+:[0-9]+ [0-9]+\\] \\[[a-zA-Z]+\\] ",
+	     REG_EXTENDED) != 0) {
+    fprintf(stderr, "failed to compile regex (1)\n");
+    exit(1);
+  }
+  if(regcomp(&r_apache_acc,
+	     "^[0-9.]+ [a-zA-Z0-9\\@_\\.\\-]+ [a-zA-Z0-9\\@_\\.\\-]+ \\[[0-9]+/[a-zA-Z]{3}/[0-9:]+[0-9\\+ ]+\\] ",
+	     REG_EXTENDED) != 0) {
+    fprintf(stderr, "failed to compile regex (2)\n");
+    exit(1);
+  }
+  if(regcomp(&r_nj,
+	     "^[0-9]+ [0-9]+ [0-9]+ [0-9]+:[0-9]+:[0-9]+\\.[0-9]+ [a-zA-Z0-9]+ ",
+	     REG_EXTENDED) != 0) {
+    fprintf(stderr, "failed to compile regex (3)\n");
+    exit(1);
+  }
+  if(regexec(&r_apache_err, s, 0, NULL, 0) == 0) {
+    m_end = &qs_end_apache_err;
+  } else if(regexec(&r_apache_acc, s, 0, NULL, 0) == 0) {
+    m_end = &qs_end_apache_acc;
+  } else if(regexec(&r_nj, s, 0, NULL, 0) == 0) {
+    m_end = &qs_end_nj;
+  }
+  return;
+}
+
 static void qs_sign(const char *sec) {
   int sec_len = strlen(sec);
-  long nr = 1;
   char line[MAX_LINE];
   int dig = atoi(SEQDIG);
   /* <data> ' ' <sequence number> '#' <hmac>*/
   int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
   while(qs_getLine(line, line_size)) {
-    HMAC_CTX ctx;
-    unsigned char data[HMAC_MAX_MD_CBLOCK];
-    unsigned int len;
-    char *m;
-    int data_len;
-    sprintf(&line[strlen(line)], " %."SEQDIG"ld", nr);
-    HMAC_Init(&ctx, sec, sec_len, EVP_sha1());
-    HMAC_Update(&ctx, (const unsigned char *)line, strlen(line));
-    HMAC_Final(&ctx, data, &len);
-    m = calloc(1, apr_base64_encode_len(len) + 1);
-    data_len = apr_base64_encode(m, (char *)data, len);
-    m[data_len] = '\0';
-    printf("%s#%s\n", line, m);
-    fflush(stdout);
-    free(m);
-    nr++;
+    if(m_end == NULL) {
+      qs_set_format(line);
+    }
+    qs_write(line, line_size, sec, sec_len);
   }
   return;
 }
@@ -99,9 +189,9 @@ static long qs_verify(const char *sec) {
   int sec_len = strlen(sec);
   long err = 0; // errors
   long lnr = 0; // line number
-  long nr = -1; // sequence number
   char line[MAX_LINE];
   int line_size = sizeof(line);
+  m_nr = -1; // sequence number
   while(qs_getLine(line, line_size)) {
     int valid = 0;
     long ns = 0;
@@ -137,18 +227,19 @@ static long qs_verify(const char *sec) {
 	err++;
 	fprintf(stderr, "ERROR on line %ld: invalid sequence\n", lnr);
       } else {
-	if(nr != -1) {
-	  if(nr != ns) {
+	if(m_nr != -1) {
+	  if(m_nr != ns) {
 	    err++;
 	    if(ns == 1) {
-	      fprintf(stderr, "ERROR on line %ld: wrong sequence, server restart? (expect %."SEQDIG"ld)\n", lnr, nr);
+	      fprintf(stderr, "ERROR on line %ld: wrong sequence, server restart? (expect %."SEQDIG"ld)\n",
+		      lnr, m_nr);
 	    } else {
-	      fprintf(stderr, "ERROR on line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lnr, nr);
+	      fprintf(stderr, "ERROR on line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lnr, m_nr);
 	    }
 	  }
 	}
 	if(valid) {
-	  nr = ns;
+	  m_nr = ns;
 	}
       }
     } else {
@@ -156,7 +247,7 @@ static long qs_verify(const char *sec) {
       fprintf(stderr, "ERROR on line %ld: missing signature/sequence\n", lnr);
     }
     if(valid) {
-      nr++;
+      m_nr++;
     }
   }
   return err;
@@ -309,6 +400,9 @@ int main(int argc, const char * const argv[]) {
     }
   } else {
     qs_sign(sec);
+    if(m_end != NULL) {
+      m_end(sec);
+    }
   }
 
   apr_pool_destroy(pool);
