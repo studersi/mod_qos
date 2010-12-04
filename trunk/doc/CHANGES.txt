@@ -1,5 +1,7 @@
 Version
 
+ - qssign: add option "-e" which ensures we don't lost any lines.
+
  - Update built-in header validation pattern.
 
 Version 9.36
