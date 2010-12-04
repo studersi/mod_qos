@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.8 2010-12-04 20:43:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.9 2010-12-04 21:14:33 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -214,7 +214,7 @@ static void qs_set_format(char *s) {
     if(dp) {
       /* calculate the "var" size, see comment above */
       m_end_pos = dp - s - 47 - 8 - 3;
-      if(m_end_pos < 0) {
+      if((m_end_pos < 0) || (m_end_pos > 1000)) {
 	m_end_pos = 0;
       }
     }
@@ -306,13 +306,17 @@ static long qs_verify(const char *sec) {
       err++;
       fprintf(stderr, "ERROR on line %ld: missing signature/sequence\n", lnr);
     }
+    end_seen = 0;
     if(valid) {
+      char *end_marker = strstr(line, QS_END);
       m_nr++;
-    }
-    if(strstr(line, QS_END)) {
-      end_seen = 1;
-    } else {
-      end_seen = 0;
+      if(end_marker != NULL) {
+	/* QS_END + " " + SEQDIG */
+	int sz = strlen(QS_END) + 1 + atoi(SEQDIG);
+	if(sz == (strlen(line) - (end_marker - line))) {
+	  end_seen = 1;
+	}
+      }
     }
   }
   return err;
