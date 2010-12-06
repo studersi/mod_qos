@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.10 2010-12-06 20:26:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.11 2010-12-06 21:38:37 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -169,6 +169,10 @@ static void qs_end_nj(const char *sec) {
   return;
 }
 
+static void qs_end_lx(const char *sec) {
+  return;
+}
+
 void qs_signal_exit(int e) {
   if(m_logend && (m_end != NULL)) {
     m_end(m_sec);
@@ -178,31 +182,39 @@ void qs_signal_exit(int e) {
 
 /*
  * known pattern
- * [Fri Dec 03 07:37:40 2010] [notice] .........
- * 12.12.12.12 - - [03/Dec/2010:07:36:51 +0100] ...............
- * 2010 12 03 17:00:30.425 qssign     end        0.0              5-NOTICE:  ..............
- *                                               46  <- var ->    63      71
+ * - [Fri Dec 03 07:37:40 2010] [notice] .........
+ * - 12.12.12.12 - - [03/Dec/2010:07:36:51 +0100] ...............
+ * - 2010 12 03 17:00:30.425 qssign     end        0.0              5-NOTICE:  ..............
+ *                                                 46  <- var ->    63      71
+ * - Dec  6 04:00:06 localhost kernel:
  */
 static void qs_set_format(char *s) {
   regex_t r_apache_err; 
   regex_t r_apache_acc;
   regex_t r_nj;
+  regex_t r_lx;
   if(regcomp(&r_apache_err,
 	     "^\\[[a-zA-Z]{3} [a-zA-Z]{3} [0-9]+ [0-9]+:[0-9]+:[0-9]+ [0-9]+\\] \\[[a-zA-Z]+\\] ",
 	     REG_EXTENDED) != 0) {
-    fprintf(stderr, "failed to compile regex (1)\n");
+    fprintf(stderr, "failed to compile regex (err)\n");
     exit(1);
   }
   if(regcomp(&r_apache_acc,
 	     "^[0-9.]+ [a-zA-Z0-9\\@_\\.\\-]+ [a-zA-Z0-9\\@_\\.\\-]+ \\[[0-9]+/[a-zA-Z]{3}/[0-9:]+[0-9\\+ ]+\\] ",
 	     REG_EXTENDED) != 0) {
-    fprintf(stderr, "failed to compile regex (2)\n");
+    fprintf(stderr, "failed to compile regex (acc)\n");
     exit(1);
   }
   if(regcomp(&r_nj,
-	     "^[0-9]{4} [0-9]{2} [0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]+ [a-zA-Z0-9]+[ ]+",
+	     "^[0-9]{4} [0-9]{2} [0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]+ [a-zA-Z0-9]+[ ]+.*[A-Z]+[ ]*:",
 	     REG_EXTENDED) != 0) {
-    fprintf(stderr, "failed to compile regex (3)\n");
+    fprintf(stderr, "failed to compile regex (nj)\n");
+    exit(1);
+  }
+  if(regcomp(&r_lx,
+	     "^[a-zA-Z]{3}[ ]+[0-9]+[ ]+[0-9]{2}:[0-9]{2}:[0-9]{2}[ ]+[a-zA-Z0-9_\\.\\-]+[ ]+[a-zA-Z0-9_\\.\\-]+:",
+	     REG_EXTENDED) != 0) {
+    fprintf(stderr, "failed to compile regex (lx)\n");
     exit(1);
   }
   if(regexec(&r_apache_err, s, 0, NULL, 0) == 0) {
@@ -219,6 +231,8 @@ static void qs_set_format(char *s) {
       }
     }
     m_end = &qs_end_nj;
+  } else if(regexec(&r_lx, s, 0, NULL, 0) == 0) {
+    m_end = &qs_end_lx;    
   } else {
     /* default */
     m_end = &qs_end_apache_err;
