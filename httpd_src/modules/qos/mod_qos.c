@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.265 2010-12-07 20:49:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.266 2010-12-07 22:02:00 pbuchbinder Exp $";
 static const char g_revision[] = "9.37";
 
 /************************************************************************
@@ -3597,27 +3597,34 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
     /* max connections */
     if(cconf->sconf->has_qos_cc && cconf->sconf->qos_cc_prefer) {
       u->qos_cc->connections++;
-      if(!(*e)->vip) {
-        if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
-          *msg = apr_psprintf(cconf->c->pool, 
-                              QOS_LOG_PFX(063)"access denied, QS_ClientPrefer rule (not vip): "
-                              "max=%d, concurrent connections=%d, c=%s",
-                              cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
-                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
-          ret = m_retcode;
-        }
-      }
-      if((*e)->lowrate) {
-        if(c->notes) {
-          apr_table_set(c->notes, "QS_ClientLowPrio", "1");
-        }
-        if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
-          *msg = apr_psprintf(cconf->c->pool, 
-                              QOS_LOG_PFX(064)"access denied, QS_ClientPrefer rule (low prio): "
-                              "max=%d, concurrent connections=%d, c=%s",
-                              cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
-                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
-          ret = m_retcode;
+      if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
+        /* allow all vip addresses */
+        if(!(*e)->vip) {
+          /* step 1 - deny slow clients  */
+          if((*e)->lowrate) {
+            if(c->notes) {
+              apr_table_set(c->notes, "QS_ClientLowPrio", "1");
+            }
+            if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
+              *msg = apr_psprintf(cconf->c->pool, 
+                                  QOS_LOG_PFX(064)"access denied, QS_ClientPrefer rule (low prio): "
+                                  "max=%d, concurrent connections=%d, c=%s",
+                                  cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
+                                  cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+              ret = m_retcode;
+            }
+          } else {
+            /* step 2 - deny also normal clients (they are not vip) */
+            int more = (cconf->sconf->max_clients - cconf->sconf->qos_cc_prefer_limit) / 2;
+            if(u->qos_cc->connections > (cconf->sconf->qos_cc_prefer_limit + more)) {
+              *msg = apr_psprintf(cconf->c->pool, 
+                                  QOS_LOG_PFX(063)"access denied, QS_ClientPrefer rule (not vip): "
+                                  "max=%d, concurrent connections=%d, c=%s",
+                                  cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
+                                  cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+              ret = m_retcode;
+            }
+          }
         }
       }
     }

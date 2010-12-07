@@ -1,5 +1,9 @@
 Version
 
+ - Changed QS_ClientPrefer behavior:
+   - never block VIP IP
+   - step 1 denies slow marked clients only
+
  - Set the QS_ClientLowPrio variable for clients with low priority.
 
  - qssign: add option "-e" which ensures we don't lost any lines.
