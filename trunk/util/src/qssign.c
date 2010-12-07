@@ -25,9 +25,10 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.11 2010-12-06 21:38:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.12 2010-12-07 19:57:10 pbuchbinder Exp $";
 
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <regex.h>
@@ -169,7 +170,25 @@ static void qs_end_nj(const char *sec) {
   return;
 }
 
+/* Dec  6 04:00:06 localhost kernel: */
 static void qs_end_lx(const char *sec) {
+  char hostname[1024];
+  int len = sizeof(hostname);
+  int sec_len = strlen(sec);
+  char line[MAX_LINE];
+  int dig = atoi(SEQDIG);
+  /* <data> ' ' <sequence number> '#' <hmac>*/
+  int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
+  char time_string[1024];
+  time_t tm = time(NULL);
+  struct tm *ptr = localtime(&tm);
+  strftime(time_string, sizeof(time_string), "%b %e %H:%M:%S", ptr);
+  if(gethostname(hostname, len) != 0) {
+    hostname[0] = '-';
+    hostname[1] = '\0';
+  }
+  sprintf(line, "%s %s qssign: "QS_END, time_string, hostname);
+  qs_write(line, line_size, sec, sec_len);
   return;
 }
 
