@@ -33,7 +33,7 @@ if [ $QDIFF1 -lt $QDIFF2 ]; then
 fi
 if [ $QDIFF2 -lt $QDIFF3 ]; then
     ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_ClientPrefer_IP.htt"
+    echo "FAILED QS_ClientPrefer_IP.htt ($QDIFF2 $QDIFF3)"
 fi
 QSTART=`grep -c "mod_qos(064)" logs/error_log`
 ./htt.sh -se ./scripts/QS_ClientPrefer_SP.htt
@@ -42,7 +42,7 @@ QDIFF1=`expr $QFIRST - $QSTART`
 echo "$QDIFF1"
 if [ $QDIFF1 -eq 0 ]; then
     ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_ClientPrefer_SP.htt"
+    echo "FAILED QS_ClientPrefer_SP.htt ($QSTART $QFIRST $QDIFF1)"
 fi
 
 ./ctl.sh restart -D cc > /dev/null
