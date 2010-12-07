@@ -35,6 +35,7 @@ if [ $QDIFF2 -lt $QDIFF3 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientPrefer_IP.htt ($QDIFF2 $QDIFF3)"
 fi
+./htt.sh -se ./scripts/QS_ClientPrefer_SP_pre.htt 2>/dev/null 1>/dev/null
 QSTART=`grep -c "mod_qos(064)" logs/error_log`
 ./htt.sh -se ./scripts/QS_ClientPrefer_SP.htt
 QFIRST=`grep -c "mod_qos(064)" logs/error_log`
