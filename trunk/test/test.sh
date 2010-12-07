@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.134 2010-12-07 20:49:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.135 2010-12-07 21:34:30 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -645,6 +645,12 @@ if [ $? -ne 0 ]; then
     echo "FAILED dos.sh (minimal DoS prevention test)"
 fi
 
+./qssign.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qssign test failed"
+fi
+
 for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062" | grep -v "(066"`; do
     C=`grep -c $E logs/error_log`
     C1=`grep -c $E logs/error1_log`
@@ -653,12 +659,6 @@ for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk 
 	echo "WARNING: missing message $E $C $C1"
     fi
 done
-
-./qssign.sh
-if [ $? -ne 0 ]; then
-  ERRORS=`expr $ERRORS + 1`
-  echo "FAILED qssign test failed"
-fi
 
 ../tools/filter/filter2.sh
 if [ $? -ne 0 ]; then
