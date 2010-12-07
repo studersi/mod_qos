@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.264 2010-12-03 22:20:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.265 2010-12-07 20:49:08 pbuchbinder Exp $";
 static const char g_revision[] = "9.37";
 
 /************************************************************************
@@ -3583,7 +3583,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
 /**
  * client control rules at process connection handler
  */
-static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
+static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
   int ret = DECLINED;
   if(cconf->sconf->has_qos_cc) {
     qos_s_entry_t **e = NULL;
@@ -3608,6 +3608,9 @@ static int qos_cc_pc_filter(qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
         }
       }
       if((*e)->lowrate) {
+        if(c->notes) {
+          apr_table_set(c->notes, "QS_ClientLowPrio", "1");
+        }
         if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
           *msg = apr_psprintf(cconf->c->pool, 
                               QOS_LOG_PFX(064)"access denied, QS_ClientPrefer rule (low prio): "
@@ -4674,7 +4677,7 @@ static int qos_process_connection(conn_rec *c) {
      * update data
      */
     /* client control */
-    client_control = qos_cc_pc_filter(cconf, u, &msg);
+    client_control = qos_cc_pc_filter(c, cconf, u, &msg);
     /* QS_SrvMaxConn: vhost connections */
     if((sconf->max_conn != -1) || (sconf->min_rate_max != -1)) {
       apr_global_mutex_lock(cconf->sconf->act->lock);    /* @CRT4 */
@@ -4853,12 +4856,16 @@ static int qos_post_read_request(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
-  /* QS_SrvMaxConn: propagate connection to env vars */
+  /* QS_SrvMaxConn: propagate connection env vars to req*/
   if(sconf && ((sconf->max_conn != -1) || (sconf->min_rate_max != -1))) {
     const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
     if(connections) {
       apr_table_set(r->subprocess_env, "QS_SrvConn", connections);
     }
+  }
+  /* QS_ClientPrefer: propagate connection env vars to req*/
+  if(apr_table_get(r->connection->notes, "QS_ClientLowPrio")) {
+    apr_table_set(r->subprocess_env, "QS_ClientLowPrio", "1");
   }
   if(qos_request_check(r) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;

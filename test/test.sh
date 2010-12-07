@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.133 2010-11-25 18:50:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.134 2010-12-07 20:49:08 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -465,6 +465,13 @@ if [ $? -ne 0 ]; then
 fi
 
 # - DDoS -------------------------------------------------------
+./ctl.sh restart -D cc -D real_ip > /dev/null
+./run.sh -s ./scripts/QS_markslow.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_markslow.htt"
+fi
+
 ./run.sh -s ./scripts/QS_SrvRequestRate_0.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`

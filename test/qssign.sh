@@ -65,5 +65,28 @@ if [ `echo $OUT | grep -c "wrong sequence"` -eq 0 ]; then
   exit 1
 fi
 
+## --------------------
+## tomcat, catalina
+#Jun 4, 2008 9:21:22 AM org.apache.catalina.startup.HostConfig deployWAR
+#
+## log4j (one of many, many possible formats)
+#2010-04-14 20:18:37,464 | INFO  | org.hibernate.cfg.Configuration         ::getConfigurationInputStream:1081  Configuration resource: /hibernate.cfg.xml
+#
+## linux: postfix, auth, ...
+#Dec  5 07:01:02 titan postfix/cleanup[5524]: AFEF8E6AC6: message-id=<20101205060102.79228E6AB2@server>
+#Dec  5 07:15:03 localhost CRON[5556]: pam_unix(cron:session): session closed for user root
+echo "=============================================="
+echo "Dec  6 04:00:06 localhost kernel: kjournald starting.  Commit interval 5 seconds" | ../util/src/qssign -s 1234567890 -e
+#
+##
+echo "=============================================="
+echo "2010 12 04 20:46:45.118 dispatch   IWWWauthCo 07148.4046314384 3-ERROR :  AuthsessClient_1_0::execute: no valid" | ../util/src/qssign -s 1234567890 -e
+
+echo "=============================================="
+echo "[Mon Dec 06 21:29:07 2010] [notice] Apache/2.2.17 (Unix) mod_ssl/2.2.17 OpenSSL/0.9.8k" | ../util/src/qssign -s 1234567890 -e
+
+echo "=============================================="
+echo "127.0.0.1 - - [06/Dec/2010:21:26:57 +0100] \"GET /qos/favicon.ico HTTP/1.1\" 200 1150" | ../util/src/qssign -s 1234567890 -e
+
 echo "normal end"
 exit 0
