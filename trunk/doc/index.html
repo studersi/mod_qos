@@ -550,6 +550,10 @@ Variables set by mod_qos which may be processed by conditional or event based ru
 Number of concurrent connections. Value is set when using the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code> 
 directive.
 </li>
+<li>
+<code>QS_ClientLowPrio</code><br>
+The variable is set for requests by clients which has been marked to be processed with low priorty, see <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code>.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -1173,6 +1177,7 @@ within the defined time (default is 600 seconds). Client IP is blocked
 when reaching this counter for the specified time (blocked at connection level). 
 </li>
 <li>
+<a name="QS_ClientPrefer"></a>
 <code>QS_ClientPrefer [&lt;percent&gt;]</code><br>
 Accepts only <a href="#privilegedusers">VIP</a> 
 and high priority clients when the server has less than 80% 
@@ -1185,7 +1190,7 @@ behavior (clients sending slow, using small data packets, or accessing
 get marked as low priority clients, look for "r;" events within the 
 <a href="#accesslog">access log</a> or use the 
 <a href="#statusviewer">status viewer</a> to determine which client addresses 
-are identified as log priority clients). A low priority flag 
+are identified as low priority clients). A low priority flag 
 is cleared after 24h hours. Clients identified by 
 <code>QS_SrvMaxConnExcludeIP</code> are excluded from connection 
 restrictions. Filter is applied on connection level.

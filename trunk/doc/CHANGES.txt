@@ -1,5 +1,7 @@
 Version
 
+ - Set the QS_ClientLowPrio variable for clients with low priority.
+
  - qssign: add option "-e" which ensures we don't lost any lines.
 
  - Update built-in header validation pattern.

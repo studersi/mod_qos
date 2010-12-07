@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.7 2010-12-01 20:44:03 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.8 2010-12-07 20:49:08 pbuchbinder Exp $
 #
 
 
@@ -290,7 +290,6 @@ _EXPECT . "HTTP_USER_AGENT: Mozilla"
 _EXPECT . "HTTP_VIA"
 _EXPECT . "X_FORWARDED_FOR"
 _WAIT
-
 
 # allowed headers
 _REQ localhost $QS_PORT_BASE
