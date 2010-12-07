@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.266 2010-12-07 22:02:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.267 2010-12-07 22:11:04 pbuchbinder Exp $";
 static const char g_revision[] = "9.37";
 
 /************************************************************************
@@ -3620,7 +3620,7 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
               *msg = apr_psprintf(cconf->c->pool, 
                                   QOS_LOG_PFX(063)"access denied, QS_ClientPrefer rule (not vip): "
                                   "max=%d, concurrent connections=%d, c=%s",
-                                  cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
+                                  cconf->sconf->qos_cc_prefer_limit + more, u->qos_cc->connections,
                                   cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
               ret = m_retcode;
             }
