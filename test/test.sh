@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.135 2010-12-07 21:34:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.136 2010-12-08 07:32:04 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -494,9 +494,10 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_2.htt"
 fi
-if [ `tail -22 logs/error_log | grep -c "mod_qos(034)"` -ne 4 ]; then
+NUM34=`tail -22 logs/error_log | grep -c "mod_qos(034)"`
+if [ $NUM34 -ne 5 ]; then
     ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_SrvRequestRate_0/1.htt"
+    echo "FAILED QS_SrvRequestRate_0/1.htt ($NUM34 instaed of 5 log entries)"
     tail -22 logs/error_log | grep -c "mod_qos(034)"
 fi
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_3.htt" >>  logs/error_log
@@ -639,6 +640,10 @@ if [ $? -ne 0 ]; then
 fi
 
 # end -------------------------------------------------------------
+./ctl.sh stop 2>/dev/null 1>/dev/null
+sleep 1
+IPCS2=`ipcs | wc -l`
+
 ./dos.sh
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -671,6 +676,11 @@ if [ $? -ne 1 ]; then
   WARNINGS=`expr $WARNINGS + 1`
   echo "WARNING: found pattern '\$\$\$'"
 fi
+grep \\$\\$\\$ ../util/src/*.c
+if [ $? -ne 1 ]; then
+  WARNINGS=`expr $WARNINGS + 1`
+  echo "WARNING: found pattern '\$\$\$'"
+fi
 
 LINES=`grep fprintf ../httpd_src/modules/qos/mod_qos.c | grep -v "NOT FOR PRODUCTIVE USE" | grep -v "requires OpenSSL, compile Apache using" | wc -l | awk '{print $1}'`
 if [ $LINES != "0" ]; then
@@ -683,7 +693,6 @@ if [ `grep -c "exit signal" logs/error_log` -gt 0 ]; then
   echo "WARNING: found 'exit signal' message"
 fi
 
-IPCS2=`ipcs | wc -l`
 echo "ipcs: $IPCS $IPCS2"
 if [ $IPCS -ne $IPCS2 ]; then
     echo "WARNING: ipcs count changed"
