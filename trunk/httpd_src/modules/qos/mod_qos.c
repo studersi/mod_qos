@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.267 2010-12-07 22:11:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.268 2010-12-08 07:32:04 pbuchbinder Exp $";
 static const char g_revision[] = "9.37";
 
 /************************************************************************
@@ -3597,6 +3597,11 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
     /* max connections */
     if(cconf->sconf->has_qos_cc && cconf->sconf->qos_cc_prefer) {
       u->qos_cc->connections++;
+      if((*e)->lowrate) {
+        if(c->notes) {
+          apr_table_set(c->notes, "QS_ClientLowPrio", "1");
+        }
+      }
       if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
         /* allow all vip addresses */
         if(!(*e)->vip) {
@@ -3619,8 +3624,8 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
             if(u->qos_cc->connections > (cconf->sconf->qos_cc_prefer_limit + more)) {
               *msg = apr_psprintf(cconf->c->pool, 
                                   QOS_LOG_PFX(063)"access denied, QS_ClientPrefer rule (not vip): "
-                                  "max=%d, concurrent connections=%d, c=%s",
-                                  cconf->sconf->qos_cc_prefer_limit + more, u->qos_cc->connections,
+                                  "max=%d(+%d), concurrent connections=%d, c=%s",
+                                  cconf->sconf->qos_cc_prefer_limit, more, u->qos_cc->connections,
                                   cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
               ret = m_retcode;
             }
