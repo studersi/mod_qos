@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.170 2010-12-07 20:49:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.171 2010-12-09 19:13:26 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -167,6 +167,7 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    ProxyPass                  /info !
    ProxyPass                  /demo !
    ProxyPass                  /qos !
+   ProxyPass                  /console !
    ProxyPass                  /qos_control !
    ProxyPass                  /cgi-local !
    ProxyPass                  /cgi-local_s !
@@ -298,6 +299,10 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    </Location>
 
    Include 	  conf/qos_viewer.conf
+   <Location /console>
+       SetHandler qos-console
+   </Location>
+
    <Location /qos/merged>
        QS_DenyRequestLine -restrict    deny                .*private.*
        QS_DenyRequestLine +l01         log                 .*sample.*

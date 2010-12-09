@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientPrefer_SP_pre.htt,v 1.1 2010-12-07 22:11:04 pbuchbinder Exp $
+# $Id: QS_ClientPrefer_SP_pre.htt,v 1.2 2010-12-09 19:13:26 pbuchbinder Exp $
 #
 #
 # mark many clients as slow
@@ -7,7 +7,7 @@
 
 INCLUDE scripts/ports
 
-CLIENT 40
+CLIENT 48
 _REQ server1 $QS_PORT_BASE1
 __GET /cgi/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost

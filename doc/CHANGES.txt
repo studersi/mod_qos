@@ -1,3 +1,15 @@
+Version 9.38
+
+ - Web console allows the modification of attributes of entries within
+   the client data store.
+
+ - Status viewer supports query "ip" (showing the IP addresses of
+   the connected clients for all open TCP connections) in
+   machine-readable version.
+
+ - Status viewer used new delimiter within rule names on machine-readable
+   version (query "auto").
+
 Version 9.37
 
  - Changed QS_ClientPrefer behavior:
