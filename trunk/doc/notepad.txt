@@ -39,8 +39,9 @@
     - sepatate modules for some function sets
 - web interface (handler) to configure mod_qos dynamically
   - impoved viewer
-  - clear per client stats
-  - block clients/IPs
+  + clear per client stats
+  + block clients/IPs
+  + mark clients as vip
 - management tool (sep. application)
   - configuration guidance
   - log data management
@@ -52,6 +53,7 @@
   + not really (checksum only)
   - "real" IPv6 support
 - propagate client information via request header (set additional variables)
+  + using mod_setenvifplus
 - decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
   - enhance qos_unescaping() (partial done)
   - document path_decode_hook()/query_decode_hook()

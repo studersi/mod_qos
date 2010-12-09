@@ -171,6 +171,7 @@ More information about mod_qos:
 <li><a href="#accesslog">Access Log</a></li>
 <li><a href="#requeststatistics">Request Statistics</a></li>
 <li><a href="#statusviewer">Status Viewer</a></li>
+<li><a href="#webconsole">Web Console</a></li>
 <li><a href="#utilities">Utilities</a></li>
 </ul>
 <li><a href="#usecases">Use Cases</a></li>
@@ -1238,6 +1239,7 @@ mod_qos(03x):  connection level event
 mod_qos(04x):  generic filter event
 mod_qos(05x):  bandwidth limitation event
 mod_qos(06x):  client control event
+mod_qos(07x):  console errors
 </pre>
 </td></tr>
 </table>
@@ -1343,6 +1345,48 @@ the request query string <code>auto</code>, e.g. <code>http://your.server.name/q
  The status informatiuon is also provided on the server status page of  
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_status.html" target="_blank">mod_status</a>.
 
+</p>
+
+<a name="webconsole"></a>
+<h3>Web Console</h3>
+<p>
+mod_qos implements an Apache handler which acts a Web console to set attributes via 
+HTTP requests.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#EBE5E0">
+<pre>
+&lt;Location /console&gt;
+   SetHandler qos-console
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+Access a location where you have enabled the <code>qos-console</code> handler 
+with a Web client and use the following request query parameter to modify 
+the status of a client (may only be used if <a href="#clientlevelcontrol">client level control</a> 
+has been enabled).
+<ul>
+<li>
+<code>address=&lt;IP address&gt;</code><br>Specifies the IP address of the client to modify.
+</li>
+<li>
+<code>action='block'|'unblock'|'setvip'|'unsetvip'|'setlowprio'|'unsetlowprio'</code><br>Defines the command to execute/the attribute to change.
+<ul>
+<li><code>block</code>: blocks the client for the configured period of time, see also <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>.</li>
+<li><code>unblock</code>: clears the block attribute of the client.</li>
+<li><code>setvip</code>: sets the client status to <a href="#privilegedusers">VIP</a>.</li>
+<li><code>unsetvip</code>: clears the VIP status for a client.</li>
+<li><code>setlowprio</code>: sets the client's priority to 'low'.</li>
+<li><code>unsetlowprio</code>: clears the 'low' priority attribute of the client.</li>
+<li><code>search</code>: verifies the availability of a client IP address.</li>
+</ul>
+</li>
+</ul>
+Example: <code>http://your.server.name/console?action=setvip&amp;address=194.31.217.21</code>
+</p>
+<p>
+You may use the <a href="#statusviewer">status viewer</a> the verify the status of the client.<br>
+Example: <code>http://your.server.name/qos?action=search&amp;address=194.31.217.21</code>
 </p>
 
 <a name="utilities"></a>

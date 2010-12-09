@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.269 2010-12-08 21:14:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.270 2010-12-09 19:13:26 pbuchbinder Exp $";
 static const char g_revision[] = "9.38";
 
 /************************************************************************
@@ -152,7 +152,7 @@ static const char g_revision[] = "9.38";
 #define QOS_CC_BEHAVIOR_TOLERANCE_STR "500"
 #define QOS_CC_BEHAVIOR_TOLERANCE_MIN 5
 
-#define QOS_DELIM "_"
+#define QOS_DELIM ";"
 
 #ifdef QOS_HAS_SSL
 #define QOS_MAGIC_LEN 8
@@ -1547,6 +1547,7 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
   return APR_SUCCESS;
 }
 
+/* TODO: only ipv4 support */
 static char *qos_ip_long2str(request_rec *r, unsigned long ip) {
   int a,b,c,d;
   a = ip % 256;
@@ -1559,20 +1560,73 @@ static char *qos_ip_long2str(request_rec *r, unsigned long ip) {
   return apr_psprintf(r->pool, "%d.%d.%d.%d", a, b, c, d);
 }
 
+static int qos_is_num(const char *num) {
+  int i = 0;
+  while(num[i]) {
+    if(!isdigit(num[i])) {
+      return 0;
+    }
+    i++;
+  }
+  return 1;
+}
+
+/* TODO: only ipv4 support */
+static long qos_ip_str2long(request_rec *r, const char *ip) {
+  char *p;
+  char *i = apr_pstrdup(r->pool, ip);
+  long addr = 0;
+
+  p = strchr(i, '.');
+  if(!p) return 0;
+  p[0] = '\0';
+  if(!qos_is_num(i)) return 0;
+  addr += (atol(i));
+  i = p;
+  i++;
+
+  p = strchr(i, '.');
+  if(!p) return 0;
+  p[0] = '\0';
+  if(!qos_is_num(i)) return 0;
+  addr += (atol(i) * 65536);
+  i = p;
+  i++;
+
+  p = strchr(i, '.');
+  if(!p) return 0;
+  p[0] = '\0';
+  if(!qos_is_num(i)) return 0;
+  addr += (atol(i) * 256);
+  i = p;
+  i++;
+
+  if(!qos_is_num(i)) return 0;
+  addr += (atol(i) * 16777216);
+
+  return addr;
+}
+
 /**
  * helper for the status viewer (unsigned long to char)
  */
-static void qos_collect_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *entries, int limit) {
+static void qos_collect_ip(request_rec *r, qos_srv_config *sconf,
+                           apr_table_t *entries, int limit,
+                           int html) {
   int i = sconf->act->conn->conn_ip_len;
   qs_ip_entry_t *conn_ip = sconf->act->conn->conn_ip;
   apr_global_mutex_lock(sconf->act->lock);   /* @CRT8 */
   while(i) {
     if(conn_ip->ip) {
       char *red = "style=\"background-color: rgb(240,133,135);\"";
-      apr_table_addn(entries, apr_psprintf(r->pool, "%s</td><td %s colspan=\"3\">%d",
-                                           qos_ip_long2str(r, conn_ip->ip),
-                                           ((limit != -1) && conn_ip->counter >= limit) ? red : "",
-                                           conn_ip->counter), "");
+      if(html) {
+        apr_table_addn(entries, apr_psprintf(r->pool, "%s</td><td %s colspan=\"3\">%d",
+                                             qos_ip_long2str(r, conn_ip->ip),
+                                             ((limit != -1) && conn_ip->counter >= limit) ? red : "",
+                                             conn_ip->counter), "");
+      } else {
+        apr_table_addn(entries, qos_ip_long2str(r, conn_ip->ip), apr_psprintf(r->pool, "%d", conn_ip->counter));
+      }
     }
     conn_ip++;
     i--;
@@ -3687,12 +3741,13 @@ static int qos_req_rate_calc(qos_srv_config *sconf) {
 /**
  * short status viewer
  */
-static void qos_ext_status_short(request_rec *r) {
+static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
   server_rec *s = sconf->base_server;
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config,
                                                                  &qos_module);
+  const char *option = apr_table_get(qt, "option");
   while(s) {
     char *sn = apr_psprintf(r->pool, "%s"QOS_DELIM"%s"QOS_DELIM"%d",
                             s->is_virtual ? "v" : "b",
@@ -3767,6 +3822,20 @@ static void qos_ext_status_short(request_rec *r) {
         ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConnClose"QOS_DELIM"%d[]: %d\n", sn,
                    sconf->max_conn_close,
                    sconf->act->conn->connections);
+      }
+      if(option && strstr(option, "ip")) {
+        if(sconf->act->conn->connections) {
+          apr_table_t *entries = apr_table_make(r->pool, 100);
+          int j;
+          apr_table_entry_t *entry;
+          qos_collect_ip(r, sconf, entries, sconf->max_conn_per_ip, 0);
+          entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
+          for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
+            ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConnPerIP"QOS_DELIM"%s: %s\n",
+                       sn,
+                       entry[j].key, entry[j].val);
+          }
+        }
       }
     }
     s = s->next;
@@ -4040,11 +4109,11 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   apr_table_t *qt = qos_get_query_table(r);
   const char *option = apr_table_get(qt, "option");
   if (flags & AP_STATUS_SHORT) {
-    qos_ext_status_short(r);
+    qos_ext_status_short(r, qt);
     return OK;
   }
   if(qt && (apr_table_get(qt, "auto") != NULL)) {
-    qos_ext_status_short(r);
+    qos_ext_status_short(r, qt);
     return OK;
   }
   ap_rprintf(r, "<h2>mod_qos %s</h2>\n", ap_escape_html(r->pool, qos_revision(r->pool)));
@@ -4227,7 +4296,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                      "<div title=\"QS_SrvMaxConnPerIP\">client ip connections</div></td>"
                      "<td colspan=\"3\">current&nbsp;</td>", r);
             ap_rputs("</tr>\n", r);
-            qos_collect_ip(r, sconf, entries, sconf->max_conn_per_ip);
+            qos_collect_ip(r, sconf, entries, sconf->max_conn_per_ip, 1);
             entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
             for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
               ap_rputs("<tr class=\"rows\">", r);
@@ -6310,20 +6379,103 @@ static int qos_favicon(request_rec *r) {
   return OK;
 }
 
+static int qos_handler_console(request_rec * r) {
+  apr_table_t *qt;
+  const char *ip;
+  const char *cmd;
+  long addr;
+  qos_srv_config *sconf;
+  int status = HTTP_NOT_ACCEPTABLE;;
+  if (strcmp(r->handler, "qos-console") != 0) {
+    return DECLINED;
+  }
+  qt = qos_get_query_table(r);
+  ip = apr_table_get(qt, "address");
+  cmd = apr_table_get(qt, "action");
+  sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  if(!cmd || !ip) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(070)"console, missing request query (action/address)");
+    return HTTP_NOT_ACCEPTABLE;
+  }
+  addr = qos_ip_str2long(r, ip);
+  if(addr == 0) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(070)"console, invalid ip/wrong format");
+    return HTTP_NOT_ACCEPTABLE;
+  }
+  if(sconf && sconf->has_qos_cc) {
+    char *msg = "not available";
+    qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
+    qos_s_entry_t **e = NULL;
+    qos_s_entry_t new;
+    apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT34 */
+    new.ip = addr;
+    e = qos_cc_get0(u->qos_cc, &new);
+    if(!e) {
+      if(strcasecmp(cmd, "search") != 0) {
+        e = qos_cc_set(u->qos_cc, &new, time(NULL));
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                      QOS_LOG_PFX(071)"console, add new client ip entry '%s'", ip);
+      }
+    }
+    status = OK;
+    if(strcasecmp(cmd, "setvip") == 0) {
+      (*e)->vip = 1;
+    } else if(strcasecmp(cmd, "unsetvip") == 0) {
+      (*e)->vip = 0;
+    } else if(strcasecmp(cmd, "setlowprio") == 0) {
+      (*e)->lowrate = time(NULL);
+    } else if(strcasecmp(cmd, "unsetlowprio") == 0) {
+      (*e)->lowrate = 0;
+    } else if(strcasecmp(cmd, "unblock") == 0) {
+      (*e)->block_time = 0;
+    } else if(strcasecmp(cmd, "block") == 0) {
+      (*e)->block_time = time(NULL);
+    } else if(strcasecmp(cmd, "search") == 0) {
+      /* nothing to do here */
+    } else {
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                    QOS_LOG_PFX(070)"console, unknown action '%s'", cmd);
+      status = HTTP_NOT_ACCEPTABLE;
+    }
+    if(e) {
+      msg = apr_psprintf(r->pool, "%s: vip=%s lowprio=%s blocked=%ld", ip,
+                         (*e)->vip ? "yes" : "no",
+                         (*e)->lowrate ? "yes" : "no",
+                         (sconf->qos_cc_block_time >= (time(NULL) - (*e)->block_time)) ? 
+                         (sconf->qos_cc_block_time - (time(NULL) - (*e)->block_time)) : 0);
+    }
+    apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT34 */
+    if(status == OK) {
+      ap_set_content_type(r, "text/plain");
+      ap_rprintf(r, "%s\n", msg);
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
+                    QOS_LOG_PFX(071)"console, action '%s' applied to client ip entry '%s'", cmd, ip);
+    }
+  } else {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(070)"console, qos client control has not been activated");
+    status = HTTP_NOT_ACCEPTABLE;
+  }
+  return status;
+}
+
 /**
- * handler which may be used as an alternative to mod_status
+ * viewer which may be used as an alternative to mod_status
  */
-static int qos_handler(request_rec * r) {
-  apr_table_t *qt = qos_get_query_table(r);
+static int qos_handler_view(request_rec * r) {
+  apr_table_t *qt;
   if (strcmp(r->handler, "qos-viewer") != 0) {
     return DECLINED;
   } 
   if(r->parsed_uri.path && (strstr(r->parsed_uri.path, "favicon.ico") != NULL)) {
     return qos_favicon(r);
   }
+  qt = qos_get_query_table(r);
   if(qt && (apr_table_get(qt, "auto") != NULL)) {
     ap_set_content_type(r, "text/plain");
-    qos_ext_status_short(r);
+    qos_ext_status_short(r, qt);
     return OK;
   }
   ap_set_content_type(r, "text/html");
@@ -6419,6 +6571,18 @@ static int qos_handler(request_rec * r) {
     ap_rputs("</body></html>", r);
   }
   return OK;
+}
+
+static int qos_handler(request_rec * r) {
+  int status = qos_handler_view(r);
+  if(status != DECLINED) {
+    return status;
+  }
+  status = qos_handler_console(r);
+  if(status != DECLINED) {
+    return status;
+  }
+  return DECLINED;
 }
 
 /**
