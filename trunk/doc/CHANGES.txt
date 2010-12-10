@@ -1,6 +1,8 @@
-Version
+Version 9.39
 
  - Fixed: user tracking set-cookie is set twice.
+
+ - Process QS_SetEnvIfStatus on internal errors (protocol).
 
 Version 9.38
 

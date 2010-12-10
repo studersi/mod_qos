@@ -1565,6 +1565,24 @@ QS_LimitRequestBody     102400
 
 # don't allow more than 30 TCP connections per client source address:
 QS_SrvMaxConnPerIP      30
+
+# block clients violating some basic rules frequently (don't allows more than 100
+# violations within 5 minutes):
+QS_ClientEventBlockCount 100 300
+QS_SetEnvIfStatus 400   QS_Block
+QS_SetEnvIfStatus 401   QS_Block
+QS_SetEnvIfStatus 403   QS_Block
+QS_SetEnvIfStatus 404   QS_Block
+QS_SetEnvIfStatus 405   QS_Block
+QS_SetEnvIfStatus 406   QS_Block
+QS_SetEnvIfStatus 408   QS_Block
+QS_SetEnvIfStatus 411   QS_Block
+QS_SetEnvIfStatus 413   QS_Block
+QS_SetEnvIfStatus 414   QS_Block
+QS_SetEnvIfStatus 417   QS_Block
+QS_SetEnvIfStatus 500   QS_Block
+QS_SetEnvIfStatus 503   QS_Block
+QS_SetEnvIfStatus 505   QS_Block
 </pre>
 </td></tr>
 </table>
