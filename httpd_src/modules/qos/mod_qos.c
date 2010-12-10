@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.271 2010-12-10 19:22:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.272 2010-12-10 23:21:20 pbuchbinder Exp $";
 static const char g_revision[] = "9.39";
 
 /************************************************************************
@@ -2775,7 +2775,7 @@ static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
  */
 static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
   char *code = apr_psprintf(r->pool, "%d", r->status);
-  const char*var = apr_table_get(sconf->setenvstatus_t, code);
+  const char *var = apr_table_get(sconf->setenvstatus_t, code);
   if(var) {
     apr_table_set(r->subprocess_env, var, code);
   }
@@ -5916,6 +5916,16 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   return ap_pass_brigade(f->next, bb);
 }
 
+static apr_status_t qos_out_err_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
+  request_rec *r = f->r;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  if(sconf) {
+    qos_setenvstatus(r, sconf);
+  }
+  ap_remove_output_filter(f);
+  return ap_pass_brigade(f->next, bb);
+}
+
 /**
  * QS_EventRequestLimit
  * reset event counter
@@ -6594,6 +6604,9 @@ static int qos_handler(request_rec * r) {
 static void qos_insert_filter(request_rec *r) {
   ap_add_output_filter("qos-out-filter", NULL, r, r->connection);
 }
+static void qos_insert_err_filter(request_rec *r) {
+  ap_add_output_filter("qos-out-err-filter", NULL, r, r->connection);
+}
 
 /************************************************************************
  * directiv handlers 
@@ -6693,7 +6706,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparp_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparpbody_t = apr_table_make(sconf->pool, 1);
-  sconf->setenvstatus_t = apr_table_make(sconf->pool, 1);
+  sconf->setenvstatus_t = apr_table_make(sconf->pool, 3);
   sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
   sconf->error_page = NULL;
@@ -8698,8 +8711,9 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_output_filter("qos-out-filter-min", qos_out_filter_min, NULL, AP_FTYPE_RESOURCE+1);
   ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE+1);
   ap_register_output_filter("qos-out-filter-body", qos_out_filter_body, NULL, AP_FTYPE_RESOURCE+1);
+  ap_register_output_filter("qos-out-err-filter", qos_out_err_filter, NULL, AP_FTYPE_RESOURCE+1);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
-  //ap_hook_insert_error_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_insert_error_filter(qos_insert_err_filter, NULL, NULL, APR_HOOK_MIDDLE);
 
 }
 
