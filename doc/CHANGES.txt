@@ -1,3 +1,7 @@
+Version
+
+ - Fixed: user tracking set-cookie is set twice.
+
 Version 9.38
 
  - Web console allows the modification of attributes of entries within

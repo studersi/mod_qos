@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.270 2010-12-09 19:13:26 pbuchbinder Exp $";
-static const char g_revision[] = "9.38";
+static const char revision[] = "$Id: mod_qos.c,v 5.271 2010-12-10 19:22:00 pbuchbinder Exp $";
+static const char g_revision[] = "9.39";
 
 /************************************************************************
  * Includes
@@ -1087,7 +1087,7 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
   return 0;
 }
 
-static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf) {
+static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf, int status) {
   const char *new_user = apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW);
   if(new_user) {
     char *sc;
@@ -1108,8 +1108,11 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf)
     /* valid for 300 days */
     sc = apr_psprintf(r->pool, "%s=%s; Path=/; Max-Age=25920000",
                       sconf->user_tracking_cookie, c);
-    apr_table_add(r->headers_out, "Set-Cookie", sc);
-    apr_table_add(r->err_headers_out, "Set-Cookie", sc);
+    if(status != HTTP_MOVED_TEMPORARILY) {
+      apr_table_add(r->headers_out, "Set-Cookie", sc);
+    } else {
+      apr_table_add(r->err_headers_out, "Set-Cookie", sc);
+    }
   }
   return;
 }
@@ -4919,7 +4922,7 @@ static int qos_post_read_request_later(request_rec *r) {
                                                           strlen(r->unparsed_uri)),
                                               NULL);
             apr_table_set(r->headers_out, "Location", redirect_page);
-            qos_send_user_tracking_cookie(r, sconf);
+            qos_send_user_tracking_cookie(r, sconf, HTTP_MOVED_TEMPORARILY);
             return HTTP_MOVED_TEMPORARILY;
           }
         }
@@ -5813,7 +5816,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   qos_setenvresheader(r, sconf);
 #ifdef QOS_HAS_SSL
   if(sconf && sconf->user_tracking_cookie) {
-    qos_send_user_tracking_cookie(r, sconf);
+    qos_send_user_tracking_cookie(r, sconf, r->status);
   }
   if(sconf && sconf->milestones) {
     qos_update_milestone(r, sconf);
@@ -6395,13 +6398,13 @@ static int qos_handler_console(request_rec * r) {
   sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   if(!cmd || !ip) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(070)"console, missing request query (action/address)");
+                  QOS_LOG_PFX(070)"console, not acceptable, missing request query (action/address)");
     return HTTP_NOT_ACCEPTABLE;
   }
   addr = qos_ip_str2long(r, ip);
   if(addr == 0) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(070)"console, invalid ip/wrong format");
+                  QOS_LOG_PFX(070)"console, not acceptable, invalid ip/wrong format");
     return HTTP_NOT_ACCEPTABLE;
   }
   if(sconf && sconf->has_qos_cc) {
@@ -6436,7 +6439,7 @@ static int qos_handler_console(request_rec * r) {
       /* nothing to do here */
     } else {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                    QOS_LOG_PFX(070)"console, unknown action '%s'", cmd);
+                    QOS_LOG_PFX(070)"console, not acceptable, unknown action '%s'", cmd);
       status = HTTP_NOT_ACCEPTABLE;
     }
     if(e) {
@@ -6455,7 +6458,7 @@ static int qos_handler_console(request_rec * r) {
     }
   } else {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(070)"console, qos client control has not been activated");
+                  QOS_LOG_PFX(070)"console, not acceptable, qos client control has not been activated");
     status = HTTP_NOT_ACCEPTABLE;
   }
   return status;

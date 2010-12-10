@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.136 2010-12-08 07:32:04 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.137 2010-12-10 19:22:00 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -591,6 +591,13 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_UserTrackingCookieName2.htt"
 fi
+
+./run.sh -s ./scripts/console.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED console.htt"
+fi
+
 ./ctl.sh restart -D cc -D real_ip -D usertrack_force> /dev/null
 ./run.sh -s ./scripts/QS_UserTrackingCookieNameForce.htt
 if [ $? -ne 0 ]; then
@@ -656,7 +663,7 @@ if [ $? -ne 0 ]; then
   echo "FAILED qssign test failed"
 fi
 
-for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062" | grep -v "(066"`; do
+for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062" | grep -v "(066" | grep -v "(071"`; do
     C=`grep -c $E logs/error_log`
     C1=`grep -c $E logs/error1_log`
     if [ $C -eq 0 -a $C1 -eq 0 ]; then
