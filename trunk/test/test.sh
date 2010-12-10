@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.137 2010-12-10 19:22:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.138 2010-12-10 20:02:02 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -592,6 +592,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_UserTrackingCookieName2.htt"
 fi
 
+./ctl.sh restart -D cc -D real_ip > /dev/null
 ./run.sh -s ./scripts/console.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
