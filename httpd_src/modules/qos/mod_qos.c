@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.273 2010-12-11 10:41:36 pbuchbinder Exp $";
-static const char g_revision[] = "9.40";
+static const char revision[] = "$Id: mod_qos.c,v 5.274 2010-12-11 21:44:16 pbuchbinder Exp $";
+static const char g_revision[] = "9.41";
 
 /************************************************************************
  * Includes
@@ -657,7 +657,7 @@ static const qos_her_t qs_header_rules[] = {
 #define QS_H_EXPECT        "[a-zA-Z0-9= ;\\.,\\-]"
 #define QS_H_PRAGMA        "[a-zA-Z0-9= ;\\.,\\-]"
 #define QS_H_FROM          "[a-zA-Z0-9=@;\\.,\\(\\)\\-]"
-#define QS_H_HOST          "[a-zA-Z0-9:\\.\\-]"
+#define QS_H_HOST          "[a-zA-Z0-9\\.\\-]+(:[0-9]+)?"
 #define QS_H_IFMATCH       "[a-zA-Z0-9=@;\\.,\\*\"\\-]"
 #define QS_H_DATE          "[a-zA-Z0-9 :,]"
 #define QS_H_TE            "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
@@ -679,7 +679,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Cookie2", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 3000 },
   { "Expect", "^"QS_H_EXPECT"+$", QS_FLT_ACTION_DROP, 200 },
   { "From", "^"QS_H_FROM"+$", QS_FLT_ACTION_DROP, 100 },
-  { "Host", "^"QS_H_HOST"+$", QS_FLT_ACTION_DROP, 100 },
+  { "Host", "^"QS_H_HOST"$", QS_FLT_ACTION_DROP, 100 },
   { "If-Invalid", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 500 },
   { "If-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
@@ -6444,8 +6444,10 @@ static int qos_handler_console(request_rec * r) {
       (*e)->lowrate = 0;
     } else if(strcasecmp(cmd, "unblock") == 0) {
       (*e)->block_time = 0;
+      (*e)->block = 0;
     } else if(strcasecmp(cmd, "block") == 0) {
       (*e)->block_time = time(NULL);
+      (*e)->block = sconf->qos_cc_block + 1000;
     } else if(strcasecmp(cmd, "search") == 0) {
       /* nothing to do here */
     } else {
@@ -6454,9 +6456,10 @@ static int qos_handler_console(request_rec * r) {
       status = HTTP_NOT_ACCEPTABLE;
     }
     if(e) {
-      msg = apr_psprintf(r->pool, "%s: vip=%s lowprio=%s blocked=%ld", ip,
+      msg = apr_psprintf(r->pool, "%s: vip=%s lowprio=%s block=%d/%ld", ip,
                          (*e)->vip ? "yes" : "no",
                          (*e)->lowrate ? "yes" : "no",
+                         (*e)->block,
                          (sconf->qos_cc_block_time >= (time(NULL) - (*e)->block_time)) ? 
                          (sconf->qos_cc_block_time - (time(NULL) - (*e)->block_time)) : 0);
     }

@@ -1,3 +1,7 @@
+Version 9.41
+
+ - Fixed: console action 'block' did not set event number.
+
 Version 9.40
 
  - Fixed: search IP in console

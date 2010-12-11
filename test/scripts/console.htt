@@ -1,5 +1,5 @@
 #
-# $Id: console.htt,v 1.1 2010-12-10 19:22:00 pbuchbinder Exp $
+# $Id: console.htt,v 1.2 2010-12-11 21:44:17 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -12,7 +12,7 @@ __GET /console?action=search&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no blocked=0"
+_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
 _WAIT
 _CLOSE
 
@@ -22,7 +22,7 @@ __GET /console?action=setvip&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
 __
-_EXPECT . "127.0.0.1: vip=yes lowprio=no blocked=0"
+_EXPECT . "127.0.0.1: vip=yes lowprio=no block=0/0"
 _WAIT
 _CLOSE
 
@@ -32,7 +32,7 @@ __GET /console?action=unsetvip&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no blocked=0"
+_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
 _WAIT
 _CLOSE
 
@@ -42,7 +42,7 @@ __GET /console?action=block&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no blocked=10"
+_EXPECT . "127.0.0.1: vip=no lowprio=no block=1003/10"
 _WAIT
 _CLOSE
 
@@ -54,7 +54,7 @@ __GET /console?action=search&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no blocked=0"
+_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
 _WAIT
 _CLOSE
 
@@ -75,7 +75,7 @@ __GET /console?action=setvip&address=127.0.0.3 HTTP/1.1
 __Host: localhost
 __Connection: close
 __
-_EXPECT . "127.0.0.3: vip=yes lowprio=no blocked=0"
+_EXPECT . "127.0.0.3: vip=yes lowprio=no block=0/0"
 _WAIT
 _CLOSE
 

@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.8 2010-12-07 20:49:08 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.9 2010-12-11 21:44:17 pbuchbinder Exp $
 #
 
 
@@ -9,7 +9,7 @@ CLIENT
 # allowed headers
 _REQ localhost $QS_PORT_BASE
 __GET /cgi-local/index.cgi HTTP/1.1
-__Host: localhost
+__Host: kolibry-123.mmmme.ch:$QS_PORT_BASE
 __Connection: Keep-Alive, TE
 __Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
 __Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
