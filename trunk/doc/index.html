@@ -1506,6 +1506,7 @@ QS_LocRequestLimit       /download/mod_qos.so.gz 600
 </table>
 </p>
 
+<a name="ddos"></a>
 <h3>Too Many Client Connections</h3>
 <p>
 mod_qos may prefer "known" client IP addresses in the case that too 
@@ -1515,14 +1516,19 @@ HTTP response header. Such identification may happen at successful
 user login. Connections from clients which are not known to mod_qos 
 (never marked by the corresponding response header) are denied 
 if the server runs on low TCP connection resources (20% or fewer 
-free connections). mod_qos prefers also those clients which communicates 
-instantaneous  and fast with the server and denies access to slow 
-clients sending data irregular in the case the server has not enougth 
-resources.</p>
+free connections in this example). mod_qos prefers also those clients 
+which communicates instantaneous  and fast with the server and denies 
+access for slow clients sending data irregular in the case the server 
+has not enougth resources.</p>
 <p>A minimal request bandwidth should be enforced too in order 
 to close the connections comming from idle clients. The <code>QS_SrvMinDataRate</code> 
 does this. You may want to combine this with the <code>QS_SrvMaxConnPerIP</code> 
 directive as shown above in the "Client Opens Many Concurrent Connections" example.
+</p>
+<p>
+The <code>QS_ClientEventBlockCount</code> directive is used in this example 
+to block clients for a certain amount of time if they are causing errrors 
+due sending invalid HTTP requests.
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#EBE5E0">
