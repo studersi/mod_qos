@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.272 2010-12-10 23:21:20 pbuchbinder Exp $";
-static const char g_revision[] = "9.39";
+static const char revision[] = "$Id: mod_qos.c,v 5.273 2010-12-11 10:41:36 pbuchbinder Exp $";
+static const char g_revision[] = "9.40";
 
 /************************************************************************
  * Includes
@@ -1575,10 +1575,10 @@ static int qos_is_num(const char *num) {
 }
 
 /* TODO: only ipv4 support */
-static long qos_ip_str2long(request_rec *r, const char *ip) {
+static unsigned long qos_ip_str2long(request_rec *r, const char *ip) {
   char *p;
   char *i = apr_pstrdup(r->pool, ip);
-  long addr = 0;
+  unsigned long addr = 0;
 
   p = strchr(i, '.');
   if(!p) return 0;
@@ -6396,7 +6396,7 @@ static int qos_handler_console(request_rec * r) {
   apr_table_t *qt;
   const char *ip;
   const char *cmd;
-  long addr;
+  unsigned long addr;
   qos_srv_config *sconf;
   int status = HTTP_NOT_ACCEPTABLE;;
   if (strcmp(r->handler, "qos-console") != 0) {
@@ -6417,6 +6417,7 @@ static int qos_handler_console(request_rec * r) {
                   QOS_LOG_PFX(070)"console, not acceptable, invalid ip/wrong format");
     return HTTP_NOT_ACCEPTABLE;
   }
+  addr = qos_inet_addr(ip);
   if(sconf && sconf->has_qos_cc) {
     char *msg = "not available";
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);

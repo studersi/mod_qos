@@ -1,4 +1,6 @@
-Version 9.39
+Version 9.40
+
+ - Fixed: search IP in console
 
  - Fixed: user tracking set-cookie is set twice.
 
