@@ -1539,12 +1539,12 @@ due sending invalid HTTP requests.
 MaxClients              896
 
 # idle timeout:
-Timeout                 30
+Timeout                 20
 
 # keep alive (for up to 70% of all connections):
 KeepAlive               on
 MaxKeepAliveRequests    100
-KeepAliveTimeout        5
+KeepAliveTimeout        3
 QS_SrvMaxConnClose      70%
 
 # name of the HTTP response header which marks preferred clients (this
@@ -1565,7 +1565,8 @@ QS_ClientEntries        200000
 # e.g. defending slowloris):
 QS_SrvMinDataRate       150 1200
 
-# and limit request header and body:
+# and limit request line, header and body:
+LimitRequestLine        7168
 LimitRequestFields      30
 QS_LimitRequestBody     102400
 

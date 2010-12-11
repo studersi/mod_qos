@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.172 2010-12-10 23:21:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.173 2010-12-11 21:44:17 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -277,7 +277,7 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
 #   QS_SetEnvIfStatus 408       QS_Block
 #   QS_SetEnvIfStatus 411       QS_Block
 #   QS_SetEnvIfStatus 413       QS_Block
-#   QS_SetEnvIfStatus 414       QS_Block
+   QS_SetEnvIfStatus 414       QS_Block
    SetEnvIf Referer  /block    QS_Block=yes
    BrowserMatch      qs_cc_eps QS_Event=yes
 
