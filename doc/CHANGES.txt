@@ -1,3 +1,8 @@
+Version
+
+ - Fixed: remove the apr_shm_destroy() calls to avaoid double-free
+   errors on Linux with old APR library versions.
+
 Version 9.41
 
  - Fixed: console action 'block' did not set event number.
