@@ -1,4 +1,6 @@
-Version
+Version 9.42
+
+ - Console "action=search&address=*" returns a list of all clients.
 
  - Fixed: remove the apr_shm_destroy() calls to avaoid double-free
    errors on Linux with old APR library versions.
