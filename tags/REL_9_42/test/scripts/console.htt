@@ -1,0 +1,119 @@
+#
+# $Id: console.htt,v 1.2 2010-12-11 21:44:17 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+# default
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=127.0.0.1 HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
+_WAIT
+_CLOSE
+
+# set vip
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=setvip&address=127.0.0.1 HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "127.0.0.1: vip=yes lowprio=no block=0/0"
+_WAIT
+_CLOSE
+
+# unset vip
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=unsetvip&address=127.0.0.1 HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
+_WAIT
+_CLOSE
+
+# block
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=block&address=127.0.0.1 HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "127.0.0.1: vip=no lowprio=no block=1003/10"
+_WAIT
+_CLOSE
+
+_SLEEP 12000
+
+# default
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=127.0.0.1 HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
+_WAIT
+_CLOSE
+
+
+# NA
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=127.0.0.2 HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "not available"
+_WAIT
+_CLOSE
+
+# add an entry
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=setvip&address=127.0.0.3 HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "127.0.0.3: vip=yes lowprio=no block=0/0"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?action=search&address=127.0.0.3 HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "<td colspan=\"1\">127.0.0.3</td><td colspan=\"2\">......20.. ..:..:..</td><td colspan=\"1\">yes</td><td colspan=\"2\">no</td><td colspan=\"1\">0</td><td colspan=\"1\">0&nbsp;ms</td><td colspan=\"1\">no</td>"
+_WAIT
+_CLOSE
+
+# invalid command
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=gugus&address=127.0.0.3 HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "406 Not Acceptable"
+_WAIT
+_CLOSE
+
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(070\): console, not acceptable, unknown action 'gugus'"
+_EXEC tail -1 ./logs/error_log
+
+# invalid ip
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=setvip&address=127.0.0.a HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "406 Not Acceptable"
+_WAIT
+_CLOSE
+
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(070\): console, not acceptable, invalid ip/wrong format"
+_EXEC tail -1 ./logs/error_log
+
+END
