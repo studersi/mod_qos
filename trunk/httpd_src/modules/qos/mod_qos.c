@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.275 2010-12-12 19:49:35 pbuchbinder Exp $";
-static const char g_revision[] = "9.41b";
+static const char revision[] = "$Id: mod_qos.c,v 5.276 2010-12-13 19:07:47 pbuchbinder Exp $";
+static const char g_revision[] = "9.42";
 
 /************************************************************************
  * Includes
@@ -6396,11 +6396,49 @@ static int qos_favicon(request_rec *r) {
   return OK;
 }
 
+static int qos_console_dump(request_rec * r) {
+  qos_srv_config *sconf = sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
+                                                                        &qos_module);
+  if(sconf && sconf->has_qos_cc) {
+    int i = 0;
+    qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
+    qos_s_entry_t **e = NULL;
+    /* table requires heap (100'000 ~ 4MB) but we avaoid io with drawn lock */
+    apr_table_t *iptable = apr_table_make(r->pool, u->qos_cc->max);
+    apr_table_entry_t *entry;
+    ap_set_content_type(r, "text/plain");
+    apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT35 */
+    e = u->qos_cc->ipd;
+    for(i = 0; i < u->qos_cc->max; i++) {
+      if(e[i]->ip != 0) {
+        char *k = apr_psprintf(r->pool,
+                               "%s: vip=%s lowprio=%s block=%d/%ld", 
+                               qos_ip_long2str(r, e[i]->ip),
+                               e[i]->vip ? "yes" : "no",
+                               e[i]->lowrate ? "yes" : "no",
+                               e[i]->block,
+                               (sconf->qos_cc_block_time >= (time(NULL) - e[i]->block_time)) ? 
+                               (sconf->qos_cc_block_time - (time(NULL) - e[i]->block_time)) : 0);
+        apr_table_addn(iptable, k, NULL);
+      }
+    }
+    apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT35 */
+    entry = (apr_table_entry_t *)apr_table_elts(iptable)->elts;
+    for(i = 0; i < apr_table_elts(iptable)->nelts; ++i) {
+      ap_rprintf(r, "%s\n", entry[i].key);
+    }
+    return OK;
+  }
+  ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                QOS_LOG_PFX(070)"console, not acceptable, qos client control has not been activated");
+  return HTTP_NOT_ACCEPTABLE;
+}
+
 static int qos_handler_console(request_rec * r) {
   apr_table_t *qt;
   const char *ip;
   const char *cmd;
-  unsigned long addr;
+  unsigned long addr = 0;
   qos_srv_config *sconf;
   int status = HTTP_NOT_ACCEPTABLE;;
   if (strcmp(r->handler, "qos-console") != 0) {
@@ -6414,6 +6452,9 @@ static int qos_handler_console(request_rec * r) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(070)"console, not acceptable, missing request query (action/address)");
     return HTTP_NOT_ACCEPTABLE;
+  }
+  if((strcasecmp(cmd, "search") == 0) && (strcmp(ip, "*") == 0)) {
+    return qos_console_dump(r);
   }
   addr = qos_ip_str2long(r, ip);
   if(addr == 0) {
