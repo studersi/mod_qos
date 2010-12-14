@@ -1,3 +1,7 @@
+Version 9.43
+
+ - QS_ClientEventBlockCount rule violation marks client to have low priority.
+
 Version 9.42
 
  - Console "action=search&address=*" returns a list of all clients.

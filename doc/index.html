@@ -1542,11 +1542,11 @@ MaxClients              896
 # idle timeout:
 Timeout                 20
 
-# keep alive (for up to 70% of all connections):
+# keep alive (for up to 85% of all connections):
 KeepAlive               on
-MaxKeepAliveRequests    100
+MaxKeepAliveRequests    60
 KeepAliveTimeout        3
-QS_SrvMaxConnClose      70%
+QS_SrvMaxConnClose      85%
 
 # name of the HTTP response header which marks preferred clients (this
 # may be used to let the application decide which clients are "good" and
@@ -1555,7 +1555,7 @@ QS_SrvMaxConnClose      70%
 # as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/" target="_blank">mod_auth_oid</a>):
 QS_VipIPHeaderName      mod-qos-login
 
-# enables the known client perfer mode (server allows new TCP connections
+# enables the known client prefer mode (server allows new TCP connections
 # from known/good clients only when is has more than 716 open TCP connections):
 QS_ClientPrefer         80
 
@@ -1564,7 +1564,7 @@ QS_ClientEntries        200000
 
 # minimum request/response speed (deny slow clients blocking the server, 
 # e.g. defending slowloris):
-QS_SrvMinDataRate       150 1200
+QS_SrvMinDataRate       120 1500
 
 # and limit request line, header and body:
 LimitRequestLine        7168

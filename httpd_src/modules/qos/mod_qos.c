@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.276 2010-12-13 19:07:47 pbuchbinder Exp $";
-static const char g_revision[] = "9.42";
+static const char revision[] = "$Id: mod_qos.c,v 5.277 2010-12-14 19:32:26 pbuchbinder Exp $";
+static const char g_revision[] = "9.43";
 
 /************************************************************************
  * Includes
@@ -3623,6 +3623,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                             (*e)->block,
                             cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
         ret = m_retcode;
+        (*e)->lowrate = apr_time_sec(r->request_time);
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT17 */
@@ -6444,6 +6445,7 @@ static int qos_handler_console(request_rec * r) {
   if (strcmp(r->handler, "qos-console") != 0) {
     return DECLINED;
   }
+  apr_table_add(r->err_headers_out, "Cache-Control", "no-cache");
   qt = qos_get_query_table(r);
   ip = apr_table_get(qt, "address");
   cmd = apr_table_get(qt, "action");
@@ -6534,6 +6536,7 @@ static int qos_handler_view(request_rec * r) {
   if(r->parsed_uri.path && (strstr(r->parsed_uri.path, "favicon.ico") != NULL)) {
     return qos_favicon(r);
   }
+  apr_table_add(r->err_headers_out, "Cache-Control", "no-cache");
   qt = qos_get_query_table(r);
   if(qt && (apr_table_get(qt, "auto") != NULL)) {
     ap_set_content_type(r, "text/plain");
