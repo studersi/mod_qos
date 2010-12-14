@@ -1,0 +1,21 @@
+#!/bin/sh
+
+if [ `uname -s` = "Linux" ]; then
+  echo "32000"      > /proc/sys/net/core/somaxconn
+  echo "32000"      > /proc/sys/net/core/netdev_max_backlog
+  echo "4096 61000" > /proc/sys/net/ipv4/ip_local_port_range
+  echo "30"         > /proc/sys/net/ipv4/tcp_fin_timeout
+fi
+
+if [ `uname -s` = "SunOS" ]; then
+  ndd -set /dev/tcp tcp_time_wait_interval 30000
+  ndd -set /dev/tcp tcp_slow_start_initial 2
+  ndd -set /dev/tcp tcp_xmit_hiwat 32768
+  ndd -set /dev/tcp tcp_recv_hiwat 32768
+  ndd -set /dev/tcp tcp_rexmit_interval_initial 2000
+  ndd -set /dev/tcp tcp_rexmit_interval_max 20000
+  ndd -set /dev/tcp tcp_fin_wait_2_flush_interval 67500
+  ndd -set /dev/tcp tcp_smallest_anon_port 4096
+  ndd -set /dev/tcp tcp_conn_req_max_q 1024
+  ndd -set /dev/tcp tcp_conn_req_max_q0 4096
+fi
