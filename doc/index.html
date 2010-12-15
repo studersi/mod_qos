@@ -60,7 +60,7 @@ connections. It is used to guarantee a certain level of performance
 to data resources. The term quality of service is often used 
 in the field of wide area network protocols (e.g. ATM) and 
 telephony (e.g. VoIP) but rarely in conjunction with web applications. 
-<b>mod_qos is a quality of service module for the Apache web server</b> 
+<b>mod_qos is a quality of service module</b> for the <a href="http://httpd.apache.org/" target="_blank">Apache</a> web server 
 implementing control mechanisms that can provide different priority to 
 different HTTP requests.
 </p>
@@ -183,8 +183,8 @@ More information about mod_qos:
 <h2>Build</h2>
 <p>
 mod_qos requires OpenSSL, PCRE (don't use the version which comes with the 
-Apache distribution), threading and shared memory support. mod_qos works 
-with Apache version 2.2 (MPM worker mode is recommended).<br>
+Apache distribution), threading and shared memory support. mod_qos supports 
+Apache version 2.2 <a href="http://httpd.apache.org/docs/2.2/mod/worker.html" target="_blank">MPM worker</a> binaries.<br>
 Just copy the module into the <code>modules</code> directory of the Apache server's source code and 
 compile it using the following commands (all examples are using Apache 2.2.17 and 
 mod_qos 4.15):
@@ -198,7 +198,7 @@ cd httpd
 mkdir modules/qos
 cp ../mod_qos-4.15/apache2/* modules/qos
 ./buildconf
-./configure --enable-so --enable-qos=shared --enable-ssl
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-ssl
 make
 cd ..
 </pre>
