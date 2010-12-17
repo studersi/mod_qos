@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.278 2010-12-17 19:49:50 pbuchbinder Exp $";
-static const char g_revision[] = "9.43";
+static const char revision[] = "$Id: mod_qos.c,v 5.279 2010-12-17 22:28:22 pbuchbinder Exp $";
+static const char g_revision[] = "9.44";
 
 /************************************************************************
  * Includes
@@ -1625,7 +1625,7 @@ static void qos_collect_ip(request_rec *r, qos_srv_config *sconf,
   apr_global_mutex_lock(sconf->act->lock);   /* @CRT8 */
   while(i) {
     if(conn_ip->ip) {
-      char *red = "style=\"background-color: rgb(240,133,135);\"";
+      char *red = "style=\"background-color: rgb(133,240,135);\"";
       if(html) {
         apr_table_addn(entries, apr_psprintf(r->pool, "%s</td><td %s colspan=\"3\">%d",
                                              qos_ip_long2str(r, conn_ip->ip),
@@ -4235,7 +4235,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rputs("</tr>\n", r);
       }
       while(e) {
-        char *red = "style=\"background-color: rgb(240,133,135);\"";
+        char *red = "style=\"background-color: rgb(133,240,135);\"";
         ap_rputs("<tr class=\"rows\">", r);
         ap_rprintf(r, "<!--%d--><td>%s%s</a></td>", i,
                    ap_escape_html(r->pool, qos_crline(r, e->url)),
@@ -4280,7 +4280,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       }
       /* connection level */
       if(sconf) {
-        char *red = "style=\"background-color: rgb(240,133,135);\"";
+        char *red = "style=\"background-color: rgb(133,240,135);\"";
         int c = qos_count_free_ip(sconf);
         ap_rputs("<tr class=\"rowt\">"
                  "<td colspan=\"9\">connections</td>", r);
@@ -6572,7 +6572,7 @@ static int qos_handler_view(request_rec * r) {
     ap_rputs("<style TYPE=\"text/css\">\n", r);
     ap_rputs("<!--", r);
     ap_rputs("  body {\n\
-          background-color: rgb(250,248,246);\n\
+          background-color: rgb(248,250,246);\n\
           color: black;\n\
           font-family: arial, helvetica, verdana, sans-serif;\n\
    }\n\
@@ -6584,7 +6584,7 @@ static int qos_handler_view(request_rec * r) {
           border-collapse: collapse;\n\
   }\n\
   .rowts {\n\
-          background-color: rgb(165,150,158);\n\
+          background-color: rgb(150,165,158);\n\
           vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
@@ -6593,7 +6593,7 @@ static int qos_handler_view(request_rec * r) {
           margin: 0px;\n\
   }\n\
   .rowt {\n\
-          background-color: rgb(220,210,215);\n\
+          background-color: rgb(210,220,215);\n\
           vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
@@ -6602,7 +6602,7 @@ static int qos_handler_view(request_rec * r) {
           margin: 0px;\n\
   }\n\
   .rows {\n\
-          background-color: rgb(235,228,230);\n\
+          background-color: rgb(228,235,230);\n\
           vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
@@ -6620,7 +6620,7 @@ static int qos_handler_view(request_rec * r) {
           margin: 0px;\n\
   }\n\
   .row2  {\n\
-          background-color: rgb(240,233,235);\n\
+          background-color: rgb(233,240,235);\n\
           vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
@@ -6629,7 +6629,7 @@ static int qos_handler_view(request_rec * r) {
           margin: 0px;\n\
   }\n\
   .rowe {\n\
-          background-color: rgb(200,186,190);\n\
+          background-color: rgb(186,200,190);\n\
           vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
@@ -6638,7 +6638,7 @@ static int qos_handler_view(request_rec * r) {
           margin: 0px;\n\
   }\n\
   .rowe2 {\n\
-          background-color: rgb(185,175,177);\n\
+          background-color: rgb(175,185,177);\n\
           vertical-align: top;\n\
           border: 1px solid;\n\
           border-color: black;\n\
