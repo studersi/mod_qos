@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.277 2010-12-14 19:32:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.278 2010-12-17 19:49:50 pbuchbinder Exp $";
 static const char g_revision[] = "9.43";
 
 /************************************************************************
@@ -522,6 +522,7 @@ typedef struct {
   apr_table_t *testip;
   int enable_testip;
 #endif
+  int disable_handler;
   /* client control */
   int has_qos_cc;             /* GLOBAL ONLY */
   int qos_cc_size;            /* GLOBAL ONLY */
@@ -4115,6 +4116,11 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                                                                  &qos_module);
   apr_table_t *qt = qos_get_query_table(r);
   const char *option = apr_table_get(qt, "option");
+  if(sconf->disable_handler == 1) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(072)"handler has been disabled for this host");
+    return OK;
+  }
   if (flags & AP_STATUS_SHORT) {
     qos_ext_status_short(r, qt);
     return OK;
@@ -6445,11 +6451,16 @@ static int qos_handler_console(request_rec * r) {
   if (strcmp(r->handler, "qos-console") != 0) {
     return DECLINED;
   }
+  sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  if(sconf->disable_handler == 1) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(072)"handler has been disabled for this host");
+    return DECLINED;
+  }
   apr_table_add(r->err_headers_out, "Cache-Control", "no-cache");
   qt = qos_get_query_table(r);
   ip = apr_table_get(qt, "address");
   cmd = apr_table_get(qt, "action");
-  sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   if(!cmd || !ip) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(070)"console, not acceptable, missing request query (action/address)");
@@ -6529,10 +6540,17 @@ static int qos_handler_console(request_rec * r) {
  * viewer which may be used as an alternative to mod_status
  */
 static int qos_handler_view(request_rec * r) {
+  qos_srv_config *sconf;
   apr_table_t *qt;
   if (strcmp(r->handler, "qos-viewer") != 0) {
     return DECLINED;
-  } 
+  }
+  sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  if(sconf->disable_handler == 1) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(072)"handler has been disabled for this host");
+    return DECLINED;
+  }
   if(r->parsed_uri.path && (strstr(r->parsed_uri.path, "favicon.ico") != NULL)) {
     return qos_favicon(r);
   }
@@ -6809,6 +6827,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->cc_tolerance_max = 2 * sconf->cc_tolerance;
   sconf->cc_tolerance_min = QOS_CC_BEHAVIOR_TOLERANCE_MIN;
   sconf->qos_cc_block_time = 600;
+  sconf->disable_handler = -1;
   sconf->maxpost = -1;
   sconf->milestones = NULL;
   sconf->milestone_timeout = QOS_MILESTONE_TIMEOUT;
@@ -6889,6 +6908,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->min_rate = b->min_rate;
   o->min_rate_max = b->min_rate_max;
   /* end GLOBAL ONLY directives */
+  if(o->disable_handler == -1) {
+    o->disable_handler = b->disable_handler;
+  }
 #ifdef QS_INTERNAL_TEST
   o->enable_testip = b->enable_testip;
 #endif
@@ -8295,6 +8317,13 @@ const char *qos_client_event_req_cmd(cmd_parms *cmd, void *dcfg, const char *arg
   return NULL;
 }
 
+const char *qos_disable_handler_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->disable_handler = flag;
+  return NULL;
+}
+
 #ifdef QS_INTERNAL_TEST
 const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -8720,6 +8749,9 @@ static const command_rec qos_config_cmds[] = {
                 " source IP address"
                 " having the QS_EventRequest variable set."
                 " Directive is allowed in global server context only."),
+  AP_INIT_FLAG("QS_DisableHandler", qos_disable_handler_cmd, NULL,
+               RSRC_CONF,
+               ""),
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                RSRC_CONF,

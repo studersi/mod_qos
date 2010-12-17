@@ -51,14 +51,14 @@
 <tr><td>&nbsp;</td><td style="vertical-align: bottom;"><h2>mod_qos, qsfilter2</h2></td></tr>
 <tr><td>&nbsp;</td><td>
 <p>
-qsfilter2 is an log analyzer used to generate filter rules (perl 
+qsfilter2 is a log analyzer used to generate filter rules (perl 
 compatible regular expressions) which may be used with mod_qos to
 deny access for suspect request lines.
 </p>
 <img src="qsfilter2_process.gif" alt="qsfilter2 usage, overview">
 <p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#EBE5E0">
+<tr><td bgcolor="#E0EBE0">
 <pre>
 Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-h] [-b &lt;num&gt;] [-p|-s|-m|-o] [-l &lt;len&gt;] [-n] [-e] [-u 'uni'] [-k &lt;prefix&gt;] [-t]
 
@@ -66,27 +66,27 @@ Usage: qsfilter2 -i &lt;path&gt; [-c &lt;path&gt;] [-d &lt;num&gt;] [-h] [-b &lt
 Summary
  mod_qos implements a request filter which validates each request
  line. The module supports both, negative and positive security
- model. The QS_Deny* directives are used to specify request line
+ models. The QS_Deny* directives are used to specify request line
  patterns which are not allowed to access the server (negative
  security model / blacklist). These rules are used to restrict
  access to certain resources which should not be available to
  users or to protect the server from malicious patterns. The
  QS_Permit* rules implement a positive security model (whitelist).
  These directives are used to define allowed request line patterns.
- Request which do not match any of thses patterns are not allowed
+ Requests which do not match any of these patterns are not allowed
  to access the server.
- qsfilter2 is used used to generate filter rules based on audit log
+ qsfilter2 is used to generate filter rules based on audit log
  data. It parses existing audit or access log files in order to
- generate rule patterns covering all allowed request. These rules
+ generate rule patterns covering all allowed requests. These rules
  (QS_PermitUri directives and patterns) may be used by mod_qos to
  deny access for suspect request lines.
 
 Options
   -i &lt;path&gt;
      Input file containing request URIs.
-     The URIs for this file have to be extracted from the servers
+     The URIs for this file have to be extracted from the server's
      access logs. Each line of the input file contains a request
-     URI consiting of a path and and query.
+     URI consisting of a path and a query.
      Example:
 
        /aaa/index.do
@@ -95,7 +95,7 @@ Options
        /aaa/view?page=1
        /aaa/edit?document=1
 
-     These access log data must include current request URIs but
+     This log data must include current request URIs, but
      also request lines from previous rule generation steps. It
      must also include request lines which cover manually generated
      rules.
@@ -106,7 +106,7 @@ Options
      Manually generated rules (QS_PermitUri) may be provided from
      this file. Note: each manual rule must be represented by a
      request URI in the input data (-i) in order to make sure not
-     to be deleted by the rule optimisation algorithm.
+     to be deleted by the rule optimization algorithm.
      QS_Deny* rules from this file are used to filter request lines
      which should not be used for whitelist rule generation.
      Example:
@@ -121,20 +121,20 @@ Options
      literal string. Default is 1.
   -h
      Always use a string representing the handler name in the path even
-     the url does not have a query. See also -d option.
+     if the url does not have a query. See also -d option.
   -b &lt;num&gt;
      Replaces url pattern by the regular expression when detecting
      a base64/hex encoded string. Detecting sensibility is defined by
      a numeric value. You should use values higher than 5 (default)
      or 0 to disable this function.
   -p
-     Repesents query by pcre only (no literal strings).
+     Represents query by pcre only (no literal strings).
   -s
      Uses one single pcre for the whole query string.
   -m
-     Uses one pcre for multipe query values (recommended mode).
+     Uses one pcre for multiple query values (recommended mode).
   -o
-     Does not care the order of query parameters.
+     Does not care about the order of query parameters.
   -l &lt;len&gt;
      Outsizes the query length by the defined length ({0,size+len}),
      default is 10.
@@ -166,7 +166,7 @@ Output
  rule.
  At the end of data processing a list of all generated
  QS_PermitUri rules is shown. These directives may be used
- withn the configuration file used by mod_qos.
+ within the configuration file used by mod_qos.
 
 Sample Usage and Output
   ./qsfilter2 -i loc.txt -c httpd.conf -m -e
