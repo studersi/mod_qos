@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.173 2010-12-11 21:44:17 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.174 2010-12-17 19:49:50 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -304,6 +304,9 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
        SetHandler server-info
    </Location>
 
+<IfDefine DisableHandler>
+   QS_DisableHandler on
+</IfDefine>
    Include 	  conf/qos_viewer.conf
    <Location /console>
        SetHandler qos-console
