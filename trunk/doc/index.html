@@ -1337,7 +1337,11 @@ A machine-readable version of the status information is available when using
 the request query string <code>auto</code>, e.g., <code>http://your.server.name/qos?auto</code>.
  The status information is also provided on the server status page of  
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_status.html" target="_blank">mod_status</a>.
-
+</p>
+<p>
+Use the directive <code>QS_DisableHandler on</code> to disable the qos-viewer and qos-console for 
+a virtual host in order to prevent accidental activation of these functions, includng 
+per-directory files (e.g., .htaccess).
 </p>
 
 <a name="webconsole"></a>
