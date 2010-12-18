@@ -1,5 +1,5 @@
 /**
- * See http://sourceforge.net/projects/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod-qos/ for further
  * details.
  *
  * Copyright (C) 2007-2009 Pascal Buchbinder
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: crs.c,v 1.1 2009-11-16 07:42:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: crs.c,v 1.2 2010-12-18 21:04:11 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>

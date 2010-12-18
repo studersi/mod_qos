@@ -2,7 +2,7 @@
  * Filter utilities for the quality of service module mod_qos
  * used to create white list rules for request line filters.
  *
- * See http://sourceforge.net/projects/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod-qos/ for further
  * details.
  *
  * Copyright (C) 2007-2010 Pascal Buchbinder
@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.28 2010-12-17 22:28:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.29 2010-12-18 21:04:11 pbuchbinder Exp $";
 static const char g_revision[] = "9.44";
 
 /* system */
@@ -477,7 +477,7 @@ static void usage(char *cmd) {
   printf("  QS_PermitUri +QSF003 deny \"^(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\"\n");
   printf("\n");
   printf("mod_qos %s\n", g_revision);
-  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
+  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
   exit(1);
 }
 

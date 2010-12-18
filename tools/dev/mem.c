@@ -1,5 +1,5 @@
 /**
- * See http://sourceforge.net/projects/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod-qos/ for further
  * details.
  *
  * Copyright (C) 2010 Pascal Buchbinder
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: mem.c,v 1.3 2010-03-04 19:46:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mem.c,v 1.4 2010-12-18 21:04:11 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -45,7 +45,7 @@ static void usage() {
   printf("\n");
   printf("Calculates the memory heap in bytes used by the specified process\n");
   printf("\n");
-  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
+  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
   exit(1);
 }
 

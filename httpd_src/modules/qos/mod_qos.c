@@ -12,7 +12,7 @@
  * This module implements control mechanisms that can provide
  * different priority to different requests.
  *
- * See http://sourceforge.net/projects/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod-qos/ for further
  * details.
  *
  * Copyright (C) 2007-2010 Pascal Buchbinder
@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.280 2010-12-18 16:54:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.281 2010-12-18 21:04:10 pbuchbinder Exp $";
 static const char g_revision[] = "9.44";
 
 /************************************************************************

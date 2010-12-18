@@ -1,5 +1,5 @@
 /**
- * See http://sourceforge.net/projects/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod-qos/ for further
  * details.
  *
  * Copyright (C) 2007-2010 Pascal Buchbinder
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regex.c,v 1.5 2010-06-15 19:08:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: regex.c,v 1.6 2010-12-18 21:04:11 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -63,7 +63,7 @@ static void usage() {
   printf("\n");
   printf("Regular expression matching test tool (pcre pattern, case less).\n");
   printf("\n");
-  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
+  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
   exit(1);
 }
 
