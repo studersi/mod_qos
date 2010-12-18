@@ -1,11 +1,11 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.139 2010-12-11 21:44:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.140 2010-12-18 21:04:11 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
-# See http://sourceforge.net/projects/mod-qos/ for further
+# See http://opensource.adnovum.ch/mod-qos/ for further
 # details about mod_qos.
 #
 # Copyright (C) 2007-2010 Pascal Buchbinder

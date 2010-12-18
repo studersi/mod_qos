@@ -1,5 +1,5 @@
 /**
- * See http://sourceforge.net/projects/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod-qos/ for further
  * details.
  *
  * Copyright (C) 2010 Pascal Buchbinder
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.10 2010-11-08 19:24:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.11 2010-12-18 21:04:11 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>

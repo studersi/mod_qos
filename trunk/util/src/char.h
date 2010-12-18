@@ -1,7 +1,7 @@
 /**
  * Utilities for the quality of service module mod_qos.
  *
- * See http://sourceforge.net/projects/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod-qos/ for further
  * details.
  *
  * Copyright (C) 2007-2010 Pascal Buchbinder

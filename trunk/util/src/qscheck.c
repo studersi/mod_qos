@@ -3,7 +3,7 @@
  *
  * Monitor testing tcp connectivity to servers used by mod_proxy.
  *
- * See http://sourceforge.net/projects/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod-qos/ for further
  * details.
  *
  * Copyright (C) 2007 Pascal Buchbinder
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qscheck.c,v 1.2 2010-09-15 18:04:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: qscheck.c,v 1.3 2010-12-18 21:04:11 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,7 +69,7 @@ static void usage(char *cmd) {
   printf("by the ProxyPass, ProxyPassReverse, or ProxyReverse\n");
   printf("directive used by mod_proxy.\n");
   printf("\n");
-  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
+  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
   exit(1);
 }
 
