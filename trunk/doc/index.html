@@ -205,7 +205,7 @@ cd ..
 </pre>
 </td></tr>
 </table>
-This creates a DSO module, which can be loaded into the Apache server using the 
+This creates a DSO module that can be loaded into the Apache server using the 
 following directive:
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
@@ -233,16 +233,16 @@ cd ../..
 </pre>
 </td></tr>
 </table>
-If the the necessary header files of OpenSSL, PCRE, etc. cannot be found, add the <code>-I</code> 
+If the necessary header files of OpenSSL, PCRE, etc. cannot be found, add the <code>-I</code> 
 option to the <code>apxs</code> command to specify the directory where header files can be found and 
-if any of the required libraries (may happen if you use mod_qos without mod_ssl) 
-cannot be found, add the <code>-L</code> option to specify the directory where libraries can be found.
+if any of the required libraries cannot be found (may happen if you use mod_qos without mod_ssl), 
+add the <code>-L</code> option to specify the directory where libraries can be found.
 </p>
 
 <p>
-The <a href="#utilities">support tools</a> may be build (at least on some 
+The <a href="#utilities">support tools</a> may be built (at least on some 
 Linux platforms) using the GNU autotools. Some of these 
-utilities requires third-party libraries such as apr, apr-util, pcre, 
+utilities require third-party libraries such as apr, apr-util, pcre, 
 libpng, and OpenSSL.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
