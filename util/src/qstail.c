@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.1 2010-12-20 20:02:01 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.2 2010-12-20 21:17:33 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -42,7 +42,20 @@ static void usage(char *cmd) {
   printf("\n");
   printf("Utility prints the end of a log file starting at the specified pattern.\n");
   printf("\n");
-
+  printf("Usage: %s -i <path> -p <pattern>\n", cmd);
+  printf("\n");
+  printf("Summary\n");
+  printf(" %s shows the end of a log file beginning with the line containing the\n", cmd);
+  printf(" specified pattern. This may be used to show all lines which has been written\n");
+  printf(" after a certain event (e.g., server restart) or time stamp.\n");
+  printf("\n");
+  printf("Options\n");
+  printf("  -i <path>\n");
+  printf("     Input file to read the data from.\n");
+  printf("  -p <pattern>\n");
+  printf("     Search pattern (literal string).\n");
+  printf("\n");
+  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
   exit(1);
 }
 
@@ -104,7 +117,7 @@ int main(int argc, const char * const argv[]) {
   argc--;
   argv++;
   while(argc >= 1) {
-    if(strcmp(*argv,"-f") == 0) {
+    if(strcmp(*argv,"-i") == 0) {
       if (--argc >= 1) {
 	filename = *(++argv);
       }
