@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.3 2010-12-21 06:55:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.4 2010-12-21 20:02:42 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -82,7 +82,7 @@ static int qs_tail(const char *cmd, FILE *f, const char *pattern) {
   char line[search_win_len + 10];
   long pos = 0;
   size_t len;
-  char *start = NULL;
+  char *startpattern = NULL;
   fseek(f, 0L, SEEK_END);
   pos = ftell(f);
   while(pos > search_win_len) {
@@ -95,9 +95,11 @@ static int qs_tail(const char *cmd, FILE *f, const char *pattern) {
       return 1;
     }
     line[len] = '\0';
-    if((start = strstr(line, pattern)) != NULL) {
-      char *s = start;
-      offset = start - line;
+    if((startpattern = strstr(line, pattern)) != NULL) {
+      int containsend = 0;
+      char *s = startpattern;
+      char *end;
+      offset = startpattern - line;
       /* search the beginning of the line */
       while((s > line) && (s[0] != CR) && (s[0] != LF)) {
 	s--;
@@ -107,23 +109,27 @@ static int qs_tail(const char *cmd, FILE *f, const char *pattern) {
 	qs_readline(pos, f);
       }
       s++;
+      end = startpattern;
       /* search the end of the line */
-      while(start && start[0] && start[0] != CR && start[0] != LF) {
-	start++;
+      while(end && end[0] && end[0] != CR && end[0] != LF) {
+	end++;
 	offset++;
       }
       /* print the line containing the pattern */
-      if((start[0] == CR) || (start[0] == LF)) {
-	start[0] = '\0';
+      if((end[0] == CR) || (end[0] == LF)) {
+	end[0] = '\0';
 	printf("%s\n", s);
+	containsend = 1;
       } else {
 	printf("%s", s);
       }
-      fseek(f, pos + offset - 1, SEEK_SET);
-      if(fgets(line, sizeof(line), f) != NULL) {
-	while(fgets(line, sizeof(line), f) != NULL) {
-	  printf("%s", line);
-	}
+      fseek(f, pos + offset, SEEK_SET);
+      if(containsend) {
+	// skip the line at the  current position
+	fgets(line, sizeof(line), f);
+      }
+      while(fgets(line, sizeof(line), f) != NULL) {
+	printf("%s", line);
       }
       return 0;
     }
