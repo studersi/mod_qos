@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.140 2010-12-18 21:04:11 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.141 2010-12-21 20:02:42 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -648,6 +648,11 @@ for E in $TEST; do
 done
 
 # tools -----------------------------------------------------------
+./run.sh -s ./scripts/qstail.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED qstail.htt"
+fi
 ./run.sh -s ./scripts/qslog.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
