@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.2 2010-12-20 21:17:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.3 2010-12-21 06:55:23 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -37,6 +37,7 @@ static const char revision[] = "$Id: qstail.c,v 1.2 2010-12-20 21:17:33 pbuchbin
 #define MAX_LINE 32768
 #define CR 13
 #define LF 10
+#define BUFFER 2048
 
 static void usage(char *cmd) {
   printf("\n");
@@ -59,13 +60,29 @@ static void usage(char *cmd) {
   exit(1);
 }
 
-static void qs_tail(const char *cmd, FILE *f, const char *pattern) {
-  long search_win_len = strlen(pattern) * 2 + 512;
-  long line_len = MAX_LINE;
-  char line[MAX_LINE];
+/* search the beginning of the line starting at the provided position */
+static void qs_readline(long pos, FILE *f) {
+  size_t len;
+  char line[BUFFER + 1];
+  fseek(f, pos - BUFFER + 1, SEEK_SET);
+  len = fread(&line, 1, BUFFER, f);
+  if(len > 0) {
+    char *s = &line[len-1];
+    line[len] = '\0';
+    while((s > line) && (s[0] != CR) && (s[0] != LF)) {
+      s--;
+    }
+    s++;
+    printf("%s", s);
+  }
+}
+
+static int qs_tail(const char *cmd, FILE *f, const char *pattern) {
+  long search_win_len = strlen(pattern) * 2 + 32;
+  char line[search_win_len + 10];
   long pos = 0;
   size_t len;
-  char *start;
+  char *start = NULL;
   fseek(f, 0L, SEEK_END);
   pos = ftell(f);
   while(pos > search_win_len) {
@@ -75,32 +92,43 @@ static void qs_tail(const char *cmd, FILE *f, const char *pattern) {
     len = fread(&line, 1, search_win_len, f);
     if(len <= 0) {
       /* pattern not found / reached end */
-      return;
+      return 1;
     }
     line[len] = '\0';
     if((start = strstr(line, pattern)) != NULL) {
       char *s = start;
       offset = start - line;
+      /* search the beginning of the line */
       while((s > line) && (s[0] != CR) && (s[0] != LF)) {
 	s--;
       }
+      if((s[0] != CR) && (s[0] != LF)) {
+	// beginning of the line not in the buffer
+	qs_readline(pos, f);
+      }
       s++;
+      /* search the end of the line */
       while(start && start[0] && start[0] != CR && start[0] != LF) {
 	start++;
 	offset++;
       }
-      start[0] = '\0';
-      printf("%s\n", s);
-      fseek(f, pos + offset, SEEK_SET);
+      /* print the line containing the pattern */
+      if((start[0] == CR) || (start[0] == LF)) {
+	start[0] = '\0';
+	printf("%s\n", s);
+      } else {
+	printf("%s", s);
+      }
+      fseek(f, pos + offset - 1, SEEK_SET);
       if(fgets(line, sizeof(line), f) != NULL) {
 	while(fgets(line, sizeof(line), f) != NULL) {
 	  printf("%s", line);
 	}
       }
-      return;
+      return 0;
     }
   }
-  return;
+  return 1;
 }
 
 int main(int argc, const char * const argv[]) {
@@ -108,6 +136,7 @@ int main(int argc, const char * const argv[]) {
   const char *filename = NULL;
   const char *pattern = NULL;
   char *cmd = strrchr(argv[0], '/');
+  int status = 0;
   if(cmd == NULL) {
     cmd = (char *)argv[0];
   } else {
@@ -142,8 +171,8 @@ int main(int argc, const char * const argv[]) {
     exit(1);
   }
   
-  qs_tail(cmd, f, pattern);
+  status = qs_tail(cmd, f, pattern);
 
   fclose(f);
-  return 0;
+  return status;
 }
