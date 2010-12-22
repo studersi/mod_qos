@@ -3,7 +3,7 @@
  *
  * Shows the end of a log file beginning at the provided pattern.
  *
- * See http://opensource.adnovum.ch/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
  * Copyright (C) 2010 Pascal Buchbinder
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.4 2010-12-21 20:02:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.5 2010-12-22 11:33:19 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -56,7 +56,7 @@ static void usage(char *cmd) {
   printf("  -p <pattern>\n");
   printf("     Search pattern (literal string).\n");
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
+  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   exit(1);
 }
 

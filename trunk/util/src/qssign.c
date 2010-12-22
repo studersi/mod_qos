@@ -3,7 +3,7 @@
  *
  * Log data signing tool to ensure data integrity.
  *
- * See http://opensource.adnovum.ch/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
  * Copyright (C) 2010 Pascal Buchbinder
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.13 2010-12-18 21:04:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.14 2010-12-22 11:33:19 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -455,7 +455,7 @@ static void usage(char *cmd) {
   printf("Ecample (verify):\n");
   printf(" cat access_log | %s -s password -v\n", cmd);
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
+  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   exit(1);
 }
 

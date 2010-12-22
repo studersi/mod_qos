@@ -1,11 +1,11 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.141 2010-12-21 20:02:42 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.142 2010-12-22 11:33:18 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
-# See http://opensource.adnovum.ch/mod-qos/ for further
+# See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
 # Copyright (C) 2007-2010 Pascal Buchbinder
@@ -618,6 +618,12 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED MaxRequestsPerChild.htt"
+    tail -1 logs/error_log
+fi
+./run.sh -s ./scripts/MaxRequestsPerChild_test.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED MaxRequestsPerChild_test.htt"
 fi
 
 ./ctl.sh restart -D COND_CONNECTIONS >/dev/null

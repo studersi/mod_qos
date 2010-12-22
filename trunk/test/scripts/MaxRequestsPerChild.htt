@@ -1,5 +1,5 @@
 #
-# $Id: MaxRequestsPerChild.htt,v 1.1 2010-01-15 20:44:54 pbuchbinder Exp $
+# $Id: MaxRequestsPerChild.htt,v 1.2 2010-12-22 11:33:18 pbuchbinder Exp $
 #
 # reaches MaxRequestsPerChild (terminating supervisor thread)
 #
@@ -10,8 +10,11 @@ EXEC ./ctl.sh restart -D cont 2>/dev/null 1>/dev/null
 EXEC echo "[Fri Jan 15 07:23:30 2010] [notice] Apache/2.2.xx test S_SrvMinDataRate_maxreq.htt" >> ./logs/error_log
 
 CLIENT 10
+_SLEEP 500
+_RAND 1 100 SLEEP
+_SLEEP $SLEEP
 
-_LOOP 2
+_LOOP 4
 
 _LOOP 150
 
@@ -35,7 +38,6 @@ __Host: 127.0.0.1
 _SLEEP 50
 __Connection: keep-alive
 __
-_MATCH headers "Connection: (.*)" CONNECTION
 _EXPECT . "this is the root index"
 _WAIT
 
@@ -45,6 +47,7 @@ _END LOOP
 
 _END LOOP
 
+# no errors
 _EXPECT EXEC "\[Fri Jan 15 07:23:30 2010\] \[notice\] Apache/2.2.xx test S_SrvMinDataRate_maxreq.htt"
 _EXEC tail -1 ./logs/error_log
 

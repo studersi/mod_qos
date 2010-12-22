@@ -5,7 +5,7 @@
  * Configuration tool for mod_qos, a quality of service
  * module for Apache Web Server.
  *
- * See http://opensource.adnovum.ch/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
  * Copyright (C) 2007-2008 Pascal Buchbinder
@@ -30,7 +30,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos_control.c,v 5.51 2010-12-18 21:04:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos_control.c,v 5.52 2010-12-22 11:33:18 pbuchbinder Exp $";
 static const char g_revision[] = "7.13";
 
 /************************************************************************
