@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.5 2010-12-22 11:33:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.6 2010-12-22 20:45:40 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -63,16 +63,25 @@ static void usage(char *cmd) {
 /* search the beginning of the line starting at the provided position */
 static void qs_readline(long pos, FILE *f) {
   size_t len;
-  char line[BUFFER + 1];
-  fseek(f, pos - BUFFER + 1, SEEK_SET);
-  len = fread(&line, 1, BUFFER, f);
+  long startpos = pos - BUFFER + 1;
+  long readlen = BUFFER;
+  char line[readlen + 1];
+  if(startpos < 0) {
+    // we are at the beginning of the file
+    startpos = 0;
+    readlen = pos + 1;
+  }
+  fseek(f, startpos, SEEK_SET);
+  len = fread(&line, 1, readlen, f);
   if(len > 0) {
     char *s = &line[len-1];
     line[len] = '\0';
-    while((s > line) && (s[0] != CR) && (s[0] != LF)) {
+    while((s >= line) && (s[0] != CR) && (s[0] != LF)) {
       s--;
     }
-    s++;
+    if((s[0] == CR) || (s[0] != LF)) {
+      s++;
+    }
     printf("%s", s);
   }
 }
