@@ -1,11 +1,11 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.12 2010-12-18 21:04:11 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.13 2010-12-22 11:33:18 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
-# See http://opensource.adnovum.ch/mod-qos/ for further
+# See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
 # Copyright (C) 2007-2010 Pascal Buchbinder

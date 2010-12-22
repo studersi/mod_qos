@@ -1,9 +1,9 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.175 2010-12-18 21:04:11 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.176 2010-12-22 11:33:18 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
-# See http://opensource.adnovum.ch/mod-qos/ for further
+# See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
 # Copyright (C) 2007-2010 Pascal Buchbinder
@@ -288,6 +288,9 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    QS_SrvMaxConnClose                        20
 <IfDefine !cont>
    QS_SrvMaxConnPerIP                        10
+</IfDefine>
+<IfDefine cont>
+   QS_SrvMaxConnPerIP                        30
 </IfDefine>
 
    BrowserMatch "pass"                       QS_VipRequest=yes

@@ -2,7 +2,7 @@
  * Filter utilities for the quality of service module mod_qos
  * used to create white list rules for request line filters.
  *
- * See http://opensource.adnovum.ch/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
  * Copyright (C) 2007 Pascal Buchbinder
@@ -24,7 +24,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter.c,v 1.35 2010-12-18 21:04:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter.c,v 1.36 2010-12-22 11:33:18 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -261,7 +261,7 @@ static void usage(char *cmd) {
   printf("Example\n");
   printf("  ./%s -i loc.txt -o -s 1 -c httpd.conf\n", cmd);
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
+  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   printf("mod_qos, "__DATE__"\n");
   exit(1);
 }

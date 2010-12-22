@@ -94,7 +94,7 @@ print "</table>\n";
 sleep 1;
 print "\n";
 print "<hr>\n";
-print "<a href=\"http://opensource.adnovum.ch/mod-qos/\">\n";
+print "<a href=\"http://opensource.adnovum.ch/mod_qos/\">\n";
 print "<SMALL><SMALL>mod_qos</SMALL></SMALL>\n";
 print "</a>\n";
 print "</body>\n";

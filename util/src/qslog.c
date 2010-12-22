@@ -3,7 +3,7 @@
  *
  * Real time access log data correlation.
  *
- * See http://opensource.adnovum.ch/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
  * Copyright (C) 2007-2010 Pascal Buchbinder
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.5 2010-12-18 21:04:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.6 2010-12-22 11:33:19 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -688,7 +688,7 @@ static void usage(char *cmd) {
   printf("Example for post processing:\n");
   printf("  cat access_log | ./bin/%s -f ..IRSB.T -o ./logs/stat_log -p\n", cmd);
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
+  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   exit(1);
 }
 

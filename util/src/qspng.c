@@ -1,7 +1,7 @@
 /**
  * Utilities for the quality of service module mod_qos.
  *
- * See http://opensource.adnovum.ch/mod-qos/ for further
+ * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
  * Copyright (C) 2007-2010 Pascal Buchbinder
@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.3 2010-12-18 21:04:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.4 2010-12-22 11:33:19 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -562,7 +562,7 @@ static void usage(char *cmd) {
   printf("  -o <out_file>\n");
   printf("     Output file name, e.g. stat.png.\n");
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod-qos/ for further details.\n");
+  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   exit(1);
 }
 
