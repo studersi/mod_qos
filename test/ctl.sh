@@ -1,14 +1,14 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.13 2010-12-22 11:33:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.14 2011-01-01 20:52:04 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2010 Pascal Buchbinder
+# Copyright (C) 2007-2011 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
