@@ -3,6 +3,7 @@
   - requests per single TCP connection (keep-alive)
   + 304 responses
   + respone content types (html/css/js/image/...)
+    - store/configure "normal" behavoir (stop learning after a while)
   - elapse time between requests
   - request/response length (body)
   - request/response headers (types, length)
