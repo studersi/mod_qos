@@ -1,3 +1,9 @@
+Version 9.45
+
+ - Add directive QS_ClientSerialize.
+
+ - qslog used new parameter names for event message counts.
+
 Version 9.44
 
  - Add directive QS_DisableHandler.

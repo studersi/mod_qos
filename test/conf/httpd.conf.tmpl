@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.176 2010-12-22 11:33:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.177 2011-01-05 20:08:08 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -84,6 +84,7 @@ QS_EnableInternalIPSimulation off
 </IfDefine>
 
 QS_ClientEventRequestLimit 2
+QS_ClientSerialize
 
 Options                 FollowSymLinks Indexes Includes
 DefaultType             text/plain
@@ -150,6 +151,7 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    QS_SetEnvIfQuery name=([a-z]*)         NAME=mein_name_ist_$1
    QS_SetEnvIfQuery other;value=(.*)match VALUE=$1
    QS_SetEnvIfQuery ok                    EMPTY
+   QS_SetEnvIfQuery serializeme=([a-z]*)  QS_Serialize=true
 
    PARP_BodyData              text/html
    PARP_BodyData              application/json

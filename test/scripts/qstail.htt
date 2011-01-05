@@ -1,5 +1,5 @@
 #
-# $Id: qstail.htt,v 1.1 2010-12-21 20:02:42 pbuchbinder Exp $
+# $Id: qstail.htt,v 1.2 2011-01-05 20:08:08 pbuchbinder Exp $
 #
 INCLUDE scripts/ports
 
@@ -12,6 +12,7 @@ __Host: localhost
 __
 _WAIT
 _CLOSE
+_SLEEP 200
 _EXPECT EXEC "#2#"
 _EXEC ../util/src/qstail -i logs/access_log -p QSTAIL | wc -l | awk '{print "#" $1 "#"}'
 

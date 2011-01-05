@@ -534,6 +534,11 @@ Variable processed by the <code><a href="#QS_ClientEventBlockCount">QS_ClientEve
 directive.
 </li>
 <li>
+<code>QS_Serialize</code><br>
+Variable processed by the <code><a href="#QS_ClientSerialize">QS_ClientSerialize</a></code> 
+directive.
+</li>
+<li>
 <code>QS_Cond</code><br>
 Variable processed by the <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLocRequestLimitMatch</a></code> directive.
 </li>
@@ -1143,7 +1148,7 @@ These directives must only be used in the global server context.
 <code>QS_ClientEntries &lt;number&gt;</code><br>
 Defines the number of individual clients managed by mod_qos. 
 Default is 50'000 concurrent IP addresses. Each client requires 
-about 68 bytes of shared memory on a 32bit system or 104 bytes 
+about 72 bytes of shared memory on a 32bit system or 108 bytes 
 on a 64bit system respectively. Client IP source address store 
 survives graceful server restart.
 </li>
@@ -1171,6 +1176,12 @@ directive.
 Defines the maximum number of <code>QS_Block</code> events allowed 
 within the defined time (default is 600 seconds). Client IP is blocked 
 when reaching this counter for the specified time (blocked at connection level). 
+</li>
+<li>
+<a name="QS_ClientSerialize"></a>
+<code>QS_ClientSerialize</code><br>
+Serializes requests having the <code>QS_Serialize</code> variable set if they are comming 
+from the same IP address.
 </li>
 <li>
 <a name="QS_ClientPrefer"></a>
@@ -1252,7 +1263,8 @@ single letter which is used to signalize an event: "D"=denied, "S"=pass
 due to an available <a href="#privilegedusers">VIP</a> session, 
 "V"=create VIP session, "K"=connection closed 
 (no keep-alive), "T"=dynamic keep-alive, "r"=IP is marked as a 
-slow/bad client, and "L"=means a request slowdown.
+slow/bad client, "L"=means a request slowdown, and "s" is used for serialized 
+requests.
 </li>
 <li>
 <code>mod_qos_cr</code> <br> The number of concurrent requests to a 
@@ -1602,7 +1614,7 @@ QS_SetEnvIfStatus 505   QS_Block
 <br>
 <hr>
 <a href="http://www.nevis.ch"><img align="right" border="0" 
-src="nevis.gif" title="Nevis: The professional source of Web application security." alt="Nevis" /></a>
+src="nevis.gif" title="Nevis: The professional source for Web application security." alt="Nevis" /></a>
 <SMALL><SMALL>&copy; 2007-2011, Pascal Buchbinder</SMALL></SMALL>
 </body>
 </html>
