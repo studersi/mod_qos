@@ -3,7 +3,7 @@ INCLUDE scripts/ports
 CLIENT
 
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /404 HTTP/1.1
+__GET /404?serializeme=yes HTTP/1.1
 __Host: localhost.host.ch
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
