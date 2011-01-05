@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.284 2011-01-01 20:52:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.285 2011-01-05 20:08:08 pbuchbinder Exp $";
 static const char g_revision[] = "9.45";
 
 /************************************************************************
@@ -118,6 +118,10 @@ static const char g_revision[] = "9.45";
 #define QS_PARP_PATH      "qos-path"
 #define QS_PARP_LOC       "qos-loc"
 
+#define QS_SERIALIZE      "QS_Serialize"
+#define QS_BLOCK          "QS_Block"
+#define QS_EVENT          "QS_Event"
+#define QS_COND           "QS_Cond"
 #define QS_MFILE          "/var/tmp/"
 
 #define QS_INCTX_ID inctx->id
@@ -175,6 +179,7 @@ typedef struct {
   unsigned int img;
   unsigned int other;
   unsigned int notmodified;
+  unsigned int serialize;
   /* prefer */
   short int vip;
   /* ev block */
@@ -520,6 +525,7 @@ typedef struct {
   int qos_cc_event_req;       /* GLOBAL ONLY */
   int qos_cc_block;           /* GLOBAL ONLY */
   int qos_cc_block_time;      /* GLOBAL ONLY */
+  int qos_cc_serialize;       /* GLOBAL ONLY */
   apr_off_t maxpost;
   int cc_tolerance;           /* GLOBAL ONLY */
   int cc_tolerance_max;       /* GLOBAL ONLY */
@@ -554,6 +560,7 @@ typedef struct {
   apr_off_t maxpostcount;
   int event_kbytes_per_sec_block_rate;
   int cc_event_req_set;
+  int cc_serialize_set;
   char *body_window;
 } qs_req_ctx;
 
@@ -981,6 +988,7 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->req_per_sec = 0;
   (*pB)->req_per_sec_block_rate = 0;
   (*pB)->event_req = 0;
+  (*pB)->serialize = 0;
   (*pB)->html = 1;
   (*pB)->cssjs = 1;
   (*pB)->img = 1;
@@ -1339,6 +1347,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->maxpostcount = 0;
     rctx->event_kbytes_per_sec_block_rate = 0;
     rctx->cc_event_req_set = 0;
+    rctx->cc_serialize_set = 0;
     rctx->body_window = NULL;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
@@ -3160,6 +3169,47 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
 }
 
 /*
+ * QS_ClientSerialize
+ */
+static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ctx * rctx) {
+  qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
+  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+  if(!rctx) {
+    rctx = qos_rctx_config_get(r);
+  }
+  if(u && cconf) {
+    int locked = 0;
+    rctx->cc_serialize_set = 1;
+    /* wait until we get a lock */
+    while(!locked) {
+      qos_s_entry_t **e = NULL;
+      qos_s_entry_t new;
+      apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36 */
+      new.ip = cconf->ip;
+      e = qos_cc_get0(u->qos_cc, &new);
+      if(!e) {
+        e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      }
+      if((*e)->serialize == 0) {
+        (*e)->serialize = 1;
+        locked = 1;
+      }
+      apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT36 */   
+      if(!locked) {
+        /* sleep 100ms */
+        struct timespec delay;
+        delay.tv_sec  = 0;
+        delay.tv_nsec = 100 * 1000000;
+        nanosleep(&delay, NULL);
+        if(!rctx->evmsg || !strstr(rctx->evmsg, "s;")) {
+          rctx->evmsg = apr_pstrcat(r->pool, "s;", rctx->evmsg, NULL);
+        }
+      }
+    }
+  }
+}
+
+/*
  * QS_ClientEventRequestLimit
  */
 static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_ctx * rctx) {
@@ -3450,7 +3500,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     int lowrate = 0;
     int unusual_bahavior = 0;
     int block_event = !apr_table_get(r->subprocess_env, "QS_Block_seen") &&
-      apr_table_get(r->subprocess_env, "QS_Block");
+      apr_table_get(r->subprocess_env, QS_BLOCK);
     qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     qos_s_entry_t **e = NULL;
@@ -3489,6 +3539,11 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       /* QS_ClientEventRequestLimit */
       rctx->cc_event_req_set = 0;
       (*e)->event_req--;
+    }
+    if(rctx->cc_serialize_set) {
+      /* QS_ClientSerialize */
+      rctx->cc_serialize_set = 0;
+      (*e)->serialize = 0;
     }
     unusual_bahavior = qos_content_type(r, sconf, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
     if(block_event || lowrate || unusual_bahavior) {
@@ -3543,7 +3598,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     }
     if(sconf->qos_cc_event) {
       apr_time_t now = apr_time_sec(r->request_time);
-      const char *v = apr_table_get(r->subprocess_env, "QS_Event");
+      const char *v = apr_table_get(r->subprocess_env, QS_EVENT);
       if(v) {
         (*e)->req++;
         if(now > (*e)->interval + 10) {
@@ -3560,7 +3615,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
             }
             /* QS_ClientEventPerSecLimit */
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                          QOS_LOG_PFX(061)"request rate limit, rule: QS_Event(%d), req/sec=%ld,"
+                          QOS_LOG_PFX(061)"request rate limit, rule: "QS_EVENT"(%d), req/sec=%ld,"
                           " delay=%dms%s",
                           sconf->qos_cc_event,
                           (*e)->req_per_sec, (*e)->req_per_sec_block_rate,
@@ -3573,7 +3628,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
               (*e)->req_per_sec_block_rate = (*e)->req_per_sec_block_rate - factor;
             }
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                          QOS_LOG_PFX(062)"request rate limit, rule: QS_Event(%d), req/sec=%ld,"
+                          QOS_LOG_PFX(062)"request rate limit, rule: "QS_EVENT"(%d), req/sec=%ld,"
                           " delay=%dms",
                           sconf->qos_cc_event,
                           (*e)->req_per_sec, (*e)->req_per_sec_block_rate);
@@ -3584,7 +3639,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     }
     if(sconf->qos_cc_block) {
       apr_time_t now = apr_time_sec(r->request_time);
-      const char *v = apr_table_get(r->subprocess_env, "QS_Block");
+      const char *v = apr_table_get(r->subprocess_env, QS_BLOCK);
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
         (*e)->block = 0;
@@ -5179,6 +5234,13 @@ static int qos_header_parser(request_rec * r) {
     }
 
     /*
+     * QS_ClientSerialize
+     */
+    if(sconf->qos_cc_serialize && apr_table_get(r->subprocess_env, QS_SERIALIZE)) {
+      qos_hp_cc_serialize(r, sconf, rctx);
+    }
+
+    /*
      * client control
      */
     if(qos_hp_cc(r, sconf, &msg, &uid) != DECLINED) {
@@ -5303,7 +5365,7 @@ static int qos_header_parser(request_rec * r) {
          */
         if(e_cond->limit && (e_cond->counter > e_cond->limit)) {
           /* check condition */
-          const char *condition = apr_table_get(r->subprocess_env, "QS_Cond");
+          const char *condition = apr_table_get(r->subprocess_env, QS_COND);
           if(condition) {
             if(ap_regexec(e_cond->condition, condition, 0, NULL, 0) == 0) {
               /* vip session has no limitation */
@@ -6790,6 +6852,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_event = 0;
   sconf->qos_cc_event_req = -1;
   sconf->qos_cc_block = 0;
+  sconf->qos_cc_serialize = 0;
   sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
   sconf->cc_tolerance_max = 2 * sconf->cc_tolerance;
   sconf->cc_tolerance_min = QOS_CC_BEHAVIOR_TOLERANCE_MIN;
@@ -6866,6 +6929,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_event_req = b->qos_cc_event_req;
   o->qos_cc_block = b->qos_cc_block;
   o->qos_cc_block_time = b->qos_cc_block_time;
+  o->qos_cc_serialize = b->qos_cc_serialize;
   o->cc_tolerance = b->cc_tolerance;
   o->cc_tolerance_max = b->cc_tolerance_max;
   o->cc_tolerance_min = b->cc_tolerance_min;
@@ -8230,6 +8294,17 @@ const char *qos_client_block_cmd(cmd_parms *cmd, void *dcfg, const char *arg1,
   return NULL;
 }
 
+const char *qos_client_serial_cmd(cmd_parms *cmd, void *dcfg) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->qos_cc_serialize = 1;
+  return NULL;
+}
+
 const char *qos_client_tolerance_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -8333,7 +8408,7 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_CondLocRequestLimitMatch <regex> <number> <pattern>, defines the number of"
                 " concurrent requests to the uri (path and query) regex."
-                " Rule is only enforced of the QS_Cond variable matches the specified"
+                " Rule is only enforced of the "QS_COND" variable matches the specified"
                 " pattern (regex)."),
   AP_INIT_TAKE2("QS_LocRequestPerSecLimitMatch", qos_match_rs_cmd, NULL,
                 RSRC_CONF,
@@ -8522,7 +8597,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE2("QS_SetEnvIfResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,
                 "QS_SetEnvIfResBody <string> <variable>, adds the defined"
-                " request environment variable (e.g. QS_Block) if the HTTP"
+                " request environment variable (e.g. "QS_BLOCK") if the HTTP"
                 " response body contains the defined literal string."
                 " Supports only one pattern per location."),
   AP_INIT_TAKE2("QS_SetEnv", qos_setenv_cmd, NULL,
@@ -8690,14 +8765,18 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE12("QS_ClientEventBlockCount", qos_client_block_cmd, NULL,
                  RSRC_CONF,
                  "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"
-                 " of QS_Block allowed within the defined time (default are 10 minutes)."
+                 " of "QS_BLOCK" allowed within the defined time (default are 10 minutes)."
                  " Directive is allowed in global server context only."),
+  AP_INIT_NO_ARGS("QS_ClientSerialize", qos_client_serial_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_ClientSerialize, serializes requests having the "QS_SERIALIZE" variable"
+                  " set if they are comming from the same IP address."),
   AP_INIT_TAKE1("QS_ClientEventPerSecLimit", qos_client_event_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientEventPerSecLimit <number>, defines the number"
                 " events pro seconds on a per client (source IP) basis."
                 " Events are identified by requests having the"
-                " QS_Event variable set."
+                " "QS_EVENT" variable set."
                 " Directive is allowed in global server context only."),
   AP_INIT_TAKE1("QS_ClientEventRequestLimit", qos_client_event_req_cmd, NULL,
                 RSRC_CONF,

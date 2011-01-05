@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.16 2010-12-22 11:33:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.17 2011-01-05 20:08:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +41,7 @@ typedef struct {
   unsigned int img;
   unsigned int other;
   unsigned int notmodified;
+  unsigned int serialize;
   /* prefer */
   short int vip;
   /* ev block */

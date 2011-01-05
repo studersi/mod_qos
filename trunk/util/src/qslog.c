@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.7 2011-01-01 20:52:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.8 2011-01-05 20:08:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -81,6 +81,7 @@ static long m_qos_d = 0;
 static long m_qos_k = 0;
 static long m_qos_t = 0;
 static long m_qos_l = 0;
+static long m_qos_ser = 0;
 
 static qs_event_t *m_ip_list = NULL;
 static qs_event_t *m_user_list = NULL;
@@ -262,12 +263,13 @@ static void printAndResetStat(char *timeStr) {
           ">5s;%ld;"
 	  "ip;%ld;"
 	  "usr;%ld;"
-	  "qv;%ld;"
+	  "qV;%ld;"
+	  "qS;%ld;"
+	  "qD;%ld;"
+	  "qK;%ld;"
+	  "qT;%ld;"
+	  "qL;%ld;"
 	  "qs;%ld;"
-	  "qd;%ld;"
-	  "qk;%ld;"
-	  "qt;%ld;"
-	  "ql;%ld;"
 	  ,
 	  timeStr,
           m_line_count/LOG_INTERVAL,
@@ -293,7 +295,8 @@ static void printAndResetStat(char *timeStr) {
 	  m_qos_d,
 	  m_qos_k,
 	  m_qos_t,
-	  m_qos_l
+	  m_qos_l,
+	  m_qos_ser
           );
   m_line_count = 0;
   m_byte_count = 0;
@@ -316,6 +319,7 @@ static void printAndResetStat(char *timeStr) {
   m_qos_k = 0;
   m_qos_t = 0;
   m_qos_l = 0;
+  m_qos_ser = 0;
   if(!m_offline) {
     fprintf(m_f, "sl;%.2f;m;%s",
 	    av[0], mem[0] ? mem : "-");
@@ -425,6 +429,9 @@ static void updateStat(const char *cstr, char *line) {
     }
     if(strchr(Q, 'L') != NULL) {
       m_qos_l++;
+    }
+    if(strchr(Q, 's') != NULL) {
+      m_qos_ser++;
     }
   }
   if(I != NULL) {
@@ -647,9 +654,9 @@ static void usage(char *cmd) {
   printf("  - free memory (m) (not available for all platforms)\n");
   printf("  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
   printf("  - number of different users seen withn the last %d seconds (usr)\n", ACTIVE_TIME);
-  printf("  - number of mod_qos events within the last minute (qv=create session,\n");
-  printf("    qs=session pass, qd=access denied, qk=connection closed, qt=dynamic\n");
-  printf("    keep-alive, ql=request/response slow down)\n");
+  printf("  - number of mod_qos events within the last minute (qV=create session,\n");
+  printf("    qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
+  printf("    keep-alive, qL=request/response slow down, qs=serialized request)\n");
   printf("\n");
   printf("Options\n");
   printf("  -f <format_string>\n");

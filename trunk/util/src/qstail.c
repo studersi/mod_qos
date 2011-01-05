@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.7 2011-01-01 20:52:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.8 2011-01-05 20:08:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -79,7 +79,7 @@ static void qs_readline(long pos, FILE *f) {
     while((s >= line) && (s[0] != CR) && (s[0] != LF)) {
       s--;
     }
-    if((s[0] == CR) || (s[0] != LF)) {
+    if((s[0] == CR) || (s[0] == LF)) {
       s++;
     }
     printf("%s", s);

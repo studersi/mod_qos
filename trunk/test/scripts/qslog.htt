@@ -1,5 +1,5 @@
 #
-# $Id: qslog.htt,v 1.9 2010-11-26 07:23:30 pbuchbinder Exp $
+# $Id: qslog.htt,v 1.10 2011-01-05 20:08:08 pbuchbinder Exp $
 #
 # test the qslog and qsrotate tools
 
@@ -33,8 +33,8 @@ _WAIT
 _CLOSE
 _EXEC rm qs.log
 _EXEC cat qs_access_log | ../util/src/qslog -f I....RSB.T...U -p -o qs.log
-_EXPECT EXEC "r/s;0;req;28;b/s;4;1xx;0;2xx;28;3xx;0;4xx;0;5xx;0;av;4;<1s;0;1s;0;2s;0;3s;0;4s;28;5s;0;>5s;0;ip;2;usr;3;qv;0;qs;0;qd;0;qk;0;qt;0;ql;0;"
-_EXPECT EXEC "r/s;1;req;60;b/s;1024;1xx;0;2xx;59;3xx;0;4xx;1;5xx;0;av;1;<1s;38;1s;0;2s;0;3s;22;4s;0;5s;0;>5s;0;ip;2;usr;4;qv;0;qs;0;qd;0;qk;0;qt;0;ql;0"
+_EXPECT EXEC "r/s;0;req;28;b/s;4;1xx;0;2xx;28;3xx;0;4xx;0;5xx;0;av;4;<1s;0;1s;0;2s;0;3s;0;4s;28;5s;0;>5s;0;ip;2;usr;3;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;"
+_EXPECT EXEC "r/s;1;req;60;b/s;1024;1xx;0;2xx;59;3xx;0;4xx;1;5xx;0;av;1;<1s;38;1s;0;2s;0;3s;22;4s;0;5s;0;>5s;0;ip;2;usr;4;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0"
 _EXEC cat qs.log
 
 END
