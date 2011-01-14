@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.144 2011-01-05 20:08:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.145 2011-01-14 20:48:24 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -606,6 +606,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_ClientSerialize.htt"
 fi
 
+./ctl.sh restart -D cc -D real_ip > /dev/null
 ./run.sh -s ./scripts/console.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`

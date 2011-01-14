@@ -1,5 +1,5 @@
 #
-# $Id: console.htt,v 1.3 2010-12-17 19:49:50 pbuchbinder Exp $
+# $Id: console.htt,v 1.4 2011-01-14 20:48:24 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -11,6 +11,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=search&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt01
 __
 _EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
 _WAIT
@@ -21,6 +22,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=setvip&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt02
 __
 _EXPECT . "127.0.0.1: vip=yes lowprio=no block=0/0"
 _WAIT
@@ -31,6 +33,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=unsetvip&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt03
 __
 _EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
 _WAIT
@@ -41,6 +44,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=block&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt04
 __
 _EXPECT . "127.0.0.1: vip=no lowprio=no block=1003/10"
 _WAIT
@@ -53,6 +57,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=search&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt05
 __
 _EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
 _WAIT
@@ -64,6 +69,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=search&address=127.0.0.2 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt06
 __
 _EXPECT . "not available"
 _WAIT
@@ -74,6 +80,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=setvip&address=127.0.0.3 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt07
 __
 _EXPECT . "127.0.0.3: vip=yes lowprio=no block=0/0"
 _WAIT
@@ -83,6 +90,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /qos?action=search&address=127.0.0.3 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt08
 __
 _EXPECT . "<td colspan=\"1\">127.0.0.3</td><td colspan=\"2\">......20.. ..:..:..</td><td colspan=\"1\">yes</td><td colspan=\"2\">no</td><td colspan=\"1\">0</td><td colspan=\"1\">0&nbsp;ms</td><td colspan=\"1\">no</td>"
 _WAIT
@@ -93,6 +101,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=gugus&address=127.0.0.3 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt09
 __
 _EXPECT . "406 Not Acceptable"
 _WAIT
@@ -107,6 +116,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=setvip&address=127.0.0.a HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt10
 __
 _EXPECT . "406 Not Acceptable"
 _WAIT
@@ -120,6 +130,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /qos HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt11
 __
 _EXPECT . "<title>mod_qos</title>"
 _WAIT
@@ -131,6 +142,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=search&address=127.0.0.1 HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt12
 __
 _EXPECT . "404"
 _WAIT
@@ -143,6 +155,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /qos HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt13
 __
 _EXPECT . "404"
 _WAIT
@@ -155,6 +168,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /qos HTTP/1.1
 __Host: localhost
 __Connection: close
+__User-Agent: htt14
 __
 _EXPECT . "404"
 _WAIT
