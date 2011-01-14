@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.285 2011-01-05 20:08:08 pbuchbinder Exp $";
-static const char g_revision[] = "9.45";
+static const char revision[] = "$Id: mod_qos.c,v 5.286 2011-01-14 20:48:24 pbuchbinder Exp $";
+static const char g_revision[] = "9.46";
 
 /************************************************************************
  * Includes
@@ -5908,7 +5908,9 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
                                                                 &qos_module);
         qs_req_ctx *rctx = qos_rctx_config_get(r);
         qos_set_session(r, sconf);
-        rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
+        if(!rctx->evmsg || !strstr(rctx->evmsg, "V;")) {
+          rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
+        }
         if(cconf) {
           cconf->is_vip = 1;
           cconf->is_vip_by_header = 1;
@@ -5926,7 +5928,9 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
                                                               &qos_module);
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       qos_set_session(r, sconf);
-      rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
+      if(!rctx->evmsg || !strstr(rctx->evmsg, "V;")) {
+        rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
+      }
       if(cconf) {
         cconf->is_vip = 1;
         cconf->is_vip_by_header = 1;
@@ -5993,6 +5997,16 @@ static int qos_fixup(request_rec * r) {
                                                                 &qos_module);
   qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                 &qos_module);
+  /* QS_VipUser/QS_VipIpUser */
+  if(sconf && (sconf->vip_user || sconf->vip_ip_user) && r->user) {
+    /* check r->user early (final status is update is implemented in output-filter) */
+    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                            &qos_module);
+    if(cconf) {
+      cconf->is_vip = 1;
+      cconf->is_vip_by_header = 1;
+    }
+  }
 #if APR_HAS_THREADS
   qos_disable_rate(r, sconf, dconf);
 #endif
