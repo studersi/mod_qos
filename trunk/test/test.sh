@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.146 2011-01-18 10:27:12 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.147 2011-01-18 12:18:36 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -197,12 +197,12 @@ fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- dynamic keep alive, QS_KeepAliveTimeout" >>  logs/error_log
-./htt.sh -se ./scripts/QS_KeepAliveTimeout.htt
+./run.sh -se ./scripts/QS_KeepAliveTimeout.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_KeepAliveTimeout.htt"
 fi
-./htt.sh -se ./scripts/QS_KeepAliveTimeout2.htt
+./run.sh -se ./scripts/QS_KeepAliveTimeout2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_KeepAliveTimeout2.htt"
