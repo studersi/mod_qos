@@ -1,3 +1,7 @@
+Version
+
+ - QS_SetEnvStatus may be used within Locations.
+
 Version 9.46
 
  - QS_VipUser/QS_VipIpUser detects r->user earlier (@fixup).

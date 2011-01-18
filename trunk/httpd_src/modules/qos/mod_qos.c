@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.287 2011-01-18 10:27:12 pbuchbinder Exp $";
-static const char g_revision[] = "9.46";
+static const char revision[] = "$Id: mod_qos.c,v 5.288 2011-01-18 19:47:44 pbuchbinder Exp $";
+static const char g_revision[] = "9.47";
 
 /************************************************************************
  * Includes
@@ -426,6 +426,7 @@ typedef struct {
   char *response_pattern_var;
   int decodings; 
   apr_table_t *disable_reqrate_events;
+  apr_table_t *setenvstatus_t;
 } qos_dir_config;
 
 /**
@@ -2769,7 +2770,7 @@ static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
 /**
  * QS_SetEnvIfStatus
  */
-static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
+static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   char *code = apr_psprintf(r->pool, "%d", r->status);
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvstatus_t)->elts;
@@ -2784,6 +2785,22 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
         value = code;
       }
       apr_table_set(r->subprocess_env, var, value);
+    }
+  }
+  if(dconf) {
+    entry = (apr_table_entry_t *)apr_table_elts(dconf->setenvstatus_t)->elts;
+    for(i = 0; i < apr_table_elts(dconf->setenvstatus_t)->nelts; i++) {
+      if(strcmp(entry[i].key, code) == 0) {
+        char *var = apr_pstrdup(r->pool, entry[i].val);
+        char *value = strchr(var, '=');
+        if(value) {
+          value[0] = '\0';
+          value++;
+        } else {
+          value = code;
+        }
+        apr_table_set(r->subprocess_env, var, value);
+      }
     }
   }
 }
@@ -5970,7 +5987,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     qos_header_filter(r, sconf, r->headers_out, "response",
                       sconf->reshfilter_table, dconf->headerfilter);
   }
-  qos_setenvstatus(r, sconf);
+  qos_setenvstatus(r, sconf, dconf);
   qos_keepalive(r);
   if(sconf->max_conn_close != -1) {
     if(sconf->act->conn->connections > sconf->max_conn_close) {
@@ -5991,7 +6008,8 @@ static apr_status_t qos_out_err_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   if(sconf) {
-    qos_setenvstatus(r, sconf);
+    qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
+    qos_setenvstatus(r, sconf, dconf);
   }
   ap_remove_output_filter(f);
   return ap_pass_brigade(f->next, bb);
@@ -6744,6 +6762,16 @@ static void qos_insert_err_filter(request_rec *r) {
 /************************************************************************
  * directiv handlers 
  ***********************************************************************/
+static void qos_table_merge(apr_table_t *o, apr_table_t *b) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b)->elts;
+  for(i = 0; i < apr_table_elts(b)->nelts; ++i) {
+    if(apr_table_get(o, entry[i].key) == NULL) {
+      // copy the pointer only!!!
+      apr_table_setn(o, entry[i].key, entry[i].val);
+    }
+  }
+}
 
 static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   qos_dir_config *dconf = apr_pcalloc(p, sizeof(qos_dir_config));
@@ -6760,6 +6788,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->response_pattern = NULL;
   dconf->response_pattern_var = NULL;
   dconf->disable_reqrate_events = apr_table_make(p, 1);
+  dconf->setenvstatus_t = apr_table_make(p, 1);
   return dconf;
 }
 
@@ -6821,7 +6850,8 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   dconf->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
                                                          o->disable_reqrate_events);
-
+  dconf->setenvstatus_t = apr_table_copy(p, b->setenvstatus_t);
+  qos_table_merge(dconf->setenvstatus_t, o->setenvstatus_t);
   return dconf;
 }
 
@@ -6929,17 +6959,6 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   }
 #endif
   return sconf;
-}
-
-static void qos_table_merge(apr_table_t *o, apr_table_t *b) {
-  int i;
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b)->elts;
-  for(i = 0; i < apr_table_elts(b)->nelts; ++i) {
-    if(apr_table_get(o, entry[i].key) == NULL) {
-      apr_table_setn(o, entry[i].key, entry[i].val);
-    }
-  }
-
 }
 
 /**
@@ -7379,14 +7398,21 @@ const char *qos_event_bps_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
 
 
 const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *rc, const char *var) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
-                                                                &qos_module);
+  apr_table_t *setenvstatus_t;
+  if(cmd->path) {
+    qos_dir_config *dconf = (qos_dir_config*)dcfg;
+    setenvstatus_t = dconf->setenvstatus_t;
+  } else {
+    qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                  &qos_module);
+    setenvstatus_t = sconf->setenvstatus_t;
+  }
   int code = atoi(rc);
   if(code <= 0) {
     return apr_psprintf(cmd->pool, "%s: invalid HTTP status code",
                         cmd->directive->directive);    
   }
-  apr_table_set(sconf->setenvstatus_t, rc, var);
+  apr_table_set(setenvstatus_t, rc, var);
   return NULL;
 }
 
@@ -8623,7 +8649,7 @@ static const command_rec qos_config_cmds[] = {
                 " parsed the request body using the Apache module"
                 " mod_parp."),
   AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
-                RSRC_CONF,
+                RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvIfStatus"),
   AP_INIT_TAKE2("QS_SetEnvIfStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF,
