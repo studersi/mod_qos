@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.286 2011-01-14 20:48:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.287 2011-01-18 10:27:12 pbuchbinder Exp $";
 static const char g_revision[] = "9.46";
 
 /************************************************************************
@@ -122,6 +122,7 @@ static const char g_revision[] = "9.46";
 #define QS_BLOCK          "QS_Block"
 #define QS_EVENT          "QS_Event"
 #define QS_COND           "QS_Cond"
+#define QS_KEEPALIVE      "QS_KeepAliveTimeout"
 #define QS_MFILE          "/var/tmp/"
 
 #define QS_INCTX_ID inctx->id
@@ -292,28 +293,6 @@ typedef struct {
   qs_rfilter_type_e type;
   qs_rfilter_action_e action;
 } qos_rfilter_t;
-
-/**
- * in_filter ctx
- */
-typedef struct {
-  apr_socket_t *client_socket;
-  qs_conn_state_e status;
-  apr_off_t cl_val;
-  conn_rec *c;
-  request_rec *r;
-  /* upload bandwidth (received bytes and start time) */
-  time_t time;
-  apr_size_t nbytes;
-  int shutdown;
-  int errors;
-  int disabled;
-  /* packet recv size rate: */
-  apr_size_t bytes;
-  int count;
-  int lowrate;
-  char *id;
-} qos_ifctx_t;
 
 /**
  * list of in_filter ctx
@@ -533,6 +512,29 @@ typedef struct {
   apr_table_t *milestones;
   time_t milestone_timeout;
 } qos_srv_config;
+
+/**
+ * in_filter ctx
+ */
+typedef struct {
+  apr_socket_t *client_socket;
+  qs_conn_state_e status;
+  apr_off_t cl_val;
+  conn_rec *c;
+  request_rec *r;
+  /* upload bandwidth (received bytes and start time) */
+  time_t time;
+  apr_size_t nbytes;
+  int shutdown;
+  int errors;
+  int disabled;
+  /* packet recv size rate: */
+  apr_size_t bytes;
+  int count;
+  int lowrate;
+  char *id;
+  qos_srv_config *sconf;
+} qos_ifctx_t;
 
 /**
  * connection configuration
@@ -2769,9 +2771,20 @@ static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
  */
 static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf) {
   char *code = apr_psprintf(r->pool, "%d", r->status);
-  const char *var = apr_table_get(sconf->setenvstatus_t, code);
-  if(var) {
-    apr_table_set(r->subprocess_env, var, code);
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvstatus_t)->elts;
+  for(i = 0; i < apr_table_elts(sconf->setenvstatus_t)->nelts; i++) {
+    if(strcmp(entry[i].key, code) == 0) {
+      char *var = apr_pstrdup(r->pool, entry[i].val);
+      char *value = strchr(var, '=');
+      if(value) {
+        value[0] = '\0';
+        value++;
+      } else {
+        value = code;
+      }
+      apr_table_set(r->subprocess_env, var, value);
+    }
   }
 }
 
@@ -3047,23 +3060,29 @@ static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_c
 /* 
  * Dynamic keep alive
  */
-static void qos_hp_keepalive(request_rec *r) {
+static void qos_keepalive(request_rec *r) {
   if(r->subprocess_env) {
-    const char *v = apr_table_get(r->subprocess_env, "QS_KeepAliveTimeout");
+    const char *v = apr_table_get(r->subprocess_env, QS_KEEPALIVE);
     if(v) {
       int ka = atoi(v);
-      if(ka > 0) {
-        /* well, at least it works ... */
+      if(ka == 0 && v[0] != '0') {
+        ka = -1;
+      }
+      if(ka >= 0) {
         qs_req_ctx *rctx = qos_rctx_config_get(r);
         apr_interval_time_t kat = apr_time_from_sec(ka);
-        server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
-        server_rec *sc = apr_pcalloc(r->connection->pool, sizeof(server_rec));
-        rctx->evmsg = apr_pstrcat(r->pool, "T;", rctx->evmsg, NULL);
-        memcpy(sr, r->server, sizeof(server_rec));
-        memcpy(sc, r->connection->base_server, sizeof(server_rec));
-        r->server = sr;
+        /* copy the server record (I konw, but least this works ...) */
+        if(!rctx->evmsg || !strstr(rctx->evmsg, "T;")) {
+          /* copy it only once (@hp or @out-filter) */
+          server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+          server_rec *sc = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+          memcpy(sr, r->server, sizeof(server_rec));
+          memcpy(sc, r->connection->base_server, sizeof(server_rec));
+          r->server = sr;
+          r->connection->base_server = sc;
+          rctx->evmsg = apr_pstrcat(r->pool, "T;", rctx->evmsg, NULL);
+        }
         r->server->keep_alive_timeout = kat;
-        r->connection->base_server = sc;
         r->connection->base_server->keep_alive_timeout = kat;
       }
     }
@@ -3303,8 +3322,7 @@ static void qos_hp_event_count(request_rec *r, int *req_per_sec_block, int *kbyt
 
 static apr_status_t qos_cleanup_inctx(void *p) {
   qos_ifctx_t *inctx = p;
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(inctx->c->base_server->module_config,
-                                                                &qos_module);
+  qos_srv_config *sconf = inctx->sconf;
 #if APR_HAS_THREADS
   if(sconf->inctx_t && !sconf->inctx_t->exit) {
     apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT25 */
@@ -3320,7 +3338,7 @@ static apr_status_t qos_cleanup_inctx(void *p) {
 /**
  * creates a new connection ctx (remember to set the socket, connection and timeout)
  */
-static qos_ifctx_t *qos_create_ifctx(conn_rec *c) {
+static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
   qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
   char buf[128];
   inctx->client_socket = NULL;
@@ -3338,6 +3356,7 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c) {
   inctx->lowrate = -1;
   sprintf(buf, "%p", inctx);
   inctx->id = apr_psprintf(c->pool, "%s", buf);
+  inctx->sconf = sconf;
   apr_pool_cleanup_register(c->pool, inctx, qos_cleanup_inctx, apr_pool_cleanup_null);
   return inctx;
 }
@@ -3390,7 +3409,7 @@ static void qos_pktrate_pc(conn_rec *c, qos_srv_config *sconf) {
   if(sconf->qos_cc_prefer_limit) {
     qos_ifctx_t *inctx = qos_get_ifctx(c->input_filters);
     if(inctx == NULL) {
-      inctx = qos_create_ifctx(c);
+      inctx = qos_create_ifctx(c, sconf);
       ap_add_input_filter("qos-in-filter", inctx, NULL, c);
     }
     inctx->lowrate = 0;
@@ -4921,7 +4940,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                 &qos_module);
   if(sconf && (sconf->req_rate != -1)) {
-    qos_ifctx_t *inctx = qos_create_ifctx(c);
+    qos_ifctx_t *inctx = qos_create_ifctx(c, sconf);
     inctx->client_socket = skt;
     ap_add_input_filter("qos-in-filter", inctx, NULL, c);
   }
@@ -5173,7 +5192,7 @@ static int qos_header_parser(request_rec * r) {
     /* 
      * Dynamic keep alive
      */
-    qos_hp_keepalive(r);
+    qos_keepalive(r);
 
     /*
      * VIP control
@@ -5946,6 +5965,13 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       cconf->is_vip_by_header = 1;
     }
   }
+  /* don't handle response status since response header filter use "drop" action only */
+  if(dconf->resheaderfilter > QS_HEADERFILTER_OFF) {
+    qos_header_filter(r, sconf, r->headers_out, "response",
+                      sconf->reshfilter_table, dconf->headerfilter);
+  }
+  qos_setenvstatus(r, sconf);
+  qos_keepalive(r);
   if(sconf->max_conn_close != -1) {
     if(sconf->act->conn->connections > sconf->max_conn_close) {
       qs_req_ctx *rctx = qos_rctx_config_get(r);
@@ -5953,12 +5979,6 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       r->connection->keepalive = AP_CONN_CLOSE;
     }
   }
-  /* don't handle response status since response header filter use "drop" action only */
-  if(dconf->resheaderfilter > QS_HEADERFILTER_OFF) {
-    qos_header_filter(r, sconf, r->headers_out, "response",
-                      sconf->reshfilter_table, dconf->headerfilter);
-  }
-  qos_setenvstatus(r, sconf);
   /* disable request rate for certain connections */
 #if APR_HAS_THREADS
   qos_disable_rate(r, sconf, dconf);
@@ -7361,6 +7381,11 @@ const char *qos_event_bps_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
 const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *rc, const char *var) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
+  int code = atoi(rc);
+  if(code <= 0) {
+    return apr_psprintf(cmd->pool, "%s: invalid HTTP status code",
+                        cmd->directive->directive);    
+  }
   apr_table_set(sconf->setenvstatus_t, rc, var);
   return NULL;
 }

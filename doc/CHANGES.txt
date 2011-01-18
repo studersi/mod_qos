@@ -1,6 +1,15 @@
-Version
+Version 9.46
 
  - QS_VipUser/QS_VipIpUser detects r->user earlier (@fixup).
+
+ - QS_KeepAliveTimeout allows value "0" disabling keep-alive.
+
+ - Process QS_KeepAliveTimeout variable at response too.
+
+ - QS_SetEnvIfStatus may be specified multiple times for the same
+   response code.
+
+ - QS_SetEnvIfStatus accepts the definition of a variable value.
 
 Version 9.45
 
