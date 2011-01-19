@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.147 2011-01-18 12:18:36 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.148 2011-01-19 08:13:51 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -25,7 +25,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301, USA.
 #
-
+if [ `ps -ef | grep -v grep | grep -c "tee test.log"` -eq 0 ]; then
+  cd `dirname $0`
+  $0 | tee test.log
+  exit $?
+fi
 QS_UID=`id`
 QS_UID_STR=`expr "$QS_UID" : 'uid=[0-9]*.\([a-z,A-Z,0-9,_]*\)'`
 QS_UID=`id`
