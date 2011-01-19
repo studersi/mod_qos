@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.178 2011-01-18 10:27:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.179 2011-01-19 08:13:51 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -494,8 +494,6 @@ Listen                  server1:##QS_PORT_BASE1##
 
    BrowserMatch "(MSIE 5\.)"  QS_KeepAliveTimeout=7
    BrowserMatch DONTSUPPORTKEEPALIVE  QS_KeepAliveTimeout=0
-   # enable keep alive for spnego
-   QS_SetEnvIfStatus          401 QS_KeepAliveTimeout=12
 
    BrowserMatch QS_EventKBytesPerSecLimit  eventkbytespersec
    QS_EventKBytesPerSecLimit  eventkbytespersec 202
@@ -511,6 +509,10 @@ Listen                  server1:##QS_PORT_BASE1##
        SetHandler server-info
    </Location>
 
+   <Location /htt>
+     # enable keep alive for spnego
+     QS_SetEnvIfStatus          401 QS_KeepAliveTimeout=12
+   </Location>
    <Location /htt/prefer>
      RequestHeaderPlus set Via QS_ClientLowPrio env=QS_ClientLowPrio
    </Location>

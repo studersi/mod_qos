@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.289 2011-01-18 21:40:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.290 2011-01-19 08:13:51 pbuchbinder Exp $";
 static const char g_revision[] = "9.47";
 
 /************************************************************************
@@ -5749,7 +5749,7 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
 apr_table_t *qos_table_merge_create(apr_pool_t *p, apr_table_t *b_rfilter_table,
                                     apr_table_t *o_rfilter_table) {
   int i;
-  apr_table_t *rfilter_table = apr_table_make(p, 1);
+  apr_table_t *rfilter_table = apr_table_make(p, apr_table_elts(b_rfilter_table)->nelts);
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b_rfilter_table)->elts;
   for(i = 0; i < apr_table_elts(b_rfilter_table)->nelts; ++i) {
     if(entry[i].key[0] == '+') {
@@ -5900,6 +5900,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
 
   qos_start_res_rate(r, sconf);
+  qos_setenvstatus(r, sconf, dconf);
   qos_setenvresheader(r, sconf);
   if(sconf && sconf->user_tracking_cookie) {
     qos_send_user_tracking_cookie(r, sconf, r->status);
@@ -5987,7 +5988,6 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     qos_header_filter(r, sconf, r->headers_out, "response",
                       sconf->reshfilter_table, dconf->headerfilter);
   }
-  qos_setenvstatus(r, sconf, dconf);
   qos_keepalive(r);
   if(sconf->max_conn_close != -1) {
     if(sconf->act->conn->connections > sconf->max_conn_close) {
@@ -6788,7 +6788,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->response_pattern = NULL;
   dconf->response_pattern_var = NULL;
   dconf->disable_reqrate_events = apr_table_make(p, 1);
-  dconf->setenvstatus_t = apr_table_make(p, 1);
+  dconf->setenvstatus_t = apr_table_make(p, 5);
   return dconf;
 }
 
@@ -6869,7 +6869,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparp_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparpbody_t = apr_table_make(sconf->pool, 1);
-  sconf->setenvstatus_t = apr_table_make(sconf->pool, 3);
+  sconf->setenvstatus_t = apr_table_make(sconf->pool, 5);
   sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
   sconf->error_page = NULL;
@@ -8649,7 +8649,7 @@ static const command_rec qos_config_cmds[] = {
                 " parsed the request body using the Apache module"
                 " mod_parp."),
   AP_INIT_TAKE2("QS_SetEnvIfStatus", qos_event_setenvstatus_cmd, NULL,
-                RSRC_CONF,
+                RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvIfStatus <status code> <variable>, adds the defined"
                 " request environment variable if the HTTP status code matches the"
                 " defined value."),

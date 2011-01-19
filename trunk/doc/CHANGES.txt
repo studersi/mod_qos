@@ -2,6 +2,8 @@ Version
 
  - QS_SetEnvIfStatus may be used within Locations.
 
+ - Sequence: execute QS_SetEnvIfStatus earlier (before QS_SetEnvResHeader).
+
 Version 9.46
 
  - QS_VipUser/QS_VipIpUser detects r->user earlier (@fixup).
