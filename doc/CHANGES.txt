@@ -1,4 +1,4 @@
-Version
+Version 9.47
 
  - QS_SetEnvIfStatus may be used within Locations.
 
