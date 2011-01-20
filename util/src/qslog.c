@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.8 2011-01-05 20:08:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.9 2011-01-20 21:20:47 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -59,6 +59,7 @@ static const char revision[] = "$Id: qslog.c,v 1.8 2011-01-05 20:08:08 pbuchbind
  * global stat counter
  * ---------------------------------- */
 static long m_line_count = 0;
+static long long m_i_byte_count = -1;
 static long long m_byte_count = 0;
 static long m_duration_count = 0;
 static long m_duration_0 = 0;
@@ -224,6 +225,7 @@ static void getFreeMem(char *buf, int sz) {
 /* value names in csv output */
 #define NRS "r/s"
 #define NBS "b/s"
+#define NBIS "ib/s"
 #define NAV "av"
 
 /*
@@ -232,7 +234,12 @@ static void getFreeMem(char *buf, int sz) {
  */
 static void printAndResetStat(char *timeStr) {
   double av[1];
-  char mem[256];
+  char mem[512];
+  char bis[512];
+  bis[0] = '\0';
+  if(m_i_byte_count != -1) {
+    sprintf(bis, NBIS";%lld;", m_i_byte_count/LOG_INTERVAL);
+  }
   if(!m_offline) {
     getloadavg(av, 1);
     if(m_mem) {
@@ -248,6 +255,7 @@ static void printAndResetStat(char *timeStr) {
           NRS";%ld;"
 	  "req;%ld;"
           NBS";%lld;"
+	  "%s"
 	  "1xx;%ld;"
 	  "2xx;%ld;"
 	  "3xx;%ld;"
@@ -275,6 +283,7 @@ static void printAndResetStat(char *timeStr) {
           m_line_count/LOG_INTERVAL,
 	  m_line_count,
           m_byte_count/LOG_INTERVAL,
+	  bis,
 	  m_status_1,
 	  m_status_2,
 	  m_status_3,
@@ -300,6 +309,9 @@ static void printAndResetStat(char *timeStr) {
           );
   m_line_count = 0;
   m_byte_count = 0;
+  if(m_i_byte_count != -1) {
+    m_i_byte_count = 0;
+  }
   m_status_1 = 0;
   m_status_2 = 0;
   m_status_3 = 0;
@@ -346,6 +358,7 @@ static void printAndResetStat(char *timeStr) {
 static void updateStat(const char *cstr, char *line) {
   char *T = NULL; /* time */
   char *S = NULL; /* status */
+  char *BI = NULL; /* bytes in */
   char *B = NULL; /* bytes */
   char *R = NULL; /* request line */
   char *I = NULL; /* client ip */
@@ -371,6 +384,10 @@ static void updateStat(const char *cstr, char *line) {
     } else if(c[0] == 'B') {
       if(l != NULL && l[0] != '\0') {
         B = cutNext(&l);
+      }
+    } else if(c[0] == 'i') {
+      if(l != NULL && l[0] != '\0') {
+        BI = cutNext(&l);
       }
     } else if(c[0] == 'R') {
       if(l != NULL && l[0] != '\0') {
@@ -400,10 +417,11 @@ static void updateStat(const char *cstr, char *line) {
   }
   if(m_offline && m_verbose) {
     m_lines++;
-    printf("[%ld] I=%s U=%s B=%s S=%s T=%s Q=%s\n", m_lines,
+    printf("[%ld] I=%s U=%s B=%s i=%s S=%s T=%s Q=%s\n", m_lines,
 	   I == NULL ? "(null)" : I,
 	   U == NULL ? "(null)" : U,
 	   B == NULL ? "(null)" : B,
+	   BI == NULL ? "(null)" : BI,
 	   S == NULL ? "(null)" : S,
 	   T == NULL ? "(null)" : T,
 	   Q == NULL ? "(null)" : Q
@@ -445,6 +463,10 @@ static void updateStat(const char *cstr, char *line) {
   if(B != NULL) {
     /* transferred bytes */
     m_byte_count = m_byte_count + atoi(B);
+  }
+  if(BI != NULL) {
+    /* transferred bytes */
+    m_i_byte_count = m_i_byte_count + atoi(BI);
   }
   if(S != NULL) {
     if(S[0] == '1') {
@@ -645,7 +667,8 @@ static void usage(char *cmd) {
   printf("the data from stdin. The output is written to the specified\n");
   printf("file every minute. The output includes the following entries:\n");
   printf("  - requests per second ("NRS")\n");
-  printf("  - bytes (http body data) sent to the client per second ("NBS")\n");
+  printf("  - bytes sent to the client per second ("NBS")\n");
+  printf("  - bytes received from the client per second ("NBIS")\n");
   printf("  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");
   printf("  - average response duration ("NAV")\n");
   printf("  - distribution of response durations within the last minute\n");
@@ -666,7 +689,8 @@ static void usage(char *cmd) {
   printf("     to see the format defintions of the servers access log\n");
   printf("     data. %s knows the following elements:\n", cmd);
   printf("     T defines the request duration (%%T)\n");
-  printf("     B defines the transferred bytes (%%b)\n");
+  printf("     B defines the transferred bytes (%%b or %%O)\n");
+  printf("     i defines the received bytes (%%I)\n");
   printf("     S defines HTTP response status code (%%s)\n");
   printf("     R defines the request line (%%r)\n");
   printf("     I defines the client ip address (%%h)\n");
@@ -719,6 +743,10 @@ int main(int argc, char **argv) {
     if(strcmp(*argv,"-f") == 0) { /* this is the format string */
       if (--argc >= 1) {
 	config = *(++argv);
+	if(strchr(config, 'i')) {
+	  // enable bi/s
+	  m_i_byte_count = 0;
+	}
       }
     } else if(strcmp(*argv,"-o") == 0) { /* this is the out file */
       if (--argc >= 1) {
