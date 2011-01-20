@@ -1,8 +1,14 @@
+Version
+
+ - qslog supports mod_logio (%I and %O).
+
 Version 9.47
 
  - QS_SetEnvIfStatus may be used within Locations.
 
  - Sequence: execute QS_SetEnvIfStatus earlier (before QS_SetEnvResHeader).
+
+ - Remove directive QS_SetEnvStatus (alias for QS_SetEnvIfStatus).
 
 Version 9.46
 
