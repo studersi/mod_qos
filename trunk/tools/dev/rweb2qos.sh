@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: rweb2qos.sh,v 1.1 2011-01-21 19:49:51 pbuchbinder Exp $
+# $Id: rweb2qos.sh,v 1.2 2011-01-21 20:12:10 pbuchbinder Exp $
 #
 
 declare -a A_NAME
@@ -55,7 +55,7 @@ while [ $count -lt $MAX ]; do
 	fi
       done
       if [ "$query" != "" ]; then
-	query="?($query)*"
+	query="\?($query)*"
       fi
       id=`printf "%.4d" $count`
       echo "QS_PermitUri +RW$id deny \"^$path$query\$\""
