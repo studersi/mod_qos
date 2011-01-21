@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: rweb2qos.sh,v 1.3 2011-01-21 21:58:23 pbuchbinder Exp $
+# $Id: rweb2qos.sh,v 1.4 2011-01-21 22:05:22 pbuchbinder Exp $
 #
 
 declare -a A_NAME
@@ -24,7 +24,7 @@ resolve() {
     p=${A_PATTERN[$i]}
     esc=$(echo $p | sed -e 's/\\/\\\\/g' -e 's/\//\\\//g' -e 's/&/\\\&/g')
     pattern=`echo $pattern | sed -e "s/$n/$esc/g"`
-    i=`expr $i + 1`
+    let i=$i+1
   done
   RESOLVED=$pattern
 }
@@ -33,7 +33,7 @@ resolve() {
 MAX=`wc -l $IN | awk '{print $1}'`
 count=0
 while [ $count -lt $MAX ]; do
-  count=`expr $count + 1`
+  let count=$count+1
   line=`head -$count $IN | tail -1`
   name=`echo $line | awk '{print $1}'`
   if [ `echo $name | egrep -c "^#.*"` -gt 0 ]; then
