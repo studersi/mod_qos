@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.5 2011-01-01 20:52:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.6 2011-01-21 09:36:37 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -58,7 +58,8 @@ typedef struct {
 static const qs_png_elt_t qs_png_elts[] = {
   { "r/s", "requests per second",  20, 30, 130, },
   { "req", "requests per minute",  20, 30, 130, },
-  { "b/s", "bytes per second",     30, 45, 130 },
+  { "b/s", "bytes per second (out)",     30, 45, 130 },
+  { "ib/s", "bytes per second (in)",     30, 45, 125 },
   { "av", "average response time", 40, 95, 140 },
   { "<1s", "requests faster than 1 second", 35, 95, 180 },
   { "1s", "requests faster or equal than 1 second", 35, 90, 180 },
