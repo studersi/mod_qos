@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: rweb2qos.sh,v 1.2 2011-01-21 20:12:10 pbuchbinder Exp $
+# $Id: rweb2qos.sh,v 1.3 2011-01-21 21:58:23 pbuchbinder Exp $
 #
 
 declare -a A_NAME
@@ -15,13 +15,15 @@ if [ -z "$IN" ]; then
 fi
 
 resolve() {
+  # TODO: sort (longest match first)
   pattern=$1
   index=${#A_NAME[*]}
   i=0
   while [ $i -lt $index ]; do
     n=${A_NAME[$i]}
     p=${A_PATTERN[$i]}
-    pattern=`echo $pattern | sed "s:$n:$p:"`
+    esc=$(echo $p | sed -e 's/\\/\\\\/g' -e 's/\//\\\//g' -e 's/&/\\\&/g')
+    pattern=`echo $pattern | sed -e "s/$n/$esc/g"`
     i=`expr $i + 1`
   done
   RESOLVED=$pattern
