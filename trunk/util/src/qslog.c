@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.9 2011-01-20 21:20:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.10 2011-01-21 19:55:54 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -234,8 +234,8 @@ static void getFreeMem(char *buf, int sz) {
  */
 static void printAndResetStat(char *timeStr) {
   double av[1];
-  char mem[512];
-  char bis[512];
+  char mem[256];
+  char bis[256];
   bis[0] = '\0';
   if(m_i_byte_count != -1) {
     sprintf(bis, NBIS";%lld;", m_i_byte_count/LOG_INTERVAL);
@@ -744,7 +744,7 @@ int main(int argc, char **argv) {
       if (--argc >= 1) {
 	config = *(++argv);
 	if(strchr(config, 'i')) {
-	  // enable bi/s
+	  // enable ib/s
 	  m_i_byte_count = 0;
 	}
       }
