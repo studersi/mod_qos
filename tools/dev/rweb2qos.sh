@@ -1,11 +1,13 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: rweb2qos.sh,v 1.5 2011-01-21 22:59:32 pbuchbinder Exp $
+# $Id: rweb2qos.sh,v 1.6 2011-01-22 09:39:38 pbuchbinder Exp $
 #
 
 declare -a A_NAME
 declare -a A_PATTERN
+declare -a A_NAME_SHAD
+declare -a A_PATTERN_SHAD
 
 IN=$1
 ONCE=1
@@ -24,31 +26,48 @@ printArray() {
     while [ $i -lt $index ]; do
       n=${A_NAME[$i]}
       p=${A_PATTERN[$i]}
-      echo "$i> $n $p"
+      echo "# $i> $n $p"
       let i=$i+1
     done
   fi
 }
 
-sortArray() {
-  index=${#A_NAME[*]}
+copyShad() {
+  index=${#A_NAME_SHAD[*]}
   i=0
-  let index=$index-1
   while [ $i -lt $index ]; do
-    let j=$i+1
-    n1=${A_NAME[$i]}
-    p1=${A_PATTERN[$i]}
-    n2=${A_NAME[$j]}
-    p2=${A_PATTERN[$j]}
-    if [ `expr length $n1` -lt `expr length $n2` ]; then
-      A_NAME[$i]=$n2
-      A_NAME[$j]=$n1
-      A_PATTERN[$i]=$p2
-      A_PATTERN[$j]=$p1
-      i=0
-    fi
+    A_NAME[$i]=${A_NAME_SHAD[$i]}
+    A_PATTERN[$i]=${A_PATTERN_SHAD[$i]}
     let i=$i+1
   done
+}
+
+insertArray() {
+  n=$1
+  p=$2
+  inserted=0
+  index=${#A_NAME[*]}
+  i=0
+  j=0
+  while [ $i -lt $index ]; do
+    n1=${A_NAME[$i]}
+    p1=${A_PATTERN[$i]}
+    if [ $inserted -eq 0 -a `expr length $n` -gt `expr length $n1` ]; then
+      A_NAME_SHAD[$j]=$n
+      A_PATTERN_SHAD[$j]=$p
+      inserted=1
+      let j=$j+1
+    fi
+    A_NAME_SHAD[$j]=$n1
+    A_PATTERN_SHAD[$j]=$p1
+    let i=$i+1
+    let j=$j+1
+  done
+  if [ $inserted -eq 0 ]; then
+    A_NAME_SHAD[$j]=$n
+    A_PATTERN_SHAD[$j]=$p    
+  fi
+  copyShad
 }
 
 resolve() {
@@ -103,11 +122,8 @@ while [ $count -lt $MAX ]; do
       # new pattern:
       pattern=`echo $line | cut -d ' ' -f 2-`
       resolve $pattern
-      #echo "$index add pattern [$name] [$RESOLVED]"
-      # TODO: insert instead of sort
-      A_NAME[$index]="$name"
-      A_PATTERN[$index]="$RESOLVED"
-      sortArray
+      #echo "# $index add pattern [$name] [$RESOLVED]"
+      insertArray "$name" "$RESOLVED"
     fi
   fi
 done
