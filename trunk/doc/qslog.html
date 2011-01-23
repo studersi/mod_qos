@@ -65,7 +65,8 @@ qslog is a real time access log analyzer. It collects data from stdin. The
 output is written to the specified file every minute. The output includes 
 the following entries:
   - requests per second (r/s)
-  - bytes (http body data) sent to the client per second (b/s)
+  - bytes sent to the client per second (b/s)
+  - bytes received from the client per second (ib/s)
   - response status codes within the last minute (1xx,2xx,3xx,4xx,5xx)
   - average response duration (av)
   - distribution of response durations within the last minute
@@ -86,7 +87,8 @@ Options
      to see the format defintions of the server's access log
      data. qslog knows the following elements:
      T defines the request duration (%T)
-     B defines the transferred bytes (%b)
+     B defines the transferred bytes (%b or %O)
+     i defines the received bytes (%I)
      S defines HTTP response status code (%s)
      R defines the request line (%r)
      I defines the client ip address (%h)

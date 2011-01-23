@@ -1,6 +1,9 @@
-Version
+Version 9.48
 
  - qslog supports mod_logio (%I and %O).
+
+ - Re-introduce deprecated QS_SetEnvStatus directive (for
+   backwards compatibility).
 
 Version 9.47
 
