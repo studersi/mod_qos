@@ -1,0 +1,89 @@
+
+- collecting additional client/connection attributes such as
+  - requests per single TCP connection (keep-alive)
+  + 304 responses
+  + respone content types (html/css/js/image/...)
+    - store/configure "normal" behavoir (stop learning after a while)
+  - elapse time between requests
+  - request/response length (body)
+  - request/response headers (types, length)
+  - other
+- more "dynamic" rules:
+  - enforce rules on certain conditions only (e.g. overall server usage)
+  - adjust metrics dynamically
+  - learning and permissive mode (server wide, per function)
+  + store metrics as environment variables (used by QS_EventRequestLimit,
+    QS_CondLocRequestLimitMatch and others)
+    + QS_SrvConn 
+    - more variables
+- dynamic rule adjustment of the generic request filter
+  - "in module" learing (instead of qsfilter2)
+  - or use separate application (java?) to generate rules (ICAP?)
+  - automatic rule adjustment
+    - privileged users/ip/??? to learn from automatically
+  - crawler
+- response filter (e.g. detecting "bad" js code)
+- improved anomaly detection (thresholds, logging)
+  - set client event to be used in other rules
+  - log event
+- more user friendly error handling for QS_ClientEventBlockCount directive
+  - show the error page for the more than only the first occurences
+    e.g. answer the next 5 (or more) requests with an error page too
+    (instead of closing the TCP connection)
+- re-design/re-implementation of some parts/functions
+  + maybe dropping some features
+    + remove QS_SrvPreferNet
+    - other
+  - maybe start the implementation of a separate module.
+    + see mod_setenvifplus
+    - mod_qos "light"
+    - sepatate modules for some function sets
+- web interface (handler) to configure mod_qos dynamically
+  - impoved viewer
+  + clear per client stats
+  + block clients/IPs
+  + mark clients as vip
+- management tool (sep. application)
+  - configuration guidance
+  - log data management
+  - rule generation
+  - utilities (ha/lb/...)
+  + log data signing (using pipe: "|sig |qsrotate <file>")
+  - nms plugin (OpenNMS? Nagios?)
+- support IPv6
+  + not really (checksum only)
+  - "real" IPv6 support
+- propagate client information via request header (set additional variables)
+  + using mod_setenvifplus
+- decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
+  - enhance qos_unescaping() (partial done)
+  - document path_decode_hook()/query_decode_hook()
++ new implementation of the QS_SrvMaxConnPerIP functionality (linear, no tree anymore)
+  - improved search alg.
+x initial socket timeout for new connections (tcp open only and no initial request)
++ QS_SrvMaxConnClose to support "percentage" of the MaxClient settings instead of abs. value
+  - set variable mod_qos_con_ip (see mod_qos_con)
++ user tracking cookie (for statistics)
+  + timeout/renew
++ gnu autotools to build tools
++ create request id if mod_uniqueid is not available
++ enforce cookie support (redirect until client sends cookie), option for
+  user tracking cookie or seperate cookie?
+  + disable for certain user-agent headers
++ OpenSSL 1.0 support for qsfilter2 (safestack).
+- make mod_qos more portable
+  - use apr types and functions
+  - e.g. use apr_time_t instead of time_t
+- qsrotate: daylight saving time support
+x headerfilter: no duplicate req headers -> merged by Apache
+
+----------------
+legend:
+- to be documented/not yet decided to implement
+* documented but not implememted
++ implemented
+. definition/open issue/option
+x we are not going implement this
+
+----------------
+scp index.html pbuchbinder,mod-qos@web.sourceforge.net:htdocs
