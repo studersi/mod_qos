@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.290 2011-01-19 08:13:51 pbuchbinder Exp $";
-static const char g_revision[] = "9.47";
+static const char revision[] = "$Id: mod_qos.c,v 5.291 2011-01-23 10:38:33 pbuchbinder Exp $";
+static const char g_revision[] = "9.48";
 
 /************************************************************************
  * Includes
@@ -8648,6 +8648,9 @@ static const command_rec qos_config_cmds[] = {
                 "QS_SetEnvIfBody <regex> [!]<variable>[=value],"
                 " parsed the request body using the Apache module"
                 " mod_parp."),
+  AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
+                RSRC_CONF|ACCESS_CONF,
+                "QS_SetEnvStatus"),
   AP_INIT_TAKE2("QS_SetEnvIfStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvIfStatus <status code> <variable>, adds the defined"
