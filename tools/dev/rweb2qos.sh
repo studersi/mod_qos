@@ -1,7 +1,11 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: rweb2qos.sh,v 1.6 2011-01-22 09:39:38 pbuchbinder Exp $
+# $Id: rweb2qos.sh,v 1.7 2011-01-24 21:22:15 pbuchbinder Exp $
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
 
 declare -a A_NAME
@@ -13,7 +17,30 @@ IN=$1
 ONCE=1
 
 if [ -z "$IN" ]; then
+  echo ""
+  echo "Simple rule converter."
+  echo ""
   echo "Usage: `basename $0` <rule file>"
+  echo ""
+  echo "Rule file format:"
+  echo "Fist sections defines types, the second contains the request"
+  echo "line rules. Each type defines a name and a pattern where patterns"
+  echo "may use previous defined type names. A request rule starts with a"
+  echo "GET or POST method followed by a path, a query pattern and a body"
+  echo "pattern. Query and body pattern may include previously defined"
+  echo "type names."
+  echo ""
+  echo "Example:"
+  echo ""
+  echo "_word     [a-zA-Z0-9]+"
+  echo "_num      [0-9]+"
+  echo "_user     uid=_word"
+  echo "_password pwd=[^&|]+"
+  echo "_id       id=_num"
+  echo "GET  /index.html - -"
+  echo "POST /login - _user&_password"
+  echo "GET  /buy   _id -"
+  echo ""
   exit 1
 fi
 
