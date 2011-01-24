@@ -3,6 +3,10 @@
 #
 # copies vip client information from URLIN to URLOUT
 #
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
 
 URLIN="http://127.0.0.1:5000/console"
 URLOUT="http://127.0.0.1:5000/console"
