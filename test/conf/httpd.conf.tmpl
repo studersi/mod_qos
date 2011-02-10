@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.179 2011-01-19 08:13:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.180 2011-02-10 19:28:56 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -74,6 +74,7 @@ QS_SrvMinDataRate       120 3000
 QS_ClientPrefer         80
 </IfDefine>
 QS_ClientEventBlockCount 3 10
+QS_ClientEventLimitCount 3 10
 QS_ClientEventPerSecLimit  5
 
 QS_RequestHeaderFilterRule myheader deny "^static_content$" 20
@@ -242,6 +243,10 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    # using QS_ClientEventBlockCount)
    QS_SetEnvResHeaderMatch    Set-Cookie        JSESSIONID=
    QS_SetEnvIf                Set-Cookie !QSNOT QS_Block=yes
+
+   QS_SetEnvResHeaderMatch    X-Login           failed
+   QS_SetEnvIf                X-Login    !QSNOT QS_Limit=yes
+   QS_UnsetResHeader          X-Login
 
    # concurrent requests with certain event
    QS_SetEnvIfQuery           QS_EventRequestLimit query
@@ -494,6 +499,7 @@ Listen                  server1:##QS_PORT_BASE1##
 
    BrowserMatch "(MSIE 5\.)"  QS_KeepAliveTimeout=7
    BrowserMatch DONTSUPPORTKEEPALIVE  QS_KeepAliveTimeout=0
+   SetEnvIfPlus Request_URI .*DISABLE_KEEPALIVE.* QS_KeepAliveTimeout=0
 
    BrowserMatch QS_EventKBytesPerSecLimit  eventkbytespersec
    QS_EventKBytesPerSecLimit  eventkbytespersec 202

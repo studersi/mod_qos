@@ -534,6 +534,11 @@ Variable processed by the <code><a href="#QS_ClientEventBlockCount">QS_ClientEve
 directive.
 </li>
 <li>
+<code>QS_Limit</code><br>
+Variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+directive.
+</li>
+<li>
 <code>QS_Serialize</code><br>
 Variable processed by the <code><a href="#QS_ClientSerialize">QS_ClientSerialize</a></code> 
 directive.
@@ -748,6 +753,10 @@ the header value.
 <code>QS_SetReqHeader &lt;header name&gt; &lt;env-variable&gt;</code><br>
 Sets the defined HTTP request header to the request if the specified 
 environment variable is set.
+</li>
+<li>
+<code>QS_UnsetResHeader &lt;header name&gt;</code><br>
+Removes the specified response header.
 </li>
 </ul>
 
@@ -1148,7 +1157,7 @@ These directives must only be used in the global server context.
 <code>QS_ClientEntries &lt;number&gt;</code><br>
 Defines the number of individual clients managed by mod_qos. 
 Default is 50'000 concurrent IP addresses. Each client requires 
-about 72 bytes of shared memory on a 32bit system or 108 bytes 
+about 76 bytes of shared memory on a 32bit system or 116 bytes 
 on a 64bit system respectively. Client IP source address store 
 survives graceful server restart.
 </li>
@@ -1175,7 +1184,15 @@ directive.
 <code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
 Defines the maximum number of <code>QS_Block</code> events allowed 
 within the defined time (default is 600 seconds). Client IP is blocked 
-when reaching this counter for the specified time (blocked at connection level). 
+when reaching this counter for the specified time (blocked at connection 
+level: user might not always get a user friendly error response).
+</li>
+<li>
+<a name="QS_ClientEventLimitCount"></a>
+<code>QS_ClientEventLimitCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
+Defines the maximum number of <code>QS_Limit</code> events allowed 
+within the defined time (default is 600 seconds). Requests from client IP's reaching 
+this limitation are denied for the specified time (blocked at request level). 
 </li>
 <li>
 <a name="QS_ClientSerialize"></a>
@@ -1380,10 +1397,12 @@ has been enabled).
 <code>address=&lt;IP address&gt;</code><br>Specifies the IP address of the client to modify.
 </li>
 <li>
-<code>action='block'|'unblock'|'setvip'|'unsetvip'|'setlowprio'|'unsetlowprio'</code><br>Defines the command to be executed, or the attribute to be changed.
+<code>action='block'|'unblock'|'limit'|'unlimit'|'setvip'|'unsetvip'|'setlowprio'|'unsetlowprio'</code><br>Defines the command to be executed, or the attribute to be changed.
 <ul>
 <li><code>block</code>: blocks the client for the configured period of time, see also <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>.</li>
 <li><code>unblock</code>: clears the block attribute of the client.</li>
+<li><code>limit</code>: blocks (friendly) the client for the configured period of time, see also <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>.</li>
+<li><code>unlimit</code>: clears the limit attribute of the client.</li>
 <li><code>setvip</code>: sets the client status to <a href="#privilegedusers">VIP</a>.</li>
 <li><code>unsetvip</code>: clears the VIP status for a client.</li>
 <li><code>setlowprio</code>: sets the client's priority to 'low'.</li>
@@ -1405,6 +1424,8 @@ Example: <code>http://your.server.name/qos?action=search&amp;address=194.31.217.
 <p>
 mod_qos provides optional tools for log data processing and analysis:
 <ul>
+<li><code><a href="qsfilter.html">qsfilter2</a></code><br>Rule generator. Creates <code>QS_Permit*</code> directives and rule patterns from audit log files.</li>
+<li><code>qsgrep</code><br>Searches a file for a pattern and prints the data in a new format.</li>
 <li><code><a href="qslog.html">qslog</a></code><br>A real time 
 <code><a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html" target="_blank">TransferLog/CustomLog</a></code> 
 data analyzer. It reads the per request log data from stdin and generates statistic 
@@ -1413,7 +1434,6 @@ records every minute.</li>
 <li><code>qsrotate</code><br>Log rotation tool similar to Apache's <code>rotatelogs</code>.</li>
 <li><code>qssign</code><br>A log data integrity check tool. It reads log data 
 from stdin (pipe) and writes the signed data to stdout.</li>
-<li><code><a href="qsfilter.html">qsfilter2</a></code><br>Rule generator. Creates <code>QS_Permit*</code> directives and rule patterns from audit log files.</li>
 <li><code>qstail</code><br>Shows the end of a log file beginning at a defined pattern.</li>
 </ul>
 
