@@ -1,3 +1,15 @@
+Version 9.49
+
+ - New utility: qsgrep.
+
+ - Change process order: process QS_SetEnvResHeader after
+   QS_SetEnvResHeaderMatch.
+
+ - New directive QS_UnsetResHeader.
+
+ - New directive QS_ClientEventLimitCount (works similar as
+   QS_ClientEventBlockCount but enforces rule at request level only).
+
 Version 9.48
 
  - qslog supports mod_logio (%I and %O).

@@ -88,5 +88,55 @@ echo "[Mon Dec 06 21:29:07 2010] [notice] Apache/2.2.17 (Unix) mod_ssl/2.2.17 Op
 echo "=============================================="
 echo "127.0.0.1 - - [06/Dec/2010:21:26:57 +0100] \"GET /qos/favicon.ico HTTP/1.1\" 200 1150" | ../util/src/qssign -s 1234567890 -e
 
+
+echo "- end"
+head -4 logs/access_log | ../util/src/qssign -s 1234567890 -e > logs/signed_access_log.1
+OUT=`cat logs/signed_access_log.1 | ../util/src/qssign -s 1234567890 -e -v`
+if [ $? -ne 0 ]; then
+  echo "ERROR: verification failed (11)"
+  exit 1
+fi
+if [ -n "$OUT" ]; then
+  echo "ERROR: verification failed (12) [$OUT}"
+  exit 1
+fi
+tail -4 logs/access_log | ../util/src/qssign -s 1234567890 -e >> logs/signed_access_log.1
+OUT=`cat logs/signed_access_log.1 | ../util/src/qssign -s 1234567890 -e -v`
+if [ $? -ne 0 ]; then
+  echo "ERROR: verification failed (13)"
+  exit 1
+fi
+if [ -n "$OUT" ]; then
+  echo "ERROR: verification failed (14) [$OUT]"
+  exit 1
+fi
+COUNT=`wc -l logs/signed_access_log.1 | awk '{print $1}'`
+echo "- end (missing last line nr $COUNT)"
+COUNT=`expr $COUNT - 1`
+OUT=`head -${COUNT} logs/signed_access_log.1 | ../util/src/qssign -s 1234567890 -e -v 2>&1`
+if [ `echo $OUT | grep -c "NOTICE: no end marker seen"` -eq 0 ]; then
+  echo "ERROR: verification failed (15) [$OUT]"
+  exit 1
+fi
+echo "- end (new seq, no end)"
+head -4 logs/access_log | ../util/src/qssign -s 1234567890 -e | head -3 > logs/signed_access_log.1
+head -4 logs/access_log | ../util/src/qssign -s 1234567890 -e >> logs/signed_access_log.1
+OUT=`cat logs/signed_access_log.1 | ../util/src/qssign -s 1234567890 -e -v 2>&1`
+if [ $? -eq 0 ]; then
+  echo "ERROR: verification failed (16)"
+  exit 1
+fi
+if [ `echo $OUT | grep -c "wrong sequence, server restart"` -eq 0 ]; then
+  echo "ERROR: verification failed (17) [$OUT]"
+  exit 1
+fi
+echo "- end (wrong beginning)"
+head -4 logs/access_log | ../util/src/qssign -s 1234567890 -e | tail -3 > logs/signed_access_log.1
+OUT=`cat logs/signed_access_log.1 | ../util/src/qssign -s 1234567890 -e -v 2>&1`
+if [ `echo $OUT | grep -c "log starts with sequence"` -eq 0 ]; then
+  echo "ERROR: verification failed (18) [$OUT]"
+  exit 1
+fi
+
 echo "normal end"
 exit 0

@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.15 2011-01-01 20:52:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.16 2011-02-10 19:28:56 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -330,6 +330,12 @@ static long qs_verify(const char *sec) {
 	      fprintf(stderr, "ERROR on line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lnr, m_nr);
 	    }
 	  }
+	} else if(m_logend) {
+	  // log should (if not rotated) with message 0
+	  if(ns != 1) {
+	    fprintf(stderr, "NOTICE: log starts with sequence %."SEQDIG"ld, log rotation?"
+		    " (expect %."SEQDIG"d)\n", ns, 1);
+	  }
 	}
 	if(valid) {
 	  m_nr = ns;
@@ -351,6 +357,9 @@ static long qs_verify(const char *sec) {
 	}
       }
     }
+  }
+  if(m_logend && !end_seen) {
+    fprintf(stderr, "NOTICE: no end marker seen, log rotation? (expect %."SEQDIG"ld)\n", m_nr);
   }
   return err;
 }

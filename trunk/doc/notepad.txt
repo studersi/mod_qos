@@ -16,20 +16,29 @@
     QS_CondLocRequestLimitMatch and others)
     + QS_SrvConn 
     - more variables
-- dynamic rule adjustment of the generic request filter
+- dynamic rule adjustment for the generic request filter
   - "in module" learing (instead of qsfilter2)
   - or use separate application (java?) to generate rules (ICAP?)
   - automatic rule adjustment
     - privileged users/ip/??? to learn from automatically
   - crawler
+- request filter:
+  - json in request query
+  - qsfilter2 improvements
+    - avoid certain pattern
+    - different output formats
+    - built-in (preferred) pattern ("expert mode")
 - response filter (e.g. detecting "bad" js code)
 - improved anomaly detection (thresholds, logging)
-  - set client event to be used in other rules
+  - set (more) client events to be used in other rules
   - log event
 - more user friendly error handling for QS_ClientEventBlockCount directive
   - show the error page for the more than only the first occurences
-    e.g. answer the next 5 (or more) requests with an error page too
-    (instead of closing the TCP connection)
+    - e.g. answer the next 5 (or more) requests with an error page too
+      (instead of closing the TCP connection)
+    - detect, if counter was incremented at http response, e.g. session cookie
+       => show error page at next request
+  + add a second QS_Block counter?
 - re-design/re-implementation of some parts/functions
   + maybe dropping some features
     + remove QS_SrvPreferNet
@@ -51,7 +60,7 @@
   + log data signing (using pipe: "|sig |qsrotate <file>")
   - nms plugin (OpenNMS? Nagios?)
 - support IPv6
-  + not really (checksum only)
+  + workaround (checksum only)
   - "real" IPv6 support
 - propagate client information via request header (set additional variables)
   + using mod_setenvifplus
