@@ -1,5 +1,7 @@
 Version 9.49
 
+ - Adapt built-in request header filter rules.
+
  - New utility: qsgrep.
 
  - Change process order: process QS_SetEnvResHeader after
