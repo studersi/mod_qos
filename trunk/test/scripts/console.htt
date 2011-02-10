@@ -1,5 +1,5 @@
 #
-# $Id: console.htt,v 1.4 2011-01-14 20:48:24 pbuchbinder Exp $
+# $Id: console.htt,v 1.5 2011-02-10 20:12:35 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -92,7 +92,7 @@ __Host: localhost
 __Connection: close
 __User-Agent: htt08
 __
-_EXPECT . "<td colspan=\"1\">127.0.0.3</td><td colspan=\"2\">......20.. ..:..:..</td><td colspan=\"1\">yes</td><td colspan=\"2\">no</td><td colspan=\"1\">0</td><td colspan=\"1\">0&nbsp;ms</td><td colspan=\"1\">no</td>"
+_EXPECT . "<td colspan=\"1\">127.0.0.3</td><td colspan=\"2\">......20.. ..:..:..</td><td colspan=\"1\">yes</td><td colspan=\"1\">no</td><td colspan=\"1\">no</td><td colspan=\"1\">0</td><td colspan=\"1\">0&nbsp;ms</td><td colspan=\"1\">no</td>"
 _WAIT
 _CLOSE
 
