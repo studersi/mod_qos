@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.9 2010-12-11 21:44:17 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.10 2011-02-10 20:50:09 pbuchbinder Exp $
 #
 
 
@@ -303,6 +303,23 @@ _WAIT
 _CLOSE
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(042\): drop request header: 'Accept: t"
+_EXEC tail -1 logs/error_log
+
+# CVE-2010-4476
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: kolibry-123.mmmme.ch:$QS_PORT_BASE
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=2.2250738585072012e-308
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__
+_EXPECT . "200 OK"
+_EXPECT . "!HTTP_ACCEPT:"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'Accept: text/.;q=0.3, text/html;q=2.2250738585072012e-308"
 _EXEC tail -1 logs/error_log
 
 END
