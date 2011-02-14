@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.149 2011-02-10 19:28:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.150 2011-02-14 19:15:28 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -53,7 +53,7 @@ sleep 1
 IPCS=`ipcs | wc -l`
 rm -f logs/*
 rm -rf /var/tmp/qosc/server1
-echo "start server http://localhost:$QS_PORT_BASE/test/index.html"
+echo "start (`date '+%a %b %d %H:%M:%S %Y'`) server http://localhost:$QS_PORT_BASE/test/index.html"
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- start --" >>  logs/error_log
 # -----------------------------------------------------------------
 ./ctl.sh start -D real_ip > /dev/null
@@ -753,6 +753,8 @@ if [ $? -ne 0 ]; then
   ERRORS=`expr $ERRORS + 1`
   echo "FAILED qspng test failed"
 fi
+
+echo "end (`date '+%a %b %d %H:%M:%S %Y'`)"
 
 if [ $WARNINGS -ne 0 ]; then
     echo "ERROR: got $WARNINGS warnings and $ERRORS errors"
