@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.14 2011-01-01 20:52:04 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.15 2011-02-14 19:15:28 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -26,6 +26,8 @@
 # MA 02110-1301, USA.
 #
 
+cd `dirname $0`
+
 COMMAND=$1
 shift
 ADDARGS=$@
@@ -42,12 +44,12 @@ case "$COMMAND" in
 	INST="apache apache1"
 	for E in $INST; do
 	  COUNT=0
-	  while [ $COUNT -lt 10 ]; do
+	  while [ $COUNT -lt 20 ]; do
 	    if [ -f logs/${E}.pid ]; then
-	      COUNT=10
+	      COUNT=20
 	    else
 	      let COUNT=$COUNT+1
-	      sleep 1
+	      ./bin/sleep 500
 	    fi
 	  done
 	done
@@ -66,11 +68,11 @@ case "$COMMAND" in
 	done
 	for E in $INST; do
 	  COUNTER=0
-	  while [ $COUNTER -lt 10 ]; do
+	  while [ $COUNTER -lt 20 ]; do
 	    if [ ! -f logs/${E}.pid ]; then
-	      COUNTER=10
+	      COUNTER=20
 	    else
-	      sleep 1
+	      ./bin/sleep 500
 	    fi
 	    COUNTER=`expr $COUNTER + 1`
 	  done
@@ -82,15 +84,18 @@ case "$COMMAND" in
 	  touch logs/apache.pid.graceful
 	  kill -USR1 `cat logs/apache.pid`
 	  COUNTER=0
-	  while [ $COUNTER -lt 10 ]; do
+	  while [ $COUNTER -lt 4 ]; do
 	    NEWER=`find logs/apache.pid -newer logs/apache.pid.graceful`
 	    if [ "$NEWER" = "logs/apache.pid" ]; then
 	      COUNTER=10
 	    else
-	      sleep 1
+	      ./bin/sleep 500
 	    fi
 	    COUNTER=`expr $COUNTER + 1`
 	  done
+	  if [ $COUNTER -eq 4 ]; then
+	    echo "slow graceful restart" 1>&2
+	  fi
 	  rm logs/apache.pid.graceful
 	fi
 	;;
