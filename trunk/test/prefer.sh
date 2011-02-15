@@ -8,7 +8,7 @@ sleep 1
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientPrefer.htt" >>  logs/error_log
 ./run.sh scripts/Log.htt > /dev/null
 QSTART=`grep -c "mod_qos(063)" logs/error_log`
-echo "run ./scripts/QS_ClientPrefer.htt"
+echo "run (`date '+%a %b %d %H:%M:%S %Y'`) ./scripts/QS_ClientPrefer.htt"
 ./run.sh -s ./scripts/QS_ClientPrefer.htt 2>/dev/null 1>/dev/null
 sleep 1
 ./run.sh scripts/Log.htt > /dev/null

@@ -55,6 +55,7 @@ _CLOSE
 _SLEEP 9000
 _END LOOP
 
+# rebound...
 _REQ localhost $QS_PORT_BASE
 __GET /qos HTTP/1.1
 __Host: localhost

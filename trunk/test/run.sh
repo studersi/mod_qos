@@ -4,7 +4,10 @@ RC=0
 START=`date '+%s'`
 if [ "$1" = "-s" -o "$1" = "-se" ]; then
     LOG=`basename $2`
-    echo -e "run (`date '+%a %b %d %H:%M:%S %Y'`) $2\t\c"
+    echo "run (`date '+%a %b %d %H:%M:%S %Y'`) $2\t\c"
+    if [ `expr length $2` -lt 38 ]; then
+	echo "\t\c"
+    fi
     ./bin/httest1 $2 2>&1 > .${LOG}.log
     RC=$?
     if [ $RC -ne 0 ]; then
