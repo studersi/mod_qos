@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.15 2011-02-14 19:15:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/ctl.sh,v 2.16 2011-02-15 21:47:11 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -94,7 +94,7 @@ case "$COMMAND" in
 	    COUNTER=`expr $COUNTER + 1`
 	  done
 	  if [ $COUNTER -eq 4 ]; then
-	    echo "slow graceful restart" 1>&2
+	    echo -e "slow graceful restart \c" 1>&2
 	  fi
 	  rm logs/apache.pid.graceful
 	fi
