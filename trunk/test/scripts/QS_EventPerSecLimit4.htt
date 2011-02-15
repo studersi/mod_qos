@@ -38,6 +38,9 @@ END
 CLIENT
 _SLEEP 40000
 
+_EXPECT EXEC "mod_qos.050.: request rate limit, rule: var=.multi..5., req/sec="
+_EXEC tail -1 logs/error_log
+
 _LOOP 20
 _REQ localhost $QS_PORT_BASE9
 __GET /aaa/index.html HTTP/1.1

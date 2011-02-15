@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.150 2011-02-14 19:15:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.151 2011-02-15 20:35:22 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -72,12 +72,12 @@ sleep 2
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.htt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_LocRequestLimit_5.htt
+./run.sh -s ./scripts/QS_LocRequestLimit_5.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestLimit_5.htt"
 fi
-./htt.sh -se ./scripts/QS_LocRequestLimit_DynamicErrorPage.htt
+./run.sh -se ./scripts/QS_LocRequestLimit_DynamicErrorPage.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestLimit_DynamicErrorPage.htt"
@@ -85,18 +85,18 @@ fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 3 requests with matching regex rule max 2 (overrides location rule), QS_LocRequestLimitMatch_2.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_LocRequestLimitMatch_2.htt
+./run.sh -se ./scripts/QS_LocRequestLimitMatch_2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestLimitMatch_2.htt"
 fi
 # one rule for multiple loctions
-./htt.sh -se ./scripts/QS_LocRequestLimitMatch.htt
+./run.sh -se ./scripts/QS_LocRequestLimitMatch.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestLimitMatch.htt"
 fi
-./htt.sh -se ./scripts/QS_LocRequestLimitMatch_3.htt
+./run.sh -se ./scripts/QS_LocRequestLimitMatch_3.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestLimitMatch_3.htt"
@@ -104,7 +104,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- conditional rule QS_CondLocRequestLimitMatch.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_CondLocRequestLimitMatch.htt
+./run.sh -se ./scripts/QS_CondLocRequestLimitMatch.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_CondLocRequestLimitMatch.htt"
@@ -112,7 +112,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- vip session, QS_VipHeaderName.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_VipHeaderName.htt
+./run.sh -se ./scripts/QS_VipHeaderName.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipHeaderName.htt"
@@ -168,7 +168,7 @@ fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- connection timeout, QS_SrvConnTimeout_body.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_SrvConnTimeout_body.htt
+./run.sh -se ./scripts/QS_SrvConnTimeout_body.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvConnTimeout_body.htt"
@@ -179,7 +179,7 @@ sleep 2
 CLT="QS_SrvMaxConnClosePercent.htt QS_SrvMaxConnClose_20.htt"
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- disable keep alive, QS_SrvMaxConnClose*" >>  logs/error_log
 for E in $CLR; do
-    ./htt.sh -se ./scripts/$E
+    ./run.sh -se ./scripts/$E
     if [ $? -ne 0 ]; then
 	ERRORS=`expr $ERRORS + 1`
 	echo "FAILED $E"
@@ -193,7 +193,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_DenyRequestLine.htt"
 fi
-./htt.sh -se ./scripts/QS_DenyEvent.htt
+./run.sh -se ./scripts/QS_DenyEvent.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_DenyEvent.htt"
@@ -227,12 +227,12 @@ fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- kbytes/sec limit, QS_LocKBytesPerSecLimit.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_LocKBytesPerSecLimit.htt
+./run.sh -se ./scripts/QS_LocKBytesPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocKBytesPerSecLimit.htt"
 fi
-./htt.sh -se ./scripts/QS_LocKBytesPerSecLimit_t.htt
+./run.sh -se ./scripts/QS_LocKBytesPerSecLimit_t.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocKBytesPerSecLimit_t.htt"
@@ -240,37 +240,37 @@ fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_EventRequestLimit.htt" >>  logs/error_log
-./htt.sh -s ./scripts/QS_EventRequestLimit.htt
+./run.sh -s ./scripts/QS_EventRequestLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventRequestLimit.htt"
 fi
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit0.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_EventPerSecLimit0.htt
+./run.sh -se ./scripts/QS_EventPerSecLimit0.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit0.htt"
 fi
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_EventPerSecLimit.htt
+./run.sh -se ./scripts/QS_EventPerSecLimit.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit.htt"
 fi
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit2.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_EventPerSecLimit2.htt
+./run.sh -se ./scripts/QS_EventPerSecLimit2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit2.htt"
 fi
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit3.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_EventPerSecLimit3.htt
+./run.sh -se ./scripts/QS_EventPerSecLimit3.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit3.htt"
 fi
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit4.htt" >>  logs/error_log
-./htt.sh -se ./scripts/QS_EventPerSecLimit4.htt
+./run.sh -se ./scripts/QS_EventPerSecLimit4.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit4.htt"

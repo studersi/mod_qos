@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.38 2011-01-01 20:52:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.39 2011-02-15 20:35:22 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -106,7 +106,7 @@ cp util/config.h.in ${DES}/
 cp util/install-sh ${DES}/
 cp util/missing ${DES}/
 cp util/depcomp ${DES}/
-cp util/src/*.c ${DES}/src/
+cp `ls -1 util/src/*.c | grep -v qscheck` ${DES}/src/
 cp util/src/*.h ${DES}/src/
 
 ## standard distribution
