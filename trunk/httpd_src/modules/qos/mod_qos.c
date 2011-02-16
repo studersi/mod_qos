@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.294 2011-02-11 20:26:00 pbuchbinder Exp $";
-static const char g_revision[] = "9.49a";
+static const char revision[] = "$Id: mod_qos.c,v 5.295 2011-02-16 22:02:38 pbuchbinder Exp $";
+static const char g_revision[] = "9.50";
 
 /************************************************************************
  * Includes
@@ -1631,7 +1631,7 @@ static void qos_collect_ip(request_rec *r, qos_srv_config *sconf,
   apr_global_mutex_lock(sconf->act->lock);   /* @CRT8 */
   while(i) {
     if(conn_ip->ip) {
-      char *red = "style=\"background-color: rgb(133,240,135);\"";
+      char *red = "style=\"background-color: rgb(240,153,155);\"";
       if(html) {
         apr_table_addn(entries, apr_psprintf(r->pool, "%s</td><td %s colspan=\"3\">%d",
                                              qos_ip_long2str(r, conn_ip->ip),
@@ -4369,7 +4369,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rputs("</tr>\n", r);
       }
       while(e) {
-        char *red = "style=\"background-color: rgb(133,240,135);\"";
+        char *red = "style=\"background-color: rgb(240,153,155);\"";
         ap_rputs("<tr class=\"rows\">", r);
         ap_rprintf(r, "<!--%d--><td>%s%s</a></td>", i,
                    ap_escape_html(r->pool, qos_crline(r, e->url)),
@@ -4414,7 +4414,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       }
       /* connection level */
       if(sconf) {
-        char *red = "style=\"background-color: rgb(133,240,135);\"";
+        char *red = "style=\"background-color: rgb(240,153,155);\"";
         int c = qos_count_free_ip(sconf);
         ap_rputs("<tr class=\"rowt\">"
                  "<td colspan=\"9\">connections</td>", r);
