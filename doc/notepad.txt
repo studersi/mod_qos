@@ -8,8 +8,10 @@
   - request/response length (body)
   - request/response headers (types, length)
   - other
+- doc: document VIP behavior (exact: which directive are affacted)
 - more "dynamic" rules:
   - enforce rules on certain conditions only (e.g. overall server usage)
+    - QS_SrvMinDataRate <bytes per second> [<max bytes per second> [ <free>% ] ]
   - adjust metrics dynamically
   - learning and permissive mode (server wide, per function)
   + store metrics as environment variables (used by QS_EventRequestLimit,

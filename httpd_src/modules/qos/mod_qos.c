@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.295 2011-02-16 22:02:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.296 2011-02-17 20:48:22 pbuchbinder Exp $";
 static const char g_revision[] = "9.50";
 
 /************************************************************************
@@ -491,6 +491,7 @@ typedef struct {
   int has_event_limit;
   /* min data rate */
   int req_rate;               /* GLOBAL ONLY */
+  int req_rate_start;         /* GLOBAL ONLY */
   int min_rate;               /* GLOBAL ONLY */
   int min_rate_max;           /* GLOBAL ONLY */
   int min_rate_off;
@@ -551,7 +552,7 @@ typedef struct {
   conn_rec *c;
   char *evmsg;
   qos_srv_config *sconf;
-  int is_vip;           /* is vip, either by request or by session */
+  int is_vip;           /* is vip, either by request or by session or by ip */
   int is_vip_by_header; /* received vip header from application/or auth. user */
   int has_lowrate;
   qs_conn_t *conn;
@@ -3780,6 +3781,10 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
     if(!e) {
       e = qos_cc_set(u->qos_cc, &new, time(NULL));
     }
+    /* early vip detection */
+    if((*e)->vip) {
+      cconf->is_vip = 1;
+    }
     /* max connections */
     if(cconf->sconf->has_qos_cc && cconf->sconf->qos_cc_prefer) {
       u->qos_cc->connections++;
@@ -3846,7 +3851,7 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
 /**
  * calculates the current minimal up/download bandwith
  */
-static int qos_req_rate_calc(qos_srv_config *sconf) {
+static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
   int req_rate = sconf->req_rate;
   if(sconf->min_rate_max != -1) {
     server_rec *s = sconf->base_server;
@@ -3862,6 +3867,7 @@ static int qos_req_rate_calc(qos_srv_config *sconf) {
     }
     req_rate = req_rate +
       ((sconf->min_rate_max / sconf->max_clients) * connections);
+    *current = connections;
   }
   return req_rate;
 }
@@ -4487,7 +4493,8 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         if(sconf->req_rate == -1) {
           ap_rprintf(r, "<td colspan=\"3\">-</td></tr>\n");
         } else {
-          int rt = qos_req_rate_calc(sconf);
+          int connections;
+          int rt = qos_req_rate_calc(sconf, &connections);
           ap_rprintf(r, "<td colspan=\"3\">%d/%d/%d</td></tr>\n",
                      sconf->req_rate,
                      sconf->min_rate_max == -1 ? sconf->req_rate : sconf->min_rate_max,
@@ -4537,7 +4544,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   while(!sconf->inctx_t->exit) {
-    int req_rate = qos_req_rate_calc(sconf);
+    int currentcon = 0;
+    int req_rate = qos_req_rate_calc(sconf, &currentcon);
     apr_time_t now = apr_time_sec(apr_time_now());
     apr_time_t interval = now - QS_REQ_RATE_TM;
     int i;
@@ -4546,99 +4554,101 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     if(sconf->inctx_t->exit) {
       break;
     }
-    apr_thread_mutex_lock(sconf->inctx_t->lock);   /* @CRT21 */
-    entry = (apr_table_entry_t *)apr_table_elts(sconf->inctx_t->table)->elts;
-    for(i = 0; i < apr_table_elts(sconf->inctx_t->table)->nelts; i++) {
-      qos_ifctx_t *inctx = (qos_ifctx_t *)entry[i].val;
-      if(inctx->status == QS_CONN_STATE_KEEP) {
-        /* enforce keep alive */
-        apr_interval_time_t current_timeout = 0;
-        apr_socket_timeout_get(inctx->client_socket, &current_timeout);
-        /* add 5sec tolerance to receive the request line or let Apache close the connection */
-        if(now > (apr_time_sec(current_timeout) + 5 + inctx->time)) {
-          qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
-                                                                  &qos_module);
-          int level = APLOG_ERR;
-          if(cconf && cconf->is_vip) {
-            level = APLOG_INFO;
-            cconf->has_lowrate = 1; /* mark connection low rate */
-          }
-          if(inctx->disabled) {
-            level = APLOG_INFO;
-            cconf->has_lowrate = 1; /* mark connection low rate */
-          }
-          ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                       QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
-                       " c=%s",
-                       level == APLOG_INFO ? 
-                       "log only (allowed)" 
-                       : "access denied",
-                       inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
-          if(cconf && cconf->is_vip) {
-            inctx->time = now;
-            inctx->nbytes = 0;
-          } else if(inctx->disabled) {
-            inctx->time = now;
-            inctx->nbytes = 0;
-          } else {
-            apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
-          }
-          /* mark slow clients (QS_ClientPrefer) even they are VIP */
-          inctx->shutdown = 1;
-        }
-      } else {
-        if(interval > inctx->time) {
-          int rate = inctx->nbytes / QS_REQ_RATE_TM;
-          if(rate < req_rate) {
-            if(inctx->client_socket) {
-              qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
-                                                                      &qos_module);
-              int level = APLOG_ERR;
-              if(cconf && cconf->is_vip) {
-                level = APLOG_INFO;
-                cconf->has_lowrate = 1; /* mark connection low rate */
-              }
-              if(inctx->disabled) {
-                level = APLOG_INFO;
-                cconf->has_lowrate = 1; /* mark connection low rate */
-              }
-              ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                           QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
-                           " this connection=%d,"
-                           " c=%s",
-                           level == APLOG_INFO ? 
-                           "log only (allowed)" 
-                           : "access denied",
-                           inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
-                           req_rate,
-                           rate,
-                           inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
-              if(cconf && cconf->is_vip) {
-                inctx->time = interval + QS_REQ_RATE_TM;
-                inctx->nbytes = 0;
-              } else if(inctx->disabled) {
-                inctx->time = interval + QS_REQ_RATE_TM;
-                inctx->nbytes = 0;
-              } else {
-                if(inctx->status == QS_CONN_STATE_RESPONSE) {
-                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
-                  /* close out socket (the hard way) */
-                  apr_socket_close(inctx->client_socket);
-                } else {
-                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
-                }
-              }
-              /* mark slow clients (QS_ClientPrefer) even they are VIP */
-              inctx->shutdown = 1;
+    if(currentcon > sconf->req_rate_start) { // enable only if min. num of connection reached
+      apr_thread_mutex_lock(sconf->inctx_t->lock);   /* @CRT21 */
+      entry = (apr_table_entry_t *)apr_table_elts(sconf->inctx_t->table)->elts;
+      for(i = 0; i < apr_table_elts(sconf->inctx_t->table)->nelts; i++) {
+        qos_ifctx_t *inctx = (qos_ifctx_t *)entry[i].val;
+        if(inctx->status == QS_CONN_STATE_KEEP) {
+          /* enforce keep alive */
+          apr_interval_time_t current_timeout = 0;
+          apr_socket_timeout_get(inctx->client_socket, &current_timeout);
+          /* add 5sec tolerance to receive the request line or let Apache close the connection */
+          if(now > (apr_time_sec(current_timeout) + 5 + inctx->time)) {
+            qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
+                                                                    &qos_module);
+            int level = APLOG_ERR;
+            if(cconf && cconf->is_vip) {
+              level = APLOG_INFO;
+              cconf->has_lowrate = 1; /* mark connection low rate */
             }
-          } else {
-            inctx->time = interval + QS_REQ_RATE_TM;
-            inctx->nbytes = 0;
+            if(inctx->disabled) {
+              level = APLOG_INFO;
+              cconf->has_lowrate = 1; /* mark connection low rate */
+            }
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
+                         QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
+                         " c=%s",
+                         level == APLOG_INFO ? 
+                         "log only (allowed)" 
+                         : "access denied",
+                         inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+            if(cconf && cconf->is_vip) {
+              inctx->time = now;
+              inctx->nbytes = 0;
+            } else if(inctx->disabled) {
+              inctx->time = now;
+              inctx->nbytes = 0;
+            } else {
+              apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+            }
+            /* mark slow clients (QS_ClientPrefer) even they are VIP */
+            inctx->shutdown = 1;
+          }
+        } else {
+          if(interval > inctx->time) {
+            int rate = inctx->nbytes / QS_REQ_RATE_TM;
+            if(rate < req_rate) {
+              if(inctx->client_socket) {
+                qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
+                                                                        &qos_module);
+                int level = APLOG_ERR;
+                if(cconf && cconf->is_vip) {
+                  level = APLOG_INFO;
+                  cconf->has_lowrate = 1; /* mark connection low rate */
+                }
+                if(inctx->disabled) {
+                  level = APLOG_INFO;
+                  cconf->has_lowrate = 1; /* mark connection low rate */
+                }
+                ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
+                             QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
+                             " this connection=%d,"
+                             " c=%s",
+                             level == APLOG_INFO ? 
+                             "log only (allowed)" 
+                             : "access denied",
+                             inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
+                             req_rate,
+                             rate,
+                             inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+                if(cconf && cconf->is_vip) {
+                  inctx->time = interval + QS_REQ_RATE_TM;
+                  inctx->nbytes = 0;
+                } else if(inctx->disabled) {
+                  inctx->time = interval + QS_REQ_RATE_TM;
+                  inctx->nbytes = 0;
+                } else {
+                  if(inctx->status == QS_CONN_STATE_RESPONSE) {
+                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
+                    /* close out socket (the hard way) */
+                    apr_socket_close(inctx->client_socket);
+                  } else {
+                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+                  }
+                }
+                /* mark slow clients (QS_ClientPrefer) even they are VIP */
+                inctx->shutdown = 1;
+              }
+            } else {
+              inctx->time = interval + QS_REQ_RATE_TM;
+              inctx->nbytes = 0;
+            }
           }
         }
       }
+      apr_thread_mutex_unlock(sconf->inctx_t->lock); /* @CRT21 */
     }
-    apr_thread_mutex_unlock(sconf->inctx_t->lock); /* @CRT21 */
   }
   // apr_thread_mutex_lock(sconf->inctx_t->lock);
   // apr_thread_mutex_unlock(sconf->inctx_t->lock);
@@ -4931,14 +4941,18 @@ static int qos_process_connection(conn_rec *c) {
             vip = 1;
             /* propagate vip to connection */
             cconf->is_vip = vip;
-            cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
+            if(!cconf->evmsg || !strstr(cconf->evmsg, "S;")) {
+              cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
+            }
           }
         } else {
           if(strcmp(entry[i].key, cconf->c->remote_ip) == 0) {
             vip = 1;
             /* propagate vip to connection */
             cconf->is_vip = vip;
-            cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
+            if(!cconf->evmsg || !strstr(cconf->evmsg, "S;")) {
+              cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
+            }
           }
         }
       }
@@ -6962,6 +6976,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
   sconf->error_page = NULL;
   sconf->req_rate = -1;
+  sconf->req_rate_start = 0;
   sconf->min_rate = -1;
   sconf->min_rate_max = -1;
   sconf->min_rate_off = 0;
@@ -7079,6 +7094,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->cc_tolerance_max = b->cc_tolerance_max;
   o->cc_tolerance_min = b->cc_tolerance_min;
   o->req_rate = b->req_rate;
+  o->req_rate_start = b->req_rate_start;
   o->min_rate = b->min_rate;
   o->min_rate_max = b->min_rate_max;
   /* end GLOBAL ONLY directives */
@@ -8005,7 +8021,7 @@ const char *qos_req_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const 
                         cmd->directive->directive);
   }
   sconf->req_rate = atoi(sec);
-  if(sconf->req_rate == 0) {
+  if(sconf->req_rate <= 0) {
     return apr_psprintf(cmd->pool, "%s: request rate must be a numeric value >0", 
                         cmd->directive->directive);
   }
@@ -8038,10 +8054,34 @@ const char *qos_min_rate_off_cmd(cmd_parms *cmd, void *dcfg, const char *var) {
   return NULL;
 }
 
-const char *qos_min_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const char *secmax) {
+#ifdef AP_TAKE_ARGV
+const char *qos_min_rate_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[])
+#else
+const char *qos_min_rate_cmd(cmd_parms *cmd, void *dcfg, const char *_sec, const char *_secmax)
+#endif
+{
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  const char *sec = NULL;
+  const char *secmax = NULL;
+  const char *connections = NULL;
+#ifdef AP_TAKE_ARGV
+  if(argc == 0) {
+    return apr_psprintf(cmd->pool, "%s: takes 1 to 3 arguments",
+                        cmd->directive->directive);
+  }
+  sec = argv[0];
+  if(argc > 1) {
+    secmax = argv[1];
+  }
+  if(argc > 2) {
+    connections = argv[2];
+  }
+#else
+  sec = _sec;
+  secmax = _secmax;
+#endif
   if (err != NULL) {
     return err;
   }
@@ -8055,7 +8095,14 @@ const char *qos_min_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const 
   }
   sconf->req_rate = atoi(sec);
   sconf->min_rate = sconf->req_rate;
-  if(sconf->req_rate == 0) {
+  if(connections) {
+    sconf->req_rate_start = atoi(connections);
+    if(sconf->req_rate_start <= 0) {
+      return apr_psprintf(cmd->pool, "%s: number of connections must be a numeric value >0", 
+                          cmd->directive->directive);
+    }
+  }
+  if(sconf->req_rate <= 0) {
     return apr_psprintf(cmd->pool, "%s: minimal data rate must be a numeric value >0", 
                         cmd->directive->directive);
   }
@@ -8705,24 +8752,48 @@ static const command_rec qos_config_cmds[] = {
                  "QS_SrvRequestRate <bytes per seconds> [<max bytes per second>],"
                  " defines the minumum upload"
                  " throughput a client must generate. See also QS_SrvMinDataRate."),
-  AP_INIT_TAKE12("QS_SrvMinDataRate", qos_min_rate_cmd, NULL,
-                 RSRC_CONF,
-                 "QS_SrvMinDataRate <bytes per seconds> [<max bytes per second>],"
-                 " defines the minumum upload/download"
-                 " throughput a client must generate (the bytes send/received by the client"
-                 " per seconds). This bandwidth is measured while transmitting the data"
-                 " (request line, header fields, request body, or response data). The"
-                 " client connection get closed if the client does not fulfill the"
-                 " required data rate and the IP address of the causing client get marked"
-                 " in order to be handled with low priority (see the QS_ClientPrefer"
-                 " directive)."
-                 " The \"max bytes per second\" activates dynamic"
-                 " minimum throughput control: The required minimal throughput"
-                 " is increased in parallel to the number of concurrent clients"
-                 " sending/receiving data. The \"max bytes per second\""
-                 " setting is reached when the number of sending/receiving"
-                 " clients is equal to the MaxClients< setting."
-                 " No limitation is set by default."),
+#ifdef AP_TAKE_ARGV
+  AP_INIT_TAKE_ARGV("QS_SrvMinDataRate", qos_min_rate_cmd, NULL,
+                    RSRC_CONF,
+                    "QS_SrvMinDataRate <bytes per seconds> [<max bytes per second> [<connections>]],"
+                    " defines the minumum upload/download"
+                    " throughput a client must generate (the bytes send/received by the client"
+                    " per seconds). This bandwidth is measured while transmitting the data"
+                    " (request line, header fields, request body, or response data). The"
+                    " client connection get closed if the client does not fulfill the"
+                    " required data rate and the IP address of the causing client get marked"
+                    " in order to be handled with low priority (see the QS_ClientPrefer"
+                    " directive)."
+                    " The \"max bytes per second\" activates dynamic"
+                    " minimum throughput control: The required minimal throughput"
+                    " is increased in parallel to the number of concurrent clients"
+                    " sending/receiving data. The \"max bytes per second\""
+                    " setting is reached when the number of sending/receiving"
+                    " clients is equal to the MaxClients setting."
+                    " The \"connections\" argument is used to specify the"
+                    " number of busy TCP connections a server must have to"
+                    " enable this feature (0 by default)."
+                    " No limitation is set by default."),
+#else
+  AP_INIT_TAKE2("QS_SrvMinDataRate", qos_min_rate_cmd, NULL,
+                    RSRC_CONF,
+                    "QS_SrvMinDataRate <bytes per seconds> [<max bytes per second>],"
+                    " defines the minumum upload/download"
+                    " throughput a client must generate (the bytes send/received by the client"
+                    " per seconds). This bandwidth is measured while transmitting the data"
+                    " (request line, header fields, request body, or response data). The"
+                    " client connection get closed if the client does not fulfill the"
+                    " required data rate and the IP address of the causing client get marked"
+                    " in order to be handled with low priority (see the QS_ClientPrefer"
+                    " directive)."
+                    " The \"max bytes per second\" activates dynamic"
+                    " minimum throughput control: The required minimal throughput"
+                    " is increased in parallel to the number of concurrent clients"
+                    " sending/receiving data. The \"max bytes per second\""
+                    " setting is reached when the number of sending/receiving"
+                    " clients is equal to the MaxClients setting."
+                    " No limitation is set by default."),
+#endif
   AP_INIT_TAKE1("QS_SrvMinDataRateOffEvent", qos_min_rate_off_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SrvMinDataRateOffEvent  '+'|'-'<env-variable>,"

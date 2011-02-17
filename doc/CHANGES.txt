@@ -1,5 +1,10 @@
 Version
 
+ - Set VIP status to connection even before we receive the HTTP request.
+
+ - New argument "connections" for the QS_SrvMinDataRate directive allows to
+   disable the limitation if the server is idle/has only little traffic.
+
  - Adapt built-in request header filter rules.
 
 Version 9.49

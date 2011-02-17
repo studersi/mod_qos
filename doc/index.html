@@ -487,6 +487,38 @@ QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
 </pre>
 </td></tr>
 </table>
+<br>
+The following table shows if a rules may be deactivated for VIPs:
+<table>
+<tr><td>QS_ClientEventBlockCount</td><td>no</td></tr>
+<tr><td>QS_ClientEventLimitCount</td><td>no</td></tr>
+<tr><td>QS_ClientEventPerSecLimit</td><td>no</td></tr>
+<tr><td>QS_ClientEventRequestLimit</td><td>no</td></tr>
+<tr><td>QS_ClientPrefer</td><td>yes</td></tr>
+<tr><td>QS_ClientSerialize</td><td>no</td></tr>
+<tr><td>QS_CondLocRequestLimitMatch</td><td>yes</td></tr>
+<tr><td>QS_DenyBody</td><td>no</td></tr>
+<tr><td>QS_DenyEvent</td><td>no</td></tr>
+<tr><td>QS_DenyPath</td><td>no</td></tr>
+<tr><td>QS_DenyQuery</td><td>no</td></tr>
+<tr><td>QS_DenyRequestLine</td><td>no</td></tr>
+<tr><td>QS_EventKBytesPerSecLimit</td><td>yes</td></tr>
+<tr><td>QS_EventPerSecLimit</td><td>yes</td></tr>
+<tr><td>QS_EventRequestLimit</td><td>no</td></tr>
+<tr><td>QS_InvalidUrlEncoding</td><td>no</td></tr>
+<tr><td>QS_LimitRequestBody</td><td>no</td></tr>
+<tr><td>QS_LocKBytesPerSecLimit*</td><td>yes</td></tr>
+<tr><td>QS_LocRequestLimit*</td><td>yes</td></tr>
+<tr><td>QS_LocRequestPerSecLimit*</td><td>yes</td></tr>
+<tr><td>QS_MileStone</td><td>no</td></tr>
+<tr><td>QS_PermitUri</td><td>no</td></tr>
+<tr><td>QS_RequestHeaderFilter</td><td>no</td></tr>
+<tr><td>QS_ResponseHeaderFilter</td><td>no</td></tr>
+<tr><td>QS_SrvMaxConn</td><td>yes</td></tr>
+<tr><td>QS_SrvMaxConnClose</td><td>no</td></tr>
+<tr><td>QS_SrvMaxConnPerIP</td><td>yes</td></tr>
+<tr><td>QS_SrvMinDataRate</td><td>yes</td></tr>
+</table>
 
 <a name="variables"></a>
 <h3>Variables</h3>
@@ -1093,7 +1125,7 @@ Defines an IP address or address range to be excluded from connection
 level control restrictions. An address range must end with a ".".
 </li>
 <li>
-<code>QS_SrvMinDataRate &lt;bytes per second&gt; [&lt;max bytes per second&gt;]</code><br>
+<code>QS_SrvMinDataRate &lt;bytes per second&gt; [&lt;max bytes per second&gt; [&lt;connections&gt;]]</code><br>
 Defines the minimum upload/download throughput a client must generate (the bytes 
 sent/received by the client per seconds). This bandwidth is measured while 
 receiving request data (request line, header fields, or body). 
@@ -1104,7 +1136,8 @@ is marked in order to be handled with low priority (see the
 minimum throughput control: The required minimal throughput is increased in parallel 
 to the number of concurrent clients sending/receiving data. The "max bytes per second" 
 setting is reached when the number of sending/receiving clients is equal to 
-the <code>MaxClients</code> setting. No limitation is set by default. 
+the <code>MaxClients</code> setting. The "connections" argument is used to specify the 
+number of busy TCP connections a server must have to enable this feature (0 by default). 
 </li>
 <li>
 <code>QS_SrvRequestRate &lt;bytes per second&gt; [&lt;max bytes per second&gt;]</code><br>
