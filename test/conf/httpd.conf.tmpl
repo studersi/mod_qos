@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.181 2011-02-17 20:48:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.182 2011-02-17 20:50:36 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -98,12 +98,12 @@ AddOutputFilter         INCLUDES .shtml
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e #%P"
 
 LogLevel                warn
-#ErrorLog                "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 3600 -f"
+#ErrorLog                "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 21600 -f"
 ErrorLog                ##ROOT##/logs/error_log
-TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
 TransferLog             "|##ROOT##/../util/src/qssign -s password -e |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log_signed -z -g 4 -s 3600 -f"
 TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....RSB.T.Q....U"
-CustomLog               "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/qsaudit_log -z -g 4 -s 3600 -f" "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
+CustomLog               "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/qsaudit_log -z -g 4 -s 21600 -f" "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
 PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 
