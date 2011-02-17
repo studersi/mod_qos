@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.180 2011-02-10 19:28:56 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.181 2011-02-17 20:48:22 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -69,6 +69,9 @@ LimitRequestFields      30
 QS_LimitRequestBody     65536
 <IfDefine !no_reqrate>
 QS_SrvMinDataRate       120 3000
+</IfDefine>
+<IfDefine reqrate10>
+QS_SrvMinDataRate       120 3000 10
 </IfDefine>
 <IfDefine cc>
 QS_ClientPrefer         80
@@ -572,6 +575,8 @@ SSLRandomSeed           startup builtin
    SetEnvIf   Host (.*):.*    QS_ErrorPage=/error-docs/$1.html
    QS_LocRequestLimit         /cgi            5
    QS_VipUser
+
+   QS_VipHeaderName           x-web-login=valid
 
    <Location /status>
        SetHandler             server-status

@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.152 2011-02-16 22:02:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.153 2011-02-17 20:48:22 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -444,6 +444,14 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_ClientEventRequestLimit.htt"
 fi
 
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvMinDataRate.htt" >>  logs/error_log
+./ctl.sh restart -D no_reqrate -D reqrate10 > /dev/null
+./run.sh -se ./scripts/QS_SrvMinDataRate.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvMinDataRate.htt"
+fi
+
 ./ctl.sh restart -D no_reqrate -D cc > /dev/null
 ./run.sh -s ./scripts/QS_ClientPrefer_TMO.htt > /dev/null 2> /dev/null
 ./run.sh -se ./scripts/QS_ClientPrefer_TMO2.htt
@@ -522,6 +530,14 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_3.htt"
 fi
+
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_vip.htt" >>  logs/error_log
+./run.sh -s ./scripts/QS_SrvRequestRate_vip.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate_vip.htt"
+fi
+
 ./ctl.sh restart > /dev/null
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_4.htt" >>  logs/error_log
 ./run.sh -s ./scripts/QS_SrvRequestRate_4.htt
