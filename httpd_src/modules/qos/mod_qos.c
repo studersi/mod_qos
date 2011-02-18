@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.297 2011-02-18 09:32:22 pbuchbinder Exp $";
-static const char g_revision[] = "9.51";
+static const char revision[] = "$Id: mod_qos.c,v 5.298 2011-02-18 21:12:59 pbuchbinder Exp $";
+static const char g_revision[] = "9.52";
 
 /************************************************************************
  * Includes
@@ -8452,6 +8452,7 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
     return err;
   }
   sconf->qos_cc_size = atoi(arg1);
+  sconf->qos_cc_size &= ~1;
   if(sconf->qos_cc_size == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
