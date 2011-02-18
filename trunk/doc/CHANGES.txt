@@ -1,3 +1,8 @@
+Version
+
+ - Double pre client data store speed (insert new entries) by partitioning
+   of odd and even ip addresses.
+
 Version 9.51
 
  - Set IP based VIP status to connection even before we receive the

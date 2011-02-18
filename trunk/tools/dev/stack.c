@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.19 2011-02-18 19:45:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.20 2011-02-18 22:21:25 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -111,44 +111,57 @@ static void qoss_free(qos_s_t *s) {
  * gets an entry by its ip
  */
 static qos_s_entry_t **qoss_get0(qos_s_t *s, qos_s_entry_t *pA) {
-  return bsearch((const void *)&pA, (const void *)s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
+  int even = pA->ip % 2;
+  if(even) {
+    even = s->max / 2;
+  }
+  return bsearch((const void *)&pA, (const void *)&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qoss_comp);
 }
 
 static void qoss_sort(qos_s_t *s) {
-  qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
+  qsort(s->timed, s->max/2, sizeof(qos_s_entry_t *), qoss_comp_time);
+  qsort(&s->timed[s->max/2], s->max/2, sizeof(qos_s_entry_t *), qoss_comp_time);
 }
 
 static void qoss_set(qos_s_t *s, qos_s_entry_t *pA) {
   qos_s_entry_t **pB;
-  qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qoss_comp_time);
+  int even = pA->ip % 2;
+  if(even) {
+    even = s->max / 2;
+  }
+  qsort(&s->timed[even], s->max/2, sizeof(qos_s_entry_t *), qoss_comp_time);
   if(s->num < s->max) {
     s->num++;
-    pB = &s->timed[0];
+    pB = &s->timed[even];
     (*pB)->ip = pA->ip;
     (*pB)->time = time(NULL);
-    qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
+    qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qoss_comp);
   } else {
-    pB = &s->timed[0];
+    pB = &s->timed[even];
     (*pB)->ip = pA->ip;
     (*pB)->time = time(NULL);
-    qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
+    qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qoss_comp);
   }
 }
 
-static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA) {
+static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA, long i) {
   qos_s_entry_t **pB;
+  int even = pA->ip % 2;
+  if(even) {
+    even = s->max / 2;
+  }
   if(s->num <= s->max) {
-    s->num++;
-    pB = &s->timed[s->max - s->num];
+    pB = &s->timed[even + i/2];
     (*pB)->ip = pA->ip;
     (*pB)->time = time(NULL);
+    s->num++;
   } else {
     printf("ERROR! no more free slots\n");
   }
 }
 
 static void speed() {
-  long size = 100000;
+  long size = 500000;
   qos_s_entry_t new;
   qos_s_t *s = qoss_new(size);
   qos_s_entry_t **e = NULL;
@@ -162,11 +175,12 @@ static void speed() {
   qoss_set(s, &new);
   for(i = 0; i < size; i++) {
     new.ip = i;
-    qoss_set_fast(s, &new);
+    qoss_set_fast(s, &new, i);
   }
   i--;
   printf("added: 0 to %ld\n", i);
-  qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
+  qsort(s->ipd, s->max/2, sizeof(qos_s_entry_t *), qoss_comp);
+  qsort(&s->ipd[s->max/2], s->max/2, sizeof(qos_s_entry_t *), qoss_comp);
   qoss_sort(s);
   
   /* get */
@@ -196,7 +210,7 @@ static void speed() {
 }
 
 static void func() {
-  int size = 10;
+  int size = 12;
   qos_s_entry_t new;
   qos_s_t *s = qoss_new(size);
   qos_s_entry_t **e = NULL;
@@ -208,35 +222,45 @@ static void func() {
     new.ip = ar[i];
     e = qoss_get0(s, &new);
     if(!e) {
-      printf("%lu", new.ip); fflush(stdout);
+      printf("[%lu]", new.ip); fflush(stdout);
       sleep(1);
       qoss_set(s, &new);
     }
   }
   printf("\n");
+  qoss_sort(s);
   for(i = 0; i < s->max; i++) {
     e = &s->timed[i];
-    printf("%lu %lu\n", (*e)->ip, (*e)->time);
+    printf("pos=%d %lu %lu\n", i, (*e)->ip, (*e)->time);
   }
   for(i = 0; i < sizeof(ar)/sizeof(unsigned long); i++) {
     new.ip = ar[i];
     e = qoss_get0(s, &new);
     if(!e) {
-      printf("ERROR %lu", new.ip); fflush(stdout);
+      printf("ERROR-1 pos=%d %lu\n", i, new.ip); fflush(stdout);
       exit(1);
     }
   }
   /* oldest first */
-  qoss_sort(s);
   for(i = 0; i < s->max; i++) {
     e = &s->timed[i];
-    printf("%lu %lu\n", (*e)->ip, (*e)->time);
+    printf("pos=%d %lu %lu\n", i, (*e)->ip, (*e)->time);
   }
   /* lowest first */
-  for(i = 0; i < s->max; i++) {
+  v = 0;
+  for(i = 0; i < s->max/2; i++) {
     e = &s->ipd[i];
     if((*e)->ip < v) {
-      printf("ERROR %lu", (*e)->ip); fflush(stdout);
+      printf("ERROR-2 pos=%d %lu\n", i, (*e)->ip); fflush(stdout);
+      exit(1);
+    }
+    v = (*e)->ip;
+  }
+  v = 0;
+  for(i = s->max/2; i < s->max; i++) {
+    e = &s->ipd[i];
+    if((*e)->ip < v) {
+      printf("ERROR-3 pos=%d %lu\n", i, (*e)->ip); fflush(stdout);
       exit(1);
     }
     v = (*e)->ip;

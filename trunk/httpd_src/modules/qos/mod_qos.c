@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.298 2011-02-18 21:12:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.299 2011-02-18 22:21:25 pbuchbinder Exp $";
 static const char g_revision[] = "9.52";
 
 /************************************************************************
@@ -970,24 +970,32 @@ static void qos_cc_free(qos_s_t *s) {
 
 /** search an entry */
 static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA) {
-  return bsearch((const void *)&pA, (const void *)s->ipd, s->max, sizeof(qos_s_entry_t *), qos_cc_comp);
+  int even = pA->ip % 2;
+  if(even) {
+    even = s->max / 2;
+  }
+  return bsearch((const void *)&pA, (const void *)&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp);
 }
 
 /** create a new entry */
 static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  qsort(s->timed, s->max, sizeof(qos_s_entry_t *), qos_cc_comp_time);
+  int even = pA->ip % 2;
+  if(even) {
+    even = s->max / 2;
+  }
+  qsort(&s->timed[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp_time);
   if(s->num < s->max) {
     s->num++;
-    pB = &s->timed[0];
+    pB = &s->timed[even];
     (*pB)->ip = pA->ip;
     (*pB)->time = now;
-    qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qos_cc_comp);
+    qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp);
   } else {
-    pB = &s->timed[0];
+    pB = &s->timed[even];
     (*pB)->ip = pA->ip;
     (*pB)->time = now;
-    qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qos_cc_comp);
+    qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp);
   }
   (*pB)->vip = 0;
   (*pB)->lowrate = 0;
