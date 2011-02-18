@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.18 2011-02-10 19:28:56 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.19 2011-02-18 19:45:23 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +41,7 @@ typedef struct {
   unsigned int img;
   unsigned int other;
   unsigned int notmodified;
+  unsigned int serialize;
   /* prefer */
   short int vip;
   /* ev block */
@@ -64,6 +65,7 @@ typedef struct {
   int max;
   int msize;
 } qos_s_t;
+
 
 static int qoss_comp(const void *_pA, const void *_pB) {
   qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
@@ -135,23 +137,25 @@ static void qoss_set(qos_s_t *s, qos_s_entry_t *pA) {
 
 static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA) {
   qos_s_entry_t **pB;
-  if(s->num < s->max) {
+  if(s->num <= s->max) {
     s->num++;
     pB = &s->timed[s->max - s->num];
     (*pB)->ip = pA->ip;
     (*pB)->time = time(NULL);
+  } else {
+    printf("ERROR! no more free slots\n");
   }
 }
 
 static void speed() {
-  int size = 100000;
+  long size = 100000;
   qos_s_entry_t new;
   qos_s_t *s = qoss_new(size);
   qos_s_entry_t **e = NULL;
-  int i;
-  int first = 0;
+  long i;
   struct timeval tv;
   long long start;
+  long items[] = { 12, 78333, size-2, size-1000, size/2, size/8, 9827, 95998, 77, 58 };
 
   printf("> %d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
   new.ip = 0;
@@ -160,33 +164,34 @@ static void speed() {
     new.ip = i;
     qoss_set_fast(s, &new);
   }
-  i++;
-  new.ip = i;
-  qoss_set(s, &new);
-  first = 8725;
-
-  /* get */
-  new.ip = first;
-  gettimeofday(&tv, NULL);
-  start = tv.tv_sec * 1000000 + tv.tv_usec;
-  e = qoss_get0(s, &new);
-  gettimeofday(&tv, NULL);
-  printf("get:  %.6lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
-  /* set */
-  new.ip = size;
-  gettimeofday(&tv, NULL);
-  start = tv.tv_sec * 1000000 + tv.tv_usec;
-  qoss_set(s, &new);
-  gettimeofday(&tv, NULL);
-  printf("set:  %.6lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
-  /* sort */
-  new.ip = size;
-  gettimeofday(&tv, NULL);
-  start = tv.tv_sec * 1000000 + tv.tv_usec;
-  (*e)->time = time(NULL);
+  i--;
+  printf("added: 0 to %ld\n", i);
+  qsort(s->ipd, s->max, sizeof(qos_s_entry_t *), qoss_comp);
   qoss_sort(s);
-  gettimeofday(&tv, NULL);
-  printf("sort: %.6lld usec\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start);
+  
+  /* get */
+  for(i = 0; i < (sizeof(items)/sizeof(long)); i++) {
+    new.ip = items[i];
+    gettimeofday(&tv, NULL);
+    start = tv.tv_sec * 1000000 + tv.tv_usec;
+    e = qoss_get0(s, &new);
+    gettimeofday(&tv, NULL);
+    if(e == NULL) {
+      printf("ERROR, %ld not found\n", new.ip);
+    } else {
+      printf("get:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, (*e)->ip);
+    }
+  }
+
+  /* set */
+  for(i = 0; i < (sizeof(items)/sizeof(long)); i++) {
+    new.ip = items[i]+50000;
+    gettimeofday(&tv, NULL);
+    start = tv.tv_sec * 1000000 + tv.tv_usec;
+    qoss_set(s, &new);
+    gettimeofday(&tv, NULL);
+    printf("set:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, new.ip);
+  }
   qoss_free(s);
 }
 
