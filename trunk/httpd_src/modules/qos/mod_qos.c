@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.296 2011-02-17 20:48:22 pbuchbinder Exp $";
-static const char g_revision[] = "9.50";
+static const char revision[] = "$Id: mod_qos.c,v 5.297 2011-02-18 09:32:22 pbuchbinder Exp $";
+static const char g_revision[] = "9.51";
 
 /************************************************************************
  * Includes
@@ -3865,8 +3865,10 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
       }
       s = s->next;
     }
-    req_rate = req_rate +
-      ((sconf->min_rate_max / sconf->max_clients) * connections);
+    if(connections > sconf->req_rate_start) {
+      /* keep the minimal rate until reaching the min connections */
+      req_rate = req_rate + ((sconf->min_rate_max / sconf->max_clients) * connections);
+    }
     *current = connections;
   }
   return req_rate;
@@ -4554,101 +4556,107 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     if(sconf->inctx_t->exit) {
       break;
     }
-    if(currentcon > sconf->req_rate_start) { // enable only if min. num of connection reached
-      apr_thread_mutex_lock(sconf->inctx_t->lock);   /* @CRT21 */
-      entry = (apr_table_entry_t *)apr_table_elts(sconf->inctx_t->table)->elts;
-      for(i = 0; i < apr_table_elts(sconf->inctx_t->table)->nelts; i++) {
-        qos_ifctx_t *inctx = (qos_ifctx_t *)entry[i].val;
-        if(inctx->status == QS_CONN_STATE_KEEP) {
-          /* enforce keep alive */
-          apr_interval_time_t current_timeout = 0;
-          apr_socket_timeout_get(inctx->client_socket, &current_timeout);
-          /* add 5sec tolerance to receive the request line or let Apache close the connection */
-          if(now > (apr_time_sec(current_timeout) + 5 + inctx->time)) {
-            qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
-                                                                    &qos_module);
-            int level = APLOG_ERR;
-            if(cconf && cconf->is_vip) {
-              level = APLOG_INFO;
-              cconf->has_lowrate = 1; /* mark connection low rate */
-            }
-            if(inctx->disabled) {
-              level = APLOG_INFO;
-              cconf->has_lowrate = 1; /* mark connection low rate */
-            }
-            ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                         QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
-                         " c=%s",
-                         level == APLOG_INFO ? 
-                         "log only (allowed)" 
-                         : "access denied",
-                         inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
-            if(cconf && cconf->is_vip) {
-              inctx->time = now;
-              inctx->nbytes = 0;
-            } else if(inctx->disabled) {
-              inctx->time = now;
-              inctx->nbytes = 0;
-            } else {
-              apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
-            }
-            /* mark slow clients (QS_ClientPrefer) even they are VIP */
-            inctx->shutdown = 1;
+    apr_thread_mutex_lock(sconf->inctx_t->lock);   /* @CRT21 */
+    entry = (apr_table_entry_t *)apr_table_elts(sconf->inctx_t->table)->elts;
+    for(i = 0; i < apr_table_elts(sconf->inctx_t->table)->nelts; i++) {
+      qos_ifctx_t *inctx = (qos_ifctx_t *)entry[i].val;
+      if(inctx->status == QS_CONN_STATE_KEEP) {
+        /* enforce keep alive */
+        apr_interval_time_t current_timeout = 0;
+        apr_socket_timeout_get(inctx->client_socket, &current_timeout);
+        /* add 5sec tolerance to receive the request line or let Apache close the connection */
+        if(now > (apr_time_sec(current_timeout) + 5 + inctx->time)) {
+          qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
+                                                                  &qos_module);
+          int level = APLOG_ERR;
+          /* disabled by vip priv */
+          if(cconf && cconf->is_vip) {
+            level = APLOG_INFO;
+            cconf->has_lowrate = 1; /* mark connection low rate */
           }
-        } else {
-          if(interval > inctx->time) {
-            int rate = inctx->nbytes / QS_REQ_RATE_TM;
-            if(rate < req_rate) {
-              if(inctx->client_socket) {
-                qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
-                                                                        &qos_module);
-                int level = APLOG_ERR;
-                if(cconf && cconf->is_vip) {
-                  level = APLOG_INFO;
-                  cconf->has_lowrate = 1; /* mark connection low rate */
-                }
-                if(inctx->disabled) {
-                  level = APLOG_INFO;
-                  cconf->has_lowrate = 1; /* mark connection low rate */
-                }
-                ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                             QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
-                             " this connection=%d,"
-                             " c=%s",
-                             level == APLOG_INFO ? 
-                             "log only (allowed)" 
-                             : "access denied",
-                             inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
-                             req_rate,
-                             rate,
-                             inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
-                if(cconf && cconf->is_vip) {
-                  inctx->time = interval + QS_REQ_RATE_TM;
-                  inctx->nbytes = 0;
-                } else if(inctx->disabled) {
-                  inctx->time = interval + QS_REQ_RATE_TM;
-                  inctx->nbytes = 0;
-                } else {
-                  if(inctx->status == QS_CONN_STATE_RESPONSE) {
-                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
-                    /* close out socket (the hard way) */
-                    apr_socket_close(inctx->client_socket);
-                  } else {
-                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
-                  }
-                }
-                /* mark slow clients (QS_ClientPrefer) even they are VIP */
-                inctx->shutdown = 1;
+          /* disabled for this request/connection */
+          if(inctx->disabled) {
+            level = APLOG_INFO;
+            cconf->has_lowrate = 1; /* mark connection low rate */
+          }
+          /* enable only if min. num of connection reached */
+          if(currentcon <= sconf->req_rate_start) {
+            level = APLOG_INFO;
+            cconf->has_lowrate = 1; /* mark connection low rate */
+          }
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
+                       QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
+                       " c=%s",
+                       level == APLOG_INFO ? 
+                       "log only (allowed)" 
+                       : "access denied",
+                       inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+          if(level == APLOG_INFO) {
+            inctx->time = now;
+            inctx->nbytes = 0;
+          } else {
+            apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+          }
+          /* mark slow clients (QS_ClientPrefer) even they are VIP */
+          inctx->shutdown = 1;
+        }
+      } else {
+        if(interval > inctx->time) {
+          int rate = inctx->nbytes / QS_REQ_RATE_TM;
+          if(rate < req_rate) {
+            if(inctx->client_socket) {
+              qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
+                                                                      &qos_module);
+              int level = APLOG_ERR;
+              /* disabled by vip priv */
+              if(cconf && cconf->is_vip) {
+                level = APLOG_INFO;
+                cconf->has_lowrate = 1; /* mark connection low rate */
               }
-            } else {
-              inctx->time = interval + QS_REQ_RATE_TM;
-              inctx->nbytes = 0;
+              /* disabled for this request/connection */
+              if(inctx->disabled) {
+                level = APLOG_INFO;
+                cconf->has_lowrate = 1; /* mark connection low rate */
+              }
+              /* enable only if min. num of connection reached */
+              if(currentcon <= sconf->req_rate_start) {
+                level = APLOG_INFO;
+                cconf->has_lowrate = 1; /* mark connection low rate */
+              }
+              ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
+                           QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
+                           " this connection=%d,"
+                           " c=%s",
+                           level == APLOG_INFO ? 
+                           "log only (allowed)" 
+                           : "access denied",
+                           inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
+                           req_rate,
+                           rate,
+                           inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+              if(level == APLOG_INFO) {
+                inctx->time = interval + QS_REQ_RATE_TM;
+                inctx->nbytes = 0;
+              } else {
+                if(inctx->status == QS_CONN_STATE_RESPONSE) {
+                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
+                  /* close out socket (the hard way) */
+                  apr_socket_close(inctx->client_socket);
+                } else {
+                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+                }
+              }
+              /* mark slow clients (QS_ClientPrefer) even they are VIP */
+              inctx->shutdown = 1;
             }
+          } else {
+            inctx->time = interval + QS_REQ_RATE_TM;
+            inctx->nbytes = 0;
           }
         }
       }
-      apr_thread_mutex_unlock(sconf->inctx_t->lock); /* @CRT21 */
     }
+    apr_thread_mutex_unlock(sconf->inctx_t->lock); /* @CRT21 */
   }
   // apr_thread_mutex_lock(sconf->inctx_t->lock);
   // apr_thread_mutex_unlock(sconf->inctx_t->lock);
