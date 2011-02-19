@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.20 2011-02-18 22:21:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.21 2011-02-19 10:23:28 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -132,16 +132,11 @@ static void qoss_set(qos_s_t *s, qos_s_entry_t *pA) {
   qsort(&s->timed[even], s->max/2, sizeof(qos_s_entry_t *), qoss_comp_time);
   if(s->num < s->max) {
     s->num++;
-    pB = &s->timed[even];
-    (*pB)->ip = pA->ip;
-    (*pB)->time = time(NULL);
-    qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qoss_comp);
-  } else {
-    pB = &s->timed[even];
-    (*pB)->ip = pA->ip;
-    (*pB)->time = time(NULL);
-    qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qoss_comp);
   }
+  pB = &s->timed[even];
+  (*pB)->ip = pA->ip;
+  (*pB)->time = time(NULL);
+  qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qoss_comp);
 }
 
 static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA, long i) {
@@ -161,14 +156,14 @@ static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA, long i) {
 }
 
 static void speed() {
-  long size = 500000;
+  long size = 50000;
   qos_s_entry_t new;
   qos_s_t *s = qoss_new(size);
   qos_s_entry_t **e = NULL;
   long i;
   struct timeval tv;
   long long start;
-  long items[] = { 12, 78333, size-2, size-1000, size/2, size/8, 9827, 95998, 77, 58 };
+  long items[] = { 12, 48333, size-2, size-1000, size/2, size/8, 9827, 25998, 77, 58 };
 
   printf("> %d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
   new.ip = 0;

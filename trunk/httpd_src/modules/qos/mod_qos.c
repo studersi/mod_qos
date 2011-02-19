@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.299 2011-02-18 22:21:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.300 2011-02-19 10:23:28 pbuchbinder Exp $";
 static const char g_revision[] = "9.52";
 
 /************************************************************************
@@ -987,16 +987,12 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qsort(&s->timed[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp_time);
   if(s->num < s->max) {
     s->num++;
-    pB = &s->timed[even];
-    (*pB)->ip = pA->ip;
-    (*pB)->time = now;
-    qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp);
-  } else {
-    pB = &s->timed[even];
-    (*pB)->ip = pA->ip;
-    (*pB)->time = now;
-    qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp);
   }
+  pB = &s->timed[even];
+  (*pB)->ip = pA->ip;
+  (*pB)->time = now;
+  qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp);
+
   (*pB)->vip = 0;
   (*pB)->lowrate = 0;
   (*pB)->block = 0;
