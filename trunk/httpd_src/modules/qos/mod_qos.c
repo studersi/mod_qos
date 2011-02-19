@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.300 2011-02-19 10:23:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.301 2011-02-19 20:05:23 pbuchbinder Exp $";
 static const char g_revision[] = "9.52";
 
 /************************************************************************
@@ -4249,6 +4249,61 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
   }
 }
 
+static void qos_bars(request_rec *r, server_rec *bs) {
+  server_rec *s = bs;
+  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+  int connections = 0;
+  if(bsconf->act && bsconf->act->conn) {
+    double av[1];
+    int load;
+    getloadavg(av, 1);
+    load = av[0];
+
+    ap_rputs("<table class=\"btable\"><tbody>\n", r);
+    ap_rputs(" <tr class=\"row\"><td>\n", r);
+
+    ap_rputs("<table border=\"0\" cellpadding=\"2\" "
+             "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
+    ap_rputs("<tr class=\"rowe\">\n", r);
+
+    ap_rputs("<td colspan=\"2\">overview</td>", r);
+    ap_rputs("</tr>\n", r);
+
+    connections = bsconf->act->conn->connections;
+    s = s->next;
+    while(s) {
+      qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+      if(sc != bsconf) {
+        connections = connections + sc->act->conn->connections;
+      }
+      s = s->next;
+    }
+
+    ap_rprintf(r, "<tr class=\"rowt\">"
+               "<td colspan=\"1\">connections: %d</td>"
+               "<td colspan=\"1\">load: %.2f</td>"
+               "</tr>\n", connections, av[0]);
+    
+    ap_rprintf(r, "<tr class=\"rows\">");
+    ap_rprintf(r, "<td>");
+    ap_rprintf(r, "<div class=\"prog-border\">"
+               "<div class=\"prog-bar\" style=\"width: %d%%;\"></div></div>",
+               100 * connections / bsconf->max_clients);
+    ap_rprintf(r, "</td>");
+    ap_rprintf(r, "<td>");
+    ap_rprintf(r, "<div class=\"prog-border\">"
+               "<div class=\"prog-bar\" style=\"width: %d%%;\"></div></div>",
+               load > 50 ? 100 : 100 * load / 50);
+    ap_rprintf(r, "</td>");
+    ap_rprintf(r, "</tr>\n");
+
+    ap_rputs("</tbody></table>\n", r);
+
+    ap_rputs(" </tr></td>\n", r);
+    ap_rputs("</tbody></table>\n", r);
+  }
+}
+
 /**
  * status viewer, used by internal and mod_status handler
  */
@@ -4280,6 +4335,9 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE<br>\n", r);
   ap_rprintf(r, "client ip=%s</p>\n", qos_ip_long2str(r, qos_inet_addr(r->connection->remote_ip)));
 #endif
+  if(strcmp(r->handler, "qos-viewer") == 0) {
+    qos_bars(r, s);
+  }
   qos_show_ip(r, bsconf, qt);
   if(strcmp(r->handler, "qos-viewer") == 0) {
     ap_rputs("<table class=\"btable\"><tbody>\n", r);
@@ -6840,6 +6898,20 @@ static int qos_handler_view(request_rec * r) {
           padding: 0px;\n\
           margin: 0px;\n\
   }\n\
+  .prog-border {\n\
+          height: 10px;\n\
+          width: 150px;\n\
+          background: #eee;\n\
+          border: 1px solid #000;\n\
+          padding: 2px;\n\
+          font-family: arial, helvetica, verdana, sans-serif; font-size: 10px; color: #000;\n\
+  }\n\
+          .prog-bar {\n\
+          height: 10px;\n\
+          padding: 0;\n\
+          background: #339900;\n\
+          font-family: arial, helvetica, verdana, sans-serif; font-size: 10px; color: #000;\n\
+  }\n\
   form      { display: inline; }\n", r);
     ap_rputs("-->\n", r);
     ap_rputs("</style>\n", r);
@@ -9013,7 +9085,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ClientEntries", qos_client_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientEntries <number>, defines the number of individual"
-                " clients managed by mod_qos. Default are 50000"
+                " clients managed by mod_qos. Default is 50000."
                 " Directive is allowed in global server context only."),
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_ClientPrefer", qos_client_pref_cmd, NULL,
