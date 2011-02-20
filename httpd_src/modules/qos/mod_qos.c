@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.301 2011-02-19 20:05:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.302 2011-02-20 12:14:44 pbuchbinder Exp $";
 static const char g_revision[] = "9.52";
 
 /************************************************************************
@@ -105,8 +105,6 @@ static const char g_revision[] = "9.52";
 #define QS_USR_SPE "mod_qos::user"
 #define QS_REC_COOKIE "mod_qos::gc"
 
-#define QS_PKT_RATE_INIT  220
-#define QS_PKT_RATE_MIN   30
 #define QS_PKT_RATE_TH    3
 
 #ifndef QS_LOG_REPEAT
@@ -3381,8 +3379,6 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
   inctx->nbytes = 0;
   inctx->shutdown = 0;
   inctx->disabled = 0;
-  inctx->count = 5;
-  inctx->bytes = QS_PKT_RATE_INIT;
   inctx->lowrate = -1;
   sprintf(buf, "%p", inctx);
   inctx->id = apr_psprintf(c->pool, "%s", buf);
@@ -3406,27 +3402,12 @@ static qos_ifctx_t *qos_get_ifctx(ap_filter_t *f) {
   return inctx;
 }
 
-/**
- * calculates the request packet size rate (called by input filter)
- */
 static apr_size_t qos_packet_rate(qos_ifctx_t *inctx, apr_bucket_brigade *bb) {
   apr_bucket *b;
-  apr_size_t av = 0;
   apr_size_t total = 0;
   for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
     if(b->length) {
-      inctx->count++;
-      inctx->bytes = inctx->bytes + b->length;
       total = total + b->length;
-      av = inctx->bytes / inctx->count;
-      /* client hits min packet size */
-      if(av < QS_PKT_RATE_MIN) {
-        inctx->lowrate++;
-      }
-      if(inctx->count > 10) {
-        inctx->bytes = inctx->bytes - av;
-        inctx->count--;
-      }
     }
   }
   return total;
@@ -3565,8 +3546,6 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
           lowrate = inctx->lowrate;
         }
         if(inctx->lowrate != -1) {
-          inctx->count = 5;
-          inctx->bytes = QS_PKT_RATE_INIT;
           inctx->lowrate = 0;
         }
         if(inctx->status > QS_CONN_STATE_NEW) {
