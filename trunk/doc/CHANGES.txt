@@ -1,7 +1,11 @@
-Version
+Version 9.52
 
  - Double pre client data store speed (insert new entries) by partitioning
    of odd and even ip addresses.
+
+ - Overview section in qos viewer (showing connections and load).
+
+ - Remove packet-rate measurement.
 
 Version 9.51
 
