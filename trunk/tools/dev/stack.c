@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.21 2011-02-19 10:23:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.22 2011-02-21 21:19:11 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -152,6 +152,7 @@ static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA, long i) {
     s->num++;
   } else {
     printf("ERROR! no more free slots\n");
+    exit(1);
   }
 }
 
@@ -187,12 +188,14 @@ static void speed() {
     gettimeofday(&tv, NULL);
     if(e == NULL) {
       printf("ERROR, %ld not found\n", new.ip);
+      exit(1);
     } else {
       printf("get:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, (*e)->ip);
     }
   }
 
   /* set */
+  sleep(1); // those entries are newer
   for(i = 0; i < (sizeof(items)/sizeof(long)); i++) {
     new.ip = items[i]+50000;
     gettimeofday(&tv, NULL);
@@ -201,6 +204,16 @@ static void speed() {
     gettimeofday(&tv, NULL);
     printf("set:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, new.ip);
   }
+
+  for(i = 0; i < (sizeof(items)/sizeof(long)); i++) {
+    new.ip = items[i]+50000;
+    e = qoss_get0(s, &new);
+    if(e == NULL) {
+      printf("ERROR, %ld not found\n", new.ip);
+      exit(1);
+    }
+  }
+
   qoss_free(s);
 }
 

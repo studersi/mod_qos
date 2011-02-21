@@ -31,6 +31,13 @@ echo "SET QS_PORT_BASE10=$QS_PORT_BASE10" >> scripts/ports
 echo "SET QS_HOME=`pwd`" >> scripts/ports
 echo "SET QS_HOME_ENC=`pwd | sed s:/:%2F:g`" >> scripts/ports
 
+echo "QS_PORT_BASE=$QS_PORT_BASE"   >  ports
+echo "export QS_PORT_BASE"          >> ports
+echo "QS_PORT_BASE1=$QS_PORT_BASE1" >> ports
+echo "export QS_PORT_BASE1"         >> ports
+echo "QS_PORT_BASE2=$QS_PORT_BASE2" >> ports
+echo "export QS_PORT_BASE1"         >> ports
+
 if [ ! -f htdocs/image.iso ]; then
     for E in `seq 12500`; do
 	echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso

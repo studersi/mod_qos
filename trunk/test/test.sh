@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.153 2011-02-17 20:48:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.154 2011-02-21 21:19:10 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -25,24 +25,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301, USA.
 #
+
+cd `dirname $0`
+
 if [ `ps -ef | grep -v grep | grep -c "tee test.log"` -eq 0 ]; then
-  cd `dirname $0`
   $0 | tee test.log
   exit $?
 fi
-QS_UID=`id`
-QS_UID_STR=`expr "$QS_UID" : 'uid=[0-9]*.\([a-z,A-Z,0-9,_]*\)'`
-QS_UID=`id`
-QS_GID=`expr "$QS_UID" : '.*gid=[0-9]*.\([a-z,A-Z,0-9,_]*\)'`
-QS_UID=`id`
-QS_UID=`expr "$QS_UID" : 'uid=\([0-9]*\)'`
-QS_PORT_BASE=`expr ${QS_UID} - 1000`
-QS_PORT_BASE=`expr $QS_PORT_BASE '*' 120`
-QS_PORT_BASE=`expr $QS_PORT_BASE + 5000`
-QS_PORT_BASE1=`expr $QS_PORT_BASE + 1`
-QS_PORT_BASE2=`expr $QS_PORT_BASE + 2`
 
 ./generate.sh
+. ./ports
 
 ERRORS=0
 WARNINGS=0
@@ -691,6 +683,16 @@ for E in $TEST; do
 	echo "FAILED $E"
     fi
 done
+
+./ctl.sh restart -D real_ip >/dev/null
+echo "run (`date '+%a %b %d %H:%M:%S %Y'`) stack.sh \t\c"
+./stack.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED stack.sh"
+else
+  echo "OK"
+fi
 
 # tools -----------------------------------------------------------
 ./run.sh -s ./scripts/qstail.htt
