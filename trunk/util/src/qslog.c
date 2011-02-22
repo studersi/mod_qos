@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.10 2011-01-21 19:55:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.11 2011-02-22 21:40:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -688,12 +688,12 @@ static void usage(char *cmd) {
   printf("     See to the 'LogFormat' directive of the httpd.conf file\n");
   printf("     to see the format defintions of the servers access log\n");
   printf("     data. %s knows the following elements:\n", cmd);
-  printf("     T defines the request duration (%%T)\n");
+  printf("     I defines the client ip address (%%h)\n");
+  printf("     R defines the request line (%%r)\n");
+  printf("     S defines HTTP response status code (%%s)\n");
   printf("     B defines the transferred bytes (%%b or %%O)\n");
   printf("     i defines the received bytes (%%I)\n");
-  printf("     S defines HTTP response status code (%%s)\n");
-  printf("     R defines the request line (%%r)\n");
-  printf("     I defines the client ip address (%%h)\n");
+  printf("     T defines the request duration (%%T)\n");
   printf("     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   printf("     Q defines the mod_qos_ev event message (%%{mod_qos_ev}o)\n");
   printf("     . defines an element to ignore (unknown string)\n");
@@ -715,6 +715,9 @@ static void usage(char *cmd) {
   printf("Example configuration using pipped logging:\n");
   printf("  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
   printf("  TransferLog \"|./bin/%s -f ..IRSB.T -o ./logs/stat_log\"\n", cmd);
+  printf("\n");
+  printf("Example configuration using the CustomLog directive:\n");
+  printf("  CustomLog \"|./bin/%s -f ISBT -o ./logs/stat_log\" \"%%h %%>s %%b %%T\"\n");
   printf("\n");
   printf("Example for post processing:\n");
   printf("  cat access_log | ./bin/%s -f ..IRSB.T -o ./logs/stat_log -p\n", cmd);
