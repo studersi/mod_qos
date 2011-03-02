@@ -585,6 +585,11 @@ Variable processed by the <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLo
 <code>QS_EventRequest</code><br>
 Variable processed by the <code><a href="#QS_ClientEventRequestLimit">QS_ClientEventRequestLimit</a></code> directive.
 </li>
+<li>
+<a name="QS_IsVipRequest"></a>
+<code>QS_IsVipRequest</code><br>
+Variable is set when detecting a VIP request (either by cookie, IP address status, valid user, etc.).
+</li>
 </ul>
 
 Variables set by mod_qos which may be processed by conditional or event based rules, e.g., 
@@ -703,8 +708,8 @@ This directive should be used in conjunction with <code>QS_EventRequestLimit</co
 only (you must use the same variable name for both directives).
 </li>
 <li>
-<code>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; &lt;variable=value&gt;</code><br>
-Sets the "variable=value" (literal string) if variable1 (literal string) 
+<code>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; [!]&lt;variable=value&gt;</code><br>
+Sets (or unsets) the "variable=value" (literal string) if variable1 (literal string) 
 AND variable2 (literal string) are set in the request environment 
 variable list (not case sensitive). This is used to combine multiple 
 variables to a new event type.

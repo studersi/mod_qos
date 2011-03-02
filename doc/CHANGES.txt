@@ -1,3 +1,9 @@
+Version 9.54
+
+ - QS_SetEnvIf may unset a variable.
+
+ - New variable QS_IsVipRequest.
+
 Version 9.53
 
  - Re-introduce qscheck to the support utilities tarball.
