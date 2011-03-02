@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.303 2011-02-20 18:57:44 pbuchbinder Exp $";
-static const char g_revision[] = "9.53";
+static const char revision[] = "$Id: mod_qos.c,v 5.304 2011-03-02 08:00:32 pbuchbinder Exp $";
+static const char g_revision[] = "9.54";
 
 /************************************************************************
  * Includes
@@ -121,6 +121,7 @@ static const char g_revision[] = "9.53";
 #define QS_LIMIT          "QS_Limit"
 #define QS_EVENT          "QS_Event"
 #define QS_COND           "QS_Cond"
+#define QS_ISVIPREQ       "QS_IsVipRequest"
 #define QS_KEEPALIVE      "QS_KeepAliveTimeout"
 #define QS_MFILE          "/var/tmp/"
 
@@ -1856,11 +1857,13 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sco
 static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
   if(qos_verify_session(r, sconf)) {
     apr_table_set(r->subprocess_env, "QS_VipRequest", "yes");
+    apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
     return 1;
   }
   if(r->subprocess_env) {
     const char *v = apr_table_get(r->subprocess_env, "QS_VipRequest");
     if(v && (strcasecmp(v, "yes") == 0)) {
+      apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
       return 1;
     }
   }
@@ -3042,22 +3045,38 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
     if((setenvif->variable1[0] == '!') && (setenvif->variable2[0] == '!')) {
       if(!apr_table_get(r->subprocess_env, &setenvif->variable1[1]) &&
          !apr_table_get(r->subprocess_env, &setenvif->variable2[1])) {
-        apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+        if(setenvif->name[0] == '!') {
+          apr_table_unset(r->subprocess_env, &setenvif->name[1]);
+        } else {
+          apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+        }
       }
     } else if(setenvif->variable1[0] == '!') {
       if(!apr_table_get(r->subprocess_env, &setenvif->variable1[1]) &&
          apr_table_get(r->subprocess_env, setenvif->variable2)) {
-        apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+        if(setenvif->name[0] == '!') {
+          apr_table_unset(r->subprocess_env, &setenvif->name[1]);
+        } else {
+          apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+        }
       }
     } else if(setenvif->variable2[0] == '!') {
       if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
          !apr_table_get(r->subprocess_env, &setenvif->variable2[1])) {
-        apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+        if(setenvif->name[0] == '!') {
+          apr_table_unset(r->subprocess_env, &setenvif->name[1]);
+        } else {
+          apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+        }
       }
     } else {
       if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
          apr_table_get(r->subprocess_env, setenvif->variable2)) {
-        apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+        if(setenvif->name[0] == '!') {
+          apr_table_unset(r->subprocess_env, &setenvif->name[1]);
+        } else {
+          apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+        }
       }
     }
   }
@@ -3284,6 +3303,9 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
       vip = 1;
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT33 */
+    if(vip) {
+      apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
+    }
     if(count > sconf->qos_cc_event_req) {
       if(vip) {
         rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
@@ -6059,6 +6081,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
         if(cconf) {
           cconf->is_vip = 1;
           cconf->is_vip_by_header = 1;
+          apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
         }
       }
       if(sconf->ip_header_name_drop) {
@@ -6087,6 +6110,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
         if(cconf) {
           cconf->is_vip = 1;
           cconf->is_vip_by_header = 1;
+          apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
         }
         apr_table_set(r->notes, QS_REC_COOKIE, "");
       }
@@ -6107,6 +6131,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       if(cconf) {
         cconf->is_vip = 1;
         cconf->is_vip_by_header = 1;
+        apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
       }
       apr_table_set(r->notes, QS_REC_COOKIE, "");
     }
@@ -6117,6 +6142,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     if(cconf) {
       cconf->is_vip = 1;
       cconf->is_vip_by_header = 1;
+      apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
     }
   }
   qos_unset_header(r, sconf);
@@ -6181,6 +6207,7 @@ static int qos_fixup(request_rec * r) {
     if(cconf) {
       cconf->is_vip = 1;
       cconf->is_vip_by_header = 1;
+      apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
     }
   }
 #if APR_HAS_THREADS
@@ -7680,11 +7707,16 @@ const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, c
   setenvif->name = apr_pstrdup(cmd->pool, a3);
   setenvif->value = strchr(setenvif->name, '=');
   if(setenvif->value == NULL) {
-    return apr_psprintf(cmd->pool, "%s: new variable must have the format <name>=<value>",
-                        cmd->directive->directive);
+    if(setenvif->name[0] == '!') {
+      setenvif->value = apr_pstrdup(cmd->pool, "");
+    } else {
+      return apr_psprintf(cmd->pool, "%s: new variable must have the format <name>=<value>",
+                          cmd->directive->directive);
+    }
+  } else {
+    setenvif->value[0] = '\0';
+    setenvif->value++;
   }
-  setenvif->value[0] = '\0';
-  setenvif->value++;
   apr_table_setn(sconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
   return NULL;
 }
@@ -8889,7 +8921,7 @@ static const command_rec qos_config_cmds[] = {
                 " in conjunction with QS_EventRequestLimit only."),
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
                 RSRC_CONF,
-                "QS_SetEnvIf [!]<variable1> [!]<variable1> <variable=value>,"
+                "QS_SetEnvIf [!]<variable1> [!]<variable1> [!]<variable=value>,"
                 " defines the new variable if variable1 AND variable2 are set."),
   AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
                 RSRC_CONF,
