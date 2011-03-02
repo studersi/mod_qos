@@ -1,0 +1,21 @@
+#
+# $Id: MaxRequestsPerChild_test.htt,v 1.1 2010-12-22 11:33:18 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: 127.0.0.1
+__
+_EXPECT . "<!--0-->.*current connections.*>0</td></tr>"
+_EXPECT . "<!--1-->.*current connections.*>0</td></tr>"
+_EXPECT . "<!--2-->.*current connections.*>0</td></tr>"
+_EXPECT . "<!--3-->.*current connections.*>0</td></tr>"
+_EXPECT . "<!--4-->.*current connections.*>1</td></tr>"
+_WAIT
+
+END
+
