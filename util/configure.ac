@@ -39,7 +39,7 @@ AC_ARG_WITH(pcre,AS_HELP_STRING(--with-pcre=PATH,path to pcre-config script),
 	[if test ! -x $withval/pcre-config; then AC_MSG_ERROR($withval/pcre-config do not exist or is not executable); else PCRE_CONFIG="$withval/pcre-config"; fi],
 	[PCRE_CONFIG="pcre-config"])
 AC_ARG_WITH(png,AS_HELP_STRING(--with-png=PATH,path to libpng-config script),
-	[if test ! -x $withval/png-config; then AC_MSG_ERROR($withval/libpng-config do not exist or is not executable); else PNG_CONFIG="$withval/libpng-config"; fi],
+	[if test ! -x $withval/libpng-config; then AC_MSG_ERROR($withval/libpng-config do not exist or is not executable); else PNG_CONFIG="$withval/libpng-config"; fi],
 	[PNG_CONFIG="libpng-config"])
 AC_ARG_WITH(ssl,AS_HELP_STRING(--with-ssl=PATH,path to openssl source),
 	[if test ! -d $withval; then AC_MSG_ERROR($withval is not a directory); else OPENSSL_LIB_PATH="-L${withval}"; OPENSSL_INCLUDES="-I${withval}/include"; fi],
