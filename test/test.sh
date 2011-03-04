@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.155 2011-03-02 08:00:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.156 2011-03-04 16:35:20 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -237,6 +237,12 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventRequestLimit.htt"
 fi
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_EventRequestLimit_vip.htt" >>  logs/error_log
+./run.sh -s ./scripts/QS_EventRequestLimit_vip.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_EventRequestLimit_vip.htt"
+fi
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit0.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_EventPerSecLimit0.htt
 if [ $? -ne 0 ]; then
@@ -308,19 +314,22 @@ if [ $? -ne 0 ]; then
 fi
 
 # -----------------------------------------------------------------
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- permit filter QS_PermitUri.htt" >>  logs/error_log
+echo "-- permit filter QS_PermitUri_pre.htt" >>  logs/error1_log
+./run.sh -se ./scripts/QS_PermitUri_pre.htt
+./bin/sleep 200
+./ctl.sh stop > /dev/null
 cat logs/access1_log | awk '{print $7}' > logs/loc1.htt
 ../util/src/qsfilter2 -i logs/loc1.htt -v 0 -c appl_conf/qos_deny_filter.conf | grep QS_PermitUri > appl_conf/qos_permit_filter.conf
-#rm -f logs/loc1.htt
-./ctl.sh stop > /dev/null
-sleep 3
 ./ctl.sh start -D permit_filter > /dev/null
-sleep 2
-echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- permit filter QS_PermitUri.htt" >>  logs/error_log
+./bin/sleep 200
 echo "-- permit filter QS_PermitUri.htt" >>  logs/error1_log
 ./run.sh -se ./scripts/QS_PermitUri.htt
 if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_PermitUri.htt"
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED QS_PermitUri.htt"
+else
+  rm -f logs/loc1.htt
 fi
 
 ./run.sh -se ./scripts/QS_PermitUriAudit.htt
