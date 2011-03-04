@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.304 2011-03-02 08:00:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.305 2011-03-04 16:56:14 pbuchbinder Exp $";
 static const char g_revision[] = "9.54";
 
 /************************************************************************
@@ -8926,7 +8926,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIfQuery <regex> [!]<variable>[=value],"
-                " directive works simliar to the SetEnvIf directive"
+                " directive works similar to the SetEnvIf directive"
                 " of the Apache module mod_setenvif but the specified regex is"
                 " applied against the request query string."),
   AP_INIT_TAKE2("QS_SetEnvIfParp", qos_event_setenvifparp_cmd, NULL,

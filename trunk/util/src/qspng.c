@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.6 2011-01-21 09:36:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.7 2011-03-04 16:56:14 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -648,7 +648,7 @@ int main(int argc, char **argv) {
   }
   info_ptr = png_create_info_struct(png_ptr);
   if(info_ptr == NULL) {
-    fprintf(stderr,"[%s]: ERROR, could not create png infromation struct\n", cmd);
+    fprintf(stderr,"[%s]: ERROR, could not create png information struct\n", cmd);
     exit(1);
   }
   if(setjmp(png_jmpbuf(png_ptr))) {
