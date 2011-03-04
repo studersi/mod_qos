@@ -491,7 +491,7 @@ QS_SessionKey                 na&5san-sB.F4_0a=%D200ahLK1
 <br>
 
 The following table shows if a rules may be deactivated for VIPs:
-<table class="btable">
+<table class="btable" width="280px">
 <tr><td>QS_ClientEventBlockCount</td><td>no</td></tr>
 <tr><td>QS_ClientEventLimitCount</td><td>no</td></tr>
 <tr><td>QS_ClientEventPerSecLimit</td><td>no</td></tr>
@@ -520,7 +520,11 @@ The following table shows if a rules may be deactivated for VIPs:
 <tr><td>QS_SrvMaxConnClose</td><td>no</td></tr>
 <tr><td>QS_SrvMaxConnPerIP</td><td>yes</td></tr>
 <tr><td>QS_SrvMinDataRate</td><td>yes</td></tr>
+<tr><td>&nbsp;</td><td>&nbsp;</td></tr>
 </table>
+Note: Event based rules (e.g., <a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>) may evaluate the 
+<a href="#QS_VipRequest">QS_VipRequest</a> and 
+<a href="#QS_IsVipRequest">QS_IsVipRequest</a> variables to decide if the rule should be applied.
 
 <a name="variables"></a>
 <h3>Variables</h3>
@@ -535,6 +539,7 @@ variables to form new variables interpreted by mod_qos rules. <br>
 These are the variables recognized by mod_qos:
 <ul>
 <li>
+<a name="QS_VipRequest"></a>
 <code>QS_VipRequest=yes</code><br>
 Disables the pre location restrictions for this request. 
 Requires the definition of a VIP header using the 
@@ -585,11 +590,6 @@ Variable processed by the <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLo
 <code>QS_EventRequest</code><br>
 Variable processed by the <code><a href="#QS_ClientEventRequestLimit">QS_ClientEventRequestLimit</a></code> directive.
 </li>
-<li>
-<a name="QS_IsVipRequest"></a>
-<code>QS_IsVipRequest</code><br>
-Variable is set when detecting a VIP request (either by cookie, IP address status, valid user, etc.).
-</li>
 </ul>
 
 Variables set by mod_qos which may be processed by conditional or event based rules, e.g., 
@@ -603,6 +603,11 @@ directive.
 <li>
 <code>QS_ClientLowPrio</code><br>
 The variable is set for requests by clients which have been marked to be processed with low priority, see <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code>.
+</li>
+<li>
+<a name="QS_IsVipRequest"></a>
+<code>QS_IsVipRequest</code><br>
+Variable is set when detecting a VIP request (either by cookie, IP address status, valid user, etc.). May be used by various event based directives.
 </li>
 </ul>
 

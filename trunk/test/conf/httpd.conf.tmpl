@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.183 2011-03-02 08:00:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.184 2011-03-04 16:35:20 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -254,6 +254,7 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    # concurrent requests with certain event
    QS_SetEnvIfQuery           QS_EventRequestLimit query
    QS_SetEnvIfQuery           QS_EventRequestV=([a-z]*) queryv=$1
+   QS_SetEnvIf                query QS_VipRequest !query
    QS_EventRequestLimit       query           3
    QS_EventRequestLimit       queryv=abc      3
    QS_EventRequestLimit       PARP_PATTERN    3
