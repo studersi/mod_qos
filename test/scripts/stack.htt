@@ -1,0 +1,76 @@
+#
+# $Id: stack.htt,v 1.1 2011-03-08 20:06:32 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+# add entries
+_SET H=127
+_SET G=0
+_SET F=0
+_SET E=1
+
+_LOOP 4
+_LOOP 4
+_LOOP 125
+_LOOP 25
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /console?action=setvip&address=$H.$G.$F.$E HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_OP $E ADD 1 E
+_END LOOP
+_CLOSE
+_OP $F ADD 1 F
+_SET E=1
+_END LOOP
+_OP $G ADD 1 G
+_SET F=0
+_END LOOP
+_OP $H ADD 1 H
+_SET G=0
+_END LOOP
+
+# veriy they exist
+_SET H=127
+_SET G=0
+_SET F=0
+_SET E=1
+
+_LOOP 4
+_LOOP 4
+_LOOP 125
+_LOOP 25
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /console?action=search&address=$H.$G.$F.$E HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "$H.$G.$F.$E: vip=yes lowprio=no block=0/0 limit=0/0"
+_WAIT
+
+_OP $E ADD 1 E
+_END LOOP
+_CLOSE
+_OP $F ADD 1 F
+_SET E=1
+_END LOOP
+_OP $G ADD 1 G
+_SET F=0
+_END LOOP
+_OP $H ADD 1 H
+_SET G=0
+_END LOOP
+
+END

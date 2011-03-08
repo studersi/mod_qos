@@ -1,3 +1,8 @@
+Version
+
+ - Minor changes in configure script of the support utilities (png
+   library name).
+
 Version 9.54
 
  - QS_SetEnvIf may unset a variable.
