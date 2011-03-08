@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.305 2011-03-04 16:56:14 pbuchbinder Exp $";
-static const char g_revision[] = "9.54";
+static const char revision[] = "$Id: mod_qos.c,v 5.306 2011-03-08 20:06:32 pbuchbinder Exp $";
+static const char g_revision[] = "9.55";
 
 /************************************************************************
  * Includes
@@ -8712,7 +8712,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE2("QS_LocRequestLimit", qos_loc_con_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestLimit <location> <number>, defines the number of"
-                " concurrent requests to the location. Default is defined by the"
+                " concurrent requests to the specified location. Default is defined by the"
                 " QS_LocRequestLimitDefault directive."),
   AP_INIT_TAKE1("QS_LocRequestLimitDefault", qos_loc_con_def_cmd, NULL,
                 RSRC_CONF,
