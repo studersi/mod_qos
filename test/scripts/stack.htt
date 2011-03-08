@@ -1,5 +1,5 @@
 #
-# $Id: stack.htt,v 1.2 2011-03-08 21:58:33 pbuchbinder Exp $
+# $Id: stack.htt,v 1.3 2011-03-08 22:21:04 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -45,7 +45,7 @@ _SET G=0
 _SET F=0
 _SET E=1
 
-_LOOP 1
+_LOOP 2
 _LOOP 4
 _LOOP 100
 _LOOP 20
