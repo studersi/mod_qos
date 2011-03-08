@@ -1,5 +1,5 @@
 #
-# $Id: stack.htt,v 1.1 2011-03-08 20:06:32 pbuchbinder Exp $
+# $Id: stack.htt,v 1.2 2011-03-08 21:58:33 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -12,10 +12,10 @@ _SET G=0
 _SET F=0
 _SET E=1
 
+_LOOP 2
 _LOOP 4
-_LOOP 4
-_LOOP 125
-_LOOP 25
+_LOOP 100
+_LOOP 20
 
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /console?action=setvip&address=$H.$G.$F.$E HTTP/1.1
@@ -45,10 +45,10 @@ _SET G=0
 _SET F=0
 _SET E=1
 
+_LOOP 1
 _LOOP 4
-_LOOP 4
-_LOOP 125
-_LOOP 25
+_LOOP 100
+_LOOP 20
 
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /console?action=search&address=$H.$G.$F.$E HTTP/1.1
