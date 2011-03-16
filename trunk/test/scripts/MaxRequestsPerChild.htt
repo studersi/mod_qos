@@ -1,5 +1,5 @@
 #
-# $Id: MaxRequestsPerChild.htt,v 1.3 2011-01-01 20:52:04 pbuchbinder Exp $
+# $Id: MaxRequestsPerChild.htt,v 1.4 2011-03-16 20:48:34 pbuchbinder Exp $
 #
 # reaches MaxRequestsPerChild (terminating supervisor thread)
 #
@@ -10,8 +10,11 @@ EXEC ./ctl.sh restart -D cont 2>/dev/null 1>/dev/null
 EXEC echo "[Fri Jan 15 07:23:30 2010] [notice] Apache/2.2.xx test S_SrvMinDataRate_maxreq.htt" >> ./logs/error_log
 
 CLIENT 10
+
+#_AUTO_CLOSE on
+
 _SLEEP 500
-_RAND 1 100 SLEEP
+_RAND 100 500 SLEEP
 _SLEEP $SLEEP
 
 _LOOP 8
