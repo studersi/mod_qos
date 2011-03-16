@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.156 2011-03-04 16:35:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.157 2011-03-16 20:48:34 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -302,6 +302,7 @@ sleep 1
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED Graceful.htt"
+    sleep 2
 fi
 sleep 2
 
@@ -574,6 +575,13 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_7.htt" >>  
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate_7.htt"
+fi
+
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_srv.htt" >>  logs/error_log
+./run.sh -s ./scripts/QS_SrvRequestRate_srv.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate_srv.htt"
 fi
 
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvRequestRate_conn_off.htt" >>  logs/error_log
