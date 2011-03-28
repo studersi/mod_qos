@@ -1,7 +1,9 @@
 Version
 
- - Minor changes in configure script of the support utilities (png
-   library name).
+ - Minor changes in configure script (autotools) of the support
+   utilities (png library name).
+
+ - Add allowed response header X-Content-Security-Policy.
 
 Version 9.54
 
