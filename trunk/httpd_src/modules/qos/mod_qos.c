@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.306 2011-03-08 20:06:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.307 2011-03-28 10:31:10 pbuchbinder Exp $";
 static const char g_revision[] = "9.55";
 
 /************************************************************************
@@ -51,6 +51,7 @@ static const char g_revision[] = "9.55";
 #include <time.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 /* apache */
 #include <httpd.h>
@@ -742,6 +743,7 @@ static const qos_her_t qs_res_header_rules[] = {
   { "Vary", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "WWW-Authenticate", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "X-Frame-Options", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "X-Content-Security-Policy", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { NULL, NULL, 0, 0 }
 };
 
