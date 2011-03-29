@@ -5,6 +5,8 @@ Version
 
  - Add allowed response header X-Content-Security-Policy.
 
+ - Fixed in qslog: cut last character if parameter is at end of line.
+
 Version 9.54
 
  - QS_SetEnvIf may unset a variable.
