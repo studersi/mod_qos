@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.11 2011-02-22 21:40:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.12 2011-03-29 17:56:50 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -139,7 +139,9 @@ static char *cutNext(char **line) {
   char *c = *line;
   char *p = skipElement(*line);
   *line = p;
-  p--; p[0] = '\0';
+  if(p[0]) {
+    p--; p[0] = '\0';
+  }
   /* cut leading and tailing " */
   if(c[0] == '\"') {
     c++;
@@ -717,7 +719,7 @@ static void usage(char *cmd) {
   printf("  TransferLog \"|./bin/%s -f ..IRSB.T -o ./logs/stat_log\"\n", cmd);
   printf("\n");
   printf("Example configuration using the CustomLog directive:\n");
-  printf("  CustomLog \"|./bin/%s -f ISBT -o ./logs/stat_log\" \"%%h %%>s %%b %%T\"\n");
+  printf("  CustomLog \"|./bin/%s -f ISBT -o ./logs/stat_log\" \"%%h %%>s %%b %%T\"\n", cmd);
   printf("\n");
   printf("Example for post processing:\n");
   printf("  cat access_log | ./bin/%s -f ..IRSB.T -o ./logs/stat_log -p\n", cmd);
