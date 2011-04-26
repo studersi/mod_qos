@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.41 2011-03-02 08:00:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.42 2011-04-26 21:03:52 pbuchbinder Exp $";
 static const char g_revision[] = "9.54";
 
 /* system */
@@ -566,6 +566,13 @@ static char *qos_2pcre(apr_pool_t *pool, const char *line) {
 	hasB = 1;
 	strcpy(&ret[reti], "\\-");
 	reti = reti + 2;
+      }
+    } else if(in[i] == '\0') {
+      char *ck = apr_psprintf(pool, "#\\x%02x#", in[i]);
+      if(strstr(existing, ck) == NULL) {
+        sprintf(&ret[reti], "\\x%02x", in[i]);
+        reti = reti + 4;
+        existing = apr_pstrcat(pool, existing, ck, NULL);
       }
     } else if(strchr(ret, in[i]) == NULL) {
       if(strchr(QS_PCRE_RESERVED, in[i]) != NULL) {
