@@ -7,6 +7,8 @@ Version
 
  - Fixed in qslog: cut last character if parameter is at end of line.
 
+ - Fixed in qsfilter2: handling of 0 byte characters.
+
 Version 9.54
 
  - QS_SetEnvIf may unset a variable.
