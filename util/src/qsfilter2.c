@@ -27,8 +27,8 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.43 2011-04-28 18:58:25 pbuchbinder Exp $";
-static const char g_revision[] = "9.55";
+static const char revision[] = "$Id: qsfilter2.c,v 1.44 2011-05-09 05:55:01 pbuchbinder Exp $";
+static const char g_revision[] = "9.55b";
 
 /* system */
 #include <stdio.h>
@@ -113,9 +113,10 @@ static int m_query_single_pcre = 0;
 static int m_query_len_pcre = 10;
 static int m_exit_on_error = 0;
 static int m_handler = 0;
-static pcre *m_req_regex;
+static pcre *m_req_regex = NULL;
 static int m_log_req_regex = 0;
 static const char *m_pfx = NULL;
+static const char *m_filter = NULL;
 
 typedef struct {
   pcre *pcre;
@@ -344,7 +345,7 @@ static void usage(char *cmd) {
   printf("\n");
   printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", cmd);
   printf("       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-u 'uni']\n", space);
-  printf("       %s [-k <prefix>] [-t] [-v 0|1|2]\n", space);
+  printf("       %s [-k <prefix>] [-t] [-f <path>] [-v 0|1|2]\n", space);
   printf("\n");
   printf("Summary\n");
   printf(" mod_qos implements a request filter which validates each request\n");
@@ -438,6 +439,9 @@ static void usage(char *cmd) {
   printf("  -t\n");
   printf("     Calculates the maximal latency per request (worst case) using the\n");
   printf("     generated rules.\n");
+  printf("  -f <path>\n");
+  printf("     Filters the input by the provided path (prefix) only processing\n");
+  printf("     matching lines.\n");
   printf("  -v <level>\n");
   printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
   printf("     Don't use rules you haven't checked the request data used to\n");
@@ -1323,6 +1327,8 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
     }
     if(parsed_uri.path == NULL || (parsed_uri.path[0] != '/')) {
       fprintf(stderr, "WARNING, line %d: invalid request %s\n", line_nr, line);
+    } else if(m_filter && parsed_uri.path && strncmp(parsed_uri.path, m_filter, strlen(m_filter)) != 0) {
+      // skip filtered line
     } else {
       char *path = NULL;
       char *query = NULL;
@@ -1562,6 +1568,10 @@ int main(int argc, const char * const argv[]) {
     } else if(strcmp(*argv,"-k") == 0) {
       if (--argc >= 1) {
 	m_pfx = *(++argv);
+      }
+    } else if(strcmp(*argv,"-f") == 0) {
+      if (--argc >= 1) {
+	m_filter = *(++argv);
       }
     } else if(strcmp(*argv,"-d") == 0) {
       if (--argc >= 1) {
