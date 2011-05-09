@@ -1,3 +1,7 @@
+Version
+
+ - qsfilter2 features url filter.
+
 Version 9.55
 
  - Minor changes in configure script (autotools) of the support
