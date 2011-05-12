@@ -1,6 +1,6 @@
 Version
 
- - qsfilter2 features url filter.
+ - qsfilter2 features url filter (-f).
 
 Version 9.55
 
@@ -25,7 +25,7 @@ Version 9.53
 
 Version 9.52
 
- - Double pre client data store speed (insert new entries) by partitioning
+ - Double per client data store speed (insert new entries) by partitioning
    of odd and even ip addresses.
 
  - Overview section in qos viewer (showing connections and load).
