@@ -1,12 +1,12 @@
 #
-# $Id: QS_Graceful.htt,v 1.1 2008-01-24 15:25:53 pbuchbinder Exp $
+# $Id: QS_Graceful.htt,v 1.2 2011-05-12 19:40:28 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
 CLIENT 3
 _REQ localhost $QS_PORT_BASE
-__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__GET /cgi/sleep.cgi?s=7 HTTP/1.1
 __Host: localhost
 __Cookie: MODQOS=$COOKIE_VAL
 __Connection: keep-alive
@@ -14,11 +14,37 @@ __
 _EXPECT . "200 OK"
 _WAIT
 _CLOSE
+
+
 END
 
 CLIENT
 _SLEEP 500
 _EXEC ./ctl.sh graceful >/dev/null
+_SLEEP 500
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Cookie: MODQOS=$COOKIE_VAL
+__Connection: keep-alive
+__
+_EXPECT . "QS_SrvMaxConn;800..: 0"
+_EXPECT . "QS_SrvMaxConn;40..: 1"
+_WAIT
+_CLOSE
+_SLEEP 7000
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Cookie: MODQOS=$COOKIE_VAL
+__Connection: keep-alive
+__
+_EXPECT . "QS_SrvMaxConn;800..: 0"
+_EXPECT . "QS_SrvMaxConn;40..: 1"
+_WAIT
+
 END
 
 
