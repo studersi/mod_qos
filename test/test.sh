@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.157 2011-03-16 20:48:34 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.158 2011-05-16 18:07:41 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -365,6 +365,12 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SetEnvResHeaders.htt"
 fi
 ./ctl.sh restart -D real_ip -D cc > /dev/null
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_Graceful_cc.htt" >> logs/error_log
+./run.sh -se ./scripts/QS_Graceful_cc.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_Graceful_cc.htt"
+fi
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_VipUser" >> logs/error_log
 ./run.sh -se ./scripts/QS_VipUser.htt
 if [ $? -ne 0 ]; then
