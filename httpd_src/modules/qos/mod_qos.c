@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.307 2011-03-28 10:31:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.308 2011-05-17 19:56:58 pbuchbinder Exp $";
 static const char g_revision[] = "9.55";
 
 /************************************************************************
@@ -409,6 +409,7 @@ typedef struct {
   apr_table_t *act_table;
   /* client control */
   qos_s_t *qos_cc;
+  int generation;
 } qos_user_t;
 
 /**
@@ -627,6 +628,7 @@ typedef struct {
 module AP_MODULE_DECLARE_DATA qos_module;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 static unsigned int m_hostcode = 0;
+static int m_generation = 0;
 
 /* mod_parp, forward and optional function */
 APR_DECLARE_OPTIONAL_FN(apr_table_t *, parp_hp_table, (request_rec *));
@@ -1403,6 +1405,7 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
   u = (qos_user_t *)apr_pcalloc(ppool, sizeof(qos_user_t));
   u->server_start = 0;
   u->act_table = apr_table_make(ppool, 2);
+  u->generation = 0;
   apr_pool_userdata_set(u, QS_USR_SPE, apr_pool_cleanup_null, ppool);
   u->qos_cc = NULL;
   return u;
@@ -1414,6 +1417,24 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
 static int qos_is_graceful(qs_actable_t *act) {
   if(ap_my_generation != act->generation) return 1;
   return 0;
+}
+
+/* clear all counters of the per client data store at graceful restart
+   used to prevent counter grow due blocked/crashed client processes*/
+static void qos_clear_cc(qos_user_t *u) {
+  if(u->qos_cc) {
+    qos_s_entry_t **entry;
+    int i;
+    apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT37 */
+    u->qos_cc->connections = 0;
+    entry = u->qos_cc->ipd;
+    for(i = 0; i < u->qos_cc->max; i++) {
+      (*entry)->event_req = 0;
+      (*entry)->serialize = 0;
+      entry++;
+    }
+    apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT37 */
+  }
 }
 
 /**
@@ -1431,6 +1452,8 @@ static apr_status_t qos_cleanup_shm(void *p) {
   char *last_generation;
   int i;
   apr_table_entry_t *entry;
+  u->generation = ap_my_generation;
+  qos_clear_cc(u);
   if(qos_is_graceful(act)) {
     last_generation = apr_psprintf(act->pool, "%d", ap_my_generation-1);
   } else {
@@ -3592,7 +3615,9 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     if(rctx->cc_event_req_set) {
       /* QS_ClientEventRequestLimit */
       rctx->cc_event_req_set = 0;
-      (*e)->event_req--;
+      if((*e)->event_req > 0) {
+        (*e)->event_req--;
+      }
     }
     if(rctx->cc_serialize_set) {
       /* QS_ClientSerialize */
@@ -4906,7 +4931,9 @@ static apr_status_t qos_cleanup_conn(void *p) {
   qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool);
   if(cconf->sconf->has_qos_cc && cconf->sconf->qos_cc_prefer) {
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT15 */
-    u->qos_cc->connections--;
+    if(m_generation == u->generation && u->qos_cc->connections > 0) {
+      u->qos_cc->connections--;
+    }
     if(cconf->is_vip_by_header || cconf->has_lowrate) {
       qos_s_entry_t **e = NULL;
       qos_s_entry_t new;
@@ -4927,7 +4954,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
   /* QS_SrvMaxConn */
   if((cconf->sconf->max_conn != -1) || (cconf->sconf->min_rate_max != -1)) {
     apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT3 */
-    if(cconf->sconf->act->conn) {
+    if(cconf->sconf->act->conn && cconf->sconf->act->conn->connections > 0) {
       cconf->sconf->act->conn->connections--;
     }
     apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT3 */
@@ -6191,7 +6218,9 @@ static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
   entry = (apr_table_entry_t *)apr_table_elts(rctx->event_entries)->elts;
   for(i = 0; i < apr_table_elts(rctx->event_entries)->nelts; i++) {
     qs_acentry_t *e = (qs_acentry_t *)entry[i].val;
-    e->counter--;
+    if(e->counter > 0) {
+      e->counter--;
+    }
   }
   apr_global_mutex_unlock(sconf->act->lock); /* @CRT32 */
 }
@@ -6249,10 +6278,14 @@ static int qos_logger(request_rec *r) {
     }
     apr_global_mutex_lock(e->lock);   /* @CRT6 */
     if(e_cond) {
-      if(e_cond->counter) e_cond->counter--;
+      if(e_cond->counter > 0) {
+        e_cond->counter--;
+      }
     }
     if(e) {
-      if(e->counter) e->counter--;
+      if(e->counter > 0) {
+        e->counter--;
+      }
       e->req++;
       e->bytes = e->bytes + r->bytes_sent;
       if(now > (e->interval + 10)) {
@@ -6355,6 +6388,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
   qos_ifctx_list_t *inctx_t = NULL;
+  m_generation = u->generation;
 #if APR_HAS_THREADS
   if(sconf->req_rate != -1) {
     inctx_t = apr_pcalloc(p, sizeof(qos_ifctx_list_t));
