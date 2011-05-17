@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.184 2011-03-04 16:35:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.185 2011-05-17 19:56:59 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -119,6 +119,7 @@ LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_p
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
 LoadModule              security2_module libexec/mod_security.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
 LoadModule              parp_module libexec/mod_parp.so
 LoadModule              setenvifplus_module libexec/mod_setenvifplus.so
 
@@ -168,6 +169,8 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    QS_SetEnvIfParp  body=([a-z]*)         BODY=parp[$1]
    QS_SetEnvIfParp  postdata=([a-z]*)     PARP_PATTERN=parp[$1]
 
+   ProxyPass                  /killme !
+   ProxyPass                  /loopme !
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
    ProxyPass                  /info !

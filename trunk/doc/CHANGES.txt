@@ -1,5 +1,8 @@
 Version
 
+ - Clear per client data store counters at graceful restart to prevent
+   dead enties (counter grow) due unclear client shutdown.
+
  - qsfilter2 features url filter (-f).
 
 Version 9.55
