@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.158 2011-05-16 18:07:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.159 2011-05-18 18:03:37 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -753,7 +753,7 @@ if [ $? -ne 0 ]; then
   echo "FAILED qssign test failed"
 fi
 
-for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062" | grep -v "(066" | grep -v "(071"`; do
+for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062" | grep -v "(066" | grep -v "(068" | grep -v "(071"`; do
     C=`grep -c $E logs/error_log`
     C1=`grep -c $E logs/error1_log`
     if [ $C -eq 0 -a $C1 -eq 0 ]; then
