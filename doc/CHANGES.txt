@@ -1,9 +1,11 @@
-Version
+Version 9.56
 
  - Clear per client data store counters at graceful restart to prevent
    dead enties (counter grow) due unclear client shutdown.
 
  - qsfilter2 features url filter (-f).
+
+ - QS_ClientSerialize does not block for more than 10 minutes.
 
 Version 9.55
 

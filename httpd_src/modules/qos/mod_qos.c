@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.308 2011-05-17 19:56:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.309 2011-05-18 18:03:37 pbuchbinder Exp $";
 static const char g_revision[] = "9.55";
 
 /************************************************************************
@@ -3269,6 +3269,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
     rctx = qos_rctx_config_get(r);
   }
   if(u && cconf) {
+    int loops = 0;
     int locked = 0;
     rctx->cc_serialize_set = 1;
     /* wait until we get a lock */
@@ -3296,6 +3297,16 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
           rctx->evmsg = apr_pstrcat(r->pool, "s;", rctx->evmsg, NULL);
         }
       }
+      // max wait time: 10 minutes
+      if(loops >= 600) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                      QOS_LOG_PFX(068)"QS_ClientSerialize exceeds limit of 10 minutes"
+                      "c=%s, id=%s",
+                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      qos_unique_id(r, "068"));
+        break;
+      }
+      loops++;
     }
   }
 }

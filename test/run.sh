@@ -13,6 +13,7 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
     if [ $RC -ne 0 ]; then
 	echo "FAILED"
 	tail -30 .${LOG}.log
+	echo "\nsee `pwd`/.${LOG}.log for more details"
     else
 	END=`date '+%s'`
 	DIFF=`expr $END - $START`
