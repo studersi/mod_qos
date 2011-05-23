@@ -42,6 +42,7 @@ if [ ! -f htdocs/image.iso ]; then
     for E in `seq 12500`; do
 	echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso
     done
+    cp htdocs/image.iso htdocs/demo/c/image.iso
 fi
 
 CONFFILES="conf/httpd.conf conf/demo.conf conf/simple.conf conf/dos.conf conf/qos_viewer.conf appl_conf/httpd.conf"
