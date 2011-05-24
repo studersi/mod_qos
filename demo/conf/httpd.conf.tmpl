@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.2 2011-05-24 19:24:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.3 2011-05-24 19:53:46 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -48,6 +48,8 @@ MaxKeepAliveRequests    100
 KeepAliveTimeout        5
 
 LimitRequestFields      30
+LimitRequestLine        7168
+QS_LimitRequestBody     102400
 QS_EnableInternalIPSimulation off
 
 Options                 FollowSymLinks Indexes Includes
@@ -78,6 +80,26 @@ SSLSessionCacheTimeout  864000
 SSLMutex                file:##ROOT##/logs/ssl_mutex
 SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
 SSLRandomSeed           startup builtin
+
+<IfDefine 03loic>
+QS_SrvMinDataRate       120 1500 10
+QS_SrvMaxConnPerIP      30
+QS_ClientEventBlockCount 20 300
+QS_SetEnvIfStatus 400   QS_Block
+QS_SetEnvIfStatus 401   QS_Block
+QS_SetEnvIfStatus 403   QS_Block
+QS_SetEnvIfStatus 404   QS_Block
+QS_SetEnvIfStatus 405   QS_Block
+QS_SetEnvIfStatus 406   QS_Block
+QS_SetEnvIfStatus 408   QS_Block
+QS_SetEnvIfStatus 411   QS_Block
+QS_SetEnvIfStatus 413   QS_Block
+QS_SetEnvIfStatus 414   QS_Block
+QS_SetEnvIfStatus 417   QS_Block
+QS_SetEnvIfStatus 500   QS_Block
+QS_SetEnvIfStatus 503   QS_Block
+QS_SetEnvIfStatus 505   QS_Block
+</IfDefine>
 
 Listen                  server1:##QS_PORT_BASE##
 <VirtualHost server1:##QS_PORT_BASE##>
