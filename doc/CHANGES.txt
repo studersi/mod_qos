@@ -1,3 +1,8 @@
+Version
+
+ - Status viewer features query name "refresh" which causes the browser
+   to reload the page every 10 seconds.
+
 Version 9.56
 
  - Clear per client data store counters at graceful restart to prevent

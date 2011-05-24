@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.310 2011-05-18 18:54:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.311 2011-05-24 19:24:07 pbuchbinder Exp $";
 static const char g_revision[] = "9.56";
 
 /************************************************************************
@@ -2666,7 +2666,12 @@ static char *qos_crline(request_rec *r, const char *line) {
 static void qos_cal_bytes_sec(request_rec *r, qs_acentry_t *e) {
   if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
     int factor = ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) - 100;
+    /* start slowly */
+    if(e->kbytes_per_sec_block_rate == 0) {
+      factor = factor / 2;
+    }
     e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
+    /* limit max delay */
     if(e->kbytes_per_sec_block_rate > QS_MAX_DELAY) {
       e->kbytes_per_sec_block_rate = QS_MAX_DELAY;
     }
@@ -2677,7 +2682,7 @@ static void qos_cal_bytes_sec(request_rec *r, qs_acentry_t *e) {
                   e->kbytes_per_sec, e->kbytes_per_sec_block_rate,
                   e->kbytes_per_sec_block_rate == QS_MAX_DELAY ? " (max)" : "");
   } else if(e->kbytes_per_sec_block_rate > 0) {
-    if(e->kbytes_per_sec_block_rate < 50) {
+    if(e->kbytes_per_sec_block_rate < 20) {
       e->kbytes_per_sec_block_rate = 0;
     } else {
       int factor = e->kbytes_per_sec_block_rate / 4;
@@ -4489,7 +4494,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         } else {
           ap_rprintf(r, "<td>%d</td>", e->limit);
           ap_rprintf(r, "<td %s>%d</td>",
-                     ((e->counter * 100) / e->limit) > 70 ? red : "",
+                     ((e->counter * 100) / e->limit) > 90 ? red : "",
                      e->counter);
         }
         if(e->req_per_sec_limit == 0) {
@@ -4502,7 +4507,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                      e->req_per_sec_block_rate);
           ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
-                     ((e->req_per_sec * 100) / e->req_per_sec_limit) > 70 ? red : "",
+                     ((e->req_per_sec * 100) / e->req_per_sec_limit) > 90 ? red : "",
                      now > (e->interval + 11) ? 0 : e->req_per_sec);
         }
         if(e->kbytes_per_sec_limit == 0) {
@@ -4515,8 +4520,8 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                      e->kbytes_per_sec_block_rate);
           ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
-                     ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 70 ? red : "",
-                     now > (e->interval + 11) ? 0 : e->kbytes_per_sec);
+                     ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 90 ? red : "",
+                     now > (e->interval + 31) ? 0 : e->kbytes_per_sec);
         }
         ap_rputs("</tr>\n", r);
         e = e->next;
@@ -6861,6 +6866,9 @@ static int qos_handler_view(request_rec * r) {
   }
   apr_table_add(r->err_headers_out, "Cache-Control", "no-cache");
   qt = qos_get_query_table(r);
+  if(qt && (apr_table_get(qt, "refresh") != NULL)) {
+  apr_table_add(r->err_headers_out, "Refresh", "10");
+  }
   if(qt && (apr_table_get(qt, "auto") != NULL)) {
     ap_set_content_type(r, "text/plain");
     qos_ext_status_short(r, qt);
