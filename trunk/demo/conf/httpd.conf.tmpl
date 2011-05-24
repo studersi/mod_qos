@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.4 2011-05-24 20:26:59 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.5 2011-05-24 20:50:07 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -110,7 +110,20 @@ QS_SetEnvIf              Set-Cookie !QSNOT QS_Limit=yes
 
 <IfDefine 05bruteforce>
 QS_ClientEventLimitCount 20 300
-QS_SetEnvIfStatus 403    QS_Limit
+QS_SetEnvIfStatus 400   QS_Limit
+QS_SetEnvIfStatus 401   QS_Limit
+QS_SetEnvIfStatus 403   QS_Limit
+QS_SetEnvIfStatus 404   QS_Limit
+QS_SetEnvIfStatus 405   QS_Limit
+QS_SetEnvIfStatus 406   QS_Limit
+QS_SetEnvIfStatus 408   QS_Limit
+QS_SetEnvIfStatus 411   QS_Limit
+QS_SetEnvIfStatus 413   QS_Limit
+QS_SetEnvIfStatus 414   QS_Limit
+QS_SetEnvIfStatus 417   QS_Limit
+QS_SetEnvIfStatus 500   QS_Limit
+QS_SetEnvIfStatus 503   QS_Limit
+QS_SetEnvIfStatus 505   QS_Limit
 </IfDefine>
 
 Listen                  server1:##QS_PORT_BASE##
