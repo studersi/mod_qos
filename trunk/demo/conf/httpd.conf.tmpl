@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.1 2011-05-23 20:21:19 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.2 2011-05-24 19:24:07 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -59,8 +59,6 @@ LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_q
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
-TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
-TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
 PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 
@@ -89,6 +87,9 @@ Listen                  server1:##QS_PORT_BASE##
    SSLEngine              on
    ServerName             server1
 
+   TransferLog            "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
+   TransferLog            "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
+
    ProxyRequests              Off
    <Proxy *>
       Order deny,allow
@@ -98,13 +99,12 @@ Listen                  server1:##QS_PORT_BASE##
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
    ProxyPass                  /test !
-   ProxyPass                  /a !
-   ProxyPass                  /b !
-   ProxyPass                  /c !
    ProxyPass                  /qos !
+   ProxyPass                  /a http://server1:##QS_PORT_BASE1##/c retry=0
+   ProxyPass                  /b http://server1:##QS_PORT_BASE1##/c retry=0
+   ProxyPass                  /c http://server1:##QS_PORT_BASE1##/c retry=0
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
-
 
 <IfDefine 01slow>
    # max 10 (50%) concurrent requests per application
@@ -113,6 +113,29 @@ Listen                  server1:##QS_PORT_BASE##
    QS_LocRequestLimit /b 15
    QS_LocRequestLimit /c 15
 </IfDefine>
+
+<IfDefine 02download>
+   # max 10 mbps
+   QS_LocKBytesPerSecLimitMatch "\.jpg$" 1440
+   QS_LocRequestLimitMatch "\.jpg$" 15
+   QS_LocKBytesPerSecLimitMatch "\.iso$" 1440
+   QS_LocRequestLimitMatch "\.iso$" 15
+</IfDefine>
+
+   <Location /qos>
+        SetHandler qos-viewer
+   </Location>
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
+
+</VirtualHost>
+
+Listen                  server1:##QS_PORT_BASE1##
+<VirtualHost server1:##QS_PORT_BASE1##>
+   SSLEngine              off
+   ServerName             server1
 
    ScriptAlias /a/1.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
    ScriptAlias /a/2.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
@@ -144,10 +167,6 @@ Listen                  server1:##QS_PORT_BASE##
         Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
         Order allow,deny
         Allow from all
-   </Location>
-
-   <Location /qos>
-        SetHandler qos-viewer
    </Location>
 
 </VirtualHost>
