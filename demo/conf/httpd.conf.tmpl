@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.3 2011-05-24 19:53:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.4 2011-05-24 20:26:59 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -64,6 +64,7 @@ ErrorLog                ##ROOT##/logs/error_log
 PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 
+QS_ErrorPage            /error-docs/error.html
 
 TypesConfig             ../test/conf/mime.types
 LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
@@ -99,6 +100,17 @@ QS_SetEnvIfStatus 417   QS_Block
 QS_SetEnvIfStatus 500   QS_Block
 QS_SetEnvIfStatus 503   QS_Block
 QS_SetEnvIfStatus 505   QS_Block
+</IfDefine>
+
+<IfDefine 04session>
+QS_ClientEventLimitCount 20 300
+QS_SetEnvResHeaderMatch  Set-Cookie SESSIONID=
+QS_SetEnvIf              Set-Cookie !QSNOT QS_Limit=yes
+</IfDefine>
+
+<IfDefine 05bruteforce>
+QS_ClientEventLimitCount 20 300
+QS_SetEnvIfStatus 403    QS_Limit
 </IfDefine>
 
 Listen                  server1:##QS_PORT_BASE##
@@ -142,6 +154,12 @@ Listen                  server1:##QS_PORT_BASE##
    QS_LocRequestLimitMatch "\.jpg$" 15
    QS_LocKBytesPerSecLimitMatch "\.iso$" 1440
    QS_LocRequestLimitMatch "\.iso$" 15
+</IfDefine>
+
+<IfDefine 05bruteforce>
+   <Location /c>
+        QS_SetEnvIfResBody "Login Failed" QS_Limit
+   </Location>
 </IfDefine>
 
    <Location /qos>
