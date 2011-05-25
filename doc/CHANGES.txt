@@ -1,4 +1,4 @@
-Version
+Version 9.57
 
  - Status viewer features query name "refresh" which causes the browser
    to reload the page every 10 seconds.

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.5 2011-05-24 20:50:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.6 2011-05-25 06:59:42 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -147,8 +147,8 @@ Listen                  server1:##QS_PORT_BASE##
    ProxyPass                  /status !
    ProxyPass                  /test !
    ProxyPass                  /qos !
-   ProxyPass                  /a http://server1:##QS_PORT_BASE1##/c retry=0
-   ProxyPass                  /b http://server1:##QS_PORT_BASE1##/c retry=0
+   ProxyPass                  /a http://server1:##QS_PORT_BASE1##/a retry=0
+   ProxyPass                  /b http://server1:##QS_PORT_BASE1##/b retry=0
    ProxyPass                  /c http://server1:##QS_PORT_BASE1##/c retry=0
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
@@ -188,7 +188,7 @@ Listen                  server1:##QS_PORT_BASE##
 Listen                  server1:##QS_PORT_BASE1##
 <VirtualHost server1:##QS_PORT_BASE1##>
    SSLEngine              off
-   ServerName             server1
+   ServerName             server1    
 
    ScriptAlias /a/1.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
    ScriptAlias /a/2.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
