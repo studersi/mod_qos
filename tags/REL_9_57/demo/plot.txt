@@ -1,0 +1,26 @@
+
+01slow
+===================
+Application /b/index.cgi is "slow" (show how long it takes to load the whole page in the browser).
+
+disbaled:
+ run 01slow.htt and show that other applications (/a/index.html) are no longer accessible.
+enabled:
+ same, but mod_qos limits the max. number of concurrent requests to /b => /a is available
+
+02download
+===================
+Limit the bandwith
+
+disable:
+ run 02download.htt and show used bandwith in logs/qs_log
+enabled:
+ run 02download.htt and show how mod_qos manages the bandwith /qos?refresh
+ logs/qs_log shows limited bandwith (10mbit/s)
+
+===================
+===================
+===================
+===================
+===================
+===================
