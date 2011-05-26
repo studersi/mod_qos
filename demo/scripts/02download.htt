@@ -24,7 +24,7 @@ _RAND 0 10000 SLEEP
 _SLEEP $SLEEP
 
 _IGNORE_BODY on
-_LOOP 20
+_LOOP 60
 # each loop takes about 30 sec
 _CALL REQUEST /c/image.iso
 _CLOSE

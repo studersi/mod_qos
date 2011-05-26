@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd2.conf.tmpl,v 1.1 2011-05-26 18:20:39 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd2.conf.tmpl,v 1.2 2011-05-26 19:24:03 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -70,7 +70,6 @@ Listen                  server1:##QS_PORT_BASE1##
    ServerName             server1    
 
    TransferLog            "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access2_log -z -g 4 -s 3600 -f"
-   TransferLog            "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs2_log -f I....R.B.T.Q"
    
    ScriptAlias /a/1.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
    ScriptAlias /a/2.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
