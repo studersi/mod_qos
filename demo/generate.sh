@@ -38,7 +38,7 @@ echo "export QS_PORT_BASE1"         >> ports
 echo "QS_PORT_BASE2=$QS_PORT_BASE2" >> ports
 echo "export QS_PORT_BASE1"         >> ports
 
-CONFFILES="conf/httpd.conf"
+CONFFILES="conf/httpd.conf conf/httpd2.conf"
 for E in $CONFFILES; do
     sed <$E.tmpl >$E \
 	-e "s;##ROOT##;$ROOT;g" \

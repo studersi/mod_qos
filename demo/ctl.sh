@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/ctl.sh,v 1.1 2011-05-23 20:21:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/ctl.sh,v 1.2 2011-05-26 18:20:39 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -36,10 +36,12 @@ case "$COMMAND" in
 	ulimit -c unlimited
 	if [ "$ADDARGS" = "" ]; then
 	  ../httpd/httpd -d `pwd`
+	  ../httpd/httpd -d `pwd` -f conf/httpd2.conf
 	else
 	  ../httpd/httpd -d `pwd` $ADDARGS
+	  ../httpd/httpd -d `pwd` -f conf/httpd2.conf $ADDARGS
 	fi
-	INST="apache"
+	INST="apache apache2"
 	for E in $INST; do
 	  COUNT=0
 	  while [ $COUNT -lt 20 ]; do
@@ -51,10 +53,11 @@ case "$COMMAND" in
 	    fi
 	  done
 	done
-	echo "server `cat logs/apache.pid`"
+	echo "proxy `cat logs/apache.pid`"
+	echo "application `cat logs/apache2.pid`"
 	;;
   stop)
-	INST="apache"
+	INST="apache apache2"
 	for E in $INST; do
 	  APID=""
 	  if [ -f logs/${E}.pid ]; then

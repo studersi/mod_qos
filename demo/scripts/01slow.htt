@@ -14,12 +14,19 @@ __Accept-Encoding: gzip,deflate
 __Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
 __Connection: keep-alive
 __
-_EXPECT ERROR ".*"
+#_MATCH headers "Connection: (.*)" CLOSE
 _WAIT
+#_IF "$CLOSE" MATCH "close"
+#_CLOSE
+#_END IF
 
 END
 
 CLIENT 16
+
+_RAND 0 1000 SLEEP
+_SLEEP $SLEEP
+_AUTO_CLOSE on
 
 _LOOP 2
 # each loop takes about 30 sec
@@ -29,7 +36,6 @@ _CALL REQUEST /b/image3.cgi
 _CALL REQUEST /b/image5.cgi
 _CALL REQUEST /b/image2.cgi
 _CALL REQUEST /b/image4.cgi
-_CLOSE
 _END LOOP
 
 END
