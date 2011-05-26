@@ -22,6 +22,7 @@ END
 
 CLIENT
 
+_LOOP FOREVER
 _CALL REQUEST /scripts
 _CALL REQUEST /admin
 _CALL REQUEST /admin
@@ -47,5 +48,6 @@ _CALL REQUEST /web
 _CALL REQUEST /etc/passwd
 _CALL REQUEST /etc/hosts
 _CALL REQUEST /etc/shadow
+_END LOOP
 
 END

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.7 2011-05-26 18:20:39 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.8 2011-05-26 19:24:03 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -103,13 +103,13 @@ QS_SetEnvIfStatus 505   QS_Block
 </IfDefine>
 
 <IfDefine 04session>
-QS_ClientEventLimitCount 20 300
+QS_ClientEventLimitCount 200 300
 QS_SetEnvResHeaderMatch  Set-Cookie SESSIONID=
 QS_SetEnvIf              Set-Cookie !QSNOT QS_Limit=yes
 </IfDefine>
 
 <IfDefine 05bruteforce>
-QS_ClientEventLimitCount 20 300
+QS_ClientEventLimitCount 100 300
 QS_SetEnvIfStatus 400   QS_Limit
 QS_SetEnvIfStatus 401   QS_Limit
 QS_SetEnvIfStatus 403   QS_Limit
@@ -135,7 +135,7 @@ Listen                  server1:##QS_PORT_BASE##
    ServerName             server1
 
    TransferLog            "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
-   TransferLog            "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
+   CustomLog              "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBTUQ" "%h %>s %b %T %{mod_qos_user_id}e %{mod_qos_ev}o "
 
    ProxyRequests              Off
    <Proxy *>
