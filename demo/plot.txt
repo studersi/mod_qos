@@ -2,7 +2,7 @@
 01slow
 ===================
 Application /b/index.cgi is "slow" (show how long it takes to load the 
-whole page in the browser).
+whole page in the browser) while application /a runs normal.
 
 disbaled:
  run 01slow.htt, many clients request application /b
@@ -13,7 +13,8 @@ enabled:
 
 02download
 ===================
-Limit the bandwith
+Many clients downloads an iso image. We have to limit the bandwith for
+this resource.
 
 disabled:
  run 02download.htt and show used bandwith in logs/qs_log ~20mbit/sec
@@ -23,7 +24,7 @@ enabled:
 
 03loic
 ===================
-TCP DoS
+Server is no longer available to our clients du a TCP DoS attack.
 
 disabled:
  Many clients open TCP connections and send data very slow just fast enough
@@ -34,7 +35,10 @@ enabled:
 
 04session
 ===================
-Client opens new sessions (get Cookie) but don't use them.
+Client opens new sessions (get Cookie) but don't use them. This fills up
+the memory of our session store. Users don't get new sessions anymore.
+Show that the server opens a new session when posting the login form (even
+authentication was not successful).
 
 disabled:
  Client may open as many connections as he wants.
@@ -56,5 +60,9 @@ enabled:
 ===================
 Client searchs for vulnerable URLs or hidden features.
 
+disabled:
+ client may access invlid resources (404, 500, 403) as often he wants.
 enabled:
- mod_qos limits the number of error responses, e.g. 404
+ mod_qos limits the number of error responses, e.g. 404, disallowing
+ crawling for "hidden" resources
+

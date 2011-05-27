@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.40 2011-02-20 18:57:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.41 2011-05-27 06:14:18 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -80,7 +80,7 @@ echo "install documentation"
 cp doc/README.TXT mod_qos-${VERSION}
 cp doc/LICENSE.txt mod_qos-${VERSION}/doc
 cp doc/CHANGES.txt mod_qos-${VERSION}/doc
-sed <doc/index.html >mod_qos-${VERSION}/doc/index.html -e "s/4.15/${VERSION}/g"
+sed <doc/index.html >mod_qos-${VERSION}/doc/index.html -e "s/0\.00/${VERSION}/g"
 cp doc/mod_qos_s.gif mod_qos-${VERSION}/doc
 cp doc/mod_qos_seq.gif mod_qos-${VERSION}/doc
 cp doc/nevis.gif mod_qos-${VERSION}/doc

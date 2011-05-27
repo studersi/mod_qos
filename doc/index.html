@@ -186,19 +186,20 @@ More information about mod_qos:
 <p>
 mod_qos requires OpenSSL, PCRE (don't use the version which comes with the 
 Apache distribution), threading and shared memory support. mod_qos supports 
-Apache version 2.2 <a href="http://httpd.apache.org/docs/2.2/mod/worker.html" target="_blank">MPM worker</a> binaries.<br>
+Apache version 2.2 <a href="http://httpd.apache.org/docs/2.2/mod/worker.html" target="_blank">MPM worker</a> 
+binaries and is optimized to be used in a <a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy.html">proxy</a> server.<br><br>
 Just copy the module into the <code>modules</code> directory of the Apache server's source code and 
-compile it using the following commands (all examples are using Apache 2.2.17 and 
-mod_qos 4.15):
+compile it using the following commands (all examples are using Apache 2.2.18 and 
+mod_qos 0.00):
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
 <pre>
-tar xfz httpd-2.2.17.tar.gz
-tar xfz mod_qos-4.15-src.tar.gz
-ln -s httpd-2.2.17 httpd
+tar xfz httpd-2.2.18.tar.gz
+tar xfz mod_qos-0.00-src.tar.gz
+ln -s httpd-2.2.18 httpd
 cd httpd
 mkdir modules/qos
-cp ../mod_qos-4.15/apache2/* modules/qos
+cp ../mod_qos-0.00/apache2/* modules/qos
 ./buildconf
 ./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-ssl
 make
@@ -228,7 +229,7 @@ server's modules directory.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
 <pre>
-cd mod_qos-4.15/apache2
+cd mod_qos-0.00/apache2
 apxs -i -c mod_qos.c
 cd ../..
 </pre>
@@ -248,7 +249,7 @@ libpng, and OpenSSL.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
 <pre>
-cd mod_qos-4.15/tools
+cd mod_qos-0.00/tools
 ./configure
 make
 </pre>
