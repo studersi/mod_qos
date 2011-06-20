@@ -8,16 +8,19 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
     if [ `expr length $2` -lt 38 ]; then
 	echo "\t\c"
     fi
-    ./bin/httest $2 2>&1 > .${LOG}.log
-    RC=$?
-    if [ $RC -ne 0 ]; then
-	echo "FAILED"
-    else
-	END=`date '+%s'`
-	DIFF=`expr $END - $START`
-	echo "OK ($DIFF)"
-	rm .${LOG}.log
-    fi
+    while [ 1 ]; do
+	./bin/httest $2 2>&1 > .${LOG}.log
+	RC=$?
+	if [ $RC -ne 0 ]; then
+	    echo "FAILED"
+	    exit $RC
+	else
+	    END=`date '+%s'`
+	    DIFF=`expr $END - $START`
+	    echo "OK ($DIFF)"
+	    rm .${LOG}.log
+	fi
+    done
 else
     ./bin/httest $@
 fi

@@ -1,3 +1,7 @@
+Version
+
+ - New variable QS_ErrorNotes.
+
 Version 9.57
 
  - Status viewer features query name "refresh" which causes the browser

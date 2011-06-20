@@ -38,7 +38,7 @@ enabled:
 Client opens new sessions (get Cookie) but don't use them. This fills up
 the memory of our session store. Users don't get new sessions anymore.
 Show that the server opens a new session when posting the login form (even
-authentication was not successful).
+authentication was not successful) using "Live HTTP headers".
 
 disabled:
  Client may open as many connections as he wants.

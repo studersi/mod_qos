@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.313 2011-05-26 18:20:40 pbuchbinder Exp $";
-static const char g_revision[] = "9.57";
+static const char revision[] = "$Id: mod_qos.c,v 5.314 2011-06-20 19:10:57 pbuchbinder Exp $";
+static const char g_revision[] = "9.58";
 
 /************************************************************************
  * Includes
@@ -1022,6 +1022,9 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
 static const char *qos_unique_id(request_rec *r, const char *eid) {
   const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
   apr_table_set(r->notes, "error-notes", eid ? eid : "-");
+  if(eid) {
+    apr_table_set(r->subprocess_env, "QS_ErrorNotes", eid);
+  }
   if((uid == NULL) && m_has_unique_id) {
     /* error,  module loaded but no id available? */
     return apr_pstrdup(r->pool, "-");
