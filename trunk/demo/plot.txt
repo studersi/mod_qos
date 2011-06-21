@@ -20,7 +20,7 @@ disabled:
  run 02download.htt and show used bandwith in logs/qs_log ~20mbit/sec
 enabled:
  run 02download.htt again and show how mod_qos manages the bandwith /qos?refresh
- result: logs/qs_log shows limited bandwith (1300000...1500000bytes/s => 10mbit/s)
+ result: logs/qs_log shows limited bandwith (~1300000bytes/s => 10mbit/s)
 
 03loic
 ===================

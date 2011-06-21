@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.8 2011-05-26 19:24:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.9 2011-06-21 06:19:33 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -163,9 +163,9 @@ Listen                  server1:##QS_PORT_BASE##
 
 <IfDefine 02download>
    # max 10 mbps
-   QS_LocKBytesPerSecLimitMatch "\.jpg$" 1440
+   QS_LocKBytesPerSecLimitMatch "\.jpg$" 1280
    QS_LocRequestLimitMatch "\.jpg$" 15
-   QS_LocKBytesPerSecLimitMatch "\.iso$" 1440
+   QS_LocKBytesPerSecLimitMatch "\.iso$" 1280
    QS_LocRequestLimitMatch "\.iso$" 15
 </IfDefine>
 
