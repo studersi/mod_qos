@@ -59,7 +59,8 @@ if [ ! -d logs ]; then
 fi
 
 mkdir -p ../test/htdocs/demo/doc
-cp ../doc/*.html ../test/htdocs/demo/doc
-cp ../doc/*.gif ../test/htdocs/demo/doc
-cp ../doc/*.jpg ../test/htdocs/demo/doc
-cp ../doc/*.ico ../test/htdocs/demo/doc
+cp ../doc/*.html ../test/htdocs/demo/doc/
+cp ../doc/*.gif ../test/htdocs/demo/doc/
+cp ../doc/*.jpg ../test/htdocs/demo/doc/
+cp ../doc/*.ico ../test/htdocs/demo/doc/
+cp conf/httpd.conf ../test/htdocs/demo/doc/
