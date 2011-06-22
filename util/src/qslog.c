@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.12 2011-03-29 17:56:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.13 2011-06-22 20:39:42 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -606,10 +606,15 @@ static void readStdinOffline(const char *cstr) {
     } if(l_time < unitTime) {
       /* leap in time... */
       updateStat(cstr, line);
+      fprintf(stdout, "X");
+      fflush(stdout);
+      unitTime = 0;
     } else {
-      if(!m_verbose) {
-	fprintf(stdout, ".");
-	fflush(stdout);
+      if(l_time > unitTime) {
+      	if(!m_verbose) {
+	  fprintf(stdout, ".");
+	  fflush(stdout);
+	}
       }
       while(l_time > unitTime) {
 	snprintf(buf, sizeof(buf), "%s %.2ld:%.2ld:00", m_date_str, unitTime/60, unitTime%60);
