@@ -28,7 +28,8 @@ _LOOP 60
 # each loop takes about 30 sec
 _CALL REQUEST /c/image.iso
 _CLOSE
-_SLEEP 3000
+_RAND 1500 4500 SLEEP
+_SLEEP $SLEEP
 _END LOOP
 
 END

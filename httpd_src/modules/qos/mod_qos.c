@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.314 2011-06-20 19:10:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.315 2011-06-22 20:39:41 pbuchbinder Exp $";
 static const char g_revision[] = "9.58";
 
 /************************************************************************
@@ -702,6 +702,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Range", "^[a-zA-Z0-9=_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 200 },
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
   { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?"QS_H_TE")*$", QS_FLT_ACTION_DROP, 100 },
+  { "Transfer-Encoding", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 100 },
   { "Unless-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "User-Agent", "^[a-zA-Z0-9]+[a-zA-Z0-9_\\.:;\\(\\)@ /\\+!=,\\-]+$", QS_FLT_ACTION_DROP, 300 },
   { "Via", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 100 },
