@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.317 2011-06-22 21:04:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.318 2011-06-23 20:08:34 pbuchbinder Exp $";
 static const char g_revision[] = "9.58";
 
 /************************************************************************
@@ -654,6 +654,7 @@ static const qos_her_t qs_header_rules[] = {
 #define QS_URL_GEN         ":/\\?#\\[\\]@"
 #define QS_URL_SUB         "!\\$&'\\(\\)\\*\\+,;="
 #define QS_URL             "["QS_URL_GEN""QS_URL_SUB""QS_URL_UNRESERVED"]"
+#define QS_2616TOKEN       "[\\x21\\x23-\\x27\\x2a-\\x2e0-9A-Z\\x5-\\x60a-z\\x7e]+"
 #define QS_B64_SP          "[a-zA-Z0-9 \\+/\\$=:]"
 #define QS_H_ACCEPT        "[a-zA-Z0-9_\\*\\+\\-]+/[a-zA-Z0-9_\\*\\+\\.\\-]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_C      "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
@@ -702,7 +703,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Range", "^[a-zA-Z0-9=_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 200 },
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
   { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?"QS_H_TE")*$", QS_FLT_ACTION_DROP, 100 },
-  { "Transfer-Encoding", "^chunked|compress|deflate|gzip|identity$", QS_FLT_ACTION_DROP, 100 },
+  { "Transfer-Encoding", "^chunked|Chunked|compress|Compress|deflate|Deflate|gzip|Gzip|identity|Identity$", QS_FLT_ACTION_DENY, 100 },
   { "Unless-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "User-Agent", "^[a-zA-Z0-9]+[a-zA-Z0-9_\\.:;\\(\\)@ /\\+!=,\\-]+$", QS_FLT_ACTION_DROP, 300 },
   { "Via", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 100 },

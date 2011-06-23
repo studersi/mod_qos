@@ -2,7 +2,8 @@ Version
 
  - New variable QS_ErrorNotes.
 
- - Add Transfer-Encoding to the built-in request header white list.
+ - Add "Transfer-Encoding" (very strict) to the built-in request header
+   white list.
 
 Version 9.57
 
