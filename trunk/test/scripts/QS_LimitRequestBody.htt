@@ -1,6 +1,5 @@
-http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
 #
-# $Id: QS_LimitRequestBody.htt,v 1.3 2009-01-22 21:25:08 pbuchbinder Exp $
+# $Id: QS_LimitRequestBody.htt,v 1.4 2011-06-23 20:08:35 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -38,6 +37,7 @@ __Host: localhost
 __Transfer-Encoding: chunked
 __Content-Type: text/xml
 _FLUSH
+__<node>
 __$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
 __$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
 __$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
@@ -61,8 +61,51 @@ _CHUNKED
 _FLUSH
 __$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
 __$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__</node>
 _CHUNKED
 _CHUNKED
+__
+_EXPECT . "code=044"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(044\): access denied, QS_LimitRequestBody: max=65536"
+_EXEC tail -2 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi-local/sleep.cgi?s=20 HTTP/1.1
+__Host: localhost
+__Transfer-Encoding: chunked
+__Content-Type: text/xml
+_FLUSH
+__<node>
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__</node>
+_CHUNK
+__
+__0
 __
 _EXPECT . "code=044"
 _WAIT
@@ -80,5 +123,3 @@ _EXPECT . "code=044"
 _WAIT
 
 END
-
-
