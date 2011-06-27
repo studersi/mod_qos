@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.318 2011-06-23 20:08:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.319 2011-06-27 12:31:24 pbuchbinder Exp $";
 static const char g_revision[] = "9.58";
 
 /************************************************************************
@@ -4950,7 +4950,7 @@ static char *qos_this_host(request_rec *r) {
 static apr_status_t qos_cleanup_conn(void *p) {
   qs_conn_ctx *cconf = p;
   qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool);
-  if(cconf->sconf->has_qos_cc && cconf->sconf->qos_cc_prefer) {
+  if(cconf->sconf->has_qos_cc || cconf->sconf->qos_cc_prefer) {
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT15 */
     if(m_generation == u->generation && u->qos_cc->connections > 0) {
       u->qos_cc->connections--;

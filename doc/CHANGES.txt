@@ -1,4 +1,7 @@
-Version
+Version 9.58
+
+ - Fixed: IP does not get marked as VIP if QS_ClientPrefer has not
+   been defined.
 
  - New variable QS_ErrorNotes.
 
