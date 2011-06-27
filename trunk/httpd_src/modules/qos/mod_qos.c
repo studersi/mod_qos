@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.320 2011-06-27 13:30:31 pbuchbinder Exp $";
-static const char g_revision[] = "9.59";
+static const char revision[] = "$Id: mod_qos.c,v 5.321 2011-06-27 19:40:46 pbuchbinder Exp $";
+static const char g_revision[] = "9.60";
 
 /************************************************************************
  * Includes
@@ -3650,10 +3650,12 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
         (*e)->block = 0;
+        (*e)->block_time = 0;
       }
       if(((*e)->limit_time + sconf->qos_cc_limit_time) < now) {
         /* reset expired events */
         (*e)->limit = 0;
+        (*e)->limit_time = 0;
       }
       /* mark lowpkt client */
       if(lowrate || unusual_bahavior) {
@@ -3762,11 +3764,15 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
         (*e)->block = 0;
+        (*e)->block_time = 0;
       }
       if(block_event_str) {
         /* increment block event */
         (*e)->block++;
-        (*e)->block_time = now;
+        if((*e)->block == 1) {
+          /* ... and start timer */
+          (*e)->block_time = now;
+        }
         /* only once per request */
         apr_table_set(r->subprocess_env, "QS_Block_seen", "");
       }
@@ -3788,11 +3794,15 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       if(((*e)->limit_time + sconf->qos_cc_limit_time) < now) {
         /* reset expired events */
         (*e)->limit = 0;
+        (*e)->limit_time = 0;
       }
       if(limit_event_str) {
         /* increment limit event */
         (*e)->limit++;
-        (*e)->limit_time = now;
+        if((*e)->limit == 1) {
+          /* ... and start timer */
+          (*e)->limit_time = now;
+        }
         /* only once per request */
         apr_table_set(r->subprocess_env, "QS_Limit_seen", "");
       }
@@ -3899,6 +3909,7 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
         } else {
           /* release */
           (*e)->block = 0;
+          (*e)->block_time = 0;
         }
       }
     }

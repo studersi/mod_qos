@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.159 2011-05-18 18:03:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.160 2011-06-27 19:40:46 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -399,6 +399,14 @@ if [ $? -ne 0 ]; then
 fi
 
 # - real ip -------------------------------------------------------
+./ctl.sh restart -D real_ip > /dev/null
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventBlockCount2.htt" >>  logs/error_log
+./run.sh -se ./scripts/QS_ClientEventBlockCount2.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventBlockCount2.htt"
+fi
+
 ./ctl.sh restart -D real_ip > /dev/null
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventBlockCount.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_ClientEventBlockCount.htt
