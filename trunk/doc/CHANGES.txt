@@ -1,3 +1,8 @@
+Version 9.59
+
+ - Fixed: QS_ClientEventBlockCount/QS_ClientEventLimitCount get not reset
+   if client causes events continuously.
+
 Version 9.58
 
  - Fixed: IP does not get marked as VIP if QS_ClientPrefer has not

@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.319 2011-06-27 12:31:24 pbuchbinder Exp $";
-static const char g_revision[] = "9.58";
+static const char revision[] = "$Id: mod_qos.c,v 5.320 2011-06-27 13:30:31 pbuchbinder Exp $";
+static const char g_revision[] = "9.59";
 
 /************************************************************************
  * Includes
@@ -3664,12 +3664,18 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       if(block_event) {
         /* increment block event */
         (*e)->block++;
-        (*e)->block_time = now;
+        if((*e)->block == 1) {
+          /* ... and start timer */
+          (*e)->block_time = now;
+        }
       }
       if(limit_event) {
         /* increment limit event */
         (*e)->limit++;
-        (*e)->limit_time = now;
+        if((*e)->limit == 1) {
+          /* ... and start timer */
+          (*e)->limit_time = now;
+        }
       }
     } else if((*e)->lowrate) {
       /* reset low prio client after 24h */
