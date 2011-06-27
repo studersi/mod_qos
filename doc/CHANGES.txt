@@ -1,4 +1,4 @@
-Version 9.59
+Version 9.60
 
  - Fixed: QS_ClientEventBlockCount/QS_ClientEventLimitCount get not reset
    if client causes events continuously.
