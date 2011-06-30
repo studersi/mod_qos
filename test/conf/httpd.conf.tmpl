@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.185 2011-05-17 19:56:59 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.186 2011-06-30 12:34:38 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -89,6 +89,10 @@ QS_EnableInternalIPSimulation off
 
 QS_ClientEventRequestLimit 2
 QS_ClientSerialize
+
+<IfDefine logonly>
+QS_LogOnly              on
+</IfDefine>
 
 Options                 FollowSymLinks Indexes Includes
 DefaultType             text/plain
