@@ -1,3 +1,8 @@
+Version
+
+ - New directive QS_LogOnly may be used to disable rule enforcement
+  (permissive mode).
+
 Version 9.60
 
  - Fixed: QS_ClientEventBlockCount/QS_ClientEventLimitCount get not reset
@@ -625,7 +630,7 @@ Version 7.0
    Available for Apache 2.2 only.
 
  - QS_SrvConnTimeout is no longer available.
-   Use may QS_SrvRequestRate instead.
+   You may use QS_SrvRequestRate instead.
 
 Version 6.7
 

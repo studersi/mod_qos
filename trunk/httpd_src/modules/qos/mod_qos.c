@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.321 2011-06-27 19:40:46 pbuchbinder Exp $";
-static const char g_revision[] = "9.60";
+static const char revision[] = "$Id: mod_qos.c,v 5.322 2011-06-30 12:34:38 pbuchbinder Exp $";
+static const char g_revision[] = "9.61";
 
 /************************************************************************
  * Includes
@@ -503,6 +503,7 @@ typedef struct {
 #endif
   int disable_handler;
   /* client control */
+  int log_only;               /* GLOBAL ONLY */
   int has_qos_cc;             /* GLOBAL ONLY */
   int qos_cc_size;            /* GLOBAL ONLY */
   int qos_cc_prefer;          /* GLOBAL ONLY */
@@ -2743,11 +2744,13 @@ static int qos_hp_event_deny_filter(request_rec *r, qos_srv_config *sconf, qos_d
       const char *error_page = sconf->error_page;
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-      rc = qos_error_response(r, error_page);
-      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-        return rc;
+      if(!sconf->log_only) {
+        rc = qos_error_response(r, error_page);
+        if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+          return rc;
+        }
+        return rv;
       }
-      return rv;
     }
   }
   return DECLINED;
@@ -2772,11 +2775,13 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
     const char *error_page = sconf->error_page;
     qs_req_ctx *rctx = qos_rctx_config_get(r);
     rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-    rc = qos_error_response(r, error_page);
-    if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-      return rc;
+    if(!sconf->log_only) {
+      rc = qos_error_response(r, error_page);
+      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+        return rc;
+      }
+      return rv;
     }
-    return rv;
   }
   return DECLINED;
 }
@@ -2867,11 +2872,12 @@ static void qos_enable_parp(request_rec *r) {
 }
 
 /** generic request validation */
-static apr_status_t qos_request_check(request_rec *r) {
+static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
   if((r->parsed_uri.path == NULL) || (r->unparsed_uri == NULL)) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(045)"access denied, invalid request line:"
-                  " can't parse uri, c=%s, id=%s",
+                  " can't parse uri,%s c=%s, id=%s",
+                  sconf->log_only ? " ignores log only mode," : "",
                   r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                   qos_unique_id(r, "045"));
     return HTTP_BAD_REQUEST;
@@ -3129,11 +3135,13 @@ static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_c
       const char *error_page = sconf->error_page;
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-      rc = qos_error_response(r, error_page);
-      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-        return rc;
+      if(!sconf->log_only) {
+        rc = qos_error_response(r, error_page);
+        if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+          return rc;
+        }
+        return rv;
       }
-      return rv;
     }
   }
   return DECLINED;
@@ -3142,7 +3150,7 @@ static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_c
 /* 
  * Dynamic keep alive
  */
-static void qos_keepalive(request_rec *r) {
+static void qos_keepalive(request_rec *r, qos_srv_config *sconf) {
   if(r->subprocess_env) {
     const char *v = apr_table_get(r->subprocess_env, QS_KEEPALIVE);
     if(v) {
@@ -3156,16 +3164,20 @@ static void qos_keepalive(request_rec *r) {
         /* copy the server record (I konw, but least this works ...) */
         if(!rctx->evmsg || !strstr(rctx->evmsg, "T;")) {
           /* copy it only once (@hp or @out-filter) */
-          server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
-          server_rec *sc = apr_pcalloc(r->connection->pool, sizeof(server_rec));
-          memcpy(sr, r->server, sizeof(server_rec));
-          memcpy(sc, r->connection->base_server, sizeof(server_rec));
-          r->server = sr;
-          r->connection->base_server = sc;
+          if(!sconf->log_only) {
+            server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+            server_rec *sc = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+            memcpy(sr, r->server, sizeof(server_rec));
+            memcpy(sc, r->connection->base_server, sizeof(server_rec));
+            r->server = sr;
+            r->connection->base_server = sc;
+          }
           rctx->evmsg = apr_pstrcat(r->pool, "T;", rctx->evmsg, NULL);
         }
-        r->server->keep_alive_timeout = kat;
-        r->connection->base_server->keep_alive_timeout = kat;
+        if(!sconf->log_only) {
+          r->server->keep_alive_timeout = kat;
+          r->connection->base_server->keep_alive_timeout = kat;
+        }
       }
     }
   }
@@ -3261,9 +3273,13 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
     const char *error_page = sconf->error_page;
     qs_req_ctx *rctx = qos_rctx_config_get(r);
     rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-    rc = qos_error_response(r, error_page);
-    if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-      rv = rc;
+    if(!sconf->log_only) {
+      rc = qos_error_response(r, error_page);
+      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+        rv = rc;
+      }
+    } else {
+      return DECLINED;
     }
   }
   return rv;
@@ -3302,10 +3318,13 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
         struct timespec delay;
         delay.tv_sec  = 0;
         delay.tv_nsec = 100 * 1000000;
-        nanosleep(&delay, NULL);
         if(!rctx->evmsg || !strstr(rctx->evmsg, "s;")) {
           rctx->evmsg = apr_pstrcat(r->pool, "s;", rctx->evmsg, NULL);
         }
+        if(sconf->log_only) {
+          return;
+        }
+        nanosleep(&delay, NULL);
       }
       // max wait time: 10 minutes
       if(loops >= 600) {
@@ -3366,11 +3385,13 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
                       r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                       qos_unique_id(r, "065"));
         rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-        rc = qos_error_response(r, error_page);
-        if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-          return rc;
+        if(!sconf->log_only) {
+          rc = qos_error_response(r, error_page);
+          if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+            return rc;
+          }
+          return m_retcode;
         }
-        return m_retcode;
       }
     }
   }
@@ -3822,15 +3843,17 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT17 */
-    if(req_per_sec_block_rate) {
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
-      int sec = req_per_sec_block_rate / 1000;
-      int nsec = req_per_sec_block_rate % 1000;
-      struct timespec delay;
-      rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
-      delay.tv_sec  = sec;
-      delay.tv_nsec = nsec * 1000000;
-      nanosleep(&delay,NULL);
+    if(!sconf->log_only) {
+      if(req_per_sec_block_rate) {
+        qs_req_ctx *rctx = qos_rctx_config_get(r);
+        int sec = req_per_sec_block_rate / 1000;
+        int nsec = req_per_sec_block_rate % 1000;
+        struct timespec delay;
+        rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+        delay.tv_sec  = sec;
+        delay.tv_nsec = nsec * 1000000;
+        nanosleep(&delay,NULL);
+      }
     }
   }
   return ret;
@@ -4723,7 +4746,9 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
             inctx->time = now;
             inctx->nbytes = 0;
           } else {
-            apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+            if(!sconf->log_only) {
+              apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+            }
           }
           /* mark slow clients (QS_ClientPrefer) even they are VIP */
           inctx->shutdown = 1;
@@ -4766,12 +4791,14 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                 inctx->time = interval + QS_REQ_RATE_TM;
                 inctx->nbytes = 0;
               } else {
-                if(inctx->status == QS_CONN_STATE_RESPONSE) {
-                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
-                  /* close out socket (the hard way) */
-                  apr_socket_close(inctx->client_socket);
-                } else {
-                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+                if(!sconf->log_only) {
+                  if(inctx->status == QS_CONN_STATE_RESPONSE) {
+                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
+                    /* close out socket (the hard way) */
+                    apr_socket_close(inctx->client_socket);
+                  } else {
+                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+                  }
                 }
               }
               /* mark slow clients (QS_ClientPrefer) even they are VIP */
@@ -4841,7 +4868,7 @@ static void qos_audit(request_rec *r, qos_dir_config *dconf) {
   }
 }
 
-static void qos_delay(request_rec *r) {
+static void qos_delay(request_rec *r, qos_srv_config *sconf) {
   const char *d = apr_table_get(r->subprocess_env, "QS_Delay");
   if(d) {
     apr_off_t s;
@@ -4853,14 +4880,16 @@ static void qos_delay(request_rec *r) {
     if((s = apr_atoi64(d)) > 0)
 #endif
       {
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
-      int sec = s / 1000;
-      int nsec = s % 1000;
-      struct timespec delay;
-      rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
-      delay.tv_sec  = sec;
-      delay.tv_nsec = nsec * 1000000;
-      nanosleep(&delay,NULL);      
+        if(!sconf->log_only) {
+          qs_req_ctx *rctx = qos_rctx_config_get(r);
+          int sec = s / 1000;
+          int nsec = s % 1000;
+          struct timespec delay;
+          rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+          delay.tv_sec  = sec;
+          delay.tv_nsec = nsec * 1000000;
+          nanosleep(&delay,NULL);     
+        } 
     }
   }
 }
@@ -5104,8 +5133,10 @@ static int qos_process_connection(conn_rec *c) {
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                    "%s",
                    msg == NULL ? "-" : msg);
-      c->keepalive = AP_CONN_CLOSE;
-      return qos_return_error(c);
+      if(!sconf->log_only) {
+        c->keepalive = AP_CONN_CLOSE;
+        return qos_return_error(c);
+      }
     }
     /* QS_SrvMaxConn: vhost connections */
     if((sconf->max_conn != -1) && !vip) {
@@ -5116,8 +5147,10 @@ static int qos_process_connection(conn_rec *c) {
                      " c=%s",
                      sconf->max_conn, connections,
                      c->remote_ip == NULL ? "-" : c->remote_ip);
-        c->keepalive = AP_CONN_CLOSE;
-        return qos_return_error(c);
+        if(!sconf->log_only) {
+          c->keepalive = AP_CONN_CLOSE;
+          return qos_return_error(c);
+        }
       }
     }
     /* single source ip */
@@ -5144,8 +5177,10 @@ static int qos_process_connection(conn_rec *c) {
                          c->remote_ip == NULL ? "-" : c->remote_ip);
           }
         }
-        c->keepalive = AP_CONN_CLOSE;
-        return qos_return_error(c);
+        if(!sconf->log_only) {
+          c->keepalive = AP_CONN_CLOSE;
+          return qos_return_error(c);
+        }
       } else {
         if(e->error > 0) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
@@ -5246,7 +5281,7 @@ static int qos_post_read_request(request_rec *r) {
   if(apr_table_get(r->connection->notes, "QS_ClientLowPrio")) {
     apr_table_set(r->subprocess_env, "QS_ClientLowPrio", "1");
   }
-  if(qos_request_check(r) != APR_SUCCESS) {
+  if(qos_request_check(r, sconf) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;
   }
   qos_parp_prr(r, sconf);
@@ -5349,11 +5384,13 @@ static int qos_header_parser1(request_rec * r) {
       const char *error_page = sconf->error_page;
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-      rc = qos_error_response(r, error_page);
-      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-        return rc;
+      if(!sconf->log_only) {
+        rc = qos_error_response(r, error_page);
+        if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+          return rc;
+        }
+        return rv;
       }
-      return rv;
     }
   }
   return DECLINED;
@@ -5423,7 +5460,9 @@ static int qos_header_parser(request_rec * r) {
     /* 
      * Dynamic keep alive
      */
-    qos_keepalive(r);
+    if(!sconf->log_only) {
+      qos_keepalive(r, sconf);
+    }
 
     /*
      * VIP control
@@ -5503,11 +5542,13 @@ static int qos_header_parser(request_rec * r) {
         rctx = qos_rctx_config_get(r);
       }
       rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-      rc = qos_error_response(r, error_page);
-      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-        return rc;
+      if(!sconf->log_only) {
+        rc = qos_error_response(r, error_page);
+        if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+          return rc;
+        }
+        return m_retcode;
       }
-      return m_retcode;
     }
     
     /* 
@@ -5560,11 +5601,13 @@ static int qos_header_parser(request_rec * r) {
                           r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                           qos_unique_id(r, "010"));
             rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-            rc = qos_error_response(r, error_page);
-            if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-              return rc;
+            if(!sconf->log_only) {
+              rc = qos_error_response(r, error_page);
+              if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+                return rc;
+              }
+              return m_retcode;
             }
-            return m_retcode;
           }
         }
         /*
@@ -5580,7 +5623,9 @@ static int qos_header_parser(request_rec * r) {
             rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
             delay.tv_sec  = sec;
             delay.tv_nsec = nsec * 1000000;
-            nanosleep(&delay,NULL);
+            if(!sconf->log_only) {
+              nanosleep(&delay,NULL);
+            }
             /* don't wait more than once */
             req_per_sec_block = 0;
           }
@@ -5633,11 +5678,13 @@ static int qos_header_parser(request_rec * r) {
                               r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                               qos_unique_id(r, "011"));
                 rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-                rc = qos_error_response(r, error_page);
-                if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-                  return rc;
+                if(!sconf->log_only) {
+                  rc = qos_error_response(r, error_page);
+                  if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+                    return rc;
+                  }
+                  return m_retcode;
                 }
-                return m_retcode;
               }
             }
           }
@@ -5656,13 +5703,15 @@ static int qos_header_parser(request_rec * r) {
       rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
       delay.tv_sec  = sec;
       delay.tv_nsec = nsec * 1000000;
-      nanosleep(&delay,NULL);
+      if(!sconf->log_only) {
+        nanosleep(&delay,NULL);
+      }
     }
 
     /*
      * QS_Delay
      */
-    qos_delay(r);
+    qos_delay(r, sconf);
 
   }
   return DECLINED;
@@ -5703,11 +5752,13 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
                       r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                       qos_unique_id(r, "044"));
         rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
-        rc = qos_error_response(r, error_page);
-        if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-          return rc;
+        if(!sconf->log_only) {
+          rc = qos_error_response(r, error_page);
+          if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+            return rc;
+          }
+          return HTTP_REQUEST_ENTITY_TOO_LARGE;
         }
-        return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
     }
   }
@@ -5899,10 +5950,11 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
 static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qs_req_ctx *rctx = qos_rctx_config_get(r);
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   if(rctx->entry && rctx->entry->kbytes_per_sec_block_rate) {
     if(rctx->is_vip) {
       rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
-    } else {
+    } else if(!sconf->log_only) {
       /*
        * QS_LocKBytesPerSecLimit enforcement
        */
@@ -5917,7 +5969,7 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
   } else if(rctx->event_kbytes_per_sec_block_rate) {
     if(rctx->is_vip) {
       rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
-    } else {
+    } else if(!sconf->log_only) {
       /*
        * QS_EventKBytesPerSecLimit enforcement
        */
@@ -6218,7 +6270,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     qos_header_filter(r, sconf, r->headers_out, "response",
                       sconf->reshfilter_table, dconf->headerfilter);
   }
-  qos_keepalive(r);
+  qos_keepalive(r, sconf);
   if(sconf->max_conn_close != -1) {
     if(sconf->act->conn->connections > sconf->max_conn_close) {
       qs_req_ctx *rctx = qos_rctx_config_get(r);
@@ -6483,6 +6535,10 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       net_prefer = atoi(pdir->args);
       sconf->max_clients = net_prefer;
     }
+  }
+  if(sconf->log_only) {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
+                 QOS_LOG_PFX(009)"running in 'log only' mode - rules are NOT enforced!");
   }
   if(net_prefer <= 1) {
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
@@ -7179,6 +7235,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->hfilter_table = apr_table_make(p, 5);
   sconf->reshfilter_table = apr_table_make(p, 5);
   sconf->disable_reqrate_events = apr_table_make(p, 1);
+  sconf->log_only = 0;
   sconf->has_qos_cc = 0;
   sconf->qos_cc_size = 50000;
   sconf->qos_cc_prefer = 0;
@@ -7246,6 +7303,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->chroot = b->chroot;
   o->hfilter_table = b->hfilter_table;
   o->reshfilter_table = b->reshfilter_table;
+  o->log_only = b->log_only;
   o->has_qos_cc = b->has_qos_cc;
   o->qos_cc_size = b->qos_cc_size;
   o->qos_cc_prefer = b->qos_cc_prefer;
@@ -7347,6 +7405,17 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
     o->milestone_timeout = b->milestone_timeout;
   }
   return o;
+}
+
+const char *qos_logonly_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->log_only = flag;
+  return NULL;
 }
 
 const char *qos_mfile_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
@@ -8780,6 +8849,10 @@ const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
 #endif
 
 static const command_rec qos_config_cmds[] = {
+  AP_INIT_FLAG("QS_LogOnly", qos_logonly_cmd, NULL,
+               RSRC_CONF,
+               "QS_LogOnly 'on'|'off', enabled log only mode where no limitations are"
+               " enforced. Default is off."),
   AP_INIT_TAKE1("QS_SemMemFile", qos_mfile_cmd, NULL,
                 RSRC_CONF,
                 "QS_SemMemFile <path>, optional path to a directory or file"
@@ -8848,7 +8921,7 @@ static const command_rec qos_config_cmds[] = {
                  RSRC_CONF,
                  "QS_UserTrackingCookieName <name> [<path>], enables the user tracking cookie by"
                  " defining a cookie name. User tracking requires mod_unique_id."
-                 " This feature is disabled by default."),
+                 " This feature is disabled by default. Ignores QS_LogOnly."),
   /* vip session */
   AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
                 RSRC_CONF,
