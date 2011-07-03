@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.322 2011-06-30 12:34:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.323 2011-07-03 20:46:53 pbuchbinder Exp $";
 static const char g_revision[] = "9.61";
 
 /************************************************************************
@@ -151,6 +151,8 @@ static const char g_revision[] = "9.61";
 #endif
 #define QOS_CC_BEHAVIOR_TOLERANCE_STR "500"
 #define QOS_CC_BEHAVIOR_TOLERANCE_MIN 5
+
+#define QS_ERR_TIME_FORMAT "%a %b %d %H:%M:%S %Y"
 
 #define QOS_DELIM ";"
 
@@ -4354,9 +4356,14 @@ static void qos_bars(request_rec *r, server_rec *bs) {
     ap_rputs("<table border=\"0\" cellpadding=\"2\" "
              "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
     ap_rputs("<tr class=\"rowe\">\n", r);
-
     ap_rputs("<td colspan=\"2\">overview</td>", r);
     ap_rputs("</tr>\n", r);
+
+    if(bsconf->log_only) {
+      ap_rputs("<tr class=\"rowt\">\n", r);
+      ap_rputs("<td colspan=\"2\">running in 'log only' mode - rules are NOT enforced</td>", r);
+      ap_rputs("</tr>\n", r);
+    }
 
     connections = bsconf->act->conn->connections;
     s = s->next;
@@ -4419,10 +4426,30 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     qos_ext_status_short(r, qt);
     return OK;
   }
-  ap_rprintf(r, "<h2>mod_qos %s</h2>\n", ap_escape_html(r->pool, qos_revision(r->pool)));
+  if(strcmp(r->handler, "qos-viewer") != 0) {
+    ap_rputs("<hr>\n", r);
+    ap_rputs("<table style=\"width:400px\" cellspacing=0 cellpadding=0>\n", r);
+    ap_rputs("<tr><td bgcolor=\"#000000\">\n", r);
+    ap_rputs("<b><font color=\"#ffffff\" face=\"Arial,Helvetica\">", r);
+    ap_rprintf(r, "mod_qos&nbsp;%s", ap_escape_html(r->pool, qos_revision(r->pool)));
+    ap_rputs("</font></b>\r", r);
+    ap_rputs("</td></tr>\n", r);
+    ap_rputs("</table>\n", r);
+    if(sconf->log_only) {
+      ap_rputs("<p>running in 'log only' mode - rules are NOT enforced</p>\n", r);
+    }      
+  }
 #ifdef QS_INTERNAL_TEST
-  ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE<br>\n", r);
-  ap_rprintf(r, "client ip=%s</p>\n", qos_ip_long2str(r, qos_inet_addr(r->connection->remote_ip)));
+  {
+    unsigned long remoteip = qos_inet_addr(r->connection->remote_ip);
+    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
+                                                            &qos_module);
+    if(cconf) {
+      remoteip = cconf->ip;
+    }
+    ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE<br>\n", r);
+    ap_rprintf(r, "client ip=%s</p>\n", qos_ip_long2str(r, remoteip));
+  }
 #endif
   if(strcmp(r->handler, "qos-viewer") == 0) {
     qos_bars(r, s);
@@ -4432,7 +4459,6 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     ap_rputs("<table class=\"btable\"><tbody>\n", r);
     ap_rputs(" <tr class=\"row\"><td>\n", r);
   } else {
-    ap_rputs("<hr>\n", r);
     ap_rputs("<table border=\"1\"><tbody>\n", r);
     ap_rputs(" <tr><td>\n", r);
   }
@@ -4672,9 +4698,6 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   }
   ap_rputs(" </td></tr>\n", r);
   ap_rputs("</tbody></table>\n", r);
-  if(strcmp(r->handler, "qos-viewer") != 0) {
-    ap_rputs("<hr>\n", r);
-  }
   return OK;
 }
 
@@ -7010,15 +7033,6 @@ static int qos_handler_view(request_rec * r) {
           padding: 0px;\n\
           margin: 0px;\n\
   }\n\
-  .row2  {\n\
-          background-color: rgb(233,240,235);\n\
-          vertical-align: top;\n\
-          border: 1px solid;\n\
-          border-color: black;\n\
-          font-weight: normal;\n\
-          padding: 0px;\n\
-          margin: 0px;\n\
-  }\n\
   .rowe {\n\
           background-color: rgb(186,200,190);\n\
           vertical-align: top;\n\
@@ -7028,14 +7042,9 @@ static int qos_handler_view(request_rec * r) {
           padding: 0px;\n\
           margin: 0px;\n\
   }\n\
-  .rowe2 {\n\
-          background-color: rgb(175,185,177);\n\
-          vertical-align: top;\n\
-          border: 1px solid;\n\
-          border-color: black;\n\
-          font-weight: normal;\n\
-          padding: 0px;\n\
-          margin: 0px;\n\
+  .small {\n\
+          font-size: 0.75em;\n\
+          font-family: courier;\n\
   }\n\
   .prog-border {\n\
           height: 10px;\n\
@@ -7056,6 +7065,13 @@ static int qos_handler_view(request_rec * r) {
     ap_rputs("</style>\n", r);
     ap_rputs("</head><body>\n", r);
     qos_ext_status_hook(r, 0);
+    {
+      apr_time_t nowtime = apr_time_now();
+      ap_rvputs(r, "<div class=\"small\">",
+                ap_ht_time(r->pool, nowtime, QS_ERR_TIME_FORMAT, 0), NULL);
+      ap_rprintf(r, ", mod_qos %s\n", ap_escape_html(r->pool, qos_revision(r->pool)));
+
+    }
     ap_rputs("</body></html>", r);
   }
   return OK;

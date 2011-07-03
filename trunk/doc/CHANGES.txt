@@ -3,6 +3,8 @@ Version
  - New directive QS_LogOnly may be used to disable rule enforcement
   (permissive mode).
 
+ - Minor changes within the status viewer.
+
 Version 9.60
 
  - Fixed: QS_ClientEventBlockCount/QS_ClientEventLimitCount get not reset
