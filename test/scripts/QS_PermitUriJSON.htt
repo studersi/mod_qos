@@ -1,5 +1,5 @@
 #
-# $Id: QS_PermitUriJSON.htt,v 1.3 2010-11-03 21:12:31 pbuchbinder Exp $
+# $Id: QS_PermitUriJSON.htt,v 1.4 2011-07-03 20:46:53 pbuchbinder Exp $
 #
 
 
@@ -81,7 +81,7 @@ __ }
 _EXPECT . "!500 Internal Server Error"
 _EXPECT . "!code=041"
 _EXPECT . "200 OK"
-_EXPECT . "<h2>mod_qos"
+_EXPECT . ", mod_qos"
 _WAIT
 _CLOSE
 
@@ -127,7 +127,7 @@ __        "frame rates": [ 24 , 30 , 60, 72 ]
 __    }
 __ }
 _EXPECT . "200 OK"
-_EXPECT . "<h2>mod_qos"
+_EXPECT . ", mod_qos"
 _WAIT
 _CLOSE
 
