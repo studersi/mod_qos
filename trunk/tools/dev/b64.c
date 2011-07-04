@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: b64.c,v 1.5 2010-12-22 11:33:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.6 2011-07-04 19:33:30 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -30,18 +30,42 @@ static const char revision[] = "$Id: b64.c,v 1.5 2010-12-22 11:33:18 pbuchbinder
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <ctype.h>
 
 /* apr */
 #include <apr_base64.h>
 #include <apr_strings.h>
 
 static void usage() {
-  printf("usage: b64 -e|-d <string>\n");
+  printf("usage: b64 -e|-d|-he|-hd <string>\n");
   printf("\n");
   printf("Base64 encoder/decoder.\n");
   printf("\n");
   printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   exit(1);
+}
+
+static int qos_hex2c(const char *x) {
+  int i, ch;
+  ch = x[0];
+  if (isdigit(ch)) {
+    i = ch - '0';
+  }else if (isupper(ch)) {
+    i = ch - ('A' - 10);
+  } else {
+    i = ch - ('a' - 10);
+  }
+  i <<= 4;
+  
+  ch = x[1];
+  if (isdigit(ch)) {
+    i += ch - '0';
+  } else if (isupper(ch)) {
+    i += ch - ('A' - 10);
+  } else {
+    i += ch - ('a' - 10);
+  }
+  return i;
 }
 
 int main(int argc, const char *const argv[]) {
@@ -72,6 +96,27 @@ int main(int argc, const char *const argv[]) {
     int enc_len = apr_base64_encode(enc, (const char *)argv[1], strlen(argv[1]));
     enc[enc_len] = '\0';
     printf("%s\n", enc);
+  } else if(strcmp(argv[0], "-hd") == 0) {
+    const char *p = argv[1];
+    while(p && p[0]) {
+      if(p[0] == '\\' && (p[1] == 'x' || p[1] == 'X')) {
+	p = p + 2;
+      }
+      if(strlen(p) < 2) {
+	p = NULL;
+      } else {
+	printf("%c", qos_hex2c(p));
+	p = p + 2;
+      }
+    }
+    printf("\n");
+  } else if(strcmp(argv[0], "-he") == 0) {
+    const char *p = argv[1];
+    while(p && p[0]) {
+      printf("\\x%02x", p[0]);
+      p++;
+    }
+    printf("\n");
   }
   apr_pool_destroy(pool);
   return 0;

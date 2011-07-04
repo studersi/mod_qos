@@ -13,7 +13,9 @@
   - enforce rules on certain conditions only (e.g. overall server usage)
     + QS_SrvMinDataRate <bytes per second> [<max bytes per second> [ <free>% ] ]
   - adjust metrics dynamically
-  - learning and permissive mode (server wide, per function)
+  - learning and permissive mode
+    + server wide (global)
+    - per function
   + store metrics as environment variables (used by QS_EventRequestLimit,
     QS_CondLocRequestLimitMatch and others)
     + QS_SrvConn 

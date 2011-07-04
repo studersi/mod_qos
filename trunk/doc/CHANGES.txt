@@ -1,7 +1,7 @@
 Version
 
  - New directive QS_LogOnly may be used to disable rule enforcement
-  (permissive mode).
+   (permissive mode).
 
  - Minor changes within the status viewer.
 
