@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regex.c,v 1.7 2010-12-22 11:33:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: regex.c,v 1.8 2011-07-05 17:51:32 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -59,7 +59,7 @@ static const char revision[] = "$Id: regex.c,v 1.7 2010-12-22 11:33:18 pbuchbind
 
 
 static void usage() {
-  printf("usage: regex <string> <pcre>\n");
+  printf("usage: regex <string>|<path> <pcre>\n");
   printf("\n");
   printf("Regular expression matching test tool (pcre pattern, case less).\n");
   printf("\n");
@@ -67,21 +67,41 @@ static void usage() {
   exit(1);
 }
 
+static int rmatch(const char *line, pcre *pcre) {
+  int ovector[QS_OVECCOUNT];
+  int rc_c = -1;
+  do {
+    int rc = pcre_exec(pcre, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
+    if(rc >= 0) {
+      rc_c = 0;
+      printf("[%.*s]\n", ovector[1] - ovector[0], &line[ovector[0]]);
+      line = &line[ovector[1]];
+      if(ovector[1] - ovector[0] == 0) {
+	line++;
+      }
+    } else {
+      line = NULL;
+    }
+  } while(line && line[0]);
+  return rc_c;
+}
+
 int main(int argc, const char *const argv[]) {
   const char *errptr = NULL;
   int erroffset;
   pcre *pcre;
   int rc_c = -1;
-  int ovector[QS_OVECCOUNT];
   const char *line;
+  const char *in;
   const char *pattern;
+  FILE *file;
 
   argc--;
   argv++;
   if(argc != 2) {
     usage();
   }
-  line = argv[0];
+  in = argv[0];
   pattern = argv[1];
 
   //pcre = pcre_compile(pattern, PCRE_CASELESS, &errptr, &erroffset, NULL);
@@ -92,18 +112,28 @@ int main(int argc, const char *const argv[]) {
     exit(1);
   }
 
-  do {
-    int rc = pcre_exec(pcre, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
-    if(rc >= 0) {
-      rc_c = 0;
-      printf("[%.*s]\n", ovector[1] - ovector[0], &line[ovector[0]]);
-      line = &line[ovector[1]];
-    } else {
-      line = NULL;
+  file = fopen(in, "r");
+  if(file) {
+    char readline[MAX_LINE];
+    while(fgets(readline, MAX_LINE-1, file) != NULL) {
+      int len = strlen(readline);
+      while(len > 0 && readline[len] < 32) {
+	readline[len] = '\0';
+	len--;
+      }
+      if(readline[0] >= 32 && strlen(readline) > 0) {
+	line = readline;
+	rc_c = rmatch(line, pcre);
+      }
     }
-  } while(line);
+    fclose(file);
+  } else {
+    line = in;
+    rc_c = rmatch(line, pcre);
+  }
   if(rc_c < 0) {
     printf("no match\n");
+    return 2;
   }
-  return rc_c;
+  return 0;
 }
