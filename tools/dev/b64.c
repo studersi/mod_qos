@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: b64.c,v 1.6 2011-07-04 19:33:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.7 2011-07-11 20:53:19 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -39,10 +39,50 @@ static const char revision[] = "$Id: b64.c,v 1.6 2011-07-04 19:33:30 pbuchbinder
 static void usage() {
   printf("usage: b64 -e|-d|-he|-hd <string>\n");
   printf("\n");
-  printf("Base64 encoder/decoder.\n");
+  printf("Base64 (or hex) encoder/decoder.\n");
   printf("\n");
   printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   exit(1);
+}
+
+static int qos_is_utf8(unsigned char *in) {
+  // byte 0: 110x xxxx (0xc0) byte 1: 10xx xxxx (0x80)
+  if(((in[0] & 0xe0) == 0xc0) &&
+     ((in[1] & 0xc0) == 0x80)) {
+    return 2;
+  }
+  // byte 0: 1110 xxxx (0xe0)
+  if(((in[0] & 0xf0) == 0xe0) &&
+     ((in[1] & 0xc0) == 0x80) &&
+     ((in[2] & 0xc0) == 0x80)) {
+    return 3;
+  }
+  // byte 0: 1111 0xxx (0xf0)
+  if(((in[0] & 0xf8) == 0xf0) &&
+     ((in[1] & 0xc0) == 0x80) &&
+     ((in[2] & 0xc0) == 0x80) &&
+     ((in[3] & 0xc0) == 0x80)) {
+    return 4;
+  }
+  // byte 0: 1111 10xx (0xf8)
+  if(((in[0] & 0xfc) == 0xf8) &&
+     ((in[1] & 0xc0) == 0x80) &&
+     ((in[2] & 0xc0) == 0x80) &&
+     ((in[3] & 0xc0) == 0x80) &&
+     ((in[4] & 0xc0) == 0x80)) {
+    return 5;
+  }
+  // byte 0: 1111 110x (0xfc)
+  if(((in[0] & 0xfe) == 0xfc) &&
+     ((in[1] & 0xc0) == 0x80) &&
+     ((in[2] & 0xc0) == 0x80) &&
+     ((in[3] & 0xc0) == 0x80) &&
+     ((in[4] & 0xc0) == 0x80) &&
+     ((in[5] & 0xc0) == 0x80)) {
+    return 6;
+  }
+  // single byte char
+  return 0;
 }
 
 static int qos_hex2c(const char *x) {
@@ -101,17 +141,19 @@ int main(int argc, const char *const argv[]) {
     while(p && p[0]) {
       if(p[0] == '\\' && (p[1] == 'x' || p[1] == 'X')) {
 	p = p + 2;
-      }
-      if(strlen(p) < 2) {
-	p = NULL;
+	if(strlen(p) < 2) {
+	  p = NULL;
+	} else {
+	  printf("%c", qos_hex2c(p));
+	  p = p + 2;
+	}
       } else {
-	printf("%c", qos_hex2c(p));
-	p = p + 2;
+	p++;
       }
     }
     printf("\n");
   } else if(strcmp(argv[0], "-he") == 0) {
-    const char *p = argv[1];
+    const unsigned char *p = (const unsigned char *)argv[1];
     while(p && p[0]) {
       printf("\\x%02x", p[0]);
       p++;
