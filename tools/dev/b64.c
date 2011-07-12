@@ -2,7 +2,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2010 Pascal Buchbinder
+ * Copyright (C) 2007-2011 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: b64.c,v 1.7 2011-07-11 20:53:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.8 2011-07-12 19:33:16 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -35,6 +35,9 @@ static const char revision[] = "$Id: b64.c,v 1.7 2011-07-11 20:53:19 pbuchbinder
 /* apr */
 #include <apr_base64.h>
 #include <apr_strings.h>
+
+#define CR 13
+#define LF 10
 
 static void usage() {
   printf("usage: b64 -e|-d|-he|-hd <string>\n");
@@ -85,6 +88,13 @@ static int qos_is_utf8(unsigned char *in) {
   return 0;
 }
 
+static int qos_ishex(char x) {
+  if((x >= '0') && (x <= '9')) return 1;
+  if((x >= 'a') && (x <= 'f')) return 1;
+  if((x >= 'A') && (x <= 'F')) return 1;
+  return 0;
+}
+
 static int qos_hex2c(const char *x) {
   int i, ch;
   ch = x[0];
@@ -108,52 +118,54 @@ static int qos_hex2c(const char *x) {
   return i;
 }
 
-int main(int argc, const char *const argv[]) {
+static void code(const char *mode, const char *line) {
   apr_pool_t *pool;
-  apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
-  argc--;
-  argv++;
-  if(argc != 2) {
-    usage();
-  }
-  if(strcmp(argv[0], "-d") == 0) {
-    char *dec = (char *)apr_palloc(pool, 1 + apr_base64_decode_len(argv[1]));
-    int dec_len = apr_base64_decode(dec, argv[1]);
+  if(strcmp(mode, "-d") == 0) {
+    char *dec = (char *)apr_palloc(pool, 1 + apr_base64_decode_len(line));
+    int dec_len = apr_base64_decode(dec, line);
     if(dec_len > 0) {
       int i;
       dec[dec_len] = '\0';
       for(i = 0; i < dec_len; i++) {
-	if(dec[i] < 32) {
+	if(dec[i] < 32 && dec[i] != CR && dec[i] != LF) {
 	  /* printable only */
 	  dec[i] = '.';
 	}
       }
-      printf("%s\n", dec);
+      printf("%s", dec);
     }
-  } else if(strcmp(argv[0], "-e") == 0) {
-    char *enc = (char *)apr_pcalloc(pool, 1 + apr_base64_encode_len(strlen(argv[1])));
-    int enc_len = apr_base64_encode(enc, (const char *)argv[1], strlen(argv[1]));
+  } else if(strcmp(mode, "-e") == 0) {
+    char *enc = (char *)apr_pcalloc(pool, 1 + apr_base64_encode_len(strlen(line)));
+    int enc_len = apr_base64_encode(enc, (const char *)line, strlen(line));
     enc[enc_len] = '\0';
     printf("%s\n", enc);
-  } else if(strcmp(argv[0], "-hd") == 0) {
-    const char *p = argv[1];
+  } else if(strcmp(mode, "-hd") == 0) {
+    const char *p = line;
     while(p && p[0]) {
-      if(p[0] == '\\' && (p[1] == 'x' || p[1] == 'X')) {
+      if((p[0] == '\\' || p[0] == '0') &&
+	 (p[1] == 'x' || p[1] == 'X') &&
+	 qos_ishex(p[2]) &&
+	 qos_ishex(p[3])) {
 	p = p + 2;
-	if(strlen(p) < 2) {
-	  p = NULL;
-	} else {
-	  printf("%c", qos_hex2c(p));
-	  p = p + 2;
-	}
+	printf("%c", qos_hex2c(p));
+	p = p + 2;
+      } else if((p[0] == '%') &&
+		qos_ishex(p[1]) &&
+		qos_ishex(p[2])) {
+	p = p + 1;
+	printf("%c", qos_hex2c(p));
+	p = p + 2;
+
       } else {
+	if(p[0] != CR && p[0] != LF) {
+	  printf(".");
+	}
 	p++;
       }
     }
-    printf("\n");
-  } else if(strcmp(argv[0], "-he") == 0) {
-    const unsigned char *p = (const unsigned char *)argv[1];
+  } else if(strcmp(mode, "-he") == 0) {
+    const unsigned char *p = (const unsigned char *)line;
     while(p && p[0]) {
       printf("\\x%02x", p[0]);
       p++;
@@ -161,5 +173,22 @@ int main(int argc, const char *const argv[]) {
     printf("\n");
   }
   apr_pool_destroy(pool);
+}
+
+int main(int argc, const char *const argv[]) {
+  apr_app_initialize(&argc, &argv, NULL);
+  argc--;
+  argv++;
+  if(argc < 1) {
+    usage();
+  }
+  if(argc == 2) {
+    code(argv[0], argv[1]);
+  } else {
+    char line[32768];
+    while(fgets(line, sizeof(line), stdin) != NULL) {
+      code(argv[0], line);
+    }
+  }
   return 0;
 }
