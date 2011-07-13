@@ -1,9 +1,12 @@
-Version
+Version 9.61
 
  - New directive QS_LogOnly may be used to disable rule enforcement
    (permissive mode).
 
  - Minor changes within the status viewer.
+
+ - "QS_SetEnvIfStatus QS_SrvMinDataRate QS_Block" limits the allowed
+   number of QS_SrvMinDataRate rule violations.
 
 Version 9.60
 

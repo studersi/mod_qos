@@ -783,7 +783,10 @@ pattern.
 Sets the defined variable in the request environment if the HTTP 
 response status code matches the defined code. This may be used 
 in conjunction with the <code>QS_ClientEventBlockCount</code> 
-directive. Directive may be used on a per server or per location basis.
+directive. Directive may be used on a per server or per location basis.<br>
+The special code <code>QS_SrvMinDataRate</code> may be used to set 
+<code>QS_Block</code> events in order to limit the allowed number of 
+<a href="#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> rule violations.
 </li>
 <li>
 <code>QS_SetEnvIfResBody &lt;string&gt; &lt;env-variable&gt;</code><br>
@@ -1148,6 +1151,7 @@ Defines an IP address or address range to be excluded from connection
 level control restrictions. An address range must end with a ".".
 </li>
 <li>
+<a name="QS_SrvMinDataRate"></a>
 <code>QS_SrvMinDataRate &lt;bytes per second&gt; [&lt;max bytes per second&gt; [&lt;connections&gt;]]</code><br>
 Defines the minimum upload/download throughput a client must generate (the bytes 
 sent/received by the client per seconds). This bandwidth is measured while 
@@ -1678,6 +1682,7 @@ QS_SetEnvIfStatus 417   QS_Block
 QS_SetEnvIfStatus 500   QS_Block
 QS_SetEnvIfStatus 503   QS_Block
 QS_SetEnvIfStatus 505   QS_Block
+QS_SetEnvIfStatus QS_SrvMinDataRate QS_Block
 </pre>
 </td></tr>
 </table>
