@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.323 2011-07-03 20:46:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.324 2011-07-13 19:05:51 pbuchbinder Exp $";
 static const char g_revision[] = "9.61";
 
 /************************************************************************
@@ -125,7 +125,8 @@ static const char g_revision[] = "9.61";
 #define QS_ISVIPREQ       "QS_IsVipRequest"
 #define QS_KEEPALIVE      "QS_KeepAliveTimeout"
 #define QS_MFILE          "/var/tmp/"
-
+#define QS_CLOSE          "QS_SrvMinDataRate"
+  
 #define QS_INCTX_ID inctx->id
 
 /* this is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
@@ -3712,6 +3713,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     if(block_event) {
       /* only once per request */
       apr_table_set(r->subprocess_env, "QS_Block_seen", "");
+      apr_table_set(r->connection->notes, "QS_Block_seen", "");
     }
     if(limit_event) {
       /* only once per request */
@@ -3798,6 +3800,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         }
         /* only once per request */
         apr_table_set(r->subprocess_env, "QS_Block_seen", "");
+        apr_table_set(r->connection->notes, "QS_Block_seen", "");
       }
       if((*e)->block >= sconf->qos_cc_block) {
         *uid = apr_pstrdup(cconf->c->pool, "060");
@@ -4715,6 +4718,31 @@ static void qos_disable_req_rate(server_rec *bs, const char *msg) {
   }
 }
 
+/* QS_Block for connection errors */
+static void qos_inc_block(conn_rec *c, qos_srv_config *sconf, qs_conn_ctx *cconf) {
+  if(sconf->qos_cc_block &&
+     apr_table_get(sconf->setenvstatus_t, QS_CLOSE) &&
+     !apr_table_get(c->notes, "QS_Block_seen")) {
+    qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
+    qos_s_entry_t **e = NULL;
+    qos_s_entry_t new;
+    apr_table_set(c->notes, "QS_Block_seen", "");
+    apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT21:CRT38 */
+    new.ip = cconf->ip;
+    e = qos_cc_get0(u->qos_cc, &new);
+    if(!e) {
+      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+    }
+    /* increment block event */
+    (*e)->block++;
+    if((*e)->block == 1) {
+      /* ... and start timer */
+      (*e)->block_time = apr_time_sec(apr_time_now());
+    }
+    apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT21:CRT38 */
+  }
+}
+
 #if APR_HAS_THREADS
 static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   server_rec *bs = selfv;
@@ -4758,6 +4786,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
             level = APLOG_INFO;
             cconf->has_lowrate = 1; /* mark connection low rate */
           }
+          qos_inc_block(inctx->c, sconf, cconf);
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
                        QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
                        " c=%s",
@@ -4799,6 +4828,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                 level = APLOG_INFO;
                 cconf->has_lowrate = 1; /* mark connection low rate */
               }
+              qos_inc_block(inctx->c, sconf, cconf);
               ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
                            QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
                            " this connection=%d,"
@@ -7757,7 +7787,6 @@ const char *qos_event_bps_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
   return NULL;
 }
 
-
 const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *rc, const char *var) {
   apr_table_t *setenvstatus_t;
   if(cmd->path) {
@@ -7768,10 +7797,22 @@ const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *r
                                                                   &qos_module);
     setenvstatus_t = sconf->setenvstatus_t;
   }
-  int code = atoi(rc);
-  if(code <= 0) {
-    return apr_psprintf(cmd->pool, "%s: invalid HTTP status code",
-                        cmd->directive->directive);    
+  if(strcasecmp(rc, QS_CLOSE) == 0) {
+    const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+    if(err != NULL) {
+      return apr_psprintf(cmd->pool, "%s: "QS_CLOSE" may only be defined globally",
+                          cmd->directive->directive);
+    }
+    if(strcasecmp(var, QS_BLOCK) != 0) {
+      return apr_psprintf(cmd->pool, "%s: "QS_CLOSE" may only be defined for the event "QS_BLOCK,
+                          cmd->directive->directive);
+    }
+  } else {
+    int code = atoi(rc);
+    if(code <= 0) {
+      return apr_psprintf(cmd->pool, "%s: invalid HTTP status code",
+                          cmd->directive->directive);    
+    }
   }
   apr_table_set(setenvstatus_t, rc, var);
   return NULL;
@@ -9113,7 +9154,9 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvIfStatus <status code> <variable>, adds the defined"
                 " request environment variable if the HTTP status code matches the"
-                " defined value."),
+                " defined value. The value '"QS_CLOSE"' may be used as a special"
+                " status code to set a "QS_BLOCK" event in order to handle"
+                " connection close events caused by "QS_CLOSE" rules."),
   AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,
                 "see QS_SetEnvIfResBody"),
