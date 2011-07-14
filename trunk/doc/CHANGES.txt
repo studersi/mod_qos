@@ -1,3 +1,7 @@
+Version 9.62
+
+ - Some code refactoring (performance improvements, no functional changes).
+
 Version 9.61
 
  - New directive QS_LogOnly may be used to disable rule enforcement

@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.324 2011-07-13 19:05:51 pbuchbinder Exp $";
-static const char g_revision[] = "9.61";
+static const char revision[] = "$Id: mod_qos.c,v 5.325 2011-07-14 05:53:13 pbuchbinder Exp $";
+static const char g_revision[] = "9.62";
 
 /************************************************************************
  * Includes
@@ -4718,42 +4718,33 @@ static void qos_disable_req_rate(server_rec *bs, const char *msg) {
   }
 }
 
-/* QS_Block for connection errors */
-static void qos_inc_block(conn_rec *c, qos_srv_config *sconf, qs_conn_ctx *cconf) {
+/* determine ip for QS_Block for connection errors */
+static unsigned long *qos_inc_block(conn_rec *c, qos_srv_config *sconf,
+                                    qs_conn_ctx *cconf, unsigned long *ip) {
   if(sconf->qos_cc_block &&
      apr_table_get(sconf->setenvstatus_t, QS_CLOSE) &&
      !apr_table_get(c->notes, "QS_Block_seen")) {
-    qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-    qos_s_entry_t **e = NULL;
-    qos_s_entry_t new;
     apr_table_set(c->notes, "QS_Block_seen", "");
-    apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT21:CRT38 */
-    new.ip = cconf->ip;
-    e = qos_cc_get0(u->qos_cc, &new);
-    if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, time(NULL));
-    }
-    /* increment block event */
-    (*e)->block++;
-    if((*e)->block == 1) {
-      /* ... and start timer */
-      (*e)->block_time = apr_time_sec(apr_time_now());
-    }
-    apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT21:CRT38 */
+    *ip = cconf->ip;
+    ip++;
   }
+  return ip;
 }
 
 #if APR_HAS_THREADS
 static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+  unsigned long ips[sconf->max_clients]; // list of ip addr. for whose we shall inc. block count
   while(!sconf->inctx_t->exit) {
+    unsigned long *ip = ips;
     int currentcon = 0;
     int req_rate = qos_req_rate_calc(sconf, &currentcon);
     apr_time_t now = apr_time_sec(apr_time_now());
     apr_time_t interval = now - QS_REQ_RATE_TM;
     int i;
     apr_table_entry_t *entry;
+    *ip = 0;
     sleep(1);
     if(sconf->inctx_t->exit) {
       break;
@@ -4786,7 +4777,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
             level = APLOG_INFO;
             cconf->has_lowrate = 1; /* mark connection low rate */
           }
-          qos_inc_block(inctx->c, sconf, cconf);
+          ip = qos_inc_block(inctx->c, sconf, cconf, ip);
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
                        QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
                        " c=%s",
@@ -4828,7 +4819,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                 level = APLOG_INFO;
                 cconf->has_lowrate = 1; /* mark connection low rate */
               }
-              qos_inc_block(inctx->c, sconf, cconf);
+              ip = qos_inc_block(inctx->c, sconf, cconf, ip);
               ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
                            QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
                            " this connection=%d,"
@@ -4865,6 +4856,26 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
       }
     }
     apr_thread_mutex_unlock(sconf->inctx_t->lock); /* @CRT21 */
+    /* QS_Block for connection errors */
+    while(ip != ips) {
+      qos_user_t *u = qos_get_user_conf(sconf->act->ppool);    
+      qos_s_entry_t **e = NULL;
+      qos_s_entry_t new;
+      ip--;
+      apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT38 */
+      new.ip = *ip;
+      e = qos_cc_get0(u->qos_cc, &new);
+      if(!e) {
+        e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      }
+      /* increment block event */
+      (*e)->block++;
+      if((*e)->block == 1) {
+        /* ... and start timer */
+        (*e)->block_time = apr_time_sec(apr_time_now());
+      }
+      apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT38 */
+    }
   }
   // apr_thread_mutex_lock(sconf->inctx_t->lock);
   // apr_thread_mutex_unlock(sconf->inctx_t->lock);
