@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.5 2011-01-01 20:52:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.6 2011-07-14 19:56:36 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -167,7 +167,7 @@ void qs_freeEvent(qs_event_t *ev) {
 }
 
 /*
- * inserts an event entry (takes the original data, makes no copy!)
+ * inserts an event entry
  * returns event counter (number of updates) for the provided id
  */
 int qs_insertEvent(qs_event_t **l_qs_event, char *id) {

@@ -1,3 +1,7 @@
+Version
+
+ - New utility: qsexec
+
 Version 9.62
 
  - Some code refactoring (performance improvements, no functional changes).
