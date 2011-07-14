@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.162 2011-07-13 19:05:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.163 2011-07-14 08:41:31 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -512,13 +512,6 @@ if [ $? -ne 0 ]; then
 fi
 
 # - DDoS -------------------------------------------------------
-./ctl.sh restart -D BlockOnClose -D real_ip > /dev/null
-./run.sh -s ./scripts/QS_SrvRequestRate_block.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_SrvRequestRate_block.htt"
-fi
-
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_markslow.htt" >>  logs/error_log
 ./ctl.sh restart -D cc -D real_ip > /dev/null
 ./run.sh -s ./scripts/QS_markslow.htt
@@ -638,6 +631,13 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate.htt"
+fi
+
+./ctl.sh restart -D BlockOnClose -D real_ip > /dev/null
+./run.sh -s ./scripts/QS_SrvRequestRate_block.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvRequestRate_block.htt"
 fi
 
 ./ctl.sh restart -D cc -D real_ip > /dev/null
