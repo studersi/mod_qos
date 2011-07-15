@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.325 2011-07-14 05:53:13 pbuchbinder Exp $";
-static const char g_revision[] = "9.62";
+static const char revision[] = "$Id: mod_qos.c,v 5.326 2011-07-15 20:23:35 pbuchbinder Exp $";
+static const char g_revision[] = "9.63";
 
 /************************************************************************
  * Includes
@@ -155,6 +155,7 @@ static const char g_revision[] = "9.62";
 
 #define QS_ERR_TIME_FORMAT "%a %b %d %H:%M:%S %Y"
 
+#define QSMOD 4
 #define QOS_DELIM ";"
 
 #define QOS_MAGIC_LEN 8
@@ -633,6 +634,7 @@ module AP_MODULE_DECLARE_DATA qos_module;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 static unsigned int m_hostcode = 0;
 static int m_generation = 0;
+static int m_qos_cc_partition = QSMOD;
 
 /* mod_parp, forward and optional function */
 APR_DECLARE_OPTIONAL_FN(apr_table_t *, parp_hp_table, (request_rec *));
@@ -979,28 +981,26 @@ static void qos_cc_free(qos_s_t *s) {
 
 /** search an entry */
 static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA) {
-  int even = pA->ip % 2;
-  if(even) {
-    even = s->max / 2;
-  }
-  return bsearch((const void *)&pA, (const void *)&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp);
+  int mod = pA->ip % m_qos_cc_partition;
+  int max = (s->max / m_qos_cc_partition);
+  int start = mod * max;
+  return bsearch((const void *)&pA, (const void *)&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_comp);
 }
 
 /** create a new entry */
 static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  int even = pA->ip % 2;
-  if(even) {
-    even = s->max / 2;
-  }
-  qsort(&s->timed[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp_time);
+  int mod = pA->ip % m_qos_cc_partition;
+  int max = (s->max / m_qos_cc_partition);
+  int start = mod * max;
+  qsort(&s->timed[start], max, sizeof(qos_s_entry_t *), qos_cc_comp_time);
   if(s->num < s->max) {
     s->num++;
   }
-  pB = &s->timed[even];
+  pB = &s->timed[start];
   (*pB)->ip = pA->ip;
   (*pB)->time = now;
-  qsort(&s->ipd[even], s->max/2, sizeof(qos_s_entry_t *), qos_cc_comp);
+  qsort(&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_comp);
 
   (*pB)->vip = 0;
   (*pB)->lowrate = 0;
@@ -8753,7 +8753,19 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
     return err;
   }
   sconf->qos_cc_size = atoi(arg1);
-  sconf->qos_cc_size &= ~1;
+  sconf->qos_cc_size = sconf->qos_cc_size / 100 * 100 ;
+  if(sconf->qos_cc_size < 50000) {
+    m_qos_cc_partition = 2;
+  }
+  if(sconf->qos_cc_size >= 100000) {
+    m_qos_cc_partition = 8;
+  }
+  if(sconf->qos_cc_size >= 500000) {
+    m_qos_cc_partition = 16;
+  }
+  if(sconf->qos_cc_size >= 1000000) {
+    m_qos_cc_partition = 32;
+  }
   if(sconf->qos_cc_size == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
