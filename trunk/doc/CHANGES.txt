@@ -3,7 +3,7 @@ Version
  - New utility: qsexec
 
  - Dynamic client data store partition (depending on the size of the
-   store as defined by QS_ClientEntries).
+   store as defined by QS_ClientEntries) for improved performance.
 
 Version 9.62
 
