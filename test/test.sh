@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.164 2011-07-14 19:56:36 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.165 2011-07-18 06:30:58 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -781,9 +781,14 @@ if [ $? -ne 0 ]; then
 fi
 
 PAT=`./genlog.sh | ../util/src/qsexec -e 'mod_qos\(031\).*, c=([0-9.]*)' -t 5:10 'printf $1'`
-if [ "$PAT" != "127.0.0.1127.0.0.1" ]; then
+if [ "$PAT" != "127.0.0.1127.0.0.1127.0.0.2" ]; then
   ERRORS=`expr $ERRORS + 1`
-  echo "FAILED qsexec test failed ($PAT)"
+  echo "FAILED qsexec test 1 failed ($PAT)"
+fi
+PAT=`./genlog.sh | ../util/src/qsexec -e 'mod_qos\(031\).*, c=([0-9.]*)' -t 5:3 'printf $1'`
+if [ "$PAT" != "127.0.0.2" ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qsexec test 2 failed ($PAT)"
 fi
 
 for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062" | grep -v "(066" | grep -v "(068" | grep -v "(071"`; do
