@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex b64 crs mem json wlsg
+PROGRAMS = regex b64 crs mem json
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -41,12 +41,6 @@ json_OBJECTS = json.lo
 json_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 json: $(json_OBJECTS)
 	$(LINK) $(json_LTFLAGS) -static $(json_OBJECTS) $(json_LDADD)
-
-wlsg_OBJECTS = wlsg.lo
-wlsg_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
-wlsg: $(wlsg_OBJECTS)
-	$(LINK) $(wlsg_LTFLAGS) -static $(wlsg_OBJECTS) $(wlsg_LDADD)
-
 
 stack: stack.c
 	cc -Wall -O3 -o $@ $<
