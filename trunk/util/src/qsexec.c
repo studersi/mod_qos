@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.1 2011-07-14 19:56:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.2 2011-07-18 06:30:58 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -49,15 +49,12 @@ static const char revision[] = "$Id: qsexec.c,v 1.1 2011-07-14 19:56:36 pbuchbin
 #include <apr_portable.h>
 #include <apr_support.h>
 
-#include "qs_util.h"
-
 #ifndef POSIX_MALLOC_THRESHOLD
 #define POSIX_MALLOC_THRESHOLD (10)
 #endif
 #define MAX_REG_MATCH 10
 
 static int m_stdout = 0;
-static qs_event_t *m_list = NULL;
 
 typedef struct {
     int rm_so;
@@ -208,6 +205,8 @@ int main(int argc, const char * const argv[]) {
   regmatch_t regm[MAX_REG_MATCH];
   time_t sec = 0;
   int threshold = 0;
+  int counter = 0;
+  time_t countertime;
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
 
@@ -292,7 +291,6 @@ int main(int argc, const char * const argv[]) {
     exit(1);
   }
   nsub = pcre_info((const pcre *)preg, NULL, NULL);
-  qs_setExpiration(sec);
 
   while(fgets(line, sizeof(line), stdin) != NULL) {
     nr++;
@@ -304,10 +302,16 @@ int main(int argc, const char * const argv[]) {
       if(!replaced) {
 	fprintf(stderr, "[%s]: ERROR, failed to substitute submatches in (%s)\n", cmd, line);
       } else {
-	int count = qs_insertEvent(&m_list, "00");
-	if(count >= threshold) {
-	  system(replaced);
-	  qs_deleteEvent(&m_list, "00");
+	counter++;
+	if(counter == 1) {
+	  countertime = time(NULL);
+	}
+	if(counter >= threshold) {
+	  if(countertime + sec >= time(NULL)) {
+	    system(replaced);
+	  }
+	  countertime = 0;
+	  counter = 0;
 	}
       }
       apr_pool_clear(pool);
