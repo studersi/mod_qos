@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.2 2011-07-18 06:30:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.3 2011-07-19 18:58:50 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -54,8 +54,6 @@ static const char revision[] = "$Id: qsexec.c,v 1.2 2011-07-18 06:30:58 pbuchbin
 #endif
 #define MAX_REG_MATCH 10
 
-static int m_stdout = 0;
-
 typedef struct {
     int rm_so;
     int rm_eo;
@@ -65,7 +63,8 @@ static void usage(char *cmd) {
   printf("\n");
   printf("Parses the data received via stdin and executes the defined command.\n");
   printf("\n");
-  printf("Usage: %s -e <pattern> [-t <number>:<sec>] [-p] [-u <user>] <command string>\n", cmd);
+  printf("Usage: %s -e <pattern> [-t <number>:<sec>] [-c <pattern> [<command string>]]\n", cmd);
+  printf("       [-p] [-u <user>] <command string>\n");
   printf("\n");
   printf("Summary\n");
   printf("%s reads log lines from stdin and searches for the defined pattern.\n", cmd);
@@ -73,17 +72,21 @@ static void usage(char *cmd) {
   printf("\n");
   printf("Options\n");
   printf("  -e <pattern>\n");
-  printf("     Specifes the search pattern.\n");
+  printf("     Specifes the search pattern causing an event which shall trigger the\n");
+  printf("     command.\n");
   printf("  -t <number>:<sec>\n");
   printf("     Defines the number of pattern match within the the defined number of\n");
   printf("     seconds in order to trigger the command execution. By default, every\n");
   printf("     pattern match causes command execution.\n");
+  printf("  -c <pattern> [<command string>]\n");
+  printf("     Pattern which clears the event counter. Executes optionally a command\n");
+  printf("     if an event command has been executed before.\n");
   printf("  -p\n");
   printf("     Writes data also to stdout (for piped logging).\n");
   printf("  -u <name>\n");
   printf("     Become another user, e.g. www-data.\n");
   printf("  <command string>\n");
-  printf("     Defines the command string where $0-$9 are substituted by the\n");
+  printf("     Defines the event command string where $0-$9 are substituted by the\n");
   printf("     submatches of the regular expression.\n");
   printf("\n");
   printf("Example (executes the deny.sh script providing the IP addresses of\n");
@@ -196,9 +199,13 @@ int main(int argc, const char * const argv[]) {
   char line[32768];
   apr_pool_t *pool;
   char *cmd = strrchr(argv[0], '/');
-  const char *out = NULL;
+  const char *command = NULL;
   const char *pattern = NULL;
+  const char *clearcommand = NULL;
+  const char *clearpattern = NULL;
+  int executed = 0;
   pcre *preg;
+  pcre *clearpreg;
   int nsub;
   const char *errptr = NULL;
   int erroffset;
@@ -207,6 +214,7 @@ int main(int argc, const char * const argv[]) {
   int threshold = 0;
   int counter = 0;
   time_t countertime;
+  static int pass = 0;
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
 
@@ -227,6 +235,14 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	username = *(++argv);
       }
+    } else if(strcmp(*argv,"-c") == 0) {
+      if (--argc >= 1) {
+	clearpattern = *(++argv);
+      }
+      if (argc > 2 && *argv[0] != '-') {
+	clearcommand = *(++argv);
+	--argc;
+      }
     } else if(strcmp(*argv,"-t") == 0) {
       if (--argc >= 1) {
 	char *str = apr_pstrdup(pool, *(++argv));
@@ -245,7 +261,7 @@ int main(int argc, const char * const argv[]) {
 	}
       }
     } else if(strcmp(*argv,"-p") == 0) {
-      m_stdout = 1;
+      pass = 1;
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd);
     } else if(strcmp(*argv,"-?") == 0) {
@@ -253,13 +269,13 @@ int main(int argc, const char * const argv[]) {
     } else if(strcmp(*argv,"-help") == 0) {
       usage(cmd);
     } else {
-      out = *argv;
+      command = *argv;
     }
     argc--;
     argv++;
   }
 
-  if(pattern == NULL || out == NULL) {
+  if(pattern == NULL || command == NULL) {
     usage(cmd);
   }
 
@@ -291,16 +307,36 @@ int main(int argc, const char * const argv[]) {
     exit(1);
   }
   nsub = pcre_info((const pcre *)preg, NULL, NULL);
+  if(clearpattern) {
+    clearpreg = pcre_compile(clearpattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
+    if(!clearpreg) {
+      fprintf(stderr, "ERROR, could not compile '%s' at position %d, reason: %s\n",
+	      clearpattern, erroffset, errptr);
+      exit(1);
+    }
+  }
 
   while(fgets(line, sizeof(line), stdin) != NULL) {
     nr++;
-    if(m_stdout) {
+    if(pass) {
       printf("%s", line);
     }
-    if(qs_regexec(preg, line, MAX_REG_MATCH, regm) == 0) {
-      char *replaced = qs_pregsub(pool, out, line, MAX_REG_MATCH, regm);
+    if(clearpattern && (qs_regexec(clearpreg, line, MAX_REG_MATCH, regm) == 0)) {
+      counter = 0;
+      countertime = 0;
+      if(clearcommand && executed) {
+	char *replaced = qs_pregsub(pool, clearcommand, line, MAX_REG_MATCH, regm);
+	if(!replaced) {
+	  fprintf(stderr, "[%s]: ERROR, failed to substitute submatches '%s' in (%s)\n", cmd, clearcommand, line);
+	} else {
+	  system(replaced);
+	}
+	executed = 0;
+      }
+    } else if(qs_regexec(preg, line, MAX_REG_MATCH, regm) == 0) {
+      char *replaced = qs_pregsub(pool, command, line, MAX_REG_MATCH, regm);
       if(!replaced) {
-	fprintf(stderr, "[%s]: ERROR, failed to substitute submatches in (%s)\n", cmd, line);
+	fprintf(stderr, "[%s]: ERROR, failed to substitute submatches '%s' in (%s)\n", cmd, command, line);
       } else {
 	counter++;
 	if(counter == 1) {
@@ -309,6 +345,7 @@ int main(int argc, const char * const argv[]) {
 	if(counter >= threshold) {
 	  if(countertime + sec >= time(NULL)) {
 	    system(replaced);
+	    executed = 1;
 	  }
 	  countertime = 0;
 	  counter = 0;

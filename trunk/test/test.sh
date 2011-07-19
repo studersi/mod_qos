@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.165 2011-07-18 06:30:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.166 2011-07-19 18:58:50 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -780,6 +780,7 @@ if [ $? -ne 0 ]; then
   echo "FAILED qssign test failed"
 fi
 
+echo "- exec"
 PAT=`./genlog.sh | ../util/src/qsexec -e 'mod_qos\(031\).*, c=([0-9.]*)' -t 5:10 'printf $1'`
 if [ "$PAT" != "127.0.0.1127.0.0.1127.0.0.2" ]; then
   ERRORS=`expr $ERRORS + 1`
@@ -787,6 +788,11 @@ if [ "$PAT" != "127.0.0.1127.0.0.1127.0.0.2" ]; then
 fi
 PAT=`./genlog.sh | ../util/src/qsexec -e 'mod_qos\(031\).*, c=([0-9.]*)' -t 5:3 'printf $1'`
 if [ "$PAT" != "127.0.0.2" ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qsexec test 2 failed ($PAT)"
+fi
+PAT=`./genlog.sh -c | ../util/src/qsexec -e 'mod_qos\(031\).*, c=([0-9.]*)' -t 3:2 -c 'mod_qos\(000\).* c=([0-9.]*)' 'printf "clear $1"' 'printf "event $1"'`
+if [ "$PAT" != "event 127.0.0.2event 127.0.0.2clear 127.0.0.2" ]; then
   ERRORS=`expr $ERRORS + 1`
   echo "FAILED qsexec test 2 failed ($PAT)"
 fi
