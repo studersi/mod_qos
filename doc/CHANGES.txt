@@ -1,3 +1,7 @@
+Version
+
+ - qsexec features option "-c" (pattern clearing the event counter).
+
 Version 9.64
 
  - New utility: qsexec

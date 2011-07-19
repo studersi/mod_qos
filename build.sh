@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.48 2011-07-13 19:05:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.49 2011-07-19 18:58:50 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -88,7 +88,7 @@ if [ $? -ne 0 ]; then
 fi
 
 #./configure --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate $ADDMOD
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate $ADDMOD
+./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate --enable-reqtimeout=shared $ADDMOD
 if [ $? -ne 0 ]; then
   echo "ERROR"
   exit 1
