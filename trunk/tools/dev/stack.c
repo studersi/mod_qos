@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.23 2011-07-15 20:23:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.24 2011-07-21 18:42:41 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,6 +33,9 @@ static const char revision[] = "$Id: stack.c,v 1.23 2011-07-15 20:23:35 pbuchbin
 #include <sys/time.h>
 
 #define QSMOD 4
+
+static int m_qsmod = QSMOD;
+static int m_silent = 0;
 
 typedef struct {
   unsigned long ip;
@@ -113,19 +116,18 @@ static void qoss_free(qos_s_t *s) {
  * gets an entry by its ip
  */
 static qos_s_entry_t **qoss_get0(qos_s_t *s, qos_s_entry_t *pA) {
-  int mod = pA->ip % QSMOD;
-  int max = (s->max / QSMOD);
+  int mod = pA->ip % m_qsmod;
+  int max = (s->max / m_qsmod);
   int start = mod * max;
   return bsearch((const void *)&pA, (const void *)&s->ipd[start], max, sizeof(qos_s_entry_t *), qoss_comp);
 }
 
 static void qoss_sort(qos_s_t *s) {
   int i;
-  for(i = 0; i < QSMOD; i++) {
-    int mod = i % QSMOD;
-    int max = (s->max / QSMOD);
+  for(i = 0; i < m_qsmod; i++) {
+    int mod = i % m_qsmod;
+    int max = (s->max / m_qsmod);
     int start = mod * max;
-    printf("%d %d %d %d\n", i, s->max, start, max);
     qsort(&s->ipd[start],max, sizeof(qos_s_entry_t *), qoss_comp);
     qsort(&s->timed[start], max, sizeof(qos_s_entry_t *), qoss_comp_time);
   }
@@ -133,8 +135,8 @@ static void qoss_sort(qos_s_t *s) {
 
 static void qoss_set(qos_s_t *s, qos_s_entry_t *pA) {
   qos_s_entry_t **pB;
-  int mod = pA->ip % QSMOD;
-  int max = (s->max / QSMOD);
+  int mod = pA->ip % m_qsmod;
+  int max = (s->max / m_qsmod);
   int start = mod * max;
   qsort(&s->timed[start], max, sizeof(qos_s_entry_t *), qoss_comp_time);
   if(s->num < s->max) {
@@ -148,11 +150,11 @@ static void qoss_set(qos_s_t *s, qos_s_entry_t *pA) {
 
 static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA, long i) {
   qos_s_entry_t **pB;
-  int mod = pA->ip % QSMOD;
-  int max = (s->max / QSMOD);
+  int mod = pA->ip % m_qsmod;
+  int max = (s->max / m_qsmod);
   int start = mod * max;
   if(s->num <= s->max) {
-    pB = &s->timed[start + i/QSMOD];
+    pB = &s->timed[start + i/m_qsmod];
     (*pB)->ip = pA->ip;
     (*pB)->time = time(NULL);
     s->num++;
@@ -162,8 +164,7 @@ static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA, long i) {
   }
 }
 
-static void speed() {
-  long size = 50000;
+static void speed(long size) {
   qos_s_entry_t new;
   qos_s_t *s = qoss_new(size);
   qos_s_entry_t **e = NULL;
@@ -173,7 +174,9 @@ static void speed() {
   long long average = 0;
   long items[] = { 12, 48333, size-2, size-1000, size/2, size/8, 9827, 25998, 77, 58 };
 
-  printf("> %d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
+  if(!m_silent) {
+    printf("> %d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
+  }
   new.ip = 0;
   qoss_set(s, &new);
   for(i = 0; i < size; i++) {
@@ -181,7 +184,9 @@ static void speed() {
     qoss_set_fast(s, &new, i);
   }
   i--;
-  printf("added: 0 to %ld\n", i);
+  if(!m_silent) {
+    printf("added: 0 to %ld\n", i);
+  }
   qoss_sort(s);
   
   /* get */
@@ -195,11 +200,13 @@ static void speed() {
       printf("ERROR, %ld not found\n", new.ip);
       exit(1);
     } else {
-      printf("get:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, (*e)->ip);
+      if(!m_silent) {
+	printf("get:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, (*e)->ip);
+      }
       average = average + (tv.tv_sec * 1000000 + tv.tv_usec) - start;
     }
   }
-  printf("get %d: average %.6lld usec\n", QSMOD, average / i);
+  printf("get     mod=%d size=%ld:\t average %.6lld usec\n", m_qsmod, size, average / i);
   average = 0;
   
 
@@ -211,10 +218,12 @@ static void speed() {
     start = tv.tv_sec * 1000000 + tv.tv_usec;
     qoss_set(s, &new);
     gettimeofday(&tv, NULL);
-    printf("set:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, new.ip);
+    if(!m_silent) {
+      printf("set:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, new.ip);
+    }
     average = average + (tv.tv_sec * 1000000 + tv.tv_usec) - start;
   }
-  printf("set %d: average %.6lld usec\n", QSMOD, average / i);
+  printf("set     mod=%d size=%ld:\t average %.6lld usec\n", m_qsmod, size, average / i);
 
   for(i = 0; i < (sizeof(items)/sizeof(long)); i++) {
     new.ip = items[i]+50000;
@@ -267,9 +276,9 @@ static void func() {
     printf("pos=%d %lu %lu\n", i, (*e)->ip, (*e)->time);
   }
   /* lowest first */
-  for(m = 0; m < QSMOD; m++) {
+  for(m = 0; m < m_qsmod; m++) {
     v = 0;
-    for(i = (m * s->max/QSMOD); i < (m+1) * (s->max/QSMOD); i++) {
+    for(i = (m * s->max/m_qsmod); i < (m+1) * (s->max/m_qsmod); i++) {
       e = &s->ipd[i];
       if((*e)->ip < v) {
 	printf("ERROR-2 pos=%d %lu\n", i, (*e)->ip); fflush(stdout);
@@ -283,6 +292,24 @@ static void func() {
 
 int main(int argc, char **argv) {
   func();
-  speed();
+  //  speed(50000);
+  printf("\n");
+  m_silent = 1;
+ 
+  m_qsmod = 1;
+  speed(50000);
+  m_qsmod = 2;
+  speed(50000);
+  m_qsmod = 4;
+  speed(50000);
+  m_qsmod = 8;
+  speed(100000);
+  m_qsmod = 16;
+  speed(500000);
+  m_qsmod = 32;
+  speed(1000000);
+  m_qsmod = 32;
+  speed(2000000);
+
   return 0;
 }
