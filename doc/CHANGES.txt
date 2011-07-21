@@ -1,4 +1,6 @@
-Version
+Version 9.65
+
+ - Fixed: could not compile the support utility qscheck.
 
  - qsexec features option "-c" (pattern clearing the event counter).
 
