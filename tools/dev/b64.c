@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: b64.c,v 1.8 2011-07-12 19:33:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.9 2011-07-21 18:42:41 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -39,10 +39,34 @@ static const char revision[] = "$Id: b64.c,v 1.8 2011-07-12 19:33:16 pbuchbinder
 #define CR 13
 #define LF 10
 
+static int m_binary = 0;
+
+static int qs_getLine(char *s, int n, int *len) {
+  int i = 0;
+  *len = 0;
+  while (1) {
+    s[i] = (char)getchar();
+    if(s[i] == EOF) {
+      s[i] = '\0';
+      *len = i;
+      return 0;
+    }
+    if (s[i] == CR) {
+      s[i] = getchar();
+    }
+    if ((s[i] == 0x4) || (s[i] == LF) || (i == (n - 2))) {
+      s[i+1] = '\0';
+      *len = i+1;
+      return 1;
+    }
+    ++i;
+  }
+}
+
 static void usage() {
-  printf("usage: b64 -e|-d|-he|-hd <string>\n");
+  printf("usage: b64 -e|-d|-he|-hd [-b] <string>\n");
   printf("\n");
-  printf("Base64 (or hex) encoder/decoder.\n");
+  printf("Base64 (-e/-d) or hex (-he/-hd) encoder/decoder.\n");
   printf("\n");
   printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   exit(1);
@@ -118,7 +142,7 @@ static int qos_hex2c(const char *x) {
   return i;
 }
 
-static void code(const char *mode, const char *line) {
+static void code(const char *mode, const char *line, int len) {
   apr_pool_t *pool;
   apr_pool_create(&pool, NULL);
   if(strcmp(mode, "-d") == 0) {
@@ -127,19 +151,23 @@ static void code(const char *mode, const char *line) {
     if(dec_len > 0) {
       int i;
       dec[dec_len] = '\0';
-      for(i = 0; i < dec_len; i++) {
-	if(dec[i] < 32 && dec[i] != CR && dec[i] != LF) {
-	  /* printable only */
-	  dec[i] = '.';
+      if(m_binary) {
+	fwrite(dec, 1, dec_len, stdout);
+      } else {
+	for(i = 0; i < dec_len; i++) {
+	  if(dec[i] < 32 && dec[i] != CR && dec[i] != LF) {
+	    /* printable only */
+	    dec[i] = '.';
+	  }
 	}
+	printf("%s", dec);
       }
-      printf("%s", dec);
     }
   } else if(strcmp(mode, "-e") == 0) {
-    char *enc = (char *)apr_pcalloc(pool, 1 + apr_base64_encode_len(strlen(line)));
-    int enc_len = apr_base64_encode(enc, (const char *)line, strlen(line));
+    char *enc = (char *)apr_pcalloc(pool, 1 + apr_base64_encode_len(len));
+    int enc_len = apr_base64_encode(enc, (const char *)line, len);
     enc[enc_len] = '\0';
-    printf("%s\n", enc);
+    printf("%s", enc);
   } else if(strcmp(mode, "-hd") == 0) {
     const char *p = line;
     while(p && p[0]) {
@@ -166,28 +194,59 @@ static void code(const char *mode, const char *line) {
     }
   } else if(strcmp(mode, "-he") == 0) {
     const unsigned char *p = (const unsigned char *)line;
-    while(p && p[0]) {
-      printf("\\x%02x", p[0]);
-      p++;
+    int i = 0;
+    while(i < len) {
+      printf("\\x%02x", p[i]);
+      i++;
     }
-    printf("\n");
+  } else {
+    usage();
   }
   apr_pool_destroy(pool);
 }
 
 int main(int argc, const char *const argv[]) {
+  const char *data = NULL;
+  const char *mode = NULL;
   apr_app_initialize(&argc, &argv, NULL);
+
   argc--;
   argv++;
-  if(argc < 1) {
+  while(argc >= 1) {
+    if(strcmp(*argv,"-b") == 0) {
+      m_binary = 1;
+    } else if(strcmp(*argv,"-h") == 0) {
+      usage();
+    } else if(strcmp(*argv,"-?") == 0) {
+      usage();
+    } else if(strcmp(*argv,"-help") == 0) {
+      usage();
+    } else if(mode == NULL) {
+      mode = *argv;
+    } else {
+      data = *argv;
+    }
+    argc--;
+    argv++;
+  }
+
+  if(mode == NULL) {
     usage();
   }
-  if(argc == 2) {
-    code(argv[0], argv[1]);
+  if(data != NULL) {
+    code(mode, data, strlen(data));
+    if(strcmp(mode, "-e") == 0 || strcmp(mode, "-he") == 0) {
+      printf("\n");
+    }
   } else {
     char line[32768];
-    while(fgets(line, sizeof(line), stdin) != NULL) {
-      code(argv[0], line);
+    int len = 0;
+    while(qs_getLine(line, sizeof(line), &len) || len > 0) {
+      code(mode, line, len);
+      if(strcmp(mode, "-e") == 0 || strcmp(mode, "-he") == 0) {
+	printf("\n");
+      }
+      len = 0;
     }
   }
   return 0;
