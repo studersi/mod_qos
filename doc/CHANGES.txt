@@ -1,3 +1,7 @@
+Version:
+
+ - Client data store updates entry time stamp every access.
+
 Version 9.65
 
  - Fixed: could not compile the support utility qscheck.

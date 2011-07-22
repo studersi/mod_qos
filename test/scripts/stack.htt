@@ -1,5 +1,7 @@
 #
-# $Id: stack.htt,v 1.4 2011-03-09 19:44:00 pbuchbinder Exp $
+# $Id: stack.htt,v 1.5 2011-07-22 18:55:52 pbuchbinder Exp $
+#
+# inserts  50'000 client entries and verifies that they are available
 #
 
 INCLUDE scripts/ports
@@ -72,5 +74,17 @@ _END LOOP
 _OP $H ADD 1 H
 _SET G=0
 _END LOOP
+
+# test the test (192.33.87.12 is not in the store)
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /console?action=search&address=192.33.87.12 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "!192.33.87.12: vip=.* lowprio=.* block=.* limit=.*"
+_EXPECT . "not available"
+_WAIT
 
 END

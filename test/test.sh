@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.166 2011-07-19 18:58:50 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.167 2011-07-22 18:55:52 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -740,6 +740,27 @@ if [ $? -ne 0 ]; then
 else
   echo "OK"
 fi
+sleep 10
+# fill up the whole store with 50'000 entries ...
+./run.sh -s ./scripts/stack.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED stack.htt"
+fi
+echo "run (`date '+%a %b %d %H:%M:%S %Y'`) stack.sh \t\c"
+./stack.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED stack.sh"
+else
+  echo "OK"
+fi
+sleep 10
+./run.sh -s ./scripts/stack.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED stack.htt"
+fi
 
 ./ctl.sh restart -D logonly >/dev/null
 TEST="QS_LogOnly.htt QS_LogOnly2.htt"
@@ -846,6 +867,12 @@ if [ $? -ne 0 ]; then
   echo "FAILED qspng test failed"
 fi
 
+CFS=`find . -name "*core*"`
+if [ -n "$CFS" ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED found core file"
+fi
+
 echo "end (`date '+%a %b %d %H:%M:%S %Y'`)"
 
 if [ $WARNINGS -ne 0 ]; then
@@ -855,12 +882,6 @@ fi
 
 if [ $ERRORS -ne 0 ]; then
     echo "ERROR: end with $ERRORS errors"
-    exit 1
-fi
-
-CFS=`find . -name "*core*"`
-if [ "$CFS" != "" ]; then
-    echo "ERROR: found core file"
     exit 1
 fi
 
