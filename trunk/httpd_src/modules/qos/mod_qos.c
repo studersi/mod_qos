@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.328 2011-07-21 19:31:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.329 2011-07-22 18:55:52 pbuchbinder Exp $";
 static const char g_revision[] = "9.65";
 
 /************************************************************************
@@ -203,6 +203,7 @@ typedef struct {
 } qos_s_entry_t;
 
 typedef struct {
+  time_t t;
   /* index */
   qos_s_entry_t **ipd;
   qos_s_entry_t **timed;
@@ -965,6 +966,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
     s->timed[i] = e;
     e++;
   }
+  s->t = time(NULL);
   return s;
 }
 
@@ -980,11 +982,19 @@ static void qos_cc_free(qos_s_t *s) {
 }
 
 /** search an entry */
-static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA) {
+static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
+  qos_s_entry_t **pB;
   int mod = pA->ip % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
-  return bsearch((const void *)&pA, (const void *)&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_comp);
+  pB = bsearch((const void *)&pA, (const void *)&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_comp);
+  if(pB) {
+    if(now != 0) {
+      s->t = now;
+    }
+    (*pB)->time = s->t;
+  }
+  return pB;
 }
 
 /** create a new entry */
@@ -3307,9 +3317,9 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
       qos_s_entry_t new;
       apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36 */
       new.ip = cconf->ip;
-      e = qos_cc_get0(u->qos_cc, &new);
+      e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
       if(!e) {
-        e = qos_cc_set(u->qos_cc, &new, time(NULL));
+        e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
       }
       if((*e)->serialize == 0) {
         (*e)->serialize = 1;
@@ -3361,9 +3371,9 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
     rctx->cc_event_req_set = 1;
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT33 */
     new.ip = cconf->ip;
-    e = qos_cc_get0(u->qos_cc, &new);
+    e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
     }
     (*e)->event_req++;
     count = (*e)->event_req;
@@ -3653,9 +3663,9 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
 
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
     new.ip = cconf->ip;
-    e = qos_cc_get0(u->qos_cc, &new);
+    e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
     }
     if(rctx->cc_event_req_set) {
       /* QS_ClientEventRequestLimit */
@@ -3735,7 +3745,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT17 */
     new.ip = cconf->ip;
-    e = qos_cc_get0(u->qos_cc, &new);
+    e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
     if(!e) {
       e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
     } else {
@@ -3874,7 +3884,7 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
     qos_s_entry_t new;
     new.ip = cconf->ip;
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT14 */
-    e = qos_cc_get0(u->qos_cc, &new);
+    e = qos_cc_get0(u->qos_cc, &new, 0);
     if(!e) {
       e = qos_cc_set(u->qos_cc, &new, time(NULL));
     }
@@ -4228,7 +4238,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           other = u->qos_cc->other;
           notmodified = u->qos_cc->notmodified;
           new.ip = ip;
-          e = qos_cc_get0(u->qos_cc, &new);
+          e = qos_cc_get0(u->qos_cc, &new, 0);
           if(e) {
             found = 1;
             new.vip = (*e)->vip;
@@ -4864,7 +4874,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
       ip--;
       apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT38 */
       new.ip = *ip;
-      e = qos_cc_get0(u->qos_cc, &new);
+      e = qos_cc_get0(u->qos_cc, &new, 0);
       if(!e) {
         e = qos_cc_set(u->qos_cc, &new, time(NULL));
       }
@@ -5069,7 +5079,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
       qos_s_entry_t **e = NULL;
       qos_s_entry_t new;
       new.ip = cconf->ip;
-      e = qos_cc_get0(u->qos_cc, &new);
+      e = qos_cc_get0(u->qos_cc, &new, 0);
       if(!e) {
         e = qos_cc_set(u->qos_cc, &new, time(NULL));
       }
@@ -5937,7 +5947,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         qos_s_entry_t new;
         apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
         new.ip = qos_inet_addr(inctx->c->remote_ip);
-        e = qos_cc_get0(u->qos_cc, &new);
+        e = qos_cc_get0(u->qos_cc, &new, 0);
         if(!e) {
           e = qos_cc_set(u->qos_cc, &new, time(NULL));
         }
@@ -6926,7 +6936,7 @@ static int qos_handler_console(request_rec * r) {
     qos_s_entry_t new;
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT34 */
     new.ip = addr;
-    e = qos_cc_get0(u->qos_cc, &new);
+    e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
     if(!e) {
       if(strcasecmp(cmd, "search") != 0) {
         e = qos_cc_set(u->qos_cc, &new, time(NULL));
