@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.24 2011-07-21 18:42:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.25 2011-07-22 16:48:49 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -271,9 +271,17 @@ static void func() {
     }
   }
   /* oldest first */
-  for(i = 0; i < s->max; i++) {
-    e = &s->timed[i];
-    printf("pos=%d %lu %lu\n", i, (*e)->ip, (*e)->time);
+  for(m = 0; m < m_qsmod; m++) {
+    v = 0;
+    for(i = (m * s->max/m_qsmod); i < (m+1) * (s->max/m_qsmod); i++) {
+      e = &s->timed[i];
+      printf("pos=%d %lu %lu\n", i, (*e)->ip, (*e)->time);
+      if(v > (*e)->time) {
+	printf("ERROR-2 pos=%d %lu\n", i, (*e)->time); fflush(stdout);
+	exit(1);
+      }
+      v = (*e)->time;
+    }
   }
   /* lowest first */
   for(m = 0; m < m_qsmod; m++) {
