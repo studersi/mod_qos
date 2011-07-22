@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.329 2011-07-22 18:55:52 pbuchbinder Exp $";
-static const char g_revision[] = "9.65";
+static const char revision[] = "$Id: mod_qos.c,v 5.330 2011-07-22 20:26:56 pbuchbinder Exp $";
+static const char g_revision[] = "9.66";
 
 /************************************************************************
  * Includes
@@ -1003,6 +1003,7 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   int mod = pA->ip % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
+  s->t = now;
   qsort(&s->timed[start], max, sizeof(qos_s_entry_t *), qos_cc_comp_time);
   if(s->num < s->max) {
     s->num++;
