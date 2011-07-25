@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.330 2011-07-22 20:26:56 pbuchbinder Exp $";
-static const char g_revision[] = "9.66";
+static const char revision[] = "$Id: mod_qos.c,v 5.331 2011-07-25 09:03:20 pbuchbinder Exp $";
+static const char g_revision[] = "9.67";
 
 /************************************************************************
  * Includes
@@ -6920,6 +6920,11 @@ static int qos_handler_console(request_rec * r) {
                   QOS_LOG_PFX(070)"console, not acceptable, missing request query (action/address)");
     return HTTP_NOT_ACCEPTABLE;
   }
+  if(!sconf->has_qos_cc) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(070)"console, client data store has not been enabled");
+    return HTTP_NOT_ACCEPTABLE;
+  }
   if((strcasecmp(cmd, "search") == 0) && (strcmp(ip, "*") == 0)) {
     return qos_console_dump(r);
   }
@@ -8871,6 +8876,7 @@ const char *qos_client_serial_cmd(cmd_parms *cmd, void *dcfg) {
   if (err != NULL) {
     return err;
   }
+  sconf->has_qos_cc = 1;
   sconf->qos_cc_serialize = 1;
   return NULL;
 }
