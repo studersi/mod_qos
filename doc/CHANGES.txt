@@ -1,3 +1,8 @@
+Version
+
+ - Fixed: QS_ClientSerialize has required other client level control
+   directive.
+
 Version 9.66 
 
  - Client data store updates entry time stamp every access.

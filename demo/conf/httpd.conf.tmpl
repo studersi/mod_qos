@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.9 2011-06-21 06:19:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.10 2011-07-25 09:03:19 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -147,6 +147,7 @@ Listen                  server1:##QS_PORT_BASE##
    ProxyPass                  /status !
    ProxyPass                  /test !
    ProxyPass                  /qos !
+   ProxyPass                  /console !
    ProxyPass                  /a http://server1:##QS_PORT_BASE1##/a retry=0
    ProxyPass                  /b http://server1:##QS_PORT_BASE1##/b retry=0
    ProxyPass                  /c http://server1:##QS_PORT_BASE1##/c retry=0
@@ -181,6 +182,10 @@ Listen                  server1:##QS_PORT_BASE##
 
    <Location /status>
        SetHandler server-status
+   </Location>
+
+   <Location /console>
+       SetHandler qos-console
    </Location>
 
 </VirtualHost>
