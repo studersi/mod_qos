@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.188 2011-07-14 05:53:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.189 2011-07-27 19:14:43 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -32,10 +32,17 @@ MinSpareThreads         5
 MaxSpareThreads         75
 ThreadsPerChild         64
 </IfModule>
+<IfModule event.c> 
+StartServers            1
+ServerLimit             16
+MinSpareThreads         5
+MaxSpareThreads         75
+ThreadsPerChild         64
+</IfModule>
 <IfModule prefork.c>
-StartServers            4
+StartServers            16
 MinSpareServers         4
-MaxSpareServers         16
+MaxSpareServers         64
 ServerLimit             896
 </IfModule>
 

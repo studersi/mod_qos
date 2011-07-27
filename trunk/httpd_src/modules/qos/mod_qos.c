@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.331 2011-07-25 09:03:20 pbuchbinder Exp $";
-static const char g_revision[] = "9.67";
+static const char revision[] = "$Id: mod_qos.c,v 5.332 2011-07-27 19:14:43 pbuchbinder Exp $";
+static const char g_revision[] = "9.68";
 
 /************************************************************************
  * Includes
@@ -6611,6 +6611,11 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       sconf->max_clients = net_prefer;
     }
   }
+//  if(strcasecmp(ap_show_mpm(), "worker") != 0) {
+//    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
+//                 QOS_LOG_PFX(009)"MPM '%s' is not fully supported.",
+//                 ap_show_mpm());
+//  }
   if(sconf->log_only) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"running in 'log only' mode - rules are NOT enforced!");
