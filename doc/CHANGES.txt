@@ -1,3 +1,7 @@
+Version 9.68
+
+ - Change in order to support HP-UX.
+
 Version 9.67
 
  - Fixed: QS_ClientSerialize has required other client level control
