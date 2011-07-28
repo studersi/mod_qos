@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.332 2011-07-27 19:14:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.333 2011-07-28 20:44:26 pbuchbinder Exp $";
 static const char g_revision[] = "9.68";
 
 /************************************************************************
@@ -4746,7 +4746,8 @@ static unsigned long *qos_inc_block(conn_rec *c, qos_srv_config *sconf,
 static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  unsigned long ips[sconf->max_clients]; // list of ip addr. for whose we shall inc. block count
+  // list of ip addr. for whose we shall inc. block count
+  unsigned long *ips = malloc(sconf->max_clients * sizeof(unsigned long)); 
   while(!sconf->inctx_t->exit) {
     unsigned long *ip = ips;
     int currentcon = 0;
@@ -4892,6 +4893,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   // apr_thread_mutex_unlock(sconf->inctx_t->lock);
   // called via apr_pool_cleanup_register():
   // apr_thread_mutex_destroy(sconf->inctx_t->lock);
+  free(ips);
 #ifdef WORKER_MPM
   apr_thread_exit(thread, APR_SUCCESS);
 #endif
@@ -6611,11 +6613,6 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       sconf->max_clients = net_prefer;
     }
   }
-//  if(strcasecmp(ap_show_mpm(), "worker") != 0) {
-//    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
-//                 QOS_LOG_PFX(009)"MPM '%s' is not fully supported.",
-//                 ap_show_mpm());
-//  }
   if(sconf->log_only) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"running in 'log only' mode - rules are NOT enforced!");
