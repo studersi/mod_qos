@@ -1,3 +1,7 @@
+Version
+
+ - Add "X-Do-Not-Track" to the built-in request header white list.
+
 Version 9.68
 
  - Change in order to support HP-UX.
