@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.189 2011-07-27 19:14:43 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.190 2011-08-16 19:57:34 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -145,6 +145,7 @@ NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
 
 BrowserMatch googlebot DISABLE_UTC_ENFORCEMENT=allow
+SetEnvIfNoCase X-Do-Not-Track 1 DISABLE_UTC_ENFORCEMENT=allow
 <IfDefine usertrack>
 QS_UserTrackingCookieName stat
 </IfDefine>

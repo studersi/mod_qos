@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.333 2011-07-28 20:44:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.334 2011-08-16 19:57:34 pbuchbinder Exp $";
 static const char g_revision[] = "9.68";
 
 /************************************************************************
@@ -718,6 +718,7 @@ static const qos_her_t qs_header_rules[] = {
   { "X-Forwarded-Host", "^[a-zA-Z0-9_\\.:\\-]+$", QS_FLT_ACTION_DROP, 100 },
   { "X-Forwarded-Server", "^[a-zA-Z0-9_\\.:\\-]+$", QS_FLT_ACTION_DROP, 100 },
   { "X-lori-time-1", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
+  { "X-Do-Not-Track", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { NULL, NULL, 0, 0 }
 };
 
@@ -2887,7 +2888,7 @@ static void qos_enable_parp(request_rec *r) {
 
 /** generic request validation */
 static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
-  if((r->parsed_uri.path == NULL) || (r->unparsed_uri == NULL)) {
+  if((r->unparsed_uri == NULL) || (r->parsed_uri.path == NULL)) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(045)"access denied, invalid request line:"
                   " can't parse uri,%s c=%s, id=%s",
@@ -2898,7 +2899,6 @@ static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
   }
   return APR_SUCCESS;
 }
-
 
 /**
  * QS_SetEnvIfParp (prr), enable parp
