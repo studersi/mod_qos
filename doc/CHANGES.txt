@@ -1,5 +1,8 @@
 Version
 
+ - Detection if module has been build for a different MPM implementation
+   than the server is using at runtime.
+
  - Add "X-Do-Not-Track" to the built-in request header white list.
 
 Version 9.68
