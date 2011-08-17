@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.334 2011-08-16 19:57:34 pbuchbinder Exp $";
-static const char g_revision[] = "9.68";
+static const char revision[] = "$Id: mod_qos.c,v 5.335 2011-08-17 19:05:22 pbuchbinder Exp $";
+static const char g_revision[] = "9.69";
 
 /************************************************************************
  * Includes
@@ -6555,6 +6555,10 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
   qos_ifctx_list_t *inctx_t = NULL;
+#ifdef QS_INTERNAL_TEST
+  int seed = getpid() + time(NULL) + apr_os_thread_current();
+  srand(seed);
+#endif
   m_generation = u->generation;
 #if APR_HAS_THREADS
   if(sconf->req_rate != -1) {
@@ -6621,6 +6625,13 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                  QOS_LOG_PFX(007)"could not determine MaxClients");
   }
+#ifdef WORKER_MPM
+  if(strcasecmp(ap_show_mpm(), "Worker") != 0) {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
+                 QOS_LOG_PFX(009)"loaded MPM is '%s' but module has been compiled for 'Worker'",
+                 ap_show_mpm());    
+  }
+#endif
   if(sconf->max_conn_close_percent) {
     sconf->max_conn_close = net_prefer * sconf->max_conn_close_percent / 100;
   }

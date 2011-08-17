@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.50 2011-07-27 19:14:42 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.51 2011-08-17 19:05:21 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -30,13 +30,17 @@ TOP=`pwd`
 
 #APACHE_VER=2.0.59
 APACHE_VER=2.2.19
+MPM=worker
+#MPM=prefork
+#MPM=event
 
-echo "build Apache $APACHE_VER"
-if [ ! -d httpd-${APACHE_VER} ]; then
+echo "build Apache $APACHE_VER ($MPM)"
+if [ ! -d httpd-${APACHE_VER}-${MPM} ]; then
   gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
 fi
 rm -f httpd
-ln -s httpd-${APACHE_VER} httpd
+mv httpd-${APACHE_VER} httpd-${APACHE_VER}-${MPM}
+ln -s httpd-${APACHE_VER}-${MPM} httpd
 
 PNG=1.4.2
 if [ -f ./3thrdparty/libpng-${PNG}.tar.gz ]; then
@@ -87,15 +91,13 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-#./configure --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate $ADDMOD
-#./configure --with-mpm=event --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate --enable-reqtimeout=shared $ADDMOD
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate --enable-reqtimeout=shared $ADDMOD
+./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate --enable-reqtimeout=shared $ADDMOD
 if [ $? -ne 0 ]; then
   echo "ERROR"
   exit 1
 fi
 
-# patch ...
+# patch (static linking) ...
 sed <build/rules.mk > build/rules.mk.2 \
  -e "s;LINK     = \$(LIBTOOL) --mode=link \$(CC) \$(ALL_CFLAGS)  \$(LT_LDFLAGS);LINK     = \$(LIBTOOL) --mode=link \$(CC) \$(ALL_CFLAGS) -static \$(LT_LDFLAGS);g"
 mv build/rules.mk.2 build/rules.mk
@@ -122,3 +124,4 @@ make
 cd ..
 
 echo "END"
+
