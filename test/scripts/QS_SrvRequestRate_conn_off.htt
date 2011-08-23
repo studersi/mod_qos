@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_conn_off.htt,v 1.3 2010-05-26 20:14:21 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_conn_off.htt,v 1.4 2011-08-23 18:42:25 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -66,7 +66,7 @@ __GET /htt/active-sync/inbox HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0
 __
-_EXPECT . "==AS1=="
+_EXPECT . "==AS2=="
 _EXPECT . "200 OK"
 _WAIT
 
@@ -116,7 +116,7 @@ __GET /htt/active-sync-plus/inbox HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0
 __
-_EXPECT . "==AS1=="
+_EXPECT . "==AS3=="
 _EXPECT . "200 OK"
 _WAIT
 
@@ -166,7 +166,7 @@ __GET /htt/active-sync-plus/inbox HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0
 __
-_EXPECT . "==AS1=="
+_EXPECT . "==AS4=="
 _EXPECT . "200 OK"
 _WAIT
 
@@ -218,7 +218,7 @@ __GET /htt/inbox?priv=conn HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0
 __
-_EXPECT . "==AS1=="
+_EXPECT . "==AS5=="
 _EXPECT . "200 OK"
 _WAIT
 
@@ -269,7 +269,7 @@ __GET /htt/index.html HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0
 __
-_EXPECT . "==AS1=="
+_EXPECT . "==AS6=="
 _EXPECT . "200 OK"
 _WAIT
 
@@ -283,6 +283,8 @@ __Content-Length: AUTO
 __Content-Type: text/plain
 __
 _-==AS1==
+_SLEEP 5000
+_CLOSE
 
 _RES
 _WAIT
@@ -290,7 +292,7 @@ __HTTP/1.1 200 OK
 __Content-Length: AUTO 
 __Content-Type: text/plain
 __
-_-==AS1==
+_-==AS2==
 
 _CLOSE
 
@@ -301,7 +303,7 @@ __Content-Length: AUTO
 __Content-Type: text/plain
 __
 __Login Successful
-_-==AS1==
+_-==AS3==
 
 _CLOSE
 
@@ -311,7 +313,7 @@ __HTTP/1.1 200 OK
 __Content-Length: AUTO 
 __Content-Type: text/plain
 __
-_-000==AS1==
+_-000==AS4==
 
 _CLOSE
 
@@ -321,7 +323,7 @@ __HTTP/1.1 200 OK
 __Content-Length: AUTO 
 __Content-Type: text/plain
 __
-_-==AS1==
+_-==AS5==
 
 _CLOSE
 
@@ -331,6 +333,6 @@ __HTTP/1.1 200 OK
 __Content-Length: AUTO 
 __Content-Type: text/plain
 __
-_-==AS1==
+_-==AS6==
 
 END

@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.335 2011-08-17 19:05:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.336 2011-08-23 18:42:24 pbuchbinder Exp $";
 static const char g_revision[] = "9.69";
 
 /************************************************************************
@@ -6556,8 +6556,10 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
   qos_ifctx_list_t *inctx_t = NULL;
 #ifdef QS_INTERNAL_TEST
+#ifdef PREFORK_MPM
   int seed = getpid() + time(NULL) + apr_os_thread_current();
   srand(seed);
+#endif
 #endif
   m_generation = u->generation;
 #if APR_HAS_THREADS
@@ -6623,7 +6625,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   if(net_prefer <= 1) {
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
-                 QOS_LOG_PFX(007)"could not determine MaxClients");
+                 QOS_LOG_PFX(007)"could not determine MaxClients!"
+                 " You MUST set this directive within the Apache configuration file.");
   }
 #ifdef WORKER_MPM
   if(strcasecmp(ap_show_mpm(), "Worker") != 0) {

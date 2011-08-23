@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/dos.conf.tmpl,v 2.4 2010-12-22 11:33:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/dos.conf.tmpl,v 2.5 2011-08-23 18:42:24 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -25,11 +25,20 @@
 #
 
 ServerName              127.0.0.1
+<IfModule worker.c>
 StartServers            1
 ServerLimit             1
 MinSpareThreads         5
 MaxSpareThreads         64
 ThreadsPerChild         64
+</IfModule>
+<IfModule prefork.c>
+StartServers            64
+ServerLimit             64
+MinSpareServers         4
+MaxSpareServers         64
+</IfModule>
+
 MaxClients              64
 MaxRequestsPerChild     0
 
