@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.15 2011-08-24 21:02:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.16 2011-08-24 21:06:51 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -600,7 +600,7 @@ static time_t getMinutes(char *line) {
 	/* cut month */
 	buf[strlen(buf)-3] = '\0';
 	year = buf;
-	snprintf(m_date_str, sizeof(m_date_str), "%s.%02d.%s", day, mstr2i(month), year);
+	snprintf(m_date_str, sizeof(m_date_str), "%s.%s.%s", day, month, year);
       }
       return minutes;
     } else {
