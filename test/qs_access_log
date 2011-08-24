@@ -81,8 +81,8 @@
 127.0.0.2 - - [22/Jun/2010:21:49:32 +0200] "GET /index.txt HTTP/1.1" 200 1024 "Mozilla/5.0 Firefox/3" 3 - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
 127.0.0.2 - - [22/Jun/2010:21:49:33 +0200] "GET /index.txt HTTP/1.1" 200 1024 "Mozilla/5.0 Firefox/3" 3 - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
 127.0.0.2 - - [22/Jun/2010:21:49:34 +0200] "GET /index.txt HTTP/1.1" 200 1024 "Mozilla/5.0 Firefox/3" 3 - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
-127.0.0.2 - - [22/Jun/2010:21:49:35 +0200] "GET /index.txt HTTP/1.1" 200 1024 "Mozilla/5.0 Firefox/3" 3 - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
-127.0.0.2 - - [22/Jun/2010:21:49:36 +0200] "GET /index.txt HTTP/1.1" 403 1024 "Mozilla/5.0 Firefox/3" 3 - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
+127.0.0.2 - - [22/Jun/2010:21:49:35 +0200] "GET /index.txt HTTP/1.1" 200 1024 "Mozilla/5.0 Firefox/3" time="3" - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
+127.0.0.2 - - [22/Jun/2010:21:49:36 +0200] "GET /index.txt HTTP/1.1" 403 1024 "Mozilla/5.0 Firefox/3" time="3" - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
 127.0.0.2 - - [22/Jun/2010:21:49:37 +0200] "GET /index.txt HTTP/1.1" 200 1024 "Mozilla/5.0 Firefox/3" 0 - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
 127.0.0.2 - - [22/Jun/2010:21:49:38 +0200] "GET /index.txt HTTP/1.1" 200 1024 "Mozilla/5.0 Firefox/3" 0 - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
 127.0.0.2 - - [22/Jun/2010:21:49:39 +0200] "GET /index.txt HTTP/1.1" 200 1024 "Mozilla/5.0 Firefox/3" 0 - - - id=TCETdX8AAQEAACfPOdkAAAAh - - #10191
