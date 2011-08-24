@@ -20,3 +20,4 @@ sleep 2
 sleep 2
 ./run.sh -s scripts/dos_keepalive.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
+

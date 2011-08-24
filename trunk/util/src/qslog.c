@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.13 2011-06-22 20:39:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.14 2011-08-24 19:09:41 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -359,6 +359,8 @@ static void printAndResetStat(char *timeStr) {
  */
 static void updateStat(const char *cstr, char *line) {
   char *T = NULL; /* time */
+  char *t = NULL; /* time ms */
+  char *D = NULL; /* time us */
   char *S = NULL; /* status */
   char *BI = NULL; /* bytes in */
   char *B = NULL; /* bytes */
@@ -378,6 +380,14 @@ static void updateStat(const char *cstr, char *line) {
     } else if(c[0] == 'T') {
       if(l != NULL && l[0] != '\0') {
         T = cutNext(&l);
+      }
+    } else if(c[0] == 't') {
+      if(l != NULL && l[0] != '\0') {
+        t = cutNext(&l);
+      }
+    } else if(c[0] == 'D') {
+      if(l != NULL && l[0] != '\0') {
+        D = cutNext(&l);
       }
     } else if(c[0] == 'S') {
       if(l != NULL && l[0] != '\0') {
@@ -485,9 +495,16 @@ static void updateStat(const char *cstr, char *line) {
       m_status_5++;
     }
   }
-  if(T != NULL) {
+  if(T != NULL || t != NULL || D != NULL) {
     /* response duration */
-    int tme = atoi(T);
+    long tme;
+    if(T) {
+      tme = atol(T);
+    } else if(t) {
+      tme = atol(t) / 1000;
+    } else if(D) {
+      tme = atol(D) / 1000000;
+    }
     m_duration_count = m_duration_count + tme;
     if(tme < 1) {
       m_duration_0++;
@@ -701,8 +718,10 @@ static void usage(char *cmd) {
   printf("     B defines the transferred bytes (%%b or %%O)\n");
   printf("     i defines the received bytes (%%I)\n");
   printf("     T defines the request duration (%%T)\n");
+  printf("     t defines the request duration in milliseconds (optionally used instead of T)\n");
+  printf("     D defines the request duration in microseconds (optionally used instead of T)\n");
   printf("     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
-  printf("     Q defines the mod_qos_ev event message (%%{mod_qos_ev}o)\n");
+  printf("     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
   printf("     . defines an element to ignore (unknown string)\n");
   printf("  -o <out_file>\n");
   printf("     Specifies the file to store the output to.\n");
@@ -724,7 +743,7 @@ static void usage(char *cmd) {
   printf("  TransferLog \"|./bin/%s -f ..IRSB.T -o ./logs/stat_log\"\n", cmd);
   printf("\n");
   printf("Example configuration using the CustomLog directive:\n");
-  printf("  CustomLog \"|./bin/%s -f ISBT -o ./logs/stat_log\" \"%%h %%>s %%b %%T\"\n", cmd);
+  printf("  CustomLog \"|./bin/%s -f ISBTQ -o ./logs/stat_log\" \"%%h %%>s %%b %%T %%{mod_qos_ev}e\"\n", cmd);
   printf("\n");
   printf("Example for post processing:\n");
   printf("  cat access_log | ./bin/%s -f ..IRSB.T -o ./logs/stat_log -p\n", cmd);
