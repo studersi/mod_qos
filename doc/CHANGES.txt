@@ -1,5 +1,8 @@
 Version
 
+ - qslog supports request time duration measurement in milli- and
+   microseconds too.
+
  - Detection if module has been build for a different MPM implementation
    than the server is using at runtime.
 
