@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.14 2011-08-24 19:09:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.15 2011-08-24 21:02:29 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -92,6 +92,7 @@ static char  m_file_name[MAX_LINE];
 static int   m_rotate = 0;
 /* regex to search the time string */
 static regex_t m_trx;
+static regex_t m_trx2;
 /* real time mode (default) or offline */
 static int   m_offline = 0;
 static char  m_date_str[MAX_LINE];
@@ -130,6 +131,20 @@ static char *skipElement(const char* line) {
   }
   if(p[0] == ' ') p++;
   return p;
+}
+
+static void stripNum(char **p) {
+  char *s = *p;
+  int len;
+  while(s && (s[0] < '0' || s[0] > '9')) {
+    s++;
+  }
+  len = strlen(s);
+  while(len > 0 && (s[len] < '0' || s[len] > '9')) {
+    s[len] = '\0';
+    len--;
+  }
+  *p = s;
 }
 
 /*
@@ -380,14 +395,17 @@ static void updateStat(const char *cstr, char *line) {
     } else if(c[0] == 'T') {
       if(l != NULL && l[0] != '\0') {
         T = cutNext(&l);
+	stripNum(&T);
       }
     } else if(c[0] == 't') {
       if(l != NULL && l[0] != '\0') {
         t = cutNext(&l);
+	stripNum(&t);
       }
     } else if(c[0] == 'D') {
       if(l != NULL && l[0] != '\0') {
         D = cutNext(&l);
+	stripNum(&D);
       }
     } else if(c[0] == 'S') {
       if(l != NULL && l[0] != '\0') {
@@ -553,7 +571,42 @@ static int mstr2i(const char *m) {
 static time_t getMinutes(char *line) {
   regmatch_t ma;
   if(regexec(&m_trx, line, 1, &ma, 0) != 0) {
-    return 0;
+    if(regexec(&m_trx2, line, 1, &ma, 0) == 0) {
+      time_t minutes = 0;
+      int buf_len = ma.rm_eo - ma.rm_so + 1;
+      char buf[buf_len];
+      strncpy(buf, &line[ma.rm_so], ma.rm_eo - ma.rm_so);
+      buf[ma.rm_eo - ma.rm_so] = '\0';
+      /* yyyy mm dd hh:mm:ss,mmm */
+      /* cut seconds */
+      buf[strlen(buf)-7] = '\0';
+      /* get minutes */
+      minutes = minutes + (atoi(&buf[strlen(buf)-2]));
+      /* cut minutes */
+      buf[strlen(buf)-3] = '\0';
+      /* get hours */
+      minutes = minutes + (atoi(&buf[strlen(buf)-2]) * 60);
+      /* store date information */
+      {
+	char *year;
+	char *month;
+	char *day;
+	/* cut hours */
+	buf[strlen(buf)-3] = '\0';
+	day = &buf[strlen(buf)-2];
+	/* cut day */
+	buf[strlen(buf)-3] = '\0';
+	month = &buf[strlen(buf)-2];
+	/* cut month */
+	buf[strlen(buf)-3] = '\0';
+	year = buf;
+	snprintf(m_date_str, sizeof(m_date_str), "%s.%02d.%s", day, mstr2i(month), year);
+      }
+      return minutes;
+    } else {
+      // unknown format
+      return 0;
+    }
   } else {
     time_t minutes = 0;
     int buf_len = ma.rm_eo - ma.rm_so + 1;
@@ -843,8 +896,14 @@ int main(int argc, char **argv) {
 
   if(m_offline) {
     nice(10);
-    /* init time pattern regex */
-    regcomp(&m_trx, "[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}", REG_EXTENDED);
+    /* init time pattern regex, std apache access log */
+    regcomp(&m_trx, 
+	    "[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}",
+	    REG_EXTENDED);
+    /* other time patterns: yyyy mm dd hh:mm:ss,mmm */
+    regcomp(&m_trx2, 
+	    "[0-9]{4} [0-9]{2} [0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}",
+	    REG_EXTENDED);
     fprintf(stderr, "[%s]: offline mode (writes to %s)\n", cmd, file);
     m_date_str[0] = '\0';
     readStdinOffline(config);
@@ -856,4 +915,3 @@ int main(int argc, char **argv) {
   fclose(m_f);
   return 0;
 }
-
