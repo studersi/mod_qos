@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.16 2011-08-24 21:06:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.17 2011-08-25 19:33:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -122,14 +122,36 @@ static char *skipElement(const char* line) {
   char delim = p[0];
   if(delim == '\'' || delim == '\"') {
     p++;
-    while(p[0] != delim && p[0] != 0) {
+    while(p[0] != delim && p[0] != 0 && p[-1] != '\\') {
       p++;
     }
+    p++;
+  } else {
+    char *eq = NULL;
+    if(m_offline) {
+      // offline mode: check for <name>='<value>' entry
+      eq = strstr(p, "='");
+      if(eq && (eq - p) < 5) {
+	// near hit
+	p = &eq[3];
+	while(p[0] != '\'' && p[0] != 0 && p[-1] != '\\') {
+	  p++;
+	}
+	p++;
+      } else {
+	// something else...
+	eq=NULL;
+      }
+    }
+    if(!eq) {
+      while(p[0] != ' ' && p[0] != 0) {
+	p++;
+      }
+    }
   }
-  while(p[0] != ' ' && p[0] != 0) {
+  while(p[0] == ' ') {
     p++;
   }
-  if(p[0] == ' ') p++;
   return p;
 }
 
@@ -153,15 +175,20 @@ static void stripNum(char **p) {
 static char *cutNext(char **line) {
   char *c = *line;
   char *p = skipElement(*line);
+  char delim;
   *line = p;
   if(p[0]) {
     p--; p[0] = '\0';
   }
   /* cut leading and tailing " */
-  if(c[0] == '\"') {
+  delim = c[0];
+  if(delim == '\'' || delim == '\"') {
+    int len;
     c++;
-    if(c[strlen(c)-1] == '\"') {
+    len = strlen(c);
+    while(len > 0 && c[strlen(c)-1] == delim) {
       c[strlen(c)-1] = '\0';
+      len--;
     }
   }
   return c;
@@ -395,17 +422,14 @@ static void updateStat(const char *cstr, char *line) {
     } else if(c[0] == 'T') {
       if(l != NULL && l[0] != '\0') {
         T = cutNext(&l);
-	stripNum(&T);
       }
     } else if(c[0] == 't') {
       if(l != NULL && l[0] != '\0') {
         t = cutNext(&l);
-	stripNum(&t);
       }
     } else if(c[0] == 'D') {
       if(l != NULL && l[0] != '\0') {
         D = cutNext(&l);
-	stripNum(&D);
       }
     } else if(c[0] == 'S') {
       if(l != NULL && l[0] != '\0') {
@@ -492,13 +516,16 @@ static void updateStat(const char *cstr, char *line) {
   }
   if(B != NULL) {
     /* transferred bytes */
+    stripNum(&B);
     m_byte_count = m_byte_count + atoi(B);
   }
   if(BI != NULL) {
     /* transferred bytes */
+    stripNum(&BI);
     m_i_byte_count = m_i_byte_count + atoi(BI);
   }
   if(S != NULL) {
+    stripNum(&S);
     if(S[0] == '1') {
       m_status_1++;
     } else if(S[0] == '1') {
@@ -517,10 +544,13 @@ static void updateStat(const char *cstr, char *line) {
     /* response duration */
     long tme;
     if(T) {
+      stripNum(&T);
       tme = atol(T);
     } else if(t) {
+      stripNum(&t);
       tme = atol(t) / 1000;
     } else if(D) {
+      stripNum(&D);
       tme = atol(D) / 1000000;
     }
     m_duration_count = m_duration_count + tme;
@@ -605,6 +635,7 @@ static time_t getMinutes(char *line) {
       return minutes;
     } else {
       // unknown format
+      fprintf(stdout, "E");
       return 0;
     }
   } else {
@@ -902,7 +933,7 @@ int main(int argc, char **argv) {
 	    REG_EXTENDED);
     /* other time patterns: yyyy mm dd hh:mm:ss,mmm */
     regcomp(&m_trx2, 
-	    "[0-9]{4} [0-9]{2} [0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}",
+	    "[0-9]{4}[ -]{1}[0-9]{2}[ -]{1}[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[,.]{1}[0-9]{3}",
 	    REG_EXTENDED);
     fprintf(stderr, "[%s]: offline mode (writes to %s)\n", cmd, file);
     m_date_str[0] = '\0';
