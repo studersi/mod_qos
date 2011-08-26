@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.17 2011-08-25 19:33:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.18 2011-08-26 16:58:47 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -95,6 +95,7 @@ static regex_t m_trx;
 static regex_t m_trx2;
 /* real time mode (default) or offline */
 static int   m_offline = 0;
+static int   m_offline_data = 0;
 static char  m_date_str[MAX_LINE];
 static int   m_mem = 0;
 /* debug */
@@ -131,7 +132,7 @@ static char *skipElement(const char* line) {
     if(m_offline) {
       // offline mode: check for <name>='<value>' entry
       eq = strstr(p, "='");
-      if(eq && (eq - p) < 5) {
+      if(eq && (eq - p) < 10) {
 	// near hit
 	p = &eq[3];
 	while(p[0] != '\'' && p[0] != 0 && p[-1] != '\\') {
@@ -381,6 +382,7 @@ static void printAndResetStat(char *timeStr) {
 	    av[0], mem[0] ? mem : "-");
   } else {
     fprintf(m_f, "sl;-;m;-");
+    m_offline_data = 0;
   }
   fprintf(m_f, "\n");
   qs_csUnLock();
@@ -536,7 +538,7 @@ static void updateStat(const char *cstr, char *line) {
       m_status_3++;
     } else if(S[0] == '4') {
       m_status_4++;
-    } else {
+    } else if(S[0] == '5') {
       m_status_5++;
     }
   }
@@ -698,6 +700,7 @@ static void readStdinOffline(const char *cstr) {
   time_t unitTime = 0;
   while(qs_getLine(line, sizeof(line))) {
     time_t l_time = getMinutes(line);
+    m_offline_data = 1;
     if(unitTime == 0) {
       unitTime = l_time;
       qs_setTime(unitTime * 60);
@@ -725,6 +728,10 @@ static void readStdinOffline(const char *cstr) {
       }
       updateStat(cstr, line);
     }
+  }
+  if(m_offline_data) {
+    snprintf(buf, sizeof(buf), "%s %.2ld:%.2ld:00", m_date_str, unitTime/60, unitTime%60);
+    printAndResetStat(buf);
   }
 }
 
