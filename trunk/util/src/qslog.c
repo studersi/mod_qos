@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.18 2011-08-26 16:58:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.19 2011-08-29 16:28:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -414,6 +414,7 @@ static void updateStat(const char *cstr, char *line) {
   char *Q = NULL; /* mod_qos event message */
   const char *c = cstr;
   char *l = line;
+  long tme;
   if(!line[0]) return;
   while(c[0]) {
     /* process known types */
@@ -471,20 +472,8 @@ static void updateStat(const char *cstr, char *line) {
     }
     c++;
   }
-  if(m_offline && m_verbose) {
-    m_lines++;
-    printf("[%ld] I=%s U=%s B=%s i=%s S=%s T=%s Q=%s\n", m_lines,
-	   I == NULL ? "(null)" : I,
-	   U == NULL ? "(null)" : U,
-	   B == NULL ? "(null)" : B,
-	   BI == NULL ? "(null)" : BI,
-	   S == NULL ? "(null)" : S,
-	   T == NULL ? "(null)" : T,
-	   Q == NULL ? "(null)" : Q
-	   );
-  }
-  qs_csLock();
 
+  qs_csLock();
   if(Q != NULL) {
     if(strchr(Q, 'V') != NULL) {
       m_qos_v++;
@@ -544,7 +533,6 @@ static void updateStat(const char *cstr, char *line) {
   }
   if(T != NULL || t != NULL || D != NULL) {
     /* response duration */
-    long tme;
     if(T) {
       stripNum(&T);
       tme = atol(T);
@@ -575,6 +563,19 @@ static void updateStat(const char *cstr, char *line) {
   /* request counter */
   m_line_count++;
   qs_csUnLock();
+
+  if(m_offline && m_verbose) {
+    m_lines++;
+    printf("[%ld] I=%s U=%s B=%s i=%s S=%s T=%ld Q=%s\n", m_lines,
+	   I == NULL ? "(null)" : I,
+	   U == NULL ? "(null)" : U,
+	   B == NULL ? "(null)" : B,
+	   BI == NULL ? "(null)" : BI,
+	   S == NULL ? "(null)" : S,
+	   tme,
+	   Q == NULL ? "(null)" : Q
+	   );
+  }
   line[0] = '\0';
 }
 
@@ -945,7 +946,9 @@ int main(int argc, char **argv) {
     fprintf(stderr, "[%s]: offline mode (writes to %s)\n", cmd, file);
     m_date_str[0] = '\0';
     readStdinOffline(config);
-    fprintf(stdout, "\n");
+    if(!m_verbose) {
+      fprintf(stdout, "\n");
+    }
   } else {
     pthread_create(&tid, tha, loggerThread, NULL);
     readStdin(config);
