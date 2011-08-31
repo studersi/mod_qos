@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: qslog.sh,v 2.4 2011-08-26 16:58:47 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.5 2011-08-31 18:31:48 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -39,6 +39,7 @@ case "$1" in
 		sleep 1
 	    done
 	done
+	sleep 1
 	;;
 	apache)
 	# apache access log test using piped logging
