@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.336 2011-08-23 18:42:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.337 2011-08-31 18:31:48 pbuchbinder Exp $";
 static const char g_revision[] = "9.69";
 
 /************************************************************************
@@ -2348,38 +2348,61 @@ static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int 
 }
 /* json parser end --------------------------------------------------------- */
 
-static int qos_json(request_rec *r, const char **query, const char **msg) {
+static int qos_json(request_rec *r, qos_dir_config *dconf, const char **query, const char **msg) {
   const char *contenttype = apr_table_get(r->headers_in, "Content-Type");
   if(contenttype && (strncasecmp(contenttype, "application/json", 16) == 0)) {
-    /* check if parp has body data to process (requires "PARP_BodyData application/json") */
+    apr_size_t len = 0;
+    const char *data = NULL;
+    /* check if parp has body data to process (requires "PARP_BodyData application/json")
+       or if the json message is stored within the query */
     if(parp_appl_body_data_fn) {
-      apr_size_t len;
-      const char *data = parp_appl_body_data_fn(r, &len);
-      if(data && (len > 0)) {
-        char *value = apr_pstrndup(r->pool, data, len);
-        apr_table_t *tl = apr_table_make(r->pool, 200);
-        int rc;
-        if(strlen(value) != len) {
-          *msg = apr_pstrdup(r->pool, "null chracter within data structure");
+      data = parp_appl_body_data_fn(r, &len);
+    }
+    if(data == NULL) {
+      data = *query;
+      if(data && (data[0] == '[' || data[0] == '{')) {
+        int escerr = 0;
+        char *copyq = apr_pstrdup(r->pool, data);
+        *query = NULL;
+        // the query needs to be unescaped before getting parsed
+        len = qos_unescaping(copyq, dconf->dec_mode, &escerr);
+#ifdef QS_MOD_EXT_HOOKS
+        qos_run_path_decode_hook(r, &copyq, &len);
+#endif
+        data = copyq;
+        if(strlen(data) != len) {
+          *msg = apr_pstrdup(r->pool, "null chracter within data structure in query");
           return HTTP_BAD_REQUEST;
         }
-        rc = j_val(r->pool, &value, tl, "J", 0);
-        if(rc != APR_SUCCESS) {
-          *msg = apr_table_get(tl, QOS_J_ERROR); 
-          apr_table_unset(tl, QOS_J_ERROR);
-          return rc;
+      } else {
+        // does not look like a json structure (strict)
+        data = NULL;
+      }
+    }
+    if(data && (len > 0)) {
+      char *value = apr_pstrndup(r->pool, data, len);
+      apr_table_t *tl = apr_table_make(r->pool, 200);
+      int rc;
+      if(strlen(value) != len) {
+        *msg = apr_pstrdup(r->pool, "null chracter within data structure");
+        return HTTP_BAD_REQUEST;
+      }
+      rc = j_val(r->pool, &value, tl, "J", 0);
+      if(rc != APR_SUCCESS) {
+        *msg = apr_table_get(tl, QOS_J_ERROR); 
+        apr_table_unset(tl, QOS_J_ERROR);
+        return rc;
+      }
+      if(value && value[0]) {
+        value = j_skip(value);
+        if(value && value[0]) {
+          /* error, there is still some data */
+          *msg = apr_pstrdup(r->pool, "more than one element");
         }
-        if(value && value) {
-          value = j_skip(value);
-          if(value && value) {
-            /* error, there is still some data */
-            *msg = apr_pstrdup(r->pool, "more than one element");
-          }
-        }
-        *query = qos_parp_query(r, tl, *query);
-        if(*query) {
-          apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_Q), *query);
-        }
+      }
+      *query = qos_parp_query(r, tl, *query);
+      if(*query) {
+        apr_table_setn(r->notes, apr_pstrdup(r->pool, QS_PARP_Q), *query);
       }
     }
   }
@@ -2431,7 +2454,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
           q = r->parsed_uri.query;
         }
       }
-      if(qos_json(r, &q, &msg) != APR_SUCCESS) {
+      if(qos_json(r, dconf, &q, &msg) != APR_SUCCESS) {
         /* parser error */
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX(048)"access denied, invalid JSON syntax (%s),"

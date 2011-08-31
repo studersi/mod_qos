@@ -27,7 +27,8 @@
     - privileged users/ip/??? to learn from automatically
   - crawler
 - request filter:
-  - json in request query
+  + json in request query (not body)
+  - gwt parser (req id to build parameter names?)
   - qsfilter2 improvements
     - avoid certain pattern
     - different output formats

@@ -3,6 +3,9 @@ Version
  - Detection if module has been build for a different MPM implementation
    than the server is using at runtime.
 
+ - JSON parser processes request query (if starting with an array '['
+   of object '{') if no body is available.
+
  - qslog supports request time duration measurement in milli- and
    microseconds too (t and D instead of T).
 
@@ -14,7 +17,7 @@ Version
 
  - qslog extracts additional time formats (offline mode).
 
- - Add "X-Do-Not-Track" to the built-in request header white list.
+ - Added "X-Do-Not-Track" to the built-in request header white list.
 
 Version 9.68
 

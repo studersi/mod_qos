@@ -1,5 +1,5 @@
 #
-# $Id: QS_PermitUriJSON.htt,v 1.4 2011-07-03 20:46:53 pbuchbinder Exp $
+# $Id: QS_PermitUriJSON.htt,v 1.5 2011-08-31 18:31:48 pbuchbinder Exp $
 #
 
 
@@ -36,7 +36,7 @@ __POST /qos/parp/json?session=123 HTTP/1.1
 __Host: localhost
 __Content-Type: application/json
 __Content-Length: AUTO
-__Req: 1
+__Req: 2
 __
 __ {
 __    "name": "Jack (\"Bee\") Nimble", 
@@ -66,7 +66,7 @@ __POST /qos/parp/json?session=123 HTTP/1.1
 __Host: localhost
 __Content-Type: application/json
 __Content-Length: AUTO
-__Req: 1
+__Req: 3
 __
 __ {
 __    "name": "Jack (\"Bee\") Nimble", 
@@ -91,7 +91,7 @@ __POST /qos/parp/json?session=abc HTTP/1.1
 __Host: localhost
 __Content-Type: application/json
 __Content-Length: AUTO
-__Req: 1
+__Req: 4
 __
 __ {
 __    "name": "Jack (\"Bee\") Nimble", 
@@ -114,7 +114,7 @@ __POST /qos/parp/json?session=123 HTTP/1.1
 __Host: localhost
 __Content-Type: application/json
 __Content-Length: AUTO
-__Req: 1
+__Req: 5
 __
 __ {
 __    "name": "Jack (\"Bee\") Nimble", 
@@ -130,5 +130,51 @@ _EXPECT . "200 OK"
 _EXPECT . ", mod_qos"
 _WAIT
 _CLOSE
+
+# json in query (no body)
+_REQ localhost $QS_PORT_BASE
+__GET /qos/parp/json?{"name":"Jack%20(\"Bee\")%20Nimble","format":{"type":"0000","width":1920,"height":1080,"interlace":false,"frame%20rates":[%2024%20,30%20,60,72%20]}} HTTP/1.1
+__Host: localhost
+__Content-Type: application/json
+__Req: 6
+__
+_EXPECT . "!500 Internal Server Error"
+_EXPECT . "!code=041"
+_EXPECT . "200 OK"
+_EXPECT . ", mod_qos"
+_WAIT
+_CLOSE
+
+# json in query (no body), invalid value for J_o_format_o_type_v (not numeric)
+_REQ localhost $QS_PORT_BASE
+__GET /qos/parp/json?{"name":"Jack%20(\"Bee\")%20Nimble","format":{"type":"0000X","width":1920,"height":1080,"interlace":false,"frame%20rates":[%2024%20,30%20,60,72%20]}} HTTP/1.1
+__Host: localhost
+__Content-Type: application/json
+__Req: 6
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "code=041"
+_EXPECT . "!200 OK"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(041\): access denied, no permit rule match, action=deny"
+_EXEC tail -1 logs/error_log
+
+# json in query (no body), invalid value => null character
+_REQ localhost $QS_PORT_BASE
+__GET /qos/parp/json?{"name":"Jack%20(\"Bee\")%20Nimble","format":{"type":"0000X","width":1920,"height":1080,"interlace":false,"frame%20rates":[%2024%20,30%20,60,72%00]}} HTTP/1.1
+__Host: localhost
+__Content-Type: application/json
+__Req: 6
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "code=048"
+_EXPECT . "!200 OK"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(048\): access denied, invalid JSON syntax \(null chracter within data structure in query\), action=deny"
+_EXEC tail -1 logs/error_log
 
 END
