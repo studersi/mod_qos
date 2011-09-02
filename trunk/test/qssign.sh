@@ -69,8 +69,15 @@ fi
 ## tomcat, catalina
 #Jun 4, 2008 9:21:22 AM org.apache.catalina.startup.HostConfig deployWAR
 #
-## log4j (one of many, many possible formats)
-#2010-04-14 20:18:37,464 | INFO  | org.hibernate.cfg.Configuration         ::getConfigurationInputStream:1081  Configuration resource: /hibernate.cfg.xml
+## log4j (some of many, many possible formats)
+echo "=============================================="
+echo "2010-04-14 20:18:37,464 | INFO  | org.hibernate.cfg         ::getInputStream:1081  resource: /hibernate.cfg.xml" | ../util/src/qssign -s 1234567890 -e
+echo "=============================================="
+echo "2011-08-30 07:27:22,738 INFO  loginId='test'" | ../util/src/qssign -s 1234567890 -e
+echo "=============================================="
+echo "2011-09-01 07:37:17,275 main            org.apache.catalina.startup.Catalina     INFO  Server startup in 5770 ms" | ../util/src/qssign -s 1234567890 -e
+echo "=============================================="
+echo "2011-08-30 07:27:22,738 anything..." | ../util/src/qssign -s 1234567890 -e
 #
 ## linux: postfix, auth, ...
 #Dec  5 07:01:02 titan postfix/cleanup[5524]: AFEF8E6AC6: message-id=<20101205060102.79228E6AB2@server>
@@ -87,7 +94,6 @@ echo "[Mon Dec 06 21:29:07 2010] [notice] Apache/2.2.17 (Unix) mod_ssl/2.2.17 Op
 
 echo "=============================================="
 echo "127.0.0.1 - - [06/Dec/2010:21:26:57 +0100] \"GET /qos/favicon.ico HTTP/1.1\" 200 1150" | ../util/src/qssign -s 1234567890 -e
-
 
 echo "- end"
 head -4 logs/access_log | ../util/src/qssign -s 1234567890 -e > logs/signed_access_log.1

@@ -1,5 +1,6 @@
 
-- collecting additional client/connection attributes such as
+- improved anomaly detection, collecting additional client/connection
+  attributes such as
   - requests per single TCP connection (keep-alive)
   + 304 responses
   + respone content types (html/css/js/image/...)
@@ -8,7 +9,8 @@
   - request/response length (body)
   - request/response headers (types, length)
   - other
-+ doc: document VIP behavior (exact: which directive are affacted)
+  - log event
++ doc: document VIP behavior (exact: which directive are affected)
 - more "dynamic" rules:
   - enforce rules on certain conditions only (e.g. overall server usage)
     + QS_SrvMinDataRate <bytes per second> [<max bytes per second> [ <free>% ] ]
@@ -34,9 +36,7 @@
     - different output formats
     - built-in (preferred) pattern ("expert mode")
 - response filter (e.g. detecting "bad" js code)
-- improved anomaly detection (thresholds, logging)
-  - set (more) client events to be used in other rules
-  - log event
+  - try to enforce content security header settings
 - more user friendly error handling for QS_ClientEventBlockCount directive
   - show the error page for the more than only the first occurences
     - e.g. answer the next 5 (or more) requests with an error page too
@@ -54,9 +54,10 @@
     - sepatate modules for some function sets
 - web interface (handler) to configure mod_qos dynamically
   - impoved viewer
-  + clear per client stats
-  + block clients/IPs
-  + mark clients as vip
+  - console:
+    + clear per client stats
+    + block clients/IPs
+    + mark clients as vip
 - management tool (sep. application)
   - configuration guidance
   - log data management

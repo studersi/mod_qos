@@ -6,6 +6,8 @@ Version
  - JSON parser processes request query (if starting with an array '['
    of object '{') if no body is available.
 
+ - qssing supports additional log format detection.
+
  - qslog supports request time duration measurement in milli- and
    microseconds too (t and D instead of T).
 

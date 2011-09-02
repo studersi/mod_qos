@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.16 2011-02-10 19:28:56 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.17 2011-09-02 06:36:49 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -57,11 +57,44 @@ static const char revision[] = "$Id: qssign.c,v 1.16 2011-02-10 19:28:56 pbuchbi
 
 #define QS_END "qssign---end-of-data"
 
+static const char *m_fmt = "";
 static long m_nr = 1;
 static int  m_logend = 0;
 static void (*m_end)(const char *) = NULL;
 static int m_end_pos = 0;
 static const char *m_sec = NULL;
+
+typedef struct {
+  const char* fmt;
+  const char* pattern;
+  const char* test;
+} qos_p_t;
+
+#define severity "[A-Z]+"
+
+static const qos_p_t pattern[] = {
+  {
+    "%s | INFO  | "QS_END,
+    "^[0-9]{4}[-][0-9]{2}[-][0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}[ ]+[|][ ]+"severity"[ ]+[|][ ]+[a-zA-Z0-9]+",
+    "2010-04-14 20:18:37,464 | INFO  | org.hibernate.cfg.Configuration"
+  },
+  {
+    "%s INFO  "QS_END,
+    "^[0-9]{4}[-][0-9]{2}[-][0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}[ ]+"severity"[ ]+",
+    "2011-08-30 07:27:22,738 INFO  loginId='test'"
+  },
+  {
+    "%s qssign          end                                      INFO  "QS_END,
+    "^[0-9]{4}[-][0-9]{2}[-][0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}[ ]+[a-zA-Z0-9\\.-]+[ ]+[a-zA-Z0-9\\.-]+[ ]+"severity"[ ]+",
+    "2011-09-01 07:37:17,275 main            org.apache.catalina.startup.Catalina     INFO  Server"
+  },
+  {
+    "%s INFO  "QS_END,
+    "^[0-9]{4}[-][0-9]{2}[-][0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}[ ]+",
+    "2011-08-30 07:27:22,738 "
+  },
+  { NULL, NULL, NULL }
+};
 
 static int qs_getLine(char *s, int n) {
   int i = 0;
@@ -170,6 +203,22 @@ static void qs_end_nj(const char *sec) {
   return;
 }
 
+/* 2010-04-14 20:18:37,464 ... (using m_fmt) */
+static void qs_end_lj(const char *sec) {
+  int sec_len = strlen(sec);
+  char line[MAX_LINE];
+  int dig = atoi(SEQDIG);
+  /* <data> ' ' <sequence number> '#' <hmac>*/
+  int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
+  char time_string[1024];
+  time_t tm = time(NULL);
+  struct tm *ptr = localtime(&tm);
+  strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S,000", ptr);
+  sprintf(line, m_fmt, time_string);
+  qs_write(line, line_size, sec, sec_len);
+  return;
+}
+
 /* Dec  6 04:00:06 localhost kernel: */
 static void qs_end_lx(const char *sec) {
   char hostname[1024];
@@ -206,6 +255,7 @@ void qs_signal_exit(int e) {
  * - 2010 12 03 17:00:30.425 qssign     end        0.0              5-NOTICE:  ..............
  *                                                 46  <- var ->    63      71
  * - Dec  6 04:00:06 localhost kernel:
+ * - some 2010-12-03 17:00:30,425 ...
  */
 static void qs_set_format(char *s) {
   regex_t r_apache_err; 
@@ -225,7 +275,7 @@ static void qs_set_format(char *s) {
     exit(1);
   }
   if(regcomp(&r_nj,
-	     "^[0-9]{4} [0-9]{2} [0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]+ [a-zA-Z0-9]+[ ]+.*[A-Z]+[ ]*:",
+	     "^[0-9]{4} [0-9]{2} [0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3} [a-zA-Z0-9]+[ ]+.*[A-Z]+[ ]*:",
 	     REG_EXTENDED) != 0) {
     fprintf(stderr, "failed to compile regex (nj)\n");
     exit(1);
@@ -252,8 +302,26 @@ static void qs_set_format(char *s) {
     m_end = &qs_end_nj;
   } else if(regexec(&r_lx, s, 0, NULL, 0) == 0) {
     m_end = &qs_end_lx;    
-  } else {
-    /* default */
+  }
+  // search within the generic yyyy-mm-dd hh-mm-ss,mmm patterns
+  if(!m_end) {
+    const qos_p_t *p = pattern;
+    while(p->fmt) {
+      regex_t r_j;
+      if(regcomp(&r_j, p->pattern, REG_EXTENDED) != 0) {
+	fprintf(stderr, "failed to compile regex (%s)\n", p->pattern);
+	exit(1);
+      }
+      if(regexec(&r_j, s, 0, NULL, 0) == 0) {
+	m_fmt = p->fmt;
+	m_end = &qs_end_lj;      
+	break;
+      }
+      p++;
+    }
+  }
+  /* default (apache error log format) */
+  if(m_end == NULL) {
     m_end = &qs_end_apache_err;
   }
   return;
