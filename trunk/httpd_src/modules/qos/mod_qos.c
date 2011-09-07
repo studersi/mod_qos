@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.337 2011-08-31 18:31:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.338 2011-09-07 20:31:43 pbuchbinder Exp $";
 static const char g_revision[] = "9.69";
 
 /************************************************************************
@@ -633,6 +633,7 @@ typedef struct {
 
 module AP_MODULE_DECLARE_DATA qos_module;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
+static int m_worker_mpm = 1;
 static unsigned int m_hostcode = 0;
 static int m_generation = 0;
 static int m_qos_cc_partition = QSMOD;
@@ -4918,7 +4919,9 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   // apr_thread_mutex_destroy(sconf->inctx_t->lock);
   free(ips);
 #ifdef WORKER_MPM
-  apr_thread_exit(thread, APR_SUCCESS);
+  if(m_worker_mpm) {
+    apr_thread_exit(thread, APR_SUCCESS);
+  }
 #endif
   return NULL;
 }
@@ -4926,13 +4929,13 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
 static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-#ifdef WORKER_MPM
-  apr_status_t status;
-#endif
   sconf->inctx_t->exit = 1;
   /* may long up to one second */
 #ifdef WORKER_MPM
-  apr_thread_join(&status, sconf->inctx_t->thread);
+  if(m_worker_mpm) {
+    apr_status_t status;
+    apr_thread_join(&status, sconf->inctx_t->thread);
+  }
 #endif
   return APR_SUCCESS;
 }
@@ -6653,6 +6656,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
 #ifdef WORKER_MPM
   if(strcasecmp(ap_show_mpm(), "Worker") != 0) {
+    m_worker_mpm = 0;
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"loaded MPM is '%s' but module has been compiled for 'Worker'",
                  ap_show_mpm());    
