@@ -1,4 +1,4 @@
-Version
+Version 9.69
 
  - Detection if module has been build for a different MPM implementation
    than the server is using at runtime.
@@ -20,6 +20,8 @@ Version
  - qslog extracts additional time formats (offline mode).
 
  - Added "X-Do-Not-Track" to the built-in request header white list.
+
+ - Minor changes within the status viewer (machine-readable view).
 
 Version 9.68
 

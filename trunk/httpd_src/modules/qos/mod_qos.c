@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.338 2011-09-07 20:31:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.339 2011-09-08 18:19:06 pbuchbinder Exp $";
 static const char g_revision[] = "9.69";
 
 /************************************************************************
@@ -4021,6 +4021,7 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config,
                                                                  &qos_module);
   const char *option = apr_table_get(qt, "option");
+  apr_time_t now = apr_time_sec(r->request_time);
   while(s) {
     char *sn = apr_psprintf(r->pool, "%s"QOS_DELIM"%s"QOS_DELIM"%d",
                             s->is_virtual ? "v" : "b",
@@ -4076,13 +4077,13 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_EventKBytesPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
                      e->kbytes_per_sec_limit,
                      e->url, 
-                     e->kbytes_per_sec);
+                     now > (e->interval + 31) ? 0 : e->kbytes_per_sec);
         }
         if(e->event && (e->req_per_sec_limit > 0)) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_EventPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
                      e->req_per_sec_limit,
                      e->url, 
-                     e->req_per_sec);
+                     now > (e->interval + 21) ? 0 : e->req_per_sec);
         }
         e = e->next;
       }
@@ -4617,7 +4618,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
                      ((e->req_per_sec * 100) / e->req_per_sec_limit) > 90 ? red : "",
-                     now > (e->interval + 11) ? 0 : e->req_per_sec);
+                     now > (e->interval + 21) ? 0 : e->req_per_sec);
         }
         if(e->kbytes_per_sec_limit == 0) {
             ap_rprintf(r, "<td>-</td>");

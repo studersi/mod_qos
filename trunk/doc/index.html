@@ -289,10 +289,9 @@ to enforce a rule. This may be used for test purposes.
 
 <a name="requestlevelcontrol"></a>
 <h3>Request Level Control</h3>
-The module features the following directives to control server access on a per-location 
-(URL) level. Only one <code>QS_Loc*</code> rule (URL string or regular expression) 
+The module features the following directives to control server access on a per-URL level. Only one <code>QS_Loc*</code> rule (URL string or regular expression) of each type 
 is evaluated per request where regular expression rules (*Match) have higher priority 
-than the rules using a URL string. A <code>QS_LocRequestLimit*</code> rule may be used 
+than the rules using a literal URL-string. A <code>QS_LocRequestLimit*</code> rule may be used 
 in parallel to a <code>QS_LocRequestPerSecLimit*</code> and/or 
 <code>QS_LocKBytesPerSecLimit*</code> rule if they use the very same URL string or 
 regular expression.
