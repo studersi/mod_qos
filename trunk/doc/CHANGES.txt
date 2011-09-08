@@ -1,5 +1,7 @@
 Version 9.69
 
+ - Add directive QS_ClientContentTypes.
+
  - Detection if module has been build for a different MPM implementation
    than the server is using at runtime.
 

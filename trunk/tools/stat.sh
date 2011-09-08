@@ -5,7 +5,7 @@ set -e
 set -u
 
 cd `dirname $0`
-ELEMENTS="r/s req b/s av <1s 1s 2s 3s 4s 5s >5s ip usr qv qs qd qk qt ql sl m"
+ELEMENTS="r/s req b/s 5xx av <1s 1s 2s 3s 4s 5s >5s ip usr qv qs qd qk qt ql sl m"
 CSV=qslog.csv
 if [ ! -d tmp ]; then
   mkdir tmp

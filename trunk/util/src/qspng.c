@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.7 2011-03-04 16:56:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.8 2011-09-08 20:57:27 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -67,9 +67,14 @@ static const qs_png_elt_t qs_png_elts[] = {
   { "3s", "requests with 3 seconds response time", 25, 90, 180 },
   { "4s", "requests with 4 seconds response time", 25, 95, 180 },
   { "5s", "requests with 5 seconds response time", 15, 90, 180 },
-  { ">5s", "requests slower than 5 seconds", 35, 90, 185 },
+  { ">5s","requests slower than 5 seconds", 35, 90, 185 },
+  { "1xx","requets with HTTP status 1xx",   50, 70, 150 },
+  { "2xx","requets with HTTP status 2xx",   50, 70, 150 },
+  { "3xx","requets with HTTP status 3xx",   50, 70, 150 },
+  { "4xx","requets with HTTP status 4xx",   50, 70, 150 },
+  { "5xx","requets with HTTP status 5xx",   50, 70, 150 },
   { "ip", "IP addresses",          55, 60, 150 },
-  { "usr", "active users",         55, 66, 150 },
+  { "usr","active users",          55, 66, 150 },
   { "qv", "created VIP sessions",  55, 50, 155 },
   { "qs", "session pass",          55, 75, 160 },
   { "qd", "access denied",         55, 70, 170 },
