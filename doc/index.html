@@ -1286,6 +1286,13 @@ restrictions. Filter is applied on connection level.
 Defines the allowed variation from a "normal" client (average). 
 Default is 500.
 </li>
+<li>
+<code>QS_ClientContentTypes &lt;html&gt; &lt;css/js&gt; &lt;images&gt; &lt;other&gt; &lt;304&gt;</code><br>
+Defines the distribution of HTTP response content types a client normaly 
+receives when accessing the server. mod_qos normally learns the average 
+behavior automatically by default but you may specify a static configuration 
+in order to avoid influences by a high number of abnormal clients.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">

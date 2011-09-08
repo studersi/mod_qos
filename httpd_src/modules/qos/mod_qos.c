@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.339 2011-09-08 18:19:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.340 2011-09-08 20:57:26 pbuchbinder Exp $";
 static const char g_revision[] = "9.69";
 
 /************************************************************************
@@ -526,6 +526,13 @@ typedef struct {
   int cc_tolerance_min;       /* GLOBAL ONLY */
   apr_table_t *milestones;
   time_t milestone_timeout;
+  /* predefined client behavior */
+  int static_on;
+  unsigned long long static_html;
+  unsigned long long static_cssjs;
+  unsigned long long static_img;
+  unsigned long long static_other;
+  unsigned long long static_notmodified;
 } qos_srv_config;
 
 /**
@@ -3611,21 +3618,38 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
  end:
   /* compare this client with other clients */
   if(limit &&
-     ((s->html > QOS_CC_BEHAVIOR_THR) && (s->img > QOS_CC_BEHAVIOR_THR) && 
-      (s->cssjs > QOS_CC_BEHAVIOR_THR) && (s->other > QOS_CC_BEHAVIOR_THR) && 
-      (s->notmodified > QOS_CC_BEHAVIOR_THR) && (e->html > QOS_CC_BEHAVIOR_THR_SINGLE))) {
-    unsigned long long s_all = s->html + s->img + s->cssjs + s->other + s->notmodified;
-    unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
-    unsigned long long s_2html = s_all / s->html;
-    unsigned long long s_2cssjs = s_all / s->cssjs;
-    unsigned long long s_2img = s_all / s->img;
-    unsigned long long s_2other = s_all / s->other;
-    unsigned long long s_2notmodified = s_all / s->notmodified;
-    unsigned int e_2html_p = ((e_all / e->html) * sconf->cc_tolerance) / s_2html;
-    unsigned int e_2cssjs_p = ((e_all / e->cssjs ) * sconf->cc_tolerance) / s_2cssjs;
-    unsigned int e_2img_p = ((e_all / e->img) * sconf->cc_tolerance) / s_2img;
-    unsigned int e_2other_p = ((e_all / e->other) * sconf->cc_tolerance) / s_2other;
-    unsigned int e_2notmodified_p = ((e_all / s->notmodified ) * sconf->cc_tolerance) / s_2notmodified;
+     (sconf->static_on == 1 ||
+      ((s->html > QOS_CC_BEHAVIOR_THR) && (s->img > QOS_CC_BEHAVIOR_THR) && 
+       (s->cssjs > QOS_CC_BEHAVIOR_THR) && (s->other > QOS_CC_BEHAVIOR_THR) && 
+       (s->notmodified > QOS_CC_BEHAVIOR_THR) && (e->html > QOS_CC_BEHAVIOR_THR_SINGLE)))) {
+    unsigned int e_2html_p;
+    unsigned int e_2cssjs_p;
+    unsigned int e_2img_p;
+    unsigned int e_2other_p;
+    unsigned int e_2notmodified_p;
+    if(sconf->static_on == 1) {
+      /* use predefined value */
+      unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
+      e_2html_p = ((e_all / e->html) * sconf->cc_tolerance) / sconf->static_html;
+      e_2cssjs_p = ((e_all / e->cssjs ) * sconf->cc_tolerance) / sconf->static_cssjs;
+      e_2img_p = ((e_all / e->img) * sconf->cc_tolerance) / sconf->static_img;
+      e_2other_p = ((e_all / e->other) * sconf->cc_tolerance) / sconf->static_other;
+      e_2notmodified_p = ((e_all / s->notmodified ) * sconf->cc_tolerance) / sconf->static_notmodified;
+    } else {
+      /* learn average */
+      unsigned long long s_all = s->html + s->img + s->cssjs + s->other + s->notmodified;
+      unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
+      unsigned long long s_2html = s_all / s->html;
+      unsigned long long s_2cssjs = s_all / s->cssjs;
+      unsigned long long s_2img = s_all / s->img;
+      unsigned long long s_2other = s_all / s->other;
+      unsigned long long s_2notmodified = s_all / s->notmodified;
+      e_2html_p = ((e_all / e->html) * sconf->cc_tolerance) / s_2html;
+      e_2cssjs_p = ((e_all / e->cssjs ) * sconf->cc_tolerance) / s_2cssjs;
+      e_2img_p = ((e_all / e->img) * sconf->cc_tolerance) / s_2img;
+      e_2other_p = ((e_all / e->other) * sconf->cc_tolerance) / s_2other;
+      e_2notmodified_p = ((e_all / s->notmodified ) * sconf->cc_tolerance) / s_2notmodified;
+    }
     if((e_2html_p > sconf->cc_tolerance_max) ||
        (e_2html_p < sconf->cc_tolerance_min) ||
        (e_2cssjs_p > sconf->cc_tolerance_max) ||
@@ -7371,6 +7395,12 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->maxpost = -1;
   sconf->milestones = NULL;
   sconf->milestone_timeout = QOS_MILESTONE_TIMEOUT;
+  sconf->static_on = -1;
+  sconf->static_html = 0;
+  sconf->static_cssjs = 0;
+  sconf->static_img = 0;
+  sconf->static_other = 0;
+  sconf->static_notmodified = 0;
   if(!s->is_virtual) {
     char *msg = qos_load_headerfilter(p, sconf->hfilter_table, qs_header_rules);
     if(msg) {
@@ -7520,6 +7550,14 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   if(o->milestones == NULL) {
     o->milestones = b->milestones;
     o->milestone_timeout = b->milestone_timeout;
+  }
+  if(o->static_on == -1) {
+    /* use base settings if not configured per vhost */
+    o->static_html = b->static_html;
+    o->static_cssjs = b->static_cssjs;
+    o->static_img = b->static_img;
+    o->static_other = b->static_other;
+    o->static_notmodified = b->static_notmodified;
   }
   return o;
 }
@@ -8941,6 +8979,24 @@ const char *qos_client_tolerance_cmd(cmd_parms *cmd, void *dcfg, const char *arg
   return NULL;
 }
 
+#ifdef AP_TAKE_ARGV
+const char *qos_client_contenttype(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  if(argc != 5) {
+    return apr_psprintf(cmd->pool, "%s: requires four arguments",
+                        cmd->directive->directive);
+  }
+  sconf->static_on = 1;
+  sconf->static_html = atoi(argv[0]);
+  sconf->static_cssjs = atoi(argv[1]);
+  sconf->static_img = atoi(argv[2]);
+  sconf->static_other = atoi(argv[3]);
+  sconf->static_notmodified = atoi(argv[4]);
+  return NULL;
+}
+#endif
+
 const char *qos_client_event_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -9415,6 +9471,15 @@ static const command_rec qos_config_cmds[] = {
                 "QS_ClientTolerance <number>, defines the allowed tolerance (variation)"
                 " from a \"normal\" client (average). Default is "QOS_CC_BEHAVIOR_TOLERANCE_STR"."
                 " Directive is allowed in global server context only."),
+#ifdef AP_TAKE_ARGV
+  AP_INIT_TAKE_ARGV("QS_ClientContentTypes", qos_client_contenttype, NULL,
+                    RSRC_CONF,
+                    "QS_ClientContentTypes <html> <css/js> <images> <other> <304>,"
+                    " defines the distribution of HTTP response content types a client normaly"
+                    " receives when accessing the server. mod_qos normally learns the average"
+                    " behavior automatically by default but you may specify a static configuration"
+                    " in order to avoid influences by a high number of abnormal clients."),
+#endif
   AP_INIT_TAKE12("QS_ClientEventBlockCount", qos_client_block_cmd, NULL,
                  RSRC_CONF,
                  "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"
