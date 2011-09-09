@@ -1,5 +1,5 @@
 #
-# $Id: ClientBehavior.htt,v 1.3 2010-12-07 20:49:08 pbuchbinder Exp $
+# $Id: ClientBehavior.htt,v 1.4 2011-09-09 19:53:58 pbuchbinder Exp $
 #
 #ifdef QS_INTERNAL_TEST
 #define QOS_CC_BEHAVIOR_THR 50
@@ -19,6 +19,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
+__Req: 1
 __
 _EXPECT . "200"
 _EXPECT . "==html=="
@@ -29,6 +30,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /htt/start.js HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
+__Req: 2
 __
 _EXPECT . "200"
 _EXPECT . "==js=="
@@ -40,6 +42,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /htt/style.css HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
+__Req: 3
 __
 _EXPECT . "200"
 _EXPECT . "==css=="
@@ -51,6 +54,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /htt/pic.jpg HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
+__Req: 4
 __
 _EXPECT . "200"
 _EXPECT . "==jpg=="
@@ -61,6 +65,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /htt/doc.pfg HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
+__Req: 5
 __
 _EXPECT . "200"
 _EXPECT . "==pdf=="
@@ -71,6 +76,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /htt/pic.jpg HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
+__Req: 6
 __
 _EXPECT . "304"
 _WAIT
