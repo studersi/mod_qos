@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.341 2011-09-09 19:53:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.342 2011-09-09 21:26:07 pbuchbinder Exp $";
 static const char g_revision[] = "9.69";
 
 /************************************************************************
@@ -150,8 +150,7 @@ static const char g_revision[] = "9.69";
 #define QOS_CC_BEHAVIOR_THR 50
 #define QOS_CC_BEHAVIOR_THR_SINGLE 10
 #endif
-#define QOS_CC_BEHAVIOR_TOLERANCE_STR "500"
-#define QOS_CC_BEHAVIOR_TOLERANCE_MIN 5
+#define QOS_CC_BEHAVIOR_TOLERANCE_STR "20"
 
 #define QS_ERR_TIME_FORMAT "%a %b %d %H:%M:%S %Y"
 
@@ -3624,46 +3623,47 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
      e->events > QOS_CC_BEHAVIOR_THR_SINGLE &&
      ((sconf->static_on == 1) ||
       (s->html > QOS_CC_BEHAVIOR_THR && s->html && s->img && s->cssjs && s->other && s->notmodified))) {
-    unsigned int e_2html_p = 0;
-    unsigned int e_2cssjs_p = 0;
-    unsigned int e_2img_p = 0;
-    unsigned int e_2other_p = 0;
-    unsigned int e_2notmodified_p = 0;
+    int i;
+    unsigned int server[5];
+    unsigned int client[5];
     // note: all e->* variables are initialized by "1" to avaoid FPE
     if(sconf->static_on == 1) {
       /* use predefined value */
       unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
-      e_2html_p = ((e_all / e->html) * sconf->cc_tolerance) / sconf->static_html;
-      e_2cssjs_p = ((e_all / e->cssjs ) * sconf->cc_tolerance) / sconf->static_cssjs;
-      e_2img_p = ((e_all / e->img) * sconf->cc_tolerance) / sconf->static_img;
-      e_2other_p = ((e_all / e->other) * sconf->cc_tolerance) / sconf->static_other;
-      e_2notmodified_p = ((e_all / e->notmodified ) * sconf->cc_tolerance) / sconf->static_notmodified;
+      server[0] = sconf->static_html;
+      server[1] = sconf->static_cssjs;
+      server[2] = sconf->static_img;
+      server[3] = sconf->static_other;
+      server[4] = sconf->static_notmodified;
+      client[0] = 100 * e->html / e_all;
+      client[1] = 100 * e->cssjs / e_all;
+      client[2] = 100 * e->img / e_all;
+      client[3] = 100 * e->other / e_all;
+      client[4] = 100 * e->notmodified / e_all;
     } else {
       /* learn average */
       unsigned long long s_all = s->html + s->img + s->cssjs + s->other + s->notmodified;
       unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
-      unsigned long long s_2html = s_all / s->html;
-      unsigned long long s_2cssjs = s_all / s->cssjs;
-      unsigned long long s_2img = s_all / s->img;
-      unsigned long long s_2other = s_all / s->other;
-      unsigned long long s_2notmodified = s_all / s->notmodified;
-      e_2html_p = ((e_all / e->html) * sconf->cc_tolerance) / s_2html;
-      e_2cssjs_p = ((e_all / e->cssjs ) * sconf->cc_tolerance) / s_2cssjs;
-      e_2img_p = ((e_all / e->img) * sconf->cc_tolerance) / s_2img;
-      e_2other_p = ((e_all / e->other) * sconf->cc_tolerance) / s_2other;
-      e_2notmodified_p = ((e_all / e->notmodified ) * sconf->cc_tolerance) / s_2notmodified;
+      server[0] = 100 * s->html / s_all;
+      server[1] = 100 * s->cssjs / s_all;
+      server[2] = 100 * s->img / s_all;
+      server[3] = 100 * s->other / s_all;
+      server[4] = 100 * s->notmodified / s_all;
+      client[0] = 100 * e->html / e_all;
+      client[1] = 100 * e->cssjs / e_all;
+      client[2] = 100 * e->img / e_all;
+      client[3] = 100 * e->other / e_all;
+      client[4] = 100 * e->notmodified / e_all;
     }
-    if((e_2html_p > sconf->cc_tolerance_max) ||
-       (e_2html_p < sconf->cc_tolerance_min) ||
-       (e_2cssjs_p > sconf->cc_tolerance_max) ||
-       (e_2cssjs_p < sconf->cc_tolerance_min) ||
-       (e_2img_p > sconf->cc_tolerance_max) ||
-       (e_2img_p < sconf->cc_tolerance_min) ||
-       (e_2other_p > sconf->cc_tolerance_max) ||
-       (e_2other_p < sconf->cc_tolerance_min) ||
-       (e_2notmodified_p > sconf->cc_tolerance_max) ||
-       (e_2notmodified_p < sconf->cc_tolerance_min)) {
-      penalty = 1;
+    for(i = 0; i < 5; i++) {
+      if(client[i] > (server[i] + sconf->cc_tolerance)) {
+        penalty++;        
+      } else {
+        if((server[i] > sconf->cc_tolerance) &&
+           (client[i] < (server[i] - sconf->cc_tolerance))) {
+          penalty++;
+        }
+      }
     }
   }
   return penalty;
@@ -7402,8 +7402,6 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_limit = 0;
   sconf->qos_cc_serialize = 0;
   sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
-  sconf->cc_tolerance_max = 2 * sconf->cc_tolerance;
-  sconf->cc_tolerance_min = QOS_CC_BEHAVIOR_TOLERANCE_MIN;
   sconf->qos_cc_block_time = 600;
   sconf->qos_cc_limit_time = 600;
   sconf->disable_handler = -1;
@@ -7478,8 +7476,6 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_limit_time = b->qos_cc_limit_time;
   o->qos_cc_serialize = b->qos_cc_serialize;
   o->cc_tolerance = b->cc_tolerance;
-  o->cc_tolerance_max = b->cc_tolerance_max;
-  o->cc_tolerance_min = b->cc_tolerance_min;
   o->req_rate = b->req_rate;
   o->req_rate_start = b->req_rate_start;
   o->min_rate = b->min_rate;
@@ -8987,9 +8983,8 @@ const char *qos_client_tolerance_cmd(cmd_parms *cmd, void *dcfg, const char *arg
     return err;
   }
   sconf->cc_tolerance = atoi(arg1);
-  sconf->cc_tolerance_max = 2 * sconf->cc_tolerance;
-  if(sconf->cc_tolerance < 50) {
-    return apr_psprintf(cmd->pool, "%s: must be numeric value >=50",
+  if(sconf->cc_tolerance < 5 || sconf->cc_tolerance > 80) {
+    return apr_psprintf(cmd->pool, "%s: must be numeric value between 5 and 80",
                         cmd->directive->directive);
   }
   return NULL;
@@ -9019,11 +9014,11 @@ const char *qos_client_contenttype(cmd_parms *cmd, void *dcfg, int argc, char *c
   } else {
     unsigned long long s_all = sconf->static_html + sconf->static_img + sconf->static_cssjs + 
       sconf->static_other + sconf->static_notmodified;
-    unsigned long long s_2html = s_all / sconf->static_html;
-    unsigned long long s_2cssjs = s_all / sconf->static_cssjs;
-    unsigned long long s_2img = s_all / sconf->static_img;
-    unsigned long long s_2other = s_all / sconf->static_other;
-    unsigned long long s_2notmodified = s_all / sconf->static_notmodified;
+    unsigned long long s_2html = 100 * sconf->static_html / s_all;
+    unsigned long long s_2cssjs = 100 * sconf->static_cssjs / s_all;
+    unsigned long long s_2img = 100 * sconf->static_img / s_all;
+    unsigned long long s_2other = 100 * sconf->static_other / s_all;
+    unsigned long long s_2notmodified = 100 * sconf->static_notmodified / s_all;
     sconf->static_html = s_2html;
     sconf->static_cssjs = s_2cssjs;
     sconf->static_img = s_2img;
@@ -9506,7 +9501,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ClientTolerance", qos_client_tolerance_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientTolerance <number>, defines the allowed tolerance (variation)"
-                " from a \"normal\" client (average). Default is "QOS_CC_BEHAVIOR_TOLERANCE_STR"."
+                " from a \"normal\" client (average) in percent. Default is "QOS_CC_BEHAVIOR_TOLERANCE_STR"%."
                 " Directive is allowed in global server context only."),
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_ClientContentTypes", qos_client_contenttype, NULL,
