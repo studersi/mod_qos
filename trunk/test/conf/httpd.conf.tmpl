@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.190 2011-08-16 19:57:34 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.191 2011-09-09 19:53:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -82,6 +82,9 @@ QS_SrvMinDataRate       120 3000 10
 </IfDefine>
 <IfDefine cc>
 QS_ClientPrefer         80
+</IfDefine>
+<IfDefine QS_ClientContentTypes>
+QS_ClientContentTypes 100 50 200 30 60
 </IfDefine>
 <IfDefine !BlockOnClose>
 QS_ClientEventBlockCount 3 10

@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.340 2011-09-08 20:57:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.341 2011-09-09 19:53:58 pbuchbinder Exp $";
 static const char g_revision[] = "9.69";
 
 /************************************************************************
@@ -142,7 +142,7 @@ static const char g_revision[] = "9.69";
 #define QOS_DEC_MODE_FLAGS_UNI        0x02
 #define QOS_DEC_MODE_FLAGS_ANSI       0x04
 
-#define QOS_CC_BEHAVIOR_THR 10000
+#define QOS_CC_BEHAVIOR_THR 50000
 #define QOS_CC_BEHAVIOR_THR_SINGLE 50
 #ifdef QS_INTERNAL_TEST
 #undef QOS_CC_BEHAVIOR_THR
@@ -186,6 +186,7 @@ typedef struct {
   unsigned int other;
   unsigned int notmodified;
   unsigned int serialize;
+  unsigned int events;
   /* prefer */
   short int vip;
   /* ev block */
@@ -1039,6 +1040,7 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->img = 1;
   (*pB)->other = 1;
   (*pB)->notmodified = 1;
+  (*pB)->events = 0;
   return pB;
 }
 
@@ -3589,6 +3591,7 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
                             qos_s_t *s, qos_s_entry_t *e, int limit) {
   int penalty = 0;
   const char *ct = apr_table_get(r->headers_out, "Content-Type");
+  e->events++;
   if(r->status == 304) {
     e->notmodified ++;
     s->notmodified ++;
@@ -3618,15 +3621,15 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
  end:
   /* compare this client with other clients */
   if(limit &&
-     (sconf->static_on == 1 ||
-      ((s->html > QOS_CC_BEHAVIOR_THR) && (s->img > QOS_CC_BEHAVIOR_THR) && 
-       (s->cssjs > QOS_CC_BEHAVIOR_THR) && (s->other > QOS_CC_BEHAVIOR_THR) && 
-       (s->notmodified > QOS_CC_BEHAVIOR_THR) && (e->html > QOS_CC_BEHAVIOR_THR_SINGLE)))) {
-    unsigned int e_2html_p;
-    unsigned int e_2cssjs_p;
-    unsigned int e_2img_p;
-    unsigned int e_2other_p;
-    unsigned int e_2notmodified_p;
+     e->events > QOS_CC_BEHAVIOR_THR_SINGLE &&
+     ((sconf->static_on == 1) ||
+      (s->html > QOS_CC_BEHAVIOR_THR && s->html && s->img && s->cssjs && s->other && s->notmodified))) {
+    unsigned int e_2html_p = 0;
+    unsigned int e_2cssjs_p = 0;
+    unsigned int e_2img_p = 0;
+    unsigned int e_2other_p = 0;
+    unsigned int e_2notmodified_p = 0;
+    // note: all e->* variables are initialized by "1" to avaoid FPE
     if(sconf->static_on == 1) {
       /* use predefined value */
       unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
@@ -3634,7 +3637,7 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
       e_2cssjs_p = ((e_all / e->cssjs ) * sconf->cc_tolerance) / sconf->static_cssjs;
       e_2img_p = ((e_all / e->img) * sconf->cc_tolerance) / sconf->static_img;
       e_2other_p = ((e_all / e->other) * sconf->cc_tolerance) / sconf->static_other;
-      e_2notmodified_p = ((e_all / s->notmodified ) * sconf->cc_tolerance) / sconf->static_notmodified;
+      e_2notmodified_p = ((e_all / e->notmodified ) * sconf->cc_tolerance) / sconf->static_notmodified;
     } else {
       /* learn average */
       unsigned long long s_all = s->html + s->img + s->cssjs + s->other + s->notmodified;
@@ -3648,7 +3651,7 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
       e_2cssjs_p = ((e_all / e->cssjs ) * sconf->cc_tolerance) / s_2cssjs;
       e_2img_p = ((e_all / e->img) * sconf->cc_tolerance) / s_2img;
       e_2other_p = ((e_all / e->other) * sconf->cc_tolerance) / s_2other;
-      e_2notmodified_p = ((e_all / s->notmodified ) * sconf->cc_tolerance) / s_2notmodified;
+      e_2notmodified_p = ((e_all / e->notmodified ) * sconf->cc_tolerance) / s_2notmodified;
     }
     if((e_2html_p > sconf->cc_tolerance_max) ||
        (e_2html_p < sconf->cc_tolerance_min) ||
@@ -4383,6 +4386,18 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                      "<td style=\"width:9%%\">%llu</td>"
                      "<td style=\"width:9%%\">%llu</td>"
                      "</tr>", html, cssjs, img, other, notmodified);
+          if(sconf->static_on == 1) {
+            ap_rprintf(r, "<tr class=\"rows\">"
+                       "<td colspan=\"3\"></td>"
+                       "<td style=\"width:9%%\">configured (global)</td>"
+                       "<td style=\"width:9%%\">%llu</td>"
+                       "<td style=\"width:9%%\">%llu</td>"
+                       "<td style=\"width:9%%\">%llu</td>"
+                       "<td style=\"width:9%%\">%llu</td>"
+                       "<td style=\"width:9%%\">%llu</td>"
+                       "</tr>", sconf->static_html, sconf->static_cssjs,
+                       sconf->static_img, sconf->static_other, sconf->static_notmodified);
+          }
         }
       }
     }
@@ -7553,6 +7568,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->static_on == -1) {
     /* use base settings if not configured per vhost */
+    o->static_on = b->static_on;
     o->static_html = b->static_html;
     o->static_cssjs = b->static_cssjs;
     o->static_img = b->static_img;
@@ -8988,11 +9004,32 @@ const char *qos_client_contenttype(cmd_parms *cmd, void *dcfg, int argc, char *c
                         cmd->directive->directive);
   }
   sconf->static_on = 1;
-  sconf->static_html = atoi(argv[0]);
-  sconf->static_cssjs = atoi(argv[1]);
-  sconf->static_img = atoi(argv[2]);
-  sconf->static_other = atoi(argv[3]);
-  sconf->static_notmodified = atoi(argv[4]);
+  sconf->static_html = atol(argv[0]);
+  sconf->static_cssjs = atol(argv[1]);
+  sconf->static_img = atol(argv[2]);
+  sconf->static_other = atol(argv[3]);
+  sconf->static_notmodified = atol(argv[4]);
+  if(sconf->static_html == 0 ||
+     sconf->static_cssjs == 0 ||
+     sconf->static_img == 0 ||
+     sconf->static_other == 0 ||
+     sconf->static_notmodified == 0) {
+    return apr_psprintf(cmd->pool, "%s: requires numeric values greater than 0",
+                        cmd->directive->directive);
+  } else {
+    unsigned long long s_all = sconf->static_html + sconf->static_img + sconf->static_cssjs + 
+      sconf->static_other + sconf->static_notmodified;
+    unsigned long long s_2html = s_all / sconf->static_html;
+    unsigned long long s_2cssjs = s_all / sconf->static_cssjs;
+    unsigned long long s_2img = s_all / sconf->static_img;
+    unsigned long long s_2other = s_all / sconf->static_other;
+    unsigned long long s_2notmodified = s_all / sconf->static_notmodified;
+    sconf->static_html = s_2html;
+    sconf->static_cssjs = s_2cssjs;
+    sconf->static_img = s_2img;
+    sconf->static_other = s_2other;
+    sconf->static_notmodified = s_2notmodified;
+  }
   return NULL;
 }
 #endif
