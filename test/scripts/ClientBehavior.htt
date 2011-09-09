@@ -1,5 +1,5 @@
 #
-# $Id: ClientBehavior.htt,v 1.4 2011-09-09 19:53:58 pbuchbinder Exp $
+# $Id: ClientBehavior.htt,v 1.5 2011-09-09 21:26:07 pbuchbinder Exp $
 #
 #ifdef QS_INTERNAL_TEST
 #define QOS_CC_BEHAVIOR_THR 50
@@ -192,5 +192,9 @@ __Content-Type: text/html
 __
 _PIPE
 _EXEC tail -5 ./logs/access_log
+_CLOSE
+
+# standard client 51 4 2 10 1 10
+
 
 END
