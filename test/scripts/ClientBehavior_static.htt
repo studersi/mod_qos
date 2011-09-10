@@ -1,5 +1,5 @@
 #
-# $Id: ClientBehavior_static.htt,v 1.1 2011-09-10 20:58:06 pbuchbinder Exp $
+# $Id: ClientBehavior_static.htt,v 1.2 2011-09-10 21:05:33 pbuchbinder Exp $
 #
 # html	css/js	images	other	304
 # 30	10	40	6	12
@@ -8,7 +8,7 @@ INCLUDE scripts/ports
 
 CLIENT
 
-#_EXEC ./ctl.sh restart -D cc -D QS_ClientContentTypes 2>/dev/null 1>/dev/null
+_EXEC ./ctl.sh restart -D cc -D QS_ClientContentTypes 2>/dev/null 1>/dev/null
 
 # ----------------------
 #
