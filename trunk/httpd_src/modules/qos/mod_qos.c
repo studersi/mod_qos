@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.342 2011-09-09 21:26:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.343 2011-09-10 20:58:05 pbuchbinder Exp $";
 static const char g_revision[] = "9.69";
 
 /************************************************************************
@@ -5152,6 +5152,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
       if(!e) {
         e = qos_cc_set(u->qos_cc, &new, time(NULL));
       }
+      (*e)->events++; // update event activity even there is no valid request (logger)
       if(cconf->is_vip_by_header) {
         (*e)->vip = 1;
       }

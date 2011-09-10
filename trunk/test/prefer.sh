@@ -61,5 +61,10 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED ClientBehavior.htt"
 fi
+./htt.sh -se ./scripts/ClientBehavior_static.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED ClientBehavior_static.htt"
+fi
 
 exit $ERRORS
