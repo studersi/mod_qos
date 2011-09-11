@@ -1289,9 +1289,12 @@ Default is 20%.
 <li>
 <code>QS_ClientContentTypes &lt;html&gt; &lt;css/js&gt; &lt;images&gt; &lt;other&gt; &lt;304&gt;</code><br>
 Defines the distribution of HTTP response content types a client normaly 
-receives when accessing the server. mod_qos normally learns the average 
-behavior automatically by default but you may specify a static configuration 
-in order to avoid influences by a high number of abnormal clients.
+receives when accessing the server. <code>QS_ClientTolerance</code> defines 
+the allowed deviation from these values. mod_qos normally learns the average 
+behavior automatically by default (you can see the learned values within 
+the <a href="#statusviewer">status viewer</a>) but you may specify a 
+static configuration using this directive in order to avoid influences 
+by a high number of abnormal clients.
 </li>
 </ul>
 
