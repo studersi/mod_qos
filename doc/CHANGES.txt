@@ -1,6 +1,11 @@
+Version
+
+ - Adjust attributes/number of requests required to identify the
+   client behavior.
+
 Version 9.69
 
- - Client behaviour (content type a client is downloading) is calculated
+ - Client behavior (content type a client is downloading) is calculated
    in a percent of the whole trafic type distribution. The directive
    QS_ClientTolerance supports only values between 5 and 80.
 

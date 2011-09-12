@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.343 2011-09-10 20:58:05 pbuchbinder Exp $";
-static const char g_revision[] = "9.69";
+static const char revision[] = "$Id: mod_qos.c,v 5.344 2011-09-12 18:09:40 pbuchbinder Exp $";
+static const char g_revision[] = "9.70";
 
 /************************************************************************
  * Includes
@@ -148,7 +148,7 @@ static const char g_revision[] = "9.69";
 #undef QOS_CC_BEHAVIOR_THR
 #undef QOS_CC_BEHAVIOR_THR_SINGLE
 #define QOS_CC_BEHAVIOR_THR 50
-#define QOS_CC_BEHAVIOR_THR_SINGLE 10
+#define QOS_CC_BEHAVIOR_THR_SINGLE 20
 #endif
 #define QOS_CC_BEHAVIOR_TOLERANCE_STR "20"
 
@@ -3590,13 +3590,14 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
                             qos_s_t *s, qos_s_entry_t *e, int limit) {
   int penalty = 0;
   const char *ct = apr_table_get(r->headers_out, "Content-Type");
-  e->events++;
+  e->events++; // events counts requests and connections
   if(r->status == 304) {
     e->notmodified ++;
     s->notmodified ++;
   }
   if(ct) {
     if(ap_strcasestr(ct, "html")) {
+      e->events++; // learn faster if user requests HTML content (main pages)
       e->html++;
       s->html++;
       goto end;

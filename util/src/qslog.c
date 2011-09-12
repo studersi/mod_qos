@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.19 2011-08-29 16:28:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.20 2011-09-12 18:09:40 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -832,10 +832,10 @@ static void usage(char *cmd) {
   printf("\n");
   printf("Example configuration using pipped logging:\n");
   printf("  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
-  printf("  TransferLog \"|./bin/%s -f ..IRSB.T -o ./logs/stat_log\"\n", cmd);
+  printf("  TransferLog \"|./bin/%s -f ..IRSB.T -x -o ./logs/stat_log\"\n", cmd);
   printf("\n");
   printf("Example configuration using the CustomLog directive:\n");
-  printf("  CustomLog \"|./bin/%s -f ISBTQ -o ./logs/stat_log\" \"%%h %%>s %%b %%T %%{mod_qos_ev}e\"\n", cmd);
+  printf("  CustomLog \"|./bin/%s -f ISBTQ -x -o ./logs/stat_log\" \"%%h %%>s %%b %%T %%{mod_qos_ev}e\"\n", cmd);
   printf("\n");
   printf("Example for post processing:\n");
   printf("  cat access_log | ./bin/%s -f ..IRSB.T -o ./logs/stat_log -p\n", cmd);
