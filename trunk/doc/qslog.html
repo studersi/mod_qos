@@ -86,14 +86,16 @@ Options
      See the 'LogFormat' directive of the httpd.conf file
      to see the format defintions of the server's access log
      data. qslog knows the following elements:
-     T defines the request duration (%T)
+     I defines the client ip address (%h)
+     R defines the request line (%r)
+     S defines HTTP response status code (%s)
      B defines the transferred bytes (%b or %O)
      i defines the received bytes (%I)
-     S defines HTTP response status code (%s)
-     R defines the request line (%r)
-     I defines the client ip address (%h)
+     T defines the request duration (%T)
+     t defines the request duration in milliseconds (optionally used instead of T)
+     D defines the request duration in microseconds (optionally used instead of T)
      U defines the user tracking id (%{mod_qos_user_id}e)
-     Q defines the mod_qos_ev event message (%{mod_qos_ev}o)
+     Q defines the mod_qos_ev event message (%{mod_qos_ev}e)
      . defines an element to ignore (unknown string)
   -o &lt;out_file&gt;
      Specifies the file to store the output to.
@@ -112,10 +114,10 @@ Options
 
 Example configuration using piped logging:
   LogFormat "%t %h \"%r\" %&gt;s %b \"%{User-Agent}i\" %T"
-  TransferLog "|./bin/qslog -f ..IRSB.T -o ./logs/stat_log"
+  TransferLog "|./bin/qslog -f ..IRSB.T -u apache -x -o ./logs/stat_log"
 
 Example configuration using piped logging:
-  CustomLog "|./bin/qslog -f ISBT -m -u apache -x -o ./logs/stat_log" "%h %>s %b %T"
+  CustomLog "|./bin/qslog -f ISBTQ -m -u apache -x -o ./logs/stat_log" "%h %>s %b %T %{mod_qos_ev}e"
 
 Example for post processing (option -p):
   cat access_log | ./bin/qslog -f ..IRSB.T -o ./logs/stat_log -p
@@ -130,4 +132,3 @@ src="nevis.gif" title="Nevis: The professional source of Web application securit
 <SMALL><SMALL>&copy; 2007-2011, Pascal Buchbinder</SMALL></SMALL>
 </body>
 </html>
-
