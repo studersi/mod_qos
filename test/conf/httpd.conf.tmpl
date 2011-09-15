@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.192 2011-09-10 20:58:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.193 2011-09-15 20:46:27 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -218,6 +218,8 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    ProxyPassReverse           /app/e http://localhost:9999/app/e
    ProxyPass                  /support http://localhost:##QS_PORT_BASE6##/support retry=0
    ProxyPassReverse           /support http://localhost:##QS_PORT_BASE6##/support
+   ProxyPass                  /sn-fb-dstk-war http://localhost:##QS_PORT_BASE5##/sn-fb-dstk-war retry=0
+   ProxyPassReverse           /sn-fb-dstk-war http://localhost:##QS_PORT_BASE5##/sn-fb-dstk-war
 
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
@@ -237,6 +239,9 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    # -----------------------------------------------------------------
    # request level control
    # -----------------------------------------------------------------
+
+   QS_LocRequestLimitMatch       ^/sn-fb-dstk-war/getActivities.*$ 8
+   QS_LocRequestPerSecLimitMatch ^/sn-fb-dstk-war/getActivities.*$ 3
 
    QS_ErrorPage               /error-docs/error.shtml
    SetEnvIf                   Request_URI /qos/parp/err302  QS_ErrorPage=http://server1/error.html

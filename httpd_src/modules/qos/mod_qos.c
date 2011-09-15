@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.345 2011-09-15 19:47:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.346 2011-09-15 20:46:27 pbuchbinder Exp $";
 static const char g_revision[] = "9.70";
 
 /************************************************************************
@@ -105,7 +105,8 @@ static const char g_revision[] = "9.70";
 #define QS_SIM_IP_LEN 100
 #define QS_USR_SPE "mod_qos::user"
 #define QS_REC_COOKIE "mod_qos::gc"
-
+#define QS_R010_ALREADY_BLOCKED "R010B"
+#define QS_R012_ALREADY_BLOCKED "R012B"
 #define QS_PKT_RATE_TH    3
 
 #ifndef QS_LOG_REPEAT
@@ -3236,7 +3237,7 @@ static void qos_lg_event_update(request_rec *r, apr_time_t *t) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
   qs_actable_t *act = sconf->act;
-  if(act->has_events) {
+  if(act->has_events && (apr_table_get(r->notes, QS_R012_ALREADY_BLOCKED) == NULL)) {
     apr_time_t now = apr_time_sec(r->request_time);
     qs_acentry_t *e = act->entry;
     *t = now;
@@ -3305,6 +3306,7 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
                               e->url, e->limit, e->counter,
                               r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                               qos_unique_id(r, "012"));
+                apr_table_set(r->notes, QS_R012_ALREADY_BLOCKED, "");
               }
             }
           }
@@ -5746,6 +5748,8 @@ static int qos_header_parser(request_rec * r) {
                           r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
                           qos_unique_id(r, "010"));
             rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+            // request has already been blocked, don't cont this request for req/sec violations!
+            apr_table_set(r->notes, QS_R010_ALREADY_BLOCKED, "");
             if(!sconf->log_only) {
               rc = qos_error_response(r, error_page);
               if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -6521,19 +6525,21 @@ static int qos_logger(request_rec *r) {
       if(e->counter > 0) {
         e->counter--;
       }
-      e->req++;
-      e->bytes = e->bytes + r->bytes_sent;
-      if(now > (e->interval + 10)) {
-        e->req_per_sec = e->req / (now - e->interval);
-        e->req = 0;
-        e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
-        e->bytes = 0;
-        e->interval = now;
-        if(e->req_per_sec_limit) {
-          qos_cal_req_sec(r, e);
-        }
-        if(e->kbytes_per_sec_limit) {
-          qos_cal_bytes_sec(r, e);
+      if(apr_table_get(r->notes, QS_R010_ALREADY_BLOCKED) == NULL) {
+        e->req++;
+        e->bytes = e->bytes + r->bytes_sent;
+        if(now > (e->interval + 10)) {
+          e->req_per_sec = e->req / (now - e->interval);
+          e->req = 0;
+          e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
+          e->bytes = 0;
+          e->interval = now;
+          if(e->req_per_sec_limit) {
+            qos_cal_req_sec(r, e);
+          }
+          if(e->kbytes_per_sec_limit) {
+            qos_cal_bytes_sec(r, e);
+          }
         }
       }
     }
