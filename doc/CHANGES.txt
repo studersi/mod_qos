@@ -1,4 +1,4 @@
-Version
+Version 9.70
 
  - QS_EventPerSecLimit and QS_EventKBytesPerSecLimit counters are no
    longer updated if a request has already been denied by a
