@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.347 2011-09-19 18:24:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.348 2011-09-19 18:49:58 pbuchbinder Exp $";
 static const char g_revision[] = "9.70";
 
 /************************************************************************
@@ -241,7 +241,8 @@ typedef enum  {
   QS_HEADERFILTER_OFF_DEFAULT = 0,
   QS_HEADERFILTER_OFF,
   QS_HEADERFILTER_ON,
-  QS_HEADERFILTER_SIZE_ONLY
+  QS_HEADERFILTER_SIZE_ONLY,
+  QS_HEADERFILTER_SILENT
 } qs_headerfilter_mode_e;
 
 typedef enum  {
@@ -2665,13 +2666,15 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
   }
   entry = (apr_table_entry_t *)apr_table_elts(delete)->elts;
   for(i = 0; i < apr_table_elts(delete)->nelts; i++) {
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                  QOS_LOG_PFX(042)"drop %s header: \'%s: %s\', %s, c=%s, id=%s",
-                  type,
-                  entry[i].key, entry[i].val,
-                  apr_table_get(reason, entry[i].key),
-                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
-                  qos_unique_id(r, "042"));
+    if(mode != QS_HEADERFILTER_SILENT) {
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                    QOS_LOG_PFX(042)"drop %s header: \'%s: %s\', %s, c=%s, id=%s",
+                    type,
+                    entry[i].key, entry[i].val,
+                    apr_table_get(reason, entry[i].key),
+                    r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                    qos_unique_id(r, "042"));
+    }
     apr_table_unset(headers, entry[i].key);
   }
   return APR_SUCCESS;
@@ -8786,6 +8789,8 @@ const char *qos_resheaderfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag
     dconf->resheaderfilter = QS_HEADERFILTER_ON;
   } else if(strcasecmp(flag, "off") == 0) {
     dconf->resheaderfilter = QS_HEADERFILTER_OFF;
+  } else if(strcasecmp(flag, "silent") == 0) {
+    dconf->resheaderfilter = QS_HEADERFILTER_SILENT;
   } else {
     return apr_psprintf(cmd->pool, "%s: invalid argument",
                         cmd->directive->directive);
