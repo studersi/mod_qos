@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.13 2011-09-19 18:24:14 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.14 2011-09-19 18:49:58 pbuchbinder Exp $
 #
 
 
@@ -39,6 +39,7 @@ _EXPECT . "HTTP_X_FORWARDED_HOST"
 _EXPECT . "HTTP_X_FORWARDED_SERVER"
 _EXPECT . "HTTP_MYHEADER"
 _WAIT
+_CLOSE
 
 _REQ localhost $QS_PORT_BASE
 __POST /cgi-local/index.cgi HTTP/1.1
@@ -79,6 +80,7 @@ _EXPECT . " HTTP_USER_AGENT"
 _EXPECT . " HTTP_X_LORI_TIME_1"
 _EXPECT . ". test pic _=n.JPG"
 _WAIT
+_CLOSE
 
 # drop headers
 _REQ localhost $QS_PORT_BASE
@@ -165,6 +167,7 @@ _EXPECT . "!HTTP_OTHER"
 _EXPECT . "!HTTP_KEEP_ALIVE"
 _EXPECT . "!3000000000000000"
 _WAIT
+_CLOSE
 
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index.cgi HTTP/1.1
@@ -187,6 +190,7 @@ _EXPECT . "ServerHeader: 10"
 _EXPECT . "Keep-Alive: timeout=.*, max=.*"
 _EXPECT . "Connection: Keep-Alive"
 _WAIT
+_CLOSE
 
 _REQ localhost $QS_PORT_BASE
 __GET /htt/resheaderfilter/index.cgi HTTP/1.1
@@ -214,6 +218,20 @@ _SLEEP 200
 _EXPECT EXEC "mod_qos\(042\): drop request header: 'Other: text'"
 _EXPECT EXEC "mod_qos\(042\): drop response header: 'X-PoweredBy: Special'"
 _EXEC tail -2 logs/error_log
+
+_EXEC echo "[Fri Jan 15 07:23:30 2010] [notice] Apache/2.2.xx test QS_HeaderFilter.htt" >> ./logs/error_log
+_REQ localhost $QS_PORT_BASE
+__GET /htt/resheaderfilter/silent/index.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "==AS1=="
+_EXPECT . "!X-PoweredBy"
+_EXPECT . "ServerHeader: 10"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "!mod_qos\(042\): drop response header: 'X-PoweredBy"
+_EXEC tail -1 logs/error_log
 
 _REQ localhost $QS_PORT_BASE
 __GET /htt/resheaderfilter/index.cgi HTTP/1.1
@@ -278,6 +296,7 @@ _EXPECT . "HTTP_USER_AGENT: Mozilla"
 _EXPECT . "HTTP_UNLESS_MODIFIED_SINCE"
 _EXPECT . "HTTP_RANGE"
 _WAIT
+_CLOSE
 
 _REQ localhost $QS_PORT_BASE
 __GET /cgi-local/index.cgi HTTP/1.1
@@ -290,6 +309,7 @@ _EXPECT . "HTTP_USER_AGENT: Mozilla"
 _EXPECT . "HTTP_VIA"
 _EXPECT . "X_FORWARDED_FOR"
 _WAIT
+_CLOSE
 
 # allowed headers
 _REQ localhost $QS_PORT_BASE
@@ -404,6 +424,7 @@ __X-PoweredBy: Special
 __ServerHeader: 10
 __
 __==AS1==
+_CLOSE
 
 _RES
 _EXPECT . "Host: localhost"
@@ -413,6 +434,18 @@ _EXPECT . "Accept-Encoding: gzip,deflate"
 _EXPECT . "ACCEPT-LANGUAGE: en-us,en;q=0.5"
 _EXPECT . "CACHE-CONTROL: max-age=0"
 _EXPECT . "User-Agent: Mozilla/5.0 \(X11; U; Linux i686; en-US; rv:1.8.1.5\) Gecko/20070713 Firefox/2.0.0.5"
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__X-PoweredBy: Special 
+__ServerHeader: 10
+__
+__==AS1==
+_CLOSE
+
+_RES
 _WAIT
 __HTTP/1.1 200 OK
 __Server: myApache

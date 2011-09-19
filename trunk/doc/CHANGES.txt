@@ -3,6 +3,9 @@ Version
  - QS_RequestHeaderFilterRule and QS_ResponseHeaderFilterRule may
    be configured within a host (outside location).
 
+ - QS_ResponseHeaderFilterRule features the action "silent" which drops 
+   header silently without writing a log message.
+
 Version 9.70
 
  - QS_EventPerSecLimit and QS_EventKBytesPerSecLimit counters are no

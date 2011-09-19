@@ -936,12 +936,11 @@ dropped (removed from the request). Abnormal content-* headers cause
 request blocking. Only the defined headers are allowed. Custom rules 
 (additional headers or different pattern/size definitions) may be 
 added using the <code>QS_RequestHeaderFilterRule</code> directive. Filter 
-is activated ('on') or deactivated ('off') on a per-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">location</a> 
-basis. The mode 'size' does not verify 
-the pattern but limits the maximum length 
-of request header values (similar to the Apache directive 
-<code>LimitRequestFieldsize</code> but with an individual rule for each 
-header field).
+is activated ('on') or deactivated ('off'). The mode 'size' does not verify 
+the pattern but limits the maximum length of request header values 
+(similar to the Apache directive <code>LimitRequestFieldsize</code> but 
+with an individual rule for each header field). Header validation is also useful 
+to avoid bypassing of <code>SetEnvIf</code> directive settings.
 </li>
 <li>
 <code>QS_RequestHeaderFilterRule &lt;header name&gt; 'drop'|'deny' &lt;pcre&gt; &lt;size&gt;</code><br>
@@ -954,11 +953,11 @@ The action 'drop' removes a header not matching the pcre, the action 'deny'
 rejects a request including such a header not matching the pcre.
 </li>
 <li>
-<code>QS_ResponseHeaderFilter 'on'|'off'</code><br>
+<code>QS_ResponseHeaderFilter 'on'|'off'|'silent'</code><br>
 Filters response headers using validation rules provided by mod_qos. Suspicious 
 headers (not matching the pattern or those which are too long) are removed 
 from the response. Only the defined headers are allowed. Filter 
-is activated ('on') or deactivated ('off') on a per-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">location</a> basis.
+is activated ('on') or deactivated ('off' or 'silent').
 </li>
 <li>
 <code>QS_ResponseHeaderFilterRule &lt;header name&gt; &lt;pcre&gt; &lt;size&gt;</code><br>
