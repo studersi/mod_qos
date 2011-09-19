@@ -973,12 +973,14 @@ case sensitive. The size parameter defines the maximum length of a header value.
 Sample configuration:<br>
 <pre>
 QS_ErrorPage                     /error-docs/qs_error.html
+
+# add a custom request header rule:
 QS_RequestHeaderFilterRule       UA-CPU drop "^[a-zA-Z0-9]+$" 20
 
-&lt;Location /&gt;
-   # enable header validation:
-   QS_RequestHeaderFilter        on
+# enable header validation:
+QS_RequestHeaderFilter           on
 
+&lt;Location /&gt;
    # don't allow access to the path /app/admin.jsp:
    QS_DenyPath        +admin     deny "^/app/admin.jsp$"
 
@@ -1039,6 +1041,8 @@ CustomLog             logs/qsaudit_log  "%h %>s %{qos-loc}n %{qos-path}n%{qos-qu
 
 # enable json parser
 PARP_BodyData               application/json
+
+QS_RequestHeaderFilter      on
 
 # limit the max. body size since mod_parp loads the whole message into the
 # servers's memory:
