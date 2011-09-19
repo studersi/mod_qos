@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.349 2011-09-19 18:55:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.350 2011-09-19 20:43:04 pbuchbinder Exp $";
 static const char g_revision[] = "9.71";
 
 /************************************************************************
@@ -766,8 +766,10 @@ static const qos_her_t qs_res_header_rules[] = {
   { "Strict-Transport-Security", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Vary", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "WWW-Authenticate", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
-  { "X-Frame-Options", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "X-Content-Security-Policy", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "X-Content-Type-Options", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "X-Frame-Options", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "X-XSS-Protection", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { NULL, NULL, 0, 0 }
 };
 
