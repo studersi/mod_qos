@@ -6,6 +6,9 @@ Version
  - QS_ResponseHeaderFilterRule features the action "silent" which drops 
    header silently without writing a log message.
 
+ - Headers X-Content-Type-Options and X-XSS-Protection has been added
+   to the default response header rules.
+
 Version 9.70
 
  - QS_EventPerSecLimit and QS_EventKBytesPerSecLimit counters are no
