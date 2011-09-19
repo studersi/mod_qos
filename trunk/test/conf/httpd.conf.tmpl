@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.194 2011-09-16 21:42:50 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.195 2011-09-19 18:24:14 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -657,6 +657,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE9##
 <VirtualHost 127.0.0.1:##QS_PORT_BASE9##>
    ServerName                 127.0.0.1
 
+   QS_RequestHeaderFilter     on
    BrowserMatch               "event"                           qsmin=limit
    QS_EventPerSecLimit        !qsmin          5
 
@@ -667,6 +668,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE9##
    Include 	              conf/demo.conf
 
    QS_SrvDataRateOff
+
+   <Location /ddd>
+     QS_RequestHeaderFilter   off
+   </Location>
+
 </VirtualHost>
 
 

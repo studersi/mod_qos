@@ -1,3 +1,8 @@
+Version
+
+ - QS_RequestHeaderFilterRule and QS_ResponseHeaderFilterRule may
+   be configured within a host (outside location).
+
 Version 9.70
 
  - QS_EventPerSecLimit and QS_EventKBytesPerSecLimit counters are no
