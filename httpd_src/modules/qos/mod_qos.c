@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.346 2011-09-15 20:46:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.347 2011-09-19 18:24:14 pbuchbinder Exp $";
 static const char g_revision[] = "9.70";
 
 /************************************************************************
@@ -461,6 +461,8 @@ typedef struct {
   apr_table_t *setenvstatus_t;
   apr_table_t *setenvresheader_t;
   apr_table_t *setenvresheadermatch_t;
+  qs_headerfilter_mode_e headerfilter;
+  qs_headerfilter_mode_e resheaderfilter;
   char *cookie_name;
   char *cookie_path;
   char *user_tracking_cookie;
@@ -3174,9 +3176,14 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
  * QS_RequestHeaderFilter enforcement
  */
 static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
-  if(dconf->headerfilter > QS_HEADERFILTER_OFF) {
+  qs_headerfilter_mode_e mode = sconf->headerfilter;
+  if(dconf->headerfilter > QS_HEADERFILTER_OFF_DEFAULT) {
+    // override serve configuration
+    mode = dconf->headerfilter;
+  }
+  if(mode > QS_HEADERFILTER_OFF) {
     apr_status_t rv = qos_header_filter(r, sconf, r->headers_in, "request",
-                                        sconf->hfilter_table, dconf->headerfilter);
+                                        sconf->hfilter_table, mode);
     if(rv != APR_SUCCESS) {
       int rc;
       const char *error_page = sconf->error_page;
@@ -6324,6 +6331,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
+  qs_headerfilter_mode_e mode;
 
   qos_start_res_rate(r, sconf);
   qos_setenvstatus(r, sconf, dconf);
@@ -6415,9 +6423,14 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   }
   qos_unset_header(r, sconf);
   /* don't handle response status since response header filter use "drop" action only */
-  if(dconf->resheaderfilter > QS_HEADERFILTER_OFF) {
+  mode = sconf->resheaderfilter;
+  if(dconf->resheaderfilter > QS_HEADERFILTER_OFF_DEFAULT) {
+    // override server configuration
+    mode = dconf->resheaderfilter;
+  }
+  if(mode > QS_HEADERFILTER_OFF) {
     qos_header_filter(r, sconf, r->headers_out, "response",
-                      sconf->reshfilter_table, dconf->headerfilter);
+                      sconf->reshfilter_table, mode);
   }
   qos_keepalive(r, sconf);
   if(sconf->max_conn_close != -1) {
@@ -7361,6 +7374,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvstatus_t = apr_table_make(sconf->pool, 5);
   sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
+  sconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
+  sconf->resheaderfilter = QS_HEADERFILTER_OFF_DEFAULT;
   sconf->error_page = NULL;
   sconf->req_rate = -1;
   sconf->req_rate_start = 0;
@@ -7512,6 +7527,12 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_table_merge(o->exclude_ip, b->exclude_ip);
   o->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
                                                      o->disable_reqrate_events);
+  if(o->headerfilter == QS_HEADERFILTER_OFF_DEFAULT) {
+    o->headerfilter = b->headerfilter;
+  }
+  if(o->resheaderfilter == QS_HEADERFILTER_OFF_DEFAULT) {
+    o->resheaderfilter = b->resheaderfilter;
+  }
   if(o->mfile == NULL) {
     o->mfile = b->mfile;
   }
@@ -8737,16 +8758,23 @@ const char *qos_denybody_p_cmd(cmd_parms *cmd, void *dcfg, int flag) {
 
 /* QS_RequestHeaderFilter enables/disables header filter */
 const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
-  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  qs_headerfilter_mode_e headerfilter;
   if(strcasecmp(flag, "on") == 0) {
-    dconf->headerfilter = QS_HEADERFILTER_ON;
+    headerfilter = QS_HEADERFILTER_ON;
   } else if(strcasecmp(flag, "off") == 0) {
-    dconf->headerfilter = QS_HEADERFILTER_OFF;
+    headerfilter = QS_HEADERFILTER_OFF;
   } else if(strcasecmp(flag, "size") == 0) {
-    dconf->headerfilter = QS_HEADERFILTER_SIZE_ONLY;
+    headerfilter = QS_HEADERFILTER_SIZE_ONLY;
   } else {
     return apr_psprintf(cmd->pool, "%s: invalid argument",
                         cmd->directive->directive);
+  }
+  if(cmd->path) {
+    qos_dir_config *dconf = (qos_dir_config*)dcfg;
+    dconf->headerfilter = headerfilter;
+  } else {
+    qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
+    sconf->headerfilter = headerfilter;
   }
   return NULL;
 }
@@ -9436,7 +9464,7 @@ static const command_rec qos_config_cmds[] = {
                   "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"
                   " directives to a location."),
   AP_INIT_TAKE1("QS_RequestHeaderFilter", qos_headerfilter_cmd, NULL,
-                ACCESS_CONF,
+                RSRC_CONF|ACCESS_CONF,
                 "QS_RequestHeaderFilter 'on'|'off'|'size', filters request headers by allowing"
                 " only these headers which match the request header rules defined by"
                 " mod_qos. Request headers which do not conform these definitions"
