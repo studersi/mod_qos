@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.196 2011-09-19 18:49:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.197 2011-09-26 20:46:05 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -242,6 +242,10 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
 
    QS_LocRequestLimitMatch       ^/sn-fb-dstk-war/getActivities.*$ 8
    QS_LocRequestPerSecLimitMatch ^/sn-fb-dstk-war/getActivities.*$ 3
+
+   # local, no proxy
+   QS_LocRequestLimit            /demo/sn-fb-dstk-war/getStatus       100
+   QS_LocRequestPerSecLimit      /demo/sn-fb-dstk-war/getStatus       120
 
    QS_ErrorPage               /error-docs/error.shtml
    SetEnvIf                   Request_URI /qos/parp/err302  QS_ErrorPage=http://server1/error.html
