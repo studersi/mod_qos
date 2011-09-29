@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.350 2011-09-19 20:43:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.351 2011-09-29 17:08:05 pbuchbinder Exp $";
 static const char g_revision[] = "9.71";
 
 /************************************************************************
@@ -2312,7 +2312,7 @@ static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int r
 
 static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec) {
   char *d = j_skip(*val);
-  int rc;
+  int rc = APR_SUCCESS;
   rec++;
   if(rec > QOS_j_RECURSION) {
     apr_table_add(tl, QOS_J_ERROR, "error while parsing string (reached recursion limit)");

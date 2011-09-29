@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.12 2010-12-22 11:33:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.13 2011-09-29 17:08:05 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -288,7 +288,7 @@ static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int r
 
 static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec) {
   char *d = j_skip(*val);
-  int rc;
+  int rc = APR_SUCCESS;
   rec++;
   if(rec > QOS_j_RECURSION) {
     apr_table_add(tl, QOS_J_ERROR, "error while parsing string (reached recursion limit)");
