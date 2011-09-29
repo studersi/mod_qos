@@ -1630,19 +1630,15 @@ if the server runs on low TCP connection resources (20% or fewer
 free connections in this example). mod_qos prefers also those clients 
 which communicate with the server instantaneously and fast, and denies 
 access to slow clients sending data irregularly, in case the server 
-has not enough resources.</p>
-<p>A minimal request bandwidth should be enforced, too, in order 
+has not enough resources. A minimal request bandwidth should be enforced, in order 
 to close the connections coming from idle clients. The <code>QS_SrvMinDataRate</code> 
 does this. You may want to combine this with the <code>QS_SrvMaxConnPerIP</code> 
 directive as shown above in the "Client Opens Many Concurrent Connections" example. 
 This could even be extened by the Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_reqtimeout.html" target="_blank">mod_reqtimeout</a> 
 which may be used to set various timeouts for receiving the request headers 
-and the request body from the client.
-</p>
-<p>
-The <code>QS_ClientEventBlockCount</code> directive is used in this example 
-to block clients for a certain amount of time if they cause errrors 
-because they send invalid HTTP requests.
+and the request body from the client. The <code>QS_ClientEventBlockCount</code> 
+directive is used in this example to block clients for a certain amount 
+of time if they cause errrors because they send invalid HTTP requests.
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
