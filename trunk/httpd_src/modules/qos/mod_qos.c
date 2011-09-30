@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.352 2011-09-30 19:23:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.353 2011-09-30 22:10:17 pbuchbinder Exp $";
 static const char g_revision[] = "9.71";
 
 /************************************************************************
@@ -131,6 +131,28 @@ static const char g_revision[] = "9.71";
 #define QS_KEEPALIVE      "QS_KeepAliveTimeout"
 #define QS_CLOSE          "QS_SrvMinDataRate"
 #define QS_MFILE          "/var/tmp/"
+
+static const char *m_env_variables[] = {
+  QS_ErrorNotes,
+  QS_SERIALIZE,
+  QS_BLOCK,
+  QS_BLOCK_SEEN,
+  QS_LIMIT,
+  QS_LIMIT_SEEN,
+  QS_EVENT,
+  QS_COND,
+  QS_ISVIPREQ,
+  QS_VipRequest,
+  QS_KEEPALIVE,
+  QS_CLOSE,
+  NULL
+};
+
+static const char *m_note_variables[] = {
+  QS_PARP_PATH,
+  QS_PARP_QUERY,
+  NULL
+};
   
 #define QS_INCTX_ID inctx->id
 
@@ -6253,22 +6275,7 @@ static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
 
 static void qos_propagate_events(request_rec *r) {
   request_rec *mr = NULL;
-  char **var;
-  char *variables[] = {
-    QS_ErrorNotes,
-    QS_SERIALIZE,
-    QS_BLOCK,
-    QS_BLOCK_SEEN,
-    QS_LIMIT,
-    QS_LIMIT_SEEN,
-    QS_EVENT,
-    QS_COND,
-    QS_ISVIPREQ,
-    QS_VipRequest,
-    QS_KEEPALIVE,
-    QS_CLOSE,
-    NULL
-  };
+  const char **var;
   if(r->prev) {
     mr = r->prev;
   } else if(r->main) {
@@ -6276,7 +6283,7 @@ static void qos_propagate_events(request_rec *r) {
   } else if(r->next) {
     mr = r->next;
   }
-  var = variables;
+  var = m_env_variables;
   while(*var) {
     int propagated = 0;
     if(mr) {
@@ -6300,12 +6307,7 @@ static void qos_propagate_events(request_rec *r) {
 /** ensure that every request record has the error notes to log */
 static void qos_propagate_notes(request_rec *r) {
   request_rec *mr = NULL;
-  char **var;
-  char *variables[] = {
-    QS_PARP_PATH,
-    QS_PARP_QUERY,
-    NULL
-  };
+  const char **var;
   if(r->prev) {
     mr = r->prev;
   } else if(r->main) {
@@ -6313,7 +6315,7 @@ static void qos_propagate_notes(request_rec *r) {
   } else if(r->next) {
     mr = r->next;
   }
-  var = variables;
+  var = m_note_variables;
   while(*var) {
     int propagated = 0;
     if(mr) {
