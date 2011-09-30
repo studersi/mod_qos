@@ -1,4 +1,4 @@
-Version
+Version 9.71
 
  - QS_RequestHeaderFilterRule and QS_ResponseHeaderFilterRule may
    be configured within a host (outside location).
@@ -8,6 +8,11 @@ Version
 
  - Headers X-Content-Type-Options and X-XSS-Protection has been added
    to the default response header rules.
+
+ - Fixed: Bug in json parser.
+
+ - Fixed: Propagation of Apache environment variables to sub-requests
+   (solves bug when using QS_ClientEventBlockCount and ErrorDocument).
 
 Version 9.70
 

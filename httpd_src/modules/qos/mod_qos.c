@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.351 2011-09-29 17:08:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.352 2011-09-30 19:23:41 pbuchbinder Exp $";
 static const char g_revision[] = "9.71";
 
 /************************************************************************
@@ -119,14 +119,18 @@ static const char g_revision[] = "9.71";
 #define QS_PARP_LOC       "qos-loc"
 
 #define QS_SERIALIZE      "QS_Serialize"
+#define QS_ErrorNotes     "QS_ErrorNotes"
 #define QS_BLOCK          "QS_Block"
+#define QS_BLOCK_SEEN     "QS_Block_seen"
 #define QS_LIMIT          "QS_Limit"
+#define QS_LIMIT_SEEN     "QS_Limit_seen"
 #define QS_EVENT          "QS_Event"
 #define QS_COND           "QS_Cond"
 #define QS_ISVIPREQ       "QS_IsVipRequest"
+#define QS_VipRequest     "QS_VipRequest"
 #define QS_KEEPALIVE      "QS_KeepAliveTimeout"
-#define QS_MFILE          "/var/tmp/"
 #define QS_CLOSE          "QS_SrvMinDataRate"
+#define QS_MFILE          "/var/tmp/"
   
 #define QS_INCTX_ID inctx->id
 
@@ -1056,7 +1060,7 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
   const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
   apr_table_set(r->notes, "error-notes", eid ? eid : "-");
   if(eid) {
-    apr_table_set(r->subprocess_env, "QS_ErrorNotes", eid);
+    apr_table_set(r->subprocess_env, QS_ErrorNotes, eid);
   }
   if((uid == NULL) && m_has_unique_id) {
     /* error,  module loaded but no id available? */
@@ -1917,12 +1921,12 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sco
  */
 static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
   if(qos_verify_session(r, sconf)) {
-    apr_table_set(r->subprocess_env, "QS_VipRequest", "yes");
+    apr_table_set(r->subprocess_env, QS_VipRequest, "yes");
     apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
     return 1;
   }
   if(r->subprocess_env) {
-    const char *v = apr_table_get(r->subprocess_env, "QS_VipRequest");
+    const char *v = apr_table_get(r->subprocess_env, QS_VipRequest);
     if(v && (strcasecmp(v, "yes") == 0)) {
       apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
       return 1;
@@ -3698,9 +3702,9 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   if(sconf->has_qos_cc) {
     int lowrate = 0;
     int unusual_bahavior = 0;
-    int block_event = !apr_table_get(r->subprocess_env, "QS_Block_seen") &&
+    int block_event = !apr_table_get(r->subprocess_env, QS_BLOCK_SEEN) &&
       apr_table_get(r->subprocess_env, QS_BLOCK);
-    int limit_event = !apr_table_get(r->subprocess_env, "QS_Limit_seen") &&
+    int limit_event = !apr_table_get(r->subprocess_env, QS_LIMIT_SEEN) &&
       apr_table_get(r->subprocess_env, QS_LIMIT);
     qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
@@ -3789,12 +3793,12 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT19 */
     if(block_event) {
       /* only once per request */
-      apr_table_set(r->subprocess_env, "QS_Block_seen", "");
-      apr_table_set(r->connection->notes, "QS_Block_seen", "");
+      apr_table_set(r->subprocess_env, QS_BLOCK_SEEN, "");
+      apr_table_set(r->connection->notes, QS_BLOCK_SEEN, "");
     }
     if(limit_event) {
       /* only once per request */
-      apr_table_set(r->subprocess_env, "QS_Limit_seen", "");
+      apr_table_set(r->subprocess_env, QS_LIMIT_SEEN, "");
     }
   }
 }
@@ -3876,8 +3880,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
           (*e)->block_time = now;
         }
         /* only once per request */
-        apr_table_set(r->subprocess_env, "QS_Block_seen", "");
-        apr_table_set(r->connection->notes, "QS_Block_seen", "");
+        apr_table_set(r->subprocess_env, QS_BLOCK_SEEN, "");
+        apr_table_set(r->connection->notes, QS_BLOCK_SEEN, "");
       }
       if((*e)->block >= sconf->qos_cc_block) {
         *uid = apr_pstrdup(cconf->c->pool, "060");
@@ -3907,7 +3911,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
           (*e)->limit_time = now;
         }
         /* only once per request */
-        apr_table_set(r->subprocess_env, "QS_Limit_seen", "");
+        apr_table_set(r->subprocess_env, QS_LIMIT_SEEN, "");
       }
       if((*e)->limit >= sconf->qos_cc_limit) {
         if(ret == DECLINED) {
@@ -4813,8 +4817,8 @@ static unsigned long *qos_inc_block(conn_rec *c, qos_srv_config *sconf,
                                     qs_conn_ctx *cconf, unsigned long *ip) {
   if(sconf->qos_cc_block &&
      apr_table_get(sconf->setenvstatus_t, QS_CLOSE) &&
-     !apr_table_get(c->notes, "QS_Block_seen")) {
-    apr_table_set(c->notes, "QS_Block_seen", "");
+     !apr_table_get(c->notes, QS_BLOCK_SEEN)) {
+    apr_table_set(c->notes, QS_BLOCK_SEEN, "");
     *ip = cconf->ip;
     ip++;
   }
@@ -6247,11 +6251,24 @@ static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
-/** ensure that every request record has the error notes to log
-    TODO: propagte events too! */
-static void qos_propagate_notes(request_rec *r) {
+static void qos_propagate_events(request_rec *r) {
   request_rec *mr = NULL;
-  int propagated = 0;
+  char **var;
+  char *variables[] = {
+    QS_ErrorNotes,
+    QS_SERIALIZE,
+    QS_BLOCK,
+    QS_BLOCK_SEEN,
+    QS_LIMIT,
+    QS_LIMIT_SEEN,
+    QS_EVENT,
+    QS_COND,
+    QS_ISVIPREQ,
+    QS_VipRequest,
+    QS_KEEPALIVE,
+    QS_CLOSE,
+    NULL
+  };
   if(r->prev) {
     mr = r->prev;
   } else if(r->main) {
@@ -6259,29 +6276,61 @@ static void qos_propagate_notes(request_rec *r) {
   } else if(r->next) {
     mr = r->next;
   }
-  if(mr) {
-    const char *p = apr_table_get(mr->notes, QS_PARP_PATH);
-    const char *q = apr_table_get(mr->notes, QS_PARP_QUERY);
-    if(p) {
-      propagated = 1;
-      apr_table_setn(r->notes, QS_PARP_PATH, p);
-    }
-    if(q) {
-      propagated = 1;
-      apr_table_setn(r->notes, QS_PARP_QUERY, q);
-    }
-    if(!propagated) {
-      p = apr_table_get(r->notes, QS_PARP_PATH);
-      q = apr_table_get(r->notes, QS_PARP_QUERY);
+  var = variables;
+  while(*var) {
+    int propagated = 0;
+    if(mr) {
+      const char *p = apr_table_get(mr->subprocess_env, *var);
       if(p) {
         propagated = 1;
-        apr_table_setn(mr->notes, QS_PARP_PATH, p);
+        apr_table_set(r->subprocess_env, *var, p);
       }
-      if(q) {
-        propagated = 1;
-        apr_table_setn(mr->notes, QS_PARP_QUERY, q);
+      if(!propagated) {
+        p = apr_table_get(r->subprocess_env, *var);
+        if(p) {
+          propagated = 1;
+          apr_table_set(mr->subprocess_env, *var, p);
+        }
       }
     }
+    var++;
+  }
+}
+
+/** ensure that every request record has the error notes to log */
+static void qos_propagate_notes(request_rec *r) {
+  request_rec *mr = NULL;
+  char **var;
+  char *variables[] = {
+    QS_PARP_PATH,
+    QS_PARP_QUERY,
+    NULL
+  };
+  if(r->prev) {
+    mr = r->prev;
+  } else if(r->main) {
+    mr = r->main;
+  } else if(r->next) {
+    mr = r->next;
+  }
+  var = variables;
+  while(*var) {
+    int propagated = 0;
+    if(mr) {
+      const char *p = apr_table_get(mr->notes, *var);
+      if(p) {
+        propagated = 1;
+        apr_table_setn(r->notes, *var, p);
+      }
+      if(!propagated) {
+        p = apr_table_get(r->notes, *var);
+        if(p) {
+          propagated = 1;
+          apr_table_setn(mr->notes, *var, p);
+        }
+      }
+    }
+    var++;
   }
 }
 
@@ -6516,6 +6565,7 @@ static int qos_logger(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
   qos_propagate_notes(r);
+  qos_propagate_events(r);
   qos_end_res_rate(r, sconf);
   qos_setenvif(r, sconf);
   qos_logger_cc(r, sconf, rctx);

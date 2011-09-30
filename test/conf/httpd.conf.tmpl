@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.197 2011-09-26 20:46:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.198 2011-09-30 19:23:41 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -156,6 +156,8 @@ QS_UserTrackingCookieName stat
 QS_UserTrackingCookieName stat /error-docs/cookie.html
 </IfDefine>
 
+ErrorDocument 404 /error-docs/error404.html
+
 #DumpIOInput             On
 #DumpIOLogLevel          warn
 
@@ -202,6 +204,7 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
    ProxyPass                  /qos_control !
    ProxyPass                  /cgi-local !
    ProxyPass                  /cgi-local_s !
+   ProxyPass                  /hadsu !
 
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
