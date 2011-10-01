@@ -1,11 +1,12 @@
 #
-# $Id: QS_DenyQueryParpForm.htt,v 1.1 2010-01-21 18:45:47 pbuchbinder Exp $
+# $Id: QS_DenyQueryParpForm.htt,v 1.2 2011-10-01 08:28:33 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
-CLIENT
+CLIENT 4
 
+_LOOP 10
 _REQ localhost $QS_PORT_BASE
 __POST /qos/parp HTTP/1.1
 __Host: localhost
@@ -62,5 +63,8 @@ __-----------------------------20581898972031831118143543979--
 _EXPECT . "!<title>mod_qos</title>"
 _EXPECT . "500 Internal Server Error"
 _WAIT
+_CLOSE
+_END LOOP
 
 END
+
