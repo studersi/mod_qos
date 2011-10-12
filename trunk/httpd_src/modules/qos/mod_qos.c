@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.353 2011-09-30 22:10:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.354 2011-10-12 19:59:57 pbuchbinder Exp $";
 static const char g_revision[] = "9.71";
 
 /************************************************************************
@@ -71,6 +71,7 @@ static const char g_revision[] = "9.71";
 /* apr / scrlib */
 #include <pcre.h>
 #include <apr_strings.h>
+#include <apr_file_info.h>
 #include <apr_base64.h>
 #include <apr_hooks.h>
 #include <apr_lib.h>
@@ -153,7 +154,7 @@ static const char *m_note_variables[] = {
   QS_PARP_QUERY,
   NULL
 };
-  
+
 #define QS_INCTX_ID inctx->id
 
 /* this is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
@@ -201,6 +202,21 @@ APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, query_decode_hook,
 /************************************************************************
  * structures
  ***********************************************************************/
+
+typedef struct {
+  const char *url;
+  const char *path;
+} qos_errelt_t;
+
+static const qos_errelt_t m_error_pages[] = {
+  { "/errorpages/server_error.html", "work/errorpages/server_error.html" },
+  { "/errorpages/forbidden.html", "work/errorpages/forbidden.html" },
+  { "/errorpages/500.html", "work/errorpages/500.html" },
+  { "/errorpages/error.html", "work/errorpages/error.html" },
+  { "/errorpages/error500.html", "work/errorpages/error500.html" },
+  { "/errorpages/gateway_error.html", "work/errorpages/gateway_error.html" },
+  { NULL, NULL }
+};
 
 typedef struct {
   unsigned long ip;
@@ -1440,7 +1456,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
  */
 static void qos_destroy_act(qs_actable_t *act) {
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL,
-               QOS_LOG_PFX(001)"cleanup shared memory: %"APR_SIZE_T_FMT" bytes",
+               QOS_LOG_PFX(000)"cleanup shared memory: %"APR_SIZE_T_FMT" bytes",
                act->size);
   act->child_init = 0;
   if(act->lock_file && act->lock_file[0]) {
@@ -6674,7 +6690,7 @@ static int qos_chroot(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, se
     if(sconf->chroot) {
       int rc = 0;
       ap_log_error(APLOG_MARK, APLOG_INFO, 0, bs, 
-                   QOS_LOG_PFX(000)"change root to %s", sconf->chroot);
+                   QOS_LOG_PFX(001)"change root to %s", sconf->chroot);
       if((rc = chroot(sconf->chroot)) < 0) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                      QOS_LOG_PFX(000)"chroot failed: %s", strerror(errno));
@@ -6745,6 +6761,19 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   }
 }
 
+static const char *detectErrorPage(apr_pool_t *ptemp, server_rec *bs) {
+  const qos_errelt_t *e = m_error_pages;
+  apr_finfo_t finfo;
+  while(e->path != NULL) {
+    char *path = ap_server_root_relative(ptemp, e->path);
+    if(apr_stat(&finfo, path, APR_FINFO_TYPE, ptemp) == APR_SUCCESS) {
+      return e->url;
+    }
+    e++;
+  }
+  return NULL;
+}
+
 /**
  * inits the server configuration
  */
@@ -6756,6 +6785,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   int cc_net_prefer_limit = 0;
   ap_directive_t *pdir;
   apr_status_t rv;
+  const char *error_page = detectErrorPage(ptemp, bs);
+  int auto_error_page = 0;
   qos_hostcode(ptemp, bs);
   for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
     if(strcasecmp(pdir->directive, "MaxClients") == 0) {
@@ -6870,6 +6901,15 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       return !OK;
     }
   }
+  if(sconf->error_page == NULL && error_page != NULL) {
+    sconf->error_page = error_page;
+    auto_error_page = 1;
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
+                 QOS_LOG_PFX(000)"QS_ErrorPage: use %s for server %s:%d (global)",
+                 error_page,
+                 bs->server_hostname == NULL ? "-" : bs->server_hostname,
+                 bs->addrs->host_port);
+  }
   {
     server_rec *s = bs->next;
     while(s) {
@@ -6897,10 +6937,24 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
         apr_pool_cleanup_register(ssconf->pool, ssconf->act,
                                   qos_cleanup_shm, apr_pool_cleanup_null);
       }
+      if(ssconf->error_page == NULL && error_page != NULL) {
+        ssconf->error_page = error_page;
+        auto_error_page |= 2;
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
+                     QOS_LOG_PFX(000)"QS_ErrorPage: use %s for server %s:%d",
+                     error_page,
+                     s->server_hostname == NULL ? "-" : s->server_hostname,
+                     s->addrs->host_port);
+      }
       s = s->next;
     }
   }
-
+  if(auto_error_page) {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
+                 QOS_LOG_PFX(009)"found default error document '%s'. Use the QS_ErrorPage"
+                 " directive to override this default page.",
+                 error_page);
+  }
   ap_add_version_component(pconf, apr_psprintf(pconf, "mod_qos/%s", rev));
                
 #ifdef QS_INTERNAL_TEST

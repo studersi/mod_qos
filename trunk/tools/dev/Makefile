@@ -42,6 +42,11 @@ json_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 json: $(json_OBJECTS)
 	$(LINK) $(json_LTFLAGS) -static $(json_OBJECTS) $(json_LDADD)
 
+wlsg_OBJECTS = wlsg.lo
+wlsg_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+wlsg: $(wlsg_OBJECTS)
+	$(LINK) $(wlsg_LTFLAGS) -static $(wlsg_OBJECTS) $(wlsg_LDADD)
+
 stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
