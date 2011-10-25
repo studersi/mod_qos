@@ -1,5 +1,5 @@
 #
-# $Id: QS_SetEnvResBody.htt,v 1.1 2009-12-08 20:42:49 pbuchbinder Exp $
+# $Id: QS_SetEnvResBody.htt,v 1.2 2011-10-25 20:47:17 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -131,16 +131,17 @@ _SLEEP 200
 _EXPECT EXEC "mod_qos.060.: access denied, QS_ClientEventBlockCount rule: max=3, current=3"
 _EXEC tail -1 logs/error_log
 
+_EXPECT ERROR "Connection reset by peer"
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /app/a/resbody/pattern/login.cgi HTTP/1.1
-__Host: localhost
-__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
-__Req: 05
-__
-_EXPECT . "500 Internal Server Error"
-_EXPECT . "!503 Service Temporarily Unavailable"
-_EXPECT . "!200 OK"
-_WAIT
+#__GET /app/a/resbody/pattern/login.cgi HTTP/1.1
+#__Host: localhost
+#__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+#__Req: 05
+#__
+#_EXPECT . "500 Internal Server Error"
+#_EXPECT . "!503 Service Temporarily Unavailable"
+#_EXPECT . "!200 OK"
+#_WAIT
 
 _CLOSE 
 _SLEEP 12000

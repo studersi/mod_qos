@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.170 2011-09-30 19:23:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.171 2011-10-25 20:47:17 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -404,6 +404,14 @@ sleep 1
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipIpUser2.htt"
+fi
+
+./ctl.sh  restart -D BlockNullConn -D real_ip > /dev/null
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventBlockCount NullConnection.htt" >>  logs/error_log
+./run.sh -se ./scripts/NullConnection.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED NullConnection.htt"
 fi
 
 # - real ip -------------------------------------------------------

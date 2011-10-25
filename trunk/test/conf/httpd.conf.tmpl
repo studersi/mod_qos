@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.198 2011-09-30 19:23:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.199 2011-10-25 20:47:17 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -95,6 +95,11 @@ QS_ClientEventPerSecLimit  5
 <IfDefine BlockOnClose>
 QS_ClientEventBlockCount 3 40
 QS_SetEnvIfStatus       QS_SrvMinDataRate QS_Block
+</IfDefine>
+
+<IfDefine BlockNullConn>
+QS_ClientEventBlockCount 3 40
+QS_SetEnvIfStatus       NullConnection QS_Block
 </IfDefine>
 
 QS_RequestHeaderFilterRule myheader deny "^static_content$" 20
