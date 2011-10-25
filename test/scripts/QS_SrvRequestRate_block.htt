@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_block.htt,v 1.2 2011-07-14 05:53:13 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_block.htt,v 1.3 2011-10-25 20:47:17 pbuchbinder Exp $
 #
 # client which is not sending a complete request line within 8 seconds
 #
@@ -51,14 +51,15 @@ _EXEC tail -1 logs/error_log
 
 _END LOOP
 
+_EXPECT ERROR "Connection refused"
 _REQ server1 SSL:$QS_PORT_BASE2
-__GET /index.html HTTP/1.1
-__Host: server1
-__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
-__Connection: keep-alive
-__
-_EXPECT . "500 Internal Server Error"
-_WAIT
+#__GET /index.html HTTP/1.1
+#__Host: server1
+#__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+#__Connection: keep-alive
+#__
+#_EXPECT . "500 Internal Server Error"
+#_WAIT
 _CLOSE
 _SLEEP 100
 _EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule"

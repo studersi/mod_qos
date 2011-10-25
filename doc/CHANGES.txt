@@ -3,6 +3,17 @@ Version
  - Module tries to detect a suitable default error document for
    QS_ErrorPage automatically.
 
+ - New status "NullConnection" known by QS_SetEnvIfStatus detecting
+   TCP connections which are not used to send a HTTP request (closed
+   without transmitting HTTP request line and header or denied
+   by any other module).
+
+ - QS_ClientEventBlockCount is processed at pre_connection hook
+   (more aggressive, before mod_ssl).
+
+ - Supress warning message about missing mod_unique_id if mod_navajo
+   is available.
+
 Version 9.71
 
  - QS_RequestHeaderFilterRule and QS_ResponseHeaderFilterRule may

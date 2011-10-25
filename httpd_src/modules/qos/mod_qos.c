@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.355 2011-10-25 19:09:46 pbuchbinder Exp $";
-static const char g_revision[] = "9.71";
+static const char revision[] = "$Id: mod_qos.c,v 5.356 2011-10-25 20:47:16 pbuchbinder Exp $";
+static const char g_revision[] = "9.72";
 
 /************************************************************************
  * Includes
@@ -700,7 +700,6 @@ APR_DECLARE_OPTIONAL_FN(char *, parp_body_data, (request_rec *, apr_size_t *));
 static APR_OPTIONAL_FN_TYPE(parp_hp_table) *qos_parp_hp_table_fn = NULL;
 static APR_OPTIONAL_FN_TYPE(parp_body_data) *parp_appl_body_data_fn = NULL;
 static int m_requires_parp = 0;
-static int m_has_unique_id = 0;
 static int m_enable_audit = 0;
 /* mod_ssl, forward and optional function */
 APR_DECLARE_OPTIONAL_FN(int, ssl_is_https, (conn_rec *));
@@ -1103,10 +1102,7 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
   if(eid) {
     apr_table_set(r->subprocess_env, QS_ErrorNotes, eid);
   }
-  if((uid == NULL) && m_has_unique_id) {
-    /* error,  module loaded but no id available? */
-    return apr_pstrdup(r->pool, "-");
-  } else if(uid == NULL) {
+  if(uid == NULL) {
     /* generate simple id (not more than one error per pid/tid within a millisecond) */
     uid = apr_psprintf(r->pool, "%"APR_TIME_T_FMT"%"APR_PID_T_FMT"%lu",
                        r->request_time, getpid(), apr_os_thread_current());
@@ -4043,26 +4039,27 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
         }
       }
     }
-    /* blocked by event (block only, no limit) */
-    if(cconf->sconf->qos_cc_block) {
-      if((*e)->block >= cconf->sconf->qos_cc_block) {
-        apr_time_t now = time(NULL);
-        if(((*e)->block_time + cconf->sconf->qos_cc_block_time) > now) {
-          /* still blocking */
-          *msg = apr_psprintf(cconf->c->pool, 
-                              QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
-                              "max=%d, current=%d, c=%s",
-                              cconf->sconf->qos_cc_block,
-                              (*e)->block,
-                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
-          ret = m_retcode;
-        } else {
-          /* release */
-          (*e)->block = 0;
-          (*e)->block_time = 0;
-        }
-      }
-    }
+
+//    /* blocked by event (block only, no limit) - moderate*/
+//    if(cconf->sconf->qos_cc_block) {
+//      if((*e)->block >= cconf->sconf->qos_cc_block) {
+//        apr_time_t now = time(NULL);
+//        if(((*e)->block_time + cconf->sconf->qos_cc_block_time) > now) {
+//          /* still blocking */
+//          *msg = apr_psprintf(cconf->c->pool, 
+//                              QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
+//                              "max=%d, current=%d, c=%s",
+//                              cconf->sconf->qos_cc_block,
+//                              (*e)->block,
+//                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+//          ret = m_retcode;
+//        } else {
+//          /* release */
+//          (*e)->block = 0;
+//          (*e)->block_time = 0;
+//        }
+//      }
+//    }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT14 */
   }
   return ret;
@@ -5255,7 +5252,6 @@ static apr_status_t qos_cleanup_conn(void *p) {
 static int qos_process_connection(conn_rec *c) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
   int vip = 0;
-  fprintf(stderr, "$$$ QOS process\n"); fflush(stderr);
   if(cconf == NULL) {
     int client_control = DECLINED;
     int connections = 0;
@@ -5287,7 +5283,7 @@ static int qos_process_connection(conn_rec *c) {
     /* evaluates client ip */
     if((sconf->max_conn_per_ip != -1) ||
        sconf->has_qos_cc) {
-      cconf->ip = qos_inet_addr(cconf->c->remote_ip);
+      cconf->ip = qos_inet_addr(c->remote_ip);
 #ifdef QS_INTERNAL_TEST
       /* use one of the predefined ip addresses */
       if(cconf->sconf->enable_testip) {
@@ -5419,19 +5415,55 @@ static int qos_process_connection(conn_rec *c) {
 }
 
 /**
- * pre connection, constructs the connection ctx (stores socket ref)
+ * pre connection
+ * - constructs the connection ctx (stores socket ref)
+ * - enforce block counter (as early as possible)
  */
 static int qos_pre_connection(conn_rec *c, void *skt) {
+  int ret = DECLINED;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                 &qos_module);
-  fprintf(stderr, "$$$ QOS pre\n"); fflush(stderr);
   if(sconf && (sconf->req_rate != -1)) {
     qos_ifctx_t *inctx = qos_create_ifctx(c, sconf);
     inctx->client_socket = skt;
     ap_add_input_filter("qos-in-filter", inctx, NULL, c);
   }
-  //$$$
-  return DECLINED;
+
+
+  /* blocked by event (block only, no limit) - very aggressive */
+  if(sconf->qos_cc_block) {
+    qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
+    qos_s_entry_t **e = NULL;
+    qos_s_entry_t new;
+    new.ip = qos_inet_addr(c->remote_ip); // no ip simulation here
+    apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT39 */
+    e = qos_cc_get0(u->qos_cc, &new, 0);
+    if(!e) {
+      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+    }
+    if((*e)->block >= sconf->qos_cc_block) {
+      apr_time_t now = time(NULL);
+      if(((*e)->block_time + sconf->qos_cc_block_time) > now) {
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                     QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
+                     "max=%d, current=%d, c=%s",
+                     sconf->qos_cc_block,
+                     (*e)->block,
+                     c->remote_ip == NULL ? "-" : c->remote_ip);
+        if(!sconf->log_only) {
+          c->keepalive = AP_CONN_CLOSE;
+          ret = m_retcode;
+        }
+      } else {
+        /* release */
+        (*e)->block = 0;
+        (*e)->block_time = 0;
+      }
+    }
+    apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT39 */
+  }
+
+  return ret;
 }
 
 static int qos_post_read_request_later(request_rec *r) {
@@ -6878,13 +6910,11 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   apr_pool_cleanup_register(sconf->pool, sconf->act,
                             qos_cleanup_shm, apr_pool_cleanup_null);
 
-  if(qos_module_check("mod_unique_id.c") != APR_SUCCESS) {
-    m_has_unique_id = 0;
+  if((qos_module_check("mod_unique_id.c") != APR_SUCCESS) &&
+     (qos_module_check("mod_navajo.c") != APR_SUCCESS)) {
     ap_log_error(APLOG_MARK, APLOG_WARNING, 0, bs, 
                  QOS_LOG_PFX(009)"mod_unique_id not available (mod_qos generates simple"
                  " request id if required)");
-  } else {
-    m_has_unique_id = 1;
   }
   qos_audit_check(ap_conftree);
   qos_is_https = APR_RETRIEVE_OPTIONAL_FN(ssl_is_https);

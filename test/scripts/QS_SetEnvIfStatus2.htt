@@ -1,6 +1,6 @@
 http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
 #
-# $Id: QS_SetEnvIfStatus2.htt,v 1.1 2011-09-30 19:23:41 pbuchbinder Exp $
+# $Id: QS_SetEnvIfStatus2.htt,v 1.2 2011-10-25 20:47:17 pbuchbinder Exp $
 #
 
 
@@ -18,12 +18,13 @@ _WAIT
 _CLOSE
 _END LOOP
 
+_EXPECT ERROR "Connection reset by peer"
 _REQ localhost $QS_PORT_BASE
-__GET /hadsu HTTP/1.1
-__Host: localhost
-__
-_EXPECT . "500"
-_WAIT                                               
+#__GET /hadsu HTTP/1.1
+#__Host: localhost
+#__
+#_EXPECT . "500"
+#_WAIT                                               
 _CLOSE
 _SLEEP 200
 _EXPECT EXEC " mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3, current=3"
