@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.354 2011-10-12 19:59:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.355 2011-10-25 19:09:46 pbuchbinder Exp $";
 static const char g_revision[] = "9.71";
 
 /************************************************************************
@@ -131,6 +131,7 @@ static const char g_revision[] = "9.71";
 #define QS_VipRequest     "QS_VipRequest"
 #define QS_KEEPALIVE      "QS_KeepAliveTimeout"
 #define QS_CLOSE          "QS_SrvMinDataRate"
+#define QS_EMPTY_CON      "NullConnection"
 #define QS_MFILE          "/var/tmp/"
 
 static const char *m_env_variables[] = {
@@ -146,6 +147,7 @@ static const char *m_env_variables[] = {
   QS_VipRequest,
   QS_KEEPALIVE,
   QS_CLOSE,
+  QS_EMPTY_CON,
   NULL
 };
 
@@ -616,6 +618,7 @@ typedef struct {
   int is_vip_by_header; /* received vip header from application/or auth. user */
   int has_lowrate;
   qs_conn_t *conn;
+  int requests; // number of requests processed (received) by this connection
 } qs_conn_ctx;
 
 /**
@@ -5195,26 +5198,39 @@ static char *qos_this_host(request_rec *r) {
  */
 static apr_status_t qos_cleanup_conn(void *p) {
   qs_conn_ctx *cconf = p;
-  qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool);
   if(cconf->sconf->has_qos_cc || cconf->sconf->qos_cc_prefer) {
+    qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool);
+    qos_s_entry_t **e = NULL;
+    qos_s_entry_t new;
+    int norequests = 0;
+    new.ip = cconf->ip;
+    if(cconf->requests == 0 &&
+       apr_table_get(cconf->sconf->setenvstatus_t, QS_EMPTY_CON) && 
+       !apr_table_get(cconf->c->notes, QS_BLOCK_SEEN)) {
+      norequests = 1;
+      apr_table_set(cconf->c->notes, QS_BLOCK_SEEN, "");
+    }
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT15 */
     if(m_generation == u->generation && u->qos_cc->connections > 0) {
       u->qos_cc->connections--;
     }
-    if(cconf->is_vip_by_header || cconf->has_lowrate) {
-      qos_s_entry_t **e = NULL;
-      qos_s_entry_t new;
-      new.ip = cconf->ip;
-      e = qos_cc_get0(u->qos_cc, &new, 0);
-      if(!e) {
-        e = qos_cc_set(u->qos_cc, &new, time(NULL));
-      }
-      (*e)->events++; // update event activity even there is no valid request (logger)
-      if(cconf->is_vip_by_header) {
-        (*e)->vip = 1;
-      }
-      if(cconf->has_lowrate) {
-        (*e)->lowrate = time(NULL);
+    e = qos_cc_get0(u->qos_cc, &new, 0);
+    if(!e) {
+      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+    }
+    (*e)->events++; // update event activity even there is no valid request (logger)
+    if(cconf->is_vip_by_header) {
+      (*e)->vip = 1;
+    }
+    if(cconf->has_lowrate) {
+      (*e)->lowrate = time(NULL);
+    }
+    if(norequests) {
+      /* increment block event */
+      (*e)->block++;
+      if((*e)->block == 1) {
+        /* ... and start timer */
+        (*e)->block_time = apr_time_sec(apr_time_now());
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT15 */
@@ -5239,6 +5255,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
 static int qos_process_connection(conn_rec *c) {
   qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
   int vip = 0;
+  fprintf(stderr, "$$$ QOS process\n"); fflush(stderr);
   if(cconf == NULL) {
     int client_control = DECLINED;
     int connections = 0;
@@ -5255,6 +5272,7 @@ static int qos_process_connection(conn_rec *c) {
     cconf->is_vip = 0;
     cconf->is_vip_by_header = 0;
     cconf->has_lowrate = 0;
+    cconf->requests = 0;
     ap_set_module_config(c->conn_config, &qos_module, cconf);
     apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
 
@@ -5406,11 +5424,13 @@ static int qos_process_connection(conn_rec *c) {
 static int qos_pre_connection(conn_rec *c, void *skt) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                 &qos_module);
+  fprintf(stderr, "$$$ QOS pre\n"); fflush(stderr);
   if(sconf && (sconf->req_rate != -1)) {
     qos_ifctx_t *inctx = qos_create_ifctx(c, sconf);
     inctx->client_socket = skt;
     ap_add_input_filter("qos-in-filter", inctx, NULL, c);
   }
+  //$$$
   return DECLINED;
 }
 
@@ -6587,8 +6607,11 @@ static int qos_logger(request_rec *r) {
   qos_end_res_rate(r, sconf);
   qos_setenvif(r, sconf);
   qos_logger_cc(r, sconf, rctx);
-  if(cconf && cconf->evmsg) {
-    rctx->evmsg = apr_pstrcat(r->pool, cconf->evmsg, rctx->evmsg, NULL);
+  if(cconf) {
+    cconf->requests++;
+    if(cconf->evmsg) {
+      rctx->evmsg = apr_pstrcat(r->pool, cconf->evmsg, rctx->evmsg, NULL);
+    }
   }
   if(sconf->has_event_filter) {
     qos_event_reset(sconf, rctx);
@@ -8058,6 +8081,7 @@ const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *r
                                                                   &qos_module);
     setenvstatus_t = sconf->setenvstatus_t;
   }
+
   if(strcasecmp(rc, QS_CLOSE) == 0) {
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
     if(err != NULL) {
@@ -8066,6 +8090,16 @@ const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *r
     }
     if(strcasecmp(var, QS_BLOCK) != 0) {
       return apr_psprintf(cmd->pool, "%s: "QS_CLOSE" may only be defined for the event "QS_BLOCK,
+                          cmd->directive->directive);
+    }
+  } else if(strcasecmp(rc, QS_EMPTY_CON) == 0) {
+    const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+    if(err != NULL) {
+      return apr_psprintf(cmd->pool, "%s: "QS_EMPTY_CON" may only be defined globally",
+                          cmd->directive->directive);
+    }
+    if(strcasecmp(var, QS_BLOCK) != 0) {
+      return apr_psprintf(cmd->pool, "%s: "QS_EMPTY_CON" may only be defined for the event "QS_BLOCK,
                           cmd->directive->directive);
     }
   } else {
@@ -9477,7 +9511,9 @@ static const command_rec qos_config_cmds[] = {
                 " request environment variable if the HTTP status code matches the"
                 " defined value. The value '"QS_CLOSE"' may be used as a special"
                 " status code to set a "QS_BLOCK" event in order to handle"
-                " connection close events caused by "QS_CLOSE" rules."),
+                " connection close events caused by "QS_CLOSE" rules while"
+                " the status '"QS_EMPTY_CON"' may be used to mark connections"
+                " which are closed before any HTTP request has ever been received."),
   AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,
                 "see QS_SetEnvIfResBody"),
@@ -9705,6 +9741,7 @@ static const command_rec qos_config_cmds[] = {
  ***********************************************************************/
 static void qos_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_parp.c", NULL };
+  static const char *pressl[] = { "mod_ssl.c", NULL };
   static const char *preconf[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_parp.c", "mod_ssl.c", NULL };
   static const char *post[] = { "mod_setenvif.c", "mod_setenvifplus.c", NULL };
   static const char *parp[] = { "mod_parp.c", NULL };
@@ -9715,7 +9752,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_post_config(qos_chroot, prelast, NULL, APR_HOOK_REALLY_LAST);
 #endif
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
-  ap_hook_pre_connection(qos_pre_connection, NULL, NULL, APR_HOOK_FIRST);
+  ap_hook_pre_connection(qos_pre_connection, NULL, pressl, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request_later, pre, NULL, APR_HOOK_MIDDLE);
