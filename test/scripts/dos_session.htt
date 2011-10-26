@@ -1,5 +1,5 @@
 #
-# $Id: dos_session.htt,v 1.1 2010-06-10 07:39:39 pbuchbinder Exp $
+# $Id: dos_session.htt,v 1.2 2011-10-26 06:49:24 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -19,14 +19,15 @@ _WAIT
 _CLOSE
 _END LOOP
 
+_EXPECT ERROR "Connection refused"
 _REQ server1 SSL:$QS_PORT_BASE2
-__GET /index.html HTTP/1.1
-__Host: localhost
-__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
-__Authorization: Basic YWRtaW46MTIzNA==
-__
-_EXPECT . "Internal Server Error"
-_WAIT
+#__GET /index.html HTTP/1.1
+#__Host: localhost
+#__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+#__Authorization: Basic YWRtaW46MTIzNA==
+#__
+#_EXPECT . "Internal Server Error"
+#_WAIT
 _CLOSE
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=100"
