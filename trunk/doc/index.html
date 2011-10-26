@@ -1648,59 +1648,59 @@ of time if they cause errrors because they send invalid HTTP requests.
 # maximum number of active TCP connections is limited to 896 (limited
 # by the available memory, adjust the settings according to the used
 # hardware):
-MaxClients              896
+MaxClients               896
 
 # idle timeout:
-Timeout                 20
+Timeout                  20
 
 # keep alive (for up to 85% of all connections):
-KeepAlive               on
-MaxKeepAliveRequests    60
-KeepAliveTimeout        3
-QS_SrvMaxConnClose      85%
+KeepAlive                on
+MaxKeepAliveRequests     60
+KeepAliveTimeout         3
+QS_SrvMaxConnClose       85%
 
 # name of the HTTP response header which marks preferred clients (this
 # may be used to let the application decide which clients are "good" and
 # have higher privileges, e.g. authenticated users. you may also use
 # the QS_VipUser directive when using an Apache authentication module such
 # as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/" target="_blank">mod_auth_oid</a>):
-QS_VipIPHeaderName      mod-qos-login
+QS_VipIPHeaderName       mod-qos-login
 
 # enables the known client prefer mode (server allows new TCP connections
 # from known/good clients only when is has more than 716 open TCP connections):
-QS_ClientPrefer         80
+QS_ClientPrefer          80
 
 # minimum request/response speed (deny slow clients blocking the server, 
 # e.g. defending slowloris):
-QS_SrvMinDataRate       120 1500 400
+QS_SrvMinDataRate        120 1500 400
 
 # and limit request line, header and body:
-LimitRequestLine        7168
-LimitRequestFields      30
-QS_LimitRequestBody     102400
+LimitRequestLine         7168
+LimitRequestFields       30
+QS_LimitRequestBody      102400
 
 # don't allow more than 30 TCP connections per client source address:
-QS_SrvMaxConnPerIP      30
+QS_SrvMaxConnPerIP       30
 
 # block clients violating some basic rules frequently (don't allows more than 20
 # violations within 5 minutes):
 QS_ClientEventBlockCount 20 300
-QS_SetEnvIfStatus 400               QS_Block
-QS_SetEnvIfStatus 401               QS_Block
-QS_SetEnvIfStatus 403               QS_Block
-QS_SetEnvIfStatus 404               QS_Block
-QS_SetEnvIfStatus 405               QS_Block
-QS_SetEnvIfStatus 406               QS_Block
-QS_SetEnvIfStatus 408               QS_Block
-QS_SetEnvIfStatus 411               QS_Block
-QS_SetEnvIfStatus 413               QS_Block
-QS_SetEnvIfStatus 414               QS_Block
-QS_SetEnvIfStatus 417               QS_Block
-QS_SetEnvIfStatus 500               QS_Block
-QS_SetEnvIfStatus 503               QS_Block
-QS_SetEnvIfStatus 505               QS_Block
-QS_SetEnvIfStatus QS_SrvMinDataRate QS_Block
-QS_SetEnvIfStatus NullConnection    QS_Block
+QS_SetEnvIfStatus        400               QS_Block
+QS_SetEnvIfStatus        401               QS_Block
+QS_SetEnvIfStatus        403               QS_Block
+QS_SetEnvIfStatus        404               QS_Block
+QS_SetEnvIfStatus        405               QS_Block
+QS_SetEnvIfStatus        406               QS_Block
+QS_SetEnvIfStatus        408               QS_Block
+QS_SetEnvIfStatus        411               QS_Block
+QS_SetEnvIfStatus        413               QS_Block
+QS_SetEnvIfStatus        414               QS_Block
+QS_SetEnvIfStatus        417               QS_Block
+QS_SetEnvIfStatus        500               QS_Block
+QS_SetEnvIfStatus        503               QS_Block
+QS_SetEnvIfStatus        505               QS_Block
+QS_SetEnvIfStatus        QS_SrvMinDataRate QS_Block
+QS_SetEnvIfStatus        NullConnection    QS_Block
 </pre>
 </td></tr>
 </table>

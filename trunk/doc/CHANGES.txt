@@ -1,4 +1,4 @@
-Version
+Version 9.72
 
  - Module tries to detect a suitable default error document for
    QS_ErrorPage automatically.
