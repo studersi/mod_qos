@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.356 2011-10-25 20:47:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.357 2011-10-28 21:29:35 pbuchbinder Exp $";
 static const char g_revision[] = "9.72";
 
 /************************************************************************
@@ -618,8 +618,14 @@ typedef struct {
   int is_vip_by_header; /* received vip header from application/or auth. user */
   int has_lowrate;
   qs_conn_t *conn;
-  int requests; // number of requests processed (received) by this connection
 } qs_conn_ctx;
+
+typedef struct {
+  qs_conn_ctx *cconf;
+  conn_rec *c;
+  qos_srv_config *sconf;
+  int requests; // number of requests processed (received) by this connection  
+} qs_conn_base_ctx;
 
 /**
  * request configuration
@@ -695,6 +701,9 @@ static int m_generation = 0;
 static int m_qos_cc_partition = QSMOD;
 
 /* mod_parp, forward and optional function */
+static apr_status_t qos_cleanup_conn(void *p);
+static apr_status_t qos_base_cleanup_conn(void *p);
+
 APR_DECLARE_OPTIONAL_FN(apr_table_t *, parp_hp_table, (request_rec *));
 APR_DECLARE_OPTIONAL_FN(char *, parp_body_data, (request_rec *, apr_size_t *));
 static APR_OPTIONAL_FN_TYPE(parp_hp_table) *qos_parp_hp_table_fn = NULL;
@@ -3386,12 +3395,54 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
   return rv;
 }
 
+static qs_conn_base_ctx *qos_create_conn_base_ctx(conn_rec *c, qos_srv_config *sconf) {
+  qs_conn_base_ctx *base = apr_pcalloc(c->pool, sizeof(qs_conn_base_ctx));
+  base->cconf = NULL;
+  base->requests = 0;
+  base->c = c;
+  base->sconf = sconf;
+  ap_set_module_config(c->conn_config, &qos_module, base);
+  apr_pool_cleanup_register(c->pool, base, qos_base_cleanup_conn, apr_pool_cleanup_null);
+  return base;
+}
+
+static qs_conn_base_ctx *qos_get_conn_base_ctx(conn_rec *c) {
+  qs_conn_base_ctx *base = (qs_conn_base_ctx*)ap_get_module_config(c->conn_config, &qos_module);
+  return base;
+}
+
+static qs_conn_ctx *qos_get_cconf(conn_rec *c) {
+  qs_conn_ctx *cconf = NULL;
+  qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
+  if(base) {
+    cconf = base->cconf;
+  }
+  return cconf;
+}
+
+static qs_conn_ctx *qos_create_cconf(conn_rec *c, qos_srv_config *sconf) {
+  qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
+  qs_conn_ctx *cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
+  cconf->c = c;
+  cconf->evmsg = NULL;
+  cconf->sconf = sconf;
+  cconf->is_vip = 0;
+  cconf->is_vip_by_header = 0;
+  cconf->has_lowrate = 0;
+  apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
+  if(base == NULL) {
+    base = qos_create_conn_base_ctx(c, sconf);
+  }
+  base->cconf = cconf;
+  return cconf;  
+}
+
 /*
  * QS_ClientSerialize
  */
 static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ctx * rctx) {
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+  qs_conn_ctx *cconf = qos_get_cconf(r->connection);
   if(!rctx) {
     rctx = qos_rctx_config_get(r);
   }
@@ -3446,7 +3497,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
  */
 static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_ctx * rctx) {
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+  qs_conn_ctx *cconf = qos_get_cconf(r->connection);
   if(!rctx) {
     rctx = qos_rctx_config_get(r);
   }
@@ -3743,7 +3794,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       apr_table_get(r->subprocess_env, QS_BLOCK);
     int limit_event = !apr_table_get(r->subprocess_env, QS_LIMIT_SEEN) &&
       apr_table_get(r->subprocess_env, QS_LIMIT);
-    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+    qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     qos_s_entry_t **e = NULL;
     qos_s_entry_t new;
@@ -3849,7 +3900,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     int req_per_sec_block_rate = 0;
     qos_s_entry_t **e = NULL;
     qos_s_entry_t new;
-    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+    qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT17 */
     new.ip = cconf->ip;
@@ -4577,8 +4628,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
 #ifdef QS_INTERNAL_TEST
   {
     unsigned long remoteip = qos_inet_addr(r->connection->remote_ip);
-    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                            &qos_module);
+    qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     if(cconf) {
       remoteip = cconf->ip;
     }
@@ -4892,8 +4942,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
         apr_socket_timeout_get(inctx->client_socket, &current_timeout);
         /* add 5sec tolerance to receive the request line or let Apache close the connection */
         if(now > (apr_time_sec(current_timeout) + 5 + inctx->time)) {
-          qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
-                                                                  &qos_module);
+          qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
           int level = APLOG_ERR;
           /* disabled by vip priv */
           if(cconf && cconf->is_vip) {
@@ -4934,8 +4983,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
           int rate = inctx->nbytes / QS_REQ_RATE_TM;
           if(rate < req_rate) {
             if(inctx->client_socket) {
-              qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(inctx->c->conn_config,
-                                                                      &qos_module);
+              qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
               int level = APLOG_ERR;
               /* disabled by vip priv */
               if(cconf && cconf->is_vip) {
@@ -5190,6 +5238,38 @@ static char *qos_this_host(request_rec *r) {
  * handlers
  ***********************************************************************/
 
+static apr_status_t qos_base_cleanup_conn(void *p) {
+  qs_conn_base_ctx *base = p;
+  if(base->sconf->has_qos_cc || base->sconf->qos_cc_prefer) {
+    int norequests = 0;
+    if(base->requests == 0 &&
+       apr_table_get(base->sconf->setenvstatus_t, QS_EMPTY_CON) && 
+       !apr_table_get(base->c->notes, QS_BLOCK_SEEN)) {
+      norequests = 1;
+      apr_table_set(base->c->notes, QS_BLOCK_SEEN, "");
+    }
+    if(norequests) {
+      qos_user_t *u = qos_get_user_conf(base->sconf->act->ppool);
+      qos_s_entry_t **e = NULL;
+      qos_s_entry_t new;
+      new.ip = qos_inet_addr(base->c->remote_ip); // no ip simulation here
+      apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT40 */
+      e = qos_cc_get0(u->qos_cc, &new, 0);
+      if(!e) {
+        e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      }
+      /* increment block event */
+      (*e)->block++;
+      if((*e)->block == 1) {
+        /* ... and start timer */
+        (*e)->block_time = apr_time_sec(apr_time_now());
+      }
+      apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT40 */
+    }
+  }
+  return APR_SUCCESS;
+}
+
 /**
  * connection destructor
  */
@@ -5199,14 +5279,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
     qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool);
     qos_s_entry_t **e = NULL;
     qos_s_entry_t new;
-    int norequests = 0;
     new.ip = cconf->ip;
-    if(cconf->requests == 0 &&
-       apr_table_get(cconf->sconf->setenvstatus_t, QS_EMPTY_CON) && 
-       !apr_table_get(cconf->c->notes, QS_BLOCK_SEEN)) {
-      norequests = 1;
-      apr_table_set(cconf->c->notes, QS_BLOCK_SEEN, "");
-    }
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT15 */
     if(m_generation == u->generation && u->qos_cc->connections > 0) {
       u->qos_cc->connections--;
@@ -5221,14 +5294,6 @@ static apr_status_t qos_cleanup_conn(void *p) {
     }
     if(cconf->has_lowrate) {
       (*e)->lowrate = time(NULL);
-    }
-    if(norequests) {
-      /* increment block event */
-      (*e)->block++;
-      if((*e)->block == 1) {
-        /* ... and start timer */
-        (*e)->block_time = apr_time_sec(apr_time_now());
-      }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT15 */
   }
@@ -5250,7 +5315,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
  * connection constructor
  */
 static int qos_process_connection(conn_rec *c) {
-  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(c->conn_config, &qos_module);
+  qs_conn_ctx *cconf = qos_get_cconf(c);
   int vip = 0;
   if(cconf == NULL) {
     int client_control = DECLINED;
@@ -5261,16 +5326,7 @@ static int qos_process_connection(conn_rec *c) {
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                   &qos_module);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-    cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
-    cconf->c = c;
-    cconf->evmsg = NULL;
-    cconf->sconf = sconf;
-    cconf->is_vip = 0;
-    cconf->is_vip_by_header = 0;
-    cconf->has_lowrate = 0;
-    cconf->requests = 0;
-    ap_set_module_config(c->conn_config, &qos_module, cconf);
-    apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
+    cconf = qos_create_cconf(c, sconf);
 
     /* control timeout */
     qos_timeout_pc(c, sconf);
@@ -5423,6 +5479,11 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   int ret = DECLINED;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                 &qos_module);
+  qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
+  if(base == NULL) {
+    base = qos_create_conn_base_ctx(c, sconf);
+  }
+
   if(sconf && (sconf->req_rate != -1)) {
     qos_ifctx_t *inctx = qos_create_ifctx(c, sconf);
     inctx->client_socket = skt;
@@ -5724,9 +5785,10 @@ static int qos_header_parser(request_rec * r) {
       rctx = qos_rctx_config_get(r);
       rctx->is_vip = qos_is_vip(r, sconf);
       if(rctx->is_vip) {
-        qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                                &qos_module);
-        if(cconf) cconf->is_vip = 1;
+        qs_conn_ctx *cconf = qos_get_cconf(r->connection);
+        if(cconf) {
+          cconf->is_vip = 1;
+        }
       }
     }
 
@@ -6476,8 +6538,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
         }
       }
       if(match) {
-        qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                                &qos_module);
+        qs_conn_ctx *cconf = qos_get_cconf(r->connection);
         if(cconf) {
           cconf->is_vip = 1;
           cconf->is_vip_by_header = 1;
@@ -6500,8 +6561,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
         }
       }
       if(match) {
-        qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                                &qos_module);
+        qs_conn_ctx *cconf = qos_get_cconf(r->connection);
         qs_req_ctx *rctx = qos_rctx_config_get(r);
         qos_set_session(r, sconf);
         if(!rctx->evmsg || !strstr(rctx->evmsg, "V;")) {
@@ -6521,8 +6581,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   }
   if(sconf->vip_user && r->user) {
     if(!apr_table_get(r->notes, QS_REC_COOKIE)) {
-      qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                              &qos_module);
+      qs_conn_ctx *cconf = qos_get_cconf(r->connection);
       qs_req_ctx *rctx = qos_rctx_config_get(r);
       qos_set_session(r, sconf);
       if(!rctx->evmsg || !strstr(rctx->evmsg, "V;")) {
@@ -6537,8 +6596,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     }
   }
   if(sconf->vip_ip_user && r->user) {
-    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                            &qos_module);
+    qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     if(cconf) {
       cconf->is_vip = 1;
       cconf->is_vip_by_header = 1;
@@ -6609,8 +6667,7 @@ static int qos_fixup(request_rec * r) {
   /* QS_VipUser/QS_VipIpUser */
   if(sconf && (sconf->vip_user || sconf->vip_ip_user) && r->user) {
     /* check r->user early (final status is update is implemented in output-filter) */
-    qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config,
-                                                            &qos_module);
+    qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     if(cconf) {
       cconf->is_vip = 1;
       cconf->is_vip_by_header = 1;
@@ -6630,7 +6687,8 @@ static int qos_logger(request_rec *r) {
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   qs_acentry_t *e = rctx->entry;
   qs_acentry_t *e_cond = rctx->entry_cond;
-  qs_conn_ctx *cconf = (qs_conn_ctx*)ap_get_module_config(r->connection->conn_config, &qos_module);
+  qs_conn_base_ctx *base = qos_get_conn_base_ctx(r->connection);
+  qs_conn_ctx *cconf = qos_get_cconf(r->connection);
   apr_time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
@@ -6639,8 +6697,10 @@ static int qos_logger(request_rec *r) {
   qos_end_res_rate(r, sconf);
   qos_setenvif(r, sconf);
   qos_logger_cc(r, sconf, rctx);
+  if(base) {
+    base->requests++;
+  }
   if(cconf) {
-    cconf->requests++;
     if(cconf->evmsg) {
       rctx->evmsg = apr_pstrcat(r->pool, cconf->evmsg, rctx->evmsg, NULL);
     }

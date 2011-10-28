@@ -1,3 +1,8 @@
+Version
+
+ - Make "NullConnection" detection (known by QS_SetEnvIfStatus)
+   more aggressive.
+
 Version 9.72
 
  - Module tries to detect a suitable default error document for
