@@ -1,5 +1,8 @@
 Version
 
+ - 3429879: Format usage text of the mod_qos utilities in man page
+   format. Use "<utility> --man" to generate the man page.
+
  - Make "NullConnection" detection (known by QS_SetEnvIfStatus)
    more aggressive.
 

@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.20 2011-09-12 18:09:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.21 2011-10-30 22:01:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -772,13 +772,27 @@ static void *loggerThread(void *argv) {
   return NULL;
 }
 
-static void usage(char *cmd) {
+static void usage(char *cmd, int man) {
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utils %s\" \"%s man page\n", qs_CMD(cmd), man_date, man_version, cmd);
+  }
   printf("\n");
-  printf("Utility to collect request statistics from access log data.\n");
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  printf("%s %s- collects request statistics from access log data.\n", cmd, man ? "\\" : "");
   printf("\n");
-  printf("Usage: %s -f <format_string> -o <out_file> [-p [-v]] [-x] [-u <name>] [-m]\n", cmd);
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  printf("%s%s -f <format_string> -o <out_file> [-p [-v]] [-x] [-u <name>] [-m]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
-  printf("Summary\n");
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
   printf("%s is a real time access log analyzer. It collects\n", cmd);
   printf("the data from stdin. The output is written to the specified\n");
   printf("file every minute. The output includes the following entries:\n");
@@ -797,7 +811,11 @@ static void usage(char *cmd) {
   printf("    qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
   printf("    keep-alive, qL=request/response slow down, qs=serialized request)\n");
   printf("\n");
-  printf("Options\n");
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
   printf("  -f <format_string>\n");
   printf("     Defines the log data format and the positions of data\n");
   printf("     elements processed by this utility.\n");
@@ -830,6 +848,9 @@ static void usage(char *cmd) {
   printf("  -m\n");
   printf("     Calculates free system memory every minute.\n");
   printf("\n");
+  if(man) {
+    printf(".SH EXAMPLE\n");
+  }
   printf("Example configuration using pipped logging:\n");
   printf("  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
   printf("  TransferLog \"|./bin/%s -f ..IRSB.T -x -o ./logs/stat_log\"\n", cmd);
@@ -840,7 +861,14 @@ static void usage(char *cmd) {
   printf("Example for post processing:\n");
   printf("  cat access_log | ./bin/%s -f ..IRSB.T -o ./logs/stat_log -p\n", cmd);
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsexec(1), qsfilter2(1), qsgrep(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+  } else {
+    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  }
   exit(1);
 }
 
@@ -887,11 +915,13 @@ int main(int argc, char **argv) {
     } else if(strcmp(*argv,"-x") == 0) { /* activate log rotation */
       m_rotate = 1;
     } else if(strcmp(*argv,"-h") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
     } else if(strcmp(*argv,"--help") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
     } else if(strcmp(*argv,"-?") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
+      usage(cmd, 1);
     } else {
       qerror("unknown option '%s'", *argv);
       exit(1);
@@ -900,7 +930,7 @@ int main(int argc, char **argv) {
     argv++;
   }
   /* requires at leas an output file and a format string */
-  if(file == NULL || config == NULL) usage(cmd);
+  if(file == NULL || config == NULL) usage(cmd, 0);
 
   if(username && getuid() == 0) {
     struct passwd *pwd = getpwnam(username);
