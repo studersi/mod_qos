@@ -27,6 +27,12 @@
 #define QS_UTIL_H
 
 /* ----------------------------------
+ * version info
+ * ---------------------------------- */
+static const char man_version[] = "9.73";
+static const char man_date[] = "30 October 2011";
+
+/* ----------------------------------
  * definitions
  * ---------------------------------- */
 #define MAX_LINE 32768
@@ -48,6 +54,8 @@ typedef struct qs_event_st {
 /* ----------------------------------
  * functions
  * ---------------------------------- */
+char *qs_CMD(char *cmd);
+
 /* io */
 int qs_getLine(char *s, int n);
 int qs_getLinef(char *s, int n, FILE *f);

@@ -23,12 +23,13 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.6 2011-07-14 19:56:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.7 2011-10-30 22:01:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 //#include <config.h>
 
@@ -50,6 +51,17 @@ static time_t m_qs_virtualSystemTime = 0;
 /* ----------------------------------
  * functions
  * ---------------------------------- */
+
+char *qs_CMD(char *cmd) {
+  char *buf = calloc(1024, 1);
+  int i = 0;
+  while(cmd[i] && i < 1023) {
+    buf[i] = toupper(cmd[i]);
+    i++;
+  }
+  buf[i] = '\0';
+  return buf;
+}
 
 /* io --------------------------------------------------------- */
 /*
