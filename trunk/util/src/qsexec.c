@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.4 2011-10-31 20:50:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.5 2011-10-31 20:57:09 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -75,8 +75,8 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  printf("%s%s -e <pattern> [-t <number>:<sec>] [-c <pattern> [<command string>]]\n", man ? "" : "Usage: ", cmd);
-  printf("       [-p] [-u <user>] <command string>\n");
+  qs_man_print(man, "%s%s -e <pattern> [-t <number>:<sec>] [-c <pattern> [<command string>]]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "       [-p] [-u <user>] <command string>\n");
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -115,7 +115,7 @@ static void usage(char *cmd, int man) {
   printf("Executes the deny.sh script providing the IP addresses of\n");
   printf("the client causing a mod_qos(031) messages whenever the log message\n");
   printf("appears 10 times within at most one minute:\n");
-  printf("  ErrorLog \"|%s -e 'mod_qos\\(031\\).*, c=([0-9.]*)' -t 10:60 '/bin/deny.sh $1'\"\n", cmd);
+  qs_man_println(man, "  ErrorLog \"|%s -e 'mod_qos\\(031\\).*, c=([0-9.]*)' -t 10:60 '/bin/deny.sh $1'\"\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
