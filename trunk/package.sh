@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.41 2011-05-27 06:14:18 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.42 2011-10-31 20:50:18 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -35,7 +35,7 @@
 
 TOP=`pwd`
 VERSION=`grep "char g_revision" httpd_src/modules/qos/mod_qos.c | awk '{print $6}' | awk -F'"' '{print $2}'`
-F_VERSION=`grep "char g_revision" util/src/qsfilter2.c | awk '{print $6}' | awk -F'"' '{print $2}'`
+F_VERSION=`grep "char man_version" util/src/qs_util.h | awk '{print $6}' | awk -F'"' '{print $2}'`
 echo "build mod_dos version $VERSION distribution package"
 if [ "$VERSION" != "$F_VERSION" ]; then
   echo "FAILED, wrong version!"
@@ -71,10 +71,14 @@ fi
 set -e
 set -u
 
+echo "update man pages"
+./man.sh 1>/dev/null
+
 rm -rf mod_qos-${VERSION}*
 mkdir -p mod_qos-${VERSION}/doc
 mkdir -p mod_qos-${VERSION}/apache2
 mkdir -p mod_qos-${VERSION}/tools/src
+mkdir -p mod_qos-${VERSION}/tools/man1
 
 echo "install documentation"
 cp doc/README.TXT mod_qos-${VERSION}
@@ -108,6 +112,7 @@ cp util/missing ${DES}/
 cp util/depcomp ${DES}/
 cp util/src/*.c ${DES}/src/
 cp util/src/*.h ${DES}/src/
+cp util/man1/*.1 ${DES}/man1/
 
 ## standard distribution
 #echo "std package: mod_qos-${VERSION}-src.tar.gz"

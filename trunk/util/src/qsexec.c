@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.3 2011-07-19 18:58:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.4 2011-10-31 20:50:19 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -49,6 +49,8 @@ static const char revision[] = "$Id: qsexec.c,v 1.3 2011-07-19 18:58:50 pbuchbin
 #include <apr_portable.h>
 #include <apr_support.h>
 
+#include "qs_util.h"
+
 #ifndef POSIX_MALLOC_THRESHOLD
 #define POSIX_MALLOC_THRESHOLD (10)
 #endif
@@ -59,18 +61,36 @@ typedef struct {
     int rm_eo;
 } regmatch_t;
 
-static void usage(char *cmd) {
+static void usage(char *cmd, int man) {
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\n", qs_CMD(cmd), man_date, man_version, cmd);
+  }
   printf("\n");
-  printf("Parses the data received via stdin and executes the defined command.\n");
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  printf("%s - parses the data received via stdin and executes the defined command.\n", cmd);
   printf("\n");
-  printf("Usage: %s -e <pattern> [-t <number>:<sec>] [-c <pattern> [<command string>]]\n", cmd);
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  printf("%s%s -e <pattern> [-t <number>:<sec>] [-c <pattern> [<command string>]]\n", man ? "" : "Usage: ", cmd);
   printf("       [-p] [-u <user>] <command string>\n");
   printf("\n");
-  printf("Summary\n");
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
   printf("%s reads log lines from stdin and searches for the defined pattern.\n", cmd);
   printf("It executes the defined command string on pattern match.\n");
   printf("\n");
-  printf("Options\n");
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
   printf("  -e <pattern>\n");
   printf("     Specifes the search pattern causing an event which shall trigger the\n");
   printf("     command.\n");
@@ -89,12 +109,22 @@ static void usage(char *cmd) {
   printf("     Defines the event command string where $0-$9 are substituted by the\n");
   printf("     submatches of the regular expression.\n");
   printf("\n");
-  printf("Example (executes the deny.sh script providing the IP addresses of\n");
+  if(man) {
+    printf(".SH EXAMPLE\n");
+  }
+  printf("Executes the deny.sh script providing the IP addresses of\n");
   printf("the client causing a mod_qos(031) messages whenever the log message\n");
-  printf("appears 10 times within at most one minute):\n");
+  printf("appears 10 times within at most one minute:\n");
   printf("  ErrorLog \"|%s -e 'mod_qos\\(031\\).*, c=([0-9.]*)' -t 10:60 '/bin/deny.sh $1'\"\n", cmd);
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsfilter2(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+  } else {
+    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  }
   exit(1);
 }
 
@@ -263,11 +293,13 @@ int main(int argc, const char * const argv[]) {
     } else if(strcmp(*argv,"-p") == 0) {
       pass = 1;
     } else if(strcmp(*argv,"-h") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
     } else if(strcmp(*argv,"-?") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
     } else if(strcmp(*argv,"-help") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
+      usage(cmd, 1);
     } else {
       command = *argv;
     }
@@ -276,7 +308,7 @@ int main(int argc, const char * const argv[]) {
   }
 
   if(pattern == NULL || command == NULL) {
-    usage(cmd);
+    usage(cmd, 0);
   }
 
   if(username && getuid() == 0) {

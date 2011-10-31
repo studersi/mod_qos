@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.21 2011-10-30 22:01:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.22 2011-10-31 20:50:19 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -40,8 +40,6 @@ static const char revision[] = "$Id: qslog.c,v 1.21 2011-10-30 22:01:17 pbuchbin
 
 #include <regex.h>
 #include <time.h>
-
-//#include <config.h>
 
 #include "qs_util.h"
 
@@ -775,13 +773,14 @@ static void *loggerThread(void *argv) {
 static void usage(char *cmd, int man) {
   if(man) {
     //.TH [name of program] [section number] [center footer] [left footer] [center header]
-    printf(".TH %s 1 \"%s\" \"mod_qos utils %s\" \"%s man page\n", qs_CMD(cmd), man_date, man_version, cmd);
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
   }
   printf("\n");
   if(man) {
     printf(".SH NAME\n");
   }
-  printf("%s %s- collects request statistics from access log data.\n", cmd, man ? "\\" : "");
+  printf("%s - collects request statistics from access log data.\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SYNOPSIS\n");
@@ -869,7 +868,11 @@ static void usage(char *cmd, int man) {
   } else {
     printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   }
-  exit(1);
+  if(man) {
+    exit(0);
+  } else {
+    exit(1);
+  }
 }
 
 int main(int argc, char **argv) {

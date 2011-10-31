@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.62 2011-10-28 21:29:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.63 2011-10-31 20:50:19 pbuchbinder Exp $";
 static const char g_revision[] = "9.73";
 
 /* system */
@@ -38,7 +38,7 @@ static const char g_revision[] = "9.73";
 #include <unistd.h>
 #include <time.h>
 
-//#include <config.h>
+#include <qs_util.h>
 
 /* apr */
 #include <pcre.h>
@@ -335,154 +335,228 @@ static void qos_init_pcre() {
   m_req_regex = qos_pcre_compile(QOSC_REQ, 0);
 }
 
-static void usage(char *cmd) {
+static void usage(char *cmd, int man) {
   char space[1024];
   memset(space, ' ', 1024);
   space[strlen(cmd)] = '\0';
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
+  }
   printf("\n");
-  printf("Utility to generate mod_qos request line rules out from\n");
-  printf("existing access/audit log data.\n");
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  qs_man_print(man, "Utility to generate mod_qos request line rules out from\n");
+  qs_man_print(man, "existing access/audit log data.\n");
   printf("\n");
-  printf("Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", cmd);
-  printf("       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-u 'uni']\n", space);
-  printf("       %s [-k <prefix>] [-t] [-f <path>] [-v 0|1|2]\n", space);
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  qs_man_print(man, "Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", cmd);
+  qs_man_print(man, "       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-u 'uni']\n", space);
+  qs_man_print(man, "       %s [-k <prefix>] [-t] [-f <path>] [-v 0|1|2]\n", space);
   printf("\n");
-  printf("Summary\n");
-  printf(" mod_qos implements a request filter which validates each request\n");
-  printf(" line. The module supports both, negative and positive security\n");
-  printf(" model. The QS_Deny* directives are used to specify request line\n");
-  printf(" patterns which are not allowed to access the server (negative\n");
-  printf(" security model / blacklist). These rules are used to restrict\n");
-  printf(" access to certain resources which should not be available to\n");
-  printf(" users or to protect the server from malicious patterns. The\n");
-  printf(" QS_Permit* rules implement a positive security model (whitelist).\n");
-  printf(" These directives are used to define allowed request line patterns.\n");
-  printf(" Request which do not match any of thses patterns are not allowed\n");
-  printf(" to access the server.\n");
-  printf(" %s is an audit log analyzer used to generate filter\n", cmd);
-  printf(" rules (perl compatible regular expressions) which may be used\n");
-  printf(" by mod_qos to deny access for suspect requests (QS_PermitUri rules).\n");
-  printf(" It parses existing audit log files in order to generate request\n");
-  printf(" patterns covering all allowed requests.\n");
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
+  qs_man_print(man, " mod_qos implements a request filter which validates each request\n");
+  qs_man_print(man, " line. The module supports both, negative and positive security\n");
+  qs_man_print(man, " model. The QS_Deny* directives are used to specify request line\n");
+  qs_man_print(man, " patterns which are not allowed to access the server (negative\n");
+  qs_man_print(man, " security model / blacklist). These rules are used to restrict\n");
+  qs_man_print(man, " access to certain resources which should not be available to\n");
+  qs_man_print(man, " users or to protect the server from malicious patterns. The\n");
+  qs_man_print(man, " QS_Permit* rules implement a positive security model (whitelist).\n");
+  qs_man_print(man, " These directives are used to define allowed request line patterns.\n");
+  qs_man_print(man, " Request which do not match any of thses patterns are not allowed\n");
+  qs_man_print(man, " to access the server.\n");
+  qs_man_print(man, " %s is an audit log analyzer used to generate filter\n", cmd);
+  qs_man_print(man, " rules (perl compatible regular expressions) which may be used\n");
+  qs_man_print(man, " by mod_qos to deny access for suspect requests (QS_PermitUri rules).\n");
+  qs_man_print(man, " It parses existing audit log files in order to generate request\n");
+  qs_man_print(man, " patterns covering all allowed requests.\n");
   printf("\n");
-  printf("Options\n");
-  printf("  -i <path>\n");
-  printf("     Input file containing request URIs.\n");
-  printf("     The URIs for this file have to be extracted from the servers\n");
-  printf("     access logs. Each line of the input file contains a request\n");
-  printf("     URI consiting of a path and and query.\n");
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -i <path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Input file containing request URIs.\n");
+  qs_man_print(man, "     The URIs for this file have to be extracted from the servers\n");
+  qs_man_print(man, "     access logs. Each line of the input file contains a request\n");
+  qs_man_print(man, "     URI consiting of a path and and query.\n");
+  printf("\n");
   printf("     Example:\n");
+  qs_man_println(man, "       /aaa/index.do\n");
+  qs_man_println(man, "       /aaa/edit?image=1.jpg\n");
+  qs_man_println(man, "       /aaa/image/1.jpg\n");
+  qs_man_println(man, "       /aaa/view?page=1\n");
+  qs_man_println(man, "       /aaa/edit?document=1\n");
   printf("\n");
-  printf("       /aaa/index.do\n");
-  printf("       /aaa/edit?image=1.jpg\n");
-  printf("       /aaa/image/1.jpg\n");
-  printf("       /aaa/view?page=1\n");
-  printf("       /aaa/edit?document=1\n");
+  qs_man_print(man, "     These access log data must include current request URIs but\n");
+  qs_man_print(man, "     also request lines from previous rule generation steps. It\n");
+  qs_man_print(man, "     must also include request lines which cover manually generated\n");
+  qs_man_print(man, "     rules.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -c <path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     mod_qos configuration file defining QS_DenyRequestLine and\n");
+  qs_man_print(man, "     QS_PermitUri directives.\n");
+  qs_man_print(man, "     %s generates rules from access log data automatically.\n", cmd);
+  qs_man_print(man, "     Manually generated rules (QS_PermitUri) may be provided from\n");
+  qs_man_print(man, "     this file. Note: each manual rule must be represented by a\n");
+  qs_man_print(man, "     request URI in the input data (-i) in order to make sure not\n");
+  qs_man_print(man, "     to be deleted by the rule optimisation algorithm.\n");
+  qs_man_print(man, "     QS_Deny* rules from this file are used to filter request lines\n");
+  qs_man_print(man, "     which should not be used for whitelist rule generation.\n");
   printf("\n");
-  printf("     These access log data must include current request URIs but\n");
-  printf("     also request lines from previous rule generation steps. It\n");
-  printf("     must also include request lines which cover manually generated\n");
-  printf("     rules.\n");
-  printf("  -c <path>\n");
-  printf("     mod_qos configuration file defining QS_DenyRequestLine and\n");
-  printf("     QS_PermitUri directives.\n");
-  printf("     %s generates rules from access log data automatically.\n", cmd);
-  printf("     Manually generated rules (QS_PermitUri) may be provided from\n");
-  printf("     this file. Note: each manual rule must be represented by a\n");
-  printf("     request URI in the input data (-i) in order to make sure not\n");
-  printf("     to be deleted by the rule optimisation algorithm.\n");
-  printf("     QS_Deny* rules from this file are used to filter request lines\n");
-  printf("     which should not be used for whitelist rule generation.\n");
   printf("     Example:\n");
+  qs_man_println(man, "       # manually defined whitelist rule:\n");
+  qs_man_println(man, "       QS_PermitUri +view deny \"^[/a-zA-Z0-9]+/view\\?(page=[0-9]+)?$\"\n");
+  qs_man_println(man, "       # filter unwanted request line patterns:\n");
+  qs_man_println(man, "       QS_DenyRequestLine +printable deny \".*[\\x00-\\x19].*\"\n");
   printf("\n");
-  printf("       # manually defined whitelist rule:\n");
-  printf("       QS_PermitUri +view deny \"^[/a-zA-Z0-9]+/view\\?(page=[0-9]+)?$\"\n");
-  printf("       # filter unwanted request line patterns:\n");
-  printf("       QS_DenyRequestLine +printable deny \".*[\\x00-\\x19].*\"\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -d <num>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Depth (sub locations) of the path string which is defined as a\n");
+  qs_man_print(man, "     literal string. Default is 1.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -h\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Always use a string representing the handler name in the path even\n");
+  qs_man_print(man, "     the url does not have a query. See also -d option.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -b <num>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Replaces url pattern by the regular expression when detecting\n");
+  qs_man_print(man, "     a base64/hex encoded string. Detecting sensibility is defined by a\n");
+  qs_man_print(man, "     numeric value. You should use values higher than 5 (default)\n");
+  qs_man_print(man, "     or 0 to disable this function.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -p\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Repesents query by pcre only (no literal strings).\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -s\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Uses one single pcre for the whole query string.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -m\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Uses one pcre for multipe query values (recommended mode).\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -o\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Does not care the order of query parameters.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -l <len>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Outsizes the query length by the defined length ({0,size+len}),\n");
+  qs_man_print(man, "     default is %d.\n", m_query_len_pcre);
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -n\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Disables redundant rules elimination.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -e\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Exit on error.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -u 'uni'\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Enables additional decoding methods. Use the same settings as you have\n");
+  qs_man_print(man, "     used for the QS_Decoding directive.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -p\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Repesents query by pcre only (no literal strings).\n");
+  qs_man_print(man, "     Determines the worst case performance for the generated whitelist\n");
+  qs_man_print(man, "     by applying each rule for each request line (output is real time\n");
+  qs_man_print(man, "     filter duration per request line in milliseconds).\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -k <prefix>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Prefix used to generate rule identifiers (QSF by default).\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -t\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Calculates the maximal latency per request (worst case) using the\n");
+  qs_man_print(man, "     generated rules.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -f <path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Filters the input by the provided path (prefix) only processing\n");
+  qs_man_print(man, "     matching lines.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -v <level>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
+  qs_man_print(man, "     Don't use rules you haven't checked the request data used to\n");
+  qs_man_print(man, "     generate it! Level 1 is highly recommended (as long as you don't\n");
+  qs_man_print(man, "     have created the log data using your own web crawler).\n");
   printf("\n");
-  printf("  -d <num>\n");
-  printf("     Depth (sub locations) of the path string which is defined as a\n");
-  printf("     literal string. Default is 1.\n");
-  printf("  -h\n");
-  printf("     Always use a string representing the handler name in the path even\n");
-  printf("     the url does not have a query. See also -d option.\n");
-  printf("  -b <num>\n");
-  printf("     Replaces url pattern by the regular expression when detecting\n");
-  printf("     a base64/hex encoded string. Detecting sensibility is defined by a\n");
-  printf("     numeric value. You should use values higher than 5 (default)\n");
-  printf("     or 0 to disable this function.\n");
-  printf("  -p\n");
-  printf("     Repesents query by pcre only (no literal strings).\n");
-  printf("  -s\n");
-  printf("     Uses one single pcre for the whole query string.\n");
-  printf("  -m\n");
-  printf("     Uses one pcre for multipe query values (recommended mode).\n");
-  printf("  -o\n");
-  printf("     Does not care the order of query parameters.\n");
-  printf("  -l <len>\n");
-  printf("     Outsizes the query length by the defined length ({0,size+len}),\n");
-  printf("     default is %d.\n", m_query_len_pcre);
-  printf("  -n\n");
-  printf("     Disables redundant rules elimination.\n");
-  printf("  -e\n");
-  printf("     Exit on error.\n");
-  printf("  -u 'uni'\n");
-  printf("     Enables additional decoding methods. Use the same settings as you have\n");
-  printf("     used for the QS_Decoding directive.\n");
-  printf("  -p\n");
-  printf("     Repesents query by pcre only (no literal strings).\n");
-  printf("     Determines the worst case performance for the generated whitelist\n");
-  printf("     by applying each rule for each request line (output is real time\n");
-  printf("     filter duration per request line in milliseconds).\n");
-  printf("  -k <prefix>\n");
-  printf("     Prefix used to generate rule identifiers (QSF by default).\n");
-  printf("  -t\n");
-  printf("     Calculates the maximal latency per request (worst case) using the\n");
-  printf("     generated rules.\n");
-  printf("  -f <path>\n");
-  printf("     Filters the input by the provided path (prefix) only processing\n");
-  printf("     matching lines.\n");
-  printf("  -v <level>\n");
-  printf("     Verbose mode. (0=silent, 1=rule source, 2=detailed). Default is 1.\n");
-  printf("     Don't use rules you haven't checked the request data used to\n");
-  printf("     generate it! Level 1 is highly recommended (as long as you don't\n");
-  printf("     have created the log data using your own web crawler).\n");
+  if(man) {
+    printf(".SH OUTPUT\n");
+  } else {
+    printf("Output\n");
+  }
+  qs_man_print(man, " The output of %s is written to stdout. The output\n", cmd);
+  qs_man_print(man, " contains the generated QS_PermitUri directives but also\n");
+  qs_man_print(man, " information about the source which has been used to generate\n");
+  qs_man_print(man, " these rules. It is very important to check the validity of\n");
+  qs_man_print(man, " each request line which has been used to calculate the\n");
+  qs_man_print(man, " QS_PermitUri rules. Each request line which has been used to\n");
+  qs_man_print(man, " generate a new rule is shown in the output prefixed by\n");
+  qs_man_print(man, " \"ADD line <line number>:\". These request lines should be\n");
+  qs_man_print(man, " stored and reused at any later rule generation (add them to\n");
+  qs_man_print(man, " the URI input file). The subsequent line shows the generated\n");
+  qs_man_print(man, " rule.\n");
+  qs_man_print(man, " At the end of data processing a list of all generated\n");
+  qs_man_print(man, " QS_PermitUri rules is shown. These directives may be used\n");
+  qs_man_print(man, " withn the configuration file used by mod_qos.\n");
   printf("\n");
-  printf("Output\n");
-  printf(" The output of %s is written to stdout. The output\n", cmd);
-  printf(" contains the generated QS_PermitUri directives but also\n");
-  printf(" information about the source which has been used to generate\n");
-  printf(" these rules. It is very important to check the validity of\n");
-  printf(" each request line which has been used to calculate the\n");
-  printf(" QS_PermitUri rules. Each request line which has been used to\n");
-  printf(" generate a new rule is shown in the output prefixed by\n");
-  printf(" \"ADD line <line number>:\". These request lines should be\n");
-  printf(" stored and reused at any later rule generation (add them to\n");
-  printf(" the URI input file). The subsequent line shows the generated\n");
-  printf(" rule.\n");
-  printf(" At the end of data processing a list of all generated\n");
-  printf(" QS_PermitUri rules is shown. These directives may be used\n");
-  printf(" withn the configuration file used by mod_qos.\n");
+  if(man) {
+    printf(".SH EXAMPLE\n");
+  } else {
+    printf("Sample Usage and Output\n");
+  }
+  qs_man_println(man, "  ./%s -i loc.txt -c httpd.conf -m -e\n", cmd);
+  qs_man_println(man, "  ...\n");
+  qs_man_println(man, "  # ADD line 1: /aaa/index.do\n");
+  qs_man_println(man, "  # 003 ^(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\n");
+  qs_man_println(man, "  # ADD line 3: /aaa/view?page=1\n");
+  qs_man_println(man, "  # --- ^[/a-zA-Z0-9]+/view\\?(page=[0-9]+)?$\n");
+  qs_man_println(man, "  # ADD line 4: /aaa/edit?document=1\n");
+  qs_man_println(man, "  # 004 ^[/a-zA-Z]+/edit\\?((document)(=[0-9]*)*[&]?)*$\n");
+  qs_man_println(man, "  # ADD line 5: /aaa/edit?image=1.jpg\n");
+  qs_man_println(man, "  # 005 ^[/a-zA-Z]+/edit\\?((image)(=[0-9\\.a-zA-Z]*)*[&]?)*$\n");
+  qs_man_println(man, "  ...\n");
+  qs_man_println(man, "  QS_PermitUri +QSF001 deny \"^[/a-zA-Z]+/edit\\?((document|image)(=[0-9\\.a-zA-Z]*)*[&]?)*$\"\n");
+  qs_man_println(man, "  QS_PermitUri +QSF002 deny \"^[/a-zA-Z0-9]+/view\\?(page=[0-9]+)?$\"\n");
+  qs_man_println(man, "  QS_PermitUri +QSF003 deny \"^(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\"\n");
   printf("\n");
-  printf("Sample Usage and Output\n");
-  printf("  ./%s -i loc.txt -c httpd.conf -m -e\n", cmd);
-  printf("  ...\n");
-  printf("  # ADD line 1: /aaa/index.do\n");
-  printf("  # 003 ^(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\n");
-  printf("  # ADD line 3: /aaa/view?page=1\n");
-  printf("  # --- ^[/a-zA-Z0-9]+/view\\?(page=[0-9]+)?$\n");
-  printf("  # ADD line 4: /aaa/edit?document=1\n");
-  printf("  # 004 ^[/a-zA-Z]+/edit\\?((document)(=[0-9]*)*[&]?)*$\n");
-  printf("  # ADD line 5: /aaa/edit?image=1.jpg\n");
-  printf("  # 005 ^[/a-zA-Z]+/edit\\?((image)(=[0-9\\.a-zA-Z]*)*[&]?)*$\n");
-  printf("  ...\n");
-  printf("  QS_PermitUri +QSF001 deny \"^[/a-zA-Z]+/edit\\?((document|image)(=[0-9\\.a-zA-Z]*)*[&]?)*$\"\n");
-  printf("  QS_PermitUri +QSF002 deny \"^[/a-zA-Z0-9]+/view\\?(page=[0-9]+)?$\"\n");
-  printf("  QS_PermitUri +QSF003 deny \"^(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\"\n");
-  printf("\n");
-  printf("mod_qos %s\n", g_revision);
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
-  exit(1);
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsexec(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+  } else {
+    printf("mod_qos %s\n", g_revision);
+    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  }
+  if(man) {
+    exit(0);
+  } else {
+    exit(1);
+  }
 }
 
 /* worker struct, used for parallel processing */
@@ -1615,9 +1689,11 @@ int main(int argc, const char * const argv[]) {
     } else if(strcmp(*argv,"-h") == 0) {
       m_handler = 1;
     } else if(strcmp(*argv,"-?") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
     } else if(strcmp(*argv,"-help") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
+      usage(cmd, 1);
     }
     argc--;
     argv++;
@@ -1641,7 +1717,7 @@ int main(int argc, const char * const argv[]) {
     whitelist_size = apr_table_elts(rules)->nelts;
   }
 
-  if(access_log == NULL) usage(cmd);
+  if(access_log == NULL) usage(cmd, 0);
   f = fopen(access_log, "r");
   if(f == NULL) {
     fprintf(stderr, "ERROR, could not open input file %s\n", access_log);
