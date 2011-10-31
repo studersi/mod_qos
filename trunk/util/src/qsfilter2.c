@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.63 2011-10-31 20:50:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.64 2011-10-31 21:38:35 pbuchbinder Exp $";
 static const char g_revision[] = "9.73";
 
 /* system */
@@ -354,7 +354,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "Usage: %s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", cmd);
+  qs_man_print(man, "%s%s -i <path> [-c <path>] [-d <num>] [-h] [-b <num>]\n", man ? "" : "Usage: ", cmd);
   qs_man_print(man, "       %s [-p|-s|-m|-o] [-l <len>] [-n] [-e] [-u 'uni']\n", space);
   qs_man_print(man, "       %s [-k <prefix>] [-t] [-f <path>] [-v 0|1|2]\n", space);
   printf("\n");

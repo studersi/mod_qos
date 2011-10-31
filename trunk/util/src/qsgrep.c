@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.1 2011-02-10 19:28:56 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.2 2011-10-31 21:38:35 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -47,6 +47,8 @@ static const char revision[] = "$Id: qsgrep.c,v 1.1 2011-02-10 19:28:56 pbuchbin
 #include <apr_portable.h>
 #include <apr_support.h>
 
+#include "qs_util.h"
+
 #ifndef POSIX_MALLOC_THRESHOLD
 #define POSIX_MALLOC_THRESHOLD (10)
 #endif
@@ -57,32 +59,74 @@ typedef struct {
     int rm_eo;
 } regmatch_t;
 
-static void usage(char *cmd) {
+static void usage(char *cmd, int man) {
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
+  }
   printf("\n");
-  printf("Print matching patterns within a file.\n");
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  qs_man_print(man, "Print matching patterns within a file.\n");
   printf("\n");
-  printf("Usage: %s -e <pattern> -o <sub string> [<path>]\n", cmd);
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  qs_man_print(man, "%s%s -e <pattern> -o <sub string> [<path>]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
-  printf("Summary\n");
-  printf("%s is a simple tool to search patterns within files.\n", cmd);
-  printf("It uses regular expressions to find patterns and prints the\n");
-  printf("submatches within a pre-defined format string.\n");
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
+  qs_man_print(man, "%s is a simple tool to search patterns within files.\n", cmd);
+  qs_man_print(man, "It uses regular expressions to find patterns and prints the\n");
+  qs_man_print(man, "submatches within a pre-defined format string.\n");
   printf("\n");
-  printf("Options\n");
-  printf("  -e <pattern>\n");
-  printf("     Specifes the search pattern.\n");
-  printf("  -o <string>\n");
-  printf("     Defines the output string where $0-$9 are substituted by the\n");
-  printf("     submatches of the regular expression.\n");
-  printf("  <path>\n");
-  printf("     Defines the input file to process. %s reads from\n", cmd);
-  printf("     from standard input if this parameter is omitted.\n");
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -e <pattern>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Specifes the search pattern.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -o <string>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the output string where $0-$9 are substituted by the\n");
+  qs_man_print(man, "     submatches of the regular expression.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  <path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the input file to process. %s reads from\n", cmd);
+  qs_man_print(man, "     from standard input if this parameter is omitted.\n");
   printf("\n");
-  printf("Example (shows the IP addresses of clients causing mod_qos(031) messages):\n");
-  printf(" %s -e 'mod_qos\\(031\\).*, c=([0-9.]*)' -o 'ip=$1' error_log\n", cmd);
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
-  exit(1);
+  if(man) {
+    printf(".SH EXAMPLE\n");
+    qs_man_println(man, "Shows the IP addresses of clients causing mod_qos(031) messages):\n");
+  } else {
+    printf("Example (shows the IP addresses of clients causing mod_qos(031) messages):\n");
+  }
+  qs_man_print(man, " %s -e 'mod_qos\\(031\\).*, c=([0-9.]*)' -o 'ip=$1' error_log\n", cmd);
+  printf("\n");
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsexec(1), qsfilter2(1), qslog(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+  } else {
+    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  }
+  if(man) {
+    exit(0);
+  } else {
+    exit(1);
+  }
 }
 
 char *qs_pregsub(apr_pool_t *pool, const char *input,
@@ -215,11 +259,13 @@ int main(int argc, const char * const argv[]) {
 	out = *(++argv);
       }
     } else if(strcmp(*argv,"-h") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
     } else if(strcmp(*argv,"-?") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
     } else if(strcmp(*argv,"-help") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
+      usage(cmd, 1);
     } else {
       filename = *argv;
     }
@@ -228,7 +274,7 @@ int main(int argc, const char * const argv[]) {
   }
 
   if(pattern == NULL || out == NULL) {
-    usage(cmd);
+    usage(cmd, 0);
   }
 
   preg = pcre_compile(pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
