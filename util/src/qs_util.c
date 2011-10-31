@@ -23,15 +23,14 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.7 2011-10-30 22:01:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.8 2011-10-31 20:50:19 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-
-//#include <config.h>
+#include <stdarg.h>
 
 #include "qs_util.h"
 
@@ -51,6 +50,83 @@ static time_t m_qs_virtualSystemTime = 0;
 /* ----------------------------------
  * functions
  * ---------------------------------- */
+
+/**
+ * man:
+ * - escape special chars, like "\" and "-"
+ * - wipe leading spaces
+ * - wipe tailing LF
+ */
+void qs_man_print(int man, const char *fmt, ...) {
+  char bufin[4096];
+  char bufout[4096];
+  va_list args;
+  int i = 0;
+  int j = 0;
+  memset(bufin, 0, 4096);
+  va_start(args, fmt);
+  vsprintf(bufin, fmt, args);
+  if(man) {
+    // wipe leading spaces
+    //    while(bufin[i] == ' ' && bufin[i+1] == ' ') {
+    while(bufin[i] == ' ') {
+      i++;
+    }
+  }
+  while(bufin[i] && j < 4000) {
+    // escape "\\" and "-" for man page
+    if(man && (bufin[i] == '\\' || bufin[i] == '-')) {
+      bufout[j] = '\\';
+      j++;
+    }
+    if(bufin[i] == '\n') {
+      if(man) {
+	// skip LF for man page
+	i++;
+      } else {
+	// keep LF
+	bufout[j] = bufin[i];
+	i++;
+	j++;
+      }
+    } else {
+      // standard char
+      bufout[j] = bufin[i];
+      i++;
+      j++;
+    }
+  }
+  bufout[j] = '\0';
+  printf("%s", bufout);
+  if(man) {
+    printf(" ");
+  }
+}
+
+// escape only
+void qs_man_println(int man, const char *fmt, ...) {
+  char bufin[4096];
+  char bufout[4096];
+  va_list args;
+  int i = 0;
+  int j = 0;
+  memset(bufin, 0, 4096);
+  va_start(args, fmt);
+  vsprintf(bufin, fmt, args);
+  while(bufin[i] && j < 4000) {
+    // escape "\\" and "-" for man page
+    if(man && (bufin[i] == '\\' || bufin[i] == '-')) {
+      bufout[j] = '\\';
+      j++;
+    }
+    // standard char
+    bufout[j] = bufin[i];
+    i++;
+    j++;
+  }
+  bufout[j] = '\0';
+  printf("%s", bufout);
+}
 
 char *qs_CMD(char *cmd) {
   char *buf = calloc(1024, 1);

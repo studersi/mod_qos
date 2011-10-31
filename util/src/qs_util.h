@@ -39,7 +39,6 @@ static const char man_date[] = "30 October 2011";
 #define CR 13
 #define LF 10
 
-
 /* ----------------------------------
  * structures
  * ---------------------------------- */
@@ -55,6 +54,8 @@ typedef struct qs_event_st {
  * functions
  * ---------------------------------- */
 char *qs_CMD(char *cmd);
+void qs_man_print(int man, const char *fmt, ...);
+void qs_man_println(int man, const char *fmt, ...);
 
 /* io */
 int qs_getLine(char *s, int n);
