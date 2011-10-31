@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.8 2011-01-05 20:08:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.9 2011-10-31 21:38:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -34,30 +34,63 @@ static const char revision[] = "$Id: qstail.c,v 1.8 2011-01-05 20:08:08 pbuchbin
 #include <regex.h>
 #include <signal.h>
 
-#define MAX_LINE 32768
-#define CR 13
-#define LF 10
+#include "qs_util.h"
+
 #define BUFFER 2048
 
-static void usage(char *cmd) {
+static void usage(char *cmd, int man) {
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
+  }
   printf("\n");
-  printf("Utility prints the end of a log file starting at the specified pattern.\n");
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  qs_man_print(man, "Utility prints the end of a log file starting at the specified pattern.\n");
   printf("\n");
-  printf("Usage: %s -i <path> -p <pattern>\n", cmd);
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  qs_man_print(man, "%s%s -i <path> -p <pattern>\n", man ? "" : "Usage: ", cmd);
   printf("\n");
-  printf("Summary\n");
-  printf(" %s shows the end of a log file beginning with the line containing the\n", cmd);
-  printf(" specified pattern. This may be used to show all lines which has been written\n");
-  printf(" after a certain event (e.g., server restart) or time stamp.\n");
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
+  qs_man_print(man, " %s shows the end of a log file beginning with the line containing the\n", cmd);
+  qs_man_print(man, " specified pattern. This may be used to show all lines which has been written\n");
+  qs_man_print(man, " after a certain event (e.g., server restart) or time stamp.\n");
   printf("\n");
-  printf("Options\n");
-  printf("  -i <path>\n");
-  printf("     Input file to read the data from.\n");
-  printf("  -p <pattern>\n");
-  printf("     Search pattern (literal string).\n");
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -i <path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Input file to read the data from.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -p <pattern>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Search pattern (literal string).\n");
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
-  exit(1);
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsexec(1), qsfilter2(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qssign(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+  } else {
+    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  }
+  if(man) {
+    exit(0);
+  } else {
+    exit(1);
+  }
 }
 
 /* search the beginning of the line starting at the provided position */
@@ -170,16 +203,18 @@ int main(int argc, const char * const argv[]) {
 	pattern = *(++argv);
       } 
     } else if(strcmp(*argv,"-?") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
     } else if(strcmp(*argv,"-help") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
+      usage(cmd, 1);
     }
     argc--;
     argv++;
   }
 
   if(filename == NULL || pattern == NULL) {
-    usage(cmd);
+    usage(cmd, 0);
   }
   if((f = fopen(filename, "r")) == NULL) {
     fprintf(stderr, "[%s]: ERROR, could not open file '%s'\n", cmd, filename);

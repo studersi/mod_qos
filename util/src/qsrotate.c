@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.5 2011-01-01 20:52:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.6 2011-10-31 21:38:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -49,8 +49,6 @@ static const char revision[] = "$Id: qsrotate.c,v 1.5 2011-01-01 20:52:04 pbuchb
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-//#include <config.h>
-
 #include "qs_util.h"
 
 #define BUFSIZE        65536
@@ -68,40 +66,96 @@ static char *m_cmd = NULL;
 static int m_compress = 0;
 static int m_stdout = 0;
 
-static void usage(char *cmd) {
+static void usage(char *cmd, int man) {
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
+  }
   printf("\n");
-  printf("Log rotation tool (similar to Apache's rotatelogs).\n");
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  qs_man_print(man, "Log rotation tool (similar to Apache's rotatelogs).\n");
   printf("\n");
-  printf("Usage: %s -o <file> [-s <sec>] [-f] [-z] [-g <num>] [-u <name>] [-p]\n", cmd);
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  qs_man_print(man, "%s%s -o <file> [-s <sec>] [-f] [-z] [-g <num>] [-u <name>] [-p]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
-  printf("Summary\n");
-  printf("Example:\n");
-  printf("  TransferLog \"|%s -o /dest/file -s 86400\"\n", cmd);
-  printf("The name of the rotated file will be /dest/filee.YYYYmmddHHMMSS\n");
-  printf("where YYYYmmddHHMMSS is the system time at which the data has been\n");
-  printf("rotated.\n");
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
+  qs_man_print(man, "%s reads from stdin (piped log) and writes the data to the provided\n", cmd);
+  qs_man_print(man, "file rotating the file after the specified time.\n");
   printf("\n");
-  printf("Options\n");
-  printf("  -o <file>\n");
-  printf("     Output log file to write the data to.\n");
-  printf("  -s <sec>\n");
-  printf("     Rotation interval in seconds, default are 86400 seconds.\n");
-  printf("  -f\n");
-  printf("     Forced log rotation even no data is written.\n");
-  printf("  -z\n");
-  printf("     Compress (gzip) the rotated file.\n");
-  printf("  -g <num>\n");
-  printf("     Generations (number of files to keep).\n");
-  printf("  -u <name>\n");
-  printf("     Become another user, e.g. www-data.\n");
-  printf("  -p\n");
-  printf("     Writes data also to stdout (for piped logging).\n");
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -o <file>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Output log file to write the data to.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -s <sec>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Rotation interval in seconds, default are 86400 seconds.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -f\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Forced log rotation even no data is written.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -z\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Compress (gzip) the rotated file.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -g <num>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Generations (number of files to keep).\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -u <name>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Become another user, e.g. www-data.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -p\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Writes data also to stdout (for piped logging).\n");
   printf("\n");
-  printf("Note\n");
-  printf("  - Each %s instance must use an individual file!\n", cmd);
+  if(man) {
+    printf(".SH EXAMPLE\n");
+  } else {
+    printf("Example:\n");
+  }
+  qs_man_println(man, "  TransferLog \"|%s -o /dest/file -s 86400\"\n", cmd);
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
-  exit(1);
+  qs_man_print(man, "The name of the rotated file will be /dest/filee.YYYYmmddHHMMSS\n");
+  qs_man_print(man, "where YYYYmmddHHMMSS is the system time at which the data has been\n");
+  qs_man_print(man, "rotated.\n");
+  printf("\n");
+  if(man) {
+    printf(".SH NOTE\n");
+  } else {
+    printf("Note\n");
+  }
+  qs_man_print(man, "  Each %s instance must use an individual file!\n", cmd);
+  printf("\n");
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsexec(1), qsfilter2(1), qsgrep(1), qslog(1), qspng(1), qssign(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+  } else {
+    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  }
+  if(man) {
+    exit(0);
+  } else {
+    exit(1);
+  }
 }
 
 static int openFile(const char *cmd, const char *file_name) {
@@ -302,13 +356,21 @@ int main(int argc, char **argv) {
       m_stdout = 1;
     } else if(strcmp(*argv,"-f") == 0) {
       m_force_rotation = 1;
+    } else if(strcmp(*argv,"-h") == 0) {
+      usage(m_cmd, 0);
+    } else if(strcmp(*argv,"--help") == 0) {
+      usage(m_cmd, 0);
+    } else if(strcmp(*argv,"-?") == 0) {
+      usage(m_cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
+      usage(m_cmd, 1);
     }
 
     argc--;
     argv++;
   }
 
-  if(m_file_name == NULL) usage(m_cmd);
+  if(m_file_name == NULL) usage(m_cmd, 0);
 
   if(username && getuid() == 0) {
     struct passwd *pwd = getpwnam(username);

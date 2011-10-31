@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.17 2011-09-02 06:36:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.18 2011-10-31 21:38:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -33,8 +33,6 @@ static const char revision[] = "$Id: qssign.c,v 1.17 2011-09-02 06:36:49 pbuchbi
 #include <stdlib.h>
 #include <regex.h>
 #include <signal.h>
-
-//#include <config.h>
 
 /* openssl */
 #include <openssl/evp.h>
@@ -49,9 +47,8 @@ static const char revision[] = "$Id: qssign.c,v 1.17 2011-09-02 06:36:49 pbuchbi
 #include <apr_file_io.h>
 #include <apr_time.h>
 
-#define MAX_LINE 65536
-#define CR 13
-#define LF 10
+#include "qs_util.h"
+
 #define SEQDIG "12"
 #define MAX_STRING_LEN 32768
 
@@ -95,22 +92,6 @@ static const qos_p_t pattern[] = {
   },
   { NULL, NULL, NULL }
 };
-
-static int qs_getLine(char *s, int n) {
-  int i = 0;
-  while (1) {
-    s[i] = (char)getchar();
-    if(s[i] == EOF) return 0;
-    if (s[i] == CR) {
-      s[i] = getchar();
-    }
-    if ((s[i] == 0x4) || (s[i] == LF) || (i == (n - 1))) {
-      s[i] = '\0';
-      return 1;
-    }
-    ++i;
-  }
-}
 
 static void qs_write(char *line, int line_size, const char *sec, int sec_len) {
   HMAC_CTX ctx;
@@ -506,34 +487,84 @@ static char *qs_readpwd(apr_pool_t *pool, const char *prg) {
   return buf;
 }
 
-static void usage(char *cmd) {
+static void usage(char *cmd, int man) {
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
+  }
   printf("\n");
-  printf("Utility to sign/verify log data.\n");
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  qs_man_print(man, "Utility to sign/verify log data.\n");
   printf("\n");
-  printf("Usage: %s -s|S <secret> [-e] [-v]\n", cmd);
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  qs_man_print(man, "%s%s -s|S <secret> [-e] [-v]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
-  printf("Summary\n");
-  printf("%s is a log data integrity check tool. It reads log data\n", cmd);
-  printf("from stdin (pipe) and writes the signed data to stdout.\n");
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
+  qs_man_print(man, "%s is a log data integrity check tool. It reads log data\n", cmd);
+  qs_man_print(man, "from stdin (pipe) and writes the signed data to stdout.\n");
   printf("\n");
-  printf("Options\n");
-  printf("  -s <secret>\n");
-  printf("     Passphrase used to calculate signature.\n");
-  printf("  -S <program>\n");
-  printf("     Specifies a program which writes the passphrase to stdout.\n");
-  printf("  -e\n");
-  printf("     Writes end marker when stopping data signing.\n");
-  printf("  -v\n");
-  printf("     Verification mode checking the integrity of signed data.\n");
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -s <secret>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Passphrase used to calculate signature.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -S <program>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Specifies a program which writes the passphrase to stdout.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -e\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Writes end marker when stopping data signing.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -v\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Verification mode checking the integrity of signed data.\n");
   printf("\n");
-  printf("Example (sign):\n");
-  printf(" TransferLog \"|./bin/%s -s password -e |./bin/qsrotate -o /var/log/apache/access_log\"\n", cmd);
+  if(man) {
+    printf(".SH EXAMPLE\n");
+    printf("Sign:\n");
+    printf("\n");
+  } else {
+    printf("Example (sign):\n");
+  }
+  qs_man_print(man, " TransferLog \"|./bin/%s -s password -e |./bin/qsrotate -o /var/log/apache/access_log\"\n", cmd);
   printf("\n");
-  printf("Ecample (verify):\n");
-  printf(" cat access_log | %s -s password -v\n", cmd);
+  if(man) {
+    printf("\n");
+    printf("Verify:\n");
+    printf("\n");
+  } else {
+    qs_man_print(man, "Example (verify):\n");
+  }
+  qs_man_print(man, " cat access_log | %s -s password -v\n", cmd);
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
-  exit(1);
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsexec(1), qsfilter2(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+  } else {
+    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  }
+  if(man) {
+    exit(0);
+  } else {
+    exit(1);
+  }
 }
 
 int main(int argc, const char * const argv[]) {
@@ -564,16 +595,18 @@ int main(int argc, const char * const argv[]) {
     } else if(strcmp(*argv,"-e") == 0) {
       m_logend = 1;
     } else if(strcmp(*argv,"-?") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
     } else if(strcmp(*argv,"-help") == 0) {
-      usage(cmd);
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
+      usage(cmd, 1);
     }
     argc--;
     argv++;
   }
 
   if(m_sec == NULL) {
-    usage(cmd);
+    usage(cmd, 0);
   }
   if(verify) {
     long err = qs_verify(m_sec);
