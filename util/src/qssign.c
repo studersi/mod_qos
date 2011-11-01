@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.18 2011-10-31 21:38:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.19 2011-11-01 22:11:13 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -497,7 +497,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  qs_man_print(man, "Utility to sign/verify log data.\n");
+  qs_man_print(man, "Utility to sign and verify the integrity of log data.\n");
   printf("\n");
   if(man) {
     printf(".SH SYNOPSIS\n");
@@ -541,7 +541,7 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Example (sign):\n");
   }
-  qs_man_print(man, " TransferLog \"|./bin/%s -s password -e |./bin/qsrotate -o /var/log/apache/access_log\"\n", cmd);
+  qs_man_println(man, " TransferLog \"|./bin/%s -s password -e |./bin/qsrotate -o /var/log/apache/access_log\"\n", cmd);
   printf("\n");
   if(man) {
     printf("\n");
@@ -550,7 +550,7 @@ static void usage(char *cmd, int man) {
   } else {
     qs_man_print(man, "Example (verify):\n");
   }
-  qs_man_print(man, " cat access_log | %s -s password -v\n", cmd);
+  qs_man_println(man, " cat access_log | %s -s password -v\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");

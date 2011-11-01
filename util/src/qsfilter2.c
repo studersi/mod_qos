@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.64 2011-10-31 21:38:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.65 2011-11-01 22:11:13 pbuchbinder Exp $";
 static const char g_revision[] = "9.73";
 
 /* system */
@@ -374,6 +374,7 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, " These directives are used to define allowed request line patterns.\n");
   qs_man_print(man, " Request which do not match any of thses patterns are not allowed\n");
   qs_man_print(man, " to access the server.\n");
+  if(man) printf("\n\n");
   qs_man_print(man, " %s is an audit log analyzer used to generate filter\n", cmd);
   qs_man_print(man, " rules (perl compatible regular expressions) which may be used\n");
   qs_man_print(man, " by mod_qos to deny access for suspect requests (QS_PermitUri rules).\n");

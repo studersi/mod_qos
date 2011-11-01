@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.7 2011-11-01 20:30:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.8 2011-11-01 22:11:13 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -70,7 +70,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  printf("%s - parses the data received via stdin and executes the defined command.\n", cmd);
+  printf("%s - parses the data received via stdin and executes the defined command on a pattern match.\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SYNOPSIS\n");
@@ -101,7 +101,7 @@ static void usage(char *cmd, int man) {
   if(man) printf("\n");
   qs_man_print(man, "     Defines the number of pattern match within the the defined number of\n");
   qs_man_print(man, "     seconds in order to trigger the command execution. By default, every\n");
-  qs_man_print(man, "     pattern match causes command execution.\n");
+  qs_man_print(man, "     pattern match causes a command execution.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -c <pattern> [<command string>]\n");
   if(man) printf("\n");
@@ -126,7 +126,7 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Example:\n");
   }
-  qs_man_print(man, "Executes the deny.sh script providing the IP addresses of\n");
+  qs_man_print(man, "Executes the deny.sh script providing the IP address of\n");
   qs_man_print(man, "the client causing a mod_qos(031) messages whenever the log message\n");
   qs_man_print(man, "appears 10 times within at most one minute:\n");
   if(man) printf("\n");
