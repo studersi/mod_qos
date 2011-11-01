@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_vip.htt,v 1.1 2011-02-17 20:48:22 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_vip.htt,v 1.2 2011-11-01 20:30:47 pbuchbinder Exp $
 #
 # client ip is marked as VIP
 #
@@ -50,6 +50,9 @@ _SLEEP 200
 _EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in\): min=123, this connection=0"
 _EXEC tail -1 logs/error_log
 
+_SLEEP 4000
+_EXEC date
+
 # user gets authenticated
 _REQ server1 SSL:$QS_PORT_BASE2
 __GET /htt/login HTTP/1.1
@@ -58,6 +61,9 @@ __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713
 __
 _WAIT
 _CLOSE
+
+_SLEEP 200
+_EXEC date
 
 # vip user are not denied
 _REQ server1 SSL:$QS_PORT_BASE2
