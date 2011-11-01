@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.22 2011-10-31 20:50:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.23 2011-11-01 20:30:48 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -780,85 +780,114 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  printf("%s - collects request statistics from access log data.\n", cmd);
+  qs_man_print(man, "%s - collects request statistics from access log data.\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  printf("%s%s -f <format_string> -o <out_file> [-p [-v]] [-x] [-u <name>] [-m]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p [-v]] [-x] [-u <name>] [-m]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
   } else {
     printf("Summary\n");
   }
-  printf("%s is a real time access log analyzer. It collects\n", cmd);
-  printf("the data from stdin. The output is written to the specified\n");
-  printf("file every minute. The output includes the following entries:\n");
-  printf("  - requests per second ("NRS")\n");
-  printf("  - bytes sent to the client per second ("NBS")\n");
-  printf("  - bytes received from the client per second ("NBIS")\n");
-  printf("  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");
-  printf("  - average response duration ("NAV")\n");
-  printf("  - distribution of response durations within the last minute\n");
-  printf("    (<1s,1s,2s,3s,4s,5s,>5)\n");
-  printf("  - average system load (sl)\n");
-  printf("  - free memory (m) (not available for all platforms)\n");
-  printf("  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
-  printf("  - number of different users seen withn the last %d seconds (usr)\n", ACTIVE_TIME);
-  printf("  - number of mod_qos events within the last minute (qV=create session,\n");
-  printf("    qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
-  printf("    keep-alive, qL=request/response slow down, qs=serialized request)\n");
+  qs_man_print(man, "%s is a real time access log analyzer. It collects\n", cmd);
+  qs_man_print(man, "the data from stdin. The output is written to the specified\n");
+  qs_man_println(man, "file every minute and includes the following entries:\n");
+  qs_man_println(man, "  - requests per second ("NRS")\n");
+  qs_man_println(man, "  - bytes sent to the client per second ("NBS")\n");
+  qs_man_println(man, "  - bytes received from the client per second ("NBIS")\n");
+  qs_man_println(man, "  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");
+  qs_man_println(man, "  - average response duration ("NAV")\n");
+  qs_man_println(man, "  - distribution of response durations within the last minute\n");
+  qs_man_print(man, "    (<1s,1s,2s,3s,4s,5s,>5)\n");
+  if(man) printf("\n");
+  qs_man_println(man, "  - average system load (sl)\n");
+  qs_man_println(man, "  - free memory (m) (not available for all platforms)\n");
+  qs_man_println(man, "  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
+  qs_man_println(man, "  - number of different users seen withn the last %d seconds (usr)\n", ACTIVE_TIME);
+  qs_man_println(man, "  - number of mod_qos events within the last minute (qV=create session,\n");
+  qs_man_print(man, "    qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
+  qs_man_print(man, "    keep-alive, qL=request/response slow down, qs=serialized request)\n");
   printf("\n");
   if(man) {
     printf(".SH OPTIONS\n");
   } else {
     printf("Options\n");
   }
-  printf("  -f <format_string>\n");
-  printf("     Defines the log data format and the positions of data\n");
-  printf("     elements processed by this utility.\n");
-  printf("     See to the 'LogFormat' directive of the httpd.conf file\n");
-  printf("     to see the format defintions of the servers access log\n");
-  printf("     data. %s knows the following elements:\n", cmd);
-  printf("     I defines the client ip address (%%h)\n");
-  printf("     R defines the request line (%%r)\n");
-  printf("     S defines HTTP response status code (%%s)\n");
-  printf("     B defines the transferred bytes (%%b or %%O)\n");
-  printf("     i defines the received bytes (%%I)\n");
-  printf("     T defines the request duration (%%T)\n");
-  printf("     t defines the request duration in milliseconds (optionally used instead of T)\n");
-  printf("     D defines the request duration in microseconds (optionally used instead of T)\n");
-  printf("     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
-  printf("     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
-  printf("     . defines an element to ignore (unknown string)\n");
-  printf("  -o <out_file>\n");
-  printf("     Specifies the file to store the output to.\n");
-  printf("  -p\n");
-  printf("     Used when reading the log data from a file (cat/pipe). %s is\n", cmd);
-  printf("     started using it's offline mode in order to process existing log\n");
-  printf("     files (post processing).\n");
-  printf("  -v\n");
-  printf("     Verbose mode.\n");
-  printf("  -x\n");
-  printf("     Rotates the output file once a day (move).\n");
-  printf("  -u <name>\n");
-  printf("     Become another user, e.g. www-data.\n");
-  printf("  -m\n");
-  printf("     Calculates free system memory every minute.\n");
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -f <format_string>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the log data format and the positions of data\n");
+  qs_man_print(man, "     elements processed by this utility.\n");
+  qs_man_print(man, "     See to the 'LogFormat' directive of the httpd.conf file\n");
+  qs_man_print(man, "     to see the format defintions of the servers access log data.\n");
+  if(man) printf("\n");
+  qs_man_println(man, "     %s knows the following elements:\n", cmd);
+  qs_man_println(man, "     I defines the client ip address (%%h)\n");
+  qs_man_println(man, "     R defines the request line (%%r)\n");
+  qs_man_println(man, "     S defines HTTP response status code (%%s)\n");
+  qs_man_println(man, "     B defines the transferred bytes (%%b or %%O)\n");
+  qs_man_println(man, "     i defines the received bytes (%%I)\n");
+  qs_man_println(man, "     T defines the request duration (%%T)\n");
+  qs_man_println(man, "     t defines the request duration in milliseconds (optionally used instead of T)\n");
+  qs_man_println(man, "     D defines the request duration in microseconds (optionally used instead of T)\n");
+  qs_man_println(man, "     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
+  qs_man_println(man, "     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
+  qs_man_println(man, "     . defines an element to ignore (unknown string)\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -o <out_file>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Specifies the file to store the output to.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -p\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Used when reading the log data from a file (cat/pipe). %s is\n", cmd);
+  qs_man_print(man, "     started using it's offline mode in order to process existing log\n");
+  qs_man_print(man, "     files (post processing).\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -v\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Verbose mode.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -x\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Rotates the output file once a day (move).\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -u <name>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Become another user, e.g. www-data.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -m\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Calculates free system memory every minute.\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
+    printf("Configuration using pipped logging:\n");
+    printf("\n");
+  } else {
+    printf("Example configuration using pipped logging:\n");
   }
-  printf("Example configuration using pipped logging:\n");
-  printf("  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
-  printf("  TransferLog \"|./bin/%s -f ..IRSB.T -x -o ./logs/stat_log\"\n", cmd);
+  qs_man_println(man, "  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
+  qs_man_println(man, "  TransferLog \"|./bin/%s -f ..IRSB.T -x -o ./logs/stat_log\"\n", cmd);
   printf("\n");
-  printf("Example configuration using the CustomLog directive:\n");
-  printf("  CustomLog \"|./bin/%s -f ISBTQ -x -o ./logs/stat_log\" \"%%h %%>s %%b %%T %%{mod_qos_ev}e\"\n", cmd);
+  if(man) {
+    printf("Configuration using the CustomLog directive:\n");
+    printf("\n");
+  } else {
+   printf("Example configuration using the CustomLog directive:\n");
+  }
+  qs_man_println(man, "  CustomLog \"|./bin/%s -f ISBTQ -x -o ./logs/stat_log\" \"%%h %%>s %%b %%T %%{mod_qos_ev}e\"\n", cmd);
   printf("\n");
-  printf("Example for post processing:\n");
-  printf("  cat access_log | ./bin/%s -f ..IRSB.T -o ./logs/stat_log -p\n", cmd);
+  if(man) {
+    printf("Post processing:\n");
+    printf("\n");
+  } else {
+    printf("Example for post processing:\n");
+  }
+  qs_man_print(man, "  cat access_log | ./bin/%s -f ..IRSB.T -o ./logs/stat_log -p\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");

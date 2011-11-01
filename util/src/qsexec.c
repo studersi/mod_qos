@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.6 2011-10-31 21:59:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.7 2011-11-01 20:30:48 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -83,38 +83,53 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Summary\n");
   }
-  printf("%s reads log lines from stdin and searches for the defined pattern.\n", cmd);
-  printf("It executes the defined command string on pattern match.\n");
+  qs_man_print(man, "%s reads log lines from stdin and searches for the defined pattern.\n", cmd);
+  qs_man_print(man, "It executes the defined command string on pattern match.\n");
   printf("\n");
   if(man) {
     printf(".SH OPTIONS\n");
   } else {
     printf("Options\n");
   }
-  printf("  -e <pattern>\n");
-  printf("     Specifes the search pattern causing an event which shall trigger the\n");
-  printf("     command.\n");
-  printf("  -t <number>:<sec>\n");
-  printf("     Defines the number of pattern match within the the defined number of\n");
-  printf("     seconds in order to trigger the command execution. By default, every\n");
-  printf("     pattern match causes command execution.\n");
-  printf("  -c <pattern> [<command string>]\n");
-  printf("     Pattern which clears the event counter. Executes optionally a command\n");
-  printf("     if an event command has been executed before.\n");
-  printf("  -p\n");
-  printf("     Writes data also to stdout (for piped logging).\n");
-  printf("  -u <name>\n");
-  printf("     Become another user, e.g. www-data.\n");
-  printf("  <command string>\n");
-  printf("     Defines the event command string where $0-$9 are substituted by the\n");
-  printf("     submatches of the regular expression.\n");
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -e <pattern>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Specifes the search pattern causing an event which shall trigger the\n");
+  qs_man_print(man, "     command.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -t <number>:<sec>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the number of pattern match within the the defined number of\n");
+  qs_man_print(man, "     seconds in order to trigger the command execution. By default, every\n");
+  qs_man_print(man, "     pattern match causes command execution.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -c <pattern> [<command string>]\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Pattern which clears the event counter. Executes optionally a command\n");
+  qs_man_print(man, "     if an event command has been executed before.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -p\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Writes data also to stdout (for piped logging).\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -u <name>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Become another user, e.g. www-data.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  <command string>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the event command string where $0-$9 are substituted by the\n");
+  qs_man_print(man, "     submatches of the regular expression.\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
+  } else {
+    printf("Example:\n");
   }
-  printf("Executes the deny.sh script providing the IP addresses of\n");
-  printf("the client causing a mod_qos(031) messages whenever the log message\n");
-  printf("appears 10 times within at most one minute:\n");
+  qs_man_print(man, "Executes the deny.sh script providing the IP addresses of\n");
+  qs_man_print(man, "the client causing a mod_qos(031) messages whenever the log message\n");
+  qs_man_print(man, "appears 10 times within at most one minute:\n");
+  if(man) printf("\n");
   qs_man_println(man, "  ErrorLog \"|%s -e 'mod_qos\\(031\\).*, c=([0-9.]*)' -t 10:60 '/bin/deny.sh $1'\"\n", cmd);
   printf("\n");
   if(man) {
