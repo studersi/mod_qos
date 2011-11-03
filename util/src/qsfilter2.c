@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.65 2011-11-01 22:11:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.66 2011-11-03 19:18:25 pbuchbinder Exp $";
 static const char g_revision[] = "9.73";
 
 /* system */
@@ -37,8 +37,6 @@ static const char g_revision[] = "9.73";
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
-
-#include <qs_util.h>
 
 /* apr */
 #include <pcre.h>
@@ -61,6 +59,8 @@ static const char g_revision[] = "9.73";
 
 /* OpenSSL  */
 #include <openssl/safestack.h>
+
+#include "qs_util.h"
 
 #define MAX_LINE 32768
 /* 2mb */
