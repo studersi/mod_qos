@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.358 2011-11-01 22:11:13 pbuchbinder Exp $";
-static const char g_revision[] = "9.73";
+static const char revision[] = "$Id: mod_qos.c,v 5.359 2011-11-04 14:26:56 pbuchbinder Exp $";
+static const char g_revision[] = "9.74";
 
 /************************************************************************
  * Includes
@@ -5477,9 +5477,17 @@ static int qos_process_connection(conn_rec *c) {
  */
 static int qos_pre_connection(conn_rec *c, void *skt) {
   int ret = DECLINED;
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
-                                                                &qos_module);
-  qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
+  qos_srv_config *sconf;
+  qs_conn_base_ctx *base;
+  if(c->sbh == NULL) {
+    // proxy connections do NOT have any relation to the score board, don't handle them
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, c->base_server, 
+                 QOS_LOG_PFX(000)"skip processing of outgoing connection %s<->%s",
+                 c->remote_ip ? c->remote_ip : "UNKNOWN", c->local_ip ? c->local_ip : "UNKNOWN");
+    return ret;
+  }
+  sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config, &qos_module);
+  base = qos_get_conn_base_ctx(c);
   if(base == NULL) {
     base = qos_create_conn_base_ctx(c, sconf);
   }

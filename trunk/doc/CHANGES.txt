@@ -1,3 +1,9 @@
+Version 9.74
+
+ - Fix header file in qsfilter2 (possible compile problems).
+
+ - Fix pre connection handling for outgoing (mod_proxy) connections.
+
 Version 9.73
 
  - 3429879: Format usage text of the mod_qos utilities to man page
