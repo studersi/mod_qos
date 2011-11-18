@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.359 2011-11-04 14:26:56 pbuchbinder Exp $";
-static const char g_revision[] = "9.74";
+static const char revision[] = "$Id: mod_qos.c,v 5.360 2011-11-18 20:51:18 pbuchbinder Exp $";
+static const char g_revision[] = "9.75";
 
 /************************************************************************
  * Includes
@@ -4212,13 +4212,13 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_EventKBytesPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
                      e->kbytes_per_sec_limit,
                      e->url, 
-                     now > (e->interval + 31) ? 0 : e->kbytes_per_sec);
+                     now > (e->interval + 301) ? 0 : e->kbytes_per_sec);
         }
         if(e->event && (e->req_per_sec_limit > 0)) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_EventPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
                      e->req_per_sec_limit,
                      e->url, 
-                     now > (e->interval + 21) ? 0 : e->req_per_sec);
+                     now > (e->interval + 31) ? 0 : e->req_per_sec);
         }
         e = e->next;
       }
@@ -4764,7 +4764,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
                      ((e->req_per_sec * 100) / e->req_per_sec_limit) > 90 ? red : "",
-                     now > (e->interval + 21) ? 0 : e->req_per_sec);
+                     now > (e->interval + 31) ? 0 : e->req_per_sec);
         }
         if(e->kbytes_per_sec_limit == 0) {
             ap_rprintf(r, "<td>-</td>");
@@ -4777,7 +4777,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
                      ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 90 ? red : "",
-                     now > (e->interval + 31) ? 0 : e->kbytes_per_sec);
+                     now > (e->interval + 301) ? 0 : e->kbytes_per_sec);
         }
         ap_rputs("</tr>\n", r);
         e = e->next;
