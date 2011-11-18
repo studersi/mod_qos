@@ -1,3 +1,8 @@
+Version
+
+ - Viewer keeps value about the last measured kbytes/second result
+   for a longer time.
+
 Version 9.74
 
  - Fix header file in qsfilter2 (possible compile problems).
