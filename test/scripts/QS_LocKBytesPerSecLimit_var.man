@@ -1,10 +1,10 @@
 #
-# $Id: QS_LocKBytesPerSecLimit_var.man,v 1.1 2011-11-18 20:51:18 pbuchbinder Exp $
+# $Id: QS_LocKBytesPerSecLimit_var.man,v 1.2 2011-11-21 21:32:32 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
-CLIENT 3
+CLIENT 2
 _RAND 100 500 SLEEP
 _SLEEP $SLEEP
 
@@ -23,18 +23,17 @@ _END LOOP
 
 END
 
-#CLIENT 1
-#
-#_LOOP FOREVER
-#
-#_REQ server1 $QS_PORT_BASE1
-#__GET /bbb/index.html HTTP/1.1
-#__Host: server1
-#__
-#_WAIT
-#_CLOSE
-#_SLEEP 500
-#
-#_END LOOP
-#
-#END
+CLIENT 6
+
+_LOOP FOREVER
+
+_REQ server1 $QS_PORT_BASE1
+__GET /bbb/index2.html HTTP/1.1
+__Host: server1
+__
+_WAIT
+_CLOSE
+
+_END LOOP
+
+END
