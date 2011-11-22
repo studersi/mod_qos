@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.199 2011-10-25 20:47:17 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.200 2011-11-22 21:46:25 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -205,6 +205,7 @@ ErrorDocument 404 /error-docs/error404.html
    ProxyPass                  /info !
    ProxyPass                  /demo !
    ProxyPass                  /qos !
+   ProxyPass                  /localpages !
    ProxyPass                  /console !
    ProxyPass                  /qos_control !
    ProxyPass                  /cgi-local !
@@ -325,7 +326,9 @@ ErrorDocument 404 /error-docs/error404.html
    # client control
    # -----------------------------------------------------------------
 #   QS_SetEnvIfStatus 400       QS_Block
+<IfDefine !ignore404>
    QS_SetEnvIfStatus 404       QS_Block
+</IfDefine>
 #   QS_SetEnvIfStatus 405       QS_Block
 #   QS_SetEnvIfStatus 408       QS_Block
 #   QS_SetEnvIfStatus 411       QS_Block
@@ -522,6 +525,8 @@ Listen                  server1:##QS_PORT_BASE1##
    ProxyPass                  /qos_control !
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /ggg http://127.0.0.1:##QS_PORT_BASE5##/bbb retry=0
+   ProxyPassReverse           /ggg http://127.0.0.1:##QS_PORT_BASE5##/bbb
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
 
@@ -543,6 +548,8 @@ Listen                  server1:##QS_PORT_BASE1##
    QS_LocRequestLimitMatch    /ccc/.*       200
    QS_LocRequestPerSecLimitMatch /ccc/.*     75
    QS_LocKBytesPerSecLimit    /ddd/ddd/ddd/ddd 1000
+   QS_LocRequestLimit         /ggg          200
+   QS_LocKBytesPerSecLimit    /ggg           50
 
    QS_VipHeaderName           mod-qos-vip drop
    QS_VipIPHeaderName         mod-qos-vip-ip drop
