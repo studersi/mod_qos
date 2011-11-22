@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.171 2011-10-25 20:47:17 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.172 2011-11-22 21:46:24 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -237,6 +237,11 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocKBytesPerSecLimit_t.htt"
 fi
+./run.sh -se ./scripts/QS_LocKBytesPerSecLimit_var.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_LocKBytesPerSecLimit_var.htt"
+fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_EventRequestLimit.htt" >>  logs/error_log
@@ -303,6 +308,14 @@ if [ $? -ne 0 ]; then
     echo "FAILED MultiRequest.htt"
 fi
 sleep 1
+
+./ctl.sh restart -D ignore404 > /dev/null
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit404.htt" >>  logs/error_log
+./run.sh -se ./scripts/QS_EventPerSecLimit404.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_EventPerSecLimit404.htt"
+fi
 
 ./ctl.sh restart > /dev/null
 sleep 1
