@@ -317,9 +317,10 @@ and <code>QS_LocRequestLimitMatch</code> directive).
 Defines the allowed download bandwidth to the location matching the 
 defined URL (path and query) pattern.  Responses are slowed down by adding a delay 
 to each response (non-linear, bigger files get longer delay than smaller 
-ones). By default, no limitation is active. This directive should be 
-used in conjunction with <code>QS_LocRequestLimitMatch</code> only (you must use 
-the very same regex pattern with the <code>QS_LocKBytesPerSecLimitMatch</code> 
+ones because bandwidth calculation is based on an average response body size using 
+a sampling rate of 10 seconds). By default, no limitation is active. This directive 
+should be used in conjunction with <code>QS_LocRequestLimitMatch</code> only (you 
+must use the very same regex pattern with the <code>QS_LocKBytesPerSecLimitMatch</code> 
 and <code>QS_LocRequestLimitMatch</code> directive).
 </li>
 <li>
@@ -345,9 +346,9 @@ Has lower priority than <code>QS_LocRequestPerSecLimitMatch</code>.
 </li>
 <li>
 <code>QS_LocKBytesPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
-Throttles the download bandwidth to the defined kbytes per second. Responses are 
-slowed by adding a delay to each response (non-linear, bigger files get 
-longer delay than smaller ones). By default, no limitation is active. 
+Throttles the download bandwidth to the defined kbytes per second. works simlar 
+as the <code>QS_LocKBytesPerSecLimitMatch</code> directive slowing down HTTP 
+responses by adding a delay to each response. By default, no limitation is active. 
 This directive should be used in conjunction with <code>QS_LocRequestLimit</code> 
 only (you must use the same location for both directives). Has lower priority 
 than <code>QS_LocKBytesPerSecLimitMatch</code>.

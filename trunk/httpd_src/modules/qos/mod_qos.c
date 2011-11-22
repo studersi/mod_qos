@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.360 2011-11-18 20:51:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.361 2011-11-22 10:03:09 pbuchbinder Exp $";
 static const char g_revision[] = "9.75";
 
 /************************************************************************
@@ -109,6 +109,7 @@ static const char g_revision[] = "9.75";
 #define QS_R010_ALREADY_BLOCKED "R010B"
 #define QS_R012_ALREADY_BLOCKED "R012B"
 #define QS_PKT_RATE_TH    3
+#define QS_BW_SAMPLING_RATE 10
 
 #ifndef QS_LOG_REPEAT
 #define QS_LOG_REPEAT     20
@@ -3311,7 +3312,7 @@ static void qos_lg_event_update(request_rec *r, apr_time_t *t) {
              ((e->event[0] == '!') && !apr_table_get(r->subprocess_env, &e->event[1]))) {
             e->req++;
             e->bytes = e->bytes + r->bytes_sent;
-            if(now > (e->interval + 10)) {
+            if(now > (e->interval + QS_BW_SAMPLING_RATE)) {
               if(e->req_per_sec_limit) {
                 /* QS_EventPerSecLimit */
                 e->req_per_sec = e->req / (now - e->interval);
@@ -3916,7 +3917,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       const char *v = apr_table_get(r->subprocess_env, QS_EVENT);
       if(v) {
         (*e)->req++;
-        if(now > (*e)->interval + 10) {
+        if(now > (*e)->interval + QS_BW_SAMPLING_RATE) {
           /* calc req/sec */
           (*e)->req_per_sec = (*e)->req / (now - (*e)->interval);
           (*e)->req = 0;
@@ -4212,13 +4213,13 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_EventKBytesPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
                      e->kbytes_per_sec_limit,
                      e->url, 
-                     now > (e->interval + 301) ? 0 : e->kbytes_per_sec);
+                     now > (e->interval + (QS_BW_SAMPLING_RATE*10)) ? 0 : e->kbytes_per_sec);
         }
         if(e->event && (e->req_per_sec_limit > 0)) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_EventPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
                      e->req_per_sec_limit,
                      e->url, 
-                     now > (e->interval + 31) ? 0 : e->req_per_sec);
+                     now > (e->interval + (QS_BW_SAMPLING_RATE*3)) ? 0 : e->req_per_sec);
         }
         e = e->next;
       }
@@ -4764,7 +4765,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
                      ((e->req_per_sec * 100) / e->req_per_sec_limit) > 90 ? red : "",
-                     now > (e->interval + 31) ? 0 : e->req_per_sec);
+                     now > (e->interval + (QS_BW_SAMPLING_RATE*3)) ? 0 : e->req_per_sec);
         }
         if(e->kbytes_per_sec_limit == 0) {
             ap_rprintf(r, "<td>-</td>");
@@ -4777,7 +4778,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
                      ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 90 ? red : "",
-                     now > (e->interval + 301) ? 0 : e->kbytes_per_sec);
+                     now > (e->interval + (QS_BW_SAMPLING_RATE*10)) ? 0 : e->kbytes_per_sec);
         }
         ap_rputs("</tr>\n", r);
         e = e->next;
@@ -6737,7 +6738,7 @@ static int qos_logger(request_rec *r) {
       if(apr_table_get(r->notes, QS_R010_ALREADY_BLOCKED) == NULL) {
         e->req++;
         e->bytes = e->bytes + r->bytes_sent;
-        if(now > (e->interval + 10)) {
+        if(now > (e->interval + QS_BW_SAMPLING_RATE)) {
           e->req_per_sec = e->req / (now - e->interval);
           e->req = 0;
           e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
