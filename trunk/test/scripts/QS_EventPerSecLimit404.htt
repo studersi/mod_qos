@@ -1,5 +1,5 @@
 #
-# $Id: QS_EventPerSecLimit404.htt,v 1.1 2011-11-22 21:46:25 pbuchbinder Exp $
+# $Id: QS_EventPerSecLimit404.htt,v 1.2 2011-11-23 11:20:19 pbuchbinder Exp $
 #
 # similar to QS_EventPerSecLimit.htt but ausing internal redirect (ErrorDocument 404)
 #
@@ -40,9 +40,9 @@ __GET /qos?auto HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
-_MATCH body "5000;QS_EventPerSecLimit;5\[var=\[qsmin\]\]: (.*)" VALUE
+_MATCH body "QS_EventPerSecLimit;5\[var=\[qsmin\]\]: (.*)" VALUE
 _WAIT
-_IF "$VALUE" MATCH "0"
+_IF "$VALUE" MATCH "^0$"
 _EXIT FAILED
 _END IF
 

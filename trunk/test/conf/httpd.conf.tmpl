@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.200 2011-11-22 21:46:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.201 2011-11-23 11:20:17 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -237,6 +237,7 @@ ErrorDocument 404 /error-docs/error404.html
 
    ScriptAlias /cgi-local/   ##ROOT##/htdocs/cgi-local/
    ScriptAlias /cgi-local_s/ ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /localpages/reqlimit/scripts/   ##ROOT##/htdocs/localpages/reqlimit/scripts/
 
    QS_SetEnvIfQuery QS_Delay=([0-9]*)   QS_Delay=$1
    QS_SetEnvIfQuery QS_EventRequest QS_EventRequest
@@ -268,6 +269,8 @@ ErrorDocument 404 /error-docs/error404.html
    QS_LocRequestLimitMatch    "^(/app/a/|/app/b/|/app/c/).*$" 1
    QS_LocRequestLimitMatch    "^/app/d/.*$"                   1
    QS_LocRequestLimitMatch    "^/app/e/.*$"                   1
+
+   QS_LocRequestLimit         /localpages/reqlimit 10
 
    BrowserMatch                "slurp"                        QS_Cond=spider
 <IfDefine !COND_CONNECTIONS>
