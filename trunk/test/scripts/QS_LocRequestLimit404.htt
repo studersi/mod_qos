@@ -1,5 +1,5 @@
 #
-# $Id: QS_LocRequestLimit404.htt,v 1.1 2011-11-23 11:20:19 pbuchbinder Exp $
+# $Id: QS_LocRequestLimit404.htt,v 1.2 2011-11-23 13:39:40 pbuchbinder Exp $
 #
 #   QS_LocRequestLimit         /localpages/reqlimit 10
 #
@@ -35,6 +35,11 @@ _CLOSE
 
 _END LOOP
 
+END
+
+CLIENT
+_SLEEP 1500
+
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1
 __Host: localhost
@@ -45,21 +50,6 @@ _WAIT
 _IF "$VALUE" MATCH "^0$"
 _EXIT FAILED
 _END IF
-
-
-_LOOP 3
-
-_REQ localhost $QS_PORT_BASE
-__GET /localpages/reqlimit/scripts/sleep.cgi?s=$SLEEP HTTP/1.1
-__Host: localhost
-__Connection: keep-alive
-__User-Agent: event
-__
-_EXPECT . "done"
-_WAIT
-_CLOSE
-
-_END LOOP
 
 END
 
