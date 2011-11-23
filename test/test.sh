@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.173 2011-11-23 11:20:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.174 2011-11-23 12:39:07 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -315,6 +315,12 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSec
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventPerSecLimit404.htt"
+fi
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req limit, QS_LocRequestLimit404.htt" >>  logs/error_log
+./run.sh -se ./scripts/QS_LocRequestLimit404.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_LocRequestLimit404.htt"
 fi
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req limit, QS_LocRequestLimit404.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_LocRequestLimit404.htt
