@@ -1,5 +1,5 @@
 #
-# $Id: QS_LocKBytesPerSecLimit_var.htt,v 1.1 2011-11-22 21:46:25 pbuchbinder Exp $
+# $Id: QS_LocKBytesPerSecLimit_var.htt,v 1.2 2011-11-24 21:14:58 pbuchbinder Exp $
 #
 #
 # creates more than 1000000 bytes/sec
@@ -36,9 +36,14 @@ _RPS 1000000000 160
 _REQ server1 $QS_PORT_BASE1
 __GET /ggg/index2.html HTTP/1.1
 __Host: server1
+__Connection: keep-alive
 __
+_MATCH headers "Connection: (.*)" CONNECTION
 _WAIT
+
+_IF "$CONNECTION" MATCH "close"
 _CLOSE
+_END IF
 
 _END RPS
 
