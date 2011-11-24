@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.175 2011-11-23 13:39:40 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.176 2011-11-24 20:13:00 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -327,6 +327,14 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req limit, QS_Even
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventRequestLimit404.htt"
+fi
+
+./ctl.sh  restart -D ignore404 -D cont > /dev/null
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req, MaxRequestsPerChild, QS_EventRequestLimitMaxReq.htt" >>  logs/error_log
+./run.sh -se ./scripts/QS_EventRequestLimitMaxReq.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_EventRequestLimitMaxReq.htt"
 fi
 
 ./ctl.sh restart > /dev/null
@@ -731,7 +739,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED console.htt"
 fi
 
-./ctl.sh restart -D cc -D real_ip -D usertrack_force> /dev/null
+./ctl.sh restart -D cc -D real_ip -D usertrack_force -D cont > /dev/null
 ./run.sh -s ./scripts/QS_UserTrackingCookieNameForce.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
