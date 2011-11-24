@@ -1,5 +1,5 @@
 #
-# $Id: MaxRequestsPerChild.htt,v 1.6 2011-08-23 18:42:25 pbuchbinder Exp $
+# $Id: MaxRequestsPerChild.htt,v 1.7 2011-11-24 20:13:00 pbuchbinder Exp $
 #
 # reaches MaxRequestsPerChild (terminating supervisor thread)
 #
@@ -32,8 +32,8 @@ _SLEEP $SLEEP
 _MATCH EXEC "(.*)" pidListStart
 _EXEC ps -ef | grep `cat logs/apache.pid`  | grep -v grep | grep httpd | awk '{print $2}' | sort | awk '{ printf $1}'
 
-_LOOP 7
-_LOOP 150
+_LOOP 6
+_LOOP 250
 
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /index.html HTTP/1.1
@@ -50,17 +50,17 @@ _IF "$CONNECTION" MATCH "close"
 _CLOSE
 _END IF
 
-_REQ 127.0.0.1 $QS_PORT_BASE
-__GET /index.html HTTP/1.1
-__Host: 127.0.0.1
-_FLUSH
-_SLEEP 50
-__Connection: keep-alive
-__
-_EXPECT . "this is the root"
-_WAIT
-
-_CLOSE
+#_REQ 127.0.0.1 $QS_PORT_BASE
+#__GET /index.html HTTP/1.1
+#__Host: 127.0.0.1
+#_FLUSH
+#_SLEEP 50
+#__Connection: keep-alive
+#__
+#_EXPECT . "this is the root"
+#_WAIT
+#
+#_CLOSE
 
 _END LOOP
 _END LOOP
@@ -80,3 +80,20 @@ _ERROR "failed! same pid list"
 _END IF
 
 END
+
+BLOCK FINALLY
+_SLEEP 2000
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH body "QS_LocRequestLimit;30\[/\]: (.*)" VALUE
+_WAIT
+_IF "$VALUE" NOT MATCH "^1$"
+_EXIT FAILED
+_END IF
+
+END
+
