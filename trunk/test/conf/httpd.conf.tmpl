@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.202 2011-11-23 12:39:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.203 2011-11-25 20:12:33 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -306,6 +306,12 @@ ErrorDocument 404 /error-docs/error404.html
    QS_EventRequestLimit       queryv=abc      3
    QS_EventRequestLimit       PARP_PATTERN    3
    QS_EventPerSecLimit        query         100
+
+   BrowserMatch               longterm        longterm
+   QS_EventRequestLimit       longterm        20
+# 3440914:
+#   BrowserMatch               longterm        QS_Cond=longterm
+#   QS_EventRequestLimit       QS_Cond=^longterm$        20
 
 <IfDefine MILESTONES>
    QS_MileStoneTimeout 4

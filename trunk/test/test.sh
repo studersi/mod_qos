@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.176 2011-11-24 20:13:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.177 2011-11-25 20:12:33 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -237,6 +237,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocKBytesPerSecLimit_t.htt"
 fi
+_SLEEP 30
 ./run.sh -se ./scripts/QS_LocKBytesPerSecLimit_var.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -329,6 +330,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_EventRequestLimit404.htt"
 fi
 
+sleep 30
 ./ctl.sh  restart -D ignore404 -D cont > /dev/null
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req, MaxRequestsPerChild, QS_EventRequestLimitMaxReq.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_EventRequestLimitMaxReq.htt
@@ -336,6 +338,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventRequestLimitMaxReq.htt"
 fi
+sleep 30
 
 ./ctl.sh restart > /dev/null
 sleep 1
