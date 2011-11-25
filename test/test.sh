@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.177 2011-11-25 20:12:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.178 2011-11-25 21:24:54 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -237,7 +237,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocKBytesPerSecLimit_t.htt"
 fi
-_SLEEP 30
+./ctl.sh restart > /dev/null
 ./run.sh -se ./scripts/QS_LocKBytesPerSecLimit_var.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
