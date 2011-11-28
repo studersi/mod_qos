@@ -807,7 +807,13 @@ Deletes the specified header if the action 'drop' has been specified.
 <code>QS_SetEnvResHeaderMatch &lt;header name&gt; &lt;regex&gt;</code><br>
 Sets the defined HTTP response header to the request environment variables if 
 the specified regular expression (pcre not case sensitive) matches 
-the header value. 
+the header value.
+</li>
+<li>
+<code>QS_SetEnvRes &lt;env-variable&gt; &lt;regex&gt; &lt;env-variable2&gt;[=&lt;value&gt;]</code><br>
+Sets the environmet variable (env-variable2) if the regular expression (regex) matches 
+against the value of the environment variable (env-variable). Occurrences of $1..$9 within 
+the value and replace them by parenthesized subexpressions of the regular expression.
 </li>
 <li>
 <code>QS_SetReqHeader &lt;header name&gt; &lt;env-variable&gt;</code><br>

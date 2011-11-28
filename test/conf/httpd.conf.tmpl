@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.203 2011-11-25 20:12:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.204 2011-11-28 20:06:45 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -293,6 +293,8 @@ ErrorDocument 404 /error-docs/error404.html
    # using QS_ClientEventBlockCount)
    QS_SetEnvResHeaderMatch    Set-Cookie        JSESSIONID=
    QS_SetEnvIf                Set-Cookie !QSNOT QS_Block=yes
+
+   QS_SetEnvRes               NEWSESSION (1)    QS_Block=num=$1
 
    QS_SetEnvResHeaderMatch    X-Login           failed
    QS_SetEnvIf                X-Login    !QSNOT QS_Limit=yes

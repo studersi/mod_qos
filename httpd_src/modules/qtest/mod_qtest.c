@@ -10,7 +10,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qtest.c,v 1.1 2011-05-17 19:56:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qtest.c,v 1.2 2011-11-28 20:06:44 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -69,6 +69,13 @@ module AP_MODULE_DECLARE_DATA qtest_module;
 /************************************************************************
  * handlers
  ***********************************************************************/
+static int qtest_fixup(request_rec * r) {
+  if(strstr(r->parsed_uri.path, "/loginme/")) {
+    apr_table_set(r->subprocess_env, "NEWSESSION", "1");
+  }
+  return DECLINED;
+}
+  
 static int qtest_handler(request_rec * r) {
   if(strcmp(r->parsed_uri.path, "/killme/") == 0) {
     char *from = NULL;
@@ -105,6 +112,7 @@ static int qtest_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pt
 static void qtest_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_qos.c", NULL };
   ap_hook_handler(qtest_handler, pre, NULL, APR_HOOK_FIRST);
+  ap_hook_fixups(qtest_fixup, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_config(qtest_post_config, pre, NULL, APR_HOOK_MIDDLE);
 }
 

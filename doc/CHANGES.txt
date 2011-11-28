@@ -1,5 +1,7 @@
 Version
 
+ - New directive QS_SetEnvRes.
+
  - Viewer keeps value about the last measured kbytes/second result
    for a longer time.
 
