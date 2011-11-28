@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.361 2011-11-22 10:03:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.362 2011-11-28 20:06:44 pbuchbinder Exp $";
 static const char g_revision[] = "9.75";
 
 /************************************************************************
@@ -507,6 +507,7 @@ typedef struct {
   apr_table_t *setenvstatus_t;
   apr_table_t *setenvresheader_t;
   apr_table_t *setenvresheadermatch_t;
+  apr_table_t *setenvres_t;
   qs_headerfilter_mode_e headerfilter;
   qs_headerfilter_mode_e resheaderfilter;
   char *cookie_name;
@@ -672,6 +673,16 @@ typedef struct {
   qs_flt_action_e action;
   int size;
 } qos_her_t;
+
+typedef struct {
+#ifdef AP_REGEX_H
+  ap_regex_t *preg;
+#else
+  regex_t *preg;
+#endif
+  char *name;
+  char *value;
+} qos_pregval_t;
 
 typedef struct {
   const char* pattern;
@@ -2890,6 +2901,33 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
     }
   }
   return DECLINED;
+}
+
+/**
+ * QS_SetEnvRes (outfilter)
+ */
+static void qos_setenvres(request_rec *r, qos_srv_config *sconf) {
+#ifdef AP_REGEX_H
+  ap_regmatch_t regm[AP_MAX_REG_MATCH];
+#else
+  regmatch_t regm[AP_MAX_REG_MATCH];
+#endif
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvres_t)->elts;
+  for(i = 0; i < apr_table_elts(sconf->setenvres_t)->nelts; i++) {
+    const char *val = apr_table_get(r->subprocess_env, entry[i].key);
+    if(val) {
+      qos_pregval_t *pregval = (qos_pregval_t *)entry[i].val;
+      if(ap_regexec(pregval->preg, val, AP_MAX_REG_MATCH, regm, 0) == 0) {
+        if(pregval->value) {
+          char *replaced = ap_pregsub(r->pool, pregval->value, val, AP_MAX_REG_MATCH, regm);
+          apr_table_set(r->subprocess_env, pregval->name, replaced);
+        } else {
+          apr_table_set(r->subprocess_env, pregval->name, "1");
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -6531,6 +6569,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   qos_start_res_rate(r, sconf);
   qos_setenvstatus(r, sconf, dconf);
   qos_setenvresheader(r, sconf);
+  qos_setenvres(r, sconf);
   if(sconf && sconf->user_tracking_cookie) {
     qos_send_user_tracking_cookie(r, sconf, r->status);
   }
@@ -7607,6 +7646,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvstatus_t = apr_table_make(sconf->pool, 5);
   sconf->setenvresheader_t = apr_table_make(sconf->pool, 1);
   sconf->setenvresheadermatch_t = apr_table_make(sconf->pool, 1);
+  sconf->setenvres_t = apr_table_make(sconf->pool, 1);
   sconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
   sconf->resheaderfilter = QS_HEADERFILTER_OFF_DEFAULT;
   sconf->error_page = NULL;
@@ -7757,6 +7797,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_table_merge(o->setenvstatus_t, b->setenvstatus_t);
   qos_table_merge(o->setenvresheader_t, b->setenvresheader_t);
   qos_table_merge(o->setenvresheadermatch_t, b->setenvresheadermatch_t);
+  qos_table_merge(o->setenvres_t, b->setenvres_t);
   qos_table_merge(o->exclude_ip, b->exclude_ip);
   o->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
                                                      o->disable_reqrate_events);
@@ -8291,6 +8332,30 @@ const char *qos_event_setenvresheadermatch_cmd(cmd_parms *cmd, void *dcfg, const
   }
   apr_pool_cleanup_register(cmd->pool, pr, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   apr_table_setn(sconf->setenvresheadermatch_t, apr_pstrdup(cmd->pool, hdr), (char *)pr);
+  return NULL;
+}
+
+const char *qos_setenvres_cmd(cmd_parms *cmd, void *dcfg, const char *var,
+                              const char *pattern, const char *var2) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qos_pregval_t *pregval = apr_pcalloc(cmd->pool, sizeof(qos_pregval_t));
+  pregval->name = apr_pstrdup(cmd->pool, var2);
+  pregval->value = strchr(pregval->name, '=');
+  if(pregval->value) {
+    pregval->value[0] = '\0';
+    pregval->value++;
+  }
+#ifdef AP_REGEX_H
+  pregval->preg = ap_pregcomp(cmd->pool, pattern, AP_REG_EXTENDED);
+#else
+  pregval->preg = ap_pregcomp(cmd->pool, pattern, REG_EXTENDED);
+#endif
+  if(pregval->preg == NULL) {
+    return apr_psprintf(cmd->pool, "%s: could not compile regex %s",
+                        cmd->directive->directive, pattern);
+  }
+  apr_table_setn(sconf->setenvres_t, apr_pstrdup(cmd->pool, var), (char *)pregval);
   return NULL;
 }
 
@@ -9647,6 +9712,12 @@ static const command_rec qos_config_cmds[] = {
                 "QS_SetEnvResHeaderMatch <header name> <regex>, sets the defined"
                 " HTTP response header to the request environment variables"
                 " if the specified regular expression (pcre) matches the header value."),
+  AP_INIT_TAKE3("QS_SetEnvRes", qos_setenvres_cmd, NULL,
+                RSRC_CONF,
+                "QS_SetEnvRes <variable> <regex> <variable2>[=<value>], sets the environmet"
+                " variable2 if the regular expression matches against the value of"
+                " the environment variable. Occurrences of $1..$9 within the value"
+                " and replace them by parenthesized subexpressions of the regular expression."),
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
                 ACCESS_CONF,
