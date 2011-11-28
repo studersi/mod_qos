@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.178 2011-11-25 21:24:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.179 2011-11-28 21:37:47 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -330,8 +330,8 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_EventRequestLimit404.htt"
 fi
 
-sleep 30
 ./ctl.sh  restart -D ignore404 -D cont > /dev/null
+sleep 60
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req, MaxRequestsPerChild, QS_EventRequestLimitMaxReq.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_EventRequestLimitMaxReq.htt
 if [ $? -ne 0 ]; then
