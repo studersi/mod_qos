@@ -27,8 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.66 2011-11-03 19:18:25 pbuchbinder Exp $";
-static const char g_revision[] = "9.73";
+static const char revision[] = "$Id: qsfilter2.c,v 1.67 2011-11-29 08:35:08 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -550,7 +549,7 @@ static void usage(char *cmd, int man) {
     printf(".SH AUTHOR\n");
     printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
   } else {
-    printf("mod_qos %s\n", g_revision);
+    printf("mod_qos %s\n", man_version);
     printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   }
   if(man) {
@@ -1763,7 +1762,7 @@ int main(int argc, const char * const argv[]) {
   printf("\n# --------------------------------------------------------\n");
   printf("# %s\n", time_string);
   printf("# %d rules from %d access log lines\n", apr_table_elts(rules)->nelts, line_nr);
-  printf("#  mod_qos version: %s\n", g_revision);
+  printf("#  mod_qos version: %s\n", man_version);
   if(performance >= 0) {
     printf("#  performance index (ms/req): %ld\n", performance);
   }
