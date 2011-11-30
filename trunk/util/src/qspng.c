@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.10 2011-11-01 22:11:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.11 2011-11-30 19:45:10 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -594,6 +594,7 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "  -o <out_file>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Output file name, e.g. stat.png.\n");
+  printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
     printf("qsexec(1), qsfilter2(1), qsgrep(1), qslog(1), qsrotate(1), qssign(1), qstail(1)\n");
