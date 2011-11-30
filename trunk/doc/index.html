@@ -929,7 +929,7 @@ pattern are allowed. If a <code>QS_PermitUri</code> pattern has
 been defined and the request does not match any rule, the request 
 is denied. 
 All rules must define the same action. pcre is case sensitive. 
-You may use the <code><a href="qsfilter.html">qsfilter2</a></code> 
+You may use the <code><a href="qsfilter2.1.html">qsfilter2</a></code> 
 utility to generate rules based on access log files.
 </li>
 <li>
@@ -1035,7 +1035,7 @@ be deflated (compressed data) using
 Sample configuration:<br>
 <pre>
 # configure the audit log writing the request body data to a file
-# (use this log to generate whitelist rules using <a href="qsfilter.html">qsfilter2</a>
+# (use this log to generate whitelist rules using <a href="qsfilter2.1.html">qsfilter2</a>
 # when QS_PermitUriBody has been enabled)
 # format:
 #   %h:
@@ -1512,18 +1512,18 @@ Example: <code>http://your.server.name/qos?action=search&amp;address=194.31.217.
 <p>
 mod_qos provides optional tools for log data processing and analysis:
 <ul>
-<li><code>qsexec</code><br>Command execution triggered by patterns within log files.</li>
-<li><code><a href="qsfilter.html">qsfilter2</a></code><br>Rule generator. Creates <code>QS_Permit*</code> directives and rule patterns from audit log files.</li>
-<li><code>qsgrep</code><br>Searches a file for a pattern and prints the data in a new format.</li>
-<li><code><a href="qslog.html">qslog</a></code><br>A real time 
+<li><code><a href="qsexec.1.html">qsexec</a></code><br>Command execution triggered by patterns within log files.</li>
+<li><code><a href="qsfilter2.1.html">qsfilter2</a></code><br>Rule generator. Creates <code>QS_Permit*</code> directives and rule patterns from audit log files.</li>
+<li><code><a href="qsgrep.1.html">qsgrep</a></code><br>Searches a file for a pattern and prints the data in a new format.</li>
+<li><code><a href="qslog.1.html">qslog</a></code><br>A real time 
 <code><a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html" target="_blank">TransferLog/CustomLog</a></code> 
 data analyzer. It reads the per request log data from stdin and generates statistic 
 records every minute.</li>
-<li><code>qspng</code><br>Creates graphics (png images) from the output of <code>qslog</code>.</li>
-<li><code>qsrotate</code><br>Log rotation tool similar to Apache's <code>rotatelogs</code>.</li>
-<li><code>qssign</code><br>A log data integrity check tool. It reads log data 
+<li><code><a href="qspng.1.html">qspng</a></code><br>Creates graphics (png images) from the output of <code>qslog</code>.</li>
+<li><code><a href="qsrotate.1.html">qsrotate</a></code><br>Log rotation tool similar to Apache's <code>rotatelogs</code>.</li>
+<li><code><a href="qssign.1.html">qssign</a></code><br>A log data integrity check tool. It reads log data 
 from stdin (pipe) and writes the signed data to stdout.</li>
-<li><code>qstail</code><br>Shows the end of a log file beginning at a defined pattern.</li>
+<li><code><a href="qstail.1.html">qstail</a></code><br>Shows the end of a log file beginning at a defined pattern.</li>
 </ul>
 
 </p>
