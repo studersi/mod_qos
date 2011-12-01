@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.24 2011-11-01 22:11:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.25 2011-12-01 19:51:02 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -67,6 +67,7 @@ static long m_duration_3 = 0;
 static long m_duration_4 = 0;
 static long m_duration_5 = 0;
 static long m_duration_6 = 0;
+static long m_connections = -1;
 
 static long m_status_1 = 0;
 static long m_status_2 = 0;
@@ -279,9 +280,14 @@ static void printAndResetStat(char *timeStr) {
   double av[1];
   char mem[256];
   char bis[256];
+  char esco[256];
   bis[0] = '\0';
+  esco[0] = '\0';
   if(m_i_byte_count != -1) {
     sprintf(bis, NBIS";%lld;", m_i_byte_count/LOG_INTERVAL);
+  }
+  if(m_connections != -1) {
+    sprintf(esco, "esco;%ld;", m_connections);
   }
   if(!m_offline) {
     getloadavg(av, 1);
@@ -298,6 +304,7 @@ static void printAndResetStat(char *timeStr) {
           NRS";%ld;"
 	  "req;%ld;"
           NBS";%lld;"
+	  "%s"
 	  "%s"
 	  "1xx;%ld;"
 	  "2xx;%ld;"
@@ -327,6 +334,7 @@ static void printAndResetStat(char *timeStr) {
 	  m_line_count,
           m_byte_count/LOG_INTERVAL,
 	  bis,
+	  esco,
 	  m_status_1,
 	  m_status_2,
 	  m_status_3,
@@ -354,6 +362,9 @@ static void printAndResetStat(char *timeStr) {
   m_byte_count = 0;
   if(m_i_byte_count != -1) {
     m_i_byte_count = 0;
+  }
+  if(m_connections != -1) {
+    m_connections = 0;
   }
   m_status_1 = 0;
   m_status_2 = 0;
@@ -410,6 +421,7 @@ static void updateStat(const char *cstr, char *line) {
   char *I = NULL; /* client ip */
   char *U = NULL; /* user */
   char *Q = NULL; /* mod_qos event message */
+  char *k = NULL; /* connections (keep alive requests = 0) */
   const char *c = cstr;
   char *l = line;
   long tme;
@@ -443,6 +455,10 @@ static void updateStat(const char *cstr, char *line) {
     } else if(c[0] == 'i') {
       if(l != NULL && l[0] != '\0') {
         BI = cutNext(&l);
+      }
+    } else if(c[0] == 'k') {
+      if(l != NULL && l[0] != '\0') {
+        k = cutNext(&l);
       }
     } else if(c[0] == 'R') {
       if(l != NULL && l[0] != '\0') {
@@ -512,6 +528,12 @@ static void updateStat(const char *cstr, char *line) {
     /* transferred bytes */
     stripNum(&BI);
     m_i_byte_count = m_i_byte_count + atoi(BI);
+  }
+  if(k != NULL) {
+    stripNum(&k);
+    if(k[0] == '0' && k[1] == '\0') {
+      m_connections++;
+    }
   }
   if(S != NULL) {
     stripNum(&S);
@@ -803,6 +825,7 @@ static void usage(char *cmd, int man) {
   qs_man_println(man, "  - distribution of response durations within the last minute\n");
   qs_man_print(man, "    (<1s,1s,2s,3s,4s,5s,>5)\n");
   if(man) printf("\n");
+  qs_man_println(man, "  - number of established (new) connections within the last minutes (esco)\n");
   qs_man_println(man, "  - average system load (sl)\n");
   qs_man_println(man, "  - free memory (m) (not available for all platforms)\n");
   qs_man_println(man, "  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
@@ -833,6 +856,7 @@ static void usage(char *cmd, int man) {
   qs_man_println(man, "     T defines the request duration (%%T)\n");
   qs_man_println(man, "     t defines the request duration in milliseconds (optionally used instead of T)\n");
   qs_man_println(man, "     D defines the request duration in microseconds (optionally used instead of T)\n");
+  qs_man_println(man, "     k defines the number of keepalive requests on the connection (%%k)\n");
   qs_man_println(man, "     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   qs_man_println(man, "     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
   qs_man_println(man, "     . defines an element to ignore (unknown string)\n");
@@ -927,6 +951,10 @@ int main(int argc, char **argv) {
 	if(strchr(config, 'i')) {
 	  // enable ib/s
 	  m_i_byte_count = 0;
+	}
+	if(strchr(config, 'i')) {
+	  // enable esco
+	  m_connections = 0;
 	}
       }
     } else if(strcmp(*argv,"-o") == 0) { /* this is the out file */

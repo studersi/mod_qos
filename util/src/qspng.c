@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.11 2011-11-30 19:45:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.12 2011-12-01 19:51:02 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -60,6 +60,7 @@ static const qs_png_elt_t qs_png_elts[] = {
   { "req", "requests per minute",  20, 30, 130, },
   { "b/s", "bytes per second (out)",     30, 45, 130 },
   { "ib/s", "bytes per second (in)",     30, 45, 125 },
+  { "esco", "established connections per minute", 40, 95, 140 },
   { "av", "average response time", 40, 95, 140 },
   { "<1s", "requests faster than 1 second", 35, 95, 180 },
   { "1s", "requests faster or equal than 1 second", 35, 90, 180 },
