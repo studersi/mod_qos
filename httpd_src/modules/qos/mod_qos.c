@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.362 2011-11-28 20:06:44 pbuchbinder Exp $";
-static const char g_revision[] = "9.75";
+static const char revision[] = "$Id: mod_qos.c,v 5.363 2011-12-01 19:50:24 pbuchbinder Exp $";
+static const char g_revision[] = "9.76";
 
 /************************************************************************
  * Includes
@@ -3396,7 +3396,7 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
               }
             }
             if(match) {
-              apr_table_setn(rctx->event_entries, e->url, (char *)e);
+              apr_table_addn(rctx->event_entries, e->url, (char *)e);
               e->counter++;
               if(e->counter > e->limit) {
                 rv = m_retcode;
