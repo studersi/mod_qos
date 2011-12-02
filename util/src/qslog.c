@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.25 2011-12-01 19:51:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.26 2011-12-02 19:36:54 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -952,7 +952,7 @@ int main(int argc, char **argv) {
 	  // enable ib/s
 	  m_i_byte_count = 0;
 	}
-	if(strchr(config, 'i')) {
+	if(strchr(config, 'k')) {
 	  // enable esco
 	  m_connections = 0;
 	}

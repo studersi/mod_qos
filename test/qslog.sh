@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: qslog.sh,v 2.5 2011-08-31 18:31:48 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.6 2011-12-02 19:36:52 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -31,13 +31,14 @@ case "$1" in
 	# - 60 500er
 	# - 3 ip
 	for min in `seq 0 1`; do
-	    for sec in `seq 0 59`; do
-		printf "127.0.0.1 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 200 100 \"Mozilla\" '0'\n" $min $sec
-		printf "127.0.0.1 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 200 100 \"Mozilla\" '0'\n" $min $sec
-		printf "127.0.0.2 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 200 200 \"Mozilla\" '0'\n" $min $sec
-		printf "127.0.0.3 -    - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 500 200 \"Mozilla\" '4\n" $min $sec
+	    for sec in `seq 0 58`; do
+		printf "127.0.0.1 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 200 100 \"Mozilla\" '0' 0\n" $min $sec
+		printf "127.0.0.1 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 200 100 \"Mozilla\" '0' 1\n" $min $sec
+		printf "127.0.0.2 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 200 200 \"Mozilla\" '0' 2\n" $min $sec
+		printf "127.0.0.3 -    - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 500 200 \"Mozilla\" '4 3\n" $min $sec
 		sleep 1
 	    done
+	    ./bin/sleep 1100
 	done
 	sleep 1
 	;;
@@ -46,8 +47,8 @@ case "$1" in
 	rm -f qs.log
 	./sleep.sh
 	echo "$PFX apache"
-	./qslog.sh test writeapache | ../util/src/qslog -f I....RSB.T -o qs.log
-	if [ `grep -c 'r/s;4;req;240;b/s;600;1xx;0;2xx;180;3xx;0;4xx;0;5xx;60;av;1;<1s;180;1s;0;2s;0;3s;0;4s;60;5s;0;>5s;0;ip;3;usr;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log` -ne 2 ]; then
+	./qslog.sh test writeapache | ../util/src/qslog -f I....RSB.Tk -o qs.log
+	if [ `grep -c 'r/s;3;req;236;b/s;590;esco;59;1xx;0;2xx;177;3xx;0;4xx;0;5xx;59;av;1;<1s;177;1s;0;2s;0;3s;0;4s;59;5s;0;>5s;0;ip;3;usr;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log` -ne 2 ]; then
 	    echo "$PFX FAILED"
 	    exit 1
 	fi
