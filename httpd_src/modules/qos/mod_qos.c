@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.363 2011-12-01 19:50:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.364 2011-12-05 20:21:28 pbuchbinder Exp $";
 static const char g_revision[] = "9.76";
 
 /************************************************************************
@@ -4568,8 +4568,8 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
 static void qos_bars(request_rec *r, server_rec *bs) {
   server_rec *s = bs;
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-  int connections = 0;
   if(bsconf->act && bsconf->act->conn) {
+    int connections = -1;
     double av[1];
     int load;
     getloadavg(av, 1);
@@ -4590,27 +4590,46 @@ static void qos_bars(request_rec *r, server_rec *bs) {
       ap_rputs("</tr>\n", r);
     }
 
-    connections = bsconf->act->conn->connections;
+    if(bsconf->max_conn != -1 || bsconf->max_conn_close != -1) {
+      connections = bsconf->act->conn->connections;
+    }
     s = s->next;
     while(s) {
       qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
       if(sc != bsconf) {
+        if(sc->max_conn == -1 && sc->max_conn_close == -1) {
+          connections = -1;
+          break;
+        }
+        if(connections == -1) {
+          connections = 0;
+        }
         connections = connections + sc->act->conn->connections;
       }
       s = s->next;
     }
 
-    ap_rprintf(r, "<tr class=\"rowt\">"
-               "<td colspan=\"1\">connections: %d</td>"
-               "<td colspan=\"1\">load: %.2f</td>"
-               "</tr>\n", connections, av[0]);
-    
+    if(connections != -1) {
+      ap_rprintf(r, "<tr class=\"rowt\">"
+                 "<td colspan=\"1\">connections: %d</td>"
+                 "<td colspan=\"1\">load: %.2f</td>"
+                 "</tr>\n", connections, av[0]);
+    } else {
+      ap_rprintf(r, "<tr class=\"rowt\">"
+                 "<td colspan=\"1\">connections: n/a</td>"
+                 "<td colspan=\"1\">load: %.2f</td>"
+                 "</tr>\n", av[0]);
+    }
     ap_rprintf(r, "<tr class=\"rows\">");
     ap_rprintf(r, "<td>");
-    ap_rprintf(r, "<div class=\"prog-border\">"
-               "<div class=\"prog-bar\" style=\"width: %d%%;\"></div></div>",
-               100 * connections / bsconf->max_clients);
-    ap_rprintf(r, "</td>");
+    if(connections != -1) {
+      ap_rprintf(r, "<div class=\"prog-border\">"
+                 "<div class=\"prog-bar\" style=\"width: %d%%;\"></div></div>",
+                 100 * connections / bsconf->max_clients);
+      ap_rprintf(r, "</td>");
+    } else {
+      ap_rprintf(r, "&nbsp;");
+    }      
     ap_rprintf(r, "<td>");
     ap_rprintf(r, "<div class=\"prog-border\">"
                "<div class=\"prog-bar\" style=\"width: %d%%;\"></div></div>",

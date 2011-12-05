@@ -2,6 +2,8 @@ Version
 
  - qslog measures new connections per minute (%k == 0).
 
+ - Fixed: don't show connections in the overview if not measured.
+
  - Internal: QS_EventRequestLimit are added (insted of set) to the
    event table in order to prevent multiple increments by the very
    same request.
