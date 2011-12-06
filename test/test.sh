@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.181 2011-11-29 08:35:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.182 2011-12-06 22:10:47 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -562,6 +562,12 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_UnsetResHeader.htt"
+fi
+./ctl.sh restart -D real_ip -D X-Forwarded-For > /dev/null
+./run.sh -s ./scripts/QS_ClientEventLimitCount.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventLimitCount.htt"
 fi
 
 # - DDoS -------------------------------------------------------

@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.364 2011-12-05 20:21:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.365 2011-12-06 22:10:47 pbuchbinder Exp $";
 static const char g_revision[] = "9.76";
 
 /************************************************************************
@@ -569,6 +569,7 @@ typedef struct {
   int qos_cc_block_time;      /* GLOBAL ONLY */
   int qos_cc_limit;           /* GLOBAL ONLY */
   int qos_cc_limit_time;      /* GLOBAL ONLY */
+  char *qos_cc_forwardedfor;  /* GLOBAL ONLY */
   int qos_cc_serialize;       /* GLOBAL ONLY */
   apr_off_t maxpost;
   int cc_tolerance;           /* GLOBAL ONLY */
@@ -3835,9 +3836,12 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       apr_table_get(r->subprocess_env, QS_LIMIT);
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-    qos_s_entry_t **e = NULL;
-    qos_s_entry_t new;
     apr_time_t now = apr_time_sec(r->request_time);
+    qos_s_entry_t **e = NULL;
+    qos_s_entry_t **ef = NULL; // client ip entry from header
+    qos_s_entry_t ne;
+    qos_s_entry_t nef;
+    nef.ip = 0;
 
     if(sconf->qos_cc_prefer_limit || (sconf->req_rate != -1)) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
@@ -3859,11 +3863,25 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       }
     }
 
+    if(sconf->qos_cc_forwardedfor) {
+      const char *forwadedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
+      if(forwadedfor) {
+        nef.ip = qos_ip_str2long(r, forwadedfor);
+      }
+    }
+    ne.ip = cconf->ip;
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
-    new.ip = cconf->ip;
-    e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
+    e = qos_cc_get0(u->qos_cc, &ne, apr_time_sec(r->request_time));
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
+      e = qos_cc_set(u->qos_cc, &ne, apr_time_sec(r->request_time));
+    }
+    if(nef.ip) {
+      ef = qos_cc_get0(u->qos_cc, &nef, apr_time_sec(r->request_time));
+      if(!ef) {
+        ef = qos_cc_set(u->qos_cc, &nef, apr_time_sec(r->request_time));
+      }
+    } else {
+      ef = e; // use either ip from header or connection
     }
     if(rctx->cc_event_req_set) {
       /* QS_ClientEventRequestLimit */
@@ -3884,10 +3902,10 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         (*e)->block = 0;
         (*e)->block_time = 0;
       }
-      if(((*e)->limit_time + sconf->qos_cc_limit_time) < now) {
+      if(((*ef)->limit_time + sconf->qos_cc_limit_time) < now) {
         /* reset expired events */
-        (*e)->limit = 0;
-        (*e)->limit_time = 0;
+        (*ef)->limit = 0;
+        (*ef)->limit_time = 0;
       }
       /* mark lowpkt client */
       if(lowrate || unusual_bahavior) {
@@ -3905,10 +3923,10 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       }
       if(limit_event) {
         /* increment limit event */
-        (*e)->limit++;
-        if((*e)->limit == 1) {
+        (*ef)->limit++;
+        if((*ef)->limit == 1) {
           /* ... and start timer */
-          (*e)->limit_time = now;
+          (*ef)->limit_time = now;
         }
       }
     } else if((*e)->lowrate) {
@@ -3938,17 +3956,37 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
   if(sconf->has_qos_cc) {
     int req_per_sec_block_rate = 0;
     qos_s_entry_t **e = NULL;
-    qos_s_entry_t new;
+    qos_s_entry_t **ef = NULL;
+    qos_s_entry_t ne;
+    qos_s_entry_t nef;
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
+    ne.ip = cconf->ip;
+    nef.ip = 0;
+    if(sconf->qos_cc_forwardedfor) {
+      const char *forwadedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
+      if(forwadedfor) {
+        nef.ip = qos_ip_str2long(r, forwadedfor);
+      }
+    }
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT17 */
-    new.ip = cconf->ip;
-    e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
+    e = qos_cc_get0(u->qos_cc, &ne, apr_time_sec(r->request_time));
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
+      e = qos_cc_set(u->qos_cc, &ne, apr_time_sec(r->request_time));
     } else {
       /* update time */
       (*e)->time = apr_time_sec(r->request_time);
+    }
+    if(nef.ip) {
+      ef = qos_cc_get0(u->qos_cc, &nef, apr_time_sec(r->request_time));
+      if(!ef) {
+        ef = qos_cc_set(u->qos_cc, &nef, apr_time_sec(r->request_time));
+      } else {
+        /* update time */
+        (*ef)->time = apr_time_sec(r->request_time);
+      }
+    } else {
+      ef = e; // use either ip from header or connection
     }
     if(sconf->qos_cc_event) {
       apr_time_t now = apr_time_sec(r->request_time);
@@ -4025,23 +4063,23 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     if(sconf->qos_cc_limit) {
       apr_time_t now = apr_time_sec(r->request_time);
       const char *limit_event_str = apr_table_get(r->subprocess_env, QS_LIMIT);
-      if(((*e)->limit_time + sconf->qos_cc_limit_time) < now) {
+      if(((*ef)->limit_time + sconf->qos_cc_limit_time) < now) {
         /* reset expired events */
-        (*e)->limit = 0;
-        (*e)->limit_time = 0;
+        (*ef)->limit = 0;
+        (*ef)->limit_time = 0;
       }
       if(limit_event_str) {
         /* increment limit event */
-        (*e)->limit++;
-        if((*e)->limit == 1) {
+        (*ef)->limit++;
+        if((*ef)->limit == 1) {
           /* ... and start timer */
-          (*e)->limit_time = now;
+          (*ef)->limit_time = now;
         }
         /* only once per request */
         apr_table_set(r->subprocess_env, QS_LIMIT_SEEN, "");
       }
-      if((*e)->limit >= sconf->qos_cc_limit) {
-        if(ret == DECLINED) {
+      if((*ef)->limit >= sconf->qos_cc_limit) {
+        if(ret == DECLINED || ef != e) {
           /* log only one error (either block or limit) */
           *uid = apr_pstrdup(cconf->c->pool, "067");
           *msg = apr_psprintf(cconf->c->pool, 
@@ -4052,7 +4090,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                               cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
           ret = m_retcode;
         }
-        (*e)->lowrate = apr_time_sec(r->request_time);
+        (*ef)->lowrate = apr_time_sec(r->request_time);
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT17 */
@@ -4079,12 +4117,12 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
   int ret = DECLINED;
   if(cconf->sconf->has_qos_cc) {
     qos_s_entry_t **e = NULL;
-    qos_s_entry_t new;
-    new.ip = cconf->ip;
+    qos_s_entry_t ne;
+    ne.ip = cconf->ip;
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT14 */
-    e = qos_cc_get0(u->qos_cc, &new, 0);
+    e = qos_cc_get0(u->qos_cc, &ne, 0);
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      e = qos_cc_set(u->qos_cc, &ne, time(NULL));
     }
     /* early vip detection */
     if((*e)->vip) {
@@ -7719,6 +7757,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
   sconf->qos_cc_block_time = 600;
   sconf->qos_cc_limit_time = 600;
+  sconf->qos_cc_forwardedfor = NULL;
   sconf->disable_handler = -1;
   sconf->maxpost = -1;
   sconf->milestones = NULL;
@@ -7789,6 +7828,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_block_time = b->qos_cc_block_time;
   o->qos_cc_limit = b->qos_cc_limit;
   o->qos_cc_limit_time = b->qos_cc_limit_time;
+  o->qos_cc_forwardedfor = b->qos_cc_forwardedfor;
   o->qos_cc_serialize = b->qos_cc_serialize;
   o->cc_tolerance = b->cc_tolerance;
   o->req_rate = b->req_rate;
@@ -9329,6 +9369,17 @@ const char *qos_client_limit_cmd(cmd_parms *cmd, void *dcfg, const char *arg1,
   return NULL;
 }
 
+const char *qos_client_forwardedfor_cmd(cmd_parms *cmd, void *dcfg, const char *header) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->qos_cc_forwardedfor = apr_pstrdup(cmd->pool, header);
+  return NULL;
+}
+
 const char *qos_client_serial_cmd(cmd_parms *cmd, void *dcfg) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -9896,6 +9947,12 @@ static const command_rec qos_config_cmds[] = {
                  "QS_ClientEventLimitCount <number> [<seconds>], defines the maximum number"
                  " of "QS_LIMIT" allowed within the defined time (default are 10 minutes)."
                  " Directive is allowed in global server context only."),
+  AP_INIT_TAKE1("QS_ClientIpFromHeader", qos_client_forwardedfor_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientIpFromHeader <header>, defines a HTTP request header to read"
+                " the client's source IP address from (instead of taking the IP address"
+                " of the client opening the TCP connection). This may be used for the"
+                " QS_ClientEventLimitCount directive."),
   AP_INIT_NO_ARGS("QS_ClientSerialize", qos_client_serial_cmd, NULL,
                   RSRC_CONF,
                   "QS_ClientSerialize, serializes requests having the "QS_SERIALIZE" variable"
