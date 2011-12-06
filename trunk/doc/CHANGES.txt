@@ -1,5 +1,8 @@
-Version
+Version 9.76
 
+ - New directive QS_ClientIpFromHeader (may be used in conjunction
+   with QS_ClientEventLimitCount only).
+ 
  - qslog measures new connections per minute (%k == 0).
 
  - Fixed: don't show connections in the overview if not measured.

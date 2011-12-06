@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.205 2011-12-01 19:51:01 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.206 2011-12-06 22:10:47 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -91,6 +91,9 @@ QS_ClientEventBlockCount 3 10
 </IfDefine>
 QS_ClientEventLimitCount 3 10
 QS_ClientEventPerSecLimit  5
+<IfDefine X-Forwarded-For>
+QS_ClientIpFromHeader    Y-Forwarded-For
+</IfDefine>
 
 <IfDefine BlockOnClose>
 QS_ClientEventBlockCount 3 40
