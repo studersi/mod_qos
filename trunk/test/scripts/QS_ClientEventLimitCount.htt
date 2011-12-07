@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventLimitCount.htt,v 1.1 2011-12-06 22:10:47 pbuchbinder Exp $
+# $Id: QS_ClientEventLimitCount.htt,v 1.2 2011-12-07 07:23:25 pbuchbinder Exp $
 #
 #  QS_ClientEventLimitCount 3 10
 #  QS_ClientIpFromHeader      Y-Forwarded-For
@@ -56,6 +56,13 @@ _SLEEP 200
 _EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule"
 _EXEC tail -1 logs/error_log
 
+_SET MSG_MISSINGHEADER=mod_qos\(069\): no valid IP header found: header 'Y-Forwarded-For' not available, fallback to connection's IP 127.0.0.1
+_SET MSG_MISSINGHEADER2=mod_qos\(069\): no valid IP header found: invalid header value '10.10.10.5, 10.10.10.6', fallback to connection's IP 127.0.0.1
+_EXPECT EXEC "!${MSG_MISSINGHEADER}"
+_EXEC tail -3 logs/error_log
+_EXPECT EXEC "!${MSG_MISSINGHEADER2}"
+_EXEC tail -3 logs/error_log
+
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
 __Host: localhost
@@ -79,6 +86,36 @@ _EXPECT . "!X-Login"
 _EXPECT . "200"
 _EXPECT . "AS2"
 _WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "!X-Login"
+_EXPECT . "200"
+_EXPECT . "AS4"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "${MSG_MISSINGHEADER}"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Y-Forwarded-For: 10.10.10.5, 10.10.10.6
+__
+_EXPECT . "!X-Login"
+_EXPECT . "200"
+_EXPECT . "AS5"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "${MSG_MISSINGHEADER2}"
+_EXEC tail -1 logs/error_log
 
 END
 
@@ -126,6 +163,26 @@ __Content-Type: text/html
 __X-Login: failed
 __
 __==AS2==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__X-Login: failed
+__
+__==AS4==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__X-Login: failed
+__
+__==AS5==
 _CLOSE
 
 END
