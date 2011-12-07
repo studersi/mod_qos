@@ -1269,7 +1269,8 @@ within the defined time (default is 600 seconds). Requests from client IP's reac
 this limitation are denied for the specified time (blocked at request level). <br>
 Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 determine the client's IP address based on the defined HTTP request header (e.g., 
-X-Forwarded-For) instead of the IP address which has been used to open the TCP connection.
+X-Forwarded-For) instead of taking the IP address of the client which has opened 
+the TCP connection.
 </li>
 <li>
 <a name="QS_ClientSerialize"></a>
