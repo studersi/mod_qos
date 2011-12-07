@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.365 2011-12-06 22:10:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.366 2011-12-07 07:23:24 pbuchbinder Exp $";
 static const char g_revision[] = "9.76";
 
 /************************************************************************
@@ -3863,13 +3863,32 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       }
     }
 
+    ne.ip = cconf->ip;
     if(sconf->qos_cc_forwardedfor) {
       const char *forwadedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
       if(forwadedfor) {
         nef.ip = qos_ip_str2long(r, forwadedfor);
+        if(nef.ip == 0) {
+          if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                          QOS_LOG_PFX(069)"no valid IP header found:"
+                          " invalid header value '%s', fallback to connection's IP %s",
+                          forwadedfor,
+                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+            apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+          }
+        }
+      } else {
+        if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                        QOS_LOG_PFX(069)"no valid IP header found:"
+                        " header '%s' not available, fallback to connection's IP %s",
+                        sconf->qos_cc_forwardedfor,
+                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+          apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+        }
       }
     }
-    ne.ip = cconf->ip;
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
     e = qos_cc_get0(u->qos_cc, &ne, apr_time_sec(r->request_time));
     if(!e) {
@@ -3967,6 +3986,25 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       const char *forwadedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
       if(forwadedfor) {
         nef.ip = qos_ip_str2long(r, forwadedfor);
+        if(nef.ip == 0) {
+          if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                          QOS_LOG_PFX(069)"no valid IP header found:"
+                          " invalid header value '%s', fallback to connection's IP %s",
+                          forwadedfor,
+                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+            apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+          }
+        }
+      } else {
+        if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                        QOS_LOG_PFX(069)"no valid IP header found:"
+                        " header '%s' not available, fallback to connection's IP %s",
+                        sconf->qos_cc_forwardedfor,
+                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+          apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+        }
       }
     }
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT17 */

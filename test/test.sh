@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.182 2011-12-06 22:10:47 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.183 2011-12-07 07:23:25 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -557,12 +557,14 @@ if [ $? -ne 0 ]; then
     echo "FAILED Count.htt"
 fi
 
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_UnsetResHeader (QS_ClientEventLimitCount)" >>  logs/error_log
 ./ctl.sh restart -D real_ip > /dev/null
 ./run.sh -s ./scripts/QS_UnsetResHeader.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_UnsetResHeader.htt"
 fi
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventLimitCount" >>  logs/error_log
 ./ctl.sh restart -D real_ip -D X-Forwarded-For > /dev/null
 ./run.sh -s ./scripts/QS_ClientEventLimitCount.htt
 if [ $? -ne 0 ]; then
