@@ -1,9 +1,9 @@
 #
-# $Id: QS_EventRequestLimitMaxReq.htt,v 1.2 2011-11-25 20:12:33 pbuchbinder Exp $
+# $Id: QS_EventRequestLimitMaxReq.htt,v 1.3 2011-12-07 19:15:12 pbuchbinder Exp $
 #
 # MaxRequestsPerChild     125
 #
-# 1 minutes, about 800 req/sec
+# 1 minutes, about 200 req/sec
 #
 # slow client and fast:
 #   QS_SetEnvIfQuery           QS_EventRequestV=([a-z]*) queryv=$1
@@ -104,7 +104,7 @@ _END IF
 
 END
 
-# fast client (hunderts of req/sec)
+# relatively fast client (200 of req/sec)
 CLIENT
 
 _RPS 1000 60
@@ -120,15 +120,16 @@ _WAIT
 _IF "$CONNECTION" MATCH "close"
 _CLOSE
 _END IF
+_SLEEP 50
 
 _END RPS
 
 END
 
-# fast client (hunderts of req/sec)
+# fast client (200 of req/sec)
 CLIENT 10
 
-_RPS 1000 60
+_RPS 200 60
 _REQ localhost $QS_PORT_BASE
 __POST /localpages/index.html HTTP/1.1
 __Host: localhost
@@ -144,6 +145,7 @@ _WAIT
 _IF "$CONNECTION" MATCH "close"
 _CLOSE
 _END IF
+_SLEEP 50
 
 _END RPS
 
