@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.26 2011-12-02 19:36:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.27 2011-12-11 21:24:31 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -855,7 +855,7 @@ static void usage(char *cmd, int man) {
   qs_man_println(man, "     i defines the received bytes (%%I)\n");
   qs_man_println(man, "     T defines the request duration (%%T)\n");
   qs_man_println(man, "     t defines the request duration in milliseconds (optionally used instead of T)\n");
-  qs_man_println(man, "     D defines the request duration in microseconds (optionally used instead of T)\n");
+  qs_man_println(man, "     D defines the request duration in microseconds (optionally used instead of T) (%%D)\n");
   qs_man_println(man, "     k defines the number of keepalive requests on the connection (%%k)\n");
   qs_man_println(man, "     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   qs_man_println(man, "     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
