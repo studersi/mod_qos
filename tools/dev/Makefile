@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex b64 crs mem json
+PROGRAMS = regex regexspeed b64 crs mem json
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -17,8 +17,13 @@ all: stack
 regex_OBJECTS = regex.lo
 regex_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 regex: $(regex_OBJECTS)
-	$(LINK) $(regex_LTFLAGS) -static $(regex_OBJECTS) $(regex_LDADD)
-	strip regex
+	$(LINK) $(regex_LTFLAGS) -g -static $(regex_OBJECTS) $(regex_LDADD)
+
+regexspeed_OBJECTS = regexspeed.lo
+regexspeed_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+regexspeed: $(regexspeed_OBJECTS)
+	$(LINK) $(regexspeed_LTFLAGS) -g -static $(regexspeed_OBJECTS) $(regexspeed_LDADD)
+	strip regexspeed
 
 b64_OBJECTS = b64.lo
 b64_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
@@ -51,4 +56,4 @@ stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
 clean:
-	rm *.o stack regex b64 crs mem json wlsg
+	rm *.o stack regex regexspeed b64 crs mem json wlsg
