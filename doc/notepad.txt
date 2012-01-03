@@ -1,4 +1,6 @@
 
++ study pcre and set match_limit
+- limit number of parameters (better to be implemented in mod_parp)
 - improved anomaly detection, collecting additional client/connection
   attributes such as
   - requests per single TCP connection (keep-alive)

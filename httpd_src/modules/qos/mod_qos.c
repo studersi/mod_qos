@@ -15,7 +15,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2011 Pascal Buchbinder
+ * Copyright (C) 2007-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.366 2011-12-07 07:23:24 pbuchbinder Exp $";
-static const char g_revision[] = "9.76";
+static const char revision[] = "$Id: mod_qos.c,v 5.367 2012-01-03 20:09:11 pbuchbinder Exp $";
+static const char g_revision[] = "9.77";
 
 /************************************************************************
  * Includes
@@ -329,6 +329,7 @@ typedef struct {
 
 typedef struct {
   pcre *preg;
+  pcre_extra *extra;
 #ifdef AP_REGEX_H
   ap_regex_t *pregx;
 #else
@@ -343,6 +344,7 @@ typedef struct {
  */
 typedef struct {
   pcre *pr;
+  pcre_extra *extra;
   char *text;
   char *id;
   qs_rfilter_type_e type;
@@ -698,6 +700,7 @@ typedef struct {
 typedef struct {
   char *text;
   pcre *pcre;
+  pcre_extra *extra;
   qs_flt_action_e action;
   int size;
 } qos_fhlt_r_t;
@@ -839,6 +842,19 @@ static const qos_her_t qs_res_header_rules[] = {
   { NULL, NULL, 0, 0 }
 };
 
+static pcre_extra *qos_pcre_study(apr_pool_t *pool, pcre *pc) {
+  const char *errptr = NULL;
+  pcre_extra *extra = pcre_study(pc, 0, &errptr);
+  if(extra != NULL) {
+    apr_pool_cleanup_register(pool, extra, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  } else {
+    extra = apr_palloc(pool, sizeof(pcre_extra));
+  }
+  extra->match_limit = 1500;
+  extra->flags |= PCRE_EXTRA_MATCH_LIMIT;
+  return extra;
+}
+
 /**
  * loads the default header rules into the server configuration (see rules above)
  */
@@ -859,6 +875,7 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table,
                           elt->name,
                           erroffset, errptr);
     }
+    he->extra = qos_pcre_study(pool, he->pcre);
     apr_table_setn(hfilter_table, elt->name, (char *)he);
     apr_pool_cleanup_register(pool, he->pcre, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   }
@@ -2632,18 +2649,18 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
       qos_rfilter_t *rfilter = (qos_rfilter_t *)entry[i].val;
       if(rfilter->type == QS_DENY_REQUEST_LINE) {
         deny_rule = 1;
-        ex = pcre_exec(rfilter->pr, NULL, request_line, request_line_len, 0, 0, NULL, 0);
+        ex = pcre_exec(rfilter->pr, rfilter->extra, request_line, request_line_len, 0, 0, NULL, 0);
       } else if(rfilter->type == QS_DENY_PATH) {
         deny_rule = 1;
-        ex = pcre_exec(rfilter->pr, NULL, path, path_len, 0, 0, NULL, 0);
+        ex = pcre_exec(rfilter->pr, rfilter->extra, path, path_len, 0, 0, NULL, 0);
       } else if(rfilter->type == QS_DENY_QUERY) {
         deny_rule = 1;
-        ex = pcre_exec(rfilter->pr, NULL, query, query_len, 0, 0, NULL, 0);
+        ex = pcre_exec(rfilter->pr, rfilter->extra, query, query_len, 0, 0, NULL, 0);
       } else if(rfilter->type == QS_DENY_EVENT) {
         /* event rules are processed seperately */
       } else {
         permit_rule = 1;
-        ex = pcre_exec(rfilter->pr, NULL, uri, uri_len, 0, 0, NULL, 0);
+        ex = pcre_exec(rfilter->pr, rfilter->extra, uri, uri_len, 0, 0, NULL, 0);
         permit_rule_action = rfilter->action;
         if(ex == 0) {
           permit_rule_match = 1; 
@@ -2695,7 +2712,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
     int denied = 0;
     if(he) {
       if(mode != QS_HEADERFILTER_SIZE_ONLY) {
-        if(pcre_exec(he->pcre, NULL, entry[i].val, strlen(entry[i].val), 0, 0, NULL, 0) < 0) {
+        if(pcre_exec(he->pcre, he->extra, entry[i].val, strlen(entry[i].val), 0, 0, NULL, 0) < 0) {
           denied = 1;
         }
       }
@@ -3079,7 +3096,7 @@ static void qos_parp_hp_body(request_rec *r, qos_srv_config *sconf) {
         apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvifparpbody_t)->elts;
         for(i = 0; i < apr_table_elts(sconf->setenvifparpbody_t)->nelts; i++) {
           qos_setenvifparpbody_t *setenvif = (qos_setenvifparpbody_t *)entry[i].val;
-          int c = pcre_exec(setenvif->preg, NULL, data, len, 0, 0, ovector, 3);
+          int c = pcre_exec(setenvif->preg, setenvif->extra, data, len, 0, 0, ovector, 3);
           if(c >= 0) {
             char *name = setenvif->name;
             char *value = apr_pstrdup(r->pool, setenvif->value);
@@ -8531,6 +8548,7 @@ const char *qos_event_setenvifparpbody_cmd(cmd_parms *cmd, void *dcfg,
                         cmd->directive->directive,
                         erroffset, errptr);
   }
+  setenvif->extra = qos_pcre_study(cmd->pool, setenvif->preg);
   apr_pool_cleanup_register(cmd->pool, setenvif->preg, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   if(setenvif->pregx == NULL) {
     return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
@@ -9002,6 +9020,7 @@ const char *qos_deny_cmd(cmd_parms *cmd, void *dcfg,
                           cmd->directive->directive,
                           erroffset, errptr);
     }
+    flt->extra = qos_pcre_study(cmd->pool, flt->pr);
     apr_pool_cleanup_register(cmd->pool, flt->pr, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   }
   flt->text = apr_pstrdup(cmd->pool, pcres);
@@ -9257,6 +9276,7 @@ const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg,
                         rule,
                         erroffset, errptr);
   }
+  he->extra = qos_pcre_study(cmd->pool, he->pcre);
   if(he->size <= 0) {
     return apr_psprintf(cmd->pool, "%s: size must be numeric value >0",
                         cmd->directive->directive);
@@ -9290,6 +9310,7 @@ const char *qos_resheaderfilter_rule_cmd(cmd_parms *cmd, void *dcfg,
                         rule,
                         erroffset, errptr);
   }
+  he->extra = qos_pcre_study(cmd->pool, he->pcre);
   if(he->size <= 0) {
     return apr_psprintf(cmd->pool, "%s: size must be numeric value >0",
                         cmd->directive->directive);

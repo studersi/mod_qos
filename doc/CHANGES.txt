@@ -1,3 +1,7 @@
+Version
+
+ - Use pcre_study() and match_limit where applicable.
+
 Version 9.76
 
  - New directive QS_ClientIpFromHeader (may be used in conjunction
