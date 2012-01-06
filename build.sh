@@ -1,14 +1,14 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.54 2011-11-24 20:13:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.55 2012-01-06 17:08:34 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2011 Pascal Buchbinder
+# Copyright (C) 2007-2012 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -31,7 +31,7 @@ TOP=`pwd`
 #APACHE_VER=2.0.59
 APACHE_VER=2.2.21
 MPM=worker
-MPM=prefork
+#MPM=prefork
 #MPM=event
 
 echo "build Apache $APACHE_VER ($MPM)"

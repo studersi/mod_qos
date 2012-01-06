@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.43 2011-11-30 19:25:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.44 2012-01-06 17:08:34 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -15,7 +15,7 @@
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2011 Pascal Buchbinder
+# Copyright (C) 2007-2012 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -33,6 +33,7 @@
 # MA 02110-1301, USA.
 #
 
+cd `dirname $0`
 TOP=`pwd`
 VERSION=`grep "char g_revision" httpd_src/modules/qos/mod_qos.c | awk '{print $6}' | awk -F'"' '{print $2}'`
 F_VERSION=`grep "char man_version" util/src/qs_util.h | awk '{print $6}' | awk -F'"' '{print $2}'`
@@ -79,12 +80,17 @@ mkdir -p mod_qos-${VERSION}/doc
 mkdir -p mod_qos-${VERSION}/apache2
 mkdir -p mod_qos-${VERSION}/tools/src
 mkdir -p mod_qos-${VERSION}/tools/man1
+mkdir -p doc/tmp
 
 echo "install documentation"
 cp doc/README.TXT mod_qos-${VERSION}
 cp doc/LICENSE.txt mod_qos-${VERSION}/doc
 cp doc/CHANGES.txt mod_qos-${VERSION}/doc
-sed <doc/index.html >mod_qos-${VERSION}/doc/index.html -e "s/0\.00/${VERSION}/g"
+sed <doc/index.html >mod_qos-${VERSION}/doc/index.html \
+ -e "s/0\.00/${VERSION}/g"
+sed <mod_qos-${VERSION}/doc/index.html >doc/tmp/index.html \
+ -e "s:BUILD START -->::g" \
+ -e "s:<!-- BUILD END::g"
 cp doc/mod_qos_s.gif mod_qos-${VERSION}/doc/
 cp doc/mod_qos_seq.gif mod_qos-${VERSION}/doc/
 cp doc/nevis.gif mod_qos-${VERSION}/doc/

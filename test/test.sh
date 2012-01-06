@@ -1,14 +1,14 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.184 2011-12-07 19:06:11 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.185 2012-01-06 17:08:34 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2011 Pascal Buchbinder
+# Copyright (C) 2007-2012 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -847,18 +847,18 @@ if [ $? -ne 0 ]; then
 fi
 ./run.sh -s ./scripts/qslog.htt
 if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED qslog.htt"
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qslog.htt"
 fi
 ./qslog.sh test log4j
 if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED qslog.sh test log4j"
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qslog.sh test log4j"
 fi
 ./qslog.sh test apache
 if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED qslog.sh test apache"
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qslog.sh test apache"
 fi
 
 # end -------------------------------------------------------------

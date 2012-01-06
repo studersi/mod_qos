@@ -6,7 +6,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2011 Pascal Buchbinder
+ * Copyright (C) 2007-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.27 2011-12-11 21:24:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.28 2012-01-06 17:08:34 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -52,39 +52,48 @@ static const char revision[] = "$Id: qslog.c,v 1.27 2011-12-11 21:24:31 pbuchbin
 /* ----------------------------------
  * structures
  * ---------------------------------- */
+typedef struct {
+  // id
+  char *path;
+  int len;
+
+  // counters
+  long m_line_count;
+  long long m_i_byte_count;
+  long long m_byte_count;
+  long m_duration_count;
+  long m_duration_0;
+  long m_duration_1;
+  long m_duration_2;
+  long m_duration_3;
+  long m_duration_4;
+  long m_duration_5;
+  long m_duration_6;
+  long m_connections;
+  
+  long m_status_1;
+  long m_status_2;
+  long m_status_3;
+  long m_status_4;
+  long m_status_5;
+  
+  long m_qos_v;
+  long m_qos_s;
+  long m_qos_d;
+  long m_qos_k;
+  long m_qos_t;
+  long m_qos_l;
+  long m_qos_ser;
+} stat_rec_t;
 
 /* ----------------------------------
  * global stat counter
  * ---------------------------------- */
-static long m_line_count = 0;
-static long long m_i_byte_count = -1;
-static long long m_byte_count = 0;
-static long m_duration_count = 0;
-static long m_duration_0 = 0;
-static long m_duration_1 = 0;
-static long m_duration_2 = 0;
-static long m_duration_3 = 0;
-static long m_duration_4 = 0;
-static long m_duration_5 = 0;
-static long m_duration_6 = 0;
-static long m_connections = -1;
-
-static long m_status_1 = 0;
-static long m_status_2 = 0;
-static long m_status_3 = 0;
-static long m_status_4 = 0;
-static long m_status_5 = 0;
-
-static long m_qos_v = 0;
-static long m_qos_s = 0;
-static long m_qos_d = 0;
-static long m_qos_k = 0;
-static long m_qos_t = 0;
-static long m_qos_l = 0;
-static long m_qos_ser = 0;
+static stat_rec_t* m_stat_rec;
 
 static qs_event_t *m_ip_list = NULL;
 static qs_event_t *m_user_list = NULL;
+
 /* output file */
 static FILE *m_f = NULL;
 static char  m_file_name[MAX_LINE];
@@ -272,35 +281,9 @@ static void getFreeMem(char *buf, int sz) {
 #define NBIS "ib/s"
 #define NAV "av"
 
-/*
- * writes all stat data to the out file
- * an resets all counters
- */
-static void printAndResetStat(char *timeStr) {
-  double av[1];
-  char mem[256];
-  char bis[256];
-  char esco[256];
-  bis[0] = '\0';
-  esco[0] = '\0';
-  if(m_i_byte_count != -1) {
-    sprintf(bis, NBIS";%lld;", m_i_byte_count/LOG_INTERVAL);
-  }
-  if(m_connections != -1) {
-    sprintf(esco, "esco;%ld;", m_connections);
-  }
-  if(!m_offline) {
-    getloadavg(av, 1);
-    if(m_mem) {
-      getFreeMem(mem, sizeof(mem));
-    } else {
-      mem[0] = '\0';
-    }
-  } else {
-    mem[0] = '\0';
-  }
-  qs_csLock();
-  fprintf(m_f, "%s;"
+static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int offline,
+			   double *av, const char *mem, const char *bis, const char *esco) {
+  fprintf(f, "%s;"
           NRS";%ld;"
 	  "req;%ld;"
           NBS";%lld;"
@@ -330,70 +313,101 @@ static void printAndResetStat(char *timeStr) {
 	  "qs;%ld;"
 	  ,
 	  timeStr,
-          m_line_count/LOG_INTERVAL,
-	  m_line_count,
-          m_byte_count/LOG_INTERVAL,
+          stat_rec->m_line_count/LOG_INTERVAL,
+	  stat_rec->m_line_count,
+          stat_rec->m_byte_count/LOG_INTERVAL,
 	  bis,
 	  esco,
-	  m_status_1,
-	  m_status_2,
-	  m_status_3,
-	  m_status_4,
-	  m_status_5,
-          m_duration_count/(m_line_count == 0 ? 1 : m_line_count),
-          m_duration_0,
-          m_duration_1,
-          m_duration_2,
-          m_duration_3,
-          m_duration_4,
-          m_duration_5,
-          m_duration_6,
+	  stat_rec->m_status_1,
+	  stat_rec->m_status_2,
+	  stat_rec->m_status_3,
+	  stat_rec->m_status_4,
+	  stat_rec->m_status_5,
+          stat_rec->m_duration_count/(stat_rec->m_line_count == 0 ? 1 : stat_rec->m_line_count),
+          stat_rec->m_duration_0,
+          stat_rec->m_duration_1,
+          stat_rec->m_duration_2,
+          stat_rec->m_duration_3,
+          stat_rec->m_duration_4,
+          stat_rec->m_duration_5,
+          stat_rec->m_duration_6,
           qs_countEvent(&m_ip_list),
           qs_countEvent(&m_user_list),
-	  m_qos_v,
-	  m_qos_s,
-	  m_qos_d,
-	  m_qos_k,
-	  m_qos_t,
-	  m_qos_l,
-	  m_qos_ser
+	  stat_rec->m_qos_v,
+	  stat_rec->m_qos_s,
+	  stat_rec->m_qos_d,
+	  stat_rec->m_qos_k,
+	  stat_rec->m_qos_t,
+	  stat_rec->m_qos_l,
+	  stat_rec->m_qos_ser
           );
-  m_line_count = 0;
-  m_byte_count = 0;
-  if(m_i_byte_count != -1) {
-    m_i_byte_count = 0;
+  stat_rec->m_line_count = 0;
+  stat_rec->m_byte_count = 0;
+  if(stat_rec->m_i_byte_count != -1) {
+    stat_rec->m_i_byte_count = 0;
   }
-  if(m_connections != -1) {
-    m_connections = 0;
+  if(stat_rec->m_connections != -1) {
+    stat_rec->m_connections = 0;
   }
-  m_status_1 = 0;
-  m_status_2 = 0;
-  m_status_3 = 0;
-  m_status_4 = 0;
-  m_status_5 = 0;
-  m_duration_count = 0;
-  m_duration_0 = 0;
-  m_duration_1 = 0;
-  m_duration_2 = 0;
-  m_duration_3 = 0;
-  m_duration_4 = 0;
-  m_duration_5 = 0;
-  m_duration_6 = 0;
-  m_qos_v = 0;
-  m_qos_s = 0;
-  m_qos_d = 0;
-  m_qos_k = 0;
-  m_qos_t = 0;
-  m_qos_l = 0;
-  m_qos_ser = 0;
-  if(!m_offline) {
-    fprintf(m_f, "sl;%.2f;m;%s",
+  stat_rec->m_status_1 = 0;
+  stat_rec->m_status_2 = 0;
+  stat_rec->m_status_3 = 0;
+  stat_rec->m_status_4 = 0;
+  stat_rec->m_status_5 = 0;
+  stat_rec->m_duration_count = 0;
+  stat_rec->m_duration_0 = 0;
+  stat_rec->m_duration_1 = 0;
+  stat_rec->m_duration_2 = 0;
+  stat_rec->m_duration_3 = 0;
+  stat_rec->m_duration_4 = 0;
+  stat_rec->m_duration_5 = 0;
+  stat_rec->m_duration_6 = 0;
+  stat_rec->m_qos_v = 0;
+  stat_rec->m_qos_s = 0;
+  stat_rec->m_qos_d = 0;
+  stat_rec->m_qos_k = 0;
+  stat_rec->m_qos_t = 0;
+  stat_rec->m_qos_l = 0;
+  stat_rec->m_qos_ser = 0;
+  if(!offline) {
+    fprintf(f, "sl;%.2f;m;%s",
 	    av[0], mem[0] ? mem : "-");
   } else {
-    fprintf(m_f, "sl;-;m;-");
+    fprintf(f, "sl;-;m;-");
     m_offline_data = 0;
   }
-  fprintf(m_f, "\n");
+  fprintf(f, "\n");
+}
+
+/*
+ * writes all stat data to the out file
+ * an resets all counters
+ */
+static void printAndResetStat(char *timeStr) {
+  double av[1];
+  char mem[256];
+  char bis[256];
+  char esco[256];
+  bis[0] = '\0';
+  esco[0] = '\0';
+  if(m_stat_rec->m_i_byte_count != -1) {
+    sprintf(bis, NBIS";%lld;", m_stat_rec->m_i_byte_count/LOG_INTERVAL);
+  }
+  if(m_stat_rec->m_connections != -1) {
+    sprintf(esco, "esco;%ld;", m_stat_rec->m_connections);
+  }
+  if(!m_offline) {
+    getloadavg(av, 1);
+    if(m_mem) {
+      getFreeMem(mem, sizeof(mem));
+    } else {
+      mem[0] = '\0';
+    }
+  } else {
+    mem[0] = '\0';
+  }
+  qs_csLock();
+  printStat2File(m_f, timeStr, m_stat_rec, m_offline, av, mem, bis, esco);
   qs_csUnLock();
   fflush(m_f);
 }
@@ -490,25 +504,25 @@ static void updateStat(const char *cstr, char *line) {
   qs_csLock();
   if(Q != NULL) {
     if(strchr(Q, 'V') != NULL) {
-      m_qos_v++;
+      m_stat_rec->m_qos_v++;
     }
     if(strchr(Q, 'S') != NULL) {
-      m_qos_s++;
+      m_stat_rec->m_qos_s++;
     }
     if(strchr(Q, 'D') != NULL) {
-      m_qos_d++;
+      m_stat_rec->m_qos_d++;
     }
     if(strchr(Q, 'K') != NULL) {
-      m_qos_k++;
+      m_stat_rec->m_qos_k++;
     }
     if(strchr(Q, 'T') != NULL) {
-      m_qos_t++;
+      m_stat_rec->m_qos_t++;
     }
     if(strchr(Q, 'L') != NULL) {
-      m_qos_l++;
+      m_stat_rec->m_qos_l++;
     }
     if(strchr(Q, 's') != NULL) {
-      m_qos_ser++;
+      m_stat_rec->m_qos_ser++;
     }
   }
   if(I != NULL) {
@@ -522,33 +536,33 @@ static void updateStat(const char *cstr, char *line) {
   if(B != NULL) {
     /* transferred bytes */
     stripNum(&B);
-    m_byte_count = m_byte_count + atoi(B);
+    m_stat_rec->m_byte_count += atoi(B);
   }
   if(BI != NULL) {
     /* transferred bytes */
     stripNum(&BI);
-    m_i_byte_count = m_i_byte_count + atoi(BI);
+    m_stat_rec->m_i_byte_count += atoi(BI);
   }
   if(k != NULL) {
     stripNum(&k);
     if(k[0] == '0' && k[1] == '\0') {
-      m_connections++;
+      m_stat_rec->m_connections++;
     }
   }
   if(S != NULL) {
     stripNum(&S);
     if(S[0] == '1') {
-      m_status_1++;
+      m_stat_rec->m_status_1++;
     } else if(S[0] == '1') {
-      m_status_1++;
+      m_stat_rec->m_status_1++;
     } else if(S[0] == '2') {
-      m_status_2++;
+      m_stat_rec->m_status_2++;
     } else if(S[0] == '3') {
-      m_status_3++;
+      m_stat_rec->m_status_3++;
     } else if(S[0] == '4') {
-      m_status_4++;
+      m_stat_rec->m_status_4++;
     } else if(S[0] == '5') {
-      m_status_5++;
+      m_stat_rec->m_status_5++;
     }
   }
   if(T != NULL || t != NULL || D != NULL) {
@@ -563,25 +577,25 @@ static void updateStat(const char *cstr, char *line) {
       stripNum(&D);
       tme = atol(D) / 1000000;
     }
-    m_duration_count = m_duration_count + tme;
+    m_stat_rec->m_duration_count += tme;
     if(tme < 1) {
-      m_duration_0++;
+      m_stat_rec->m_duration_0++;
     } else if(tme == 1) {
-      m_duration_1++;
+      m_stat_rec->m_duration_1++;
     } else if(tme == 2) {
-      m_duration_2++;
+      m_stat_rec->m_duration_2++;
     } else if(tme == 3) {
-      m_duration_3++;
+      m_stat_rec->m_duration_3++;
     } else if(tme == 4) {
-      m_duration_4++;
+      m_stat_rec->m_duration_4++;
     } else if(tme == 5) {
-      m_duration_5++;
+      m_stat_rec->m_duration_5++;
     } else {
-      m_duration_6++;
+      m_stat_rec->m_duration_6++;
     }
   }
   /* request counter */
-  m_line_count++;
+  m_stat_rec->m_line_count++;
   qs_csUnLock();
 
   if(m_offline && m_verbose) {
@@ -935,6 +949,38 @@ int main(int argc, char **argv) {
   char *username = NULL;
   pthread_attr_t *tha = NULL;
   pthread_t tid;
+  m_stat_rec = calloc(sizeof(stat_rec_t), 1);
+  m_stat_rec->path = calloc(2, 1);
+  m_stat_rec->path[0] = '/';
+  m_stat_rec->len = strlen(m_stat_rec->path);
+
+  m_stat_rec->m_line_count = 0;
+  m_stat_rec->m_i_byte_count = -1;
+  m_stat_rec->m_byte_count = 0;
+  m_stat_rec->m_duration_count = 0;
+  m_stat_rec->m_duration_0 = 0;
+  m_stat_rec->m_duration_1 = 0;
+  m_stat_rec->m_duration_2 = 0;
+  m_stat_rec->m_duration_3 = 0;
+  m_stat_rec->m_duration_4 = 0;
+  m_stat_rec->m_duration_5 = 0;
+  m_stat_rec->m_duration_6 = 0;
+  m_stat_rec->m_connections = -1;
+
+  m_stat_rec->m_status_1 = 0;
+  m_stat_rec->m_status_2 = 0;
+  m_stat_rec->m_status_3 = 0;
+  m_stat_rec->m_status_4 = 0;
+  m_stat_rec->m_status_5 = 0;
+
+  m_stat_rec->m_qos_v = 0;
+  m_stat_rec->m_qos_s = 0;
+  m_stat_rec->m_qos_d = 0;
+  m_stat_rec->m_qos_k = 0;
+  m_stat_rec->m_qos_t = 0;
+  m_stat_rec->m_qos_l = 0;
+  m_stat_rec->m_qos_ser = 0;
+
   qs_csInitLock();
   qs_setExpiration(ACTIVE_TIME);
   if(cmd == NULL) {
@@ -950,11 +996,11 @@ int main(int argc, char **argv) {
 	config = *(++argv);
 	if(strchr(config, 'i')) {
 	  // enable ib/s
-	  m_i_byte_count = 0;
+	  m_stat_rec->m_i_byte_count = 0;
 	}
 	if(strchr(config, 'k')) {
 	  // enable esco
-	  m_connections = 0;
+	  m_stat_rec->m_connections = 0;
 	}
       }
     } else if(strcmp(*argv,"-o") == 0) { /* this is the out file */
