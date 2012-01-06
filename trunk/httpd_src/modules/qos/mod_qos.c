@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.368 2012-01-06 17:08:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.369 2012-01-06 20:12:08 pbuchbinder Exp $";
 static const char g_revision[] = "9.77";
 
 /************************************************************************
@@ -847,15 +847,18 @@ static pcre_extra *qos_pcre_study(apr_pool_t *pool, pcre *pc) {
   pcre_extra *extra = pcre_study(pc, 0, &errptr);
   if(extra != NULL) {
     apr_pool_cleanup_register(pool, extra, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
-#ifdef PCRE_EXTRA_MATCH_LIMIT
   } else {
-    extra = apr_palloc(pool, sizeof(pcre_extra));
-#endif
+    extra = apr_pcalloc(pool, sizeof(pcre_extra));
   }
 #ifdef PCRE_EXTRA_MATCH_LIMIT
   extra->match_limit = 1500;
   extra->flags |= PCRE_EXTRA_MATCH_LIMIT;
 #endif
+#ifdef PCRE_EXTRA_MATCH_LIMIT_RECURSION
+  extra->match_limit_recursion = 1500;
+  extra->flags |= PCRE_EXTRA_MATCH_LIMIT_RECURSION;
+#endif
+
   return extra;
 }
 
@@ -1194,7 +1197,7 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
 static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **ret_buf, const char *value) {
   EVP_CIPHER_CTX cipher_ctx;
   /* decode */
-  char *dec = (char *)apr_palloc(r->pool, 1 + apr_base64_decode_len(value));
+  char *dec = (char *)apr_pcalloc(r->pool, 1 + apr_base64_decode_len(value));
   int dec_len = apr_base64_decode(dec, value);
   *ret_buf = NULL;
   if(dec_len == 0) {
@@ -2154,7 +2157,7 @@ static const char *qos_parp_query(request_rec *r, apr_table_t *tl, const char *a
     add_len = strlen(add);
     len = len + add_len + 1;
   }
-  query = apr_palloc(r->pool, len + 2);
+  query = apr_pcalloc(r->pool, len + 2);
   query[0] = '?';
   if(add_len) {
     memcpy(&query[1], add, add_len);

@@ -2,7 +2,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2011 Pascal Buchbinder
+ * Copyright (C) 2007-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regexspeed.c,v 1.1 2012-01-03 20:07:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: regexspeed.c,v 1.2 2012-01-06 20:12:08 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -103,7 +103,7 @@ int main(int argc, const char *const argv[]) {
       int len = strlen(readline);
       const char *errptr = NULL;
       int erroffset;
-      rule_t *rule = apr_palloc(pool, sizeof(rule_t));
+      rule_t *rule = apr_pcalloc(pool, sizeof(rule_t));
       while(len > 0 && readline[len] < 32) {
 	readline[len] = '\0';
 	len--;
@@ -119,7 +119,7 @@ int main(int argc, const char *const argv[]) {
       }
       rule->extra = pcre_study(rule->pc, 0, &errptr);
       if(rule->extra == NULL) {
-        rule->extra = apr_palloc(pool, sizeof(pcre_extra));
+        rule->extra = apr_pcalloc(pool, sizeof(pcre_extra));
       }
       rule->extra->match_limit = 1500;
       rule->extra->flags |= PCRE_EXTRA_MATCH_LIMIT;
