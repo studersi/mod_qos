@@ -153,9 +153,11 @@ mod_qos is an open source software licensed under the <a href="LICENSE.txt" targ
 <p>
 More information about mod_qos:
 <ul>
+<!-- BUILD START -->
 <li><a href="#build">Build</a></li>
 <li><a href="#source">Source</a></li>
 <li><a href="CHANGES.txt">Changes</a></li>
+<!-- BUILD END -->
 <li><a href="#configuration">Configuration</a></li>
 <ul>
 <li><a href="#requestlevelcontrol">Request Level Control</a></li>
@@ -181,6 +183,7 @@ More information about mod_qos:
 </p>
 
 <hr>
+<!-- BUILD START -->
 <a name="build"></a>
 <h2>Build</h2>
 <p>
@@ -189,14 +192,14 @@ Apache distribution), threading and shared memory support. mod_qos supports
 Apache version 2.2 <a href="http://httpd.apache.org/docs/2.2/mod/worker.html" target="_blank">MPM worker</a> 
 binaries and is optimized to be used in a <a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy.html">proxy</a> server.<br><br>
 Just copy the module into the <code>modules</code> directory of the Apache server's source code and 
-compile it using the following commands (all examples are using Apache 2.2.19 and 
+compile it using the following commands (all examples are using Apache 2.2.21 and 
 mod_qos 0.00):
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
 <pre>
-tar xfz httpd-2.2.19.tar.gz
+tar xfz httpd-2.2.21.tar.gz
 tar xfz mod_qos-0.00-src.tar.gz
-ln -s httpd-2.2.19 httpd
+ln -s httpd-2.2.21 httpd
 cd httpd
 mkdir modules/qos
 cp ../mod_qos-0.00/apache2/* modules/qos
@@ -230,7 +233,7 @@ server's modules directory.
 <tr><td bgcolor="#E0EBE0">
 <pre>
 cd mod_qos-0.00/apache2
-apxs -i -c mod_qos.c
+apxs -i -c mod_qos.c -lcrypto -lpcre
 cd ../..
 </pre>
 </td></tr>
@@ -244,7 +247,7 @@ add the <code>-L</code> option to specify the directory where libraries can be f
 <p>
 The <a href="#utilities">support tools</a> may be built (at least on some 
 Linux platforms) using the GNU autotools. Some of these 
-utilities require third-party libraries such as apr, apr-util, pcre, 
+utilities require third-party libraries such as apr, apr-util, PCRE, 
 libpng, and OpenSSL.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
@@ -268,6 +271,7 @@ to execute <code>aclocal</code> manually and execute <code>make</code> again.
 <a href="../apache2">mod_qos</a> is available for Apache version 2.2.
 </p>
 
+<!-- BUILD END -->
 <!-- CONFIGURATION -->
 
 <a name="configuration"></a>

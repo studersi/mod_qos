@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.367 2012-01-03 20:09:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.368 2012-01-06 17:08:34 pbuchbinder Exp $";
 static const char g_revision[] = "9.77";
 
 /************************************************************************
@@ -847,11 +847,15 @@ static pcre_extra *qos_pcre_study(apr_pool_t *pool, pcre *pc) {
   pcre_extra *extra = pcre_study(pc, 0, &errptr);
   if(extra != NULL) {
     apr_pool_cleanup_register(pool, extra, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+#ifdef PCRE_EXTRA_MATCH_LIMIT
   } else {
     extra = apr_palloc(pool, sizeof(pcre_extra));
+#endif
   }
+#ifdef PCRE_EXTRA_MATCH_LIMIT
   extra->match_limit = 1500;
   extra->flags |= PCRE_EXTRA_MATCH_LIMIT;
+#endif
   return extra;
 }
 
