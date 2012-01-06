@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.28 2012-01-06 17:08:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.29 2012-01-06 21:47:07 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -52,44 +52,47 @@ static const char revision[] = "$Id: qslog.c,v 1.28 2012-01-06 17:08:34 pbuchbin
 /* ----------------------------------
  * structures
  * ---------------------------------- */
-typedef struct {
+
+typedef struct stat_rec_st {
   // id
   char *path;
   int len;
+  struct stat_rec_st *next;
 
   // counters
-  long m_line_count;
-  long long m_i_byte_count;
-  long long m_byte_count;
-  long m_duration_count;
-  long m_duration_0;
-  long m_duration_1;
-  long m_duration_2;
-  long m_duration_3;
-  long m_duration_4;
-  long m_duration_5;
-  long m_duration_6;
-  long m_connections;
+  long line_count;
+  long long i_byte_count;
+  long long byte_count;
+  long duration_count;
+  long duration_0;
+  long duration_1;
+  long duration_2;
+  long duration_3;
+  long duration_4;
+  long duration_5;
+  long duration_6;
+  long connections;
   
-  long m_status_1;
-  long m_status_2;
-  long m_status_3;
-  long m_status_4;
-  long m_status_5;
+  long status_1;
+  long status_2;
+  long status_3;
+  long status_4;
+  long status_5;
   
-  long m_qos_v;
-  long m_qos_s;
-  long m_qos_d;
-  long m_qos_k;
-  long m_qos_t;
-  long m_qos_l;
-  long m_qos_ser;
+  long qos_v;
+  long qos_s;
+  long qos_d;
+  long qos_k;
+  long qos_t;
+  long qos_l;
+  long qos_ser;
 } stat_rec_t;
 
 /* ----------------------------------
  * global stat counter
  * ---------------------------------- */
 static stat_rec_t* m_stat_rec;
+static stat_rec_t* m_stat_sub = NULL;
 
 static qs_event_t *m_ip_list = NULL;
 static qs_event_t *m_user_list = NULL;
@@ -281,8 +284,18 @@ static void getFreeMem(char *buf, int sz) {
 #define NBIS "ib/s"
 #define NAV "av"
 
-static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int offline,
-			   double *av, const char *mem, const char *bis, const char *esco) {
+static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int offline, int main,
+			   double *av, const char *mem) {
+  char bis[256];
+  char esco[256];
+  bis[0] = '\0';
+  esco[0] = '\0';
+  if(stat_rec->i_byte_count != -1) {
+    sprintf(bis, NBIS";%lld;", stat_rec->i_byte_count/LOG_INTERVAL);
+  }
+  if(stat_rec->connections != -1) {
+    sprintf(esco, "esco;%ld;", stat_rec->connections);
+  }
   fprintf(f, "%s;"
           NRS";%ld;"
 	  "req;%ld;"
@@ -313,68 +326,70 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
 	  "qs;%ld;"
 	  ,
 	  timeStr,
-          stat_rec->m_line_count/LOG_INTERVAL,
-	  stat_rec->m_line_count,
-          stat_rec->m_byte_count/LOG_INTERVAL,
+          stat_rec->line_count/LOG_INTERVAL,
+	  stat_rec->line_count,
+          stat_rec->byte_count/LOG_INTERVAL,
 	  bis,
 	  esco,
-	  stat_rec->m_status_1,
-	  stat_rec->m_status_2,
-	  stat_rec->m_status_3,
-	  stat_rec->m_status_4,
-	  stat_rec->m_status_5,
-          stat_rec->m_duration_count/(stat_rec->m_line_count == 0 ? 1 : stat_rec->m_line_count),
-          stat_rec->m_duration_0,
-          stat_rec->m_duration_1,
-          stat_rec->m_duration_2,
-          stat_rec->m_duration_3,
-          stat_rec->m_duration_4,
-          stat_rec->m_duration_5,
-          stat_rec->m_duration_6,
+	  stat_rec->status_1,
+	  stat_rec->status_2,
+	  stat_rec->status_3,
+	  stat_rec->status_4,
+	  stat_rec->status_5,
+          stat_rec->duration_count/(stat_rec->line_count == 0 ? 1 : stat_rec->line_count),
+          stat_rec->duration_0,
+          stat_rec->duration_1,
+          stat_rec->duration_2,
+          stat_rec->duration_3,
+          stat_rec->duration_4,
+          stat_rec->duration_5,
+          stat_rec->duration_6,
           qs_countEvent(&m_ip_list),
           qs_countEvent(&m_user_list),
-	  stat_rec->m_qos_v,
-	  stat_rec->m_qos_s,
-	  stat_rec->m_qos_d,
-	  stat_rec->m_qos_k,
-	  stat_rec->m_qos_t,
-	  stat_rec->m_qos_l,
-	  stat_rec->m_qos_ser
+	  stat_rec->qos_v,
+	  stat_rec->qos_s,
+	  stat_rec->qos_d,
+	  stat_rec->qos_k,
+	  stat_rec->qos_t,
+	  stat_rec->qos_l,
+	  stat_rec->qos_ser
           );
-  stat_rec->m_line_count = 0;
-  stat_rec->m_byte_count = 0;
-  if(stat_rec->m_i_byte_count != -1) {
-    stat_rec->m_i_byte_count = 0;
+  stat_rec->line_count = 0;
+  stat_rec->byte_count = 0;
+  if(stat_rec->i_byte_count != -1) {
+    stat_rec->i_byte_count = 0;
   }
-  if(stat_rec->m_connections != -1) {
-    stat_rec->m_connections = 0;
+  if(main && (stat_rec->connections != -1)) {
+    stat_rec->connections = 0;
   }
-  stat_rec->m_status_1 = 0;
-  stat_rec->m_status_2 = 0;
-  stat_rec->m_status_3 = 0;
-  stat_rec->m_status_4 = 0;
-  stat_rec->m_status_5 = 0;
-  stat_rec->m_duration_count = 0;
-  stat_rec->m_duration_0 = 0;
-  stat_rec->m_duration_1 = 0;
-  stat_rec->m_duration_2 = 0;
-  stat_rec->m_duration_3 = 0;
-  stat_rec->m_duration_4 = 0;
-  stat_rec->m_duration_5 = 0;
-  stat_rec->m_duration_6 = 0;
-  stat_rec->m_qos_v = 0;
-  stat_rec->m_qos_s = 0;
-  stat_rec->m_qos_d = 0;
-  stat_rec->m_qos_k = 0;
-  stat_rec->m_qos_t = 0;
-  stat_rec->m_qos_l = 0;
-  stat_rec->m_qos_ser = 0;
-  if(!offline) {
-    fprintf(f, "sl;%.2f;m;%s",
-	    av[0], mem[0] ? mem : "-");
-  } else {
-    fprintf(f, "sl;-;m;-");
-    m_offline_data = 0;
+  stat_rec->status_1 = 0;
+  stat_rec->status_2 = 0;
+  stat_rec->status_3 = 0;
+  stat_rec->status_4 = 0;
+  stat_rec->status_5 = 0;
+  stat_rec->duration_count = 0;
+  stat_rec->duration_0 = 0;
+  stat_rec->duration_1 = 0;
+  stat_rec->duration_2 = 0;
+  stat_rec->duration_3 = 0;
+  stat_rec->duration_4 = 0;
+  stat_rec->duration_5 = 0;
+  stat_rec->duration_6 = 0;
+  stat_rec->qos_v = 0;
+  stat_rec->qos_s = 0;
+  stat_rec->qos_d = 0;
+  stat_rec->qos_k = 0;
+  stat_rec->qos_t = 0;
+  stat_rec->qos_l = 0;
+  stat_rec->qos_ser = 0;
+  if(main) {
+    if(!offline) {
+      fprintf(f, "sl;%.2f;m;%s",
+	      av[0], mem[0] ? mem : "-");
+    } else {
+      fprintf(f, "sl;-;m;-");
+      m_offline_data = 0;
+    }
   }
   fprintf(f, "\n");
 }
@@ -386,16 +401,6 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
 static void printAndResetStat(char *timeStr) {
   double av[1];
   char mem[256];
-  char bis[256];
-  char esco[256];
-  bis[0] = '\0';
-  esco[0] = '\0';
-  if(m_stat_rec->m_i_byte_count != -1) {
-    sprintf(bis, NBIS";%lld;", m_stat_rec->m_i_byte_count/LOG_INTERVAL);
-  }
-  if(m_stat_rec->m_connections != -1) {
-    sprintf(esco, "esco;%ld;", m_stat_rec->m_connections);
-  }
   if(!m_offline) {
     getloadavg(av, 1);
     if(m_mem) {
@@ -407,7 +412,7 @@ static void printAndResetStat(char *timeStr) {
     mem[0] = '\0';
   }
   qs_csLock();
-  printStat2File(m_f, timeStr, m_stat_rec, m_offline, av, mem, bis, esco);
+  printStat2File(m_f, timeStr, m_stat_rec, m_offline, 1, av, mem);
   qs_csUnLock();
   fflush(m_f);
 }
@@ -504,25 +509,25 @@ static void updateStat(const char *cstr, char *line) {
   qs_csLock();
   if(Q != NULL) {
     if(strchr(Q, 'V') != NULL) {
-      m_stat_rec->m_qos_v++;
+      m_stat_rec->qos_v++;
     }
     if(strchr(Q, 'S') != NULL) {
-      m_stat_rec->m_qos_s++;
+      m_stat_rec->qos_s++;
     }
     if(strchr(Q, 'D') != NULL) {
-      m_stat_rec->m_qos_d++;
+      m_stat_rec->qos_d++;
     }
     if(strchr(Q, 'K') != NULL) {
-      m_stat_rec->m_qos_k++;
+      m_stat_rec->qos_k++;
     }
     if(strchr(Q, 'T') != NULL) {
-      m_stat_rec->m_qos_t++;
+      m_stat_rec->qos_t++;
     }
     if(strchr(Q, 'L') != NULL) {
-      m_stat_rec->m_qos_l++;
+      m_stat_rec->qos_l++;
     }
     if(strchr(Q, 's') != NULL) {
-      m_stat_rec->m_qos_ser++;
+      m_stat_rec->qos_ser++;
     }
   }
   if(I != NULL) {
@@ -536,33 +541,33 @@ static void updateStat(const char *cstr, char *line) {
   if(B != NULL) {
     /* transferred bytes */
     stripNum(&B);
-    m_stat_rec->m_byte_count += atoi(B);
+    m_stat_rec->byte_count += atoi(B);
   }
   if(BI != NULL) {
     /* transferred bytes */
     stripNum(&BI);
-    m_stat_rec->m_i_byte_count += atoi(BI);
+    m_stat_rec->i_byte_count += atoi(BI);
   }
   if(k != NULL) {
     stripNum(&k);
     if(k[0] == '0' && k[1] == '\0') {
-      m_stat_rec->m_connections++;
+      m_stat_rec->connections++;
     }
   }
   if(S != NULL) {
     stripNum(&S);
     if(S[0] == '1') {
-      m_stat_rec->m_status_1++;
+      m_stat_rec->status_1++;
     } else if(S[0] == '1') {
-      m_stat_rec->m_status_1++;
+      m_stat_rec->status_1++;
     } else if(S[0] == '2') {
-      m_stat_rec->m_status_2++;
+      m_stat_rec->status_2++;
     } else if(S[0] == '3') {
-      m_stat_rec->m_status_3++;
+      m_stat_rec->status_3++;
     } else if(S[0] == '4') {
-      m_stat_rec->m_status_4++;
+      m_stat_rec->status_4++;
     } else if(S[0] == '5') {
-      m_stat_rec->m_status_5++;
+      m_stat_rec->status_5++;
     }
   }
   if(T != NULL || t != NULL || D != NULL) {
@@ -577,25 +582,25 @@ static void updateStat(const char *cstr, char *line) {
       stripNum(&D);
       tme = atol(D) / 1000000;
     }
-    m_stat_rec->m_duration_count += tme;
+    m_stat_rec->duration_count += tme;
     if(tme < 1) {
-      m_stat_rec->m_duration_0++;
+      m_stat_rec->duration_0++;
     } else if(tme == 1) {
-      m_stat_rec->m_duration_1++;
+      m_stat_rec->duration_1++;
     } else if(tme == 2) {
-      m_stat_rec->m_duration_2++;
+      m_stat_rec->duration_2++;
     } else if(tme == 3) {
-      m_stat_rec->m_duration_3++;
+      m_stat_rec->duration_3++;
     } else if(tme == 4) {
-      m_stat_rec->m_duration_4++;
+      m_stat_rec->duration_4++;
     } else if(tme == 5) {
-      m_stat_rec->m_duration_5++;
+      m_stat_rec->duration_5++;
     } else {
-      m_stat_rec->m_duration_6++;
+      m_stat_rec->duration_6++;
     }
   }
   /* request counter */
-  m_stat_rec->m_line_count++;
+  m_stat_rec->line_count++;
   qs_csUnLock();
 
   if(m_offline && m_verbose) {
@@ -942,44 +947,86 @@ static void usage(char *cmd, int man) {
   }
 }
 
+static stat_rec_t *createRec(const char *path) {
+  stat_rec_t *rec = calloc(sizeof(stat_rec_t), 1);
+  int len = strlen(path);
+  rec->path = calloc(len+1, 1);
+  strcpy(rec->path, path);
+  rec->path[len] = '\0';
+  rec->len = len;
+  rec->next = NULL;
+
+  rec->line_count = 0;
+  rec->i_byte_count = -1;
+  rec->byte_count = 0;
+  rec->duration_count = 0;
+  rec->duration_0 = 0;
+  rec->duration_1 = 0;
+  rec->duration_2 = 0;
+  rec->duration_3 = 0;
+  rec->duration_4 = 0;
+  rec->duration_5 = 0;
+  rec->duration_6 = 0;
+  rec->connections = -1;
+
+  rec->status_1 = 0;
+  rec->status_2 = 0;
+  rec->status_3 = 0;
+  rec->status_4 = 0;
+  rec->status_5 = 0;
+
+  rec->qos_v = 0;
+  rec->qos_s = 0;
+  rec->qos_d = 0;
+  rec->qos_k = 0;
+  rec->qos_t = 0;
+  rec->qos_l = 0;
+  rec->qos_ser = 0;
+  return rec;
+}
+
+static stat_rec_t *loadUrl(const char *confFile) {
+  char line[MAX_LINE];
+  FILE *file = fopen(confFile, "r"); 
+  stat_rec_t *rec = createRec("/");
+  stat_rec_t *prev = NULL;
+  stat_rec_t *next = NULL;
+  if(file == NULL) {
+    qerror("could not open file for writing '%s': ", confFile, strerror(errno));
+    exit(1);
+  }
+  while(!qs_getLinef(line, sizeof(line), file)) {
+    if(line[0] == '/' && line[1]) {
+      char *p = line;
+      int len = strlen(p);
+      if(p[len-1] != '/') {
+	p = calloc(len+2, 1);
+	strcpy(p, line);
+	p[len] = '/';
+	p[len+1] = '\0';
+      }
+      next = createRec(p);
+      if(prev) {
+	prev->next = next;
+      } else {
+	rec->next = next;
+      }
+      prev = next;
+    }
+  }
+  fclose(file);
+  return rec;
+}
+
 int main(int argc, char **argv) {
   char *config = NULL;
   char *file = NULL;
+  char *confFile = NULL;
   char *cmd = strrchr(argv[0], '/');
   char *username = NULL;
   pthread_attr_t *tha = NULL;
   pthread_t tid;
-  m_stat_rec = calloc(sizeof(stat_rec_t), 1);
-  m_stat_rec->path = calloc(2, 1);
-  m_stat_rec->path[0] = '/';
-  m_stat_rec->len = strlen(m_stat_rec->path);
-
-  m_stat_rec->m_line_count = 0;
-  m_stat_rec->m_i_byte_count = -1;
-  m_stat_rec->m_byte_count = 0;
-  m_stat_rec->m_duration_count = 0;
-  m_stat_rec->m_duration_0 = 0;
-  m_stat_rec->m_duration_1 = 0;
-  m_stat_rec->m_duration_2 = 0;
-  m_stat_rec->m_duration_3 = 0;
-  m_stat_rec->m_duration_4 = 0;
-  m_stat_rec->m_duration_5 = 0;
-  m_stat_rec->m_duration_6 = 0;
-  m_stat_rec->m_connections = -1;
-
-  m_stat_rec->m_status_1 = 0;
-  m_stat_rec->m_status_2 = 0;
-  m_stat_rec->m_status_3 = 0;
-  m_stat_rec->m_status_4 = 0;
-  m_stat_rec->m_status_5 = 0;
-
-  m_stat_rec->m_qos_v = 0;
-  m_stat_rec->m_qos_s = 0;
-  m_stat_rec->m_qos_d = 0;
-  m_stat_rec->m_qos_k = 0;
-  m_stat_rec->m_qos_t = 0;
-  m_stat_rec->m_qos_l = 0;
-  m_stat_rec->m_qos_ser = 0;
+  m_stat_rec = createRec("");
 
   qs_csInitLock();
   qs_setExpiration(ACTIVE_TIME);
@@ -996,11 +1043,11 @@ int main(int argc, char **argv) {
 	config = *(++argv);
 	if(strchr(config, 'i')) {
 	  // enable ib/s
-	  m_stat_rec->m_i_byte_count = 0;
+	  m_stat_rec->i_byte_count = 0;
 	}
 	if(strchr(config, 'k')) {
 	  // enable esco
-	  m_stat_rec->m_connections = 0;
+	  m_stat_rec->connections = 0;
 	}
       }
     } else if(strcmp(*argv,"-o") == 0) { /* this is the out file */
@@ -1010,6 +1057,10 @@ int main(int argc, char **argv) {
     } else if(strcmp(*argv,"-u") == 0) { /* switch user id */
       if (--argc >= 1) {
 	username = *(++argv);
+      }
+    } else if(strcmp(*argv,"-c") == 0) { /* configuration file (url list) */
+      if (--argc >= 1) {
+	confFile = *(++argv);
       }
     } else if(strcmp(*argv,"-p") == 0) { /* activate offline analysis */
       m_offline = 1;
@@ -1037,6 +1088,14 @@ int main(int argc, char **argv) {
   }
   /* requires at leas an output file and a format string */
   if(file == NULL || config == NULL) usage(cmd, 0);
+
+  if(confFile) {
+    if(strchr(config, 'u') == NULL) {
+      qerror("you need to add 'u' to the format string when enabling the url list (-c)");
+      exit(1);
+    }
+    m_stat_sub = loadUrl(confFile);
+  }
 
   if(username && getuid() == 0) {
     struct passwd *pwd = getpwnam(username);
