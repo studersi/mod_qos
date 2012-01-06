@@ -5,7 +5,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2011 Pascal Buchbinder
+ * Copyright (C) 2007-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.67 2011-11-29 08:35:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.68 2012-01-06 20:12:08 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -808,7 +808,7 @@ static void qos_query_optimization(apr_pool_t *pool, apr_table_t *rules) {
 	{
 	  const char *errptr = NULL;
 	  char *rule = apr_pstrcat(pool, "^", r->path, NULL);
-	  qs_rule_t *rs = apr_palloc(pool, sizeof(qs_rule_t));
+	  qs_rule_t *rs = apr_pcalloc(pool, sizeof(qs_rule_t));
 	  if(strlen(query_m_string) > 0) {
 	    rule = apr_pstrcat(pool, rule, "\\?", qos_qqs(pool, query_m_string, query_m_pcre, 0, 0, 0), NULL);
 	  }
@@ -984,7 +984,7 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
 	      }
 	      pcre_test = qos_pcre_compile(pattern, option);
 	      extra = pcre_study(pcre_test, 0, &errptr);
-	      rs = apr_palloc(pool, sizeof(qs_rule_t));
+	      rs = apr_pcalloc(pool, sizeof(qs_rule_t));
 	      rs->pcre = pcre_test;
 	      rs->extra = extra;
 	      apr_table_setn(ruletable, pattern, (char *)rs);
@@ -1273,7 +1273,7 @@ static void qos_rule_optimization(apr_pool_t *pool, apr_pool_t *lpool,
 	      if(qos_is_alnum(match)) {
 		char *matchx = apr_psprintf(lpool, "[%s]{%d}", qos_2pcre(lpool, match), e-s);
 		char *new = apr_psprintf(pool, "%.*s%s%s", s, entry[i].key, matchx, &entry[i].key[e]);
-		qs_rule_t *rsn = apr_palloc(pool, sizeof(qs_rule_t));
+		qs_rule_t *rsn = apr_pcalloc(pool, sizeof(qs_rule_t));
 		rsn->pcre = qos_pcre_compile(new, 0);
 		rsn->extra = pcre_study(rsn->pcre, 0, &errptr);
 		rsn->path = rs->path;
@@ -1480,7 +1480,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
 	  {
 	    const char *errptr = NULL;
 	    char *rule;
-	    qs_rule_t *rs = apr_palloc(pool, sizeof(qs_rule_t));
+	    qs_rule_t *rs = apr_pcalloc(pool, sizeof(qs_rule_t));
 	    if(doubleSlash) {
 	      rule = apr_pstrcat(pool, "^[/]?", path, NULL);
 	    } else {

@@ -2,7 +2,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2011 Pascal Buchbinder
+ * Copyright (C) 2007-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: b64.c,v 1.9 2011-07-21 18:42:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.10 2012-01-06 20:12:08 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -146,7 +146,7 @@ static void code(const char *mode, const char *line, int len) {
   apr_pool_t *pool;
   apr_pool_create(&pool, NULL);
   if(strcmp(mode, "-d") == 0) {
-    char *dec = (char *)apr_palloc(pool, 1 + apr_base64_decode_len(line));
+    char *dec = (char *)apr_pcalloc(pool, 1 + apr_base64_decode_len(line));
     int dec_len = apr_base64_decode(dec, line);
     if(dec_len > 0) {
       int i;
