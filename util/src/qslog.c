@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.29 2012-01-06 21:47:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.30 2012-01-08 21:56:12 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -48,6 +48,7 @@ static const char revision[] = "$Id: qslog.c,v 1.29 2012-01-06 21:47:07 pbuchbin
  * ---------------------------------- */
 #define ACTIVE_TIME 600 /* how long is a client "active" (ip addresses seen in the log) */
 #define LOG_INTERVAL 60 /* log interval ist 60 sec, don't change this value */
+#define LOG_DET ".detailed"
 
 /* ----------------------------------
  * structures
@@ -55,8 +56,8 @@ static const char revision[] = "$Id: qslog.c,v 1.29 2012-01-06 21:47:07 pbuchbin
 
 typedef struct stat_rec_st {
   // id
-  char *path;
-  int len;
+  char *id;
+  regex_t preg;
   struct stat_rec_st *next;
 
   // counters
@@ -99,6 +100,7 @@ static qs_event_t *m_user_list = NULL;
 
 /* output file */
 static FILE *m_f = NULL;
+static FILE *m_f2 = NULL;
 static char  m_file_name[MAX_LINE];
 static int   m_rotate = 0;
 /* regex to search the time string */
@@ -394,11 +396,71 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
   fprintf(f, "\n");
 }
 
+static stat_rec_t *createRec(const char *id, const char *pattern) {
+  stat_rec_t *rec = calloc(sizeof(stat_rec_t), 1);
+  rec->id = calloc(strlen(id)+1, 1);
+  strcpy(rec->id, id);
+  rec->id[strlen(id)] = '\0';
+  if(regcomp(&rec->preg, pattern, REG_EXTENDED)) {
+    qerror("failed to compile pattern %s", pattern);
+    exit(1);
+  }
+  rec->next = NULL;
+
+  rec->line_count = 0;
+  rec->i_byte_count = -1;
+  rec->byte_count = 0;
+  rec->duration_count = 0;
+  rec->duration_0 = 0;
+  rec->duration_1 = 0;
+  rec->duration_2 = 0;
+  rec->duration_3 = 0;
+  rec->duration_4 = 0;
+  rec->duration_5 = 0;
+  rec->duration_6 = 0;
+  rec->connections = -1;
+
+  rec->status_1 = 0;
+  rec->status_2 = 0;
+  rec->status_3 = 0;
+  rec->status_4 = 0;
+  rec->status_5 = 0;
+
+  rec->qos_v = 0;
+  rec->qos_s = 0;
+  rec->qos_d = 0;
+  rec->qos_k = 0;
+  rec->qos_t = 0;
+  rec->qos_l = 0;
+  rec->qos_ser = 0;
+  return rec;
+}
+
+static stat_rec_t *getRec(const char *value) {
+  regmatch_t ma;
+  int len = 0;
+  stat_rec_t *r = m_stat_sub;
+  stat_rec_t *rec = NULL;
+  while(r) {
+    if(regexec(&r->preg, value, 1, &ma, 0) != 0) {
+      int l = ma.rm_eo - ma.rm_so + 1;
+      if(l > len) {
+	// longest match
+	len = l;
+	rec = r;
+      }
+    }
+    r = r->next;
+  }
+  return rec;
+}
+
 /*
  * writes all stat data to the out file
  * an resets all counters
  */
 static void printAndResetStat(char *timeStr) {
+  stat_rec_t *r = m_stat_sub;
   double av[1];
   char mem[256];
   if(!m_offline) {
@@ -413,8 +475,100 @@ static void printAndResetStat(char *timeStr) {
   }
   qs_csLock();
   printStat2File(m_f, timeStr, m_stat_rec, m_offline, 1, av, mem);
+  while(r) {
+    printStat2File(m_f2, timeStr, r, m_offline, 0, av, mem);
+    r = r->next;
+  }
   qs_csUnLock();
   fflush(m_f);
+  if(m_f2) {
+    fflush(m_f2);
+  }
+}
+
+static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
+		      char *BI, char *B, char *R, char *I, char *U, char *Q, char *k, char *C,
+		      long tme) {
+  if(Q != NULL) {
+    if(strchr(Q, 'V') != NULL) {
+      rec->qos_v++;
+    }
+    if(strchr(Q, 'S') != NULL) {
+      rec->qos_s++;
+    }
+    if(strchr(Q, 'D') != NULL) {
+      rec->qos_d++;
+    }
+    if(strchr(Q, 'K') != NULL) {
+      rec->qos_k++;
+    }
+    if(strchr(Q, 'T') != NULL) {
+      rec->qos_t++;
+    }
+    if(strchr(Q, 'L') != NULL) {
+      rec->qos_l++;
+    }
+    if(strchr(Q, 's') != NULL) {
+      rec->qos_ser++;
+    }
+  }
+  if(I != NULL) {
+    /* update/store client IP */
+    qs_insertEvent(&m_ip_list, I);
+  }
+  if(U != NULL) {
+    /* update/store user */
+    qs_insertEvent(&m_user_list, U);
+  }
+  if(B != NULL) {
+    /* transferred bytes */
+    rec->byte_count += atoi(B);
+  }
+  if(BI != NULL) {
+    /* transferred bytes */
+    rec->i_byte_count += atoi(BI);
+  }
+  if(k != NULL) {
+    if(k[0] == '0' && k[1] == '\0') {
+      rec->connections++;
+    }
+  }
+  if(S != NULL) {
+    if(S[0] == '1') {
+      rec->status_1++;
+    } else if(S[0] == '1') {
+      rec->status_1++;
+    } else if(S[0] == '2') {
+      rec->status_2++;
+    } else if(S[0] == '3') {
+      rec->status_3++;
+    } else if(S[0] == '4') {
+      rec->status_4++;
+    } else if(S[0] == '5') {
+      rec->status_5++;
+    }
+  }
+  if(T != NULL || t != NULL || D != NULL) {
+    /* response duration */
+    rec->duration_count += tme;
+    if(tme < 1) {
+      rec->duration_0++;
+    } else if(tme == 1) {
+      rec->duration_1++;
+    } else if(tme == 2) {
+      rec->duration_2++;
+    } else if(tme == 3) {
+      rec->duration_3++;
+    } else if(tme == 4) {
+      rec->duration_4++;
+    } else if(tme == 5) {
+      rec->duration_5++;
+    } else {
+      rec->duration_6++;
+    }
+  }
+  /* request counter */
+  rec->line_count++;
 }
 
 /*
@@ -430,6 +584,7 @@ static void printAndResetStat(char *timeStr) {
  * .         .                     .      R                                   .            T
  */
 static void updateStat(const char *cstr, char *line) {
+  stat_rec_t *rec = NULL;
   char *T = NULL; /* time */
   char *t = NULL; /* time ms */
   char *D = NULL; /* time us */
@@ -441,6 +596,7 @@ static void updateStat(const char *cstr, char *line) {
   char *U = NULL; /* user */
   char *Q = NULL; /* mod_qos event message */
   char *k = NULL; /* connections (keep alive requests = 0) */
+  char *C = NULL; /* custom patter matching the config file */
   const char *c = cstr;
   char *l = line;
   long tme;
@@ -479,6 +635,10 @@ static void updateStat(const char *cstr, char *line) {
       if(l != NULL && l[0] != '\0') {
         k = cutNext(&l);
       }
+    } else if(c[0] == 'C') {
+      if(l != NULL && l[0] != '\0') {
+        C = cutNext(&l);
+      }
     } else if(c[0] == 'R') {
       if(l != NULL && l[0] != '\0') {
         R = cutNext(&l);
@@ -505,70 +665,24 @@ static void updateStat(const char *cstr, char *line) {
     }
     c++;
   }
+  if(C) {
+    rec = getRec(C);
+  }
 
   qs_csLock();
-  if(Q != NULL) {
-    if(strchr(Q, 'V') != NULL) {
-      m_stat_rec->qos_v++;
-    }
-    if(strchr(Q, 'S') != NULL) {
-      m_stat_rec->qos_s++;
-    }
-    if(strchr(Q, 'D') != NULL) {
-      m_stat_rec->qos_d++;
-    }
-    if(strchr(Q, 'K') != NULL) {
-      m_stat_rec->qos_k++;
-    }
-    if(strchr(Q, 'T') != NULL) {
-      m_stat_rec->qos_t++;
-    }
-    if(strchr(Q, 'L') != NULL) {
-      m_stat_rec->qos_l++;
-    }
-    if(strchr(Q, 's') != NULL) {
-      m_stat_rec->qos_ser++;
-    }
-  }
-  if(I != NULL) {
-    /* update/store client IP */
-    qs_insertEvent(&m_ip_list, I);
-  }
-  if(U != NULL) {
-    /* update/store user */
-    qs_insertEvent(&m_user_list, U);
-  }
   if(B != NULL) {
     /* transferred bytes */
     stripNum(&B);
-    m_stat_rec->byte_count += atoi(B);
   }
   if(BI != NULL) {
     /* transferred bytes */
     stripNum(&BI);
-    m_stat_rec->i_byte_count += atoi(BI);
   }
   if(k != NULL) {
     stripNum(&k);
-    if(k[0] == '0' && k[1] == '\0') {
-      m_stat_rec->connections++;
-    }
   }
   if(S != NULL) {
     stripNum(&S);
-    if(S[0] == '1') {
-      m_stat_rec->status_1++;
-    } else if(S[0] == '1') {
-      m_stat_rec->status_1++;
-    } else if(S[0] == '2') {
-      m_stat_rec->status_2++;
-    } else if(S[0] == '3') {
-      m_stat_rec->status_3++;
-    } else if(S[0] == '4') {
-      m_stat_rec->status_4++;
-    } else if(S[0] == '5') {
-      m_stat_rec->status_5++;
-    }
   }
   if(T != NULL || t != NULL || D != NULL) {
     /* response duration */
@@ -582,25 +696,11 @@ static void updateStat(const char *cstr, char *line) {
       stripNum(&D);
       tme = atol(D) / 1000000;
     }
-    m_stat_rec->duration_count += tme;
-    if(tme < 1) {
-      m_stat_rec->duration_0++;
-    } else if(tme == 1) {
-      m_stat_rec->duration_1++;
-    } else if(tme == 2) {
-      m_stat_rec->duration_2++;
-    } else if(tme == 3) {
-      m_stat_rec->duration_3++;
-    } else if(tme == 4) {
-      m_stat_rec->duration_4++;
-    } else if(tme == 5) {
-      m_stat_rec->duration_5++;
-    } else {
-      m_stat_rec->duration_6++;
-    }
   }
-  /* request counter */
-  m_stat_rec->line_count++;
+  updateRec(m_stat_rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
+  if(rec) {
+    updateRec(rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
+  }
   qs_csUnLock();
 
   if(m_offline && m_verbose) {
@@ -947,48 +1047,10 @@ static void usage(char *cmd, int man) {
   }
 }
 
-static stat_rec_t *createRec(const char *path) {
-  stat_rec_t *rec = calloc(sizeof(stat_rec_t), 1);
-  int len = strlen(path);
-  rec->path = calloc(len+1, 1);
-  strcpy(rec->path, path);
-  rec->path[len] = '\0';
-  rec->len = len;
-  rec->next = NULL;
-
-  rec->line_count = 0;
-  rec->i_byte_count = -1;
-  rec->byte_count = 0;
-  rec->duration_count = 0;
-  rec->duration_0 = 0;
-  rec->duration_1 = 0;
-  rec->duration_2 = 0;
-  rec->duration_3 = 0;
-  rec->duration_4 = 0;
-  rec->duration_5 = 0;
-  rec->duration_6 = 0;
-  rec->connections = -1;
-
-  rec->status_1 = 0;
-  rec->status_2 = 0;
-  rec->status_3 = 0;
-  rec->status_4 = 0;
-  rec->status_5 = 0;
-
-  rec->qos_v = 0;
-  rec->qos_s = 0;
-  rec->qos_d = 0;
-  rec->qos_k = 0;
-  rec->qos_t = 0;
-  rec->qos_l = 0;
-  rec->qos_ser = 0;
-  return rec;
-}
-
 static stat_rec_t *loadUrl(const char *confFile) {
   char line[MAX_LINE];
   FILE *file = fopen(confFile, "r"); 
-  stat_rec_t *rec = createRec("/");
+  stat_rec_t *rec = NULL;
   stat_rec_t *prev = NULL;
   stat_rec_t *next = NULL;
   if(file == NULL) {
@@ -996,16 +1058,15 @@ static stat_rec_t *loadUrl(const char *confFile) {
     exit(1);
   }
   while(!qs_getLinef(line, sizeof(line), file)) {
-    if(line[0] == '/' && line[1]) {
-      char *p = line;
-      int len = strlen(p);
-      if(p[len-1] != '/') {
-	p = calloc(len+2, 1);
-	strcpy(p, line);
-	p[len] = '/';
-	p[len+1] = '\0';
+    char *id = line;
+    char *p = strchr(line, ':');
+    if(p) {
+      p[0] = '\0';
+      p++;
+      next = createRec(id, p);
+      if(rec == NULL) {
+	rec = next;
       }
-      next = createRec(p);
       if(prev) {
 	prev->next = next;
       } else {
@@ -1026,7 +1087,7 @@ int main(int argc, char **argv) {
   char *username = NULL;
   pthread_attr_t *tha = NULL;
   pthread_t tid;
-  m_stat_rec = createRec("");
+  m_stat_rec = createRec("", "");
 
   qs_csInitLock();
   qs_setExpiration(ACTIVE_TIME);
@@ -1058,7 +1119,7 @@ int main(int argc, char **argv) {
       if (--argc >= 1) {
 	username = *(++argv);
       }
-    } else if(strcmp(*argv,"-c") == 0) { /* configuration file (url list) */
+    } else if(strcmp(*argv,"-c") == 0) { /* custom patterns (url pattern list, format: <id>':'<pattern>) */
       if (--argc >= 1) {
 	confFile = *(++argv);
       }
@@ -1089,14 +1150,6 @@ int main(int argc, char **argv) {
   /* requires at leas an output file and a format string */
   if(file == NULL || config == NULL) usage(cmd, 0);
 
-  if(confFile) {
-    if(strchr(config, 'u') == NULL) {
-      qerror("you need to add 'u' to the format string when enabling the url list (-c)");
-      exit(1);
-    }
-    m_stat_sub = loadUrl(confFile);
-  }
-
   if(username && getuid() == 0) {
     struct passwd *pwd = getpwnam(username);
     uid_t uid, gid;
@@ -1119,14 +1172,29 @@ int main(int argc, char **argv) {
   }
   m_f = fopen(file, "a+"); 
   if(m_f == NULL) {
-    qerror("could not open file for writing '%s': ", file, strerror(errno));
+    qerror("could not open file for writing '%s': %s", file, strerror(errno));
     exit(1);
   }
-  if(strlen(file) > (sizeof(m_file_name) - strlen(".yyyymmddHHMMSS "))) {
+  if(strlen(file) > (sizeof(m_file_name) - strlen(".yyyymmddHHMMSS  ") - strlen(LOG_DET))) {
     qerror("file name too long '%s'", file);
     exit(1);
   }
   strcpy(m_file_name, file);
+
+  if(confFile) {
+    char path[MAX_LINE];
+    snprintf(path, sizeof(path), "%s"LOG_DET, m_file_name);
+    if(strchr(config, 'C') == NULL) {
+      qerror("you need to add 'C' to the format string when enabling the pattern list (-c)");
+      exit(1);
+    }
+    m_stat_sub = loadUrl(confFile);
+    m_f2 = fopen(path, "a+");
+    if(m_f == NULL) {
+      qerror("could not open file for writing '%s': %s", path, strerror(errno));
+      exit(1);
+    }
+  }
 
   if(m_offline) {
     nice(10);
