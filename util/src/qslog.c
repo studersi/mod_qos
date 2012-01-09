@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.30 2012-01-08 21:56:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.31 2012-01-09 13:03:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -49,6 +49,7 @@ static const char revision[] = "$Id: qslog.c,v 1.30 2012-01-08 21:56:12 pbuchbin
 #define ACTIVE_TIME 600 /* how long is a client "active" (ip addresses seen in the log) */
 #define LOG_INTERVAL 60 /* log interval ist 60 sec, don't change this value */
 #define LOG_DET ".detailed"
+#define RULE_DELIM ':'
 
 /* ----------------------------------
  * structures
@@ -102,6 +103,7 @@ static qs_event_t *m_user_list = NULL;
 static FILE *m_f = NULL;
 static FILE *m_f2 = NULL;
 static char  m_file_name[MAX_LINE];
+static char  m_file_name2[MAX_LINE];
 static int   m_rotate = 0;
 /* regex to search the time string */
 static regex_t m_trx;
@@ -290,15 +292,26 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
 			   double *av, const char *mem) {
   char bis[256];
   char esco[256];
+  char ip[256];
+  char usr[256];
   bis[0] = '\0';
   esco[0] = '\0';
   if(stat_rec->i_byte_count != -1) {
     sprintf(bis, NBIS";%lld;", stat_rec->i_byte_count/LOG_INTERVAL);
   }
-  if(stat_rec->connections != -1) {
+  if(main && stat_rec->connections != -1) {
     sprintf(esco, "esco;%ld;", stat_rec->connections);
   }
+  if(main) {
+    sprintf(ip, "ip;%ld;", qs_countEvent(&m_ip_list));
+    sprintf(usr, "usr;%ld;", qs_countEvent(&m_user_list));
+  } else {
+    ip[0] = '\0';
+    usr[0] = '\0';
+  }
+
   fprintf(f, "%s;"
+	  "%s"
           NRS";%ld;"
 	  "req;%ld;"
           NBS";%lld;"
@@ -317,8 +330,8 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
           "4s;%ld;"
           "5s;%ld;"
           ">5s;%ld;"
-	  "ip;%ld;"
-	  "usr;%ld;"
+	  "%s"
+	  "%s"
 	  "qV;%ld;"
 	  "qS;%ld;"
 	  "qD;%ld;"
@@ -328,6 +341,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
 	  "qs;%ld;"
 	  ,
 	  timeStr,
+	  main ? "" : stat_rec->id,
           stat_rec->line_count/LOG_INTERVAL,
 	  stat_rec->line_count,
           stat_rec->byte_count/LOG_INTERVAL,
@@ -346,8 +360,8 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
           stat_rec->duration_4,
           stat_rec->duration_5,
           stat_rec->duration_6,
-          qs_countEvent(&m_ip_list),
-          qs_countEvent(&m_user_list),
+	  ip,
+	  usr,
 	  stat_rec->qos_v,
 	  stat_rec->qos_s,
 	  stat_rec->qos_d,
@@ -398,9 +412,9 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
 
 static stat_rec_t *createRec(const char *id, const char *pattern) {
   stat_rec_t *rec = calloc(sizeof(stat_rec_t), 1);
-  rec->id = calloc(strlen(id)+1, 1);
-  strcpy(rec->id, id);
-  rec->id[strlen(id)] = '\0';
+  rec->id = calloc(strlen(id)+2, 1);
+  sprintf(rec->id, "%s;", id);
+  rec->id[strlen(id)+1] = '\0';
   if(regcomp(&rec->preg, pattern, REG_EXTENDED)) {
     qerror("failed to compile pattern %s", pattern);
     exit(1);
@@ -437,13 +451,13 @@ static stat_rec_t *createRec(const char *id, const char *pattern) {
 }
 
 static stat_rec_t *getRec(const char *value) {
-  regmatch_t ma;
+  regmatch_t ma[1];
   int len = 0;
   stat_rec_t *r = m_stat_sub;
   stat_rec_t *rec = NULL;
   while(r) {
-    if(regexec(&r->preg, value, 1, &ma, 0) != 0) {
-      int l = ma.rm_eo - ma.rm_so + 1;
+    if(regexec(&r->preg, value, 1, ma, 0) == 0) {
+      int l = ma[0].rm_eo - ma[0].rm_so + 1;
       if(l > len) {
 	// longest match
 	len = l;
@@ -896,8 +910,10 @@ static void *loggerThread(void *argv) {
       strftime(buf, sizeof(buf), "%H:%M", ptr);
       if(strcmp(buf, "23:59") == 0) {
 	char arch[MAX_LINE];
+	char arch2[MAX_LINE];
 	strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptr);
 	snprintf(arch, sizeof(arch), "%s.%s", m_file_name, buf);
+	snprintf(arch2, sizeof(arch), "%s.%s", m_file_name2, buf);
 	if(fclose(m_f) != 0) {
 	  qerror("failed to close file '%s': %s", m_file_name, strerror(errno));
 	}
@@ -905,6 +921,11 @@ static void *loggerThread(void *argv) {
 	  qerror("failed to move file '%s': %s", arch, strerror(errno));
 	}
 	m_f = fopen(m_file_name, "a+"); 
+	if(m_f2) {
+	  fclose(m_f2);
+	  rename(m_file_name2, arch2);
+	  m_f2 = fopen(m_file_name2, "a+"); 
+	}
       }
     }
   }
@@ -1059,7 +1080,7 @@ static stat_rec_t *loadUrl(const char *confFile) {
   }
   while(!qs_getLinef(line, sizeof(line), file)) {
     char *id = line;
-    char *p = strchr(line, ':');
+    char *p = strchr(line, RULE_DELIM);
     if(p) {
       p[0] = '\0';
       p++;
@@ -1119,7 +1140,7 @@ int main(int argc, char **argv) {
       if (--argc >= 1) {
 	username = *(++argv);
       }
-    } else if(strcmp(*argv,"-c") == 0) { /* custom patterns (url pattern list, format: <id>':'<pattern>) */
+    } else if(strcmp(*argv,"-c") == 0) { /* custom patterns (e.g. url pattern list, format: <id>':'<pattern>) */
       if (--argc >= 1) {
 	confFile = *(++argv);
       }
@@ -1182,16 +1203,15 @@ int main(int argc, char **argv) {
   strcpy(m_file_name, file);
 
   if(confFile) {
-    char path[MAX_LINE];
-    snprintf(path, sizeof(path), "%s"LOG_DET, m_file_name);
+    snprintf(m_file_name2, sizeof(m_file_name2), "%s"LOG_DET, m_file_name);
     if(strchr(config, 'C') == NULL) {
       qerror("you need to add 'C' to the format string when enabling the pattern list (-c)");
       exit(1);
     }
     m_stat_sub = loadUrl(confFile);
-    m_f2 = fopen(path, "a+");
+    m_f2 = fopen(m_file_name2, "a+");
     if(m_f == NULL) {
-      qerror("could not open file for writing '%s': %s", path, strerror(errno));
+      qerror("could not open file for writing '%s': %s", m_file_name2, strerror(errno));
       exit(1);
     }
   }
