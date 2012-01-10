@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: qslog.sh,v 2.7 2012-01-09 13:03:58 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.8 2012-01-10 07:31:55 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -34,7 +34,7 @@ case "$1" in
 	    for sec in `seq 0 58`; do
 		printf "127.0.0.1 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 200 100 \"Mozilla\" '0' 0 \"/htt/index.html\"\n" $min $sec
 		printf "127.0.0.1 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /a/index.txt HTTP/1.1\" 200 100 \"Mozilla\" '0' 1 \"/a/index.html\"\n" $min $sec
-		printf "127.0.0.2 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /b/index.txt HTTP/1.1\" 200 200 \"Mozilla\" '0' 2 \"/b/index.html\"\n" $min $sec
+		printf "127.0.0.2 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /b/pages/index.txt HTTP/1.1\" 200 200 \"Mozilla\" '0' 2 \"/b/pages/index.html\"\n" $min $sec
 		printf "127.0.0.3 -    - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /c/index.txt HTTP/1.1\" 500 200 \"Mozilla\" '4' 3 \"/c/index.html\"\n" $min $sec
 		sleep 1
 	    done
@@ -56,7 +56,17 @@ case "$1" in
 	fi
 	if [ `grep -c '01;r/s;1;req;118;b/s;295;1xx;0;2xx;59;3xx;0;4xx;0;5xx;59;av;2;<1s;59;1s;0;2s;0;3s;0;4s;59;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log.detailed` -ne 2 ]; then
 	    cat qs.log.detailed
-	    echo "$PFX FAILED"
+	    echo "$PFX FAILED (rule 01)"
+	    exit 1
+	fi
+	if [ `grep -c '02;r/s;0;req;0;' qs.log.detailed` -ne 2 ]; then
+	    cat qs.log.detailed
+	    echo "$PFX FAILED (rule 02)"
+	    exit 1
+	fi
+	if [ `grep -c '03;r/s;0;req;59;b/s;196;1xx;0;2xx;59;' qs.log.detailed` -ne 2 ]; then
+	    cat qs.log.detailed
+	    echo "$PFX FAILED (rule 03)"
 	    exit 1
 	fi
 	echo "$PFX OK"
