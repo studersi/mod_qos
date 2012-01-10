@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.31 2012-01-09 13:03:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.32 2012-01-10 07:31:55 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -947,7 +947,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p [-v]] [-x] [-u <name>] [-m]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p [-v]] [-x] [-u <name>] [-m] [-c <path>]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -999,6 +999,7 @@ static void usage(char *cmd, int man) {
   qs_man_println(man, "     k defines the number of keepalive requests on the connection (%%k)\n");
   qs_man_println(man, "     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   qs_man_println(man, "     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
+  qs_man_println(man, "     C defines the element for the detailed log (-c option), e.g. \"%%U\"\n");
   qs_man_println(man, "     . defines an element to ignore (unknown string)\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -o <out_file>\n");
@@ -1026,6 +1027,14 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "  -m\n");
   if(man) printf("\n");
   qs_man_print(man, "     Calculates free system memory every minute.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -c <path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Enables the collection of log statitics for different request types.\n");
+  qs_man_print(man, "     'path' specifies the necessary rule file. Each rule consists of a rule\n");
+  qs_man_print(man, "     identifier and a regular expression to identify a request seprarated\n");
+  qs_man_print(man, "     by a colon, e.g., 01:^(/a)|(/c). The regular expressions are matched against\n");
+  qs_man_print(man, "     the log data element which has been identified by the 'C' format character.\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
@@ -1068,7 +1077,7 @@ static void usage(char *cmd, int man) {
   }
 }
 
-static stat_rec_t *loadUrl(const char *confFile) {
+static stat_rec_t *loadRule(const char *confFile) {
   char line[MAX_LINE];
   FILE *file = fopen(confFile, "r"); 
   stat_rec_t *rec = NULL;
@@ -1084,6 +1093,9 @@ static stat_rec_t *loadUrl(const char *confFile) {
     if(p) {
       p[0] = '\0';
       p++;
+      if(m_verbose) {
+	printf("load rule %s: %s\n", id, p);
+      }
       next = createRec(id, p);
       if(rec == NULL) {
 	rec = next;
@@ -1208,7 +1220,7 @@ int main(int argc, char **argv) {
       qerror("you need to add 'C' to the format string when enabling the pattern list (-c)");
       exit(1);
     }
-    m_stat_sub = loadUrl(confFile);
+    m_stat_sub = loadRule(confFile);
     m_f2 = fopen(m_file_name2, "a+");
     if(m_f == NULL) {
       qerror("could not open file for writing '%s': %s", m_file_name2, strerror(errno));

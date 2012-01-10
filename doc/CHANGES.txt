@@ -2,6 +2,9 @@ Version
 
  - Use pcre_study() and match_limit where applicable.
 
+ - qslog features the option "-c" to collect separate statistics,
+   e.g., for different URLs.
+
 Version 9.76
 
  - New directive QS_ClientIpFromHeader (may be used in conjunction
