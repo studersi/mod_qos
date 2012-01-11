@@ -1,5 +1,5 @@
 #
-# $Id: QS_LimitRequestBody.htt,v 1.4 2011-06-23 20:08:35 pbuchbinder Exp $
+# $Id: QS_LimitRequestBody.htt,v 1.5 2012-01-11 21:27:03 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -121,5 +121,48 @@ __
 _-field=1234567890
 _EXPECT . "code=044"
 _WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /htt/handler HTTP/1.1
+__Host: localhost
+__Transfer-Encoding: chunked
+__Content-Type: text/xml
+_FLUSH
+__<node>
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+__</node>
+_CHUNK
+__
+__0
+__
+_EXPECT . "==AS1=="
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
 
 END
