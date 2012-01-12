@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.369 2012-01-06 20:12:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.370 2012-01-12 19:13:50 pbuchbinder Exp $";
 static const char g_revision[] = "9.77";
 
 /************************************************************************
@@ -164,6 +164,10 @@ static const char *m_note_variables[] = {
    be increased to 10 or 30 seconds in order to compensate bandwidth variations */
 #ifndef QS_REQ_RATE_TM
 #define QS_REQ_RATE_TM    5
+#endif
+
+#ifndef QS_EXTRA_MATCH_LIMIT
+#define QS_EXTRA_MATCH_LIMIT 1500
 #endif
 
 #define QS_MAX_DELAY 5000
@@ -577,6 +581,7 @@ typedef struct {
   int cc_tolerance;           /* GLOBAL ONLY */
   int cc_tolerance_max;       /* GLOBAL ONLY */
   int cc_tolerance_min;       /* GLOBAL ONLY */
+  int qs_req_rate_tm;         /* GLOBAL ONLY */
   apr_table_t *milestones;
   time_t milestone_timeout;
   /* predefined client behavior */
@@ -851,11 +856,15 @@ static pcre_extra *qos_pcre_study(apr_pool_t *pool, pcre *pc) {
     extra = apr_pcalloc(pool, sizeof(pcre_extra));
   }
 #ifdef PCRE_EXTRA_MATCH_LIMIT
-  extra->match_limit = 1500;
+  extra->match_limit = QS_EXTRA_MATCH_LIMIT;
   extra->flags |= PCRE_EXTRA_MATCH_LIMIT;
 #endif
 #ifdef PCRE_EXTRA_MATCH_LIMIT_RECURSION
-  extra->match_limit_recursion = 1500;
+  extra->match_limit_recursion = QS_EXTRA_MATCH_LIMIT;
+  extra->flags |= PCRE_EXTRA_MATCH_LIMIT_RECURSION;
+#endif
+#ifdef PCRE_EXTRA_MATCH_LIMIT_RECURSION
+  extra->match_limit_recursion = QS_EXTRA_MATCH_LIMIT;
   extra->flags |= PCRE_EXTRA_MATCH_LIMIT_RECURSION;
 #endif
 
@@ -5082,7 +5091,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     int currentcon = 0;
     int req_rate = qos_req_rate_calc(sconf, &currentcon);
     apr_time_t now = apr_time_sec(apr_time_now());
-    apr_time_t interval = now - QS_REQ_RATE_TM;
+    apr_time_t interval = now - sconf->qs_req_rate_tm;
     int i;
     apr_table_entry_t *entry;
     *ip = 0;
@@ -5138,7 +5147,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
         }
       } else {
         if(interval > inctx->time) {
-          int rate = inctx->nbytes / QS_REQ_RATE_TM;
+          int rate = inctx->nbytes / sconf->qs_req_rate_tm;
           if(rate < req_rate) {
             if(inctx->client_socket) {
               qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
@@ -5171,7 +5180,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                            rate,
                            inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
               if(level == APLOG_INFO) {
-                inctx->time = interval + QS_REQ_RATE_TM;
+                inctx->time = interval + sconf->qs_req_rate_tm;
                 inctx->nbytes = 0;
               } else {
                 if(!sconf->log_only) {
@@ -5188,7 +5197,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
               inctx->shutdown = 1;
             }
           } else {
-            inctx->time = interval + QS_REQ_RATE_TM;
+            inctx->time = interval + sconf->qs_req_rate_tm;
             inctx->nbytes = 0;
           }
         }
@@ -7817,6 +7826,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_limit = 0;
   sconf->qos_cc_serialize = 0;
   sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
+  sconf->qs_req_rate_tm = QS_REQ_RATE_TM;
   sconf->qos_cc_block_time = 600;
   sconf->qos_cc_limit_time = 600;
   sconf->qos_cc_forwardedfor = NULL;
@@ -7893,6 +7903,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_forwardedfor = b->qos_cc_forwardedfor;
   o->qos_cc_serialize = b->qos_cc_serialize;
   o->cc_tolerance = b->cc_tolerance;
+  o->qs_req_rate_tm = b->qs_req_rate_tm;
   o->req_rate = b->req_rate;
   o->req_rate_start = b->req_rate_start;
   o->min_rate = b->min_rate;
@@ -9458,6 +9469,21 @@ const char *qos_client_serial_cmd(cmd_parms *cmd, void *dcfg) {
   return NULL;
 }
 
+const char *qos_req_rate_tm_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->qs_req_rate_tm= atoi(arg1);
+  if(sconf->qs_req_rate_tm <= 0) {
+    return apr_psprintf(cmd->pool, "%s: must be numeric value between >0",
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
 const char *qos_client_tolerance_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -9705,6 +9731,9 @@ static const command_rec qos_config_cmds[] = {
                   " disables the QS_SrvRequestRate and QS_SrvMinDataRate enforcement for"
                   " a virtual host (only port/address based but not for name based"
                   " virtual hosts)."),
+  AP_INIT_TAKE1("QS_SrvSampleRate", qos_req_rate_tm_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvSampleRate <seconds>"),
   AP_INIT_TAKE12("QS_SrvRequestRate", qos_req_rate_cmd, NULL,
                  RSRC_CONF,
                  "QS_SrvRequestRate <bytes per seconds> [<max bytes per second>],"
