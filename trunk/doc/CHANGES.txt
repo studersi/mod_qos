@@ -5,6 +5,9 @@ Version
  - qslog features the option "-c" to collect separate statistics,
    e.g., for different URLs.
 
+ - New directive QS_SrvSampleRate (may be used to adjust the
+   QS_REQ_RATE_TM sample rate at runtime/post compilation).
+
 Version 9.76
 
  - New directive QS_ClientIpFromHeader (may be used in conjunction
