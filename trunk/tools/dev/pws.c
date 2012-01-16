@@ -50,7 +50,7 @@
 #include <openssl/err.h>
 #include <openssl/safestack.h>
 
-static const char revision[] = "$Id: pws.c,v 1.5 2012-01-16 21:55:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: pws.c,v 1.6 2012-01-16 22:00:58 pbuchbinder Exp $";
 
 #define MAX_LINE 32768
 #define QOSCR    13
@@ -307,11 +307,11 @@ int main(int argc, const char *const argv[]) {
     } else if(strcmp(*argv, "-a") == 0) {
       if (--argc >= 1) {
 	id = *(++argv);
-	if (argc > 2 && *argv[0] != '-') {
+	if (argc >= 1 && *argv[0] != '-') {
 	  password = *(++argv);
 	  argc--;
 	}
-	if (argc > 2 && *argv[0] != '-') {
+	if (argc >= 1 && *argv[0] != '-') {
 	  comment = *(++argv);
 	  argc--;
 	}
@@ -319,7 +319,7 @@ int main(int argc, const char *const argv[]) {
     } else if(argc >= 1 && strcmp(*argv, "-c") == 0) {
       if (--argc >= 1) {
 	id = *(++argv);
-	if (argc >= 2 && *argv[0] != '-') {
+	if (argc >= 1 && *argv[0] != '-') {
 	  comment = *(++argv);
 	  argc--;
 	}
