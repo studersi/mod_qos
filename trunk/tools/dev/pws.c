@@ -50,7 +50,7 @@
 #include <openssl/err.h>
 #include <openssl/safestack.h>
 
-static const char revision[] = "$Id: pws.c,v 1.3 2012-01-16 21:16:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: pws.c,v 1.4 2012-01-16 21:41:08 pbuchbinder Exp $";
 
 #define MAX_LINE 32768
 #define QOSCR    13
@@ -300,11 +300,11 @@ int main(int argc, const char *const argv[]) {
   argc--;
   argv++;
   while(argc >= 1) {
-    if(strcmp(*argv,"-d") == 0) {
+    if(strcmp(*argv, "-d") == 0) {
       if (--argc >= 1) {
 	db = *(++argv);
       }
-    } else if(strcmp(*argv,"-a") == 0) {
+    } else if(strcmp(*argv, "-a") == 0) {
       if (--argc >= 1) {
 	id = *(++argv);
 	if (argc >= 1 && *argv[1] != '-') {
@@ -316,7 +316,7 @@ int main(int argc, const char *const argv[]) {
 	  argc--;
 	}
       }
-    } else if(strcmp(*argv,"-c") == 0) {
+    } else if(argc >= 1 && strcmp(*argv, "-c") == 0) {
       if (--argc >= 1) {
 	id = *(++argv);
 	if (argc >= 1 && *argv[1] != '-') {
@@ -324,11 +324,11 @@ int main(int argc, const char *const argv[]) {
 	  argc--;
 	}
       }
-    } else if(strcmp(*argv,"-h") == 0) {
+    } else if(argc >= 1 && strcmp(*argv,"-h") == 0) {
       usage(cmd);
-    } else if(strcmp(*argv,"-?") == 0) {
+    } else if(argc >= 1 && strcmp(*argv,"-?") == 0) {
       usage(cmd);
-    } else if(strcmp(*argv,"-help") == 0) {
+    } else if(argc >= 1 && strcmp(*argv,"-help") == 0) {
       usage(cmd);
     } else {
       usage(cmd);
