@@ -50,7 +50,7 @@
 #include <openssl/err.h>
 #include <openssl/safestack.h>
 
-static const char revision[] = "$Id: pws.c,v 1.6 2012-01-16 22:00:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: pws.c,v 1.7 2012-01-16 22:05:19 pbuchbinder Exp $";
 
 #define MAX_LINE 32768
 #define QOSCR    13
@@ -195,6 +195,7 @@ static void writeDb(apr_pool_t *pool, const char *db, apr_table_t *entries) {
 		      DELIM, e->comment ? e->comment : "");
     }
     apr_file_close(f);
+    chmod(db, S_IRUSR|S_IWUSR);
   } else {
     fprintf(stderr, "ERROR, failed to write database file\n");
   }
