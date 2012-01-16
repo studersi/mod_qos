@@ -50,17 +50,19 @@
 #include <openssl/err.h>
 #include <openssl/safestack.h>
 
-static const char revision[] = "$Id: pws.c,v 1.2 2012-01-16 19:51:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: pws.c,v 1.3 2012-01-16 21:16:14 pbuchbinder Exp $";
 
 #define MAX_LINE 32768
 #define QOSCR    13
 #define QOSLF    10
 #define DELIM    "###"
 #define RAND_SIZE 10
+#define CHECKA   "pws-dummyaccount"
 
 typedef struct {
   char *d;
   char *e;
+  char *comment;
 } pwd_t;
 
 /**
@@ -179,6 +181,8 @@ static char *genPwd(apr_pool_t *pool) {
 
 static void writeDb(apr_pool_t *pool, const char *db, apr_table_t *entries) {
   apr_file_t *f = NULL;
+  char *bak = apr_pstrcat(pool, db, ".bak", NULL);
+  rename(db, bak);
   if(apr_file_open(&f, db, APR_WRITE|APR_CREATE|APR_TRUNCATE,
 		   APR_OS_DEFAULT, pool) == APR_SUCCESS) {
     int i;
@@ -186,12 +190,13 @@ static void writeDb(apr_pool_t *pool, const char *db, apr_table_t *entries) {
     for(i = 0; i < apr_table_elts(entries)->nelts; i++) {
       char *name = entry[i].key;
       pwd_t *e = (pwd_t *)entry[i].val;
-      apr_file_printf(f, "%s%s%s\n", name, DELIM, e->e);
+      apr_file_printf(f, "%s%s%s%s%s\n", name,
+		      DELIM, e->e, 
+		      DELIM, e->comment ? e->comment : "");
     }
     apr_file_close(f);
   } else {
-    fprintf(stderr, "ERROR, failed to read database file\n");
-    exit(1);
+    fprintf(stderr, "ERROR, failed to write database file\n");
   }
 }
 
@@ -211,6 +216,16 @@ static char *readPassword(apr_pool_t *pool, const char *prompt) {
   return apr_pstrdup(pool, buf);
 }
 
+static void addCheckEntry(apr_pool_t *pool, apr_table_t *entries, unsigned char *key) {
+  pwd_t *e = (pwd_t *)apr_table_get(entries, CHECKA);
+  if(e == NULL) {
+    e = apr_pcalloc(pool, sizeof(pwd_t));
+    e->d = apr_pstrdup(pool, CHECKA);
+    e->e = encrypt64(pool, key, CHECKA);
+    apr_table_setn(entries, CHECKA, (char *)e);
+  }
+}
+
 static apr_table_t *readDb(apr_pool_t *pool, const char *db, unsigned char *key) {
   apr_file_t *f = NULL;
   apr_table_t *entries = apr_table_make(pool, 20);
@@ -221,23 +236,37 @@ static apr_table_t *readDb(apr_pool_t *pool, const char *db, unsigned char *key)
     char line[MAX_LINE];
     while(!fgetLine(line, sizeof(line), f)) {
       char *v = strstr(line, DELIM);
+      char *c;
       if(v) {
 	pwd_t *entry = apr_pcalloc(pool, sizeof(pwd_t));
 	v[0] = '\0';
 	v += strlen(DELIM);
+	c = strstr(v, DELIM);
+	if(c) {
+	  c[0] = '\0';
+	  c += strlen(DELIM);
+	  entry->comment = apr_pstrdup(pool, c);
+	} else {
+	  entry->comment = apr_pstrdup(pool, "");
+	}
 	entry->e = apr_pstrdup(pool, v);
 	entry->d = decrypt64(pool, key, v); 
 	if(entry->d == NULL) {
+	  if(strcmp(line, CHECKA) == 0) {
+	    // invalid passphrase!
+	    fprintf(stderr, "ERROR, invalid passphrase\n");
+	    exit(1);
+	  }
 	  fprintf(stderr, "ERROR, failed to decrypt password for id '%s'\n", line);
 	}
-	apr_table_setn(entries, apr_pstrdup(pool, line), (char *)entry);
+	apr_table_addn(entries, apr_pstrdup(pool, line), (char *)entry);
       }
     }
     apr_file_close(f);
   } else {
     fprintf(stderr, "ERROR, failed to read database file\n");
-    exit(1);
   }
+  addCheckEntry(pool, entries, key);
   return entries;
 }
 
@@ -245,7 +274,7 @@ static void usage(const char *cmd) {
   printf("\n");
   printf("Simple password store.\n");
   printf("\n");
-  printf("Usage: %s -d <db file> [-c <id>] [-a <id> <password>]\n", cmd);
+  printf("Usage: %s -d <db file> [-c <id> [<comment>]] [-a <id> [<password> [<comment>]]]\n", cmd);
   printf("\n");
   exit(1);
 }
@@ -255,6 +284,7 @@ int main(int argc, const char *const argv[]) {
   const char *db = NULL;
   const char *id = NULL;
   const char *password = NULL;
+  const char *comment = NULL;
   const char *cmd = strrchr(argv[0], '/');
   apr_pool_t *pool;
   apr_table_t *entries;
@@ -275,14 +305,24 @@ int main(int argc, const char *const argv[]) {
 	db = *(++argv);
       }
     } else if(strcmp(*argv,"-a") == 0) {
-      if (--argc >= 2) {
+      if (--argc >= 1) {
 	id = *(++argv);
-	password = *(++argv);
-	argc--;
+	if (argc >= 1 && *argv[1] != '-') {
+	  password = *(++argv);
+	  argc--;
+	}
+	if (argc >= 1 && *argv[1] != '-') {
+	  comment = *(++argv);
+	  argc--;
+	}
       }
     } else if(strcmp(*argv,"-c") == 0) {
       if (--argc >= 1) {
 	id = *(++argv);
+	if (argc >= 1 && *argv[1] != '-') {
+	  comment = *(++argv);
+	  argc--;
+	}
       }
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd);
@@ -312,6 +352,11 @@ int main(int argc, const char *const argv[]) {
     }
     entry->d = apr_pstrdup(pool, password);
     entry->e = encrypt64(pool, key, password);
+    if(comment) {
+      entry->comment = apr_pstrdup(pool, comment);
+    } else {
+      entry->comment = NULL;
+    }
     apr_table_setn(entries, id, (char *)entry);
     writeDb(pool, db, entries);
   } else {
@@ -321,7 +366,11 @@ int main(int argc, const char *const argv[]) {
     for(i = 0; i < apr_table_elts(entries)->nelts; i++) {
       char *name = entry[i].key;
       pwd_t *e = (pwd_t *)entry[i].val;
-      printf("[%s] %s\n", name, e->d ? e->d : "UNKNOWN");
+      if(strcmp(name, CHECKA) != 0) {
+	printf("[%s] %s (%s)\n", name,
+	       e->d ? e->d : "UNKNOWN",
+	       e->comment ? e->comment : "");
+      }
     }
   }
 
