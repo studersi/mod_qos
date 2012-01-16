@@ -39,6 +39,7 @@
 #include <apr_base64.h>
 
 /* OpenSSL  */
+#include <openssl/ui.h>
 #include <openssl/ssl.h>
 #include <openssl/crypto.h>
 #include <openssl/dh.h>
@@ -49,12 +50,12 @@
 #include <openssl/err.h>
 #include <openssl/safestack.h>
 
-static const char revision[] = "$Id: pws.c,v 1.1 2012-01-15 21:49:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: pws.c,v 1.2 2012-01-16 19:51:53 pbuchbinder Exp $";
 
 #define MAX_LINE 32768
 #define QOSCR    13
 #define QOSLF    10
-#define DELIM    "="
+#define DELIM    "###"
 #define RAND_SIZE 10
 
 typedef struct {
@@ -123,6 +124,7 @@ static char *decrypt64(apr_pool_t *pool, unsigned char *key, const char *str) {
   return NULL;
 }
 
+// TODO vary length
 static char *encrypt64(apr_pool_t *pool, unsigned char *key, const char *str) {
   char *e;
   EVP_CIPHER_CTX cipher_ctx;
@@ -184,7 +186,7 @@ static void writeDb(apr_pool_t *pool, const char *db, apr_table_t *entries) {
     for(i = 0; i < apr_table_elts(entries)->nelts; i++) {
       char *name = entry[i].key;
       pwd_t *e = (pwd_t *)entry[i].val;
-      apr_file_printf(f, "%s=%s\n", name, e->e);
+      apr_file_printf(f, "%s%s%s\n", name, DELIM, e->e);
     }
     apr_file_close(f);
   } else {
@@ -193,17 +195,36 @@ static void writeDb(apr_pool_t *pool, const char *db, apr_table_t *entries) {
   }
 }
 
+static void setKey(apr_pool_t *pool, const char *pwd, unsigned char *key) {
+  unsigned char *sec = (unsigned char *)apr_pstrcat(pool, pwd, "ksG2.asd/amindHdç5", NULL);
+  int len = strlen((char *)sec);
+  EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, sec, len, 1, key, NULL);
+  memset(sec, len, 0);
+  len = strlen(pwd);
+  memset((char *)pwd, len, 0);
+}
+
+static char *readPassword(apr_pool_t *pool, const char *prompt) {
+  char buf[MAX_LINE];
+  buf[0] = '\0';
+  UI_UTIL_read_pw_string(buf, sizeof(buf), prompt, 0);
+  return apr_pstrdup(pool, buf);
+}
+
 static apr_table_t *readDb(apr_pool_t *pool, const char *db, unsigned char *key) {
   apr_file_t *f = NULL;
   apr_table_t *entries = apr_table_make(pool, 20);
+  char *pwd;
+  pwd = readPassword(pool, "enter your passphrase: ");
+  setKey(pool, pwd, key);
   if(apr_file_open(&f, db, APR_READ, APR_OS_DEFAULT, pool) == APR_SUCCESS) {
     char line[MAX_LINE];
     while(!fgetLine(line, sizeof(line), f)) {
-      char *v = strchr(line, DELIM[0]);
+      char *v = strstr(line, DELIM);
       if(v) {
 	pwd_t *entry = apr_pcalloc(pool, sizeof(pwd_t));
 	v[0] = '\0';
-	v++;
+	v += strlen(DELIM);
 	entry->e = apr_pstrdup(pool, v);
 	entry->d = decrypt64(pool, key, v); 
 	if(entry->d == NULL) {
@@ -220,20 +241,11 @@ static apr_table_t *readDb(apr_pool_t *pool, const char *db, unsigned char *key)
   return entries;
 }
 
-static void setKey(apr_pool_t *pool, const char *pwd, unsigned char *key) {
-  unsigned char *sec = (unsigned char *)apr_pstrcat(pool, pwd, "ksG2.asd/amindHdç5", NULL);
-  int len = strlen((char *)sec);
-  EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, sec, len, 1, key, NULL);
-  memset(sec, len, 0);
-  len = strlen(pwd);
-  memset((char *)pwd, len, 0);
-}
-
 static void usage(const char *cmd) {
   printf("\n");
   printf("Simple password store.\n");
   printf("\n");
-  printf("Usage: %s -d <db file> -p <passphrase> [-c <id>] [-a <id> <password>]\n", cmd);
+  printf("Usage: %s -d <db file> [-c <id>] [-a <id> <password>]\n", cmd);
   printf("\n");
   exit(1);
 }
@@ -241,7 +253,6 @@ static void usage(const char *cmd) {
 int main(int argc, const char *const argv[]) {
   unsigned char key[EVP_MAX_KEY_LENGTH];
   const char *db = NULL;
-  const char *pwd = NULL;
   const char *id = NULL;
   const char *password = NULL;
   const char *cmd = strrchr(argv[0], '/');
@@ -262,10 +273,6 @@ int main(int argc, const char *const argv[]) {
     if(strcmp(*argv,"-d") == 0) {
       if (--argc >= 1) {
 	db = *(++argv);
-      }
-    } else if(strcmp(*argv,"-p") == 0) {
-      if (--argc >= 1) {
-	pwd = *(++argv);
       }
     } else if(strcmp(*argv,"-a") == 0) {
       if (--argc >= 2) {
@@ -291,11 +298,10 @@ int main(int argc, const char *const argv[]) {
   }
 
 
-  if(db == NULL || pwd == NULL) {
+  if(db == NULL) {
     usage(cmd);
   }
 
-  setKey(pool, pwd, key);
   entries = readDb(pool, db, key);
 
   if(id) {
