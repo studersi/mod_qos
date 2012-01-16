@@ -17,12 +17,12 @@ all: stack
 regex_OBJECTS = regex.lo
 regex_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 regex: $(regex_OBJECTS)
-	$(LINK) $(regex_LTFLAGS) -g -static $(regex_OBJECTS) $(regex_LDADD)
+	$(LINK) $(regex_LTFLAGS) -static $(regex_OBJECTS) $(regex_LDADD)
 
 regexspeed_OBJECTS = regexspeed.lo
 regexspeed_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 regexspeed: $(regexspeed_OBJECTS)
-	$(LINK) $(regexspeed_LTFLAGS) -g -static $(regexspeed_OBJECTS) $(regexspeed_LDADD)
+	$(LINK) $(regexspeed_LTFLAGS) -static $(regexspeed_OBJECTS) $(regexspeed_LDADD)
 	strip regexspeed
 
 b64_OBJECTS = b64.lo
@@ -55,7 +55,7 @@ pws: $(pws_OBJECTS)
 wlsg_OBJECTS = wlsg.lo
 wlsg_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 wlsg: $(wlsg_OBJECTS)
-	$(LINK) $(wlsg_LTFLAGS) -static $(wlsg_OBJECTS) -g $(wlsg_LDADD)
+	$(LINK) $(wlsg_LTFLAGS) -static $(wlsg_OBJECTS) $(wlsg_LDADD)
 
 stack: stack.c
 	cc -Wall -O3 -o $@ $<
