@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.8 2011-11-01 22:11:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.9 2012-01-17 19:44:41 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -287,12 +287,12 @@ int main(int argc, const char * const argv[]) {
     } else if(strcmp(*argv,"-c") == 0) {
       if (--argc >= 1) {
 	clearpattern = *(++argv);
+	if (argc >=1 && *argv[0] != '-') {
+	  clearcommand = *(++argv);
+	  argc--;
+	}
       }
-      if (argc > 2 && *argv[0] != '-') {
-	clearcommand = *(++argv);
-	--argc;
-      }
-    } else if(strcmp(*argv,"-t") == 0) {
+    } else if(argc >= 1 && strcmp(*argv,"-t") == 0) {
       if (--argc >= 1) {
 	char *str = apr_pstrdup(pool, *(++argv));
 	char *tme = strchr(str, ':');
@@ -309,15 +309,15 @@ int main(int argc, const char * const argv[]) {
 	  exit(1);
 	}
       }
-    } else if(strcmp(*argv,"-p") == 0) {
+    } else if(argc >= 1 && strcmp(*argv,"-p") == 0) {
       pass = 1;
-    } else if(strcmp(*argv,"-h") == 0) {
+    } else if(argc >= 1 && strcmp(*argv,"-h") == 0) {
       usage(cmd, 0);
-    } else if(strcmp(*argv,"-?") == 0) {
+    } else if(argc >= 1 && strcmp(*argv,"-?") == 0) {
       usage(cmd, 0);
-    } else if(strcmp(*argv,"-help") == 0) {
+    } else if(argc >= 1 && strcmp(*argv,"-help") == 0) {
       usage(cmd, 0);
-    } else if(strcmp(*argv,"--man") == 0) {
+    } else if(argc >= 1 && strcmp(*argv,"--man") == 0) {
       usage(cmd, 1);
     } else {
       command = *argv;

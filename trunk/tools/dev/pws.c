@@ -50,7 +50,7 @@
 #include <openssl/err.h>
 #include <openssl/safestack.h>
 
-static const char revision[] = "$Id: pws.c,v 1.7 2012-01-16 22:05:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: pws.c,v 1.8 2012-01-17 19:44:40 pbuchbinder Exp $";
 
 #define MAX_LINE 32768
 #define QOSCR    13
@@ -168,6 +168,7 @@ static char *encrypt64(apr_pool_t *pool, unsigned char *key, const char *str) {
 }
 
 static char *genPwd(apr_pool_t *pool) {
+  char *p;
   char *e;
   int len;
   unsigned char *rand = apr_pcalloc(pool, RAND_SIZE);
@@ -176,6 +177,19 @@ static char *genPwd(apr_pool_t *pool) {
   len = apr_base64_encode(e, (const char *)rand, RAND_SIZE);
   e[12] = '\0';
   e[e[2]%10+1] = '.';
+  p = e;
+  while(p && p[0]) {
+    if(p[0] == 'I') {
+      p[0] = 'i';
+    }
+    if(p[0] == 'l') {
+      p[0] = 'L';
+    }
+    if(p[0] == '1') {
+      p[0] = ',';
+    }
+    p++;
+  }
   return e;
 }
 
@@ -358,6 +372,9 @@ int main(int argc, const char *const argv[]) {
     } else {
       entry->comment = NULL;
     }
+    printf("[%s] %s (%s)\n", id,
+	   entry->d ? entry->d : "UNKNOWN",
+	   entry->comment ? entry->comment : "");
     apr_table_setn(entries, id, (char *)entry);
     writeDb(pool, db, entries);
   } else {
