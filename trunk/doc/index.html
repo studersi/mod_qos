@@ -839,7 +839,7 @@ SetEnvIf    Remote_Addr      ^192\.168\.            QS_Intra
 
 # marks clients neither coming from the internal network
 # nor are VIP clients as low priority clients:
-QS_SetEnvIf !QS_VipRequest   !QS_Intra              QS_LowPrio
+QS_SetEnvIf !QS_VipRequest   !QS_Intra              QS_LowPrio=1
 
 # limits the request rate for low priority (neither VIP nor internal)
 # clients (and no more than 400 concurrent requests for them):
