@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.185 2012-01-06 17:08:34 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.186 2012-01-23 06:53:57 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -64,11 +64,14 @@ sleep 2
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.htt" >>  logs/error_log
-./run.sh -s ./scripts/QS_LocRequestLimit_5.htt
-if [ $? -ne 0 ]; then
+QSLOCREQS="QS_LocRequestLimit_5.htt QS_LocRequestLimit_6.htt QS_LocRequestLimit_7.htt"
+for QSLOCREQ in $QSLOCREQS; do
+  ./run.sh -s ./scripts/${QSLOCREQ}
+  if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_LocRequestLimit_5.htt"
-fi
+    echo "FAILED $QSLOCREQ"
+  fi
+done
 ./run.sh -se ./scripts/QS_LocRequestLimit_DynamicErrorPage.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
