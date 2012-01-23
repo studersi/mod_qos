@@ -6,7 +6,8 @@ Version
    e.g., for different URLs.
 
  - New directive QS_SrvSampleRate (may be used to adjust the
-   QS_REQ_RATE_TM sample rate at runtime/post compilation).
+   QS_REQ_RATE_TM sample rate at runtime/post compilation). Not
+   documented.
 
 Version 9.76
 

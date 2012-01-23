@@ -3,13 +3,14 @@
 #
 #   QS_LocRequestLimit         /cgi            5
 #
-# $Id: QS_LocRequestLimit_7.htt,v 1.1 2012-01-23 06:53:58 pbuchbinder Exp $
+# $Id: QS_LocRequestLimit_7.htt,v 1.2 2012-01-23 19:55:32 pbuchbinder Exp $
 #
 
 
 INCLUDE scripts/ports
 
 CLIENT 5
+_LOOP 2
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
@@ -22,7 +23,7 @@ _EXPECT . "!code=010"
 _EXPECT . "!500 Internal Server Error"
 _WAIT
 _CLOSE
-
+_END LOOP
 END
 
 CLIENT 5
