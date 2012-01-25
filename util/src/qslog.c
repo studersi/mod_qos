@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.32 2012-01-10 07:31:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.33 2012-01-25 18:05:47 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -41,6 +41,11 @@ static const char revision[] = "$Id: qslog.c,v 1.32 2012-01-10 07:31:55 pbuchbin
 #include <regex.h>
 #include <time.h>
 
+/* apr */
+#include <apr.h>
+#include <apr_portable.h>
+#include <apr_support.h>
+
 #include "qs_util.h"
 
 /* ----------------------------------
@@ -54,6 +59,12 @@ static const char revision[] = "$Id: qslog.c,v 1.32 2012-01-10 07:31:55 pbuchbin
 /* ----------------------------------
  * structures
  * ---------------------------------- */
+
+typedef struct {
+  long request_count;
+  long error_count;
+  long long duration;
+} client_rec_t;
 
 typedef struct stat_rec_st {
   // id
@@ -113,6 +124,8 @@ static int   m_offline = 0;
 static int   m_offline_data = 0;
 static char  m_date_str[MAX_LINE];
 static int   m_mem = 0;
+static apr_table_t *m_client_entries = NULL;
+static int   m_offline_count = 0;
 /* debug */
 static long  m_lines = 0;
 static int   m_verbose = 0;
@@ -243,11 +256,12 @@ static void getFreeMem(char *buf, int sz) {
     char vmstat[] = "/usr/bin/vmstat";
     struct stat attr;
     if(stat(vmstat, &attr) == 0) {
+      int rc;
       char command[1024];
       char outfile[1024];
       snprintf(outfile, sizeof(outfile), "/tmp/qslog.%d", getpid());
       snprintf(command, sizeof(command), "%s 1 2 1>%s", vmstat, outfile);
-      system(command);
+      rc = system(command);
       f = fopen(outfile, "r");
       if(f) {
         char line[MAX_LINE];
@@ -500,6 +514,45 @@ static void printAndResetStat(char *timeStr) {
   }
 }
 
+static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
+			 char *BI, char *B, char *R, char *I, char *U, char *Q, char *k, char *C,
+			 long tme) {
+  client_rec_t *client_rec;
+  const char *id = I; // ip
+  if(id == NULL) {
+    id = U; // user
+  }
+  if(id == NULL) {
+    return;
+  }
+  client_rec = (client_rec_t *)apr_table_get(m_client_entries, id);
+  if(client_rec == NULL) {
+    char *tid = calloc(strlen(id)+1, 1);
+    if(tid == NULL) {
+      qerror("out of memory");
+      exit(1);
+    }
+    client_rec = calloc(sizeof(client_rec_t), 1);
+    if(client_rec == NULL) {
+      qerror("out of memory");
+      exit(1);
+    }
+    strcpy(tid, id);
+    tid[strlen(id)] = '\0';
+    client_rec->request_count = 0;
+    client_rec->error_count = 0;
+    client_rec->duration = 0;
+    apr_table_setn(m_client_entries, tid, (char *)client_rec);
+  }
+  client_rec->request_count++;
+  client_rec->duration += tme;
+  if(S != NULL) {
+    if(strcmp(S, "200") != 0 && strcmp(S, "304") != 0 && strcmp(S, "302") != 0) {
+      client_rec->error_count++;
+    }
+  }
+}
+
 static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
 		      char *BI, char *B, char *R, char *I, char *U, char *Q, char *k, char *C,
 		      long tme) {
@@ -698,6 +751,7 @@ static void updateStat(const char *cstr, char *line) {
   if(S != NULL) {
     stripNum(&S);
   }
+  tme = 0;
   if(T != NULL || t != NULL || D != NULL) {
     /* response duration */
     if(T) {
@@ -714,6 +768,9 @@ static void updateStat(const char *cstr, char *line) {
   updateRec(m_stat_rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
   if(rec) {
     updateRec(rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
+  }
+  if(m_offline_count) {
+    updateClient(rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
   }
   qs_csUnLock();
 
@@ -876,7 +933,9 @@ static void readStdinOffline(const char *cstr) {
       }
       while(l_time > unitTime) {
 	snprintf(buf, sizeof(buf), "%s %.2ld:%.2ld:00", m_date_str, unitTime/60, unitTime%60);
-	printAndResetStat(buf);
+	if(m_offline) {
+	  printAndResetStat(buf);
+	}
 	unitTime++;
 	qs_setTime(unitTime * 60);;
       }
@@ -885,7 +944,9 @@ static void readStdinOffline(const char *cstr) {
   }
   if(m_offline_data) {
     snprintf(buf, sizeof(buf), "%s %.2ld:%.2ld:00", m_date_str, unitTime/60, unitTime%60);
-    printAndResetStat(buf);
+    if(m_offline) {
+      printAndResetStat(buf);
+    }
   }
 }
 
@@ -932,7 +993,7 @@ static void *loggerThread(void *argv) {
   return NULL;
 }
 
-static void usage(char *cmd, int man) {
+static void usage(const char *cmd, int man) {
   if(man) {
     //.TH [name of program] [section number] [center footer] [left footer] [center header]
     printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
@@ -1112,12 +1173,12 @@ static stat_rec_t *loadRule(const char *confFile) {
   return rec;
 }
 
-int main(int argc, char **argv) {
-  char *config = NULL;
-  char *file = NULL;
-  char *confFile = NULL;
-  char *cmd = strrchr(argv[0], '/');
-  char *username = NULL;
+int main(int argc, const char *const argv[]) {
+  const char *config = NULL;
+  const char *file = NULL;
+  const char *confFile = NULL;
+  const char *cmd = strrchr(argv[0], '/');
+  const char *username = NULL;
   pthread_attr_t *tha = NULL;
   pthread_t tid;
   m_stat_rec = createRec("", "");
@@ -1159,6 +1220,9 @@ int main(int argc, char **argv) {
     } else if(strcmp(*argv,"-p") == 0) { /* activate offline analysis */
       m_offline = 1;
       qs_set2OfflineMode();
+    } else if(strcmp(*argv,"-pc") == 0) { /* activate offline counting analysis */
+      m_offline_count = 1;
+      qs_set2OfflineMode();
     } else if(strcmp(*argv,"-m") == 0) { /* activate memory usage */
       m_mem = 1;
     } else if(strcmp(*argv,"-v") == 0) {
@@ -1180,7 +1244,42 @@ int main(int argc, char **argv) {
     argc--;
     argv++;
   }
-  /* requires at leas an output file and a format string */
+
+  if(m_offline || m_offline_count) {
+    /* init time pattern regex, std apache access log */
+    regcomp(&m_trx, 
+	    "[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}",
+	    REG_EXTENDED);
+    /* other time patterns: "yyyy mm dd hh:mm:ss,mmm" or "yyyy mm dd hh:mm:ss.mmm" */
+    regcomp(&m_trx2, 
+	    "[0-9]{4}[ -]{1}[0-9]{2}[ -]{1}[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[,.]{1}[0-9]{3}",
+	    REG_EXTENDED);
+  }
+
+  if(m_offline_count) {
+    int i;
+    apr_table_entry_t *entry;
+    apr_pool_t *pool;
+    int rc = nice(10);
+    if(config == NULL) usage(cmd, 0);
+    apr_app_initialize(&argc, &argv, NULL);
+    apr_pool_create(&pool, NULL);
+    m_client_entries = apr_table_make(pool, 2000);
+    readStdinOffline(config);
+    fprintf(stdout, ".\n");
+    entry = (apr_table_entry_t *) apr_table_elts(m_client_entries)->elts;
+    for(i = 0; i < apr_table_elts(m_client_entries)->nelts; i++) {
+      client_rec_t *client_rec = (client_rec_t *)entry[i].val;
+      printf("%s;req;%ld;errors;%ld;av;%lld\n",
+	     entry[i].key,
+	     client_rec->request_count,
+	     client_rec->error_count,
+	     client_rec->duration / client_rec->request_count);
+    }
+    return 0;
+  }
+
+  /* requires at least an output file and a format string */
   if(file == NULL || config == NULL) usage(cmd, 0);
 
   if(username && getuid() == 0) {
@@ -1203,6 +1302,7 @@ int main(int argc, char **argv) {
       exit(1);
     }
   }
+
   m_f = fopen(file, "a+"); 
   if(m_f == NULL) {
     qerror("could not open file for writing '%s': %s", file, strerror(errno));
@@ -1229,15 +1329,7 @@ int main(int argc, char **argv) {
   }
 
   if(m_offline) {
-    nice(10);
-    /* init time pattern regex, std apache access log */
-    regcomp(&m_trx, 
-	    "[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}",
-	    REG_EXTENDED);
-    /* other time patterns: yyyy mm dd hh:mm:ss,mmm */
-    regcomp(&m_trx2, 
-	    "[0-9]{4}[ -]{1}[0-9]{2}[ -]{1}[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[,.]{1}[0-9]{3}",
-	    REG_EXTENDED);
+    int rc = nice(10);
     fprintf(stderr, "[%s]: offline mode (writes to %s)\n", cmd, file);
     m_date_str[0] = '\0';
     readStdinOffline(config);

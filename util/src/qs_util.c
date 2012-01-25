@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.8 2011-10-31 20:50:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.9 2012-01-25 18:05:47 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -128,7 +128,7 @@ void qs_man_println(int man, const char *fmt, ...) {
   printf("%s", bufout);
 }
 
-char *qs_CMD(char *cmd) {
+char *qs_CMD(const char *cmd) {
   char *buf = calloc(1024, 1);
   int i = 0;
   while(cmd[i] && i < 1023) {
