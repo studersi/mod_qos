@@ -53,7 +53,7 @@ typedef struct qs_event_st {
 /* ----------------------------------
  * functions
  * ---------------------------------- */
-char *qs_CMD(char *cmd);
+char *qs_CMD(const char *cmd);
 void qs_man_print(int man, const char *fmt, ...);
 void qs_man_println(int man, const char *fmt, ...);
 
