@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: qslog.sh,v 2.8 2012-01-10 07:31:55 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.9 2012-01-26 17:50:07 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -30,15 +30,18 @@ case "$1" in
 	# - 180 200er
 	# - 60 500er
 	# - 3 ip
+	delay=${2-"1100"}
 	for min in `seq 0 1`; do
 	    for sec in `seq 0 58`; do
 		printf "127.0.0.1 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 200 100 \"Mozilla\" '0' 0 \"/htt/index.html\"\n" $min $sec
 		printf "127.0.0.1 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /a/index.txt HTTP/1.1\" 200 100 \"Mozilla\" '0' 1 \"/a/index.html\"\n" $min $sec
 		printf "127.0.0.2 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /b/pages/index.txt HTTP/1.1\" 200 200 \"Mozilla\" '0' 2 \"/b/pages/index.html\"\n" $min $sec
 		printf "127.0.0.3 -    - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /c/index.txt HTTP/1.1\" 500 200 \"Mozilla\" '4' 3 \"/c/index.html\"\n" $min $sec
-		sleep 1
+		if [ $delay -gt 0 ]; then
+		    sleep 1
+		fi
 	    done
-	    ./bin/sleep 1100
+	    ./bin/sleep $delay
 	done
 	sleep 1
 	;;
@@ -70,6 +73,22 @@ case "$1" in
 	    exit 1
 	fi
 	echo "$PFX OK"
+	;;
+	pc)
+	./qslog.sh test writeapache 0 | ../util/src/qslog -f I....RSB.TkC -pc > pc
+	if [ `grep -c "127.0.0.1;req;236;errors;0;av;0" pc` -eq 0 ]; then
+	    echo "$PFX FAILED (.1)"
+	    exit 1
+	fi
+	if [ `grep -c "127.0.0.2;req;118;errors;0;av;0" pc` -eq 0 ]; then
+	    echo "$PFX FAILED (.2)"
+	    exit 1
+	fi
+	if [ `grep -c "127.0.0.3;req;118;errors;118;av;4" pc` -eq 0 ]; then
+	    echo "$PFX FAILED (.3)"
+	    exit 1
+	fi
+	rm -f pc
 	;;
 	writelog4j)
 	for min in `seq 0 1`; do

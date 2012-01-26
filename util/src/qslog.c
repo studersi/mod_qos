@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.34 2012-01-26 09:58:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.35 2012-01-26 17:50:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -159,7 +159,7 @@ static char *skipElement(const char* line) {
     p++;
   } else {
     char *eq = NULL;
-    if(m_offline) {
+    if(m_offline || m_offline_count) {
       // offline mode: check for <name>='<value>' entry
       eq = strstr(p, "='");
       if(eq && (eq - p) < 10) {
@@ -777,13 +777,13 @@ static void updateStat(const char *cstr, char *line) {
     updateRec(rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
   }
   if(m_offline_count) {
-    updateClient(rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
+    updateClient(NULL, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
   }
   qs_csUnLock();
 
-  if(m_offline && m_verbose) {
+  if(m_verbose && (m_offline || m_offline_count)) {
     m_lines++;
-    printf("[%ld] I=%s U=%s B=%s i=%s S=%s T=%ld Q=%s\n", m_lines,
+    printf("[%ld] I=[%s] U=[%s] B=[%s] i=[%s] S=[%s] T=[%ld] Q=[%s]\n", m_lines,
 	   I == NULL ? "(null)" : I,
 	   U == NULL ? "(null)" : U,
 	   B == NULL ? "(null)" : B,
