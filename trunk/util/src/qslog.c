@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.35 2012-01-26 17:50:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.36 2012-01-26 21:18:32 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -65,6 +65,11 @@ typedef struct {
   long request_count;
   long error_count;
   long long duration;
+  long status_1;
+  long status_2;
+  long status_3;
+  long status_4;
+  long status_5;
 } client_rec_t;
 
 typedef struct stat_rec_st {
@@ -548,6 +553,11 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     client_rec->request_count = 0;
     client_rec->error_count = 0;
     client_rec->duration = 0;
+    client_rec->status_1 = 0;
+    client_rec->status_2 = 0;
+    client_rec->status_3 = 0;
+    client_rec->status_4 = 0;
+    client_rec->status_5 = 0;
     apr_table_setn(m_client_entries, tid, (char *)client_rec);
   }
   client_rec->request_count++;
@@ -555,6 +565,19 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
   if(S != NULL) {
     if(strcmp(S, "200") != 0 && strcmp(S, "304") != 0 && strcmp(S, "302") != 0) {
       client_rec->error_count++;
+    }
+    if(S[0] == '1') {
+      client_rec->status_1++;
+    } else if(S[0] == '1') {
+      client_rec->status_1++;
+    } else if(S[0] == '2') {
+      client_rec->status_2++;
+    } else if(S[0] == '3') {
+      client_rec->status_3++;
+    } else if(S[0] == '4') {
+      client_rec->status_4++;
+    } else if(S[0] == '5') {
+      client_rec->status_5++;
     }
   }
   return;
@@ -1277,11 +1300,17 @@ int main(int argc, const char *const argv[]) {
     entry = (apr_table_entry_t *) apr_table_elts(m_client_entries)->elts;
     for(i = 0; i < apr_table_elts(m_client_entries)->nelts; i++) {
       client_rec_t *client_rec = (client_rec_t *)entry[i].val;
-      printf("%s;req;%ld;errors;%ld;av;%lld\n",
+      printf("%s;req;%ld;errors;%ld;av;%lld;1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld\n",
 	     entry[i].key,
 	     client_rec->request_count,
 	     client_rec->error_count,
-	     client_rec->duration / client_rec->request_count);
+	     client_rec->duration / client_rec->request_count,
+	     client_rec->status_1,
+	     client_rec->status_2,
+	     client_rec->status_3,
+	     client_rec->status_4,
+	     client_rec->status_5);
+
     }
     return 0;
   }
