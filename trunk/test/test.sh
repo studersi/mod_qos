@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.186 2012-01-23 06:53:57 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.187 2012-01-26 09:58:22 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -33,6 +33,7 @@ if [ `ps -ef | grep -v grep | grep -c "tee test.log"` -eq 0 ]; then
   exit $?
 fi
 
+ulimit -c unlimited
 ./generate.sh
 . ./ports
 

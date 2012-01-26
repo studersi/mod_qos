@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.33 2012-01-25 18:05:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.34 2012-01-26 09:58:22 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -55,6 +55,7 @@ static const char revision[] = "$Id: qslog.c,v 1.33 2012-01-25 18:05:47 pbuchbin
 #define LOG_INTERVAL 60 /* log interval ist 60 sec, don't change this value */
 #define LOG_DET ".detailed"
 #define RULE_DELIM ':'
+#define MAX_CLIENT_ENTRIES 25000
 
 /* ----------------------------------
  * structures
@@ -125,6 +126,7 @@ static int   m_offline_data = 0;
 static char  m_date_str[MAX_LINE];
 static int   m_mem = 0;
 static apr_table_t *m_client_entries = NULL;
+static int   m_max_client_entries = 0;
 static int   m_offline_count = 0;
 /* debug */
 static long  m_lines = 0;
@@ -517,6 +519,9 @@ static void printAndResetStat(char *timeStr) {
 static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
 			 char *BI, char *B, char *R, char *I, char *U, char *Q, char *k, char *C,
 			 long tme) {
+  long long start;
+  long long end;
+  struct timeval tv;
   client_rec_t *client_rec;
   const char *id = I; // ip
   if(id == NULL) {
@@ -527,16 +532,17 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
   }
   client_rec = (client_rec_t *)apr_table_get(m_client_entries, id);
   if(client_rec == NULL) {
-    char *tid = calloc(strlen(id)+1, 1);
-    if(tid == NULL) {
-      qerror("out of memory");
-      exit(1);
+    char *tid;
+    if(apr_table_elts(m_client_entries)->nelts >= MAX_CLIENT_ENTRIES) {
+      // limitation: speed (table to big) and memory
+      if(!m_max_client_entries) {
+	fprintf(stderr, "\nreached max client enries (%d)\n", MAX_CLIENT_ENTRIES);
+	m_max_client_entries = 1;
+      }
+      return;
     }
+    tid = calloc(strlen(id)+1, 1);
     client_rec = calloc(sizeof(client_rec_t), 1);
-    if(client_rec == NULL) {
-      qerror("out of memory");
-      exit(1);
-    }
     strcpy(tid, id);
     tid[strlen(id)] = '\0';
     client_rec->request_count = 0;
@@ -551,6 +557,7 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
       client_rec->error_count++;
     }
   }
+  return;
 }
 
 static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
@@ -1264,7 +1271,7 @@ int main(int argc, const char *const argv[]) {
     if(config == NULL) usage(cmd, 0);
     apr_app_initialize(&argc, &argv, NULL);
     apr_pool_create(&pool, NULL);
-    m_client_entries = apr_table_make(pool, 2000);
+    m_client_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES);
     readStdinOffline(config);
     fprintf(stdout, ".\n");
     entry = (apr_table_entry_t *) apr_table_elts(m_client_entries)->elts;

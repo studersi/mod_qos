@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.3 2011-11-01 22:11:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.4 2012-01-26 09:58:22 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -226,6 +226,7 @@ int qs_regexec(pcre *preg, const char *string,
 }
 
 int main(int argc, const char * const argv[]) {
+  int rc;
   int nr = 0;
   char line[32768];
   FILE *file = 0;
@@ -277,6 +278,8 @@ int main(int argc, const char * const argv[]) {
   if(pattern == NULL || out == NULL) {
     usage(cmd, 0);
   }
+
+  rc = nice(10);
 
   preg = pcre_compile(pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(!preg) {
