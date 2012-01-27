@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.36 2012-01-26 21:18:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.37 2012-01-27 07:27:43 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -65,6 +65,13 @@ typedef struct {
   long request_count;
   long error_count;
   long long duration;
+  long duration_0;
+  long duration_1;
+  long duration_2;
+  long duration_3;
+  long duration_4;
+  long duration_5;
+  long duration_6;
   long status_1;
   long status_2;
   long status_3;
@@ -158,7 +165,7 @@ static char *skipElement(const char* line) {
   char delim = p[0];
   if(delim == '\'' || delim == '\"') {
     p++;
-    while(p[0] != delim && p[0] != 0 && p[-1] != '\\') {
+    while(p[0] != 0 && !(p[0] == delim && p[-1] != '\\')) {
       p++;
     }
     p++;
@@ -553,6 +560,13 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     client_rec->request_count = 0;
     client_rec->error_count = 0;
     client_rec->duration = 0;
+    client_rec->duration_0 = 0;
+    client_rec->duration_1 = 0;
+    client_rec->duration_2 = 0;
+    client_rec->duration_3 = 0;
+    client_rec->duration_4 = 0;
+    client_rec->duration_5 = 0;
+    client_rec->duration_6 = 0;
     client_rec->status_1 = 0;
     client_rec->status_2 = 0;
     client_rec->status_3 = 0;
@@ -562,6 +576,21 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
   }
   client_rec->request_count++;
   client_rec->duration += tme;
+  if(tme < 1) {
+    client_rec->duration_0++;
+  } else if(tme == 1) {
+    client_rec->duration_1++;
+  } else if(tme == 2) {
+    client_rec->duration_2++;
+  } else if(tme == 3) {
+    client_rec->duration_3++;
+  } else if(tme == 4) {
+    client_rec->duration_4++;
+  } else if(tme == 5) {
+    client_rec->duration_5++;
+  } else {
+    client_rec->duration_6++;
+  }
   if(S != NULL) {
     if(strcmp(S, "200") != 0 && strcmp(S, "304") != 0 && strcmp(S, "302") != 0) {
       client_rec->error_count++;
@@ -643,7 +672,7 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
       rec->status_4++;
     } else if(S[0] == '5') {
       rec->status_5++;
-    }
+    } 
   }
   if(T != NULL || t != NULL || D != NULL) {
     /* response duration */
@@ -1300,17 +1329,26 @@ int main(int argc, const char *const argv[]) {
     entry = (apr_table_entry_t *) apr_table_elts(m_client_entries)->elts;
     for(i = 0; i < apr_table_elts(m_client_entries)->nelts; i++) {
       client_rec_t *client_rec = (client_rec_t *)entry[i].val;
-      printf("%s;req;%ld;errors;%ld;av;%lld;1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld\n",
+      printf("%s;req;%ld;errors;%ld;"
+	     "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;"
+	     "av;%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;"
+	     "\n",
 	     entry[i].key,
 	     client_rec->request_count,
 	     client_rec->error_count,
-	     client_rec->duration / client_rec->request_count,
 	     client_rec->status_1,
 	     client_rec->status_2,
 	     client_rec->status_3,
 	     client_rec->status_4,
-	     client_rec->status_5);
-
+	     client_rec->status_5,
+	     client_rec->duration / client_rec->request_count,
+	     client_rec->duration_0,
+	     client_rec->duration_1,
+	     client_rec->duration_2,
+	     client_rec->duration_3,
+	     client_rec->duration_4,
+	     client_rec->duration_5,
+	     client_rec->duration_6);
     }
     return 0;
   }
