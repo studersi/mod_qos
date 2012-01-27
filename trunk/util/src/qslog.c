@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.37 2012-01-27 07:27:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.38 2012-01-27 19:16:07 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -165,7 +165,9 @@ static char *skipElement(const char* line) {
   char delim = p[0];
   if(delim == '\'' || delim == '\"') {
     p++;
-    while(p[0] != 0 && !(p[0] == delim && p[-1] != '\\')) {
+    // read while we found an '" '" which is not escaped
+    while(p[0] != 0 &&
+	  !(p[0] == delim && p[-1] != '\\' && (p[1] == '\0' || p[1] == ' '))) {
       p++;
     }
     p++;
@@ -1128,9 +1130,13 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -p\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Used when reading the log data from a file (cat/pipe). %s is\n", cmd);
-  qs_man_print(man, "     started using it's offline mode in order to process existing log\n");
+  qs_man_print(man, "     Used for post processing when reading the log data from a file (cat/pipe).\n");
+  qs_man_print(man, "     %s is started using it's offline mode in order to process existing log\n", cmd);
   qs_man_print(man, "     files (post processing).\n");
+  qs_man_print(man, "     The option \"-pc\" may be used alternatively if you want to gather request\n");
+  qs_man_print(man, "     information per client (identified by IP address (I) or user tracking id (U)\n");
+  qs_man_print(man, "     showing how many request each client has performed within the captured period\n");
+  qs_man_print(man, "     of time).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -v\n");
   if(man) printf("\n");
@@ -1327,28 +1333,38 @@ int main(int argc, const char *const argv[]) {
     readStdinOffline(config);
     fprintf(stdout, ".\n");
     entry = (apr_table_entry_t *) apr_table_elts(m_client_entries)->elts;
+    m_f = stdout;
+    if(file) {
+      m_f = fopen(file, "a+");
+      if(m_f == NULL) {
+	m_f == stdout;
+      }
+    }
     for(i = 0; i < apr_table_elts(m_client_entries)->nelts; i++) {
       client_rec_t *client_rec = (client_rec_t *)entry[i].val;
-      printf("%s;req;%ld;errors;%ld;"
-	     "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;"
-	     "av;%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;"
-	     "\n",
-	     entry[i].key,
-	     client_rec->request_count,
-	     client_rec->error_count,
-	     client_rec->status_1,
-	     client_rec->status_2,
-	     client_rec->status_3,
-	     client_rec->status_4,
-	     client_rec->status_5,
-	     client_rec->duration / client_rec->request_count,
-	     client_rec->duration_0,
-	     client_rec->duration_1,
-	     client_rec->duration_2,
-	     client_rec->duration_3,
-	     client_rec->duration_4,
-	     client_rec->duration_5,
-	     client_rec->duration_6);
+      fprintf(m_f, "%s;req;%ld;errors;%ld;"
+	      "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;"
+	      "av;%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;"
+	      "\n",
+	      entry[i].key,
+	      client_rec->request_count,
+	      client_rec->error_count,
+	      client_rec->status_1,
+	      client_rec->status_2,
+	      client_rec->status_3,
+	      client_rec->status_4,
+	      client_rec->status_5,
+	      client_rec->duration / client_rec->request_count,
+	      client_rec->duration_0,
+	      client_rec->duration_1,
+	      client_rec->duration_2,
+	      client_rec->duration_3,
+	      client_rec->duration_4,
+	      client_rec->duration_5,
+	      client_rec->duration_6);
+    }
+    if(file && m_f != stdout) {
+      fclose(m_f);
     }
     return 0;
   }
