@@ -1,9 +1,12 @@
-Version
+Version 9.77
 
  - Use pcre_study() and match_limit where applicable.
 
  - qslog features the option "-c" to collect separate statistics,
    e.g., for different URLs.
+
+ - qslog features the option "-pc" used to gather request information
+   per client.
 
  - New directive QS_SrvSampleRate (may be used to adjust the
    QS_REQ_RATE_TM sample rate at runtime/post compilation). Not
