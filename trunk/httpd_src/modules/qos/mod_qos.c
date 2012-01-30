@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.370 2012-01-12 19:13:50 pbuchbinder Exp $";
-static const char g_revision[] = "9.77";
+static const char revision[] = "$Id: mod_qos.c,v 5.371 2012-01-30 21:53:56 pbuchbinder Exp $";
+static const char g_revision[] = "9.78";
 
 /************************************************************************
  * Includes
@@ -5705,45 +5705,47 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
 static int qos_post_read_request_later(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
-  /* QS_UserTrackingCookieName */
-  if(sconf && sconf->user_tracking_cookie) {
-    char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
-    qos_get_create_user_tracking(r, sconf, value);
-    if(sconf->user_tracking_cookie_force) {
-      const char *ignore = apr_table_get(r->subprocess_env, "DISABLE_UTC_ENFORCEMENT");
-      if(!ignore) {
-        if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
-          /* access to check url */
-          if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) == NULL) {
-            if(r->parsed_uri.query && (strncmp(r->parsed_uri.query, "r=", 2) == 0)) {
-              /* client has send a cookie, redirect to original url */
-              char *redirect_page;
-              int buf_len = 0;
-              unsigned char *buf;
-              char *q = r->parsed_uri.query;
-              buf_len = qos_decrypt(r, sconf, &buf, &q[2]);
-              if(buf_len > 0) {
-                redirect_page = apr_psprintf(r->pool, "%s%.*s",
-                                             qos_this_host(r),
-                                             buf_len, buf);
-                apr_table_set(r->headers_out, "Location", redirect_page);
-                return HTTP_MOVED_TEMPORARILY;
+  if(ap_is_initial_req(r)) {
+    /* QS_UserTrackingCookieName */
+    if(sconf && sconf->user_tracking_cookie) {
+      char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
+      qos_get_create_user_tracking(r, sconf, value);
+      if(sconf->user_tracking_cookie_force) {
+        const char *ignore = apr_table_get(r->subprocess_env, "DISABLE_UTC_ENFORCEMENT");
+        if(!ignore) {
+          if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
+            /* access to check url */
+            if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) == NULL) {
+              if(r->parsed_uri.query && (strncmp(r->parsed_uri.query, "r=", 2) == 0)) {
+                /* client has send a cookie, redirect to original url */
+                char *redirect_page;
+                int buf_len = 0;
+                unsigned char *buf;
+                char *q = r->parsed_uri.query;
+                buf_len = qos_decrypt(r, sconf, &buf, &q[2]);
+                if(buf_len > 0) {
+                  redirect_page = apr_psprintf(r->pool, "%s%.*s",
+                                               qos_this_host(r),
+                                               buf_len, buf);
+                  apr_table_set(r->headers_out, "Location", redirect_page);
+                  return HTTP_MOVED_TEMPORARILY;
+                }
               }
-            }
           } /* else, grant access to the error page */
-        } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
-          if(r->method_number == M_GET) {
-            /* no valid cookie in request, redirect to check page */
-            char *redirect_page = apr_pstrcat(r->pool, qos_this_host(r),
-                                              sconf->user_tracking_cookie_force,
-                                              "?r=",
-                                              qos_encrypt(r, sconf,
-                                                          (unsigned char *)r->unparsed_uri,
-                                                          strlen(r->unparsed_uri)),
-                                              NULL);
-            apr_table_set(r->headers_out, "Location", redirect_page);
-            qos_send_user_tracking_cookie(r, sconf, HTTP_MOVED_TEMPORARILY);
-            return HTTP_MOVED_TEMPORARILY;
+          } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
+            if(r->method_number == M_GET) {
+              /* no valid cookie in request, redirect to check page */
+              char *redirect_page = apr_pstrcat(r->pool, qos_this_host(r),
+                                                sconf->user_tracking_cookie_force,
+                                                "?r=",
+                                                qos_encrypt(r, sconf,
+                                                            (unsigned char *)r->unparsed_uri,
+                                                            strlen(r->unparsed_uri)),
+                                                NULL);
+              apr_table_set(r->headers_out, "Location", redirect_page);
+              qos_send_user_tracking_cookie(r, sconf, HTTP_MOVED_TEMPORARILY);
+              return HTTP_MOVED_TEMPORARILY;
+            }
           }
         }
       }
