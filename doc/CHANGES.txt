@@ -1,3 +1,8 @@
+Version 9.78
+
+ - Fixed: QS_UserTrackingCookieName enforcement did not work
+   if server creates internal redirect.
+
 Version 9.77
 
  - Use pcre_study() and match_limit where applicable.
