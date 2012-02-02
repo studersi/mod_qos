@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: geo.c,v 1.1 2012-02-02 20:44:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: geo.c,v 1.2 2012-02-02 21:06:07 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -50,6 +50,7 @@ static const char revision[] = "$Id: geo.c,v 1.1 2012-02-02 20:44:40 pbuchbinder
 
 // "3758096128","3758096383","AU"
 #define PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\""
+#define IPPATTERN "([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3})"
 
 typedef struct {
   unsigned long start;
@@ -103,6 +104,7 @@ static unsigned long qos_geo_str2long(apr_pool_t *pool, const char *ip) {
   return addr;
 }
 
+/*
 static char *qos_geo_long2str(apr_pool_t *pool, unsigned long ip) {
   int a,b,c,d;
   a = ip % 256;
@@ -114,6 +116,7 @@ static char *qos_geo_long2str(apr_pool_t *pool, unsigned long ip) {
   d = ip % 256;
   return apr_psprintf(pool, "%d.%d.%d.%d", d, c, b, a);
 }
+*/
 
 static void usage(const char *cmd) {
   printf("Usage: \n");
@@ -149,7 +152,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size) {
     if(regexec(&preg, line, 0, NULL, 0) == 0) {
       lines++;
     } else {
-      printf("invalid line [%s]\n", line);
+      fprintf(stderr, "invalid line in db [%s]\n", line);
     }
   }
   *size = lines;
@@ -172,6 +175,8 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size) {
 }
 
 int main(int argc, const char * const argv[]) {
+  qos_geo_t *geo;
+  int size;
   const char *db = NULL;
   apr_pool_t *pool;
   const char *cmd = strrchr(argv[0], '/');
@@ -198,13 +203,50 @@ int main(int argc, const char * const argv[]) {
     argv++;
   }
 
+  if(db == NULL) {
+    usage(cmd);
+  }
+
+  geo = qos_loadgeo(pool, db, &size);
+  if(geo == NULL) {
+    fprintf(stderr, "failed to load database\n");
+    exit(1);
+  }
+
+  // start reading from stdin
   {
+    qos_geo_t *pB;
+    apr_pool_t *tmp;
+    char line[HUGE_STRING_LEN];
+    regex_t preg;
+    regmatch_t ma[MAX_REG_MATCH];
+    apr_pool_create(&tmp, NULL);
+    if(regcomp(&preg, IPPATTERN, REG_EXTENDED)) {
+      exit(1);
+    }
+    while(fgets(line, sizeof(line), stdin) != NULL) {
+      if(regexec(&preg, line, MAX_REG_MATCH, ma, 0) == 0) {
+	unsigned long search;
+	line[ma[1].rm_eo] = '\0';
+	search = qos_geo_str2long(tmp, &line[ma[1].rm_so]);
+	apr_pool_clear(tmp);
+	pB = bsearch(&search,
+		     geo,
+		     size,
+		     sizeof(qos_geo_t),
+		     qos_geo_comp);
+	if(pB) {
+	  printf("%s %s\n", &line[ma[1].rm_so], pB->country);
+	}
+      }
+    }
+  }
+
+
+  /*    
     char ip[] = "118.67.209.34";
     unsigned long search = qos_geo_str2long(pool, ip);
-    int size;
-    qos_geo_t *geo = qos_loadgeo(pool, db, &size);
     qos_geo_t *pB;
-    
     pB = bsearch(&search,
 		 geo,
 		 size,
@@ -214,8 +256,6 @@ int main(int argc, const char * const argv[]) {
     if(pB) {
       printf("OK: %s (%lu %lu)\n", pB->country, pB->start, pB->end);
     }
-  }
-
-  
+  */
   return 0;
 }
