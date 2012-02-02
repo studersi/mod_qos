@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: geo.c,v 1.3 2012-02-02 21:06:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: geo.c,v 1.4 2012-02-02 21:11:02 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -236,7 +236,9 @@ int main(int argc, const char * const argv[]) {
 		     sizeof(qos_geo_t),
 		     qos_geo_comp);
 	if(pB) {
-	  printf("%s %s\n", &line[ma[1].rm_so], pB->country);
+	  printf("%s %s\n", pB->country, &line[ma[1].rm_so]);
+	} else {
+	  printf("-- %s\n", &line[ma[1].rm_so]);
 	}
       }
     }
