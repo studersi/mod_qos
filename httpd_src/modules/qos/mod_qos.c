@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.371 2012-01-30 21:53:56 pbuchbinder Exp $";
-static const char g_revision[] = "9.78";
+static const char revision[] = "$Id: mod_qos.c,v 5.372 2012-02-02 20:39:12 pbuchbinder Exp $";
+static const char g_revision[] = "9.79";
 
 /************************************************************************
  * Includes
@@ -1763,7 +1763,7 @@ static unsigned long qos_ip_str2long(request_rec *r, const char *ip) {
   if(!p) return 0;
   p[0] = '\0';
   if(!qos_is_num(i)) return 0;
-  addr += (atol(i) * 65536);
+  addr += (atol(i) * 256);
   i = p;
   i++;
 
@@ -1771,7 +1771,7 @@ static unsigned long qos_ip_str2long(request_rec *r, const char *ip) {
   if(!p) return 0;
   p[0] = '\0';
   if(!qos_is_num(i)) return 0;
-  addr += (atol(i) * 256);
+  addr += (atol(i) * 65536);
   i = p;
   i++;
 
