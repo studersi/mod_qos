@@ -1,3 +1,8 @@
+Version 9.79
+
+ - Fixed: Wrong IP conversion (str2long) used by console and
+   QS_ClientIpFromHeader.
+
 Version 9.78
 
  - Fixed: QS_UserTrackingCookieName enforcement did not work
