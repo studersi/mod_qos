@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: geo.c,v 1.2 2012-02-02 21:06:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: geo.c,v 1.3 2012-02-02 21:06:49 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -241,21 +241,5 @@ int main(int argc, const char * const argv[]) {
       }
     }
   }
-
-
-  /*    
-    char ip[] = "118.67.209.34";
-    unsigned long search = qos_geo_str2long(pool, ip);
-    qos_geo_t *pB;
-    pB = bsearch(&search,
-		 geo,
-		 size,
-		 sizeof(qos_geo_t),
-		 qos_geo_comp);
-    printf("search %s (%lu)\n", ip, search);
-    if(pB) {
-      printf("OK: %s (%lu %lu)\n", pB->country, pB->start, pB->end);
-    }
-  */
   return 0;
 }
