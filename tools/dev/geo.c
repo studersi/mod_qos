@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: geo.c,v 1.4 2012-02-02 21:11:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: geo.c,v 1.5 2012-02-03 11:08:43 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -127,7 +127,7 @@ static int qos_geo_comp(const void *_pA, const void *_pB) {
   unsigned long *pA = (unsigned long *)_pA;
   qos_geo_t *pB = (qos_geo_t *)_pB;
   unsigned long search = *pA;
-  if((search > pB->start) && (search < pB->end)) return 0;
+  if((search >= pB->start) && (search <= pB->end)) return 0;
   if(search > pB->start) return 1;
   if(search < pB->start) return -1;
   return -1; // error
@@ -138,6 +138,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size) {
   regex_t preg;
   qos_geo_t *geo = NULL;
   qos_geo_t *g = NULL;
+  qos_geo_t *last = NULL;
   int lines = 0;
   char line[HUGE_STRING_LEN];
   FILE *file = fopen(db, "r");
@@ -159,7 +160,9 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size) {
   geo = apr_pcalloc(pool, sizeof(qos_geo_t) * lines);
   g = geo;
   fseek(file, 0, SEEK_SET);
+  lines = 0;
   while(fgets(line, sizeof(line), file) != NULL) {
+    lines++;
     if(regexec(&preg, line, MAX_REG_MATCH, ma, 0) == 0) {
       line[ma[1].rm_eo] = '\0';
       line[ma[2].rm_eo] = '\0';
@@ -167,7 +170,12 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size) {
       g->start = atoll(&line[ma[1].rm_so]);
       g->end = atoll(&line[ma[2].rm_so]);
       strncpy(g->country, &line[ma[3].rm_so], 2);
-      //printf("add %lu %lu %s\n", g->start, g->end, g->country);
+      if(last) {
+	if(g->start < last->start) {
+	  fprintf(stderr, "invalid line %d, wrong order/lines not storted\n", lines);
+	}
+      }
+      last = g;
       g++;
     }
   }
