@@ -1150,15 +1150,15 @@ Defines the maximum number of concurrent TCP connections for this server (virtua
 </li>
 <li>
 <code>QS_SrvMaxConnClose &lt;number&gt;[%]</code><br>
-Defines the maximum number of connections supporting keep-alive. If the number 
-of concurrent connections exceeds this threshold, the TCP connection gets closed 
-after each request. You may specify the number of connections as a percentage 
-of MaxClients if adding the suffix '%' to the specified value.
+Defines the maximum number of connections for this server (virtual host) supporting 
+HTTP keep-alive. If the number of concurrent connections exceeds this threshold, the 
+TCP connection gets closed after each request. You may specify the number of 
+connections as a percentage of MaxClients if adding the suffix '%' to the specified value.
 </li>
 <li>
 <a name="QS_SrvMaxConnPerIP"></a>
 <code>QS_SrvMaxConnPerIP &lt;number&gt;</code><br>
-Defines the maximum number of connections per source IP address.
+Defines the maximum number of connections per source IP address for this server (virtual host).
 </li>
 <li>
 <code>QS_SrvMaxConnExcludeIP &lt;address&gt;</code><br>
