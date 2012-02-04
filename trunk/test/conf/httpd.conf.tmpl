@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.207 2012-02-04 16:31:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.208 2012-02-04 20:04:14 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -166,6 +166,10 @@ QS_UserTrackingCookieName stat /error-docs/cookie.html
 
 <IfDefine geopriv>
 QS_ClientGeoIPPriv      DE,GB,LO,CH,EU 10
+QS_ClientGeoIPCountryDB conf/GeoIPCountryWhois.csv
+</IfDefine>
+<IfDefine geoprivdeny>
+QS_ClientGeoIPPriv      US,AU,IT,FR 10
 QS_ClientGeoIPCountryDB conf/GeoIPCountryWhois.csv
 </IfDefine>
 
