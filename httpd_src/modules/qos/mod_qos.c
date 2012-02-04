@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.372 2012-02-02 20:39:12 pbuchbinder Exp $";
-static const char g_revision[] = "9.79";
+static const char revision[] = "$Id: mod_qos.c,v 5.373 2012-02-04 10:30:22 pbuchbinder Exp $";
+static const char g_revision[] = "10.0";
 
 /************************************************************************
  * Includes
@@ -135,6 +135,15 @@ static const char g_revision[] = "9.79";
 #define QS_EMPTY_CON      "NullConnection"
 #define QS_MFILE          "/var/tmp/"
 
+#define QS_COUNT_CONNECTIONS(sconf) (sconf->max_conn != -1) || \
+                                    (sconf->min_rate_max != -1) || \
+                                    (sconf->max_conn_close != -1) || \
+                                     sconf->geodb
+
+
+// "3758096128","3758096383","AU"
+#define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\""
+
 static const char *m_env_variables[] = {
   QS_ErrorNotes,
   QS_SERIALIZE,
@@ -209,6 +218,12 @@ APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, query_decode_hook,
 /************************************************************************
  * structures
  ***********************************************************************/
+
+typedef struct {
+  unsigned long start;
+  unsigned long end;
+  char country[3];
+} qos_geo_t;
 
 typedef struct {
   const char *url;
@@ -436,13 +451,13 @@ typedef struct qs_actable_st {
   /** process pool is used to create user space data */
   apr_pool_t *ppool;
   /** rule entry list */
-  qs_acentry_t *entry;
+  qs_acentry_t *entry; /* shm pointer */
   int has_events;
   /** mutex */
   char *lock_file;
   apr_global_mutex_t *lock;
   /** ip/conn data */
-  qs_conn_t *conn;
+  qs_conn_t *conn; /* shm pointer */
   unsigned int timeout;
   /* settings */
   int child_init;
@@ -582,6 +597,12 @@ typedef struct {
   int cc_tolerance_max;       /* GLOBAL ONLY */
   int cc_tolerance_min;       /* GLOBAL ONLY */
   int qs_req_rate_tm;         /* GLOBAL ONLY */
+  qos_geo_t *geodb;           /* GLOBAL ONLY */
+  int geodb_size;             /* GLOBAL ONLY */
+  int geo_limit;              /* GLOBAL ONLY */
+  apr_table_t *geo_priv;      /* GLOBAL ONLY */
+  int server_limit;
+  int thread_limit;
   apr_table_t *milestones;
   time_t milestone_timeout;
   /* predefined client behavior */
@@ -1620,19 +1641,19 @@ static apr_status_t qos_cleanup_shm(void *p) {
  *                     + [max_ip]
  * act->entry         <- 
  */
-static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *table,
-                                 int maxclients) {
+static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actable_t *act,
+                                 apr_table_t *table, int maxclients) {
   char *file = "-";
   apr_status_t res;
   int i;
   int rule_entries = apr_table_elts(table)->nelts;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(table)->elts;
   qs_acentry_t *e = NULL;
-  int server_limit, thread_limit, max_ip;
-  ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
-  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
-  if(thread_limit == 0) thread_limit = 1; /* mpm prefork */
-  max_ip = thread_limit * server_limit;
+  int max_ip;
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &sconf->server_limit);
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &sconf->thread_limit);
+  if(sconf->thread_limit == 0) sconf->thread_limit = 1; /* mpm prefork */
+  max_ip = sconf->thread_limit * sconf->server_limit;
   max_ip = maxclients > 0 ? maxclients : max_ip;
   act->size = (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
@@ -1719,6 +1740,66 @@ static apr_status_t qos_init_shm(server_rec *s, qs_actable_t *act, apr_table_t *
     }
   }
   return APR_SUCCESS;
+}
+
+static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char **msg) {
+#ifdef AP_REGEX_H
+  ap_regmatch_t ma[AP_MAX_REG_MATCH];
+  ap_regex_t *preg;
+#else
+  regmatch_t ma[AP_MAX_REG_MATCH];
+  regex_t *preg;
+#endif
+  qos_geo_t *geo = NULL;
+  qos_geo_t *g = NULL;
+  qos_geo_t *last = NULL;
+  int lines = 0;
+  char line[HUGE_STRING_LEN];
+  FILE *file = fopen(db, "r");
+  *size = 0;
+  if(!file) {
+    return NULL;
+  }
+#ifdef AP_REGEX_H
+  preg = ap_pregcomp(pool, QS_GEO_PATTERN, AP_REG_EXTENDED);
+#else
+  preg = ap_pregcomp(pool, QS_GEO_PATTERN, REG_EXTENDED);
+#endif
+  if(preg == NULL) {
+    *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN);
+    return NULL;
+  }
+  while(fgets(line, sizeof(line), file) != NULL) {
+    if(ap_regexec(preg, line, 0, NULL, 0) == 0) {
+      lines++;
+    } else {
+      *msg = apr_psprintf(pool, "invalid entry in database: '%s'", line);
+    }
+  }
+  *size = lines;
+  geo = apr_pcalloc(pool, sizeof(qos_geo_t) * lines);
+  g = geo;
+  fseek(file, 0, SEEK_SET);
+  lines = 0;
+  while(fgets(line, sizeof(line), file) != NULL) {
+    lines++;
+    if(ap_regexec(preg, line, AP_MAX_REG_MATCH, ma, 0) == 0) {
+      line[ma[1].rm_eo] = '\0';
+      line[ma[2].rm_eo] = '\0';
+      line[ma[3].rm_eo] = '\0';
+      g->start = atoll(&line[ma[1].rm_so]);
+      g->end = atoll(&line[ma[2].rm_so]);
+      strncpy(g->country, &line[ma[3].rm_so], 2);
+      if(last) {
+	if(g->start < last->start) {
+	  *msg = apr_psprintf(pool, "wrong order/lines not storted (line %d)", lines);
+	}
+      }
+      last = g;
+      g++;
+    }
+  }
+  return geo;
 }
 
 /* TODO: only ipv4 support */
@@ -4181,6 +4262,56 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
   return ret;
 }
 
+// checks if connection counting is enabled (any host)
+static int qos_count_connections(qos_srv_config *sconf) {
+  server_rec *s = sconf->base_server;
+  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+  if(QS_COUNT_CONNECTIONS(bsconf)) {
+    return 1;
+  }
+  s = s->next;
+  while(s) {
+    qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    if(QS_COUNT_CONNECTIONS(sc)) {
+      return 1;
+    }
+    s = s->next;
+  }
+  return 0;
+}
+
+// total (server/all hosts) conections
+static int qos_server_connections(qos_srv_config *sconf) {
+  server_rec *s = sconf->base_server;
+  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+  int connections = bsconf->act->conn->connections;
+  s = s->next;
+  while(s) {
+    qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    if(sc != bsconf) {
+      connections += sc->act->conn->connections;
+    }
+    s = s->next;
+  }
+  return connections;
+  /*
+  int i, j;
+  worker_score *ws_record;
+  process_score *ps_record;
+  for(i = 0; i < sconf->server_limit; ++i) {
+    ps_record = ap_get_scoreboard_process(i);
+    for(j = 0; j < sconf->thread_limit; ++j) {
+      ws_record = ap_get_scoreboard_worker(i, j);
+      if(!ps_record->quiescing && ps_record->pid) {
+        if(ws_record->status == SERVER_READY && ps_record->generation == ap_my_generation) {
+          ready++;
+        }
+      }
+    }
+  }
+  */ 
+}
+
 /**
  * client control rules at process connection handler
  */
@@ -4464,6 +4595,51 @@ unsigned long qos_crc32(const char *s, int len) {
   return crc32val;
 }
 
+static int qos_geo_comp(const void *_pA, const void *_pB) {
+  unsigned long *pA = (unsigned long *)_pA;
+  qos_geo_t *pB = (qos_geo_t *)_pB;
+  unsigned long search = *pA;
+  if((search >= pB->start) && (search <= pB->end)) return 0;
+  if(search > pB->start) return 1;
+  if(search < pB->start) return -1;
+  return -1; // error
+}
+
+static unsigned long qos_geo_str2long(apr_pool_t *pool, const char *ip) {
+  char *p;
+  char *i = apr_pstrdup(pool, ip);
+  unsigned long addr = 0;
+
+  p = strchr(i, '.');
+  if(!p) return 0;
+  p[0] = '\0';
+  if(!qos_is_num(i)) return 0;
+  addr += (atol(i) * 16777216);
+  i = p;
+  i++;
+
+  p = strchr(i, '.');
+  if(!p) return 0;
+  p[0] = '\0';
+  if(!qos_is_num(i)) return 0;
+  addr += (atol(i) * 65536);
+  i = p;
+  i++;
+
+  p = strchr(i, '.');
+  if(!p) return 0;
+  p[0] = '\0';
+  if(!qos_is_num(i)) return 0;
+  addr += (atol(i) * 256);
+  i = p;
+  i++;
+
+  if(!qos_is_num(i)) return 0;
+  addr += (atol(i));
+
+  return addr;
+}
+
 /* TODO: only ipv4 support */
 static unsigned long qos_inet_addr(const char *address) {
   long ip = inet_addr(address);
@@ -4698,26 +4874,9 @@ static void qos_bars(request_rec *r, server_rec *bs) {
       ap_rputs("<td colspan=\"2\">running in 'log only' mode - rules are NOT enforced</td>", r);
       ap_rputs("</tr>\n", r);
     }
-
-    if(bsconf->max_conn != -1 || bsconf->max_conn_close != -1) {
-      connections = bsconf->act->conn->connections;
+    if(qos_count_connections(bsconf)) {
+      connections = qos_server_connections(bsconf);
     }
-    s = s->next;
-    while(s) {
-      qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-      if(sc != bsconf) {
-        if(sc->max_conn == -1 && sc->max_conn_close == -1) {
-          connections = -1;
-          break;
-        }
-        if(connections == -1) {
-          connections = 0;
-        }
-        connections = connections + sc->act->conn->connections;
-      }
-      s = s->next;
-    }
-
     if(connections != -1) {
       ap_rprintf(r, "<tr class=\"rowt\">"
                  "<td colspan=\"1\">connections: %d</td>"
@@ -4969,7 +5128,15 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                      ( (sconf->max_conn != -1) &&
                        (sconf->act->conn->connections >= sconf->max_conn) ) ) ? red : "",
                    sconf->act->conn->connections);
-        
+
+        if(!s->is_virtual) {
+          ap_rprintf(r, "<tr class=\"rows\">"
+                     "<!--base--><td colspan=\"6\">"
+                     "<div>total connections</div></td>"
+                     "<td colspan=\"3\">%d</td></tr>\n",
+                     qos_server_connections(sconf));
+        }
+
         if(option && strstr(option, "ip")) {
           if(sconf->act->conn->connections) {
             apr_table_t *entries = apr_table_make(r->pool, 100);
@@ -5464,8 +5631,8 @@ static apr_status_t qos_cleanup_conn(void *p) {
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT15 */
   }
-  /* QS_SrvMaxConn */
-  if((cconf->sconf->max_conn != -1) || (cconf->sconf->min_rate_max != -1)) {
+  /* QS_SrvMaxConn or GeoIP */
+  if(qos_count_connections(cconf->sconf)) {
     apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT3 */
     if(cconf->sconf->act->conn && cconf->sconf->act->conn->connections > 0) {
       cconf->sconf->act->conn->connections--;
@@ -5522,8 +5689,8 @@ static int qos_process_connection(conn_rec *c) {
      */
     /* client control */
     client_control = qos_cc_pc_filter(c, cconf, u, &msg);
-    /* QS_SrvMaxConn: vhost connections */
-    if((sconf->max_conn != -1) || (sconf->min_rate_max != -1)) {
+    /* QS_SrvMaxConn: vhost connections or GeoIP */
+    if(qos_count_connections(sconf)) {
       apr_global_mutex_lock(cconf->sconf->act->lock);    /* @CRT4 */
       if(cconf->sconf->act->conn) {
         cconf->sconf->act->conn->connections++;
@@ -5532,6 +5699,7 @@ static int qos_process_connection(conn_rec *c) {
       }
       apr_global_mutex_unlock(cconf->sconf->act->lock);
     }
+
     /* single source ip */
     if(sconf->max_conn_per_ip != -1) {
       current = qos_inc_ip(c->pool, cconf, &e);
@@ -5575,6 +5743,34 @@ static int qos_process_connection(conn_rec *c) {
         c->keepalive = AP_CONN_CLOSE;
         return qos_return_error(c);
       }
+    }
+    /* GeoIP */
+    if(sconf->geodb && sconf->geo_limit != -1) {
+      int used = qos_server_connections(sconf);
+      if(used >= sconf->geo_limit) {
+        unsigned long ip = qos_geo_str2long(c->pool, c->remote_ip);
+        qos_geo_t *pB = bsearch(&ip,
+                                sconf->geodb,
+                                sconf->geodb_size,
+                                sizeof(qos_geo_t),
+                                qos_geo_comp);
+        if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                       QOS_LOG_PFX(100)"access denied, QS_ClientGeoIPPriv rule: max=%d,"
+                       " concurrent connections=%d,"
+                       " c=%s"
+                       " country=%s",
+                       sconf->geo_limit,
+                       used,
+                       c->remote_ip,
+                       pB != NULL ? pB->country : "--");
+          if(!sconf->log_only) {
+            c->keepalive = AP_CONN_CLOSE;
+            return qos_return_error(c);
+          }
+        }
+      }
+      //$$$
     }
     /* QS_SrvMaxConn: vhost connections */
     if((sconf->max_conn != -1) && !vip) {
@@ -5664,7 +5860,6 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
     inctx->client_socket = skt;
     ap_add_input_filter("qos-in-filter", inctx, NULL, c);
   }
-
 
   /* blocked by event (block only, no limit) - very aggressive */
   if(sconf->qos_cc_block) {
@@ -5762,7 +5957,7 @@ static int qos_post_read_request(request_rec *r) {
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
   /* QS_SrvMaxConn: propagate connection env vars to req*/
-  if(sconf && ((sconf->max_conn != -1) || (sconf->min_rate_max != -1))) {
+  if(qos_count_connections(sconf)) {
     const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
     if(connections) {
       apr_table_set(r->subprocess_env, "QS_SrvConn", connections);
@@ -7142,7 +7337,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   sconf->base_server = bs;
   sconf->act->timeout = apr_time_sec(bs->timeout);
   if(sconf->act->timeout == 0) sconf->act->timeout = 300;
-  if(qos_init_shm(bs, sconf->act, sconf->location_t, net_prefer) != APR_SUCCESS) {
+  if(qos_init_shm(bs, sconf, sconf->act, sconf->location_t, net_prefer) != APR_SUCCESS) {
     return !OK;
   }
   apr_pool_cleanup_register(sconf->pool, sconf->act,
@@ -7222,7 +7417,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
         ssconf->act->timeout = 300;
       }
       if(ssconf->is_virtual) {
-        if(qos_init_shm(s, ssconf->act, ssconf->location_t, net_prefer) != APR_SUCCESS) {
+        if(qos_init_shm(s, ssconf, ssconf->act, ssconf->location_t, net_prefer) != APR_SUCCESS) {
           return !OK;
         }
         apr_pool_cleanup_register(ssconf->pool, ssconf->act,
@@ -7829,6 +8024,10 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_serialize = 0;
   sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
   sconf->qs_req_rate_tm = QS_REQ_RATE_TM;
+  sconf->geodb = NULL;
+  sconf->geodb_size = 0;
+  sconf->geo_limit = -1;
+  sconf->geo_priv = apr_table_make(p, 20);
   sconf->qos_cc_block_time = 600;
   sconf->qos_cc_limit_time = 600;
   sconf->qos_cc_forwardedfor = NULL;
@@ -7906,6 +8105,10 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_serialize = b->qos_cc_serialize;
   o->cc_tolerance = b->cc_tolerance;
   o->qs_req_rate_tm = b->qs_req_rate_tm;
+  o->geodb = b->geodb;
+  o->geodb_size = b->geodb_size;
+  o->geo_limit = b->geo_limit;
+  o->geo_priv = b->geo_priv;
   o->req_rate = b->req_rate;
   o->req_rate_start = b->req_rate_start;
   o->min_rate = b->min_rate;
@@ -9340,6 +9543,49 @@ const char *qos_resheaderfilter_rule_cmd(cmd_parms *cmd, void *dcfg,
   return NULL;  
 }
 
+const char *qos_geodb_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  char *msg = NULL;
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->geodb = qos_loadgeo(cmd->pool, ap_server_root_relative(cmd->pool, arg1), &sconf->geodb_size, &msg);
+  if(sconf->geodb == NULL || msg != NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to load the database: %s",
+                        cmd->directive->directive,
+                        msg ? msg : "-");
+  }
+  return NULL;
+}
+
+const char *qos_geopriv_cmd(cmd_parms *cmd, void *dcfg, const char *list, const char *con) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  char *next = apr_pstrdup(cmd->pool, list);
+  char *name;
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  name = apr_strtok(next, ",", &next);
+  if(name == NULL) {
+    return apr_psprintf(cmd->pool, "%s: empty list",
+                        cmd->directive->directive);
+  }
+  while(name) {
+    apr_table_set(sconf->geo_priv, name, "");
+    name = apr_strtok(NULL, ",", &next);
+  }
+  sconf->geo_limit = atoi(con);
+  if(sconf->geo_limit <= 0 && con[0] != '0' && con[1] != '\0') {
+    return apr_psprintf(cmd->pool, "%s: invalid connection number",
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
 const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -9996,6 +10242,12 @@ static const command_rec qos_config_cmds[] = {
                ACCESS_CONF,
                "QS_PermitUriBody 'on'|'off', enabled body data filter for QS_PermitUriBody."),
   /* client control */
+  AP_INIT_TAKE1("QS_ClientGeoIPCountryDB", qos_geodb_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientGeoIPCountryDB <path>, path to the GeoIP country database."),
+  AP_INIT_TAKE2("QS_ClientGeoIPPriv", qos_geopriv_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientGeoIPPriv <list> <con>"),
   AP_INIT_TAKE1("QS_ClientEntries", qos_client_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientEntries <number>, defines the number of individual"

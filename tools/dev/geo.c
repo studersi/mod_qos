@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: geo.c,v 1.5 2012-02-03 11:08:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: geo.c,v 1.6 2012-02-04 10:30:22 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,8 +49,8 @@ static const char revision[] = "$Id: geo.c,v 1.5 2012-02-03 11:08:43 pbuchbinder
 #define MAX_REG_MATCH 10
 
 // "3758096128","3758096383","AU"
-#define PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\""
-#define IPPATTERN "([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3})"
+#define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\""
+#define IPPATTERN "([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3})[\"' ]+"
 
 typedef struct {
   unsigned long start;
@@ -119,7 +119,13 @@ static char *qos_geo_long2str(apr_pool_t *pool, unsigned long ip) {
 */
 
 static void usage(const char *cmd) {
-  printf("Usage: \n");
+  printf("\n");
+  printf("Usage: %s <path>\n", cmd);
+  printf("\n");
+  printf("Example:\n");
+  printf("\n");
+  printf("  cat access_log | ./geo -d GeoIPCountryWhois.csv\n");
+  printf("\n");
   exit(1);
 }
 
@@ -133,7 +139,7 @@ static int qos_geo_comp(const void *_pA, const void *_pB) {
   return -1; // error
 }
 
-static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size) {
+static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char **msg) {
   regmatch_t ma[MAX_REG_MATCH];
   regex_t preg;
   qos_geo_t *geo = NULL;
@@ -146,14 +152,15 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size) {
   if(!file) {
     return NULL;
   }
-  if(regcomp(&preg, PATTERN, REG_EXTENDED)) {
+  if(regcomp(&preg, QS_GEO_PATTERN, REG_EXTENDED)) {
+    *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN);
     return NULL;
   }
   while(fgets(line, sizeof(line), file) != NULL) {
     if(regexec(&preg, line, 0, NULL, 0) == 0) {
       lines++;
     } else {
-      fprintf(stderr, "invalid line in db [%s]\n", line);
+      *msg = apr_psprintf(pool, "invalid entry in database: '%s'", line);
     }
   }
   *size = lines;
@@ -172,7 +179,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size) {
       strncpy(g->country, &line[ma[3].rm_so], 2);
       if(last) {
 	if(g->start < last->start) {
-	  fprintf(stderr, "invalid line %d, wrong order/lines not storted\n", lines);
+	  *msg = apr_psprintf(pool, "wrong order/lines not storted (line %d)", lines);
 	}
       }
       last = g;
@@ -183,6 +190,8 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size) {
 }
 
 int main(int argc, const char * const argv[]) {
+  const char *ip = NULL;
+  char *msg = NULL;
   qos_geo_t *geo;
   int size;
   const char *db = NULL;
@@ -204,6 +213,10 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	db = *(++argv);
       }
+    } else if(strcmp(*argv, "-ip") == 0) {
+      if (--argc >= 1) {
+	ip = *(++argv);
+      }
     } else {
       usage(cmd);
     }
@@ -215,14 +228,32 @@ int main(int argc, const char * const argv[]) {
     usage(cmd);
   }
 
-  geo = qos_loadgeo(pool, db, &size);
+  geo = qos_loadgeo(pool, db, &size, &msg);
   if(geo == NULL) {
-    fprintf(stderr, "failed to load database\n");
+    fprintf(stderr, "failed to load database: %s\n", msg ? msg : "-");
     exit(1);
+  }
+  
+  if(ip) {
+    qos_geo_t *pB;
+    unsigned long search = qos_geo_str2long(pool, ip);
+    printf("search %lu: ", search);
+    pB = bsearch(&search,
+		 geo,
+		 size,
+		 sizeof(qos_geo_t),
+		 qos_geo_comp);
+    if(pB) {
+      printf("%s\n", pB->country);
+    } else {
+      printf("n/a\n");
+    }
+    return 0;
   }
 
   // start reading from stdin
   {
+    char prev;
     qos_geo_t *pB;
     apr_pool_t *tmp;
     char line[HUGE_STRING_LEN];
@@ -235,6 +266,7 @@ int main(int argc, const char * const argv[]) {
     while(fgets(line, sizeof(line), stdin) != NULL) {
       if(regexec(&preg, line, MAX_REG_MATCH, ma, 0) == 0) {
 	unsigned long search;
+	prev = line[ma[1].rm_eo];
 	line[ma[1].rm_eo] = '\0';
 	search = qos_geo_str2long(tmp, &line[ma[1].rm_so]);
 	apr_pool_clear(tmp);
@@ -244,9 +276,9 @@ int main(int argc, const char * const argv[]) {
 		     sizeof(qos_geo_t),
 		     qos_geo_comp);
 	if(pB) {
-	  printf("%s %s\n", pB->country, &line[ma[1].rm_so]);
+	  printf("%s%c%s%s %s", line, prev, prev == ' ' ? "" : " ", pB->country, &line[ma[1].rm_eo+1]);
 	} else {
-	  printf("-- %s\n", &line[ma[1].rm_so]);
+	  printf("%s%c%s-- %s", line, prev, prev == ' ' ? "" : " ", &line[ma[1].rm_eo+1]);
 	}
       }
     }
