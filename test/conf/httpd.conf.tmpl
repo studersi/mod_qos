@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.206 2011-12-06 22:10:47 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.207 2012-02-04 16:31:25 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -162,6 +162,11 @@ QS_UserTrackingCookieName stat
 </IfDefine>
 <IfDefine usertrack_force>
 QS_UserTrackingCookieName stat /error-docs/cookie.html
+</IfDefine>
+
+<IfDefine geopriv>
+QS_ClientGeoIPPriv      DE,GB,LO,CH,EU 10
+QS_ClientGeoIPCountryDB conf/GeoIPCountryWhois.csv
 </IfDefine>
 
 ErrorDocument 404 /error-docs/error404.html

@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.373 2012-02-04 10:30:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.374 2012-02-04 16:31:24 pbuchbinder Exp $";
 static const char g_revision[] = "10.0";
 
 /************************************************************************
@@ -1770,10 +1770,12 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
     return NULL;
   }
   while(fgets(line, sizeof(line), file) != NULL) {
-    if(ap_regexec(preg, line, 0, NULL, 0) == 0) {
-      lines++;
-    } else {
-      *msg = apr_psprintf(pool, "invalid entry in database: '%s'", line);
+    if(strlen(line) > 0) {
+      if(ap_regexec(preg, line, 0, NULL, 0) == 0) {
+        lines++;
+      } else {
+        *msg = apr_psprintf(pool, "invalid entry in database: '%s'", line);
+      }
     }
   }
   *size = lines;
@@ -1783,20 +1785,22 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
   lines = 0;
   while(fgets(line, sizeof(line), file) != NULL) {
     lines++;
-    if(ap_regexec(preg, line, AP_MAX_REG_MATCH, ma, 0) == 0) {
-      line[ma[1].rm_eo] = '\0';
-      line[ma[2].rm_eo] = '\0';
-      line[ma[3].rm_eo] = '\0';
-      g->start = atoll(&line[ma[1].rm_so]);
-      g->end = atoll(&line[ma[2].rm_so]);
-      strncpy(g->country, &line[ma[3].rm_so], 2);
-      if(last) {
-	if(g->start < last->start) {
-	  *msg = apr_psprintf(pool, "wrong order/lines not storted (line %d)", lines);
-	}
+    if(strlen(line) > 0) {
+      if(ap_regexec(preg, line, AP_MAX_REG_MATCH, ma, 0) == 0) {
+        line[ma[1].rm_eo] = '\0';
+        line[ma[2].rm_eo] = '\0';
+        line[ma[3].rm_eo] = '\0';
+        g->start = atoll(&line[ma[1].rm_so]);
+        g->end = atoll(&line[ma[2].rm_so]);
+        strncpy(g->country, &line[ma[3].rm_so], 2);
+        if(last) {
+          if(g->start < last->start) {
+            *msg = apr_psprintf(pool, "wrong order/lines not storted (line %d)", lines);
+          }
+        }
+        last = g;
+        g++;
       }
-      last = g;
-      g++;
     }
   }
   return geo;
@@ -5756,7 +5760,7 @@ static int qos_process_connection(conn_rec *c) {
                                 qos_geo_comp);
         if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                       QOS_LOG_PFX(100)"access denied, QS_ClientGeoIPPriv rule: max=%d,"
+                       QOS_LOG_PFX(101)"access denied, QS_ClientGeoIPPriv rule: max=%d,"
                        " concurrent connections=%d,"
                        " c=%s"
                        " country=%s",
@@ -5770,7 +5774,6 @@ static int qos_process_connection(conn_rec *c) {
           }
         }
       }
-      //$$$
     }
     /* QS_SrvMaxConn: vhost connections */
     if((sconf->max_conn != -1) && !vip) {
@@ -7285,6 +7288,10 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   if(sconf->log_only) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"running in 'log only' mode - rules are NOT enforced!");
+  }
+  if(sconf->geo_limit != -1 && !sconf->geodb) {
+    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
+                 QOS_LOG_PFX(100)"QS_ClientGeoIPCountryDB has not been configured");
   }
   if(net_prefer <= 1) {
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 

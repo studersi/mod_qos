@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: geo.c,v 1.6 2012-02-04 10:30:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: geo.c,v 1.7 2012-02-04 16:31:25 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -157,10 +157,12 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
     return NULL;
   }
   while(fgets(line, sizeof(line), file) != NULL) {
-    if(regexec(&preg, line, 0, NULL, 0) == 0) {
-      lines++;
-    } else {
-      *msg = apr_psprintf(pool, "invalid entry in database: '%s'", line);
+    if(strlen(line) > 0) {
+      if(regexec(&preg, line, 0, NULL, 0) == 0) {
+	lines++;
+      } else {
+	*msg = apr_psprintf(pool, "invalid entry in database: '%s'", line);
+      }
     }
   }
   *size = lines;
@@ -170,20 +172,22 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
   lines = 0;
   while(fgets(line, sizeof(line), file) != NULL) {
     lines++;
-    if(regexec(&preg, line, MAX_REG_MATCH, ma, 0) == 0) {
-      line[ma[1].rm_eo] = '\0';
-      line[ma[2].rm_eo] = '\0';
-      line[ma[3].rm_eo] = '\0';
-      g->start = atoll(&line[ma[1].rm_so]);
-      g->end = atoll(&line[ma[2].rm_so]);
-      strncpy(g->country, &line[ma[3].rm_so], 2);
-      if(last) {
-	if(g->start < last->start) {
-	  *msg = apr_psprintf(pool, "wrong order/lines not storted (line %d)", lines);
+    if(strlen(line) > 0) {
+      if(regexec(&preg, line, MAX_REG_MATCH, ma, 0) == 0) {
+	line[ma[1].rm_eo] = '\0';
+	line[ma[2].rm_eo] = '\0';
+	line[ma[3].rm_eo] = '\0';
+	g->start = atoll(&line[ma[1].rm_so]);
+	g->end = atoll(&line[ma[2].rm_so]);
+	strncpy(g->country, &line[ma[3].rm_so], 2);
+	if(last) {
+	  if(g->start < last->start) {
+	    *msg = apr_psprintf(pool, "wrong order/lines not storted (line %d)", lines);
+	  }
 	}
+	last = g;
+	g++;
       }
-      last = g;
-      g++;
     }
   }
   return geo;
