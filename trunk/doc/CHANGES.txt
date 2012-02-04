@@ -1,6 +1,6 @@
 Version 10.0
 
- - New directives QS_ClientGeoIPCountryDB and QS_ClientGeoIPPriv.
+ - New directives QS_ClientGeoCountryDB and QS_ClientGeoCountryPriv.
 
 Version 9.79
 

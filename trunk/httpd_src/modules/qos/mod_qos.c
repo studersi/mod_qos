@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.375 2012-02-04 20:17:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.376 2012-02-04 21:09:43 pbuchbinder Exp $";
 static const char g_revision[] = "10.0";
 
 /************************************************************************
@@ -5635,7 +5635,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT15 */
   }
-  /* QS_SrvMaxConn or GeoIP */
+  /* QS_SrvMaxConn or Geo */
   if(qos_count_connections(cconf->sconf)) {
     apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT3 */
     if(cconf->sconf->act->conn && cconf->sconf->act->conn->connections > 0) {
@@ -5693,7 +5693,7 @@ static int qos_process_connection(conn_rec *c) {
      */
     /* client control */
     client_control = qos_cc_pc_filter(c, cconf, u, &msg);
-    /* QS_SrvMaxConn: vhost connections or GeoIP */
+    /* QS_SrvMaxConn: vhost connections or Geo */
     if(qos_count_connections(sconf)) {
       apr_global_mutex_lock(cconf->sconf->act->lock);    /* @CRT4 */
       if(cconf->sconf->act->conn) {
@@ -5748,7 +5748,7 @@ static int qos_process_connection(conn_rec *c) {
         return qos_return_error(c);
       }
     }
-    /* GeoIP */
+    /* Geo */
     if(sconf->geodb && sconf->geo_limit != -1) {
       int used = qos_server_connections(sconf);
       if(used >= sconf->geo_limit) {
@@ -5760,7 +5760,7 @@ static int qos_process_connection(conn_rec *c) {
                                 qos_geo_comp);
         if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                       QOS_LOG_PFX(101)"access denied, QS_ClientGeoIPPriv rule: max=%d,"
+                       QOS_LOG_PFX(101)"access denied, QS_ClientGeoCountryPriv rule: max=%d,"
                        " concurrent connections=%d,"
                        " c=%s"
                        " country=%s",
@@ -7291,7 +7291,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   if(sconf->geo_limit != -1 && !sconf->geodb) {
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
-                 QOS_LOG_PFX(100)"QS_ClientGeoIPCountryDB has not been configured");
+                 QOS_LOG_PFX(100)"QS_ClientGeoCountryDB has not been configured");
   }
   if(net_prefer <= 1) {
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
@@ -10249,12 +10249,12 @@ static const command_rec qos_config_cmds[] = {
                ACCESS_CONF,
                "QS_PermitUriBody 'on'|'off', enabled body data filter for QS_PermitUriBody."),
   /* client control */
-  AP_INIT_TAKE1("QS_ClientGeoIPCountryDB", qos_geodb_cmd, NULL,
+  AP_INIT_TAKE1("QS_ClientGeoCountryDB", qos_geodb_cmd, NULL,
                 RSRC_CONF,
-                "QS_ClientGeoIPCountryDB <path>, path to the GeoIP country database."),
-  AP_INIT_TAKE2("QS_ClientGeoIPPriv", qos_geopriv_cmd, NULL,
+                "QS_ClientGeoCountryDB <path>, path to the geograpical database file."),
+  AP_INIT_TAKE2("QS_ClientGeoCountryPriv", qos_geopriv_cmd, NULL,
                 RSRC_CONF,
-                "QS_ClientGeoIPPriv <list> <connections>, defines a comma separated list of"
+                "QS_ClientGeoCountryPriv <list> <connections>, defines a comma separated list of"
                 " country codes for origin client IP address which are allowed to"
                 " access the server if the number of busy TCP connections reaches"
                 " the defined number of connections."),

@@ -35,7 +35,7 @@ _EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoIPPriv rule: max=10, concurrent connections=.., c=127.0.0.1 country=LO"
+_EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoCountryPriv rule: max=10, concurrent connections=.., c=127.0.0.1 country=LO"
 _EXEC tail -1 logs/error_log
 
 END
