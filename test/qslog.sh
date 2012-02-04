@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# $Id: qslog.sh,v 2.11 2012-01-27 19:16:07 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.12 2012-02-04 19:20:18 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -30,7 +30,7 @@ case "$1" in
 	# - 180 200er
 	# - 60 500er
 	# - 3 ip
-	delay=${2-"1580"}
+	delay=${2-"1680"}
 	for min in `seq 0 1`; do
 	    for sec in `seq 0 58`; do
 		printf "127.0.0.1 - - [24/Aug/2011:18:%.2d:%.2d +0200] \"GET /htt/index.txt HTTP/1.1\" 200 100 \"Mozilla\" '0' 0 \"/htt/index.html?name=\\u0053\"\n" $min $sec
