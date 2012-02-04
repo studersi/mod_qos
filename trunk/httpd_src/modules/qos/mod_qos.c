@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.374 2012-02-04 16:31:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.375 2012-02-04 20:17:06 pbuchbinder Exp $";
 static const char g_revision[] = "10.0";
 
 /************************************************************************
@@ -10254,7 +10254,10 @@ static const command_rec qos_config_cmds[] = {
                 "QS_ClientGeoIPCountryDB <path>, path to the GeoIP country database."),
   AP_INIT_TAKE2("QS_ClientGeoIPPriv", qos_geopriv_cmd, NULL,
                 RSRC_CONF,
-                "QS_ClientGeoIPPriv <list> <con>"),
+                "QS_ClientGeoIPPriv <list> <connections>, defines a comma separated list of"
+                " country codes for origin client IP address which are allowed to"
+                " access the server if the number of busy TCP connections reaches"
+                " the defined number of connections."),
   AP_INIT_TAKE1("QS_ClientEntries", qos_client_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientEntries <number>, defines the number of individual"
