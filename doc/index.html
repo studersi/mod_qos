@@ -1316,6 +1316,16 @@ the <a href="#statusviewer">status viewer</a>) but you may specify a
 static configuration using this directive in order to avoid influences 
 by a high number of abnormal clients.
 </li>
+<li>
+<code>QS_ClientGeoIPCountryDB &lt;path&gt;</code><br>
+Defines the path to the geograpical CSV database file.
+</li>
+<li>
+<code>QS_ClientGeoIPPriv &lt;list&gt; &lt;connections&gt;</code><br>
+Defines a comma separated list of country codes for origin client IP address 
+which are allowed to access the server if the number of busy TCP 
+connections reaches the defined number of connections.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">

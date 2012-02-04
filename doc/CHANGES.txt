@@ -1,3 +1,7 @@
+Version 10.0
+
+ - New directives QS_ClientGeoIPCountryDB and QS_ClientGeoIPPriv.
+
 Version 9.79
 
  - Fixed: Wrong IP conversion (str2long) used by console and
