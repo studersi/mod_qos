@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.379 2012-02-05 19:50:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.380 2012-02-05 21:33:28 pbuchbinder Exp $";
 static const char g_revision[] = "10.0";
 
 /************************************************************************
@@ -9587,6 +9587,7 @@ const char *qos_geopriv_cmd(cmd_parms *cmd, void *dcfg, const char *list, const 
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *next = apr_pstrdup(cmd->pool, list);
+  int geo_limit;
   char *name;
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
@@ -9601,11 +9602,16 @@ const char *qos_geopriv_cmd(cmd_parms *cmd, void *dcfg, const char *list, const 
     apr_table_set(sconf->geo_priv, name, "");
     name = apr_strtok(NULL, ",", &next);
   }
-  sconf->geo_limit = atoi(con);
-  if(sconf->geo_limit <= 0 && con[0] != '0' && con[1] != '\0') {
+  geo_limit = atoi(con);
+  if(geo_limit <= 0 && con[0] != '0' && con[1] != '\0') {
     return apr_psprintf(cmd->pool, "%s: invalid connection number",
                         cmd->directive->directive);
   }
+  if(sconf->geo_limit != -1 && sconf->geo_limit != geo_limit) {
+    return apr_psprintf(cmd->pool, "%s: already configured with a different limitation",
+                        cmd->directive->directive);
+  }
+  sconf->geo_limit = geo_limit;
   return NULL;
 }
 
