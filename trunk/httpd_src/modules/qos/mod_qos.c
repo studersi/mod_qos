@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.378 2012-02-05 19:25:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.379 2012-02-05 19:50:39 pbuchbinder Exp $";
 static const char g_revision[] = "10.0";
 
 /************************************************************************
@@ -5979,7 +5979,7 @@ static int qos_post_read_request(request_rec *r) {
     apr_table_set(r->subprocess_env, "QS_SrvConn", connections);
   }
   if(all_connections) {
-    apr_table_set(r->subprocess_env, "QS_AllConn", connections);
+    apr_table_set(r->subprocess_env, "QS_AllConn", all_connections);
   }
 
   /* QS_ClientPrefer: propagate connection env vars to req*/
