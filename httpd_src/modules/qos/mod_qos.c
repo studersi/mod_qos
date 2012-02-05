@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.376 2012-02-04 21:09:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.377 2012-02-05 15:49:34 pbuchbinder Exp $";
 static const char g_revision[] = "10.0";
 
 /************************************************************************
@@ -120,6 +120,7 @@ static const char g_revision[] = "10.0";
 #define QS_PARP_PATH      "qos-path"
 #define QS_PARP_LOC       "qos-loc"
 
+#define QS_COUNTRY        "QS_Country"
 #define QS_SERIALIZE      "QS_Serialize"
 #define QS_ErrorNotes     "QS_ErrorNotes"
 #define QS_BLOCK          "QS_Block"
@@ -5749,28 +5750,33 @@ static int qos_process_connection(conn_rec *c) {
       }
     }
     /* Geo */
-    if(sconf->geodb && sconf->geo_limit != -1) {
-      int used = qos_server_connections(sconf);
-      if(used >= sconf->geo_limit) {
-        unsigned long ip = qos_geo_str2long(c->pool, c->remote_ip);
-        qos_geo_t *pB = bsearch(&ip,
-                                sconf->geodb,
-                                sconf->geodb_size,
-                                sizeof(qos_geo_t),
-                                qos_geo_comp);
-        if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
-          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                       QOS_LOG_PFX(101)"access denied, QS_ClientGeoCountryPriv rule: max=%d,"
-                       " concurrent connections=%d,"
-                       " c=%s"
-                       " country=%s",
-                       sconf->geo_limit,
-                       used,
-                       c->remote_ip,
-                       pB != NULL ? pB->country : "--");
-          if(!sconf->log_only) {
-            c->keepalive = AP_CONN_CLOSE;
-            return qos_return_error(c);
+    if(sconf->geodb) {
+      unsigned long ip = qos_geo_str2long(c->pool, c->remote_ip);
+      qos_geo_t *pB = bsearch(&ip,
+                              sconf->geodb,
+                              sconf->geodb_size,
+                              sizeof(qos_geo_t),
+                              qos_geo_comp);
+      if(pB) {
+        apr_table_set(c->notes, QS_COUNTRY, pB->country);
+      }
+      if(sconf->geo_limit != -1) {
+        int used = qos_server_connections(sconf);
+        if(used >= sconf->geo_limit) {
+          if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                         QOS_LOG_PFX(101)"access denied, QS_ClientGeoCountryPriv rule: max=%d,"
+                         " concurrent connections=%d,"
+                         " c=%s"
+                         " country=%s",
+                         sconf->geo_limit,
+                         used,
+                         c->remote_ip,
+                         pB != NULL ? pB->country : "--");
+            if(!sconf->log_only) {
+              c->keepalive = AP_CONN_CLOSE;
+              return qos_return_error(c);
+            }
           }
         }
       }
@@ -5959,13 +5965,17 @@ static int qos_post_read_request(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
-  /* QS_SrvMaxConn: propagate connection env vars to req*/
-  if(qos_count_connections(sconf)) {
-    const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
-    if(connections) {
-      apr_table_set(r->subprocess_env, "QS_SrvConn", connections);
-    }
+
+  /* propagate connection env vars to req, geo data and QS_SrvMaxConn */
+  const char *country = apr_table_get(r->connection->notes, QS_COUNTRY);
+  const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
+  if(country) {
+    apr_table_set(r->subprocess_env, QS_COUNTRY, country);
   }
+  if(connections) {
+    apr_table_set(r->subprocess_env, "QS_SrvConn", connections);
+  }
+
   /* QS_ClientPrefer: propagate connection env vars to req*/
   if(apr_table_get(r->connection->notes, "QS_ClientLowPrio")) {
     apr_table_set(r->subprocess_env, "QS_ClientLowPrio", "1");

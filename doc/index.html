@@ -607,8 +607,8 @@ Variables set by mod_qos which may be processed by conditional or event based ru
 <ul>
 <li>
 <code>QS_SrvConn</code><br>
-Number of concurrent connections. Value is set when using the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code> 
-directive.
+Number of concurrent connections for this server/virtual host. Value is set when using 
+the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code> directive.
 </li>
 <li>
 <code>QS_ClientLowPrio</code><br>
@@ -623,6 +623,10 @@ Variable is set when detecting a VIP request (either by cookie, IP address statu
 <code>QS_ErrorNotes</code><br>
 The error code (number only) of a mod_qos <a href="#errorlog">log message</a> 
 that has occured during a request.
+</li>
+<li>
+<code>QS_Country</code><br>
+ISO 3166 country code of client IP address. Only available if the <a href="#QS_ClientGeoCountryDB">geograpical database</a> file has been loaded.
 </li>
 </ul>
 
@@ -1317,9 +1321,10 @@ static configuration using this directive in order to avoid influences
 by a high number of abnormal clients.
 </li>
 <li>
+<a name="QS_ClientGeoCountryDB"></a>
 <code>QS_ClientGeoCountryDB &lt;path&gt;</code><br>
-Defines the path to the geograpical database file, e.g. "MaxMind GeoLite 
-Country". The file is a Comma Separated Value (CSV) format file 
+Defines the path to the geograpical database file. 
+The file is a Comma Separated Value (CSV) format file 
 (<a href="http://mod-qos.cvs.sourceforge.net/viewvc/mod-qos/src/test/conf/GeoIPCountryWhois.csv" target="_blank">example</a>). 
 Each line contains the following fields:
 <ul>
