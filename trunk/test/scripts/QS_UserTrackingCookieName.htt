@@ -1,5 +1,5 @@
 #
-# $Id: QS_UserTrackingCookieName.htt,v 1.4 2011-12-07 19:06:12 pbuchbinder Exp $
+# $Id: QS_UserTrackingCookieName.htt,v 1.5 2012-02-05 20:58:01 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -32,7 +32,7 @@ __Host: 127.0.0.1
 __Connection: keep-alive
 __Cookie: stat=$UTC; name=value
 __
-_MATCH body "id=.* \- \- (.*) [0-9]+ " USERID2
+_MATCH body "id=.* \- \- ([0-9a-zA-Z]+) [0-9]+ " USERID2
 _EXPECT . "AS1"
 _EXPECT . "!Set-Cookie"
 _WAIT
