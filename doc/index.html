@@ -608,7 +608,14 @@ Variables set by mod_qos which may be processed by conditional or event based ru
 <li>
 <code>QS_SrvConn</code><br>
 Number of concurrent connections for this server/virtual host. Value is set when using 
-the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code> directive.
+either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, <code>QS_SrvMinDataRate</code>, 
+<code>QS_SrvMaxConnClose</code>, or <code>QS_ClientGeoCountryDB</code> directive.
+</li>
+<li>
+<code>QS_AllConn</code><br>
+Number of all concurrent connections for this Apache instance. Value is set when using 
+either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, <code>QS_SrvMinDataRate</code>, 
+<code>QS_SrvMaxConnClose</code>, or <code>QS_ClientGeoCountryDB</code> directive.
 </li>
 <li>
 <code>QS_ClientLowPrio</code><br>

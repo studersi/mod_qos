@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.209 2012-02-04 21:09:43 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.210 2012-02-05 19:25:19 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -124,7 +124,7 @@ DefaultType             text/plain
 AddType                 text/html .shtml
 AddOutputFilter         INCLUDES .shtml
 
-LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e %k #%P"
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e %k %{QS_Country}e #%P"
 
 LogLevel                warn
 #ErrorLog                "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 21600 -f"
@@ -164,6 +164,9 @@ QS_UserTrackingCookieName stat
 QS_UserTrackingCookieName stat /error-docs/cookie.html
 </IfDefine>
 
+<IfDefine geoprivwrong>
+QS_ClientGeoCountryPriv      DE,GB,LO,CH,EU   10
+</IfDefine>
 <IfDefine geopriv>
 QS_ClientGeoCountryDB        conf/GeoIPCountryWhois.csv
 QS_ClientGeoCountryPriv      DE,GB,LO,CH,EU   10
