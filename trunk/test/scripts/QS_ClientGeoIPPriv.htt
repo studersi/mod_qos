@@ -34,4 +34,7 @@ _EXPECT . "done"
 _WAIT
 _CLOSE
 
+_EXPECT EXEC "GET /cgi100/sleep.cgi.* LO .*"
+_EXEC tail -1 logs/access_log
+
 END

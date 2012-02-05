@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.377 2012-02-05 15:49:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.378 2012-02-05 19:25:19 pbuchbinder Exp $";
 static const char g_revision[] = "10.0";
 
 /************************************************************************
@@ -5659,6 +5659,7 @@ static int qos_process_connection(conn_rec *c) {
   if(cconf == NULL) {
     int client_control = DECLINED;
     int connections = 0;
+    int all_connections = 0;
     int current = 0;
     qs_ip_entry_t *e = NULL;
     char *msg = NULL;
@@ -5699,8 +5700,10 @@ static int qos_process_connection(conn_rec *c) {
       apr_global_mutex_lock(cconf->sconf->act->lock);    /* @CRT4 */
       if(cconf->sconf->act->conn) {
         cconf->sconf->act->conn->connections++;
+        all_connections = qos_server_connections(sconf);
         connections = cconf->sconf->act->conn->connections; /* @CRT4 */
         apr_table_set(c->notes, "QS_SrvConn", apr_psprintf(c->pool, "%d", connections));
+        apr_table_set(c->notes, "QS_AllConn", apr_psprintf(c->pool, "%d", all_connections));
       }
       apr_global_mutex_unlock(cconf->sconf->act->lock);
     }
@@ -5761,8 +5764,7 @@ static int qos_process_connection(conn_rec *c) {
         apr_table_set(c->notes, QS_COUNTRY, pB->country);
       }
       if(sconf->geo_limit != -1) {
-        int used = qos_server_connections(sconf);
-        if(used >= sconf->geo_limit) {
+        if(all_connections >= sconf->geo_limit) {
           if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                          QOS_LOG_PFX(101)"access denied, QS_ClientGeoCountryPriv rule: max=%d,"
@@ -5770,7 +5772,7 @@ static int qos_process_connection(conn_rec *c) {
                          " c=%s"
                          " country=%s",
                          sconf->geo_limit,
-                         used,
+                         all_connections,
                          c->remote_ip,
                          pB != NULL ? pB->country : "--");
             if(!sconf->log_only) {
@@ -5969,11 +5971,15 @@ static int qos_post_read_request(request_rec *r) {
   /* propagate connection env vars to req, geo data and QS_SrvMaxConn */
   const char *country = apr_table_get(r->connection->notes, QS_COUNTRY);
   const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
+  const char *all_connections = apr_table_get(r->connection->notes, "QS_AllConn");
   if(country) {
     apr_table_set(r->subprocess_env, QS_COUNTRY, country);
   }
   if(connections) {
     apr_table_set(r->subprocess_env, "QS_SrvConn", connections);
+  }
+  if(all_connections) {
+    apr_table_set(r->subprocess_env, "QS_AllConn", connections);
   }
 
   /* QS_ClientPrefer: propagate connection env vars to req*/

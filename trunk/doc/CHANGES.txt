@@ -2,6 +2,8 @@ Version 10.0
 
  - New directives QS_ClientGeoCountryDB and QS_ClientGeoCountryPriv.
 
+ - New variables: QS_AllConn and QS_Country.
+
 Version 9.79
 
  - Fixed: Wrong IP conversion (str2long) used by console and
