@@ -1,3 +1,5 @@
+/* -*-mode: c; indent-tabs-mode: nil; c-basic-offset: 2; -*-
+ */
 /**
  * Utilities for the quality of service module mod_qos.
  *
@@ -23,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: geo.c,v 1.8 2012-02-06 07:23:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: geo.c,v 1.9 2012-02-06 16:40:43 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +53,7 @@ static const char revision[] = "$Id: geo.c,v 1.8 2012-02-06 07:23:26 pbuchbinder
 // "3758096128","3758096383","AU"
 #define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\""
 #define QS_GEO_PATTERN_D "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
-#define IPPATTERN "([0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3}.[0-9]{1,3})[\"' ]+"
+#define IPPATTERN "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"' ]+"
 
 typedef struct {
   unsigned long start;
@@ -126,17 +128,36 @@ static char *qos_geo_long2str(apr_pool_t *pool, unsigned long ip) {
 */
 
 static void usage(const char *cmd) {
+  printf("Utility to lookup the country code for client IP addresses.\n");
   printf("\n");
-  printf("Usage: %s <path> [-s] [-ip <ip>]\n", cmd);
+  printf("Usage: %s -d <path> [-s] [-ip <ip>]\n", cmd);
   printf("\n");
-  printf("Examples:\n");
+  printf("Summary\n");
+  printf(" Use this utility to resolve the country codes of IP addresses\n");
+  printf(" within existing log files. The utility reads the log file data\n");
+  printf(" from stdin and writes them, with the injected country code, to.\n");
+  printf(" stdout.\n");
   printf("\n");
-  printf("  cat access_log | ./geo -d GeoIPCountryWhois.csv\n");
+  printf("Options\n");
+  printf("  -d <path>\n");
+  printf("  Specifies the path to the geographical database files (CSV file\n");
+  printf("  containing IP address ranges and country codes.\n");
+  printf("  -s\n");
+  printf("  Writes a summary of the requests per country only.\n");
+  printf("  -ip <ip>\n");
+  printf("  Resolves a single IP address instead of reading a file.\n");
   printf("\n");
-  printf("  cat access_log | ./geo -d GeoIPCountryWhois.csv -s\n");
+  printf("Example reading the file access_log and addign the country code to\n");
+  printf("the IP address field:\n");
+  printf("  cat access_log | %s -d GeoIPCountryWhois.csv\n", cmd);
   printf("\n");
-  printf("  ./geo -d GeoIPCountryWhois.csv -ip 192.84.12.23\n");
+  printf("Example reading the file access_log and showing a summary only:\n");
+  printf("  cat access_log | %s -d GeoIPCountryWhois.csv -s\n", cmd);
   printf("\n");
+  printf("Example resolving a single IP address:\n");
+  printf("  %s -d GeoIPCountryWhois.csv -ip 192.84.12.23\n", cmd);
+  printf("\n");
+  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   exit(1);
 }
 
@@ -299,34 +320,36 @@ int main(int argc, const char * const argv[]) {
     }
     while(fgets(line, sizeof(line), stdin) != NULL) {
       if(regexec(&preg, line, MAX_REG_MATCH, ma, 0) == 0) {
-	unsigned long search;
-	prev = line[ma[1].rm_eo];
-	line[ma[1].rm_eo] = '\0';
-	search = qos_geo_str2long(tmp, &line[ma[1].rm_so]);
-	apr_pool_clear(tmp);
-	pB = bsearch(&search,
-		     geo,
-		     size,
-		     sizeof(qos_geo_t),
-		     qos_geo_comp);
-	if(stat) {
-	  if(pB) {
-	    qos_geo_stat_t *s = (qos_geo_stat_t *)apr_table_get(entries, pB->country);
-	    if(s == NULL) {
-	      s = apr_pcalloc(pool, sizeof(qos_geo_stat_t));
-	      s->num = 0;
-	      s->c = pB->c;
-	      apr_table_addn(entries, apr_pstrdup(pool, pB->country), (char *)s);
-	    }
-	    s->num++;
-	  }
-	} else {
-	  if(pB) {
-	    printf("%s%c%s%s %s", line, prev, prev == ' ' ? "" : " ", pB->country, &line[ma[1].rm_eo+1]);
-	  } else {
-	    printf("%s%c%s-- %s", line, prev, prev == ' ' ? "" : " ", &line[ma[1].rm_eo+1]);
-	  }
-	}
+        unsigned long search;
+        prev = line[ma[1].rm_eo];
+        line[ma[1].rm_eo] = '\0';
+        search = qos_geo_str2long(tmp, &line[ma[1].rm_so]);
+        apr_pool_clear(tmp);
+        pB = bsearch(&search,
+                     geo,
+                     size,
+                     sizeof(qos_geo_t),
+                     qos_geo_comp);
+        if(stat) {
+          if(pB) {
+            qos_geo_stat_t *s = (qos_geo_stat_t *)apr_table_get(entries, pB->country);
+            if(s == NULL) {
+              s = apr_pcalloc(pool, sizeof(qos_geo_stat_t));
+              s->num = 0;
+              s->c = pB->c;
+             apr_table_addn(entries, apr_pstrdup(pool, pB->country), (char *)s);
+            }
+            s->num++;
+          }
+        } else {
+          if(pB) {
+            printf("%s%c%s%s%s%s", line, prev, prev == ' ' ? "" : " ", pB->country,
+                   line[ma[1].rm_eo+1] == ' ' ? "" : " ", &line[ma[1].rm_eo+1]);
+          } else {
+            printf("%s%c%s--%s%s", line, prev, prev == ' ' ? "" : " ",
+                   line[ma[1].rm_eo+1] == ' ' ? "" : " ", &line[ma[1].rm_eo+1]);
+          }
+        }
       }
     }
     if(stat) {
