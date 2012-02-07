@@ -1,0 +1,79 @@
+#
+# limit bw for non-DACH clients
+#
+# QS_ClientIpFromHeader        Y-Forwarded-For
+# QS_ClientGeoCountryDB        conf/GeoIPCountryWhois.csv
+# SetEnvIf                     QS_Country  (DE)|(CH)|(AT) DACH
+# SetEnvIf                     Request_URI /              QS_CR
+# QS_SetEnvIf                  !DACH       QS_CR          QS_CountryLimit=limit
+# QS_EventKBytesPerSecLimit    QS_CountryLimit            200
+# 
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D geovar 2>/dev/null 1>/dev/null
+
+CLIENT
+
+# 1) DACH, no limitation
+_SET IP=89.202.132.12
+_RPS 1000 15
+# ~1012500 bytes per req => 500kb/sec
+_REQ localhost $QS_PORT_BASE
+__GET /image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5 1
+__Connection: keep-alive
+__Y-Forwarded-For: ${IP}
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 2000
+_END RPS
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5 1
+__Connection: keep-alive
+__Y-Forwarded-For: ${IP}
+__
+_EXPECT . ";${QS_PORT_BASE};QS_EventKBytesPerSecLimit;200\[var={QS_CountryLimit}\]: 0"
+_WAIT
+_CLOSE
+_EXPECT EXEC "!mod_qos\(052\): byte rate limit, rule: var={QS_CountryLimit}\(200\)"
+_EXEC tail -1 logs/error_log
+
+# 2) US, limitation
+_SET IP=130.114.0.0
+_RPS 1000 15
+# ~1012500 bytes per req => 500kb/sec
+_REQ localhost $QS_PORT_BASE
+__GET /image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5 2
+__Connection: keep-alive
+__Y-Forwarded-For: ${IP}
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 2000
+_END RPS
+
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5 2
+__Connection: keep-alive
+__Y-Forwarded-For: ${IP}
+__
+_EXPECT . ";${QS_PORT_BASE};QS_EventKBytesPerSecLimit;200\[var={QS_CountryLimit}\]: [1-9]{1}[0-9]*"
+_WAIT
+_CLOSE
+_EXPECT EXEC "mod_qos\(052\): byte rate limit, rule: var={QS_CountryLimit}\(200\)"
+_EXEC tail -1 logs/error_log
+
+END
