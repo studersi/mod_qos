@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.211 2012-02-05 19:50:39 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.212 2012-02-07 07:37:26 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -175,6 +175,14 @@ QS_ClientGeoCountryPriv      DE,GB,LO,CH,EU   10
 QS_ClientGeoCountryDB        conf/GeoIPCountryWhois.csv
 QS_ClientGeoCountryPriv      US,AU,IT,FR      10
 </IfDefine>
+<IfDefine geovar>
+QS_ClientIpFromHeader        Y-Forwarded-For
+QS_ClientGeoCountryDB        conf/GeoIPCountryWhois.csv
+SetEnvIf                     QS_Country  (DE)|(CH)|(AT) DACH
+SetEnvIf                     Request_URI /              QS_CR
+QS_SetEnvIf                  !DACH       QS_CR          QS_CountryLimit=limit
+QS_EventKBytesPerSecLimit    QS_CountryLimit            200
+</IfDefine>
 
 ErrorDocument 404 /error-docs/error404.html
 
@@ -195,7 +203,7 @@ ErrorDocument 404 /error-docs/error404.html
    </Proxy>
 
    # enable mod_deflate input filter
-   SetEnvIfNoCase Content-Encoding gzip|compress|deflate QS_DeflateReqBody
+   SetEnvIfNoCase Content-Encoding (gzip)|(compress)|(deflate) QS_DeflateReqBody
 
    QS_SetEnvIfQuery name=([a-z]*)         NAME=mein_name_ist_$1
    QS_SetEnvIfQuery other;value=(.*)match VALUE=$1

@@ -633,7 +633,11 @@ that has occured during a request.
 </li>
 <li>
 <code>QS_Country</code><br>
-ISO 3166 country code of client IP address. Only available if the <a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.
+ISO 3166 country code of client IP address. Only available if the <a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.<br>
+Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+override the client's IP address based on the value within the defined HTTP request 
+header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
+the TCP connection.
 </li>
 </ul>
 
@@ -1076,7 +1080,7 @@ SetEnvIfNoCase Content-Type multipart/mixed                   QS_LimitRequestBod
 SetEnvIfNoCase Content-Type application/json                  QS_LimitRequestBody=65536
 
 # enable mod_deflate input filter for compressed request body data:
-SetEnvIfNoCase Content-Encoding gzip|compress|deflate         QS_DeflateReqBody
+SetEnvIfNoCase Content-Encoding (gzip)|(compress)|(deflate)   QS_DeflateReqBody
 
 &lt;Location /app&gt;
    # don't allow a certain string pattern within the request query or
@@ -1358,8 +1362,8 @@ connections reaches the defined number of connections.
 <tr><td bgcolor="#E0EBE0">
 Sample configuration:<br>
 <pre>
-# don't allow a client IP to access /app/start.html 20 or
-# more times within 10 minutes:
+# don't allow a client to access /app/start.html more than
+# 20 times within 10 minutes:
 SetEnvIf     Request_URI /app/start.html          QS_Block=yes
 QS_ClientEventBlockCount                          20
 
