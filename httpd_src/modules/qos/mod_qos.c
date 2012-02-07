@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.380 2012-02-05 21:33:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.381 2012-02-07 07:37:26 pbuchbinder Exp $";
 static const char g_revision[] = "10.0";
 
 /************************************************************************
@@ -5973,6 +5973,40 @@ static int qos_post_read_request(request_rec *r) {
   const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
   const char *all_connections = apr_table_get(r->connection->notes, "QS_AllConn");
   if(country) {
+    if(sconf->qos_cc_forwardedfor) {
+      const char *forwadedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
+      if(forwadedfor) {
+        unsigned long ip = qos_geo_str2long(r->pool, forwadedfor);
+        if(ip) {
+          qos_geo_t *pB = bsearch(&ip,
+                                  sconf->geodb,
+                                  sconf->geodb_size,
+                                  sizeof(qos_geo_t),
+                                  qos_geo_comp);
+          if(pB) {
+            country = apr_pstrdup(r->pool, pB->country);
+          }
+        } else {
+          if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                          QOS_LOG_PFX(069)"no valid IP header found:"
+                          " invalid header value '%s', fallback to connection's IP %s",
+                          forwadedfor,
+                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+            apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+          }
+        }
+      } else {
+        if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                        QOS_LOG_PFX(069)"no valid IP header found:"
+                        " header '%s' not available, fallback to connection's IP %s",
+                        sconf->qos_cc_forwardedfor,
+                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+          apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+        }
+      }
+    }
     apr_table_set(r->subprocess_env, QS_COUNTRY, country);
   }
   if(connections) {
@@ -10333,7 +10367,7 @@ static const command_rec qos_config_cmds[] = {
                 "QS_ClientIpFromHeader <header>, defines a HTTP request header to read"
                 " the client's source IP address from (instead of taking the IP address"
                 " of the client opening the TCP connection). This may be used for the"
-                " QS_ClientEventLimitCount directive."),
+                " QS_ClientEventLimitCount directive and QS_Country variable."),
   AP_INIT_NO_ARGS("QS_ClientSerialize", qos_client_serial_cmd, NULL,
                   RSRC_CONF,
                   "QS_ClientSerialize, serializes requests having the "QS_SERIALIZE" variable"

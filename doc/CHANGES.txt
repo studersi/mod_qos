@@ -1,3 +1,7 @@
+Version
+
+ - QS_ClientIpFromHeader may be used to set QS_Country variable.
+
 Version 10.0
 
  - New directives QS_ClientGeoCountryDB and QS_ClientGeoCountryPriv.
