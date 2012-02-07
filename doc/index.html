@@ -609,13 +609,13 @@ Variables set by mod_qos which may be processed by conditional or event based ru
 <code>QS_SrvConn</code><br>
 Number of concurrent connections for this server/virtual host. Value is set when using 
 either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, <code>QS_SrvMinDataRate</code>, 
-<code>QS_SrvMaxConnClose</code>, or <code>QS_ClientGeoCountryDB</code> directive.
+<code>QS_SrvMaxConnClose</code>, or <code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> directive.
 </li>
 <li>
 <code>QS_AllConn</code><br>
 Number of all concurrent connections for this Apache instance. Value is set when using 
 either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, <code>QS_SrvMinDataRate</code>, 
-<code>QS_SrvMaxConnClose</code>, or <code>QS_ClientGeoCountryDB</code> directive.
+<code>QS_SrvMaxConnClose</code>, or <code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> directive.
 </li>
 <li>
 <code>QS_ClientLowPrio</code><br>
@@ -1340,10 +1340,10 @@ The file is a Comma Separated Value (CSV) format file
 Each line contains the following fields:
 <ul>
 <li>
-Double quoted beginning IP number of the address range, e.g. "1052272128" for 62.184.102.0
+Double quoted beginning <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">IP number</id></i> of the address range, e.g. "1052272128" for 62.184.102.0
 </li>
 <li>
-Double quoted ending IP number of the address range, e.g. "1052272543" for 62.184.103.159.
+Double quoted ending <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">IP number</id></i> of the address range, e.g. "1052272543" for 62.184.103.159.
 </li>
 <li>
 Double quoted ISO 3166 country code, e.g. "FR" for France.
