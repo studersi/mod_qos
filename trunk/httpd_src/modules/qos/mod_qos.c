@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.381 2012-02-07 07:37:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.382 2012-02-07 20:06:00 pbuchbinder Exp $";
 static const char g_revision[] = "10.0";
 
 /************************************************************************
@@ -4440,7 +4440,9 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config,
                                                                  &qos_module);
   const char *option = apr_table_get(qt, "option");
+  const char *all_connections = apr_table_get(r->subprocess_env, "QS_AllConn");
   apr_time_t now = apr_time_sec(r->request_time);
+
   while(s) {
     char *sn = apr_psprintf(r->pool, "%s"QOS_DELIM"%s"QOS_DELIM"%d",
                             s->is_virtual ? "v" : "b",
@@ -4448,6 +4450,9 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
                             ap_escape_html(r->pool, s->server_hostname),
                             s->addrs->host_port);
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    if(all_connections && !s->is_virtual) {
+      ap_rprintf(r, "%s"QOS_DELIM"QS_AllConn: %s\n", sn, all_connections);
+    }
     if((s->is_virtual && (sconf != bsconf)) || !s->is_virtual) {
       qs_acentry_t *e;
       if(!s->is_virtual && sconf->has_qos_cc && sconf->qos_cc_prefer_limit) {
