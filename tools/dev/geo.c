@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: geo.c,v 1.9 2012-02-06 16:40:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: geo.c,v 1.10 2012-02-08 08:37:11 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +52,9 @@ static const char revision[] = "$Id: geo.c,v 1.9 2012-02-06 16:40:43 pbuchbinder
 
 // "3758096128","3758096383","AU"
 #define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\""
+// "3758096128","3758096383","AU","Australia"
 #define QS_GEO_PATTERN_D "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
+// 182.12.34.23
 #define IPPATTERN "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"' ]+"
 
 typedef struct {
@@ -140,12 +142,12 @@ static void usage(const char *cmd) {
   printf("\n");
   printf("Options\n");
   printf("  -d <path>\n");
-  printf("  Specifies the path to the geographical database files (CSV file\n");
-  printf("  containing IP address ranges and country codes.\n");
+  printf("     Specifies the path to the geographical database files (CSV file\n");
+  printf("     containing IP address ranges and country codes.\n");
   printf("  -s\n");
-  printf("  Writes a summary of the requests per country only.\n");
+  printf("     Writes a summary of the requests per country only.\n");
   printf("  -ip <ip>\n");
-  printf("  Resolves a single IP address instead of reading a file.\n");
+  printf("     Resolves a single IP address instead of reading a file.\n");
   printf("\n");
   printf("Example reading the file access_log and addign the country code to\n");
   printf("the IP address field:\n");
