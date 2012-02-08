@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.383 2012-02-07 20:07:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.384 2012-02-08 20:07:25 pbuchbinder Exp $";
 static const char g_revision[] = "10.1";
 
 /************************************************************************
@@ -7406,7 +7406,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                             qos_cleanup_shm, apr_pool_cleanup_null);
 
   if((qos_module_check("mod_unique_id.c") != APR_SUCCESS) &&
-     (qos_module_check("mod_navajo.c") != APR_SUCCESS)) {
+     (qos_module_check("mod_navajo.cpp") != APR_SUCCESS)) {
     ap_log_error(APLOG_MARK, APLOG_WARNING, 0, bs, 
                  QOS_LOG_PFX(009)"mod_unique_id not available (mod_qos generates simple"
                  " request id if required)");

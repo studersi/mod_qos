@@ -2,6 +2,9 @@ Version
 
  - Add the qsgeo utility to the distribution archive file.
 
+ - Fixed: supress warning message about missing mod_unique_id
+   if mod_navajo.cpp is available.
+
 Version 10.1
 
  - QS_ClientIpFromHeader may be used to set QS_Country variable.
