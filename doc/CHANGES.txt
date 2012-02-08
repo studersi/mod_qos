@@ -1,3 +1,7 @@
+Version
+
+ - Add the qsgeo utility to the distribution archive file.
+
 Version 10.1
 
  - QS_ClientIpFromHeader may be used to set QS_Country variable.

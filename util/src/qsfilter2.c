@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.68 2012-01-06 20:12:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.69 2012-02-08 11:46:39 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -545,7 +545,7 @@ static void usage(char *cmd, int man) {
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
-    printf("qsexec(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf("qsexec(1), qsgeo(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
     printf(".SH AUTHOR\n");
     printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
   } else {
@@ -1599,7 +1599,7 @@ int main(int argc, const char * const argv[]) {
   int line_nr = 0;
   int deny_count = 0;
   char *time_string;
-  int i;
+  int i, rc;
   const char *access_log = NULL;
   FILE *f;
   apr_pool_t *pool;
@@ -1617,7 +1617,7 @@ int main(int argc, const char * const argv[]) {
   special_rules = apr_table_make(pool, 10);
   blacklist = apr_table_make(pool, 10);
   rules_url = apr_table_make(pool, 10);
-  nice(10);
+  rc = nice(10);
   if(cmd == NULL) {
     cmd = (char *)argv[0];
   } else {

@@ -1,6 +1,6 @@
-# $Id: Makefile.am,v 1.9 2011-10-31 20:50:19 pbuchbinder Exp $
+# $Id: Makefile.am,v 1.10 2012-02-08 11:46:39 pbuchbinder Exp $
 
-bin_PROGRAMS=qsfilter2 qslog qspng qsrotate qssign qstail qsgrep qsexec qscheck
+bin_PROGRAMS=qsfilter2 qslog qspng qsrotate qssign qstail qsgrep qsexec qscheck qsgeo
 
 qsfilter2_SOURCES= \
 	qsfilter2.c qs_util.c
@@ -28,4 +28,7 @@ qsexec_SOURCES= \
 
 qscheck_SOURCES= \
 	qscheck.c qs_util.c
+
+qsgeo_SOURCES= \
+	qsgeo.c qs_util.c
 

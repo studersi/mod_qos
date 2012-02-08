@@ -1,3 +1,5 @@
+/* -*-mode: c; indent-tabs-mode: nil; c-basic-offset: 2; -*-
+ */
 /**
  * Utilities for the quality of service module mod_qos.
  *
@@ -25,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.9 2011-10-31 21:38:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.10 2012-02-08 11:46:39 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -80,7 +82,7 @@ static void usage(char *cmd, int man) {
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
-    printf("qsexec(1), qsfilter2(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qssign(1)\n");
+    printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qssign(1)\n");
     printf(".SH AUTHOR\n");
     printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
   } else {
@@ -120,6 +122,7 @@ static void qs_readline(long pos, FILE *f) {
 }
 
 static int qs_tail(const char *cmd, FILE *f, const char *pattern) {
+  char *cont = NULL;
   long search_win_len = strlen(pattern) * 2 + 32;
   char line[search_win_len + 10];
   long pos = 0;
@@ -144,34 +147,38 @@ static int qs_tail(const char *cmd, FILE *f, const char *pattern) {
       offset = startpattern - line;
       /* search the beginning of the line */
       while((s > line) && (s[0] != CR) && (s[0] != LF)) {
-	s--;
+        s--;
       }
       if((s[0] != CR) && (s[0] != LF)) {
-	// beginning of the line not in the buffer
-	qs_readline(pos, f);
+        // beginning of the line not in the buffer
+        qs_readline(pos, f);
       }
       s++;
       end = startpattern;
       /* search the end of the line */
       while(end && end[0] && end[0] != CR && end[0] != LF) {
-	end++;
-	offset++;
+        end++;
+        offset++;
       }
       /* print the line containing the pattern */
       if((end[0] == CR) || (end[0] == LF)) {
-	end[0] = '\0';
-	printf("%s\n", s);
-	containsend = 1;
+        end[0] = '\0';
+        printf("%s\n", s);
+        containsend = 1;
       } else {
-	printf("%s", s);
+        printf("%s", s);
       }
       fseek(f, pos + offset, SEEK_SET);
       if(containsend) {
-	// skip the line at the  current position
-	fgets(line, sizeof(line), f);
+        // skip the line at the  current position
+        cont = fgets(line, sizeof(line), f);
+      } else {
+        cont = line;
       }
-      while(fgets(line, sizeof(line), f) != NULL) {
-	printf("%s", line);
+      if(cont) {
+        while(fgets(line, sizeof(line), f) != NULL) {
+          printf("%s", line);
+        }
       }
       return 0;
     }
