@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: geo.c,v 1.10 2012-02-08 08:37:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.1 2012-02-08 11:46:39 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,8 +46,8 @@ static const char revision[] = "$Id: geo.c,v 1.10 2012-02-08 08:37:11 pbuchbinde
 #include <apr_support.h>
 #include <apr_base64.h>
 
-#define QOSCR    13
-#define QOSLF    10
+#include "qs_util.h"
+
 #define MAX_REG_MATCH 10
 
 // "3758096128","3758096383","AU"
@@ -129,38 +129,90 @@ static char *qos_geo_long2str(apr_pool_t *pool, unsigned long ip) {
 }
 */
 
-static void usage(const char *cmd) {
-  printf("Utility to lookup the country code for client IP addresses.\n");
+static void usage(const char *cmd, int man) {
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
+  }
   printf("\n");
-  printf("Usage: %s -d <path> [-s] [-ip <ip>]\n", cmd);
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  qs_man_print(man, "%s - lookup of the client's country code.\n", cmd);
   printf("\n");
-  printf("Summary\n");
-  printf(" Use this utility to resolve the country codes of IP addresses\n");
-  printf(" within existing log files. The utility reads the log file data\n");
-  printf(" from stdin and writes them, with the injected country code, to.\n");
-  printf(" stdout.\n");
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  qs_man_print(man, "%s%s -d <path> [-s] [-ip <ip>]\n",  man ? "" : "Usage: ", cmd);
   printf("\n");
-  printf("Options\n");
-  printf("  -d <path>\n");
-  printf("     Specifies the path to the geographical database files (CSV file\n");
-  printf("     containing IP address ranges and country codes.\n");
-  printf("  -s\n");
-  printf("     Writes a summary of the requests per country only.\n");
-  printf("  -ip <ip>\n");
-  printf("     Resolves a single IP address instead of reading a file.\n");
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
+  qs_man_print(man, "Use this utility to resolve the country codes of IP addresses\n");
+  qs_man_print(man, "within existing log files. The utility reads the log file data\n");
+  qs_man_print(man, "from stdin and writes them, with the injected country code, to\n");
+  qs_man_print(man, "stdout.\n");
   printf("\n");
-  printf("Example reading the file access_log and addign the country code to\n");
-  printf("the IP address field:\n");
-  printf("  cat access_log | %s -d GeoIPCountryWhois.csv\n", cmd);
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -d <path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Specifies the path to the geographical database files (CSV file\n");
+  qs_man_print(man, "     containing IP address ranges and country codes.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -s\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Writes a summary of the requests per country only.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -ip <ip>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Resolves a single IP address instead of processing a log file.\n");
   printf("\n");
-  printf("Example reading the file access_log and showing a summary only:\n");
-  printf("  cat access_log | %s -d GeoIPCountryWhois.csv -s\n", cmd);
+  if(man) {
+    printf(".SH EXAMPLE\n");
+    printf("Reading the file access_log and adding the country code to the IP address field:\n");
+    printf("\n");
+  } else {
+    printf("Example reading the file access_log and adding the country code to\n");
+    printf("the IP address field:\n");
+  }
+  qs_man_println(man, "  cat access_log | %s -d GeoIPCountryWhois.csv\n", cmd);
   printf("\n");
-  printf("Example resolving a single IP address:\n");
-  printf("  %s -d GeoIPCountryWhois.csv -ip 192.84.12.23\n", cmd);
+  if(man) {
+    printf("Reading the file access_log and showing a summary only:\n");
+    printf("\n");
+  } else {
+    printf("Example reading the file access_log and showing a summary only:\n");
+  }
+  qs_man_println(man, "  cat access_log | %s -d GeoIPCountryWhois.csv -s\n", cmd);
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
-  exit(1);
+  if(man) {
+    printf("Resolving a single IP address:\n");
+    printf("\n");
+  } else {
+   printf("Example resolving a single IP address:\n");
+  }
+  qs_man_println(man, "  %s -d GeoIPCountryWhois.csv -ip 192.84.12.23\n", cmd);
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsexec(1), qsfilter2(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+  } else {
+    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  }
+  if(man) {
+    exit(0);
+  } else {
+    exit(1);
+  }
 }
 
 static int qos_geo_comp(const void *_pA, const void *_pB) {
@@ -242,6 +294,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 }
 
 int main(int argc, const char * const argv[]) {
+  int rc;
   int stat = 0;
   const char *ip = NULL;
   char *msg = NULL;
@@ -274,16 +327,26 @@ int main(int argc, const char * const argv[]) {
       }
     } else if(strcmp(*argv, "-s") == 0) {
       stat = 1;
+    } else if(strcmp(*argv,"-h") == 0) {
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--help") == 0) {
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"-?") == 0) {
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
+      usage(cmd, 1);
     } else {
-      usage(cmd);
+      usage(cmd, 0);
     }
     argc--;
     argv++;
   }
 
   if(db == NULL) {
-    usage(cmd);
+    usage(cmd, 0);
   }
+
+  rc = nice(10);
 
   geo = qos_loadgeo(pool, db, &size, &msg);
   if(geo == NULL || msg != NULL) {
