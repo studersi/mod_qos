@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.11 2012-02-09 21:01:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.12 2012-02-09 21:03:44 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -183,8 +183,8 @@ char *qs_pregsub(apr_pool_t *pool, const char *input,
     }
     else if (no < nmatch && pmatch[no].rm_so < pmatch[no].rm_eo) {
       if(QSUTIL_SIZE_MAX - len <= pmatch[no].rm_eo - pmatch[no].rm_so) {
-	fprintf(stderr, "ERROR, integer overflow or out of memory condition");
-	return NULL;
+        fprintf(stderr, "ERROR, integer overflow or out of memory condition");
+        return NULL;
       }
       len += pmatch[no].rm_eo - pmatch[no].rm_so;
     }
@@ -203,7 +203,7 @@ char *qs_pregsub(apr_pool_t *pool, const char *input,
 
     if (no > 9) {                /* Ordinary character. */
       if (c == '\\' && (*src == '$' || *src == '&'))
-	c = *src++;
+        c = *src++;
       *dst++ = c;
     }
     else if (no < nmatch && pmatch[no].rm_so < pmatch[no].rm_eo) {
