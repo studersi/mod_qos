@@ -1,9 +1,11 @@
+/* -*-mode: c; indent-tabs-mode: nil; c-basic-offset: 2; -*-
+ */
 /**
  * Command line execution utility for the quality of service module mod_qos.
  *
  * See http://opensource.adnovum.ch/mod_qos/ for further details.
  *
- * Copyright (C) 2011 Pascal Buchbinder
+ * Copyright (C) 2011-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.10 2012-02-08 11:46:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.11 2012-02-09 21:01:38 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -55,6 +57,9 @@ static const char revision[] = "$Id: qsexec.c,v 1.10 2012-02-08 11:46:39 pbuchbi
 #define POSIX_MALLOC_THRESHOLD (10)
 #endif
 #define MAX_REG_MATCH 10
+
+/* same as APR_SIZE_MAX which doesn't appear until APR 1.3 */
+#define QSUTIL_SIZE_MAX (~((apr_size_t)0))
 
 typedef struct {
     int rm_so;
@@ -177,6 +182,10 @@ char *qs_pregsub(apr_pool_t *pool, const char *input,
       len++;
     }
     else if (no < nmatch && pmatch[no].rm_so < pmatch[no].rm_eo) {
+      if(QSUTIL_SIZE_MAX - len <= pmatch[no].rm_eo - pmatch[no].rm_so) {
+	fprintf(stderr, "ERROR, integer overflow or out of memory condition");
+	return NULL;
+      }
       len += pmatch[no].rm_eo - pmatch[no].rm_so;
     }
     
@@ -380,7 +389,7 @@ int main(int argc, const char * const argv[]) {
 	if(!replaced) {
 	  fprintf(stderr, "[%s]: ERROR, failed to substitute submatches '%s' in (%s)\n", cmd, clearcommand, line);
 	} else {
-	  system(replaced);
+	  int rc = system(replaced);
 	}
 	executed = 0;
       }
@@ -395,7 +404,7 @@ int main(int argc, const char * const argv[]) {
 	}
 	if(counter >= threshold) {
 	  if(countertime + sec >= time(NULL)) {
-	    system(replaced);
+	    int rc = system(replaced);
 	    executed = 1;
 	  }
 	  countertime = 0;

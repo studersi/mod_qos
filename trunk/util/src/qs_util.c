@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.9 2012-01-25 18:05:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.10 2012-02-09 21:01:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -33,6 +33,7 @@ static const char revision[] = "$Id: qs_util.c,v 1.9 2012-01-25 18:05:47 pbuchbi
 #include <stdarg.h>
 
 #include "qs_util.h"
+
 
 /* ----------------------------------
  * global stat counter
