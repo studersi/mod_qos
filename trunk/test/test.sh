@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.193 2012-02-08 20:07:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.194 2012-02-09 15:13:32 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -901,7 +901,14 @@ if [ $? -ne 0 ]; then
   echo "FAILED qssign test failed"
 fi
 
-echo "- exec"
+echo "- qsgrep"
+LOCH=`../util/src/qsgrep -e 'mod_qos\(031\).*, c=([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})' -o 'ip=$1' logs/error_log | egrep -c "^ip=127.0.0.1$"`
+if [ $LOCH -lt 1 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qsgrep"
+fi
+
+echo "- qsexec"
 PAT=`./genlog.sh | ../util/src/qsexec -e 'mod_qos\(031\).*, c=([0-9.]*)' -t 5:10 'printf $1'`
 if [ "$PAT" != "127.0.0.1127.0.0.1127.0.0.2" ]; then
   ERRORS=`expr $ERRORS + 1`
@@ -919,12 +926,12 @@ if [ "$PAT" != "event 127.0.0.2event 127.0.0.2clear 127.0.0.2" ]; then
 fi
 
 for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(062" | grep -v "(066" | grep -v "(068" | grep -v "(071"`; do
-    C=`grep -c $E logs/error_log`
-    C1=`grep -c $E logs/error1_log`
-    if [ $C -eq 0 -a $C1 -eq 0 ]; then
-        WARNINGS=`expr $WARNINGS + 1`
-	echo "WARNING: missing message $E $C $C1"
-    fi
+  C=`grep -c $E logs/error_log`
+  C1=`grep -c $E logs/error1_log`
+  if [ $C -eq 0 -a $C1 -eq 0 ]; then
+    WARNINGS=`expr $WARNINGS + 1`
+    echo "WARNING: missing message $E $C $C1"
+  fi
 done
 
 ../tools/filter/filter2.sh
