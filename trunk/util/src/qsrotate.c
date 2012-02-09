@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.8 2012-02-08 11:46:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.9 2012-02-09 21:01:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -217,6 +217,7 @@ static void deleteOldFiles(const char *cmd, const char *file_name) {
 }
 
 static void compressThread(const char *cmd, const char *arch) {
+  int rc;
   gzFile *outfp;
   int infp;
   char dest[HUGE_STR+20];
@@ -224,7 +225,7 @@ static void compressThread(const char *cmd, const char *arch) {
   int len;
   snprintf(dest, sizeof(dest), "%s.gz", arch);
   /* low prio */
-  nice(10);
+  rc = nice(10);
   if((infp = open(arch, O_RDONLY)) == -1) {
     /* failed to open file, can't compress it */
     fprintf(stderr,"[%s]: ERROR, could not open file for compression <%s>\n", cmd, arch);
@@ -252,6 +253,7 @@ void sigchild(int signo) {
 }
 
 static void rotate(const char *cmd, const char *file_name, long *messages) {
+  int rc;
   char arch[HUGE_STR+20];
   char tmb[20];
   time_t now = time(NULL);
@@ -278,8 +280,8 @@ static void rotate(const char *cmd, const char *file_name, long *messages) {
     rename(arch,  file_name);
     m_nLogFD = openFile(cmd, file_name);
     if(m_nLogFD > 0) {
-      ftruncate(m_nLogFD, 0);
-      write(m_nLogFD, msg, strlen(msg));
+      rc = ftruncate(m_nLogFD, 0);
+      rc = write(m_nLogFD, msg, strlen(msg));
     }
   } else {
     *messages = 0;
@@ -317,7 +319,7 @@ static void *forcedRotationThread(void *argv) {
 
 int main(int argc, char **argv) {
   char *username = NULL;
-
+  int rc;
   char buf[BUFSIZE];
   int nRead, nWrite;
   time_t now;
@@ -432,8 +434,8 @@ int main(int argc, char **argv) {
 	char msg[HUGE_STR];
 	snprintf(msg, sizeof(msg), "ERROR while writing to file, %ld messages lost\n", m_messages);
 	/* error while writing data, try to delete the old file and continue ... */
-	ftruncate(m_nLogFD, 0);
-	write(m_nLogFD, msg, strlen(msg));
+	rc = ftruncate(m_nLogFD, 0);
+	rc = write(m_nLogFD, msg, strlen(msg));
       }
     } else {
       m_messages++;
