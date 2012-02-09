@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.1 2012-02-08 11:46:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.2 2012-02-09 15:13:33 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,7 +55,7 @@ static const char revision[] = "$Id: qsgeo.c,v 1.1 2012-02-08 11:46:39 pbuchbind
 // "3758096128","3758096383","AU","Australia"
 #define QS_GEO_PATTERN_D "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
 // 182.12.34.23
-#define IPPATTERN "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"' ]+"
+#define IPPATTERN "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"'\x0d\x0a, ]+"
 
 typedef struct {
   unsigned long start;
@@ -407,6 +407,10 @@ int main(int argc, const char * const argv[]) {
             s->num++;
           }
         } else {
+          char cr = prev;
+          if(prev <= CR) {
+            prev = ' ';
+          }
           if(pB) {
             printf("%s%c%s%s%s%s", line, prev, prev == ' ' ? "" : " ", pB->country,
                    line[ma[1].rm_eo+1] == ' ' ? "" : " ", &line[ma[1].rm_eo+1]);
@@ -414,7 +418,12 @@ int main(int argc, const char * const argv[]) {
             printf("%s%c%s--%s%s", line, prev, prev == ' ' ? "" : " ",
                    line[ma[1].rm_eo+1] == ' ' ? "" : " ", &line[ma[1].rm_eo+1]);
           }
+          if(cr <= CR) {
+            printf("\n");
+          }
         }
+      } else {
+        printf("%s", line);
       }
     }
     if(stat) {
