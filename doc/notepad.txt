@@ -10,8 +10,12 @@
   - elapse time between requests
   - request/response length (body)
   - request/response headers (types, length)
+  - request/response duration
   - other
   - log event
++ geo location
+  + country
+  - region, city. latitude/longitude
 + doc: document VIP behavior (exact: which directive are affected)
 - more "dynamic" rules:
   - enforce rules on certain conditions only (e.g. overall server usage)

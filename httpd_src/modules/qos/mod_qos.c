@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.384 2012-02-08 20:07:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.385 2012-02-13 19:42:43 pbuchbinder Exp $";
 static const char g_revision[] = "10.1";
 
 /************************************************************************
@@ -120,6 +120,7 @@ static const char g_revision[] = "10.1";
 #define QS_PARP_PATH      "qos-path"
 #define QS_PARP_LOC       "qos-loc"
 
+#define QS_CONNID         "QS_ConnectionId"
 #define QS_COUNTRY        "QS_Country"
 #define QS_SERIALIZE      "QS_Serialize"
 #define QS_ErrorNotes     "QS_ErrorNotes"
@@ -3768,7 +3769,6 @@ static apr_status_t qos_cleanup_inctx(void *p) {
  */
 static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
   qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
-  char buf[128];
   inctx->client_socket = NULL;
   inctx->status = QS_CONN_STATE_NEW;
   inctx->cl_val = 0;
@@ -3780,8 +3780,7 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
   inctx->shutdown = 0;
   inctx->disabled = 0;
   inctx->lowrate = -1;
-  sprintf(buf, "%p", inctx);
-  inctx->id = apr_psprintf(c->pool, "%s", buf);
+  inctx->id = apr_psprintf(c->pool, "%p%.16lx", inctx, c->id);
   inctx->sconf = sconf;
   apr_pool_cleanup_register(c->pool, inctx, qos_cleanup_inctx, apr_pool_cleanup_null);
   return inctx;
@@ -5977,6 +5976,7 @@ static int qos_post_read_request(request_rec *r) {
   const char *country = apr_table_get(r->connection->notes, QS_COUNTRY);
   const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
   const char *all_connections = apr_table_get(r->connection->notes, "QS_AllConn");
+  const char *connectionid = apr_table_get(r->connection->notes, QS_CONNID);
   if(country) {
     if(sconf->qos_cc_forwardedfor) {
       const char *forwadedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
@@ -6020,6 +6020,14 @@ static int qos_post_read_request(request_rec *r) {
   if(all_connections) {
     apr_table_set(r->subprocess_env, "QS_AllConn", all_connections);
   }
+  if(connectionid == NULL) {
+    connectionid = apr_psprintf(r->pool, "%"APR_TIME_T_FMT"%.2ld%.5"APR_PID_T_FMT,
+                                r->request_time,
+                                r->connection->id % 100,
+                                getpid());
+    apr_table_set(r->connection->notes, QS_CONNID, connectionid);
+  }
+  apr_table_set(r->subprocess_env, QS_CONNID, connectionid);
 
   /* QS_ClientPrefer: propagate connection env vars to req*/
   if(apr_table_get(r->connection->notes, "QS_ClientLowPrio")) {
