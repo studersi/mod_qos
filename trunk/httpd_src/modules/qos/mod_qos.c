@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.385 2012-02-13 19:42:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.386 2012-02-13 21:31:16 pbuchbinder Exp $";
 static const char g_revision[] = "10.1";
 
 /************************************************************************
@@ -3768,6 +3768,7 @@ static apr_status_t qos_cleanup_inctx(void *p) {
  * creates a new connection ctx (remember to set the socket, connection and timeout)
  */
 static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
+  char buf[128];
   qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
   inctx->client_socket = NULL;
   inctx->status = QS_CONN_STATE_NEW;
@@ -3780,7 +3781,8 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
   inctx->shutdown = 0;
   inctx->disabled = 0;
   inctx->lowrate = -1;
-  inctx->id = apr_psprintf(c->pool, "%p%.16lx", inctx, c->id);
+  sprintf(buf, "%p", inctx);
+  inctx->id = apr_psprintf(c->pool, "%s%.16lx", buf, c->id);
   inctx->sconf = sconf;
   apr_pool_cleanup_register(c->pool, inctx, qos_cleanup_inctx, apr_pool_cleanup_null);
   return inctx;
