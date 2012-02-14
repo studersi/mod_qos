@@ -1,9 +1,15 @@
-Version
+Version 10.2
+
+ - Fixed: QS_Milestone uses now URL decoding before applying the
+   expression (pcre).
 
  - Add the qsgeo utility to the distribution archive file.
 
  - Fixed: supress warning message about missing mod_unique_id
    if mod_navajo.cpp is available.
+
+ - New connection correlation id QS_ConnectionId (available as
+   an event for logging purposes).
 
 Version 10.1
 

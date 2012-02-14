@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.39 2012-02-08 11:46:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.40 2012-02-14 19:32:30 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1080,6 +1080,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "the data from stdin. The output is written to the specified\n");
   qs_man_println(man, "file every minute and includes the following entries:\n");
   qs_man_println(man, "  - requests per second ("NRS")\n");
+  qs_man_println(man, "  - requests within the last minute (req)\n");
   qs_man_println(man, "  - bytes sent to the client per second ("NBS")\n");
   qs_man_println(man, "  - bytes received from the client per second ("NBIS")\n");
   qs_man_println(man, "  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");

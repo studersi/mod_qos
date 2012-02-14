@@ -1,5 +1,5 @@
 #
-# $Id: QS_MileStone.htt,v 1.4 2010-07-29 17:45:07 pbuchbinder Exp $
+# $Id: QS_MileStone.htt,v 1.5 2012-02-14 19:32:30 pbuchbinder Exp $
 #
 #   QS_MileStone deny "^GET /htt/index.html"
 #   QS_MileStone deny "^GET /htt/logo.gif"
@@ -83,6 +83,7 @@ _EXPECT . "==AS1=="
 _EXPECT . "Set-Cookie"
 _WAIT
 
+# allowed (cookie)
 _REQ localhost $QS_PORT_BASE
 __GET /htt/software.zip HTTP/1.1
 __Host: localhost
@@ -94,9 +95,9 @@ _EXPECT . "200"
 _EXPECT . "==AS1=="
 _EXPECT . "Set-Cookie"
 _WAIT
-
 _CLOSE
 
+# NOT allowed (no cookie)
 _REQ localhost $QS_PORT_BASE
 __GET /htt/data.zip HTTP/1.1
 __Host: localhost
@@ -108,9 +109,26 @@ _EXPECT . "!200"
 _EXPECT . "!==AS1=="
 _EXPECT . "!Set-Cookie"
 _WAIT
-
 _CLOSE
 
+# NOT allowed (no cookie)
+_REQ localhost $QS_PORT_BASE
+__GET /htt/data.%7aip HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "code=047"
+_EXPECT . "HTTP/1.1 500"
+_EXPECT . "!200"
+_EXPECT . "!==AS1=="
+_EXPECT . "!Set-Cookie"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(047\): access denied, reached milestone '3' ..GET /htt/.....zip HTTP/...., user has already passed 'none', action=deny"
+_EXEC tail -1 logs/error_log
+
+# allowed (cookie)
 _REQ localhost $QS_PORT_BASE
 __GET /htt/data.zip HTTP/1.1
 __Host: localhost
