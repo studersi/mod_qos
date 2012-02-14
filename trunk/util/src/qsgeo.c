@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.2 2012-02-09 15:13:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.3 2012-02-14 21:12:49 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -200,6 +200,7 @@ static void usage(const char *cmd, int man) {
    printf("Example resolving a single IP address:\n");
   }
   qs_man_println(man, "  %s -d GeoIPCountryWhois.csv -ip 192.84.12.23\n", cmd);
+  printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
     printf("qsexec(1), qsfilter2(1), qsgrep(1), qslog(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
