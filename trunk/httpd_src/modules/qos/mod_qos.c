@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.386 2012-02-13 21:31:16 pbuchbinder Exp $";
-static const char g_revision[] = "10.1";
+static const char revision[] = "$Id: mod_qos.c,v 5.387 2012-02-14 19:32:30 pbuchbinder Exp $";
+static const char g_revision[] = "10.2";
 
 /************************************************************************
  * Includes
@@ -717,11 +717,8 @@ typedef struct {
 
 typedef struct {
   const char* pattern;
-#ifdef AP_REGEX_H
-  ap_regex_t *preg;
-#else
-  regex_t *preg;
-#endif
+  pcre *preg;
+  pcre_extra *extra;
   qs_rfilter_action_e action;
 } qos_milestone_t;
 
@@ -1171,6 +1168,125 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   return pB;
 }
 
+/* 000-255 */
+int qos_dec32c(const char *x) {
+  char buf[4];
+  strncpy(buf, x, 3);
+  buf[3] = '\0';
+  return atoi(buf);
+}
+
+int qos_dec22c(const char *x) {
+  char buf[4];
+  strncpy(buf, x, 2);
+  buf[2] = '\0';
+  return atoi(buf);
+}
+
+int qos_hex2c(const char *x) {
+  int i, ch;
+  ch = x[0];
+  if (isdigit(ch)) {
+    i = ch - '0';
+  }else if (isupper(ch)) {
+    i = ch - ('A' - 10);
+  } else {
+    i = ch - ('a' - 10);
+  }
+  i <<= 4;
+  
+  ch = x[1];
+  if (isdigit(ch)) {
+    i += ch - '0';
+  } else if (isupper(ch)) {
+    i += ch - ('A' - 10);
+  } else {
+    i += ch - ('a' - 10);
+  }
+  return i;
+}
+
+#define QOS_ISHEX(x) (((x >= '0') && (x <= '9')) || \
+                      ((x >= 'a') && (x <= 'f')) || \
+                      ((x >= 'A') && (x <= 'F')))
+
+
+/**
+ * url unescaping (%xx, \xHH, '+')
+ * optional decoding:
+ * - uni: MS IIS unicode %uXXXX
+ * - ansi: ansi c esc (\n, \r, ...), not implemented
+ * - char: charset conv, not implemented
+ * - html: (amp/angelbr, &#xHH;, &#DDD;, &#DD;), not implemented ('&' is delimiter)
+ */
+static int qos_unescaping(char *x, int mode, int *error) {
+  /* start with standard url decoding*/
+  int i, j, ch;
+  if(x == 0) {
+    return 0;
+  }
+  if(x[0] == '\0') {
+    return 0;
+  }
+  for(i = 0, j = 0; x[i] != '\0'; i++, j++) {
+    ch = x[i];
+    if(ch == '%') {
+      if(QOS_ISHEX(x[i + 1]) && QOS_ISHEX(x[i + 2])) {
+        /* url %xx */
+        ch = qos_hex2c(&x[i + 1]);
+        i += 2;
+      } else if((mode & QOS_DEC_MODE_FLAGS_UNI) && 
+                ((x[i + 1] == 'u') || (x[i + 1] == 'U')) &&
+                QOS_ISHEX(x[i + 2]) &&
+                QOS_ISHEX(x[i + 3]) &&
+                QOS_ISHEX(x[i + 4]) &&
+                QOS_ISHEX(x[i + 5])) {
+        /* unicode %uXXXX */
+        ch = qos_hex2c(&x[i + 4]);
+        if((ch > 0x00) && (ch < 0x5f) &&
+           ((x[i + 2] == 'f') || (x[i + 2] == 'F')) &&
+           ((x[i + 3] == 'f') || (x[i + 3] == 'F'))) {
+          ch += 0x20;
+        }
+        i += 5;
+      } else {
+        (*error)++;
+      }
+    } else if((ch == '\\') &&
+              (mode & QOS_DEC_MODE_FLAGS_UNI) &&
+              ((x[i + 1] == 'u') || (x[i + 1] == 'U'))) {
+      if(QOS_ISHEX(x[i + 2]) &&
+         QOS_ISHEX(x[i + 3]) &&
+         QOS_ISHEX(x[i + 4]) &&
+         QOS_ISHEX(x[i + 5])) {
+        /* unicode \uXXXX */
+        ch = qos_hex2c(&x[i + 4]);
+        if((ch > 0x00) && (ch < 0x5f) &&
+           ((x[i + 2] == 'f') || (x[i + 2] == 'F')) &&
+           ((x[i + 3] == 'f') || (x[i + 3] == 'F'))) {
+          ch += 0x20;
+        }
+        i += 5;
+      } else {
+        (*error)++;
+      }
+    } else if(ch == '\\' && (x[i + 1] == 'x')) {
+      if(QOS_ISHEX(x[i + 2]) && QOS_ISHEX(x[i + 3])) {
+        /* url \xHH */
+        ch = qos_hex2c(&x[i + 2]);
+        i += 3;
+      } else {
+        (*error)++;
+      }
+    } else if(ch == '+') {
+      ch = ' ';
+    }
+    x[j] = ch;
+  }
+  x[j] = '\0';
+  return j;
+}
+
 /**
  * returns the request id from mod_unique_id (if available)
  */
@@ -1351,6 +1467,9 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
 
 /** milestone cookie: b64(enc(<rand><magic><time><milestone>)) */
 static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const char *value) {
+  char *the_request;
+  int the_request_len;
+  int escerr = 0;
   qos_milestone_t *milestone = NULL;
   apr_table_entry_t *entry;
   int i;
@@ -1369,10 +1488,12 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
       }
     }
   }
+  the_request = apr_pstrdup(r->pool, r->the_request);
+  the_request_len = qos_unescaping(the_request, QOS_DEC_MODE_FLAGS_URL, &escerr);
   entry = (apr_table_entry_t *)apr_table_elts(sconf->milestones)->elts;
   for(i = 0; i < apr_table_elts(sconf->milestones)->nelts; i++) {
     milestone = (qos_milestone_t *)entry[i].val;
-    if(ap_regexec(milestone->preg, r->the_request, 0, NULL, 0) == 0) {
+    if(pcre_exec(milestone->preg, milestone->extra, the_request, the_request_len, 0, 0, NULL, 0) == 0) {
       required = atoi(entry[i].key);
       break;
     }
@@ -2112,125 +2233,6 @@ static int qos_is_vip(request_rec *r, qos_srv_config *sconf) {
     }
   }
   return 0;
-}
-
-/* 000-255 */
-int qos_dec32c(const char *x) {
-  char buf[4];
-  strncpy(buf, x, 3);
-  buf[3] = '\0';
-  return atoi(buf);
-}
-
-int qos_dec22c(const char *x) {
-  char buf[4];
-  strncpy(buf, x, 2);
-  buf[2] = '\0';
-  return atoi(buf);
-}
-
-int qos_hex2c(const char *x) {
-  int i, ch;
-  ch = x[0];
-  if (isdigit(ch)) {
-    i = ch - '0';
-  }else if (isupper(ch)) {
-    i = ch - ('A' - 10);
-  } else {
-    i = ch - ('a' - 10);
-  }
-  i <<= 4;
-  
-  ch = x[1];
-  if (isdigit(ch)) {
-    i += ch - '0';
-  } else if (isupper(ch)) {
-    i += ch - ('A' - 10);
-  } else {
-    i += ch - ('a' - 10);
-  }
-  return i;
-}
-
-#define QOS_ISHEX(x) (((x >= '0') && (x <= '9')) || \
-                      ((x >= 'a') && (x <= 'f')) || \
-                      ((x >= 'A') && (x <= 'F')))
-
-
-/**
- * url unescaping (%xx, \xHH, '+')
- * optional decoding:
- * - uni: MS IIS unicode %uXXXX
- * - ansi: ansi c esc (\n, \r, ...), not implemented
- * - char: charset conv, not implemented
- * - html: (amp/angelbr, &#xHH;, &#DDD;, &#DD;), not implemented ('&' is delimiter)
- */
-static int qos_unescaping(char *x, int mode, int *error) {
-  /* start with standard url decoding*/
-  int i, j, ch;
-  if(x == 0) {
-    return 0;
-  }
-  if(x[0] == '\0') {
-    return 0;
-  }
-  for(i = 0, j = 0; x[i] != '\0'; i++, j++) {
-    ch = x[i];
-    if(ch == '%') {
-      if(QOS_ISHEX(x[i + 1]) && QOS_ISHEX(x[i + 2])) {
-        /* url %xx */
-        ch = qos_hex2c(&x[i + 1]);
-        i += 2;
-      } else if((mode & QOS_DEC_MODE_FLAGS_UNI) && 
-                ((x[i + 1] == 'u') || (x[i + 1] == 'U')) &&
-                QOS_ISHEX(x[i + 2]) &&
-                QOS_ISHEX(x[i + 3]) &&
-                QOS_ISHEX(x[i + 4]) &&
-                QOS_ISHEX(x[i + 5])) {
-        /* unicode %uXXXX */
-        ch = qos_hex2c(&x[i + 4]);
-        if((ch > 0x00) && (ch < 0x5f) &&
-           ((x[i + 2] == 'f') || (x[i + 2] == 'F')) &&
-           ((x[i + 3] == 'f') || (x[i + 3] == 'F'))) {
-          ch += 0x20;
-        }
-        i += 5;
-      } else {
-        (*error)++;
-      }
-    } else if((ch == '\\') &&
-              (mode & QOS_DEC_MODE_FLAGS_UNI) &&
-              ((x[i + 1] == 'u') || (x[i + 1] == 'U'))) {
-      if(QOS_ISHEX(x[i + 2]) &&
-         QOS_ISHEX(x[i + 3]) &&
-         QOS_ISHEX(x[i + 4]) &&
-         QOS_ISHEX(x[i + 5])) {
-        /* unicode \uXXXX */
-        ch = qos_hex2c(&x[i + 4]);
-        if((ch > 0x00) && (ch < 0x5f) &&
-           ((x[i + 2] == 'f') || (x[i + 2] == 'F')) &&
-           ((x[i + 3] == 'f') || (x[i + 3] == 'F'))) {
-          ch += 0x20;
-        }
-        i += 5;
-      } else {
-        (*error)++;
-      }
-    } else if(ch == '\\' && (x[i + 1] == 'x')) {
-      if(QOS_ISHEX(x[i + 2]) && QOS_ISHEX(x[i + 3])) {
-        /* url \xHH */
-        ch = qos_hex2c(&x[i + 2]);
-        i += 3;
-      } else {
-        (*error)++;
-      }
-    } else if(ch == '+') {
-      ch = ' ';
-    }
-    x[j] = ch;
-  }
-  x[j] = '\0';
-  return j;
 }
 
 /**
@@ -9370,19 +9372,22 @@ const char *qos_milestone_tmo_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
 const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
                               const char *pattern) {
   qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
+  const char *errptr = NULL;
+  int erroffset;
   qos_milestone_t *ms = apr_pcalloc(cmd->pool, sizeof(qos_milestone_t));
   if(sconf->milestones == NULL) {
     sconf->milestones = apr_table_make(cmd->pool, 10);
   }
-#ifdef AP_REGEX_H
-  ms->preg = ap_pregcomp(cmd->pool, pattern, AP_REG_EXTENDED);
-#else
-  ms->preg = ap_pregcomp(cmd->pool, pattern, REG_EXTENDED);
-#endif
+  ms->preg = pcre_compile(pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(ms->preg == NULL) {
-    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
-                        cmd->directive->directive, pattern);
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
+                        " reason: %s", 
+                        cmd->directive->directive,
+                        pattern,
+                        erroffset, errptr);
   }
+  apr_pool_cleanup_register(cmd->pool, ms->preg, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+  ms->extra = qos_pcre_study(cmd->pool, ms->preg);
   ms->pattern = apr_pstrdup(cmd->pool, pattern);
   if(strcasecmp(action, "deny") == 0) {
     ms->action = QS_DENY;

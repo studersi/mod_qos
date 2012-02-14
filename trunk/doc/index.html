@@ -189,8 +189,8 @@ More information about mod_qos:
 <p>
 mod_qos requires OpenSSL, PCRE (don't use the version which comes with the 
 Apache distribution), threading and shared memory support. mod_qos supports 
-Apache version 2.2 <a href="http://httpd.apache.org/docs/2.2/mod/worker.html" target="_blank">MPM worker</a> 
-binaries and is optimized to be used in a <a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy.html">proxy</a> server.<br><br>
+Apache version 2.2 <a href="http://httpd.apache.org/docs/2.2/mod/worker.html" target="_blank">MPM worker</a> binaries and 
+is optimized to be used in a reverse <a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy.html">proxy</a> server.<br><br>
 Just copy the module into the <code>modules</code> directory of the Apache server's source code and 
 compile it using the following commands (all examples are using Apache 2.2.21 and 
 mod_qos 0.00):
@@ -1118,6 +1118,7 @@ QS_SetEnvIfBody             &lt;code&gt;delete&lt;/code&gt;               DENYAC
 </table>
 
 <p>
+<a name="QS_MileStone"></a>
 Milestones: you may define a number of resources (request line patterns) as milestones. A 
 client must access these resources in the correct order as they are defined within 
 the server configuration. A client is not allowed to skip these milestones (but may access 
@@ -1456,13 +1457,18 @@ error log. So it might be useful to log the <code>UNIQUE_ID</code>
 environment variable as well, in order to correlate errors 
 to access log messages.
 </li>
+<li>
+<code>QS_ConnectionId</code> <br> Connecton correlation id used to 
+mark all messages belonging to the same TCP connection.
+</li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
 Sample configuration:<br>
 <pre>
-LogFormat "%h %t \"%r\" %>s %b %T \"%{User-Agent}i\" id=%{UNIQUE_ID}e \
-            %{mod_qos_ev}e %{mod_qos_cr}e %{mod_qos_con}e %{mod_qos_user_id}e #%P"
+LogFormat "%h %u %t \"%r\" %>s %b %T \"%{content-length}i\" %k \"%{User-Agent}i\" \
+           %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e %{QS_SrvConn}e %{QS_AllConn}e \
+           id=%{UNIQUE_ID}e %{QS_ConnectionId}e %{mod_qos_user_id}e %{QS_Country}e #%P"
 </pre>
 </td></tr>
 </table>
@@ -1480,7 +1486,7 @@ utility for further details.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
 <pre>
-TransferLog "| ./bin/qslog -o logs/qs_log -f I..RSBT..Q..U"
+CustomLog "|/usr/bin/qslog -o logs/qs_log -x -f ISBTQkU" "%h %>s %b %T %{mod_qos_ev}e %k %{mod_qos_user_id}e"
 </pre>
 </td></tr>
 </table>
@@ -1516,7 +1522,7 @@ settings by per-directory files (e.g., .htaccess).
 <a name="webconsole"></a>
 <h3>Web Console</h3>
 <p>
-mod_qos implements an Apache handler which acts as a Web console for setting attributes via HTTP requests.
+mod_qos implements an Apache handler which acts as a web console for setting attributes via HTTP requests.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
 <pre>
@@ -1527,7 +1533,7 @@ mod_qos implements an Apache handler which acts as a Web console for setting att
 </td></tr>
 </table>
 Access a location where you have enabled the <code>qos-console</code> handler 
-with a Web client and use the following request query parameter to modify 
+with a web client and use the following request query parameter to modify 
 the status of a client (may only be used if <a href="#clientlevelcontrol">client level control</a> 
 has been enabled).
 <ul>
@@ -1772,7 +1778,7 @@ QS_SetEnvIfStatus        NullConnection    QS_Block
 <br>
 <hr>
 <a href="http://www.nevis.ch"><img align="right" border="0" 
-src="nevis.gif" title="Nevis: The professional source for Web application security." alt="Nevis" /></a>
+src="nevis.gif" title="Nevis: The professional source for web application security." alt="Nevis" /></a>
 <SMALL><SMALL>&copy; 2007-2012, Pascal Buchbinder</SMALL></SMALL>
 </body>
 </html>
