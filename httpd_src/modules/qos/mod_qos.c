@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.387 2012-02-14 19:32:30 pbuchbinder Exp $";
-static const char g_revision[] = "10.2";
+static const char revision[] = "$Id: mod_qos.c,v 5.388 2012-02-15 20:20:36 pbuchbinder Exp $";
+static const char g_revision[] = "10.3";
 
 /************************************************************************
  * Includes
@@ -9925,7 +9925,8 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_SemMemFile", qos_mfile_cmd, NULL,
                 RSRC_CONF,
                 "QS_SemMemFile <path>, optional path to a directory or file"
-                " which shall be used samaphores/shared memory."
+                " which shall be used for file based samaphores/shared memory"
+                " usage."
                 " Default is "QS_MFILE"."),
   /* request limitation per location */
   AP_INIT_TAKE2("QS_LocRequestLimit", qos_loc_con_cmd, NULL,

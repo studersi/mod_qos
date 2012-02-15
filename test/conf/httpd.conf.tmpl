@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.212 2012-02-07 07:37:26 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.213 2012-02-15 20:20:37 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -340,10 +340,11 @@ ErrorDocument 404 /error-docs/error404.html
 
 <IfDefine MILESTONES>
    QS_MileStoneTimeout 4
-   QS_MileStone deny "^GET /htt/index.html"
+   QS_MileStone deny "^GET /htt/index.html "
    QS_MileStone deny "^GET /htt/logo.gif"
    QS_MileStone deny "^POST /htt/login"
    QS_MileStone deny "^GET /htt/.*\.zip HTTP/..."
+   QS_MileStone deny "^GET /htt/index.html\?cmd=edit"
 </IfDefine>
 <IfDefine MILESTONES_LOG>
    QS_MileStone log "^GET /htt/index.html"

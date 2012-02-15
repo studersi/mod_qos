@@ -1,10 +1,11 @@
 #
-# $Id: QS_MileStone.htt,v 1.5 2012-02-14 19:32:30 pbuchbinder Exp $
+# $Id: QS_MileStone.htt,v 1.6 2012-02-15 20:20:37 pbuchbinder Exp $
 #
-#   QS_MileStone deny "^GET /htt/index.html"
+#   QS_MileStone deny "^GET /htt/index.html "
 #   QS_MileStone deny "^GET /htt/logo.gif"
 #   QS_MileStone deny "^POST /htt/login"
 #   QS_MileStone deny "^GET /htt/.*\.zip HTTP/..."
+#   QS_MileStone deny "^GET /htt/index.html\?cmd=edit"
 #
 
 INCLUDE scripts/ports
@@ -32,7 +33,20 @@ _EXPECT . "==AS1=="
 _EXPECT . "Set-Cookie"
 _WAIT
 
-_SLEEP 2000
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index.html?cmd=edit HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__
+_EXPECT . "code=047"
+_EXPECT . "HTTP/1.1 500"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(047\): access denied, reached milestone '4' \(.*cmd=edit\), user has already passed '0', action=deny"
+_EXEC tail -1 logs/error_log
+_SLEEP 1800
 
 _REQ localhost $QS_PORT_BASE
 __GET /htt/any.gif HTTP/1.1
@@ -140,6 +154,17 @@ _EXPECT . "==AS1=="
 _EXPECT . "!Set-Cookie"
 _WAIT
 
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index.html?cmd=edit HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__
+_EXPECT . "200"
+_EXPECT . "==AS1=="
+_EXPECT . "Set-Cookie"
+_WAIT
+
 END
 
 SERVER $QS_PORT_BASE6
@@ -214,6 +239,14 @@ _WAIT
 __HTTP/1.1 200 OK
 __Content-Length: AUTO 
 __Content-Type: application/zip
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
 __
 __==AS1==
 
