@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.388 2012-02-15 20:20:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.389 2012-02-19 22:07:21 pbuchbinder Exp $";
 static const char g_revision[] = "10.3";
 
 /************************************************************************
@@ -867,6 +867,12 @@ static const qos_her_t qs_res_header_rules[] = {
   { NULL, NULL, 0, 0 }
 };
 
+/**
+ * Studies pcre pattern (for perfomance improvement) and sets match limits.
+ * @param pool Pool to allocate structure from (or to register cleanup)
+ * @param pc Pattern to study
+ * @return extra data
+ */
 static pcre_extra *qos_pcre_study(apr_pool_t *pool, pcre *pc) {
   const char *errptr = NULL;
   pcre_extra *extra = pcre_study(pc, 0, &errptr);
@@ -892,7 +898,12 @@ static pcre_extra *qos_pcre_study(apr_pool_t *pool, pcre *pc) {
 }
 
 /**
- * loads the default header rules into the server configuration (see rules above)
+ * loads the default header rules into the server configuration (see rules
+ * above).
+ * @param pool To allocate memory
+ * @param hfilter_table Table to add rules to
+ * @param hs built-in header rules
+ * @return error message (NULL on success)
  */
 static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table,
                                    const qos_her_t *hs) {
@@ -918,6 +929,12 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table,
   return NULL;
 }
 
+/**
+ * Returns string representation of filter type (for logging purposes)
+ * @param pool To allocate string
+ * @param type Rule type
+ * @retrun Name of the directive used to configure the rule
+ */
 static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
   if(type == QS_DENY_REQUEST_LINE) return apr_pstrdup(pool, "QS_DenyRequestLine");
   if(type == QS_DENY_PATH) return apr_pstrdup(pool, "QS_DenyPath");
@@ -927,7 +944,11 @@ static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
   return apr_pstrdup(pool, "UNKNOWN");
 }
 
-/** a unique apache instance id (hopefully) */
+/**
+ * Sets unique apache instance id (hopefully) to the global m_hostcore variable
+ * @param ptemp Pool to allocate memroy from
+ * @param s Base server record
+ */
 static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
   char *key = apr_psprintf(ptemp, "%s%s%s%d%s"
 #ifdef ap_http_scheme
@@ -954,7 +975,12 @@ static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
   }
 }
 
-/** temp file name for the main/virtual server */
+/**
+ * temp file name for the main/virtual serve
+ * @param pool Pool to allocate the file name from
+ * @param s Server record
+ * @return path
+ */
 static char *qos_tmpnam(apr_pool_t *pool, server_rec *s) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
   char *path = QS_MFILE;
@@ -986,7 +1012,13 @@ static char *qos_tmpnam(apr_pool_t *pool, server_rec *s) {
   return id;
 }
 
-/** QS_LimitRequestBody settings (env has higher prio) */
+/**
+ * QS_LimitRequestBody settings. Environment variable (dynamic) has higher prio than
+ * configuration (static) value.
+ * @param r
+ * @param sconf
+ * @param dconf
+ */
 static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   if(r->subprocess_env) {
     const char *bytes = apr_table_get(r->subprocess_env, "QS_LimitRequestBody");
@@ -1012,7 +1044,7 @@ static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_conf
 }
 
 /**
- * client ip store qos_cc_*() functions
+ * Comperator (ip search) for the client ip store qos_cc_*() functions (used by bsearch/qsort)
  */
 static int qos_cc_comp(const void *_pA, const void *_pB) {
   qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
@@ -1022,6 +1054,9 @@ static int qos_cc_comp(const void *_pA, const void *_pB) {
   return 0;
 }
 
+/**
+ * Comperator (time search) for the client ip store qos_cc_*() functions (used by bsearch/qsort)
+ */
 static int qos_cc_comp_time(const void *_pA, const void *_pB) {
   qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
   qos_s_entry_t *pB=*(( qos_s_entry_t **)_pB);
@@ -1030,6 +1065,13 @@ static int qos_cc_comp_time(const void *_pA, const void *_pB) {
   return 0;
 }
 
+/**
+ * creates new per client store
+ * @param pool Persistent process pool
+ * @param srec Server rec for sem/mutex
+ * @param size Number of entries
+ * @return pointer to the per client data array
+ */
 static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
   char *file = "-";
   apr_shm_t *m;
@@ -1104,6 +1146,10 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
   return s;
 }
 
+/**
+ * Destroys the client data store
+ * -- not yet implemented (errors for DSO) --
+ */
 static void qos_cc_free(qos_s_t *s) {
   if(s->lock) {
     // called by apr_pool_cleanup_register():
@@ -1115,7 +1161,13 @@ static void qos_cc_free(qos_s_t *s) {
   }
 }
 
-/** search an entry */
+/** 
+ * searches an entry
+ * @param s Client store (locked)
+ * @param pA IP to search
+ * @param now Current time (update access to the entry)
+ * @return client entry or NULL if not available
+ */
 static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
   int mod = pA->ip % m_qos_cc_partition;
@@ -1131,7 +1183,13 @@ static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   return pB;
 }
 
-/** create a new entry */
+/**
+ * inerts a new entry to the client data store
+ * @param s Client store (locked)
+ * @param pA IP to insert
+ * @param now Current time (last access)
+ * @return inserted entry
+ */
 static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
   int mod = pA->ip % m_qos_cc_partition;
@@ -1183,6 +1241,11 @@ int qos_dec22c(const char *x) {
   return atoi(buf);
 }
 
+/**
+ * hex value for the char
+ * @param x
+ * @return hex value
+ */
 int qos_hex2c(const char *x) {
   int i, ch;
   ch = x[0];
@@ -1305,11 +1368,23 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
   return uid;
 }
 
-/* returns the version number of mod_qos */
+/**
+ * returns the version number of mod_qos
+ * @param p Pool to alloc version string from
+ * @return Version string
+ */
 static char *qos_revision(apr_pool_t *p) {
   return apr_pstrdup(p, g_revision);
 }
 
+/**
+ * Encrypts and base64 encodes the provided buffer
+ * @param r
+ * @param sconf Key to use (sconf->key)
+ * @param b Buffer to encrypt
+ * @param l Length of the buffer
+ * @return Encrypted string (NULL on error)
+ */
 static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned char *b, int l) {
   EVP_CIPHER_CTX cipher_ctx;
   int buf_len = 0;
@@ -1342,6 +1417,9 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
   return NULL;
 }
 
+/**
+ * Decryptes the base64 encoded string (see qos_encrypt())
+ */
 static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **ret_buf, const char *value) {
   EVP_CIPHER_CTX cipher_ctx;
   /* decode */
@@ -1375,6 +1453,13 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
   return 0;
 }
 
+/**
+ * Adds the user tracking cookie to r->headers_out if QOS_USER_TRACKING_NEW env variable
+ * has been set.
+ * @param r
+ * @param sconf
+ * @param status (302 or other)
+ */
 static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf, int status) {
   const char *new_user = apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW);
   if(new_user) {
@@ -1405,7 +1490,17 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
   return;
 }
 
-/** user tracking cookie: b64(enc(<rand><magic><month><UNIQUE_ID>)) */
+/**
+ * Verifies and sets the user tracking cookie
+ * - QOS_USER_TRACKING if the cookie was available
+ * - QOS_USER_TRACKING_NEW if a new cookie needs to be set
+ *
+ * syntax: b64(enc(<rand><magic><month><UNIQUE_ID>))
+ *
+ * @param r
+ * @param sconf
+ * @param value Cookie received from the client, possibly null (see qos_get_remove_cookie())
+ */
 static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, const char *value) {
   const char *uid = qos_unique_id(r, NULL);
   const char *verified = NULL;
@@ -1445,6 +1540,10 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, 
   return;
 }
 
+/**
+ * Adds new milestone cookie to the response headers if QOS_MILESTONE_COOKIE has been set.
+ * See qos_verify_milestone() about the syntax.
+ */
 static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
   const char *new_ms = apr_table_get(r->subprocess_env, QOS_MILESTONE_COOKIE);
   if(new_ms) {
@@ -1465,7 +1564,18 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
   return;
 }
 
-/** milestone cookie: b64(enc(<rand><magic><time><milestone>)) */
+/**
+ * Verifies the milestone. Evaluates rule and enforces it. Does also set the
+ * QOS_MILESTONE_COOKIE variable if a new milestone has been reached.
+ *
+ * milestone cookie syntax: b64(enc(<rand><magic><time><milestone>))
+ *
+ * @param r
+ * @param sconf
+ * @param value Cookie received from the client (contains the already reached milestones)
+ * @return APR_SUCCESS if request is allowed, otherwise HTTP_FORBIDDEN 
+ */
+
 static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const char *value) {
   char *the_request;
   int the_request_len;
@@ -1524,7 +1634,10 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
 }
 
 /**
- * extract the session cookie from the request
+ * Extracts the cookie from the request.
+ * @param r
+ * @param cooke_name Name of the cookie to remove from the request headers
+ * @param Cookie if available of NULL if not
  */
 static char *qos_get_remove_cookie(request_rec *r, const char *cookie_name) {
   const char *cookie_h = apr_table_get(r->headers_in, "cookie");
@@ -1865,6 +1978,14 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   return APR_SUCCESS;
 }
 
+/**
+ * Loads the geo database. See QS_GEO_PATTERN about the file format.
+ * @param pool To allocate memory from
+ * @param db Path to the database file (CSV)
+ * @param size Number of entries in the db (size of the returned array)
+ * @param msg Error message if something went wrong while loading the db
+ * @param Array with all enties
+ */
 static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char **msg) {
 #ifdef AP_REGEX_H
   ap_regmatch_t ma[AP_MAX_REG_MATCH];
@@ -1929,7 +2050,10 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
   return geo;
 }
 
-/* TODO: only ipv4 support */
+/**
+ * Converts a ip to string representation
+ * TODO: only ipv4 support
+ */
 static char *qos_ip_long2str(request_rec *r, unsigned long ip) {
   int a,b,c,d;
   a = ip % 256;
@@ -1942,6 +2066,11 @@ static char *qos_ip_long2str(request_rec *r, unsigned long ip) {
   return apr_psprintf(r->pool, "%d.%d.%d.%d", a, b, c, d);
 }
 
+/**
+ * Verifies if the string is a number
+ * @param num Number to test
+ * @param 1 if numeric (0 if not)
+ */
 static int qos_is_num(const char *num) {
   int i = 0;
   while(num[i]) {
@@ -1953,7 +2082,10 @@ static int qos_is_num(const char *num) {
   return 1;
 }
 
-/* TODO: only ipv4 support */
+/**
+ * Converts an ip string to a long
+ * TODO: only ipv4 support
+ */
 static unsigned long qos_ip_str2long(request_rec *r, const char *ip) {
   char *p;
   char *i = apr_pstrdup(r->pool, ip);
@@ -1990,7 +2122,7 @@ static unsigned long qos_ip_str2long(request_rec *r, const char *ip) {
 }
 
 /**
- * helper for the status viewer (unsigned long to char)
+ * Helper for the status viewer (unsigned long to char).
  */
 static void qos_collect_ip(request_rec *r, qos_srv_config *sconf,
                            apr_table_t *entries, int limit,
@@ -2548,6 +2680,14 @@ static int j_val(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int 
 }
 /* json parser end --------------------------------------------------------- */
 
+/**
+ * Process json data retrieved from parp (request body)
+ * @param r
+ * @param dconf
+ * @param query Query to add data
+ * @param msg Error message if paring fails
+ * @return APR_SUCCESS if processed without errors.
+ */
 static int qos_json(request_rec *r, qos_dir_config *dconf, const char **query, const char **msg) {
   const char *contenttype = apr_table_get(r->headers_in, "Content-Type");
   if(contenttype && (strncasecmp(contenttype, "application/json", 16) == 0)) {
@@ -2909,6 +3049,9 @@ static char *qos_crline(request_rec *r, const char *line) {
   return string;
 }
 
+/**
+ * Calculates the bytes/sec block rate
+ */
 static void qos_cal_bytes_sec(request_rec *r, qs_acentry_t *e) {
   if(e->kbytes_per_sec > e->kbytes_per_sec_limit) {
     int factor = ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) - 100;
@@ -2973,8 +3116,12 @@ static void qos_cal_req_sec(request_rec *r, qs_acentry_t *e) {
   }
 }
 
-/*
- * QS_DenyEvent
+/**
+ * QS_DenyEvent enforcement at header parser
+ * @param r
+ * @param sconf
+ * @param dconf
+ # returns DECLINED if no events has been detected
  */
 static int qos_hp_event_deny_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
@@ -2996,8 +3143,12 @@ static int qos_hp_event_deny_filter(request_rec *r, qos_srv_config *sconf, qos_d
   return DECLINED;
 }
 
-/* 
- * QS_Permit* / QS_Deny* enforcement
+/**
+ * QS_Permit* / QS_Deny* enforcement at header parser
+ * @param r
+ * @param sconf
+ * @param dconf
+ * @return
  */
 static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   apr_status_t rv = APR_SUCCESS;
@@ -3028,6 +3179,7 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
 
 /**
  * QS_SetEnvRes (outfilter)
+ * Detects events at response time.
  */
 static void qos_setenvres(request_rec *r, qos_srv_config *sconf) {
 #ifdef AP_REGEX_H
@@ -3055,6 +3207,9 @@ static void qos_setenvres(request_rec *r, qos_srv_config *sconf) {
 
 /**
  * QS_SetEnvResHeader(Match) (outfilter)
+ * Matches response headers and sets an event on match.
+ * @param r
+ * @param sconf
  */
 static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
   apr_table_t *headers = r->headers_out;
@@ -3090,6 +3245,11 @@ static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
 
 /**
  * QS_SetEnvIfStatus
+ * Match response status code
+ *
+ * @param r
+ * @param sconf
+ * @param dconf
  */
 static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   char *code = apr_psprintf(r->pool, "%d", r->status);
@@ -3126,6 +3286,10 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf, qos_dir_conf
   }
 }
 
+/**
+ * Enables mod_parp if mod_qos requires access to the request body.
+ * @param r
+ */
 static void qos_enable_parp(request_rec *r) {
   const char *ct = apr_table_get(r->headers_in, "Content-Type");
   if(ct) {
@@ -3138,7 +3302,15 @@ static void qos_enable_parp(request_rec *r) {
   }
 }
 
-/** generic request validation */
+/** 
+ * Generic request validation.
+ * We ensure to have at least a valid request uri received (no futher uri validation
+ * required in your code).
+ * @param r
+ * @param sconf
+ * @retrun HTTP_BAD_REQUEST for requests which may not be processed by mod_qos, otherwise
+ *         APR_SUCCESS
+ */
 static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
   if((r->unparsed_uri == NULL) || (r->parsed_uri.path == NULL)) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -3190,6 +3362,11 @@ static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *tabl
   }
 }
 
+/**
+ * Process body events (QS_SetEnvIfBody) and sets the r->subprocess_env variables
+ * @param r
+ * @param sconf
+ */
 static void qos_parp_hp_body(request_rec *r, qos_srv_config *sconf) {
   if(apr_table_elts(sconf->setenvifparpbody_t)->nelts > 0) {
     if(parp_appl_body_data_fn) {
@@ -3230,7 +3407,9 @@ static void qos_parp_hp_body(request_rec *r, qos_srv_config *sconf) {
 }
 
 /**
- * QS_SetEnvIfParp (hp)
+ * Setting events based on request payload (query), QS_SetEnvIfParp (hp)
+ * @param r
+ * @param sconf
  */
 static void qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
   if(apr_table_elts(sconf->setenvifparp_t)->nelts > 0) {
@@ -3258,7 +3437,13 @@ static void qos_parp_hp(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
-/* replace ${var} by the value in var (retruns 1 on success) */
+/**
+ * Replaces ${var} by the value in var
+ * @param p Pool for memory allocation
+ * @param vars Available variables to lookup
+ * @param string String to replace variables
+ * @return 1 on success or 0 if string still contains "${"
+ */
 static int qos_reslove_variable(apr_pool_t *p, apr_table_t *vars, char **string) {
   int i;
   int start;
@@ -3304,6 +3489,8 @@ static int qos_reslove_variable(apr_pool_t *p, apr_table_t *vars, char **string)
 
 /**
  * QS_SetEnvIfQuery (hp)
+ * @param r
+ * @param sconf
  */
 static void qos_setenvifquery(request_rec *r, qos_srv_config *sconf) {
   if(r->parsed_uri.query) {
@@ -3311,7 +3498,11 @@ static void qos_setenvifquery(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
-/* QS_SetEnv */
+/**
+ * QS_SetEnv
+ * @param r
+ * @param sconf
+ */
 static void qos_setenv(request_rec *r, qos_srv_config *sconf) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenv_t)->elts;
@@ -3325,7 +3516,11 @@ static void qos_setenv(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
-/* QS_SetReqHeader */
+/**
+ * QS_SetReqHeader
+ * @param r
+ * @param sconf 
+ */
 static void qos_setreqheader(request_rec *r, qos_srv_config *sconf) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setreqheader_t)->elts;
@@ -3343,6 +3538,8 @@ static void qos_setreqheader(request_rec *r, qos_srv_config *sconf) {
 
 /**
  * QS_SetEnvIf (hp and logger)
+ * @param r
+ * @param sconf
  */
 static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
   int i;
@@ -3391,6 +3588,10 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
 
 /*
  * QS_RequestHeaderFilter enforcement
+ * @param r
+ * @param sconf
+ * @parm dconf
+ * @return
  */
 static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   qs_headerfilter_mode_e mode = sconf->headerfilter;
@@ -3418,8 +3619,12 @@ static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_c
   return DECLINED;
 }
 
-/* 
- * Dynamic keep alive
+/**
+ * Dynamic keep alive.
+ * Creates a copy of the server_rec and adjusts the keep-aliva settings for this request.
+ *
+ * @param r
+ * @param sconf
  */
 static void qos_keepalive(request_rec *r, qos_srv_config *sconf) {
   if(r->subprocess_env) {
