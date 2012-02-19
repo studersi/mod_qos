@@ -13,6 +13,9 @@
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
  *
+ * This program is released under the GPL with the additional
+ * exemption that compiling, linking, and/or using OpenSSL is allowed.
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
@@ -25,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.20 2012-02-08 11:46:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.21 2012-02-19 22:07:22 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
