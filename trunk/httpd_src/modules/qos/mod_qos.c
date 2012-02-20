@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.389 2012-02-19 22:07:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.390 2012-02-20 21:46:39 pbuchbinder Exp $";
 static const char g_revision[] = "10.3";
 
 /************************************************************************
@@ -6873,7 +6873,7 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
           if(nbytes) {
             char tmp;
             char *wbuf = (char *)buf;
-            int blen = nbytes > len ? len : nbytes;
+            int blen = nbytes > len ? len : nbytes - 1;
             /* 1. overlap beginning */
             if(rctx->body_window == NULL) {
               rctx->body_window = apr_pcalloc(r->pool, (len*2)+1);
@@ -6889,16 +6889,16 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
               }
             }
             /* 2. new buffer (don't want to copy the data) */
-            tmp = wbuf[nbytes];  /* @CRX01 */
-            wbuf[nbytes] = '\0';
+            tmp = wbuf[nbytes-1];  /* @CRX01 */
+            wbuf[nbytes-1] = '\0';
             if(strstr(wbuf, dconf->response_pattern)) {
               /* found pattern */
               apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
               ap_remove_output_filter(f);
             }
-            wbuf[nbytes] = tmp;  /* @CRX01 */
+            wbuf[nbytes-1] = tmp;  /* @CRX01 */
             /* 3. store the end (for next loop) */
-            strncpy(rctx->body_window, &buf[nbytes-blen], blen);
+            strncpy(rctx->body_window, &buf[nbytes-1 - blen], blen);
             rctx->body_window[blen] = '\0';
           }
         }
