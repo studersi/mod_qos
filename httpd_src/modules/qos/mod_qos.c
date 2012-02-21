@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.391 2012-02-21 15:29:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.392 2012-02-21 19:42:36 pbuchbinder Exp $";
 static const char g_revision[] = "10.3";
 
 /************************************************************************
@@ -1041,6 +1041,37 @@ static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_conf
     return dconf->maxpost;
   }
   return sconf->maxpost;
+}
+
+
+/**
+ * Similar to strstr but restricting the length of s1 (if not null terminated).
+ *
+ * @param s1 String to search in
+ * @param s2 Pattern to ind
+ * @param len Length of s1
+ * @return pointer to the beginning of the substring s2 within s1, or NULL
+ *         if the substring is not found
+ */
+static char *qos_strnstr(const char *s1, const char *s2, int len) {
+  const char *e1 = &s1[len-1];
+  const char *p, *q;
+  for (; *s1 && (s1 <= e1); s1++) {
+    p = s1, q = s2;
+    while(*q && *p && (q <= e1)) {
+      if (*q != *p) {
+        break;
+      }
+      p++, q++;
+    }
+    if(q > e1) {
+      return NULL;
+    }
+    if(*q == 0) {
+      return (char *)s1;
+    }
+  }
+  return 0;
 }
 
 /**
@@ -6871,8 +6902,6 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
         apr_size_t nbytes;
         if(apr_bucket_read(b, &buf, &nbytes, APR_BLOCK_READ) == APR_SUCCESS) {
           if(nbytes > 0) {
-            char tmp;
-            char *wbuf = (char *)buf;
             int blen = nbytes > len ? len : nbytes - 1;
             /* 1. overlap beginning */
             if(rctx->body_window == NULL) {
@@ -6889,14 +6918,11 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
               }
             }
             /* 2. new buffer (don't want to copy the data) */
-            tmp = wbuf[nbytes-1];  /* @CRX01 */
-            wbuf[nbytes-1] = '\0';
-            if(strstr(wbuf, dconf->response_pattern)) {
+            if(qos_strnstr(buf, dconf->response_pattern, nbytes)) {
               /* found pattern */
               apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
               ap_remove_output_filter(f);
             }
-            wbuf[nbytes-1] = tmp;  /* @CRX01 */
             /* 3. store the end (for next loop) */
             strncpy(rctx->body_window, &buf[nbytes-1 - blen], blen);
             rctx->body_window[blen] = '\0';

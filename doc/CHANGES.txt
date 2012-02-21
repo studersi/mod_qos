@@ -1,3 +1,7 @@
+Version 10.3
+
+ - Fixed: ABR in QS_SetEnvIfResBody.
+
 Version 10.2
 
  - Fixed: QS_Milestone uses now URL decoding before applying the

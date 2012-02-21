@@ -1,7 +1,10 @@
 #
-# $Id: QS_SetEnvResBody.htt,v 1.2 2011-10-25 20:47:17 pbuchbinder Exp $
+# $Id: QS_SetEnvResBody.htt,v 1.3 2012-02-21 19:42:36 pbuchbinder Exp $
 #
-
+#   <Location /app/a/resbody/pattern>
+#      QS_SetEnvIfResBody "Login Failed" QS_Block
+#   </Location>
+#
 INCLUDE scripts/ports
 
 
