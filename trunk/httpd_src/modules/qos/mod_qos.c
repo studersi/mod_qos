@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.390 2012-02-20 21:46:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.391 2012-02-21 15:29:31 pbuchbinder Exp $";
 static const char g_revision[] = "10.3";
 
 /************************************************************************
@@ -6870,7 +6870,7 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
         const char *buf;
         apr_size_t nbytes;
         if(apr_bucket_read(b, &buf, &nbytes, APR_BLOCK_READ) == APR_SUCCESS) {
-          if(nbytes) {
+          if(nbytes > 0) {
             char tmp;
             char *wbuf = (char *)buf;
             int blen = nbytes > len ? len : nbytes - 1;
