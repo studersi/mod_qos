@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.392 2012-02-21 19:42:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.393 2012-02-23 20:17:23 pbuchbinder Exp $";
 static const char g_revision[] = "10.3";
 
 /************************************************************************
@@ -6910,7 +6910,7 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
             } else {
               int wlen = strlen(rctx->body_window);
               strncpy(&rctx->body_window[wlen], buf, blen);
-              rctx->body_window[wlen+blen] = '\0';
+              rctx->body_window[wlen+blen+1] = '\0';
               if(strstr(rctx->body_window, dconf->response_pattern)) {
                 /* found pattern */
                 apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
@@ -6924,7 +6924,7 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
               ap_remove_output_filter(f);
             }
             /* 3. store the end (for next loop) */
-            strncpy(rctx->body_window, &buf[nbytes-1 - blen], blen);
+            strncpy(rctx->body_window, &buf[nbytes - blen], blen);
             rctx->body_window[blen] = '\0';
           }
         }
