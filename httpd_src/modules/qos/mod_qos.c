@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.393 2012-02-23 20:17:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.394 2012-02-27 19:48:27 pbuchbinder Exp $";
 static const char g_revision[] = "10.3";
 
 /************************************************************************
@@ -4834,6 +4834,9 @@ static unsigned long qos_crc32_tab[] = {
   0x2d02ef8dL
 };
 
+/**
+ * Simple hash (to represent IPv6 within unsigned long)
+ */
 unsigned long qos_crc32(const char *s, int len) {
   unsigned int i;
   unsigned long crc32val;
@@ -4844,6 +4847,9 @@ unsigned long qos_crc32(const char *s, int len) {
   return crc32val;
 }
 
+/**
+ * Comperator for bsearch function
+ */
 static int qos_geo_comp(const void *_pA, const void *_pB) {
   unsigned long *pA = (unsigned long *)_pA;
   qos_geo_t *pB = (qos_geo_t *)_pB;
@@ -4854,6 +4860,13 @@ static int qos_geo_comp(const void *_pA, const void *_pB) {
   return -1; // error
 }
 
+/**
+ * Translates an IP address (from geo csv) to a numeric value.
+ *
+ * @param pool To dup the string whike parsing.
+ * @param ip
+ * @return
+ */
 static unsigned long qos_geo_str2long(apr_pool_t *pool, const char *ip) {
   char *p;
   char *i = apr_pstrdup(pool, ip);
@@ -4889,7 +4902,14 @@ static unsigned long qos_geo_str2long(apr_pool_t *pool, const char *ip) {
   return addr;
 }
 
-/* TODO: only ipv4 support */
+/**
+ * Translagtes an address string to it's numeric representation.
+ *
+ * TODO: only ipv4 support (hash for IPv6 addresses)
+ *
+ * @param address IP address sting
+ * @return IP address (of hash)
+ */
 static unsigned long qos_inet_addr(const char *address) {
   long ip = inet_addr(address);
   if(ip == -1) {
@@ -4900,7 +4920,7 @@ static unsigned long qos_inet_addr(const char *address) {
 }
 
 /**
- * viewer settings about ip address information
+ * Viewer settings about ip address information.
  */
 static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) {
   if(sconf->has_qos_cc) {
@@ -5099,6 +5119,12 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
   }
 }
 
+/**
+ * Daws the load/connection bars at the top of the status page
+ *
+ * @param r
+ * @param bs
+ */
 static void qos_bars(request_rec *r, server_rec *bs) {
   server_rec *s = bs;
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
@@ -5162,7 +5188,7 @@ static void qos_bars(request_rec *r, server_rec *bs) {
 }
 
 /**
- * status viewer, used by internal and mod_status handler
+ * (Extendet-)Status viewer, used by internal and mod_status handler.
  */
 static int qos_ext_status_hook(request_rec *r, int flags) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
@@ -5469,6 +5495,13 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   return OK;
 }
 
+/**
+ * Disables request rate enforcements for all child processes (at start/fork) if
+ * init has failed.
+ *
+ * @param bs Base server_rec to iterate through all client configurations
+ * @param msg Error message to log (reason what has failed @init).
+ */
 static void qos_disable_req_rate(server_rec *bs, const char *msg) {
   server_rec *s = bs->next;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
@@ -5483,7 +5516,7 @@ static void qos_disable_req_rate(server_rec *bs, const char *msg) {
   }
 }
 
-/* determine ip for QS_Block for connection errors */
+/** determine ip (for QS_Block for connection errors) */
 static unsigned long *qos_inc_block(conn_rec *c, qos_srv_config *sconf,
                                     qs_conn_ctx *cconf, unsigned long *ip) {
   if(sconf->qos_cc_block &&
@@ -5497,6 +5530,17 @@ static unsigned long *qos_inc_block(conn_rec *c, qos_srv_config *sconf,
 }
 
 #if APR_HAS_THREADS
+/**
+ * Supervisior thread monitoring the bandith of registered connections.
+ *
+ * Connections are closed by a apr_socket_close/shutdown which must be
+ * detected by the thread processing the connection in order to 
+ * de-register the connection and to terminate the pending request in
+ * order to free resources (thread).
+ *
+ * @param thread
+ * @param selfv Base server_rec
+ */
 static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
@@ -5654,6 +5698,13 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   return NULL;
 }
 
+/**
+ * Terminates the connection supervisor thread.
+ * (works for mpm_worker only)
+ *
+ * @param selfv The base server_rec
+ * @return APR_SUCCESS
+ */
 static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
@@ -5669,6 +5720,13 @@ static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
 }
 #endif
 
+/**
+ * Writes the query/body to the env variables which may be used
+ * for the qsfilter* audit log.
+ *
+ * @param r
+ * @param dconf
+ */
 static void qos_audit(request_rec *r, qos_dir_config *dconf) {
   const char *q = NULL;
   const char *u = apr_table_get(r->notes, QS_PARP_PATH);
@@ -5699,6 +5757,12 @@ static void qos_audit(request_rec *r, qos_dir_config *dconf) {
   }
 }
 
+/**
+ * Adds the configured (QS_Delay env var) delay to the request
+ *
+ * @param r
+ * @param sconf Do set log-only mode
+ */
 static void qos_delay(request_rec *r, qos_srv_config *sconf) {
   const char *d = apr_table_get(r->subprocess_env, "QS_Delay");
   if(d) {
@@ -5725,7 +5789,12 @@ static void qos_delay(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
-/** QS_DeflateReqBody (if parp has been enabled) */
+/** 
+ * Enables mod_deflate
+ * QS_DeflateReqBody (if parp has been enabled)
+ *
+ * @param r
+ */
 static void qos_deflate(request_rec *r) {
   if(apr_table_get(r->subprocess_env, "QS_DeflateReqBody") && 
      apr_table_get(r->subprocess_env, "parp")) {
@@ -5733,7 +5802,11 @@ static void qos_deflate(request_rec *r) {
   }
 }
 
-/* adjust the content-length header */
+/**
+ * Adjusts the content-length header
+ *
+ * @param r
+ */
 static void qos_deflate_contentlength(request_rec *r) {
   if(apr_table_get(r->subprocess_env, "QS_DeflateReqBody") && 
      apr_table_get(r->subprocess_env, "parp")) {
@@ -5745,6 +5818,13 @@ static void qos_deflate_contentlength(request_rec *r) {
   }
 }
 
+/**
+ * Returns the configured server name supporting ServerAlias directive.
+ *
+ * @param r
+ * @param server_hostname
+ * @return hostname
+ */
 static char *qos_server_alias(request_rec *r, const char *server_hostname) {
   char *server = apr_pstrdup(r->pool, r->server->server_hostname);
   char *p;
@@ -5782,7 +5862,13 @@ static char *qos_server_alias(request_rec *r, const char *server_hostname) {
   return server;
 }
 
-/** returns the url to this server, e.g. https://server1 or http://server1:8080 */
+/** 
+ * Returns the url to this server, e.g. https://server1 or http://server1:8080
+ * used for redirects.
+ *
+ * @param r
+ * @return schema/hostname
+ */
 static char *qos_this_host(request_rec *r) {
   const char *hostport= apr_table_get(r->headers_in, "Host");
   int port = 0;
@@ -5821,6 +5907,14 @@ static char *qos_this_host(request_rec *r) {
  * handlers
  ***********************************************************************/
 
+/**
+ * Destructor for connections which does not have been established
+ * successfully.
+ * Increments block counter.
+ *
+ * @param p Connection base context
+ * @return APR_SUCCESS
+ */
 static apr_status_t qos_base_cleanup_conn(void *p) {
   qs_conn_base_ctx *base = p;
   if(base->sconf->has_qos_cc || base->sconf->qos_cc_prefer) {
@@ -5854,7 +5948,11 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
 }
 
 /**
- * connection destructor
+ * Connection destructor.
+ * Updates per IP events and connection counter.
+ *
+ * @param p Connection context
+ * @return APR_SUCCESS
  */
 static apr_status_t qos_cleanup_conn(void *p) {
   qs_conn_ctx *cconf = p;
@@ -5895,7 +5993,10 @@ static apr_status_t qos_cleanup_conn(void *p) {
 }
 
 /**
- * connection constructor
+ * Connection constructor. Rules that are applied to established connections.
+ *
+ * @param c
+ * @return
  */
 static int qos_process_connection(conn_rec *c) {
   qs_conn_ctx *cconf = qos_get_cconf(c);
@@ -6089,9 +6190,9 @@ static int qos_process_connection(conn_rec *c) {
 }
 
 /**
- * pre connection
+ * Pre connection
  * - constructs the connection ctx (stores socket ref)
- * - enforce block counter (as early as possible)
+ * - enforces block counter (as early as possible)
  */
 static int qos_pre_connection(conn_rec *c, void *skt) {
   int ret = DECLINED;
@@ -6152,6 +6253,12 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   return ret;
 }
 
+/**
+ * Process user tracking cookie
+ *
+ * @param r
+ * @return DECLINED or 302
+ */
 static int qos_post_read_request_later(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
                                                                 &qos_module);
@@ -6205,7 +6312,11 @@ static int qos_post_read_request_later(request_rec *r) {
 }
 
 /**
- * all headers has been read, end/update connection level filters
+ * All headers has been read. End/updates connection level filters and propagtes
+ * per connection events to the request_rec.
+ *
+ * @param r
+ * @return DECLINED
  */
 static int qos_post_read_request(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
@@ -6317,7 +6428,14 @@ static int qos_post_read_request(request_rec *r) {
   return DECLINED;
 }
 
-/** QS_LimitRequestBody, if content-length header is available */
+/**
+ * QS_LimitRequestBody, if content-length header is available.
+ *
+ * @param r
+ * @param sconf Either server or dir config is used (or env var)
+ * @param dconf Either server or dir config is used (or env var)
+ * @return HTTP_REQUEST_ENTITY_TOO_LARGE if not allowed
+ */
 static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sconf,
                                              qos_dir_config *dconf) {
   apr_off_t maxpost = qos_maxpost(r, sconf, dconf);
@@ -6357,7 +6475,12 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
 }
 
 /**
- * header parser (executed after mod_setenvif but before mod_parp)
+ * Header parser (executed after mod_setenvif but before mod_parp).
+ * Implements content-length based request body size limit and activates
+ * content-length adijustmen for compressed request body.
+ *
+ * @param r
+ * @return
  */
 static int qos_header_parser1(request_rec * r) {
   if(ap_is_initial_req(r)) {
@@ -6389,7 +6512,12 @@ static int qos_header_parser1(request_rec * r) {
 }
 
 /**
- * header parser (executed before mod_setenvif or mod_parp)
+ * Header parser (executed before mod_setenvif or mod_parp).
+ * Enables mod_parp if request body processing (filter) has been enabled
+ * and limits the request header filter.
+ *
+ * @param r
+ * @return
  */
 static int qos_header_parser0(request_rec * r) {
   if(ap_is_initial_req(r)) {
@@ -6412,7 +6540,10 @@ static int qos_header_parser0(request_rec * r) {
 }
 
 /**
- * header parser implements restrictions on a per location (url) basis.
+ * Header parser implements restrictions on a per location (url) basis.
+ *
+ * @param r
+ * @return
  */
 static int qos_header_parser(request_rec * r) {
   /* apply rules only to main request (avoid filtering of error documents) */
@@ -6712,7 +6843,17 @@ static int qos_header_parser(request_rec * r) {
   return DECLINED;
 }
 
-/** QS_LimitRequestBody, for chunked encoded requests */
+/**
+ * QS_LimitRequestBody
+ * Input filter limiting request body size for chunked encoded requests.
+ *
+ * @param f
+ * @param bb
+ * @param mode
+ * @param block
+ * @param nbytes
+ * @return
+ */
 static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
                                   ap_input_mode_t mode, apr_read_type_e block,
                                   apr_off_t nbytes) {
@@ -6760,6 +6901,17 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
   return APR_SUCCESS;
 }
 
+/**
+ * Input filter removes connection from sconf->inctx_t->table
+ * when reading EOS.
+ *
+ * @param f
+ * @param bb
+ * @param mode
+ * @param block
+ * @param nbytes
+ * @return
+ */
 static apr_status_t qos_in_filter2(ap_filter_t *f, apr_bucket_brigade *bb,
                                   ap_input_mode_t mode, apr_read_type_e block,
                                   apr_off_t nbytes) {
@@ -6782,8 +6934,18 @@ static apr_status_t qos_in_filter2(ap_filter_t *f, apr_bucket_brigade *bb,
 }
 
 /**
- * input filter, used to log timeout event, mark slow clients,
- * and to calculate packet rate
+ * Input filter, used to log timeout event, mark slow clients,
+ * and to calculate packet rate.
+ *
+ * Adds/removes the connection from the sconf->inctx_t->table
+ * dapending of the request state (read head/body, keepalive, ...).
+ *
+ * @param f
+ * @param bb
+ * @param mode
+ * @param block
+ * @param nbytes
+ * @return
  */
 static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
                                   ap_input_mode_t mode, apr_read_type_e block,
@@ -6881,7 +7043,16 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
   return rv;
 }
 
-/* QS_SetEnvIfResBody */
+/**
+ * QS_SetEnvIfResBody 
+ *
+ * Searches the response body for the pattern defined by the QS_SetEnvIfResBody
+ * directive (supports only one search pattern (literal string)).
+ *
+ * @param f
+ * @param bb
+ * @return
+ */
 static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
@@ -6903,11 +7074,15 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
         if(apr_bucket_read(b, &buf, &nbytes, APR_BLOCK_READ) == APR_SUCCESS) {
           if(nbytes > 0) {
             int blen = nbytes > len ? len : nbytes - 1;
-            /* 1. overlap beginning */
+            /* 1. overlap: this buffer avoids that we miss a string if it is cut apart
+               within two buckets 
+               e.g., [Logi][n Page] instaed of [Login Page] when searching for "Login Page" */
             if(rctx->body_window == NULL) {
+              // first call, create a window buffer
               rctx->body_window = apr_pcalloc(r->pool, (len*2)+1);
               rctx->body_window[0] = '\0';
             } else {
+              // subsequent call, searches within the window too
               int wlen = strlen(rctx->body_window);
               strncpy(&rctx->body_window[wlen], buf, blen);
               rctx->body_window[wlen+blen+1] = '\0';
@@ -6935,7 +7110,11 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
 }
 
 /**
- * output filter adds response delay
+ * Output filter adds response delay.
+ *
+ * @param f
+ * @param bb
+ * @return
  */
 static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
@@ -6976,7 +7155,11 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
 }
 
 /**
- * out filter measuring the minimal download bandwith
+ * Out filter measuring the minimal download bandwith.
+ *
+ * @param f
+ * @param bb
+ * @return
  */
 static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
@@ -7002,22 +7185,35 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
   return ap_pass_brigade(f->next, bb); 
 }
 
+/**
+ * Merges two  rule tables. Entires whose key/name begin with a "+" are added
+ * while those with a "-" prefix are removed.
+ *
+ * @param p Pool to allocate new table from.
+ * @param b_rfilter_table Base rule table (parent)
+ * @param o_rfilter_table Over rule table (child)
+ * @return Merged table
+ */
 apr_table_t *qos_table_merge_create(apr_pool_t *p, apr_table_t *b_rfilter_table,
                                     apr_table_t *o_rfilter_table) {
   int i;
-  apr_table_t *rfilter_table = apr_table_make(p, apr_table_elts(b_rfilter_table)->nelts);
+  apr_table_t *rfilter_table = apr_table_make(p, apr_table_elts(b_rfilter_table)->nelts +
+                                              apr_table_elts(o_rfilter_table)->nelts);
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(b_rfilter_table)->elts;
+  // add additional (+) entries from the base/parent table
   for(i = 0; i < apr_table_elts(b_rfilter_table)->nelts; ++i) {
     if(entry[i].key[0] == '+') {
       apr_table_setn(rfilter_table, entry[i].key, entry[i].val);
     }
   }
+  // add additional (+) entries from the over/child table
   entry = (apr_table_entry_t *)apr_table_elts(o_rfilter_table)->elts;
   for(i = 0; i < apr_table_elts(o_rfilter_table)->nelts; ++i) {
     if(entry[i].key[0] == '+') {
       apr_table_setn(rfilter_table, entry[i].key, entry[i].val);
     }
   }
+  // remove the "-" entries
   for(i = 0; i < apr_table_elts(o_rfilter_table)->nelts; ++i) {
     if(entry[i].key[0] == '-') {
       char *id = apr_psprintf(p, "+%s", &entry[i].key[1]);
