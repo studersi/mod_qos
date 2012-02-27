@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.40 2012-02-14 19:32:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.41 2012-02-27 22:01:40 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -144,6 +144,10 @@ static int   m_offline_count = 0;
 static long  m_lines = 0;
 static int   m_verbose = 0;
 
+/**
+ * Helper to print an error message when terminating
+ * the programm due to an unexpected error.
+ */
 static void qerror(const char *fmt,...) {
   char buf[MAX_LINE];
   va_list args;
@@ -200,6 +204,9 @@ static char *skipElement(const char* line) {
   return p;
 }
 
+/**
+ * Strip a number.
+ */
 static void stripNum(char **p) {
   char *s = *p;
   int len;
@@ -214,8 +221,11 @@ static void stripNum(char **p) {
   *p = s;
 }
 
-/*
- * get and cut an element
+/**
+ * Get and cut an element.
+ *
+ * @param line Line to parse for the next element.
+ * @return Pointer to the next element.
  */
 static char *cutNext(char **line) {
   char *c = *line;
@@ -239,6 +249,14 @@ static char *cutNext(char **line) {
   return c;
 }
 
+/**
+ * Calculates the free system memory. Experimental code.
+ * Tested on Solaris (calling vmstat) and Linux (reading
+ * from /proc/meminfo).
+ *
+ * @param buf Buffer to write result to
+ * @sz Max. length of the buffer
+ */
 static void getFreeMem(char *buf, int sz) {
   FILE *f = fopen("/proc/meminfo", "r");
   int mem = 0;
@@ -318,6 +336,17 @@ static void getFreeMem(char *buf, int sz) {
 #define NBIS "ib/s"
 #define NAV "av"
 
+/**
+ * Writes the statistic entry stat_rec to the file.
+ *
+ * @param f File to write to
+ * @param timeStr Time string (prefix)
+ * @param stat_rec Data to write
+ * @offline Offline mode (less data, e.g. no load)
+ * @param main Indicates if it is the main log or a sub entry for the detailed log
+ * @param av Load
+ * @param mem Free memory
+ */
 static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int offline, int main,
 			   double *av, const char *mem) {
   char bis[256];
@@ -440,6 +469,13 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
   fprintf(f, "\n");
 }
 
+/**
+ * Creates and init new status rec
+ *
+ * @param id Identification of the id
+ * @param pattern Pattern to match the log data line
+ * @return
+ */
 static stat_rec_t *createRec(const char *id, const char *pattern) {
   stat_rec_t *rec = calloc(sizeof(stat_rec_t), 1);
   rec->id = calloc(strlen(id)+2, 1);
@@ -480,6 +516,12 @@ static stat_rec_t *createRec(const char *id, const char *pattern) {
   return rec;
 }
 
+/**
+ * Retrieves the best matching record (longest match(
+ * 
+ * @param Parameter to match, e.g. URL
+ * @return Matching entry (NULL if no match)
+ */
 static stat_rec_t *getRec(const char *value) {
   regmatch_t ma[1];
   int len = 0;
@@ -499,9 +541,11 @@ static stat_rec_t *getRec(const char *value) {
   return rec;
 }
 
-/*
+/**
  * writes all stat data to the out file
- * an resets all counters
+ * an resets all counters.
+ *
+ * @param timeStr
  */
 static void printAndResetStat(char *timeStr) {
   stat_rec_t *r = m_stat_sub;
@@ -530,6 +574,9 @@ static void printAndResetStat(char *timeStr) {
   }
 }
 
+/**
+ * Updates the per client record
+ */
 static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
 			 char *BI, char *B, char *R, char *I, char *U, char *Q, char *k, char *C,
 			 long tme) {
@@ -614,6 +661,9 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
   return;
 }
 
+/**
+ * Updates standard record
+ */
 static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
 		      char *BI, char *B, char *R, char *I, char *U, char *Q, char *k, char *C,
 		      long tme) {
@@ -1054,6 +1104,9 @@ static void *loggerThread(void *argv) {
   return NULL;
 }
 
+/**
+ * usage text
+ */
 static void usage(const char *cmd, int man) {
   if(man) {
     //.TH [name of program] [section number] [center footer] [left footer] [center header]
@@ -1204,6 +1257,12 @@ static void usage(const char *cmd, int man) {
   }
 }
 
+/**
+ * Loads the rule files. Each rule (pattern) is prefixed by an id.
+ *
+ * @param confFile Path to the rule file to load
+ * @return
+ */
 static stat_rec_t *loadRule(const char *confFile) {
   char line[MAX_LINE];
   FILE *file = fopen(confFile, "r"); 
@@ -1322,6 +1381,12 @@ int main(int argc, const char *const argv[]) {
 	    REG_EXTENDED);
   }
 
+  /*
+   * offline count mode creates statitis
+   * on a per client basis (e.g. per source
+   * ip or user id using the user tracking
+   * feature of mod_qos)
+   */
   if(m_offline_count) {
     int i;
     apr_table_entry_t *entry;
@@ -1419,6 +1484,11 @@ int main(int argc, const char *const argv[]) {
     }
   }
 
+  /*
+   * Offline mode reads an existing file
+   * adjusting a virtual clock based on
+   * the date string match of the log
+   * enties. */
   if(m_offline) {
     int rc = nice(10);
     fprintf(stderr, "[%s]: offline mode (writes to %s)\n", cmd, file);
@@ -1428,6 +1498,10 @@ int main(int argc, const char *const argv[]) {
       fprintf(stdout, "\n");
     }
   } else {
+    /* standard mode reads data from
+     * stdin and uses a separate thread
+     * to write the data every minute. 
+     */
     pthread_create(&tid, tha, loggerThread, NULL);
     readStdin(config);
   }
