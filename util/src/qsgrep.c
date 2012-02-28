@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.6 2012-02-09 21:01:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.7 2012-02-28 19:07:08 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -134,6 +134,10 @@ static void usage(char *cmd, int man) {
   }
 }
 
+/*
+ * Substitutes for $0-$9 within the matching string.
+ * See ap_pregsub().
+ */
 char *qs_pregsub(apr_pool_t *pool, const char *input,
 		 const char *source, size_t nmatch,
 		 regmatch_t pmatch[]) {

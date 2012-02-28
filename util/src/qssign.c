@@ -6,7 +6,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2010-2011 Pascal Buchbinder
+ * Copyright (C) 2010-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.21 2012-02-19 22:07:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.22 2012-02-28 19:07:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -96,6 +96,14 @@ static const qos_p_t pattern[] = {
   { NULL, NULL, NULL }
 };
 
+/**
+ * Writes the signed log line to stdout.
+ *
+ * @param line Data to sign
+ * @param line_size Length of the data
+ * @param sec Secret
+ * @param sec_len Length of the secret
+ */
 static void qs_write(char *line, int line_size, const char *sec, int sec_len) {
   HMAC_CTX ctx;
   unsigned char data[HMAC_MAX_MD_CBLOCK];
@@ -187,7 +195,9 @@ static void qs_end_nj(const char *sec) {
   return;
 }
 
-/* 2010-04-14 20:18:37,464 ... (using m_fmt) */
+/*
+ * 2010-04-14 20:18:37,464 ... (using m_fmt)
+ */
 static void qs_end_lj(const char *sec) {
   int sec_len = strlen(sec);
   char line[MAX_LINE];
@@ -203,7 +213,9 @@ static void qs_end_lj(const char *sec) {
   return;
 }
 
-/* Dec  6 04:00:06 localhost kernel: */
+/*
+ * Dec  6 04:00:06 localhost kernel:
+ */
 static void qs_end_lx(const char *sec) {
   char hostname[1024];
   int len = sizeof(hostname);
@@ -232,7 +244,13 @@ void qs_signal_exit(int e) {
   exit(0);
 }
 
-/*
+/**
+ * Tries to find out a suiteable log line format which is used
+ * to log sign end messages (so let the verifier known, that the
+ * data ends nothing has been cut off).
+ *
+ * Sets the format to global variables.
+ *
  * known pattern
  * - [Fri Dec 03 07:37:40 2010] [notice] .........
  * - 12.12.12.12 - - [03/Dec/2010:07:36:51 +0100] ...............
@@ -240,6 +258,8 @@ void qs_signal_exit(int e) {
  *                                                 46  <- var ->    63      71
  * - Dec  6 04:00:06 localhost kernel:
  * - some 2010-12-03 17:00:30,425 ...
+ *
+ * @param s
  */
 static void qs_set_format(char *s) {
   regex_t r_apache_err; 
@@ -311,6 +331,11 @@ static void qs_set_format(char *s) {
   return;
 }
 
+/**
+ * Process the data from stdin.
+ *
+ * @param sec Passphrase
+ */
 static void qs_sign(const char *sec) {
   int sec_len = strlen(sec);
   char line[MAX_LINE];

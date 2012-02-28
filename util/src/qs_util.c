@@ -4,7 +4,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2011 Pascal Buchbinder
+ * Copyright (C) 2007-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.10 2012-02-09 21:01:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.11 2012-02-28 19:07:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -143,6 +143,10 @@ char *qs_CMD(const char *cmd) {
 /* io --------------------------------------------------------- */
 /*
  * reads a line from stdin
+ *
+ * @param s Buffer to write line to
+ * @param n Length of the buffer
+ * @return 0 on EOF, or 1 if there is more data to read
  */
 int qs_getLine(char *s, int n) {
   int i = 0;
@@ -162,6 +166,10 @@ int qs_getLine(char *s, int n) {
 
 /*
  * reads a line from file
+ *
+ * @param s Buffer to write line to
+ * @param n Length of the buffer
+ * @return 0 on EOF, or 1 if there is more data to read
  */
 int qs_getLinef(char *s, int n, FILE *f) {
   register int i = 0;
@@ -180,9 +188,13 @@ int qs_getLinef(char *s, int n, FILE *f) {
 
 /* time ------------------------------------------------------- */
 /*
- * we implement our own time which is either
+ * We implement our own time which is either
  * the system time (real time) or the time from
- * the access log lines (offline)
+ * the access log lines (offline) if m_qs_offline
+ * has been set (use qs_set2OfflineMode() to enable
+ * the offline mode).
+ *
+ * @param tme Set to the time since the Epoch in seconds.
  */
 void qs_time(time_t *tme) {
   if(m_qs_offline) {
@@ -193,12 +205,15 @@ void qs_time(time_t *tme) {
   }
 }
 
+/**
+ * Sets time measurement (qs_time()) to offline mode.
+ */
 void qs_set2OfflineMode() {
   m_qs_offline = 1;
 }
 
 /* 
- * updates the virtual time
+ * Updates the virtual time.
  */
 void qs_setTime(time_t tme) {
   m_qs_virtualSystemTime = tme;
@@ -255,9 +270,13 @@ void qs_freeEvent(qs_event_t *ev) {
   free(ev);
 }
 
-/*
- * inserts an event entry
- * returns event counter (number of updates) for the provided id
+/**
+ * Inserts an event entry
+ *
+ * @param l_qs_event Pointer to the event list.
+ * @param id Identifer, e.g. IP address or user tracking cookie
+ *
+ * @return event counter (number of updates) for the provided id
  */
 int qs_insertEvent(qs_event_t **l_qs_event, char *id) {
   qs_event_t *lp = *l_qs_event;  /** current entry to process */
@@ -305,8 +324,11 @@ int qs_insertEvent(qs_event_t **l_qs_event, char *id) {
   return 1;
 }
 
-/*
- * deletes the specified event
+/**
+ * Deletes the specified event.
+ *
+ * @param l_qs_event Pointer to the event list.
+ * @param id Identifer, e.g. IP address or user tracking cookie
  */
 void qs_deleteEvent(qs_event_t **l_qs_event, char *id) {
   qs_event_t *lp = *l_qs_event;
@@ -336,8 +358,10 @@ void qs_deleteEvent(qs_event_t **l_qs_event, char *id) {
   }
 }
 
-/*
- * runs garbage collection (deletes expired events)
+/**
+ * Runs garbage collection (deletes expired events)
+ *
+ * @param l_qs_event Pointer to the event list.
  */
 void qs_GCEvent(qs_event_t **l_qs_event) {
   qs_event_t *lp = *l_qs_event;
@@ -369,8 +393,11 @@ void qs_GCEvent(qs_event_t **l_qs_event) {
   }
 }
 
-/*
- * get the number of events in the list
+/**
+ * Returns the number of events in the list
+ *
+ * @param id Identifer, e.g. IP address or user tracking cookie
+ * @return Number of entries
  */
 long qs_countEvent(qs_event_t **l_qs_event) {
   qs_event_t *lp = *l_qs_event;
