@@ -7,7 +7,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2011 Pascal Buchbinder
+ * Copyright (C) 2007-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.9 2012-02-09 21:01:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.10 2012-02-28 19:07:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -216,6 +216,13 @@ static void deleteOldFiles(const char *cmd, const char *file_name) {
   }
 }
 
+/**
+ * Compress method called by a child process (forked)
+ * used to compress the rotated file.
+ *
+ * @param cmd Command name (used when logging errors)
+ * @param arch Path to the file to compress. File gets renamed to <arch>.gz
+ */
 static void compressThread(const char *cmd, const char *arch) {
   int rc;
   gzFile *outfp;
@@ -252,6 +259,13 @@ void sigchild(int signo) {
   }
 }
 
+/**
+ * Rotates a file
+ *
+ * @param cmd Command name to be used in log messages
+ * @param file_name Name of the file to rotate (rename)
+ * @param messages Error message if rotation was not successful
+ */
 static void rotate(const char *cmd, const char *file_name, long *messages) {
   int rc;
   char arch[HUGE_STR+20];
@@ -300,6 +314,12 @@ static void rotate(const char *cmd, const char *file_name, long *messages) {
   }
 }
 
+/**
+ * Separate thread which initiates file rotation even no
+ * log data is written.
+ *
+ * @param argv (not used)
+ */
 static void *forcedRotationThread(void *argv) {
   time_t now;
   time_t n;

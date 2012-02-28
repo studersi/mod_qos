@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.3 2012-02-14 21:12:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.4 2012-02-28 19:07:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -80,6 +80,14 @@ static int qos_is_num(const char *num) {
   return 1;
 }
 
+/**
+ * Converts an IPv4 address string to it's numeric value.
+ * w.x.y.z results in 16777216*w + 65536*x + 256*y + z
+ *
+ * @param pool To make a copy of the address to parse
+ * @param ip
+ * @return The address or 0 on error
+ */
 static unsigned long qos_geo_str2long(apr_pool_t *pool, const char *ip) {
   char *p;
   char *i = apr_pstrdup(pool, ip);
@@ -129,6 +137,9 @@ static char *qos_geo_long2str(apr_pool_t *pool, unsigned long ip) {
 }
 */
 
+/**
+ * Usage message (text or manpage format).
+ */
 static void usage(const char *cmd, int man) {
   if(man) {
     //.TH [name of program] [section number] [center footer] [left footer] [center header]
@@ -216,6 +227,9 @@ static void usage(const char *cmd, int man) {
   }
 }
 
+/**
+ * Comperator to search entries using bsearch.
+ */
 static int qos_geo_comp(const void *_pA, const void *_pB) {
   unsigned long *pA = (unsigned long *)_pA;
   qos_geo_t *pB = (qos_geo_t *)_pB;
@@ -226,6 +240,15 @@ static int qos_geo_comp(const void *_pA, const void *_pB) {
   return -1; // error
 }
 
+/**
+ * Loads the (sorted) CSV file into the memory.
+ *
+ * @param pool
+ * @param db Path to the db file
+ * @param size Returns the size f the db (elements in the array)
+ * @param msg Error message if something got wrong
+ * @return Array with all entries from the CSV file (or NULL on error)
+ */
 static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char **msg) {
   regmatch_t ma[MAX_REG_MATCH];
   regex_t preg;
@@ -397,17 +420,21 @@ int main(int argc, const char * const argv[]) {
                      sizeof(qos_geo_t),
                      qos_geo_comp);
         if(stat) {
+          /* creates a single statistic entry for each country (used to collect
+             requests per source country) */
           if(pB) {
             qos_geo_stat_t *s = (qos_geo_stat_t *)apr_table_get(entries, pB->country);
             if(s == NULL) {
               s = apr_pcalloc(pool, sizeof(qos_geo_stat_t));
               s->num = 0;
               s->c = pB->c;
-             apr_table_addn(entries, apr_pstrdup(pool, pB->country), (char *)s);
+              apr_table_addn(entries, apr_pstrdup(pool, pB->country), (char *)s);
             }
             s->num++;
           }
         } else {
+          /* modifies each log line inserting the country code
+           */
           char cr = prev;
           if(prev <= CR) {
             prev = ' ';
