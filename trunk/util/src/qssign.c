@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.22 2012-02-28 19:07:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.23 2012-02-29 19:15:24 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -342,7 +342,16 @@ static void qs_sign(const char *sec) {
   int dig = atoi(SEQDIG);
   /* <data> ' ' <sequence number> '#' <hmac>*/
   int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
-  while(qs_getLine(line, line_size)) {
+  int line_len;
+  while(fgets(line, sizeof(line), stdin) != NULL) {
+    line_len = strlen(line) - 1;
+    while(line_len > 0) { // cut tailing CR/LF
+      if(line[line_len] >= ' ') {
+	break;
+      }
+      line[line_len] = '\0';
+      line_len--;
+    }
     if(m_logend && (m_end == NULL)) {
       qs_set_format(line);
     }
@@ -358,8 +367,9 @@ static long qs_verify(const char *sec) {
   long lnr = 0; // line number
   char line[MAX_LINE];
   int line_size = sizeof(line);
+  int line_len;
   m_nr = -1; // sequence number
-  while(qs_getLine(line, line_size)) {
+  while(fgets(line, sizeof(line), stdin) != NULL) {
     int valid = 0;
     long ns = 0;
     HMAC_CTX ctx;
@@ -367,8 +377,18 @@ static long qs_verify(const char *sec) {
     unsigned int len;
     char *m;
     int data_len;
-    char *sig = strrchr(line, '#');
-    char *seq = strrchr(line, ' ');
+    char *sig;
+    char *seq;
+    line_len = strlen(line) - 1;
+    while(line_len > 0) { // cut tailing CR/LF
+      if(line[line_len] >= ' ') {
+	break;
+      }
+      line[line_len] = '\0';
+      line_len--;
+    }
+    sig = strrchr(line, '#');
+    seq = strrchr(line, ' ');
     lnr++;
     if(seq && sig) {
       sig[0] = '\0';

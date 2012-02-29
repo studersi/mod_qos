@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.41 2012-02-27 22:01:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.42 2012-02-29 19:15:24 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1004,7 +1004,16 @@ static time_t getMinutes(char *line) {
  */
 static void readStdin(const char *cstr) {
   char line[MAX_LINE];
-  while(qs_getLine(line, sizeof(line))) {
+  int line_len;
+  while(fgets(line, sizeof(line), stdin) != NULL) {
+    line_len = strlen(line) - 1;
+    while(line_len > 0) { // cut tailing CR/LF
+      if(line[line_len] >= ' ') {
+	break;
+      }
+      line[line_len] = '\0';
+      line_len--;
+    }
     updateStat(cstr, line);
   }
 }
@@ -1020,8 +1029,18 @@ static void readStdinOffline(const char *cstr) {
   char line[MAX_LINE];
   char buf[32];
   time_t unitTime = 0;
-  while(qs_getLine(line, sizeof(line))) {
-    time_t l_time = getMinutes(line);
+  int line_len;
+  while(fgets(line, sizeof(line), stdin) != NULL) {
+    time_t l_time;
+    line_len = strlen(line) - 1;
+    while(line_len > 0) { // cut tailing CR/LF
+      if(line[line_len] >= ' ') {
+	break;
+      }
+      line[line_len] = '\0';
+      line_len--;
+    }
+    l_time = getMinutes(line);
     m_offline_data = 1;
     if(unitTime == 0) {
       unitTime = l_time;
