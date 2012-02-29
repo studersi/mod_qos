@@ -1,3 +1,7 @@
+Version 10.4
+
+ - Improved qs* utility performance. 
+
 Version 10.3
 
  - Fixed: ABR in QS_SetEnvIfResBody.
