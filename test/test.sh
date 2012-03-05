@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.194 2012-02-09 15:13:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.195 2012-03-05 19:32:29 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -542,7 +542,7 @@ fi
 
 # - query/parp/path --------------------------------------------
 ./ctl.sh restart -D cc -D real_ip > /dev/null
-PSCR="QS_Delay.htt QS_SetEnvIfQuery.htt QS_SetEnvIfParp.htt QS_SetEnvIfBody.htt QS_SetEnvIfBody_support.htt QS_DenyQueryParp.htt QS_DenyQueryParpDeflate.htt QS_SetEnvIfParpDeflate.htt QS_SetEnvIfBodyDeflate.htt QS_DenyQueryParpHuge.htt QS_DenyQueryParpForm.htt QS_PermitUriParp.htt QS_PermitUriJSON.htt QS_DenyPath.htt QS_DenyQuery.htt QS_InvalidUrlEncoding.htt QS_DenyEnc.htt QS_LimitRequestBody.htt QS_DenyDecoding_uni.htt QS_ErrorPage.htt"
+PSCR="QS_Delay.htt QS_SetEnvIfQuery.htt QS_SetEnvIfParp.htt QS_SetEnvIfBody.htt QS_SetEnvIfBody_support.htt QS_DenyQueryParp.htt QS_DenyQueryParpDeflate.htt QS_SetEnvIfParpDeflate.htt QS_SetEnvIfBodyDeflate.htt QS_DenyQueryParpHuge.htt QS_DenyQueryParpForm.htt QS_PermitUriParp.htt QS_PermitUriJSON.htt QS_DenyPath.htt QS_DenyQuery.htt QS_InvalidUrlEncoding.htt QS_DenyEnc.htt QS_LimitRequestBody.htt QS_DenyDecoding_uni.htt QS_ErrorPage.htt MultiMatch.htt"
 for E in $PSCR; do
     ./run.sh -s ./scripts/${E}
     if [ $? -ne 0 ]; then

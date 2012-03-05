@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.213 2012-02-15 20:20:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.214 2012-03-05 19:32:29 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -276,6 +276,12 @@ ErrorDocument 404 /error-docs/error404.html
 
    QS_LocRequestLimitMatch       ^/sn-fb-dstk-war/getActivities.*$ 8
    QS_LocRequestPerSecLimitMatch ^/sn-fb-dstk-war/getActivities.*$ 3
+
+   # mutiple rule match
+   BrowserMatch  "yoda"          YODA
+   QS_EventRequestLimit          YODA 4
+   QS_LocRequestLimitMatch       .*YODA.* 4
+   QS_CondLocRequestLimitMatch   .*YODA.* 4 YODA
 
    # local, no proxy
    QS_LocRequestLimit            /demo/sn-fb-dstk-war/getStatus       100

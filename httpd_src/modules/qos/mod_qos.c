@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.395 2012-02-29 19:15:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.396 2012-03-05 19:32:28 pbuchbinder Exp $";
 static const char g_revision[] = "10.4";
 
 /************************************************************************
@@ -205,6 +205,13 @@ static const char *m_note_variables[] = {
 
 #define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
+
+// Apache 2.4 compat $$$
+#if (AP_SERVER_MINORVERSION_NUMBER == 4)
+#define QS_CONN_REMOTEIP(c) c->client_ip
+#else
+#define QS_CONN_REMOTEIP(c) c->remote_ip
+#endif
 
 #ifdef QS_MOD_EXT_HOOKS
 APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, path_decode_hook,
@@ -1650,7 +1657,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
                     required, milestone->pattern,
                     ms == -1 ? "none" : apr_psprintf(r->pool, "%d", ms),
                     milestone->action == QS_DENY ? "deny" : "log only (pass milestone)",
-                    r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                    QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                     qos_unique_id(r, "047"));
       if(milestone->action == QS_DENY) {
         return HTTP_FORBIDDEN;
@@ -2476,7 +2483,7 @@ static int qos_per_dir_event_rules(request_rec *r, qos_dir_config *dconf) {
                       qos_rfilter_type2text(r->pool, rfilter->type),
                       rfilter->id,
                       rfilter->text, rfilter->action == QS_DENY ? "deny" : "log only",
-                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "040"));
         if(rfilter->action == QS_DENY) {
           return HTTP_FORBIDDEN;
@@ -2831,7 +2838,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
                       QOS_LOG_PFX(048)"access denied, invalid JSON syntax (%s),"
                       " action=deny, c=%s, id=%s",
                       msg ? msg : "-",
-                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "048"));
         return HTTP_FORBIDDEN;
       }
@@ -2911,7 +2918,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
                   QOS_LOG_PFX(046)"access denied, invalid url encoding, action=%s, c=%s, id=%s",
                   dconf->urldecoding == QS_DENY ? "deny" : "log only",
-                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                  QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                   qos_unique_id(r, "046"));
     if(dconf->urldecoding == QS_DENY) {
       return HTTP_FORBIDDEN;
@@ -2950,7 +2957,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
                       qos_rfilter_type2text(r->pool, rfilter->type),
                       rfilter->id,
                       rfilter->text, rfilter->action == QS_DENY ? "deny" : "log only",
-                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "040"));
         if(rfilter->action == QS_DENY) {
           return HTTP_FORBIDDEN;
@@ -2963,7 +2970,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
                   QOS_LOG_PFX(041)"access denied, no permit rule match, action=%s, c=%s, id=%s",
                   permit_rule_action == QS_DENY ? "deny" : "log only",
-                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                  QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                   qos_unique_id(r, "041"));
     if(permit_rule_action == QS_DENY) {
       return HTTP_FORBIDDEN;
@@ -3004,7 +3011,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
                         type,
                         entry[i].key, entry[i].val,
                         pattern,
-                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "043"));
           return HTTP_FORBIDDEN;
         }
@@ -3030,7 +3037,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
                     type,
                     entry[i].key, entry[i].val,
                     apr_table_get(reason, entry[i].key),
-                    r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                    QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                     qos_unique_id(r, "042"));
     }
     apr_table_unset(headers, entry[i].key);
@@ -3348,7 +3355,7 @@ static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
                   QOS_LOG_PFX(045)"access denied, invalid request line:"
                   " can't parse uri,%s c=%s, id=%s",
                   sconf->log_only ? " ignores log only mode," : "",
-                  r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                  QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                   qos_unique_id(r, "045"));
     return HTTP_BAD_REQUEST;
   }
@@ -3764,7 +3771,7 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
                               " concurrent requests=%d,"
                               " c=%s, id=%s",
                               e->url, e->limit, e->counter,
-                              r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                              QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                               qos_unique_id(r, "012"));
                 apr_table_set(r->notes, QS_R012_ALREADY_BLOCKED, "");
               }
@@ -3881,7 +3888,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                       QOS_LOG_PFX(068)"QS_ClientSerialize exceeds limit of 10 minutes"
                       "c=%s, id=%s",
-                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "068"));
         break;
       }
@@ -3932,7 +3939,7 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
                       "max=%d, current=%d, c=%s, id=%s",
                       sconf->qos_cc_event_req,
                       count,
-                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "065"));
         rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
         if(!sconf->log_only) {
@@ -4232,7 +4239,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
                           QOS_LOG_PFX(069)"no valid IP header found:"
                           " invalid header value '%s', fallback to connection's IP %s",
                           forwadedfor,
-                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+                          QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
           }
         }
@@ -4242,7 +4249,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
                         QOS_LOG_PFX(069)"no valid IP header found:"
                         " header '%s' not available, fallback to connection's IP %s",
                         sconf->qos_cc_forwardedfor,
-                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection));
           apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
         }
       }
@@ -4350,7 +4357,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                           QOS_LOG_PFX(069)"no valid IP header found:"
                           " invalid header value '%s', fallback to connection's IP %s",
                           forwadedfor,
-                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+                          QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
           }
         }
@@ -4360,7 +4367,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                         QOS_LOG_PFX(069)"no valid IP header found:"
                         " header '%s' not available, fallback to connection's IP %s",
                         sconf->qos_cc_forwardedfor,
-                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection));
           apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
         }
       }
@@ -4451,7 +4458,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                             "max=%d, current=%d, c=%s",
                             cconf->sconf->qos_cc_block,
                             (*e)->block,
-                            cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+                            QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
         ret = m_retcode;
         (*e)->lowrate = apr_time_sec(r->request_time);
       }
@@ -4483,7 +4490,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                               "max=%d, current=%d, c=%s",
                               cconf->sconf->qos_cc_limit,
                               (*e)->limit,
-                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+                              QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
           ret = m_retcode;
         }
         (*ef)->lowrate = apr_time_sec(r->request_time);
@@ -4595,7 +4602,7 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
                                   QOS_LOG_PFX(064)"access denied, QS_ClientPrefer rule (low prio): "
                                   "max=%d, concurrent connections=%d, c=%s",
                                   cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
-                                  cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+                                  QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
               ret = m_retcode;
             }
           } else {
@@ -4606,7 +4613,7 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
                                   QOS_LOG_PFX(063)"access denied, QS_ClientPrefer rule (not vip): "
                                   "max=%d(+%d), concurrent connections=%d, c=%s",
                                   cconf->sconf->qos_cc_prefer_limit, more, u->qos_cc->connections,
-                                  cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+                                  QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
               ret = m_retcode;
             }
           }
@@ -4625,7 +4632,7 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
 //                              "max=%d, current=%d, c=%s",
 //                              cconf->sconf->qos_cc_block,
 //                              (*e)->block,
-//                              cconf->c->remote_ip == NULL ? "-" : cconf->c->remote_ip);
+//                              QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
 //          ret = m_retcode;
 //        } else {
 //          /* release */
@@ -5228,7 +5235,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   }
 #ifdef QS_INTERNAL_TEST
   {
-    unsigned long remoteip = qos_inet_addr(r->connection->remote_ip);
+    unsigned long remoteip = qos_inet_addr(QS_CONN_REMOTEIP(r->connection));
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     if(cconf) {
       remoteip = cconf->ip;
@@ -5593,7 +5600,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                        level == APLOG_INFO ? 
                        "log only (allowed)" 
                        : "access denied",
-                       inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+                       QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
           if(level == APLOG_INFO) {
             inctx->time = now;
             inctx->nbytes = 0;
@@ -5638,7 +5645,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                            inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
                            req_rate,
                            rate,
-                           inctx->c->remote_ip == NULL ? "-" : inctx->c->remote_ip);
+                           QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
               if(level == APLOG_INFO) {
                 inctx->time = interval + sconf->qs_req_rate_tm;
                 inctx->nbytes = 0;
@@ -5929,7 +5936,7 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
       qos_user_t *u = qos_get_user_conf(base->sconf->act->ppool);
       qos_s_entry_t **e = NULL;
       qos_s_entry_t new;
-      new.ip = qos_inet_addr(base->c->remote_ip); // no ip simulation here
+      new.ip = qos_inet_addr(QS_CONN_REMOTEIP(base->c)); // no ip simulation here
       apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT40 */
       e = qos_cc_get0(u->qos_cc, &new, 0);
       if(!e) {
@@ -6024,7 +6031,7 @@ static int qos_process_connection(conn_rec *c) {
     /* evaluates client ip */
     if((sconf->max_conn_per_ip != -1) ||
        sconf->has_qos_cc) {
-      cconf->ip = qos_inet_addr(c->remote_ip);
+      cconf->ip = qos_inet_addr(QS_CONN_REMOTEIP(c));
 #ifdef QS_INTERNAL_TEST
       /* use one of the predefined ip addresses */
       if(cconf->sconf->enable_testip) {
@@ -6063,7 +6070,7 @@ static int qos_process_connection(conn_rec *c) {
       apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->exclude_ip)->elts;
       for(i = 0; i < apr_table_elts(sconf->exclude_ip)->nelts; i++) {
         if(entry[i].val[0] == 'r') {
-          if(strncmp(entry[i].key, cconf->c->remote_ip, strlen(entry[i].key)) == 0) {
+          if(strncmp(entry[i].key, QS_CONN_REMOTEIP(cconf->c), strlen(entry[i].key)) == 0) {
             vip = 1;
             /* propagate vip to connection */
             cconf->is_vip = vip;
@@ -6072,7 +6079,7 @@ static int qos_process_connection(conn_rec *c) {
             }
           }
         } else {
-          if(strcmp(entry[i].key, cconf->c->remote_ip) == 0) {
+          if(strcmp(entry[i].key, QS_CONN_REMOTEIP(cconf->c)) == 0) {
             vip = 1;
             /* propagate vip to connection */
             cconf->is_vip = vip;
@@ -6099,7 +6106,7 @@ static int qos_process_connection(conn_rec *c) {
     }
     /* Geo */
     if(sconf->geodb) {
-      unsigned long ip = qos_geo_str2long(c->pool, c->remote_ip);
+      unsigned long ip = qos_geo_str2long(c->pool, QS_CONN_REMOTEIP(c));
       qos_geo_t *pB = bsearch(&ip,
                               sconf->geodb,
                               sconf->geodb_size,
@@ -6118,7 +6125,7 @@ static int qos_process_connection(conn_rec *c) {
                          " country=%s",
                          sconf->geo_limit,
                          all_connections,
-                         c->remote_ip,
+                         QS_CONN_REMOTEIP(c),
                          pB != NULL ? pB->country : "--");
             if(!sconf->log_only) {
               c->keepalive = AP_CONN_CLOSE;
@@ -6136,7 +6143,7 @@ static int qos_process_connection(conn_rec *c) {
                      " concurrent connections=%d,"
                      " c=%s",
                      sconf->max_conn, connections,
-                     c->remote_ip == NULL ? "-" : c->remote_ip);
+                     QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         if(!sconf->log_only) {
           c->keepalive = AP_CONN_CLOSE;
           return qos_return_error(c);
@@ -6154,7 +6161,7 @@ static int qos_process_connection(conn_rec *c) {
                        " concurrent connections=%d,"
                        " c=%s",
                        sconf->max_conn_per_ip, current,
-                       c->remote_ip == NULL ? "-" : c->remote_ip);
+                       QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         } else {
           if((e->error % QS_LOG_REPEAT) == 0) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
@@ -6164,7 +6171,7 @@ static int qos_process_connection(conn_rec *c) {
                          " c=%s",
                          sconf->max_conn_per_ip, current,
                          QS_LOG_REPEAT,
-                         c->remote_ip == NULL ? "-" : c->remote_ip);
+                         QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
           }
         }
         if(!sconf->log_only) {
@@ -6180,7 +6187,7 @@ static int qos_process_connection(conn_rec *c) {
                        " c=%s",
                        sconf->max_conn_per_ip, current,
                        e->error % QS_LOG_REPEAT,
-                       c->remote_ip == NULL ? "-" : c->remote_ip);
+                       QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         }
         e->error = 0;
       }
@@ -6202,7 +6209,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
     // proxy connections do NOT have any relation to the score board, don't handle them
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, c->base_server, 
                  QOS_LOG_PFX(000)"skip processing of outgoing connection %s<->%s",
-                 c->remote_ip ? c->remote_ip : "UNKNOWN", c->local_ip ? c->local_ip : "UNKNOWN");
+                 QS_CONN_REMOTEIP(c) ? QS_CONN_REMOTEIP(c) : "UNKNOWN", c->local_ip ? c->local_ip : "UNKNOWN");
     return ret;
   }
   sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config, &qos_module);
@@ -6222,7 +6229,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     qos_s_entry_t **e = NULL;
     qos_s_entry_t new;
-    new.ip = qos_inet_addr(c->remote_ip); // no ip simulation here
+    new.ip = qos_inet_addr(QS_CONN_REMOTEIP(c)); // no ip simulation here
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT39 */
     e = qos_cc_get0(u->qos_cc, &new, 0);
     if(!e) {
@@ -6236,7 +6243,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
                      "max=%d, current=%d, c=%s",
                      sconf->qos_cc_block,
                      (*e)->block,
-                     c->remote_ip == NULL ? "-" : c->remote_ip);
+                     QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         if(!sconf->log_only) {
           c->keepalive = AP_CONN_CLOSE;
           ret = m_retcode;
@@ -6348,7 +6355,7 @@ static int qos_post_read_request(request_rec *r) {
                           QOS_LOG_PFX(069)"no valid IP header found:"
                           " invalid header value '%s', fallback to connection's IP %s",
                           forwadedfor,
-                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+                          QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
           }
         }
@@ -6358,7 +6365,7 @@ static int qos_post_read_request(request_rec *r) {
                         QOS_LOG_PFX(069)"no valid IP header found:"
                         " header '%s' not available, fallback to connection's IP %s",
                         sconf->qos_cc_forwardedfor,
-                        r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip);
+                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection));
           apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
         }
       }
@@ -6454,7 +6461,7 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
                       " invalid content-length header, c=%s, id=%s",
-                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));
         return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
@@ -6463,7 +6470,7 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
                       QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
                       " max=%"APR_OFF_T_FMT" this=%"APR_OFF_T_FMT", c=%s, id=%s",
                       maxpost, s,
-                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));
         return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
@@ -6722,7 +6729,7 @@ static int qos_header_parser(request_rec * r) {
                           " concurrent requests=%d,"
                           " c=%s, id=%s",
                           e->url, e->limit, e->counter,
-                          r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                          QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "010"));
             rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
             // request has already been blocked, don't cont this request for req/sec violations!
@@ -6801,7 +6808,7 @@ static int qos_header_parser(request_rec * r) {
                               " concurrent requests=%d,"
                               " c=%s, id=%s",
                               e_cond->url, e_cond->limit, e_cond->counter,
-                              r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                              QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                               qos_unique_id(r, "011"));
                 rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
                 if(!sconf->log_only) {
@@ -6885,7 +6892,7 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
                       QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
                       " max=%"APR_OFF_T_FMT" this=%"APR_OFF_T_FMT", c=%s, id=%s",
                       maxpost, rctx->maxpostcount,
-                      r->connection->remote_ip == NULL ? "-" : r->connection->remote_ip,
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));
         rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
         if(!sconf->log_only) {
@@ -7029,7 +7036,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         qos_s_entry_t **e = NULL;
         qos_s_entry_t new;
         apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
-        new.ip = qos_inet_addr(inctx->c->remote_ip);
+        new.ip = qos_inet_addr(QS_CONN_REMOTEIP(inctx->c));
         e = qos_cc_get0(u->qos_cc, &new, 0);
         if(!e) {
           e = qos_cc_set(u->qos_cc, &new, time(NULL));
