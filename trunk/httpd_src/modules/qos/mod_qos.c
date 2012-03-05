@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.396 2012-03-05 19:32:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.397 2012-03-05 21:11:16 pbuchbinder Exp $";
 static const char g_revision[] = "10.4";
 
 /************************************************************************
@@ -206,11 +206,15 @@ static const char *m_note_variables[] = {
 #define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
-// Apache 2.4 compat $$$
+// Apache 2.4 compat
 #if (AP_SERVER_MINORVERSION_NUMBER == 4)
 #define QS_CONN_REMOTEIP(c) c->client_ip
+#define QOS_MY_GENERATION(g) ap_mpm_query(AP_MPMQ_GENERATION, &g)
+#define qos_unixd_set_global_mutex_perms ap_unixd_set_global_mutex_perms
 #else
 #define QS_CONN_REMOTEIP(c) c->remote_ip
+#define QOS_MY_GENERATION(g) g = ap_my_generation
+#define qos_unixd_set_global_mutex_perms unixd_set_global_mutex_perms
 #endif
 
 #ifdef QS_MOD_EXT_HOOKS
@@ -1161,7 +1165,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size) {
     return NULL;
   }
 #ifdef AP_NEED_SET_MUTEX_PERMS
-  unixd_set_global_mutex_perms(s->lock);
+  qos_unixd_set_global_mutex_perms(s->lock);
 #endif
   e = (qos_s_entry_t *)&s[1];
   s->ipd = (qos_s_entry_t **)&e[size];
@@ -1842,7 +1846,9 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
  * tells if server is terminating immediately or not
  */
 static int qos_is_graceful(qs_actable_t *act) {
-  if(ap_my_generation != act->generation) return 1;
+  int mpm_gen;
+  QOS_MY_GENERATION(mpm_gen);
+  if(mpm_gen != act->generation) return 1;
   return 0;
 }
 
@@ -1875,14 +1881,17 @@ static apr_status_t qos_cleanup_shm(void *p) {
   qs_actable_t *act = p;
   qos_user_t *u = qos_get_user_conf(act->ppool);
   /* this_generation id is never deleted ... */
-  char *this_generation = apr_psprintf(act->ppool, "%d", ap_my_generation);
+  int mpm_gen;
+  char *this_generation;
   char *last_generation;
   int i;
   apr_table_entry_t *entry;
-  u->generation = ap_my_generation;
+  QOS_MY_GENERATION(mpm_gen);
+  this_generation = apr_psprintf(act->ppool, "%d", mpm_gen);
+  u->generation = mpm_gen;
   qos_clear_cc(u);
   if(qos_is_graceful(act)) {
-    last_generation = apr_psprintf(act->pool, "%d", ap_my_generation-1);
+    last_generation = apr_psprintf(act->pool, "%d", mpm_gen-1);
   } else {
     last_generation = this_generation;
   }
@@ -4554,7 +4563,7 @@ static int qos_server_connections(qos_srv_config *sconf) {
     for(j = 0; j < sconf->thread_limit; ++j) {
       ws_record = ap_get_scoreboard_worker(i, j);
       if(!ps_record->quiescing && ps_record->pid) {
-        if(ws_record->status == SERVER_READY && ps_record->generation == ap_my_generation) {
+        if(ws_record->status == SERVER_READY && ps_record->generation == qos_my_generation) {
           ready++;
         }
       }
@@ -7839,7 +7848,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       exit(1);
     }
 #ifdef AP_NEED_SET_MUTEX_PERMS
-    unixd_set_global_mutex_perms(sconf->act->lock);
+    qos_unixd_set_global_mutex_perms(sconf->act->lock);
 #endif
   }
   sconf->base_server = bs;
@@ -8495,7 +8504,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
-  sconf->act->generation = ap_my_generation;
+  QOS_MY_GENERATION(sconf->act->generation);
   sconf->act->child_init = 0;
   sconf->act->timeout = apr_time_sec(s->timeout);
   sconf->act->has_events = 0;

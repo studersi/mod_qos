@@ -6,3 +6,5 @@ include $(top_srcdir)/build/special.mk
 # using mod_ssl)
 SH_LDFLAGS += -lcrypto
 SH_LDFLAGS += -lpcre
+LDFLAGS += -lcrypto
+LDFLAGS += -lpcre
