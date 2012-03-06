@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.214 2012-03-05 19:32:29 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.215 2012-03-06 06:58:15 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -223,6 +223,7 @@ ErrorDocument 404 /error-docs/error404.html
 
    ProxyPass                  /killme !
    ProxyPass                  /loopme !
+   ProxyPass                  /internalredirectme !
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
    ProxyPass                  /info !
