@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.215 2012-03-06 06:58:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.216 2012-03-06 19:32:00 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -281,6 +281,8 @@ ErrorDocument 404 /error-docs/error404.html
    # mutiple rule match
    BrowserMatch  "yoda"          YODA
    QS_EventRequestLimit          YODA 4
+   BrowserMatch  "YandexBot"     YANDEXBOT
+   QS_EventRequestLimit          YANDEXBOT 2
    QS_LocRequestLimitMatch       .*YODA.* 4
    QS_CondLocRequestLimitMatch   .*YODA.* 4 YODA
 
