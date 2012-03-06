@@ -10,7 +10,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qtest.c,v 1.2 2011-11-28 20:06:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qtest.c,v 1.3 2012-03-06 06:58:15 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -90,6 +90,15 @@ static int qtest_handler(request_rec * r) {
     while(1) {
       sleep(1);
     }
+  }
+  if(strcmp(r->parsed_uri.path, "/internalredirectme/") == 0) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QTEST_LOG_PFX(001)"INTERNAL REDIRECT %d", getpid());
+    r->method = apr_pstrdup(r->pool, "GET");
+    r->method_number = M_GET;
+    sleep(1);
+    ap_internal_redirect(r->args, r);
+    return OK;
   }
   return DECLINED;
 }
