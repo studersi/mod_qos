@@ -24,7 +24,7 @@ rm -f logs/*
 echo "start (`date '+%a %b %d %H:%M:%S %Y'`)"
 ./ctl.sh start > /dev/null
 
-for E in `ls scripts/*.htt`; do
+for E in `ls scripts/*.htt | sort`; do
   ./run.sh -s $E
   if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
