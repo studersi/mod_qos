@@ -12,6 +12,8 @@ LogLevel       warn
 #LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\""
 LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e %k %{QS_Country}e %{QS_SrvConn}e a=%{QS_AllConn}e #%P"
 TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
+CustomLog      "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o"
+
 TypesConfig    conf/mime.types
 
 PidFile        logs/apache.pid
@@ -42,6 +44,7 @@ Listen         ##QS_PORT_BASE##
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
 
    QS_LocRequestLimitMatch    ^/htt/limit2/.*      2
+   QS_LocRequestPerSecLimitMatch ^/limitrs/.*     10
 
    <Location /qos >
       SetHandler qos-viewer
