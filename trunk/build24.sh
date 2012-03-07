@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.2 2012-03-05 19:32:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.3 2012-03-07 19:23:13 pbuchbinder Exp $
 #
 # Simple Apache 2.4 build script.
 #
@@ -36,9 +36,12 @@ ln -s `pwd`/httpd_src/modules/qtest/mod_qtest.c httpd/modules/qtest
 ln -s `pwd`/httpd_src/modules/qtest/config.m4 httpd/modules/qtest
 ln -s `pwd`/httpd_src/modules/qtest/Makefile.in httpd/modules/qtest
 
+CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g -Wall"
+export CFLAGS
+
 cd httpd
 
-./configure --with-apr=`pwd`/../../apr --with-mpm=worker --enable-modules=all --with-module=qos:qos
+./configure --with-apr=`pwd`/../../apr --with-mpm=worker --enable-modules=all --enable-mods-static=all --with-module=qos:qos
 
 if [ $? -ne 0 ]; then
   echo "ERROR"

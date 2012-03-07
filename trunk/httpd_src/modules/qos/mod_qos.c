@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.397 2012-03-05 21:11:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.398 2012-03-07 19:23:13 pbuchbinder Exp $";
 static const char g_revision[] = "10.4";
 
 /************************************************************************
@@ -208,6 +208,8 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 // Apache 2.4 compat
 #if (AP_SERVER_MINORVERSION_NUMBER == 4)
+// TODO
+#define WORKER_MPM 1
 #define QS_CONN_REMOTEIP(c) c->client_ip
 #define QOS_MY_GENERATION(g) ap_mpm_query(AP_MPMQ_GENERATION, &g)
 #define qos_unixd_set_global_mutex_perms ap_unixd_set_global_mutex_perms
@@ -7789,6 +7791,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   const char *error_page = detectErrorPage(ptemp, bs);
   int auto_error_page = 0;
   qos_hostcode(ptemp, bs);
+  QOS_MY_GENERATION(sconf->act->generation);
   for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
     if(strcasecmp(pdir->directive, "MaxClients") == 0) {
       net_prefer = atoi(pdir->args);
@@ -7917,6 +7920,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     server_rec *s = bs->next;
     while(s) {
       qos_srv_config *ssconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+      QOS_MY_GENERATION(ssconf->act->generation);
       /* mutex init */
       if(ssconf->act->lock_file == NULL) {
         ssconf->act->lock_file = sconf->act->lock_file;
@@ -8504,7 +8508,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
-  QOS_MY_GENERATION(sconf->act->generation);
+  sconf->act->generation = -1;
+  // QOS_MY_GENERATION(sconf->act->generation);
   sconf->act->child_init = 0;
   sconf->act->timeout = apr_time_sec(s->timeout);
   sconf->act->has_events = 0;
