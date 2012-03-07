@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.1 2012-03-07 19:23:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.2 2012-03-07 20:17:35 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -92,3 +92,14 @@ for E in $CONFFILES; do
 	-e "s;##QS_PORT_BASE10##;$QS_PORT_BASE10;g"
 done
 
+if [ ! -x run.sh ]; then
+  ln -s ../test/run.sh .
+fi
+
+if [ ! -d bin ]; then
+  mkdir bin
+  cd bin
+  ln -s ../../test/bin/h* .
+  ln -s ../../test/bin/s* .
+  cd ..
+fi

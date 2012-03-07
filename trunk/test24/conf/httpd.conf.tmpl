@@ -31,9 +31,20 @@ Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
   ServerName   127.0.0.1
 
-  <Location /qos >
-    SetHandler qos-viewer
-  </Location>
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /qos !
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+   QS_LocRequestLimitMatch    ^/htt/limit2/.*      2
+
+   <Location /qos >
+      SetHandler qos-viewer
+   </Location>
 
 </VirtualHost>
-
