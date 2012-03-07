@@ -1,0 +1,39 @@
+
+ServerRoot     ##ROOT##
+User           ##USR##
+Group          users
+ServerName     127.0.0.1
+
+ServerAdmin    ##USR##@example.com
+DocumentRoot   ##ROOT##/htdocs
+ErrorLog       logs/error_log
+LogLevel       warn
+
+#LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\""
+LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e %k %{QS_Country}e %{QS_SrvConn}e a=%{QS_AllConn}e #%P"
+TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
+TypesConfig    conf/mime.types
+
+PidFile        logs/apache.pid
+StartServers             1
+MinSpareThreads         25
+MaxSpareThreads         75 
+ThreadsPerChild         25
+MaxRequestWorkers      150
+MaxConnectionsPerChild   0
+
+Timeout                 30
+KeepAlive               on
+MaxKeepAliveRequests   100
+KeepAliveTimeout         5
+
+Listen         ##QS_PORT_BASE##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE##>
+  ServerName   127.0.0.1
+
+  <Location /qos >
+    SetHandler qos-viewer
+  </Location>
+
+</VirtualHost>
+

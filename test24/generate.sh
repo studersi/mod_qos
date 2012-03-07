@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.25 2012-03-07 19:23:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.1 2012-03-07 19:23:13 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -25,6 +25,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301, USA.
 #
+
+DIRECTORIES="logs scripts htdocs conf"
+for E in $DIRECTORIES; do
+  mkdir -p $E
+done
 
 ROOT=`pwd`
 QS_UID=`id`
@@ -69,11 +74,9 @@ if [ ! -f htdocs/image.iso ]; then
     for E in `seq 12500`; do
 	echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso
     done
-    cp htdocs/image.iso htdocs/demo/c/image.iso
-    cp htdocs/image.iso htdocs/bbb/image.iso
 fi
 
-CONFFILES="conf/httpd.conf conf/demo.conf conf/simple.conf conf/dos.conf conf/qos_viewer.conf appl_conf/httpd.conf"
+CONFFILES="conf/httpd.conf"
 for E in $CONFFILES; do
     sed <$E.tmpl >$E \
 	-e "s;##ROOT##;$ROOT;g" \
@@ -89,17 +92,3 @@ for E in $CONFFILES; do
 	-e "s;##QS_PORT_BASE10##;$QS_PORT_BASE10;g"
 done
 
-echo "" > conf/json.conf
-
-if [ ! -d logs ]; then
-    mkdir logs
-fi
-
-if [ -f ../3thrdparty/modsecurity/rules/modsecurity_crs_40_generic_attacks.conf ]; then
-    MSID=0
-    rm -f appl_conf/qos_deny_filter.conf
-    for E in `grep "^SecRule " ../3thrdparty/modsecurity/rules/modsecurity_crs_40_generic_attacks.conf | awk '{print $3}' | grep "\"$"`; do
-	echo "QS_DenyRequestLine +MS${MSID} deny $E" >> appl_conf/qos_deny_filter.conf
-	MSID=`expr $MSID + 1`
-    done
-fi
