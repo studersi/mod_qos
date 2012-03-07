@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.399 2012-03-07 20:24:49 pbuchbinder Exp $";
-static const char g_revision[] = "10.4";
+static const char revision[] = "$Id: mod_qos.c,v 5.400 2012-03-07 20:53:08 pbuchbinder Exp $";
+static const char g_revision[] = "10.5";
 
 /************************************************************************
  * Includes
@@ -209,13 +209,11 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 // Apache 2.4 compat
 #if (AP_SERVER_MINORVERSION_NUMBER == 4)
 // TODO
-#define QS_MaxClients "MaxRequestWorkers"
 #define WORKER_MPM 1
 #define QS_CONN_REMOTEIP(c) c->client_ip
 #define QOS_MY_GENERATION(g) ap_mpm_query(AP_MPMQ_GENERATION, &g)
 #define qos_unixd_set_global_mutex_perms ap_unixd_set_global_mutex_perms
 #else
-#define QS_MaxClients "MaxClients"
 #define QS_CONN_REMOTEIP(c) c->remote_ip
 #define QOS_MY_GENERATION(g) g = ap_my_generation
 #define qos_unixd_set_global_mutex_perms unixd_set_global_mutex_perms
@@ -7795,7 +7793,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_hostcode(ptemp, bs);
   QOS_MY_GENERATION(sconf->act->generation);
   for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
-    if(strcasecmp(pdir->directive, QS_MaxClients) == 0) {
+    if(strcasecmp(pdir->directive, "MaxClients") == 0 ||
+       strcasecmp(pdir->directive, "MaxRequestWorkers") == 0) {
       net_prefer = atoi(pdir->args);
       sconf->max_clients = net_prefer;
     }
@@ -7810,7 +7809,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   if(net_prefer <= 1) {
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
-                 QOS_LOG_PFX(007)"could not determine "QS_MaxClients"!"
+                 QOS_LOG_PFX(007)"could not determine MaxClients/MaxRequestWorkers!"
                  " You MUST set this directive within the Apache configuration file.");
   }
 #ifdef WORKER_MPM
