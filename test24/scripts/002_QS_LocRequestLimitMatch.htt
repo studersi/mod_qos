@@ -1,5 +1,5 @@
 #
-# $Id: 002_QS_LocRequestLimitMatch.htt,v 1.1 2012-03-07 21:31:10 pbuchbinder Exp $
+# $Id: 002_QS_LocRequestLimitMatch.htt,v 1.2 2012-03-08 07:53:42 pbuchbinder Exp $
 #
 #    QS_LocRequestLimitMatch    ^/htt/limit2/.*      2
 #
@@ -36,6 +36,8 @@ __Host: localhost
 __Connection: keep-alive
 __
 _EXPECT . "500 Internal Server Error"
+_EXPECT . "custom error page"
+_EXPECT . "code=010"
 _WAIT
 _CLOSE
 _SLEEP 1000

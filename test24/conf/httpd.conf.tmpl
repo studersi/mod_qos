@@ -24,10 +24,14 @@ ThreadsPerChild         25
 MaxRequestWorkers      150
 MaxConnectionsPerChild   0
 
+Options        FollowSymLinks Indexes Includes
+
 Timeout                 30
 KeepAlive               on
 MaxKeepAliveRequests   100
 KeepAliveTimeout         5
+
+QS_SrvMinDataRate      120 3000 10
 
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
@@ -40,8 +44,14 @@ Listen         ##QS_PORT_BASE##
    </Proxy>
 
    ProxyPass                  /qos !
+   ProxyPass                  /error-pages !
+   ProxyPass                  /limitrs !
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+   QS_ErrorPage               /error-docs/error.shtml
+   AddType                    text/html .shtml
+   AddOutputFilter            INCLUDES .shtml
 
    QS_LocRequestLimitMatch    ^/htt/limit2/.*      2
    QS_LocRequestPerSecLimitMatch ^/limitrs/.*     10
