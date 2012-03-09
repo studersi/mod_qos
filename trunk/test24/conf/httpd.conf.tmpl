@@ -44,20 +44,40 @@ Listen         ##QS_PORT_BASE##
    </Proxy>
 
    ProxyPass                  /qos !
+   ProxyPass                  /status !
+   ProxyPass                  /info !
    ProxyPass                  /error-pages !
    ProxyPass                  /limitrs !
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /limitbs http://localhost:##QS_PORT_BASE1##/limitbs retry=0
+   ProxyPassReverse           /limitbs http://localhost:##QS_PORT_BASE1##/limitbs
 
    QS_ErrorPage               /error-docs/error.shtml
    AddType                    text/html .shtml
    AddOutputFilter            INCLUDES .shtml
 
-   QS_LocRequestLimitMatch    ^/htt/limit2/.*      2
+   QS_LocRequestLimitMatch       ^/htt/limit2/.*   2
    QS_LocRequestPerSecLimitMatch ^/limitrs/.*     10
+   QS_LocKBytesPerSecLimitMatch  ^/limitbs/.*    500
 
    <Location /qos >
       SetHandler qos-viewer
    </Location>
+   <Location /status>
+      SetHandler server-status
+   </Location>
+   <Location /info>
+      SetHandler server-info
+   </Location>
+
+</VirtualHost>
+
+
+Listen         ##QS_PORT_BASE1##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE1##>
+  ServerName   127.0.0.1
+
+  TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 21600 -f"
 
 </VirtualHost>
