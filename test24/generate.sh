@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.2 2012-03-07 20:17:35 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.3 2012-03-09 20:41:00 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -75,6 +75,8 @@ if [ ! -f htdocs/image.iso ]; then
 	echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso
     done
 fi
+mkdir -p htdocs/limitbs
+cp htdocs/image.iso htdocs/limitbs/image.iso
 
 CONFFILES="conf/httpd.conf"
 for E in $CONFFILES; do
