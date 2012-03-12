@@ -1,5 +1,5 @@
 #
-# $Id: 101_QS_LocRequestPerSecLimitMatch.htt,v 1.1 2012-03-08 07:53:42 pbuchbinder Exp $
+# $Id: 101_QS_LocRequestPerSecLimitMatch.htt,v 1.2 2012-03-12 19:15:43 pbuchbinder Exp $
 #
 #   QS_LocRequestPerSecLimitMatch ^/limitrs/       10
 #
@@ -22,7 +22,7 @@ _END RPS
 END
 
 CLIENT
-_SLEEP 120000
+_SLEEP 130000
 _EXPECT EXEC "r/s;1[0-9]?;"
 _EXEC tail -1 logs/qs_log
 

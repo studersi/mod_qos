@@ -1,3 +1,8 @@
+Version 10.5
+
+ - Experimental: mod_qos compiles with Apache 2.4 (excluding
+   QS_SrvMinDataRate).
+
 Version 10.4
 
  - Improved qs* utility performance. 
