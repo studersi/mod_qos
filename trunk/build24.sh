@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.3 2012-03-07 19:23:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.4 2012-03-12 20:36:44 pbuchbinder Exp $
 #
 # Simple Apache 2.4 build script.
 #
@@ -9,6 +9,7 @@
 TOP=`pwd`
 
 APACHE_VER=2.4.1
+MPM=worker
 
 echo "build Apache $APACHE_VER"
 if [ ! -d httpd-${APACHE_VER} ]; then
@@ -41,7 +42,7 @@ export CFLAGS
 
 cd httpd
 
-./configure --with-apr=`pwd`/../../apr --with-mpm=worker --enable-modules=all --enable-mods-static=all --with-module=qos:qos
+./configure --with-apr=`pwd`/../../apr --with-mpm=${MPM} --enable-modules=all --enable-mods-static=all --with-module=qos:qos
 
 if [ $? -ne 0 ]; then
   echo "ERROR"
