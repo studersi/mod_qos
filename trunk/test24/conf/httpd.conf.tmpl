@@ -31,7 +31,19 @@ KeepAlive               on
 MaxKeepAliveRequests   100
 KeepAliveTimeout         5
 
-QS_SrvMinDataRate      120 3000 10
+<IfDefine real_ip>
+QS_EnableInternalIPSimulation off
+</IfDefine>
+
+# disabled for Apache 2.4
+#QS_SrvMinDataRate      120 3000 10
+
+QS_ErrorResponseCode   503
+
+QS_ClientEventBlockCount 20 30
+QS_SetEnvIfStatus  400 QS_Block
+
+QS_ClientEventLimitCount  3 10
 
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
@@ -48,20 +60,31 @@ Listen         ##QS_PORT_BASE##
    ProxyPass                  /info !
    ProxyPass                  /error-pages !
    ProxyPass                  /limitrs !
+
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+   ProxyPass                  /cgi http://localhost:##QS_PORT_BASE1##/cgi retry=0
+   ProxyPassReverse           /cgi http://localhost:##QS_PORT_BASE1##/cgi
    ProxyPass                  /limitbs http://localhost:##QS_PORT_BASE1##/limitbs retry=0
    ProxyPassReverse           /limitbs http://localhost:##QS_PORT_BASE1##/limitbs
 
-   QS_ErrorPage               /error-docs/error.shtml
    AddType                    text/html .shtml
    AddOutputFilter            INCLUDES .shtml
+
+   QS_ErrorPage               /error-docs/error.shtml
+
+   QS_SrvMaxConnPerIP         30
 
    QS_LocRequestLimitMatch       ^/htt/limit2/.*   2
    QS_LocRequestPerSecLimitMatch ^/limitrs/.*     10
    QS_LocKBytesPerSecLimitMatch  ^/limitbs/.*    500
 
-   <Location /qos >
+   <Location /htt/limit>
+      QS_SetEnvIfResBody "Login Failed" QS_Limit
+   </Location>
+
+   <Location /qos>
       SetHandler qos-viewer
    </Location>
    <Location /status>
@@ -79,5 +102,12 @@ Listen         ##QS_PORT_BASE1##
   ServerName   127.0.0.1
 
   TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 21600 -f"
+
+  ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
+  <Location /cgi>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
 
 </VirtualHost>

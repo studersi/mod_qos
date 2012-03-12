@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.400 2012-03-07 20:53:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.401 2012-03-12 19:15:42 pbuchbinder Exp $";
 static const char g_revision[] = "10.5";
 
 /************************************************************************
@@ -208,12 +208,12 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 // Apache 2.4 compat
 #if (AP_SERVER_MINORVERSION_NUMBER == 4)
-// TODO
-#define WORKER_MPM 1
+#define QS_APACHE_24 1
 #define QS_CONN_REMOTEIP(c) c->client_ip
 #define QOS_MY_GENERATION(g) ap_mpm_query(AP_MPMQ_GENERATION, &g)
 #define qos_unixd_set_global_mutex_perms ap_unixd_set_global_mutex_perms
 #else
+#define QS_APACHE_22 1
 #define QS_CONN_REMOTEIP(c) c->remote_ip
 #define QOS_MY_GENERATION(g) g = ap_my_generation
 #define qos_unixd_set_global_mutex_perms unixd_set_global_mutex_perms
@@ -749,7 +749,7 @@ typedef struct {
 
 module AP_MODULE_DECLARE_DATA qos_module;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
-static int m_worker_mpm = 1;
+static int m_worker_mpm = 1; // note: mod_qos shall be used for Apache 2.2 worker MPM only
 static unsigned int m_hostcode = 0;
 static int m_generation = 0;
 static int m_qos_cc_partition = QSMOD;
@@ -10505,6 +10505,7 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an ip address or"
                 " address range from beeing limited."),
+#if QS_APACHE_22
 #if APR_HAS_THREADS
   AP_INIT_NO_ARGS("QS_SrvDataRateOff", qos_req_rate_off_cmd, NULL,
                   RSRC_CONF,
@@ -10561,7 +10562,7 @@ static const command_rec qos_config_cmds[] = {
                     " setting is reached when the number of sending/receiving"
                     " clients is equal to the MaxClients setting."
                     " No limitation is set by default."),
-#endif
+#endif // Apache 2.0
   AP_INIT_TAKE1("QS_SrvMinDataRateOffEvent", qos_min_rate_off_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SrvMinDataRateOffEvent  '+'|'-'<env-variable>,"
@@ -10570,7 +10571,8 @@ static const command_rec qos_config_cmds[] = {
                 " has been set. The '+' prefix is used to add a variable"
                 " to the configuration while the '-' prefix is used"
                 " to remove a variable."),
-#endif
+#endif // has threads
+#endif // QS_APACHE_22
   /* event */
   AP_INIT_TAKE2("QS_EventRequestLimit", qos_event_req_cmd, NULL,
                 RSRC_CONF,
