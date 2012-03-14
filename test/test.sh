@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.197 2012-03-06 19:32:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.198 2012-03-14 19:51:39 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -156,6 +156,8 @@ sleep 1
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
+./run.sh -se ./scripts/QS_SrvMaxConn_50.htt
+sleep 1
 ./run.sh -se ./scripts/QS_SrvMaxConn_50.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`

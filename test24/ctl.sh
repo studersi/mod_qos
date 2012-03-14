@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.1 2012-03-07 19:23:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.2 2012-03-14 19:51:39 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -51,6 +51,7 @@ case "$COMMAND" in
 	    fi
 	  done
 	done
+	../test/bin/sleep 500
 	echo "proxy `cat logs/apache.pid`"
 	;;
   stop)
@@ -74,6 +75,7 @@ case "$COMMAND" in
 	    COUNTER=`expr $COUNTER + 1`
 	  done
 	done
+	../test/bin/sleep 500
 	;;
   graceful)
 	if [ -f logs/apache.pid ]; then
