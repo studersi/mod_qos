@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.401 2012-03-12 19:15:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.402 2012-03-14 19:51:39 pbuchbinder Exp $";
 static const char g_revision[] = "10.5";
 
 /************************************************************************
@@ -10395,7 +10395,7 @@ static const command_rec qos_config_cmds[] = {
                 " in conjunction with QS_LocRequestLimit only."),
   AP_INIT_TAKE2("QS_LocKBytesPerSecLimit", qos_loc_bs_cmd, NULL,
                 RSRC_CONF,
-                "QS_LocKBytesPerSecLimit <location> <kbytes>, defined the allowed"
+                "QS_LocKBytesPerSecLimit <location> <kbytes>, defines the allowed"
                 " download bandwidth to the defined kbytes per second. Responses are"
                 "slowed by adding a delay to each response (non-linear, bigger files"
                 " get longer delay than smaller ones). This directive should be used"
@@ -10674,7 +10674,7 @@ static const command_rec qos_config_cmds[] = {
                 " to deny access for requests matching the defined expression (pcre)."
                 " '+' adds a new rule while '-' removes a rule for a location."
                 " The action is either 'log' (access is granted but rule"
-                " match is logged) or 'deny' (access is denied)"),
+                " match is logged) or 'deny' (access is denied)."),
   AP_INIT_TAKE3("QS_DenyPath", qos_deny_path_cmd, NULL,
                 ACCESS_CONF,
                 "QS_DenyPath, same as QS_DenyRequestLine but applied to the"
