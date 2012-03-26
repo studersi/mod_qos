@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.402 2012-03-14 19:51:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.403 2012-03-26 19:05:52 pbuchbinder Exp $";
 static const char g_revision[] = "10.5";
 
 /************************************************************************
@@ -10380,8 +10380,8 @@ static const command_rec qos_config_cmds[] = {
   /* request limitation per location */
   AP_INIT_TAKE2("QS_LocRequestLimit", qos_loc_con_cmd, NULL,
                 RSRC_CONF,
-                "QS_LocRequestLimit <location> <number>, defines the number of"
-                " concurrent requests to the specified location. Default is defined by the"
+                "QS_LocRequestLimit <location> <number>, defines the maximum number of"
+                " concurrent requests allowed to access the specified location. Default is defined by the"
                 " QS_LocRequestLimitDefault directive."),
   AP_INIT_TAKE1("QS_LocRequestLimitDefault", qos_loc_con_def_cmd, NULL,
                 RSRC_CONF,
@@ -10421,9 +10421,10 @@ static const command_rec qos_config_cmds[] = {
                 " QS_LocRequestLimitMatch only."),
   AP_INIT_TAKE2("QS_LocKBytesPerSecLimitMatch", qos_match_bs_cmd, NULL,
                 RSRC_CONF,
-                "QS_LocKBytesPerSecLimit <regex> <kbytes>, defined the allowed"
-                " download bandwidth to the defined kbytes per second. Responses are"
-                " slowed by adding a delay to each response (non-linear, bigger files"
+                "QS_LocKBytesPerSecLimitMatch <regex> <kbytes>, defines the allowed"
+                " download bandwidth to the location matching the defined URL (path"
+                " and query) pattern. Responses are slowed down"
+                " by adding a delay to each response (non-linear, bigger files"
                 " get longer delay than smaller ones). This directive should be used"
                 " in conjunction with QS_LocRequestLimitMatch only."),
   /* error document */
@@ -10435,7 +10436,8 @@ static const command_rec qos_config_cmds[] = {
                 "QS_Chroot <path>, change root directory."),
   AP_INIT_TAKE1("QS_ErrorResponseCode", qos_error_code_cmd, NULL,
                 RSRC_CONF,
-                "QS_ErrorResponseCode <code>, defines the HTTP response code, default is 500."),
+                "QS_ErrorResponseCode <code>, defines the HTTP response code which"
+                " is used when a request is denied, default is 500."),
   AP_INIT_TAKE12("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
                  RSRC_CONF,
                  "QS_UserTrackingCookieName <name> [<path>], enables the user tracking cookie by"
@@ -10448,47 +10450,49 @@ static const command_rec qos_config_cmds[] = {
                 " default is "QOS_COOKIE_NAME"."),
   AP_INIT_TAKE1("QS_SessionCookiePath", qos_cookie_path_cmd, NULL,
                 RSRC_CONF,
-                "QS_SessionCookiePath <path>, default it \"/\"."),
+                "QS_SessionCookiePath <path>, defines the cookie path, default is \"/\"."),
   AP_INIT_TAKE1("QS_SessionTimeout", qos_timeout_cmd, NULL,
                 RSRC_CONF,
-                "QS_SessionTimeout <seconds>, defines vip session life time,"
-                " default are "QOS_MAX_AGE" seconds."),
+                "QS_SessionTimeout <seconds>, defines the session life time for a VIP."
+                " It is only used for session based (cookie) VIP identification (not"
+                " for IP based). Default is "QOS_MAX_AGE" seconds."),
   AP_INIT_TAKE1("QS_SessionKey", qos_key_cmd, NULL,
                 RSRC_CONF,
-                "QS_SessionKey <string>, defines a key used for session"
-                " cookie encryption."),
+                "QS_SessionKey <string>, secret key used for cookie encryption."
+                " Used when using the same session cookie for multiple web servers"
+                " (load balancing) or sessions should survive a server restart."
+                " By default, a random key is used which changes every server restart."),
   AP_INIT_TAKE12("QS_VipHeaderName", qos_header_name_cmd, NULL,
                  RSRC_CONF,
-                 "QS_VipHeaderName <name>[=<regex>] [drop], defines the"
-                 " http header name which is"
-                 " used to signalize a very important person (vip)."
-                 " Tests Optionally its value against the provided regular expression."
-                 " Specify the action 'drop' if you want mod_qos to remove this"
-                 " control header from the HTTP response."),
+                 "QS_VipHeaderName <name>[=<regex>] [drop], defines an HTTP response"
+                 " header which marks a user as a VIP. mod_qos creates"
+                 " a session for this user by setting a cookie, e.g., after successful"
+                 " user authentication. Tests optionally its value against the provided"
+                 " regular expression. Specify the action 'drop' if you want mod_qos"
+                 " to remove this control header from the HTTP response."),
   AP_INIT_TAKE12("QS_VipIPHeaderName", qos_ip_header_name_cmd, NULL,
                  RSRC_CONF,
-                 "QS_VipIPHeaderName <name>[=<regex>] [drop], defines the http"
-                 " header name which is"
-                 " used to signalize priviledged clients (IP addresses)."
-                 " Tests Optionally its value against the provided regular expression."
+                 "QS_VipIPHeaderName <name>[=<regex>] [drop], defines an HTTP"
+                 " response header which marks a client source IP address as a VIP."
+                 " Tests optionally its value against the provided regular expression."
                  " Specify the action 'drop' if you want mod_qos to remove this"
                  " control header from the HTTP response."),
   AP_INIT_NO_ARGS("QS_VipUser", qos_vip_u_cmd, NULL,
                   RSRC_CONF,
-                  "QS_VipUser, creates a VIP session for users"
-                  " which has been authenticated by the Apache server."
-                  " May be used in conjunction with the QS_ClientPrefer and"
-                  "QS_SrvPreferNet directives too."),
+                  "QS_VipUser, creates a VIP session for users which have been"
+                  " authenticated by the Apache server, e.g., by the standard"
+                  " mod_auth* modules. It works similar to the QS_VipHeaderName"
+                  " directive."),
   AP_INIT_NO_ARGS("QS_VipIpUser", qos_vip_ip_u_cmd, NULL,
                   RSRC_CONF,
-                  "QS_VipIpUser, marks a source IP as VIP if the user"
-                  " has been authenticated by the Apache server."
-                  " May be used in conjunction with the QS_ClientPrefer and"
-                  "QS_SrvPreferNet directives only."),
+                  "QS_VipIpUser, marks a source IP address as a VIP if the"
+                  " user has been authenticated by the Apache server, e.g."
+                  " by the standard mod_auth* modules. It works similar to"
+                  " the QS_VipIPHeaderName directive."),
   AP_INIT_TAKE1("QS_SrvMaxConn", qos_max_conn_cmd, NULL,
                 RSRC_CONF,
-                "QS_SrvMaxConn <number>, defines the maximum number of"
-                " concurrent TCP connections for this server."),
+                "QS_SrvMaxConn <number>, defines the maximum number of concurrent"
+                " TCP connections for this server (virtual host)."),
   AP_INIT_TAKE1("QS_SrvMaxConnClose", qos_max_conn_close_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnClose <number>, defines the maximum number of"
@@ -10499,8 +10503,8 @@ static const command_rec qos_config_cmds[] = {
                 " to the specified value."),
   AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                 RSRC_CONF,
-                "QS_SrvMaxConnPerIP <number>, defines the maximum number of"
-                " concurrent TCP connections per IP source address."),
+                "QS_SrvMaxConnPerIP <number>, defines the maximum number"
+                " of connections per source IP address for this server (virtual host)."),
   AP_INIT_TAKE1("QS_SrvMaxConnExcludeIP", qos_max_conn_ex_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an ip address or"
@@ -10576,47 +10580,81 @@ static const command_rec qos_config_cmds[] = {
   /* event */
   AP_INIT_TAKE2("QS_EventRequestLimit", qos_event_req_cmd, NULL,
                 RSRC_CONF,
-                "QS_EventRequestLimit <variable>[=<regex>] <number>, defines the allowed"
-                " number of concurrent requests, having the specified variable set"
-                " (optionally checking its value against the provided regular expression)."),
+                "QS_EventRequestLimit <variable>[=<regex>] <number>, defines the"
+                " number of concurrent events. Directive works similar to"
+                " QS_LocRequestLimit, but counts the requests having the same"
+                " environment variable (and optionally matching its value, too)"
+                " rather than those that have the same URL pattern."),
   AP_INIT_TAKE2("QS_EventPerSecLimit", qos_event_rs_cmd, NULL,
                 RSRC_CONF,
-                "QS_EventPerSecLimit [!]<variable> <number>, defines the allowed"
-                " number of requests, having the specified variable set,"
-                " per second. Requests are limited"
-                " by adding a delay to each requests."),
+                "QS_EventPerSecLimit [!]<variable> <number>, defines how"
+                " often requests may have the defined environment variable"
+                " (literal string) set. It measures the occurrences of the defined"
+                " environment variable on a request per seconds level and tries to"
+                " limit this occurrence to the defined number. It works similar to"
+                " as QS_LocRequestPerSecLimit, but counts only the requests with the"
+                " specified variable (or without it if the variable name is"
+                " prefixed by a '!'). If a request matches multiple events, the"
+                " rule with the lowest bandwidth is applied. Events are limited"
+                " by adding a delay to each request causing an  event."),
   AP_INIT_TAKE2("QS_EventKBytesPerSecLimit", qos_event_bps_cmd, NULL,
                 RSRC_CONF,
-                "QS_EventKBytesPerSecLimit [!]<variable> <kbytes>, defines the allowed"
-                " download bandwidth to the defined kbytes per second for those"
-                " requests which have the specified variable set. Responses are"
-                " slowed by adding a delay to each response (non-linear, bigger files"
-                " get longer delay than smaller ones). This directive should be used"
-                " in conjunction with QS_EventRequestLimit only."),
+                "QS_EventKBytesPerSecLimit [!]<variable> <kbytes>, throttles the"
+                " download bandwidth of all requests having the defined"
+                " variable set to the defined kbytes per second. Responses are slowed"
+                " by adding a delay to each response (non-linear, bigger files get"
+                " longer delay than smaller ones). By default, no limitation is active."
+                " This directive should be used in conjunction with QS_EventRequestLimit"
+                " only (you must use the same variable name for both directives)."),
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIf [!]<variable1> [!]<variable1> [!]<variable=value>,"
-                " defines the new variable if variable1 AND variable2 are set."),
+                " sets (or unsets) the 'variable=value' (literal string) if variable1"
+                " (literal string) AND variable2 (literal string) are set in the"
+                " request environment variable list (not case sensitive)."
+                " This is used to combine multiple variables to a new event type."),
   AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIfQuery <regex> [!]<variable>[=value],"
-                " directive works similar to the SetEnvIf directive"
-                " of the Apache module mod_setenvif but the specified regex is"
-                " applied against the request query string."),
+                " directive works quite similar to the SetEnvIf directive"
+                " of the Apache module mod_setenvif, but the specified regex is"
+                " applied against the query string portion of the request line."
+                " The directive recognizes the occurrences of $1..$9 within"
+                " value and replaces them by the sub-expressions of the defined"
+                " regex pattern."),
   AP_INIT_TAKE2("QS_SetEnvIfParp", qos_event_setenvifparp_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIfParp <regex> [!]<variable>[=value],"
-                " parsed the request payload using the Apache module"
-                " mod_parp. It matches the request URL query and the body"
-                " data as well and sets the defined process variable."),
+                " directive parsing the request payload using the Apache module"
+                " mod_parp. It matches the request URL query and the HTTP"
+                " request message body data as well ('application/x-www-form-urlencoded'," 
+                " 'multipart/form-data', and 'multipart/mixed') and sets the defined"
+                " process variable (quite similar to the QS_SetEnvIfQuery directive)."
+                " The directive recognizes the occurrences of $1..$9 within value"
+                " and replaces them by the sub-expressions of the defined regex"
+                " pattern. This directive activates mod_parp for every request to"
+                " the virtual host. You may deactivate mod_parp for selected requests"
+                " using the SetEnvIf directive: unset the variable 'parp' to do so."
+                " Important: request message body processing requires that the server"
+                " loads the whole request into its memory (at least twice the length"
+                " of the message). You should limit the allowed size of the HTTP"
+                " request message body using the QS_LimitRequestBody directive"
+                " when using QS_SetEnvIfParp!"),
   AP_INIT_TAKE2("QS_SetEnvIfBody", qos_event_setenvifparpbody_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIfBody <regex> [!]<variable>[=value],"
-                " parsed the request body using the Apache module"
-                " mod_parp."),
+                " parses the request body using the Apache module mod_parp."
+                " Specify the content types to process using the mod_parp"
+                " directive PARP_BodyData and ensure that mod_parp is enabled"
+                " using the SetEnvIf directive of the Apache module mod_setenvif." 
+                " You should limit the allowed size of HTTP requests message body"
+                " using the QS_LimitRequestBody directive when using mod_parp."
+                " The directive recognizes the occurrence of $1 within the variable"
+                " value and replaces it by the sub-expressions of the defined regex"
+                " pattern."),
   AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
-                "QS_SetEnvStatus"),
+                "QS_SetEnvStatus (deprecated, use QS_SetEnvIfStatus)"),
   AP_INIT_TAKE2("QS_SetEnvIfStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvIfStatus <status code> <variable>, adds the defined"
@@ -10628,7 +10666,7 @@ static const command_rec qos_config_cmds[] = {
                 " which are closed before any HTTP request has ever been received."),
   AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,
-                "see QS_SetEnvIfResBody"),
+                "QS_SetEnvResBody (deprecated, use QS_SetEnvIfResBody)"),
   AP_INIT_TAKE2("QS_SetEnvIfResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,
                 "QS_SetEnvIfResBody <string> <variable>, adds the defined"
@@ -10717,7 +10755,7 @@ static const command_rec qos_config_cmds[] = {
                 " configuration file."),
   AP_INIT_TAKE1("QS_MileStoneTimeout", qos_milestone_tmo_cmd, NULL,
                 RSRC_CONF,
-                "QS_MileStone <seconds>, defines the time in seconds"
+                "QS_MileStoneTimeout <seconds>, defines the time in seconds"
                 " within a client must reach the next milestone."
                 " Default are 3600 seconds."),
   AP_INIT_ITERATE("QS_Decoding", qos_dec_cmd, NULL,
