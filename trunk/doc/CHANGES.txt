@@ -1,5 +1,8 @@
 Version 10.5
 
+ - JSON includes array index number (note: you need to adapt
+   existing JSON rules).
+
  - Experimental: mod_qos compiles with Apache 2.4
    * QS_SrvMinDataRate is not available (does not work)
    * QS_Srv* directives shall not be used (connection cleanup takes
@@ -128,7 +131,7 @@ Version 9.71
  - Headers X-Content-Type-Options and X-XSS-Protection has been added
    to the default response header rules.
 
- - Fixed: Bug in json parser.
+ - Fixed: Bug in JSON parser.
 
  - Fixed: Propagation of Apache environment variables to sub-requests
    (solves bug when using QS_ClientEventBlockCount and ErrorDocument).

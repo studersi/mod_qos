@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: json.c,v 1.13 2011-09-29 17:08:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: json.c,v 1.14 2012-03-27 20:42:36 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -261,8 +261,9 @@ static int j_obj(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int 
 static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int rec) {
   char *d = j_skip(*val);
   int rc;
+  int index = 0;
   while(d && d[0]) {
-    rc = j_val(pool, &d, tl, name, rec);
+    rc = j_val(pool, &d, tl, apr_psprintf(pool, "%s%d", name, index), rec);
     if(rc != APR_SUCCESS) {
       return rc;
     }
@@ -282,6 +283,7 @@ static int j_ar(apr_pool_t *pool, char **val, apr_table_t *tl, char *name, int r
       apr_table_add(tl, QOS_J_ERROR, "error while parsing array (unexpected end/wrong delimiter)");
       return HTTP_BAD_REQUEST;
     }
+    index++;
   }
   return APR_SUCCESS;
 }
