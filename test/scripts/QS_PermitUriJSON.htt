@@ -1,5 +1,5 @@
 #
-# $Id: QS_PermitUriJSON.htt,v 1.5 2011-08-31 18:31:48 pbuchbinder Exp $
+# $Id: QS_PermitUriJSON.htt,v 1.6 2012-03-27 20:42:36 pbuchbinder Exp $
 #
 
 
@@ -41,7 +41,7 @@ __
 __ {
 __    "name": "Jack (\"Bee\") Nimble", 
 __    "format": {
-__        "type":       "0000",
+__        "type":       "rect",
 __        "width":      1920, 
 __        "height":     1080,
 __        "interlace":  false, 
@@ -71,7 +71,7 @@ __
 __ {
 __    "name": "Jack (\"Bee\") Nimble", 
 __    "format": {
-__        "type":       "0000",
+__        "type":       "rect",
 __        "width":      1920, 
 __        "height":     1080,
 __        "interlace":  false, 
@@ -133,7 +133,7 @@ _CLOSE
 
 # json in query (no body)
 _REQ localhost $QS_PORT_BASE
-__GET /qos/parp/json?{"name":"Jack%20(\"Bee\")%20Nimble","format":{"type":"0000","width":1920,"height":1080,"interlace":false,"frame%20rates":[%2024%20,30%20,60,72%20]}} HTTP/1.1
+__GET /qos/parp/json?{"name":"Jack%20(\"Bee\")%20Nimble","format":{"type":"rect","width":1920,"height":1080,"interlace":false,"frame%20rates":[%2024%20,30%20,60,72%20]}} HTTP/1.1
 __Host: localhost
 __Content-Type: application/json
 __Req: 6
@@ -145,12 +145,12 @@ _EXPECT . ", mod_qos"
 _WAIT
 _CLOSE
 
-# json in query (no body), invalid value for J_o_format_o_type_v (not numeric)
+# json in query (no body), invalid value for J_o_format_o_type_v (numeric)
 _REQ localhost $QS_PORT_BASE
 __GET /qos/parp/json?{"name":"Jack%20(\"Bee\")%20Nimble","format":{"type":"0000X","width":1920,"height":1080,"interlace":false,"frame%20rates":[%2024%20,30%20,60,72%20]}} HTTP/1.1
 __Host: localhost
 __Content-Type: application/json
-__Req: 6
+__Req: 7
 __
 _EXPECT . "500 Internal Server Error"
 _EXPECT . "code=041"
@@ -163,10 +163,10 @@ _EXEC tail -1 logs/error_log
 
 # json in query (no body), invalid value => null character
 _REQ localhost $QS_PORT_BASE
-__GET /qos/parp/json?{"name":"Jack%20(\"Bee\")%20Nimble","format":{"type":"0000X","width":1920,"height":1080,"interlace":false,"frame%20rates":[%2024%20,30%20,60,72%00]}} HTTP/1.1
+__GET /qos/parp/json?{"name":"Jack%20(\"Bee\")%20Nimble","format":{"type":"rect","width":1920,"height":1080,"interlace":false,"frame%20rates":[%2024%20,30%20,60,72%00]}} HTTP/1.1
 __Host: localhost
 __Content-Type: application/json
-__Req: 6
+__Req: 8
 __
 _EXPECT . "500 Internal Server Error"
 _EXPECT . "code=048"
