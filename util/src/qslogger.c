@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.2 2012-03-30 19:32:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.3 2012-03-30 19:33:10 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -147,6 +147,12 @@ static int qsgetfacility(const char *facilityname) {
   return f;
 }
 
+/**
+ * Usage message (or man page)
+ *
+ * @param cmd
+ * @param man
+ */
 static void usage(const char *cmd, int man) {
   if(man) {
     //.TH [name of program] [section number] [center footer] [left footer] [center header]
