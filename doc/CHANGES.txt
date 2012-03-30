@@ -1,5 +1,7 @@
 Version 10.5
 
+ - New utility: qslogger.
+
  - JSON includes array index number (note: you need to adapt
    existing JSON rules).
 
