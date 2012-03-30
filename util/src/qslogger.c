@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.1 2012-03-30 19:05:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.2 2012-03-30 19:32:02 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -89,7 +89,6 @@ static int qsgetlevel(regex_t preg, const char *line) {
   if(regexec(&preg, line, 1, ma, 0) == 0) {
     level = qsgetprio(&line[ma[1].rm_so]);
   }
-  printf("$$$ %d %s\n", level, line);
   return level;
 }
 
@@ -291,7 +290,7 @@ int main(int argc, const char * const argv[]) {
       line_len--;
     }
     level = qsgetlevel(preg, line);
-    //$$$  syslog(level, "%s", line);
+    syslog(level, "%s", line);
     if(pass) {
       printf("%s\n", line);
     }
