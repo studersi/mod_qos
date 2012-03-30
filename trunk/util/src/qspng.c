@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.13 2012-02-08 11:46:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.14 2012-03-30 19:05:36 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -598,7 +598,7 @@ static void usage(char *cmd, int man) {
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
-    printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qslog(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qslogger(1), qslog(1), qsrotate(1), qssign(1), qstail(1)\n");
     printf(".SH AUTHOR\n");
     printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
   } else {
