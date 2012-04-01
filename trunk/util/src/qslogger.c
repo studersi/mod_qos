@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.3 2012-03-30 19:33:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.4 2012-04-01 19:05:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -163,7 +163,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  qs_man_print(man, "%s - another shell command interface to the syslog(3) system log module.\n", cmd);
+  qs_man_print(man, "%s - another shell command interface to the system log module (syslog).\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SYNOPSIS\n");
