@@ -1,0 +1,40 @@
+#
+# $Id: 005_QS_SrvMaxConnClose.htt,v 1.1 2012-03-14 19:51:39 pbuchbinder Exp $
+#
+#   QS_SrvMaxConnClose         40
+#
+
+INCLUDE scripts/ports
+
+CLIENT 40
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_EXPECT . "Keep-Alive: timeout"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+
+_CLOSE
+_SLEEP 10000
+
+END
+
+# 40+1
+CLIENT
+_SLEEP 1000
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "root index.html"
+_EXPECT . "!Keep-Alive: timeout"
+_EXPECT . "!Connection: Keep-Alive"
+_WAIT
+_CLOSE
+
+END
