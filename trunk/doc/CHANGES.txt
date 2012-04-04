@@ -1,5 +1,7 @@
 Version
 
+ - qslog average response time in milliseconds (avms).
+
  - Fixed: Viewer shows number of per client ip connections if no server
    limitations are set (query "option=ip").
 
