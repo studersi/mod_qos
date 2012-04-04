@@ -1,3 +1,8 @@
+Version
+
+ - Fixed: Viewer shows number of per client ip connections if no server
+   limitations are set (query "option=ip").
+
 Version 10.5
 
  - New utility: qslogger.
@@ -6,7 +11,8 @@ Version 10.5
    existing JSON rules).
 
  - Experimental: mod_qos compiles with Apache 2.4
-   * QS_SrvMinDataRate is not available (does not work)
+   * QS_SrvMinDataRate is not available (does not work, use mod_reqtimeout
+     instead)
    * QS_Srv* directives shall not be used (connection cleanup takes
      very long)
 
