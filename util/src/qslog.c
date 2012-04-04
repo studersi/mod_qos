@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.43 2012-03-30 19:05:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.44 2012-04-04 21:09:22 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -89,7 +89,8 @@ typedef struct stat_rec_st {
   long line_count;
   long long i_byte_count;
   long long byte_count;
-  long duration_count;
+  long long duration_count;
+  long long duration_count_ms;
   long duration_0;
   long duration_1;
   long duration_2;
@@ -137,6 +138,7 @@ static int   m_offline = 0;
 static int   m_offline_data = 0;
 static char  m_date_str[MAX_LINE];
 static int   m_mem = 0;
+static int   m_avms = 0;
 static apr_table_t *m_client_entries = NULL;
 static int   m_max_client_entries = 0;
 static int   m_offline_count = 0;
@@ -335,6 +337,7 @@ static void getFreeMem(char *buf, int sz) {
 #define NBS "b/s"
 #define NBIS "ib/s"
 #define NAV "av"
+#define NAVMS "avms"
 
 /**
  * Writes the statistic entry stat_rec to the file.
@@ -353,13 +356,20 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
   char esco[256];
   char ip[256];
   char usr[256];
+  char avms[256];
   bis[0] = '\0';
   esco[0] = '\0';
+  avms[0] = '\0';
   if(stat_rec->i_byte_count != -1) {
     sprintf(bis, NBIS";%lld;", stat_rec->i_byte_count/LOG_INTERVAL);
   }
   if(main && stat_rec->connections != -1) {
     sprintf(esco, "esco;%ld;", stat_rec->connections);
+  }
+  if(m_avms) {
+    sprintf(avms, NAVMS";%lld;", stat_rec->duration_count_ms/(stat_rec->line_count == 0 ? 1 : stat_rec->line_count));
+    // improve accuracy (rounding errors):
+    stat_rec->duration_count = stat_rec->duration_count_ms / 1000;
   }
   if(main) {
     sprintf(ip, "ip;%ld;", qs_countEvent(&m_ip_list));
@@ -381,7 +391,8 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
 	  "3xx;%ld;"
 	  "4xx;%ld;"
 	  "5xx;%ld;"
-          NAV";%ld;"
+	  "%s"
+          NAV";%lld;"
           "<1s;%ld;"
           "1s;%ld;"
           "2s;%ld;"
@@ -411,6 +422,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
 	  stat_rec->status_3,
 	  stat_rec->status_4,
 	  stat_rec->status_5,
+	  avms, 
           stat_rec->duration_count/(stat_rec->line_count == 0 ? 1 : stat_rec->line_count),
           stat_rec->duration_0,
           stat_rec->duration_1,
@@ -443,6 +455,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec, int off
   stat_rec->status_4 = 0;
   stat_rec->status_5 = 0;
   stat_rec->duration_count = 0;
+  stat_rec->duration_count_ms = 0;
   stat_rec->duration_0 = 0;
   stat_rec->duration_1 = 0;
   stat_rec->duration_2 = 0;
@@ -491,6 +504,7 @@ static stat_rec_t *createRec(const char *id, const char *pattern) {
   rec->i_byte_count = -1;
   rec->byte_count = 0;
   rec->duration_count = 0;
+  rec->duration_count_ms = 0;
   rec->duration_0 = 0;
   rec->duration_1 = 0;
   rec->duration_2 = 0;
@@ -666,7 +680,7 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
  */
 static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
 		      char *BI, char *B, char *R, char *I, char *U, char *Q, char *k, char *C,
-		      long tme) {
+		      long tme, long tmems) {
   if(Q != NULL) {
     if(strchr(Q, 'V') != NULL) {
       rec->qos_v++;
@@ -729,6 +743,7 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
   if(T != NULL || t != NULL || D != NULL) {
     /* response duration */
     rec->duration_count += tme;
+    rec->duration_count_ms += tmems;
     if(tme < 1) {
       rec->duration_0++;
     } else if(tme == 1) {
@@ -778,6 +793,7 @@ static void updateStat(const char *cstr, char *line) {
   const char *c = cstr;
   char *l = line;
   long tme;
+  long tmems;
   if(!line[0]) return;
   while(c[0]) {
     /* process known types */
@@ -865,6 +881,7 @@ static void updateStat(const char *cstr, char *line) {
   tme = 0;
   if(T != NULL || t != NULL || D != NULL) {
     /* response duration */
+    tmems = 0;
     if(T) {
       stripNum(&T);
       tme = atol(T);
@@ -873,12 +890,13 @@ static void updateStat(const char *cstr, char *line) {
       tme = atol(t) / 1000;
     } else if(D) {
       stripNum(&D);
-      tme = atol(D) / 1000000;
+      tmems = atol(D) / 1000;
+      tme = tmems / 1000;
     }
   }
-  updateRec(m_stat_rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
+  updateRec(m_stat_rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme, tmems);
   if(rec) {
-    updateRec(rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
+    updateRec(rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme, tmems);
   }
   if(m_offline_count) {
     updateClient(NULL, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
@@ -1157,6 +1175,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - bytes received from the client per second ("NBIS")\n");
   qs_man_println(man, "  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");
   qs_man_println(man, "  - average response duration ("NAV")\n");
+  qs_man_println(man, "  - average response duration in milliseconds ("NAVMS")\n");
   qs_man_println(man, "  - distribution of response durations within the last minute\n");
   qs_man_print(man, "    (<1s,1s,2s,3s,4s,5s,>5)\n");
   if(man) printf("\n");
@@ -1189,8 +1208,8 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     B defines the transferred bytes (%%b or %%O)\n");
   qs_man_println(man, "     i defines the received bytes (%%I)\n");
   qs_man_println(man, "     T defines the request duration (%%T)\n");
-  qs_man_println(man, "     t defines the request duration in milliseconds (optionally used instead of T)\n");
-  qs_man_println(man, "     D defines the request duration in microseconds (optionally used instead of T) (%%D)\n");
+  qs_man_println(man, "     t defines the request duration in milliseconds (may be used instead of T)\n");
+  qs_man_println(man, "     D defines the request duration in microseconds (may be used instead of T, required for "NAVMS") (%%D)\n");
   qs_man_println(man, "     k defines the number of keepalive requests on the connection (%%k)\n");
   qs_man_println(man, "     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   qs_man_println(man, "     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
@@ -1347,6 +1366,10 @@ int main(int argc, const char *const argv[]) {
 	if(strchr(config, 'k')) {
 	  // enable esco
 	  m_stat_rec->connections = 0;
+	}
+	if(strchr(config, 'D')) {
+	  // enable average duration in ms
+	  m_avms = 1;
 	}
       }
     } else if(strcmp(*argv,"-o") == 0) { /* this is the out file */
