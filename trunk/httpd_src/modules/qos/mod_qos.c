@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.404 2012-03-27 20:42:36 pbuchbinder Exp $";
-static const char g_revision[] = "10.5";
+static const char revision[] = "$Id: mod_qos.c,v 5.405 2012-04-04 19:41:14 pbuchbinder Exp $";
+static const char g_revision[] = "10.6";
 
 /************************************************************************
  * Includes
@@ -5433,22 +5433,20 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         }
 
         if(option && strstr(option, "ip")) {
-          if(sconf->act->conn->connections) {
-            apr_table_t *entries = apr_table_make(r->pool, 100);
-            int j;
-            apr_table_entry_t *entry;
-            ap_rputs("<tr class=\"rowt\">"
-                     "<td colspan=\"6\">"
-                     "<div title=\"QS_SrvMaxConnPerIP\">client ip connections</div></td>"
-                     "<td colspan=\"3\">current&nbsp;</td>", r);
-            ap_rputs("</tr>\n", r);
-            qos_collect_ip(r, sconf, entries, sconf->max_conn_per_ip, 1);
-            entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
-            for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
-              ap_rputs("<tr class=\"rows\">", r);
-              ap_rputs("<td colspan=\"6\">", r);
-              ap_rprintf(r, "%s</td></tr>\n", entry[j].key);
-            }
+          apr_table_t *entries = apr_table_make(r->pool, 100);
+          int j;
+          apr_table_entry_t *entry;
+          ap_rputs("<tr class=\"rowt\">"
+                   "<td colspan=\"6\">"
+                   "<div title=\"QS_SrvMaxConnPerIP\">client ip connections</div></td>"
+                   "<td colspan=\"3\">current&nbsp;</td>", r);
+          ap_rputs("</tr>\n", r);
+          qos_collect_ip(r, sconf, entries, sconf->max_conn_per_ip, 1);
+          entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
+          for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
+            ap_rputs("<tr class=\"rows\">", r);
+            ap_rputs("<td colspan=\"6\">", r);
+            ap_rprintf(r, "%s</td></tr>\n", entry[j].key);
           }
         }
 

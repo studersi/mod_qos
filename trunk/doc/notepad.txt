@@ -44,7 +44,7 @@
 - response filter (e.g. detecting "bad" js code)
   - try to enforce content security header settings
 - more user friendly error handling for QS_ClientEventBlockCount directive
-  - show the error page for the more than only the first occurences
+  - show the error page for more than only the first occurence
     - e.g. answer the next 5 (or more) requests with an error page too
       (instead of closing the TCP connection)
     - detect, if counter was incremented at http response, e.g. session cookie
