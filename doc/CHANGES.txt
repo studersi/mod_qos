@@ -1,4 +1,4 @@
-Version
+Version 10.6
 
  - qslog measures average response time in milliseconds (avms).
 
