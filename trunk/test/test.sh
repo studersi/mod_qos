@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.199 2012-04-01 18:58:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.200 2012-04-05 19:46:09 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -879,6 +879,11 @@ fi
 if [ $? -ne 0 ]; then
   ERRORS=`expr $ERRORS + 1`
   echo "FAILED qslog.sh test pc"
+fi
+./qslog.sh test avms
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qslog.sh test avms"
 fi
 ./qsgeo.sh
 if [ $? -ne 0 ]; then

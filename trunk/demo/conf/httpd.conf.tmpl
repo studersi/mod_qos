@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.12 2012-04-04 21:09:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.13 2012-04-05 19:46:09 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -57,7 +57,7 @@ DefaultType             text/plain
 AddType                 text/html .shtml
 AddOutputFilter         INCLUDES .shtml
 
-LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e #%P"
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %D %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e #%P"
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
