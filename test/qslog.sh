@@ -1,6 +1,7 @@
 #!/bin/sh
+# -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.12 2012-02-04 19:20:18 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.13 2012-04-05 19:46:09 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -75,6 +76,7 @@ case "$1" in
 	echo "$PFX OK"
 	;;
 	pc)
+	echo "$PFX pc"
 	./qslog.sh test writeapache 0 | ../util/src/qslog -f I....RSB.TkC -pc > pc
 	if [ `grep -c "127.0.0.1;req;236;errors;0;1xx;0;2xx;236;3xx;0;4xx;0;5xx;0;av;0;<1s;236;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;" pc` -eq 0 ]; then
 	    echo "$PFX FAILED (.1)"
@@ -101,6 +103,7 @@ case "$1" in
 	done
 	;;
 	log4j)
+	echo "$PFX log4j"
 	# offline foreign log
 	rm -f qs.log
 	echo "$PFX log4j"
@@ -108,6 +111,19 @@ case "$1" in
 	if [ `grep -c 'r/s;4;req;240;b/s;600;1xx;0;2xx;180;3xx;0;4xx;0;5xx;60;av;1;<1s;180;1s;0;2s;0;3s;0;4s;60;5s;0;>5s;0;ip;3;usr;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log` -ne 2 ]; then
 	    echo "$PFX FAILED"
 	    exit 1
+	fi
+	echo "$PFX OK"
+	;;
+	avms)
+	echo "$PFX avms"
+	# offline analysis measuring average req time in ms
+	# verification: 
+	#   cat qslog.data | awk '{print $(NF-8)}' |  awk '{total+=$NF/1000} END{print total/106}'
+	rm -f qs.log
+	cat qslog.data  | ../util/src/qslog -f I....RSB.D -p -o qs.log 2>/dev/null 1>/dev/null
+	if [ `grep -c "r/s;1;req;106;b/s;10192;1xx;0;2xx;101;3xx;5;4xx;0;5xx;0;avms;2206;av;2;<1s;59;1s;0;2s;0;3s;16;4s;4;5s;21;>5s;6;ip;1;usr;0;" qs.log` -ne 1 ]; then
+	  echo "$PFX FAILED"
+	  exit 1
 	fi
 	echo "$PFX OK"
 	;;
