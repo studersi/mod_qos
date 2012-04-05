@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.44 2012-04-04 21:09:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.45 2012-04-05 07:52:57 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -887,7 +887,8 @@ static void updateStat(const char *cstr, char *line) {
       tme = atol(T);
     } else if(t) {
       stripNum(&t);
-      tme = atol(t) / 1000;
+      tmems= atol(t);
+      tme = tmems / 1000;
     } else if(D) {
       stripNum(&D);
       tmems = atol(D) / 1000;
@@ -1209,7 +1210,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     i defines the received bytes (%%I)\n");
   qs_man_println(man, "     T defines the request duration (%%T)\n");
   qs_man_println(man, "     t defines the request duration in milliseconds (may be used instead of T)\n");
-  qs_man_println(man, "     D defines the request duration in microseconds (may be used instead of T, required for "NAVMS") (%%D)\n");
+  qs_man_println(man, "     D defines the request duration in microseconds (may be used instead of T) (%%D)\n");
   qs_man_println(man, "     k defines the number of keepalive requests on the connection (%%k)\n");
   qs_man_println(man, "     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   qs_man_println(man, "     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
@@ -1367,7 +1368,7 @@ int main(int argc, const char *const argv[]) {
 	  // enable esco
 	  m_stat_rec->connections = 0;
 	}
-	if(strchr(config, 'D')) {
+	if(strchr(config, 'D') || strchr(config, 't')) {
 	  // enable average duration in ms
 	  m_avms = 1;
 	}

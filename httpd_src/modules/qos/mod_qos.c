@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.405 2012-04-04 19:41:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.406 2012-04-05 07:52:57 pbuchbinder Exp $";
 static const char g_revision[] = "10.6";
 
 /************************************************************************
@@ -4943,7 +4943,18 @@ static unsigned long qos_inet_addr(const char *address) {
  * Viewer settings about ip address information.
  */
 static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) {
-  if(sconf->has_qos_cc) {
+  int max_conn_per_ip = 0;
+  server_rec *s = sconf->base_server;
+  while(s) {
+    // enable per client connection search if any server has enabled QS_SrvMaxConnPerIP
+    qos_srv_config *conf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    if(conf->max_conn_per_ip != -1) {
+      max_conn_per_ip = 1;
+      break;
+    }
+    s = s->next;
+  }
+  if(sconf->has_qos_cc || max_conn_per_ip) {
     const char *option = apr_table_get(qt, "option");
     if(strcmp(r->handler, "qos-viewer") == 0) {
       ap_rputs("<table class=\"btable\"><tbody>\n", r);
