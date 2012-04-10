@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.4 2012-04-01 19:05:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.5 2012-04-10 15:39:06 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,10 +36,46 @@ static const char revision[] = "$Id: qslogger.c,v 1.4 2012-04-01 19:05:59 pbuchb
 #include <regex.h>
 #include <syslog.h>
 
+#include <apr.h>
+#include <apr_lib.h>
+
 #include "qs_util.h"
 
 // [Wed Mar 28 22:40:41 2012] [warn] 
 #define QS_DEFAULTPATTERN "^\\[[0-9a-zA-Z :]+\\] \\[([a-z]+)\\] "
+
+/*
+ * ap_strcasestr()
+ */
+static char *qs_strcasestr(const char *s1, const char *s2) {
+  char *p1, *p2;
+  if (*s2 == '\0') {
+    /* an empty s2 */
+    return((char *)s1);
+  }
+  while(1) {
+    for ( ; (*s1 != '\0') && (apr_tolower(*s1) != apr_tolower(*s2)); s1++);
+    if (*s1 == '\0') {
+      return(NULL);
+    }
+    /* found first character of s2, see if the rest matches */
+    p1 = (char *)s1;
+    p2 = (char *)s2;
+    for (++p1, ++p2; apr_tolower(*p1) == apr_tolower(*p2); ++p1, ++p2) {
+      if (*p1 == '\0') {
+        /* both strings ended together */
+        return((char *)s1);
+      }
+    }
+    if (*p2 == '\0') {
+      /* second string ended, a match */
+      break;
+    }
+    /* didn't find a match here, try starting at next character in s1 */
+    s1++;
+  }
+  return((char *)s1);
+}
 
 /**
  * Rerurns the priority value
@@ -52,23 +88,23 @@ static int qsgetprio(const char *priorityname) {
   if(!priorityname) {
     return p;
   }
-  if(strcasestr(priorityname, "alert")) {
+  if(qs_strcasestr(priorityname, "alert")) {
     p = LOG_ALERT;
-  } else if(strcasestr(priorityname, "crit")) {
+  } else if(qs_strcasestr(priorityname, "crit")) {
     p = LOG_CRIT;
-  } else if(strcasestr(priorityname, "debug")) {
+  } else if(qs_strcasestr(priorityname, "debug")) {
     p = LOG_DEBUG;
-  } else if(strcasestr(priorityname, "emerg")) {
+  } else if(qs_strcasestr(priorityname, "emerg")) {
     p = LOG_EMERG;
-  } else if(strcasestr(priorityname, "err")) {
+  } else if(qs_strcasestr(priorityname, "err")) {
     p = LOG_ERR;
-  } else if(strcasestr(priorityname, "info")) {
+  } else if(qs_strcasestr(priorityname, "info")) {
     p = LOG_INFO;
-  } else if(strcasestr(priorityname, "notice")) {
+  } else if(qs_strcasestr(priorityname, "notice")) {
     p = LOG_NOTICE;
-  } else if(strcasestr(priorityname, "panic")) {
+  } else if(qs_strcasestr(priorityname, "panic")) {
     p = LOG_EMERG;
-  } else if(strcasestr(priorityname, "warn")) {
+  } else if(qs_strcasestr(priorityname, "warn")) {
     p = LOG_WARNING;
   }
   return p;
@@ -101,11 +137,15 @@ typedef struct {
  * table of known facilities
  */
 static const qs_f_t qs_facilities[] = {
+#ifdef LOG_AUTHPRIV
     { "authpriv", LOG_AUTHPRIV },
+#endif
     { "auth", LOG_AUTH },
     { "cron", LOG_CRON },
     { "daemon", LOG_DAEMON },
+#ifdef LOG_FTP
     { "ftp", LOG_FTP },
+#endif
     { "kern", LOG_KERN },
     { "lpr", LOG_LPR },
     { "mail", LOG_MAIL },
