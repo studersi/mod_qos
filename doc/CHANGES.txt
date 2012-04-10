@@ -5,6 +5,8 @@ Version 10.6
  - Fixed: Viewer shows number of per client ip connections if no server
    limitations are set (query "option=ip").
 
+ - Fixed: qslogger did not compile on non-Linux platforms.
+
 Version 10.5
 
  - New utility: qslogger.
