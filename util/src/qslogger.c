@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.5 2012-04-10 15:39:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.6 2012-04-11 05:58:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,30 +44,41 @@ static const char revision[] = "$Id: qslogger.c,v 1.5 2012-04-10 15:39:06 pbuchb
 // [Wed Mar 28 22:40:41 2012] [warn] 
 #define QS_DEFAULTPATTERN "^\\[[0-9a-zA-Z :]+\\] \\[([a-z]+)\\] "
 
-/*
+// huge (2mb) buffer supporting very long long lines
+#define MAX_LINE_BUFFER 2097152
+#define QS_MAX_PATTERN_MA 2
+
+/**
  * ap_strcasestr()
+ *
+ * Finds the first occurrence of the substring s2 in the string s1.
+ *
+ * @param s1 Text to search the string in.
+ * @param s2 Search string.
+ * @return Position of s1 where ths string s2 has been found or NULL if
+ *         s1 does not contain s2.
  */
 static char *qs_strcasestr(const char *s1, const char *s2) {
   char *p1, *p2;
-  if (*s2 == '\0') {
+  if(*s2 == '\0') {
     /* an empty s2 */
     return((char *)s1);
   }
   while(1) {
-    for ( ; (*s1 != '\0') && (apr_tolower(*s1) != apr_tolower(*s2)); s1++);
-    if (*s1 == '\0') {
+    for( ; (*s1 != '\0') && (apr_tolower(*s1) != apr_tolower(*s2)); s1++);
+    if(*s1 == '\0') {
       return(NULL);
     }
     /* found first character of s2, see if the rest matches */
     p1 = (char *)s1;
     p2 = (char *)s2;
-    for (++p1, ++p2; apr_tolower(*p1) == apr_tolower(*p2); ++p1, ++p2) {
-      if (*p1 == '\0') {
+    for(++p1, ++p2; apr_tolower(*p1) == apr_tolower(*p2); ++p1, ++p2) {
+      if(*p1 == '\0') {
         /* both strings ended together */
         return((char *)s1);
       }
     }
-    if (*p2 == '\0') {
+    if(*p2 == '\0') {
       /* second string ended, a match */
       break;
     }
@@ -121,20 +132,21 @@ static int qsgetprio(const char *priorityname) {
  */
 static int qsgetlevel(regex_t preg, const char *line) {
   int level = LOG_NOTICE;
-  regmatch_t ma[2];
-  if(regexec(&preg, line, 1, ma, 0) == 0) {
+  regmatch_t ma[QS_MAX_PATTERN_MA];
+  if(regexec(&preg, line, QS_MAX_PATTERN_MA, ma, 0) == 0) {
     level = qsgetprio(&line[ma[1].rm_so]);
   }
   return level;
 }
 
+/* entry within the facility table */
 typedef struct {
   const char* name;
   int f;
 } qs_f_t;
 
 /**
- * table of known facilities
+ * Table of known facilities, see sys/syslog.h.
  */
 static const qs_f_t qs_facilities[] = {
 #ifdef LOG_AUTHPRIV
@@ -166,10 +178,11 @@ static const qs_f_t qs_facilities[] = {
 };
 
 /**
- * Determines the facility.
+ * Determines the facility (user input).
  *
  * @param facilityname
- * @return The facility id or LOG_DAEMON if the provided string is unknown
+ * @return The facility id or LOG_DAEMON if the provided 
+ *         string is unknown.
  */
 static int qsgetfacility(const char *facilityname) {
   int f = LOG_DAEMON;
@@ -272,7 +285,7 @@ static void usage(const char *cmd, int man) {
 
 int main(int argc, const char * const argv[]) {
   int line_len;
-  char line[MAX_LINE];
+  char *line = calloc(1, MAX_LINE_BUFFER+1);
   const char *cmd = strrchr(argv[0], '/');
   int pass = 0;
   const char *tag = NULL;
@@ -326,7 +339,7 @@ int main(int argc, const char * const argv[]) {
 
   openlog(tag ? tag : getlogin(), 0, facility);
   // start reading from stdin
-  while(fgets(line, sizeof(line), stdin) != NULL) {
+  while(fgets(line, MAX_LINE_BUFFER, stdin) != NULL) {
     line_len = strlen(line) - 1;
     while(line_len > 0) { // cut tailing CR/LF
       if(line[line_len] >= ' ') {
@@ -335,7 +348,9 @@ int main(int argc, const char * const argv[]) {
       line[line_len] = '\0';
       line_len--;
     }
+    // severity is determined using the regular expression provided by the user
     level = qsgetlevel(preg, line);
+    // send message
     syslog(level, "%s", line);
     if(pass) {
       printf("%s\n", line);
