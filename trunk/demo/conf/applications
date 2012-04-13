@@ -1,3 +1,5 @@
-a:^/a
-b:^/b
-c:^/c
+a:^(server1:/a)
+b:^(server1:/b)
+c:^(server1:/c)
+helper:^(server1:/doc)|(server1:/error-docs)|(server1:/qos)
+
