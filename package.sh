@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.44 2012-01-06 17:08:34 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.45 2012-04-18 20:39:26 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -62,10 +62,22 @@ if [ $? -ne 1 ]; then
   echo "WARNING: found pattern '\$\$\$' in module"
   exit 1
 fi
+grep FIXME ./httpd_src/modules/qos/*.c
+if [ $? -ne 1 ]; then
+  WARNINGS=`expr $WARNINGS + 1`
+  echo "WARNING: found pattern 'FIXME' in module"
+  exit 1
+fi
 grep \\$\\$\\$ ./util/src/*.c
 if [ $? -ne 1 ]; then
   WARNINGS=`expr $WARNINGS + 1`
   echo "WARNING: found pattern '\$\$\$' in utility"
+  exit 1
+fi
+grep FIXME ./util/src/*.c
+if [ $? -ne 1 ]; then
+  WARNINGS=`expr $WARNINGS + 1`
+  echo "WARNING: found pattern 'FIXME' in utility"
   exit 1
 fi
 
