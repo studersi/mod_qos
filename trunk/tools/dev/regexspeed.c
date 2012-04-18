@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regexspeed.c,v 1.2 2012-01-06 20:12:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: regexspeed.c,v 1.3 2012-04-18 20:38:03 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -78,6 +78,7 @@ int main(int argc, const char *const argv[]) {
     "05.03.1978",
     "888 888-888-777",
     "lajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfhdklfhslkdfhlskhdklsjhdflskfhlsh",
+    "ajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfljsdahsdznvztbasmuiwmereizfrbizvnsdmovosduvnuztbvzucxzvmpmvdzubtfrmeirmrnbewrJHJSBNUAIMSODMAINBSUDTAZSUDIOASMDNBAGZDTSZBUANIMOINSAUBZDGTZUIOIMSKNABJDHT9807765243567283992039209376526368799230827836526789 ç%&/\"(><<<-.,:;)*=)()(&%\"ç",
     NULL
   };
   int i;
@@ -130,13 +131,15 @@ int main(int argc, const char *const argv[]) {
   { // per rule
       int k;
       apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
-      char dx[] = "ajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfljsdahsdznvztbasmuiwmereizfrbizvnsdmovosduvnuztbvzucxzvmpmvdzubtfrmeirmrnbewrJHJSBNUAIMSODMAINBSUDTAZSUDIOASMDNBAGZDTSZBUANIMOINSAUBZDGTZUIOIMSKNABJDHT9807765243567283992039209376526368799230827836526789 ç%&/\"(><<<-.,:;)*=)()(&%\"ç";
-      int len = strlen(dx);
       for(k = 0; k < apr_table_elts(rules)->nelts; k++) {
+	const char **d = data;
 	rule_t* rule = (rule_t *)entry[k].val;
 	gettimeofday(&tv, NULL);
 	start = tv.tv_sec * 1000000 + tv.tv_usec;
-	pcre_exec(rule->pc, rule->extra, dx, len, 0, 0, NULL, 0);
+	while(*d) {
+	  pcre_exec(rule->pc, rule->extra, *d, strlen(*d), 0, 0, NULL, 0);
+	  d++;
+	}
 	gettimeofday(&tv, NULL);
 	end = tv.tv_sec * 1000000 + tv.tv_usec;
 	printf("%lld usec for %s\n", end - start, entry[k].key);	
