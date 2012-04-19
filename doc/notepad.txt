@@ -1,5 +1,7 @@
 
 + study pcre and set match_limit
+- re-implement (again) the per connection/ip list (supporting thousands of
+  connections per server)
 - limit number of parameters (better to be implemented in mod_parp)
 - improved anomaly detection, collecting additional client/connection
   attributes such as
