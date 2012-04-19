@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regexspeed.c,v 1.3 2012-04-18 20:38:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: regexspeed.c,v 1.4 2012-04-19 15:13:32 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -55,8 +55,7 @@ static const char revision[] = "$Id: regexspeed.c,v 1.3 2012-04-18 20:38:03 pbuc
 #define MAX_LINE 32768
 #define CR 13
 #define LF 10
-#define QS_OVECCOUNT 100
-#define LOOPS 10
+#define LOOPS 100
 
 typedef struct {
   pcre *pc;
@@ -68,19 +67,25 @@ static void usage2() {
   exit(1);
 }
 
+typedef struct {
+  const char* string;
+  int len;
+} qs_r_t;
+
 int main(int argc, const char *const argv[]) {
-  const char *data[] = {
-    "Emma",
-    "Buchschacher",
-    "Schafhauserstrasse 60, 8000 Zürich",
-    "128128127136178267893209807237276365235",
-    "/get/application/data/index/list/all/data",
-    "05.03.1978",
-    "888 888-888-777",
-    "lajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfhdklfhslkdfhlskhdklsjhdflskfhlsh",
-    "ajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfljsdahsdznvztbasmuiwmereizfrbizvnsdmovosduvnuztbvzucxzvmpmvdzubtfrmeirmrnbewrJHJSBNUAIMSODMAINBSUDTAZSUDIOASMDNBAGZDTSZBUANIMOINSAUBZDGTZUIOIMSKNABJDHT9807765243567283992039209376526368799230827836526789 ç%&/\"(><<<-.,:;)*=)()(&%\"ç",
-    NULL
+  qs_r_t data[] = {
+    { "Emma", 0 },
+    { "Buchschacher", 0 },
+    { "Schafhauserstrasse 60, 8000 Zürich", 0 },
+    { "128128127136178267893209807237276365235", 0 },
+    { "/get/application/data/index/list/all/data", 0 },
+    { "05.03.1978", 0 },
+    { "888 888-888-777", 0 },
+    { "lajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfhdklfhslkdfhlskhdklsjhdflskfhlsh", 0 },
+    { "ajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfljsdahsdznvztbasmuiwmereizfrbizvnsdmovosduvnuztbvzucxzvmpmvdzubtfrmeirmrnbewrJHJSBNUAIMSODMAINBSUDTAZSUDIOASMDNBAGZDTSZBUANIMOINSAUBZDGTZUIOIMSKNABJDHT9807765243567283992039209376526368799230827836526789 ç%&/\"(><<<-.,:;)*=)()(&%\"ç", 0 },
+    { NULL, 0 }
   };
+
   int i;
   FILE *file;
   apr_pool_t *pool;
@@ -96,6 +101,15 @@ int main(int argc, const char *const argv[]) {
     usage2();
   }
 
+  {
+    // init
+    qs_r_t *d = data;
+    while(d->string) {
+      d->len = strlen(d->string);
+      d++;
+    }
+  }
+
   file = fopen(argv[1], "r");
   if(file) {
     char readline[MAX_LINE];
@@ -109,22 +123,24 @@ int main(int argc, const char *const argv[]) {
 	readline[len] = '\0';
 	len--;
       }
-      p = readline;
-      //p++;
-      //len = strlen(p);
-      //p[len-1] = '\0';
-      rule->pc = pcre_compile(p, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
-      if(rule->pc == NULL) {
-	printf("faild to compile pattern %s\n", p);
-	exit(1);
+      if(strlen(readline) > 0) {
+	p = readline;
+	//p++;
+	//len = strlen(p);
+	//p[len-1] = '\0';
+	rule->pc = pcre_compile(p, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+	if(rule->pc == NULL) {
+	  printf("faild to compile pattern %s\n", p);
+	  exit(1);
+	}
+	rule->extra = pcre_study(rule->pc, 0, &errptr);
+	if(rule->extra == NULL) {
+	  rule->extra = apr_pcalloc(pool, sizeof(pcre_extra));
+	}
+	rule->extra->match_limit = 1500;
+	rule->extra->flags |= PCRE_EXTRA_MATCH_LIMIT;
+	apr_table_addn(rules, apr_pstrdup(pool, p), (char *)rule);
       }
-      rule->extra = pcre_study(rule->pc, 0, &errptr);
-      if(rule->extra == NULL) {
-        rule->extra = apr_pcalloc(pool, sizeof(pcre_extra));
-      }
-      rule->extra->match_limit = 1500;
-      rule->extra->flags |= PCRE_EXTRA_MATCH_LIMIT;
-      apr_table_addn(rules, apr_pstrdup(pool, p), (char *)rule);
     }
   }
 
@@ -132,12 +148,12 @@ int main(int argc, const char *const argv[]) {
       int k;
       apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
       for(k = 0; k < apr_table_elts(rules)->nelts; k++) {
-	const char **d = data;
+	qs_r_t *d = data;
 	rule_t* rule = (rule_t *)entry[k].val;
 	gettimeofday(&tv, NULL);
 	start = tv.tv_sec * 1000000 + tv.tv_usec;
-	while(*d) {
-	  pcre_exec(rule->pc, rule->extra, *d, strlen(*d), 0, 0, NULL, 0);
+	while(d->string) {
+	  pcre_exec(rule->pc, rule->extra, d->string, d->len, 0, 0, NULL, 0);
 	  d++;
 	}
 	gettimeofday(&tv, NULL);
@@ -150,21 +166,23 @@ int main(int argc, const char *const argv[]) {
   gettimeofday(&tv, NULL);
   start = tv.tv_sec * 1000000 + tv.tv_usec;
   for(i = 0; i < LOOPS; i++) {
-    const char **d = data;
-    while(*d) {
+    const qs_r_t *d = data;
+    while(d->string) {
       int k;
       apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
       for(k = 0; k < apr_table_elts(rules)->nelts; k++) {
 	rule_t* rule = (rule_t *)entry[k].val;
-	pcre_exec(rule->pc, rule->extra, *d, strlen(*d), 0, 0, NULL, 0);
+	pcre_exec(rule->pc, rule->extra, d->string, d->len, 0, 0, NULL, 0);
       }
       d++;
     }
   }
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
-  printf("match all rules against the test variables (%d strings) took: %lld usec\n",
+  printf("match all rules (%d) against the test variables (%d strings) took: %lld usec\n",
+	 apr_table_elts(rules)->nelts,
 	 sizeof(data)/sizeof(char *)-1,
 	 (end - start) / LOOPS);
   return 0;
+
 }
