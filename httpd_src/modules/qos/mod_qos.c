@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.406 2012-04-05 07:52:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.407 2012-04-20 20:03:32 pbuchbinder Exp $";
 static const char g_revision[] = "10.6";
 
 /************************************************************************
@@ -110,6 +110,8 @@ static const char g_revision[] = "10.6";
 #define QS_R012_ALREADY_BLOCKED "R012B"
 #define QS_PKT_RATE_TH    3
 #define QS_BW_SAMPLING_RATE 10
+// split linear QS_SrvMaxConnPerIP* entry (conn->conn_ip) search:
+#define QS_MEM_SEG 10
 
 #ifndef QS_LOG_REPEAT
 #define QS_LOG_REPEAT     20
@@ -1922,7 +1924,7 @@ static apr_status_t qos_cleanup_shm(void *p) {
 /**
  * init the shared memory of the act
  * act->conn          <- start
- * act->conn->conn_ip <- start + sizeof(conn)
+ * act->conn->conn_ip <- start + sizeof(conn) * QS_MEM_SEG
  *                     + [max_ip]
  * act->entry         <- 
  */
@@ -1940,7 +1942,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   if(sconf->thread_limit == 0) sconf->thread_limit = 1; /* mpm prefork */
   max_ip = sconf->thread_limit * sconf->server_limit;
   max_ip = maxclients > 0 ? maxclients : max_ip;
-  act->size = (max_ip * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
+  act->size = (max_ip * QS_MEM_SEG * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
     1024;
@@ -1975,7 +1977,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     qs_conn_t *c = apr_shm_baseaddr_get(act->m);
     qs_ip_entry_t *ce = (qs_ip_entry_t *)&c[1];
     act->conn = c;
-    act->conn->conn_ip_len = max_ip;
+    act->conn->conn_ip_len = max_ip * QS_MEM_SEG;
     act->conn->conn_ip = ce;
     act->conn->connections = 0;
     for(i = 0; i < act->conn->conn_ip_len; i++) {
@@ -2198,14 +2200,17 @@ static void qos_collect_ip(request_rec *r, qos_srv_config *sconf,
 }
 
 
+/**
+ * Count's the number of free ip entries (for the status viewer only)
+ */
 static int qos_count_free_ip(qos_srv_config *sconf) {
-  int c = 0;
+  int c = sconf->act->conn->conn_ip_len / QS_MEM_SEG;
   int i = sconf->act->conn->conn_ip_len;
   qs_ip_entry_t *conn_ip = sconf->act->conn->conn_ip;
   apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
   while(i) {
-    if(conn_ip->ip == 0) {
-      c++;
+    if(conn_ip->ip != 0) {
+      c--;
     }
     conn_ip++;
     i--;
@@ -2219,16 +2224,22 @@ static int qos_count_free_ip(qos_srv_config *sconf) {
  * returns the number of connections open by this ip
  */
 static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf, qs_ip_entry_t **e) {
-  int i = cconf->sconf->act->conn->conn_ip_len;
-  qs_ip_entry_t *conn_ip = cconf->sconf->act->conn->conn_ip;
   int num = -1;
   qs_ip_entry_t *free = NULL;
+  int i = cconf->sconf->act->conn->conn_ip_len / QS_MEM_SEG;
+  int seqnum = (cconf->ip % QS_MEM_SEG) * i;
+  qs_ip_entry_t *conn_ip = cconf->sconf->act->conn->conn_ip;
+  conn_ip = &conn_ip[seqnum];
+
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT1 */
+
   while(i) {
-    if(conn_ip->ip == 0) {
+    if(conn_ip->ip == 0 && free == NULL) {
+      // first free entry
       free = conn_ip;
     }
     if(conn_ip->ip == cconf->ip) {
+      // found an existing entry
       conn_ip->counter++;
       num = conn_ip->counter;
       *e = conn_ip;
@@ -2238,12 +2249,15 @@ static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf, qs_ip_entry_t **e) {
     i--;
   }
   if(free && (num == -1)) {
+    // no entry found, use the first free entry
     free->ip = cconf->ip;
     free->counter++;
     num = free->counter;
     *e = free;
   }
+
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
+
   return num;
 }
 
@@ -2251,13 +2265,17 @@ static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf, qs_ip_entry_t **e) {
  * removes an ip entry (deletes/decrements)
  */
 static void qos_dec_ip(qs_conn_ctx *cconf) {
-  int i = cconf->sconf->act->conn->conn_ip_len;
+  int i = cconf->sconf->act->conn->conn_ip_len / QS_MEM_SEG;
+  int seqnum = (cconf->ip % QS_MEM_SEG) * i;
   qs_ip_entry_t *conn_ip = cconf->sconf->act->conn->conn_ip;
+  conn_ip = &conn_ip[seqnum];
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT2 */
   while(i) {
     if(conn_ip->ip == cconf->ip) {
+      // entry found, decrement and exit
       conn_ip->counter--;
       if(conn_ip->counter == 0) {
+        // entry is no longer used by this ip
         conn_ip->ip = 0;
         conn_ip->error = 0;
       }
