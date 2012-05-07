@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.407 2012-04-20 20:03:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.408 2012-05-07 18:24:16 pbuchbinder Exp $";
 static const char g_revision[] = "10.6";
 
 /************************************************************************
@@ -208,7 +208,7 @@ static const char *m_note_variables[] = {
 #define QOS_MAGIC_LEN 8
 static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
-// Apache 2.4 compat
+// Apache 2.4 compat (experimental)
 #if (AP_SERVER_MINORVERSION_NUMBER == 4)
 #define QS_APACHE_24 1
 #define QS_CONN_REMOTEIP(c) c->client_ip
@@ -5737,11 +5737,9 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   // called via apr_pool_cleanup_register():
   // apr_thread_mutex_destroy(sconf->inctx_t->lock);
   free(ips);
-#ifdef WORKER_MPM
   if(m_worker_mpm) {
     apr_thread_exit(thread, APR_SUCCESS);
   }
-#endif
   return NULL;
 }
 
@@ -5757,12 +5755,10 @@ static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   sconf->inctx_t->exit = 1;
   /* may long up to one second */
-#ifdef WORKER_MPM
   if(m_worker_mpm) {
     apr_status_t status;
     apr_thread_join(&status, sconf->inctx_t->thread);
   }
-#endif
   return APR_SUCCESS;
 }
 #endif
@@ -5950,6 +5946,42 @@ static char *qos_this_host(request_rec *r) {
                       r->server->addrs->host_port);
 }
 
+/**
+ * Verifies Apache and MPM version and writes error message (notice)
+ * for incompatibel version/type.
+ *
+ * Apache 2.2 MPM worker binaries is the only configuration which
+ * has been tested (as mentioned in the documentation, see index.html).
+ *
+ * - old MPM Apache prefork versions do not unload the DSO properly
+ *   or child exit may cause a segfault (pool cleanup)
+ * - Apache 2.4 is experimental only and some directives are not available
+ *   (see CHANGES.txt for more informaton)
+ * - Apache 2.0 does not support all directives (e.g. QS_ClientPrefer) and
+ *   we do no longer test against this version (the module does probably
+ *   not even compile with version 2.0)
+ *
+ */
+static void qos_version_check(server_rec *bs) {
+  ap_version_t version;
+
+  if(strcasecmp(ap_show_mpm(), "worker") != 0) {
+    m_worker_mpm = 0; // disable child cleanup
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
+                 QOS_LOG_PFX(009)"loaded MPM is '%s'"
+                 " but mod_qos should be used with MPM 'Worker' only.",
+                 ap_show_mpm());
+  }
+
+  ap_get_server_revision(&version);
+  if(version.major != 2 || version.minor != 2) {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
+                 QOS_LOG_PFX(009)"server version is %d.%d"
+                 " but mod_qos should be used with Apache 2.2 only.",
+                 version.major, version.minor);
+  }
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -5957,6 +5989,7 @@ static char *qos_this_host(request_rec *r) {
 /**
  * Destructor for connections which does not have been established
  * successfully.
+ *
  * Increments block counter.
  *
  * @param p Connection base context
@@ -5996,6 +6029,7 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
 
 /**
  * Connection destructor.
+ *
  * Updates per IP events and connection counter.
  *
  * @param p Connection context
@@ -7841,14 +7875,10 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                  QOS_LOG_PFX(007)"could not determine MaxClients/MaxRequestWorkers!"
                  " You MUST set this directive within the Apache configuration file.");
   }
-#ifdef WORKER_MPM
-  if(strcasecmp(ap_show_mpm(), "Worker") != 0) {
-    m_worker_mpm = 0;
-    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
-                 QOS_LOG_PFX(009)"loaded MPM is '%s' but module has been compiled for 'Worker'",
-                 ap_show_mpm());    
-  }
-#endif
+
+  // verify if this Apache version is supported/mod_qos has been tested for
+  qos_version_check(bs);
+
   if(sconf->max_conn_close_percent) {
     sconf->max_conn_close = net_prefer * sconf->max_conn_close_percent / 100;
   }
@@ -10935,6 +10965,7 @@ static const command_rec qos_config_cmds[] = {
 #endif
   { NULL }
 };
+
 
 /************************************************************************
  * apache register 
