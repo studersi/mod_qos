@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.408 2012-05-07 18:24:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.409 2012-05-08 19:56:24 pbuchbinder Exp $";
 static const char g_revision[] = "10.6";
 
 /************************************************************************
@@ -137,6 +137,7 @@ static const char g_revision[] = "10.6";
 #define QS_KEEPALIVE      "QS_KeepAliveTimeout"
 #define QS_CLOSE          "QS_SrvMinDataRate"
 #define QS_EMPTY_CON      "NullConnection"
+#define QS_RuleId         "QS_RuleId"
 #define QS_MFILE          "/var/tmp/"
 
 #define QS_COUNT_CONNECTIONS(sconf) (sconf->max_conn != -1) || \
@@ -162,6 +163,7 @@ static const char *m_env_variables[] = {
   QS_KEEPALIVE,
   QS_CLOSE,
   QS_EMPTY_CON,
+  QS_RuleId,
   NULL
 };
 
@@ -2982,6 +2984,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
       }
       if(deny_rule && (ex == 0)) {
         int severity = rfilter->action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
+        apr_table_set(r->subprocess_env, QS_RuleId, rfilter->id);
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
                       QOS_LOG_PFX(040)"access denied, %s rule id: %s (%s),"
                       " action=%s, c=%s, id=%s",
