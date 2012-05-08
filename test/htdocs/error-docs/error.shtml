@@ -33,11 +33,16 @@ custom error page
     _3<!--#echo var="EMPTY" -->
     _4<!--#echo var="BODY" -->
     _5<!--#echo var="PARP_PATTERN" -->
+    _6<!--#echo var="QS_SrvConn" -->
+    _7<!--#echo var="QS_AllConn" -->
+    _8<!--#echo var="QS_ClientLowPrio" -->
+    _9<!--#echo var="QS_IsVipRequest" -->
+    _A<!--#echo var="QS_Country" -->
 </pre>
 </p>
 <hr>
 <pre>
-$Revision: 1.4 $
+$Revision: 1.5 $
 </pre>
 </body>
 </html>
