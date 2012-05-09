@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.409 2012-05-08 19:56:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.410 2012-05-09 19:48:31 pbuchbinder Exp $";
 static const char g_revision[] = "10.6";
 
 /************************************************************************
@@ -4985,46 +4985,48 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
       ap_rputs(" <tr><td>\n", r);
     }
     if(strcmp(r->handler, "qos-viewer") == 0) {
-      ap_rputs("<table border=\"0\" cellpadding=\"2\" "
+      ap_rputs("  <table border=\"0\" cellpadding=\"2\" "
                "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
     } else {
-      ap_rputs("<table border=\"1\" cellpadding=\"2\" "
+      ap_rputs("  <table border=\"1\" cellpadding=\"2\" "
                "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
     }
-    ap_rputs("<tr class=\"rowe\">\n", r);
-    ap_rputs("<td colspan=\"9\">viewer settings</td>", r);
-    ap_rputs("</tr>\n", r);
+    ap_rputs("    <tr class=\"rowe\">\n", r);
+    ap_rputs("      <td colspan=\"9\">viewer settings</td>\n", r);
+    ap_rputs("    </tr>\n", r);
     /* show ip addresses and their connections */
-    ap_rputs("<tr class=\"rows\">"
-             "<td colspan=\"1\">client ip connections</td>", r);
-    ap_rputs("<td colspan=\"8\">\n", r);
-    ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
+    ap_rputs("    <tr class=\"rows\">\n"
+             "      <td colspan=\"1\">client ip connections</td>\n", r);
+    ap_rputs("      <td colspan=\"8\">\n", r);
+    ap_rprintf(r, "        <form action=\"%s\" method=\"get\">\n",
                ap_escape_html(r->pool, r->parsed_uri.path ? r->parsed_uri.path : ""));
     if(!option || (option && !strstr(option, "ip")) ) {
-      ap_rprintf(r, "<input name=\"option\" value=\"ip\" type=\"hidden\">\n");
-      ap_rprintf(r, "<input name=\"action\" value=\"enable\" type=\"submit\">\n");
+      ap_rprintf(r, "          <input name=\"option\" value=\"ip\" type=\"hidden\">\n");
+      ap_rprintf(r, "          <input name=\"action\" value=\"enable\" type=\"submit\">\n");
     } else {
-      ap_rprintf(r, "<input name=\"option\" value=\"no\" type=\"hidden\">\n");
-      ap_rprintf(r, "<input name=\"action\" value=\"disable\" type=\"submit\">\n");
+      ap_rprintf(r, "          <input name=\"option\" value=\"no\" type=\"hidden\">\n");
+      ap_rprintf(r, "          <input name=\"action\" value=\"disable\" type=\"submit\">\n");
     }
-    ap_rputs("</form>\n", r);
-    ap_rputs("</td></tr>\n", r);
+    ap_rputs("        </form>\n", r);
+    ap_rputs("      </td>\n", r);
+    ap_rputs("    </tr>\n", r);
   
     if(sconf->has_qos_cc) {
       const char *address = apr_table_get(qt, "address");
-      ap_rputs("<tr class=\"rows\">"
-               "<td colspan=\"1\">search a client ip entry</td>\n", r); 
-      ap_rputs("<td colspan=\"8\">\n", r);
-      ap_rprintf(r, "<form action=\"%s\" method=\"get\">\n",
+      ap_rputs("    <tr class=\"rows\">\n"
+               "      <td colspan=\"1\">search a client ip entry</td>\n", r); 
+      ap_rputs("      <td colspan=\"8\">\n", r);
+      ap_rprintf(r, "        <form action=\"%s\" method=\"get\">\n",
                  ap_escape_html(r->pool, r->parsed_uri.path ? r->parsed_uri.path : ""));
       if(option && strstr(option, "ip")) {
-        ap_rprintf(r, "<input name=\"option\" value=\"ip\" type=\"hidden\">\n");
+        ap_rprintf(r, "          <input name=\"option\" value=\"ip\" type=\"hidden\">\n");
       }
-      ap_rprintf(r, "<input name=\"address\" value=\"%s\" type=\"text\">\n",
+      ap_rprintf(r, "          <input name=\"address\" value=\"%s\" type=\"text\">\n",
                  address ? ap_escape_html(r->pool, address) : "0.0.0.0");
-      ap_rprintf(r, "<input name=\"action\" value=\"search\" type=\"submit\">\n");
-      ap_rputs("</form>\n", r);
-      ap_rputs("</td></tr>\n", r);
+      ap_rprintf(r, "          <input name=\"action\" value=\"search\" type=\"submit\">\n");
+      ap_rputs("          </form>\n", r);
+      ap_rputs("      </td>\n", r);
+      ap_rputs("    </tr>\n", r);
       if(address) {
         unsigned long ip = qos_inet_addr(address);
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
@@ -5064,20 +5066,21 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             new.event_req = (*e)->event_req;
           }
           apr_global_mutex_unlock(u->qos_cc->lock);            /* @CRT20 */
-          ap_rputs("<tr class=\"rowt\"><td colspan=\"1\">IP</td>", r);
-          ap_rputs("<td colspan=\"2\">last request</td>", r);
-          ap_rputs("<td colspan=\"1\">"
-                   "<div title=\"QS_VipHeaderName|QS_VipIPHeaderName\">vip</div></td>", r);
-          ap_rputs("<td colspan=\"1\">"
-                   "<div title=\"QS_ClientEventBlockCount\">blocked</div></td>", r);
-          ap_rputs("<td colspan=\"1\">"
-                   "<div title=\"QS_ClientEventLimitCount\">limited</div></td>", r);
-          ap_rputs("<td colspan=\"2\">"
-                   "<div title=\"QS_ClientEventPerSecLimit\">events/sec</div></td>", r);
-          ap_rputs("<td colspan=\"1\">"
-                   "<div title=\"QS_ClientPrefer\">low prio</div></td>", r);
-          ap_rputs("</tr>\n", r);
-          ap_rprintf(r, "<tr class=\"rows\">"
+          ap_rputs("    <tr class=\"rowt\">\n", r);
+          ap_rputs("      <td colspan=\"1\">IP</td>\n", r);
+          ap_rputs("      <td colspan=\"2\">last request</td>\n", r);
+          ap_rputs("      <td colspan=\"1\">"
+                   "<div title=\"QS_VipHeaderName|QS_VipIPHeaderName\">vip</div></td>\n", r);
+          ap_rputs("      <td colspan=\"1\">"
+                   "<div title=\"QS_ClientEventBlockCount\">blocked</div></td>\n", r);
+          ap_rputs("      <td colspan=\"1\">"
+                   "<div title=\"QS_ClientEventLimitCount\">limited</div></td>\n", r);
+          ap_rputs("      <td colspan=\"2\">"
+                   "<div title=\"QS_ClientEventPerSecLimit\">events/sec</div></td>\n", r);
+          ap_rputs("      <td colspan=\"1\">"
+                   "<div title=\"QS_ClientPrefer\">low prio</div></td>\n", r);
+          ap_rputs("    </tr>\n", r);
+          ap_rprintf(r, "    <tr class=\"rows\">"
                      "<td colspan=\"1\">%s</td>", ap_escape_html(r->pool, address));
           if(!found) {
             ap_rputs("<td colspan=\"8\"><i>not found</i></td>\n", r);
@@ -5268,11 +5271,11 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   if(strcmp(r->handler, "qos-viewer") != 0) {
     ap_rputs("<hr>\n", r);
     ap_rputs("<table style=\"width:400px\" cellspacing=0 cellpadding=0>\n", r);
-    ap_rputs("<tr><td bgcolor=\"#000000\">\n", r);
-    ap_rputs("<b><font color=\"#ffffff\" face=\"Arial,Helvetica\">", r);
+    ap_rputs(" <tr><td bgcolor=\"#000000\">\n", r);
+    ap_rputs(" <b><font color=\"#ffffff\" face=\"Arial,Helvetica\">", r);
     ap_rprintf(r, "mod_qos&nbsp;%s", ap_escape_html(r->pool, qos_revision(r->pool)));
-    ap_rputs("</font></b>\r", r);
-    ap_rputs("</td></tr>\n", r);
+    ap_rputs(" </font></b>\r", r);
+    ap_rputs(" </td></tr>\n", r);
     ap_rputs("</table>\n", r);
     if(sconf->log_only) {
       ap_rputs("<p>running in 'log only' mode - rules are NOT enforced</p>\n", r);
@@ -5303,23 +5306,23 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   while(s) {
     qs_acentry_t *e;
     if(strcmp(r->handler, "qos-viewer") == 0) {
-      ap_rputs("<table border=\"0\" cellpadding=\"2\" "
+      ap_rputs("  <table border=\"0\" cellpadding=\"2\" "
                "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
     } else {
-      ap_rputs("<table border=\"1\" cellpadding=\"2\" "
+      ap_rputs("  <table border=\"1\" cellpadding=\"2\" "
                "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
     }
-    ap_rputs("<tr class=\"rowe\">\n", r);
-    ap_rprintf(r, "<td colspan=\"9\">%s:%d (%s)</td>\n",
+    ap_rputs("    <tr class=\"rowe\">\n", r);
+    ap_rprintf(r, "      <td colspan=\"9\">%s:%d (%s)</td>\n",
                s->server_hostname == NULL ? "-" : ap_escape_html(r->pool, s->server_hostname),
                s->addrs->host_port,
                s->is_virtual ? "virtual" : "base");
-    ap_rputs("</tr>\n", r);
+    ap_rputs("    </tr>\n", r);
     sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
 
     if((sconf == bsconf) && s->is_virtual) {
-      ap_rputs("<tr class=\"rows\">"
-               "<td colspan=\"9\"><i>uses base server settings</i></td></tr>\n", r);
+      ap_rputs("    <tr class=\"rows\">\n"
+               "     <td colspan=\"9\"><i>uses base server settings</i></td>\n    </tr>\n", r);
     } else {
       if(!s->is_virtual && sconf->has_qos_cc) {
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
