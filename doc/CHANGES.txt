@@ -6,6 +6,9 @@ Version
    is not supported (mod_qos has been implemented for Apache 2.2
    worker binaries only).
 
+ - Use pcre_study() API call only if QOS_EXTRA_USE_PCRE_STUDY has been defined
+   while compiling mod_qos.
+
 Version 10.6
 
  - qslog measures average response time in milliseconds (avms).

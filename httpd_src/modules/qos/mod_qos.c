@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.410 2012-05-09 19:48:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.411 2012-05-15 18:51:27 pbuchbinder Exp $";
 static const char g_revision[] = "10.6";
 
 /************************************************************************
@@ -891,8 +891,11 @@ static const qos_her_t qs_res_header_rules[] = {
  * @return extra data
  */
 static pcre_extra *qos_pcre_study(apr_pool_t *pool, pcre *pc) {
+  pcre_extra *extra = NULL;
+#ifdef QOS_EXTRA_USE_PCRE_STUDY
   const char *errptr = NULL;
-  pcre_extra *extra = pcre_study(pc, 0, &errptr);
+  extra = pcre_study(pc, 0, &errptr);
+#endif
   if(extra != NULL) {
     apr_pool_cleanup_register(pool, extra, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   } else {
