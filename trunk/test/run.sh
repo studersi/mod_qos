@@ -8,7 +8,7 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
     if [ `expr length $2` -lt 38 ]; then
 	echo "\t\c"
     fi
-    ./bin/httest1 $2 2>&1 > .${LOG}.log
+    /usr/bin/httest $2 2>&1 > .${LOG}.log
     RC=$?
     if [ $RC -ne 0 ]; then
 	echo "FAILED"
@@ -21,6 +21,6 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
 	rm .${LOG}.log
     fi
 else
-    ./bin/httest1 $@
+    /usr/bin/httest $@
 fi
 exit $RC

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.216 2012-03-06 19:32:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.217 2012-05-15 18:51:27 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -146,7 +146,7 @@ LoadModule              unique_id_module ##ROOT##/../httpd/modules/metadata/.lib
 LoadModule              info_module ##ROOT##/../httpd/modules/generators/.libs/mod_info.so
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
-LoadModule              security2_module libexec/mod_security.so
+#LoadModule              security2_module libexec/mod_security.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
 LoadModule              parp_module libexec/mod_parp.so
@@ -496,12 +496,12 @@ ErrorDocument 404 /error-docs/error404.html
    </Location>
 
    QS_EventPerSecLimit argmatch 1
-   <Location /app/a/args>
-       SecRuleEngine on
-       SecDefaultAction "nolog,pass,phase:2,status:500,t:urlDecodeUni,t:htmlEntityDecode,t:lowercase"
-       SecRule ARGS "trigger" "setenv:argmatch=trigger"
-       SecRequestBodyAccess on
-   </Location>
+#   <Location /app/a/args>
+#       SecRuleEngine on
+#       SecDefaultAction "nolog,pass,phase:2,status:500,t:urlDecodeUni,t:htmlEntityDecode,t:lowercase"
+#       SecRule ARGS "trigger" "setenv:argmatch=trigger"
+#       SecRequestBodyAccess on
+#   </Location>
 
    <Location /app/a/body>
        QS_DenyQueryBody              on
