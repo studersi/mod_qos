@@ -9,6 +9,8 @@ Version
  - Use pcre_study() API call only if QOS_EXTRA_USE_PCRE_STUDY has been defined
    while compiling mod_qos.
 
+ - Add fflush() to qslogger when writing data to stdout.
+
 Version 10.6
 
  - qslog measures average response time in milliseconds (avms).
