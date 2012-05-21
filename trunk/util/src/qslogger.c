@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.6 2012-04-11 05:58:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.7 2012-05-21 19:07:07 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -354,6 +354,7 @@ int main(int argc, const char * const argv[]) {
     syslog(level, "%s", line);
     if(pass) {
       printf("%s\n", line);
+      fflush(stdout);
     }
   }
   return 0;
