@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.25 2012-03-07 19:23:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.26 2012-05-22 19:46:04 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -103,3 +103,6 @@ if [ -f ../3thrdparty/modsecurity/rules/modsecurity_crs_40_generic_attacks.conf 
 	MSID=`expr $MSID + 1`
     done
 fi
+
+cd ./bin
+cc -o sleep sleep.c
