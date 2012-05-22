@@ -1,7 +1,5 @@
 Version
 
- - Improved QS_SrvMaxConnPerIP performance.
-
  - Writes notice message at server startup if the Apache version
    is not supported (mod_qos has been implemented for Apache 2.2
    worker binaries only).

@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.411 2012-05-15 18:51:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.412 2012-05-22 19:46:03 pbuchbinder Exp $";
 static const char g_revision[] = "10.6";
 
 /************************************************************************
@@ -111,7 +111,7 @@ static const char g_revision[] = "10.6";
 #define QS_PKT_RATE_TH    3
 #define QS_BW_SAMPLING_RATE 10
 // split linear QS_SrvMaxConnPerIP* entry (conn->conn_ip) search:
-#define QS_MEM_SEG 10
+#define QS_MEM_SEG 1
 
 #ifndef QS_LOG_REPEAT
 #define QS_LOG_REPEAT     20
@@ -2226,18 +2226,24 @@ static int qos_count_free_ip(qos_srv_config *sconf) {
 
 /**
  * adds an ip entry (insert or increment)
- * returns the number of connections open by this ip
+ *
+ * @param cconf Configuration record containing the ip table(s)
+ * @param e Pointer to the IP entry
+ *          NOTE: we can't sort the list since the address of this pointer
+ *                must not be change (we don't keep the lock)
+ * @return The number of connections open by this IP
  */
-static int qos_inc_ip(apr_pool_t *p, qs_conn_ctx *cconf, qs_ip_entry_t **e) {
+static int qos_inc_ip(qs_conn_ctx *cconf, qs_ip_entry_t **e) {
   int num = -1;
   qs_ip_entry_t *free = NULL;
-  int i = cconf->sconf->act->conn->conn_ip_len / QS_MEM_SEG;
-  int seqnum = (cconf->ip % QS_MEM_SEG) * i;
+  int i = cconf->sconf->act->conn->conn_ip_len / QS_MEM_SEG; // size of the array
+  int seqnum = (cconf->ip % QS_MEM_SEG) * i;                 // array offset
   qs_ip_entry_t *conn_ip = cconf->sconf->act->conn->conn_ip;
-  conn_ip = &conn_ip[seqnum];
+  conn_ip = &conn_ip[seqnum];                                // address of the first entry
 
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT1 */
 
+  // search the whole list (until we find an exiting entry for this ip)
   while(i) {
     if(conn_ip->ip == 0 && free == NULL) {
       // first free entry
@@ -6145,7 +6151,7 @@ static int qos_process_connection(conn_rec *c) {
 
     /* single source ip */
     if(sconf->max_conn_per_ip != -1) {
-      current = qos_inc_ip(c->pool, cconf, &e);
+      current = qos_inc_ip(cconf, &e);
     }
     /* Check for vip (by ip) */
     if(apr_table_elts(sconf->exclude_ip)->nelts > 0) {
