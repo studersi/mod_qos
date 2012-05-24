@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.5 2012-03-30 19:05:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.6 2012-05-24 20:32:28 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -453,6 +453,7 @@ int main(int argc, const char * const argv[]) {
       } else {
         printf("%s", line);
       }
+      fflush(stdout);
     }
     if(stat) {
       int i;
