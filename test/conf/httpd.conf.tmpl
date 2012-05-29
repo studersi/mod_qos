@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.218 2012-05-29 06:52:31 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.219 2012-05-29 16:33:47 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -753,6 +753,7 @@ Listen                  [::1]:##QS_PORT_BASE10##
 </VirtualHost>
 </IfDefine>
 
+<IfDefine forwardproxy>
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE11##
 Listen                  127.0.0.1:##QS_PORT_BASE11##
 
@@ -767,3 +768,4 @@ Listen                  127.0.0.1:##QS_PORT_BASE11##
    </Proxy>
    
 </VirtualHost>
+</IfDefine>
