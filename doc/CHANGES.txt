@@ -7,7 +7,7 @@ Version
  - Use pcre_study() API call only if QOS_EXTRA_USE_PCRE_STUDY has been defined
    while compiling mod_qos.
 
- - Add fflush() to qslogger when writing data to stdout.
+ - Add fflush() to qslogger/qsexec/qsgeo/qslogger utility when writing data to stdout.
 
 Version 10.6
 
