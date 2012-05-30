@@ -9,7 +9,7 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
 	echo "\t\c"
     fi
     while [ 1 ]; do
-	./bin/httest $2 2>&1 > .${LOG}.log
+	/usr/local/bin//httest $2 2>&1 > .${LOG}.log
 	RC=$?
 	if [ $RC -ne 0 ]; then
 	    echo "FAILED"
@@ -22,6 +22,6 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
 	fi
     done
 else
-    ./bin/httest $@
+    /usr/local/bin/httest $@
 fi
 exit $RC
