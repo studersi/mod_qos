@@ -1,3 +1,8 @@
+Version
+
+ - qslogger features severity filter (forward only messages with a
+   matching/higher severity).
+
 Version 10.7
 
  - Writes notice message at server startup if the Apache version

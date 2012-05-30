@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.7 2012-05-21 19:07:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.8 2012-05-30 13:24:33 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -221,7 +221,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s [-r <expression>] [-t <tag>] [-f <facility>] [-p]\n",  man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s [-r <expression>] [-t <tag>] [-f <facility>] [-l <level>] [-p]\n",  man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -257,6 +257,11 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n");
   qs_man_print(man, "     Defines the syslog facility. Default is 'daemon'.\n");
   if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -l <level>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the minimal severity a message must have in order to\n");
+  qs_man_print(man, "     be forwarded. Default is 'debug'.\n");
+  if(man) printf("\n.TP\n");
   qs_man_print(man, "  -p\n");
   if(man) printf("\n");
   qs_man_print(man, "     Writes data also to stdout (for piped logging).\n");
@@ -290,6 +295,7 @@ int main(int argc, const char * const argv[]) {
   int pass = 0;
   const char *tag = NULL;
   int facility = LOG_DAEMON;
+  int severity = LOG_DEBUG;
   int level = LOG_INFO;
   const char *regexpattern = QS_DEFAULTPATTERN;
   regex_t preg;
@@ -308,6 +314,11 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	const char *facilityname = *(++argv);
         facility = qsgetfacility(facilityname);
+      }
+    } else if(strcmp(*argv, "-l") == 0) {
+      if (--argc >= 1) {
+	const char *severityname = *(++argv);
+        severity = qsgetprio(severityname);
       }
     } else if(strcmp(*argv, "-t") == 0) {
       if (--argc >= 1) {
@@ -350,8 +361,10 @@ int main(int argc, const char * const argv[]) {
     }
     // severity is determined using the regular expression provided by the user
     level = qsgetlevel(preg, line);
-    // send message
-    syslog(level, "%s", line);
+    if(level <= severity) {
+      // send message
+      syslog(level, "%s", line);
+    }
     if(pass) {
       printf("%s\n", line);
       fflush(stdout);
