@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.8 2012-05-30 13:24:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.9 2012-06-01 16:03:04 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,6 +47,8 @@ static const char revision[] = "$Id: qslogger.c,v 1.8 2012-05-30 13:24:33 pbuchb
 // huge (2mb) buffer supporting very long long lines
 #define MAX_LINE_BUFFER 2097152
 #define QS_MAX_PATTERN_MA 2
+
+static int m_default_severity = LOG_NOTICE;
 
 /**
  * ap_strcasestr()
@@ -92,10 +94,10 @@ static char *qs_strcasestr(const char *s1, const char *s2) {
  * Rerurns the priority value
  *
  * @param priorityname
- * @return Priority, LOG_NOTICE if provided name is not recognized.
+ * @return Priority, LOG_NOTICE (see m_default_severity) if provided name is not recognized.
  */ 
 static int qsgetprio(const char *priorityname) {
-  int p = LOG_NOTICE;
+  int p = m_default_severity;
   if(!priorityname) {
     return p;
   }
@@ -128,10 +130,10 @@ static int qsgetprio(const char *priorityname) {
  *
  * @param preg Regular expression to extract the serverity
  * @param line Log fline to extract the severity from
- * @return Level or LOG_NOTICE if level could not be determined.
+ * @return Level or LOG_NOTICE (see m_default_severity) if level could not be determined.
  */
 static int qsgetlevel(regex_t preg, const char *line) {
-  int level = LOG_NOTICE;
+  int level = m_default_severity;
   regmatch_t ma[QS_MAX_PATTERN_MA];
   if(regexec(&preg, line, QS_MAX_PATTERN_MA, ma, 0) == 0) {
     level = qsgetprio(&line[ma[1].rm_so]);
@@ -221,7 +223,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s [-r <expression>] [-t <tag>] [-f <facility>] [-l <level>] [-p]\n",  man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s [-r <expression>] [-t <tag>] [-f <facility>] [-l <level>] [-d <level>] [-p]\n",  man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -246,7 +248,8 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     be used for Apache error log messages but you may configure\n");
   qs_man_print(man, "     your own pattern matchin and other log format too. Use brackets\n");
   qs_man_print(man, "     to define the string enclosing the severity string.\n");
-  qs_man_print(man, "     Default level (if severity can't be determined) is NOTICE.\n");
+  qs_man_print(man, "     Default level (if severity can't be determined) is defined by the\n");
+  qs_man_print(man, "     option '-d' (see below).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -t <tag>\n");
   if(man) printf("\n");
@@ -260,7 +263,13 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "  -l <level>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Defines the minimal severity a message must have in order to\n");
-  qs_man_print(man, "     be forwarded. Default is 'debug'.\n");
+  qs_man_print(man, "     be forwarded. Default is 'DEBUG'.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -d <level>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     The default severity if the specified pattern (-r) does not\n");
+  qs_man_print(man, "     match and the message's serverity can't be determined. Default\n");
+  qs_man_print(man, "     is 'NOTICE'.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -p\n");
   if(man) printf("\n");
@@ -319,6 +328,11 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	const char *severityname = *(++argv);
         severity = qsgetprio(severityname);
+      }
+    } else if(strcmp(*argv, "-d") == 0) {
+      if (--argc >= 1) {
+	const char *severityname = *(++argv);
+        m_default_severity = qsgetprio(severityname);
       }
     } else if(strcmp(*argv, "-t") == 0) {
       if (--argc >= 1) {

@@ -1,7 +1,8 @@
 Version
 
  - qslogger features severity filter (forward only messages with a
-   matching/higher severity).
+   matching/higher severity) and adjustable default severity for those
+   log lines which do not contain the severity pattern.
 
 Version 10.7
 
