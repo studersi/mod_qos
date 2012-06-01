@@ -37,4 +37,15 @@ if [ `grep -c "mod-qos-logger: \[$TMST\] \[info\] mod_qos(000): qslogger test me
   exit 1
 fi
 
+# can't determine severity (and log notice and higher only but second message has default 'debug')
+TMST=`date '+%a %b %d %H:%M:%S %Y'`
+echo "[$TMST] mod_qos(000): qslogger test message 1" | ../util/src/qslogger -t mod-qos-logger -f local5
+echo "[$TMST] mod_qos(000): qslogger test message 2" | ../util/src/qslogger -t mod-qos-logger -f local5 -d DEBUG
+sleep 3
+if [ `grep -c "mod-qos-logger: \[$TMST\] mod_qos(000): qslogger test message" /var/log/local5.info` -ne 1 ]; then
+  echo "FAILED 3"
+  tail -2 /var/log/local5.info
+  exit 1
+fi
+
 exit 0
