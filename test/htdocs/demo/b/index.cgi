@@ -16,6 +16,7 @@ sleep 1;
 print "<title>mod_qos demo application B</title>\n";
 print "<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n";
 print "<meta name=\"author\" content=\"Pascal Buchbinder\">\n";
+print "<meta http-equiv=\"Pragma\" content=\"no-cache\">\n";
 print "<style TYPE=\"text/css\">\n";
 print "<!--  \n";
 print "  body {\n";
