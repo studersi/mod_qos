@@ -1,4 +1,6 @@
-Version
+Version 10.8
+
+ - Fixed: QS_SetEnvIfResBody did not properly detect pattern.
 
  - qslogger features severity filter (forward only messages with a
    matching/higher severity) and adjustable default severity for those
