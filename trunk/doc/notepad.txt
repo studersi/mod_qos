@@ -111,3 +111,12 @@ x we are not going implement this
 
 ----------------
 scp index.html pbuchbinder,mod-qos@web.sourceforge.net:htdocs
+----------------
+May 2007, Version 1: Limits concurrent requests on a per URL path basis used to specifed the server usage f
+August 2007, Version 3: Introduces connection level controls and a status viewer.
+September 2007, Version 4: mod_qos provides request/response throttling and generic request filtering.
+March 2008, Version 6: Per client (IP) control mechanisms.
+May 2008, Version 7: Enforces minimum upload/download throughput a client must generate.
+
+
+----------------

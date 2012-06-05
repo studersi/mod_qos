@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.413 2012-05-29 18:40:05 pbuchbinder Exp $";
-static const char g_revision[] = "10.7";
+static const char revision[] = "$Id: mod_qos.c,v 5.414 2012-06-05 16:44:45 pbuchbinder Exp $";
+static const char g_revision[] = "10.8";
 
 /************************************************************************
  * Includes
@@ -1073,7 +1073,43 @@ static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_conf
  * @return pointer to the beginning of the substring s2 within s1, or NULL
  *         if the substring is not found
  */
+
 static char *qos_strnstr(const char *s1, const char *s2, int len) {
+  const char *e1 = &s1[len-1];
+  char *p1, *p2;
+  if (*s2 == '\0') {
+    /* an empty s2 */
+    return((char *)s1);
+  }
+  while(1) {
+    for ( ; (*s1 != '\0') && (s1 <= e1) && (apr_tolower(*s1) != apr_tolower(*s2)); s1++);
+    if (*s1 == '\0' || s1 > e1) {
+      return(NULL);
+    }
+    /* found first character of s2, see if the rest matches */
+    p1 = (char *)s1;
+    p2 = (char *)s2;
+    for (++p1, ++p2; (apr_tolower(*p1) == apr_tolower(*p2)) && (p1 <= e1); ++p1, ++p2) {
+      if((p1 > e1) && (*p2 != '\0')) {
+        // reached the end without match
+        return NULL;
+      }
+      if (*p2 == '\0') {
+        /* both strings ended together */
+        return((char *)s1);
+      }
+    }
+    if (*p2 == '\0') {
+      /* second string ended, a match */
+      break;
+    }
+    /* didn't find a match here, try starting at next character in s1 */
+    s1++;
+  }
+  return((char *)s1);
+}
+/*
+static char *_qos_strnstr(const char *s1, const char *s2, int len) {
   const char *e1 = &s1[len-1];
   const char *p, *q;
   for (; *s1 && (s1 <= e1); s1++) {
@@ -1092,7 +1128,7 @@ static char *qos_strnstr(const char *s1, const char *s2, int len) {
     }
   }
   return 0;
-}
+}*/
 
 /**
  * Comperator (ip search) for the client ip store qos_cc_*() functions (used by bsearch/qsort)

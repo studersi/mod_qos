@@ -543,7 +543,7 @@ Note: Event based rules (e.g., <a href="#QS_ClientEventLimitCount">QS_ClientEven
 Environment variables are used on a per request level and implement
 additional control mechanisms. Variables may be set using the standard 
 Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a> or 
-<a href="http://modsetenvifplus.sourceforge.net/" target="_blank">mod_setenvifplus</a>.
+<a href="http://opensource.adnovum.ch/mod_setenvifplus/" target="_blank">mod_setenvifplus</a>.
 See also the <a href="#eventcontrol">
 <code>QS_SetEnvIf*</code></a> directives in order to combine multiple 
 variables to form new variables interpreted by mod_qos rules. <br>
@@ -714,7 +714,7 @@ mod_qos may control the frequency of "events". An event may be any
 request attribute which can be represented by an environment variable. 
 Such variables may be set by 
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a>, 
-<a href="http://modsetenvifplus.sourceforge.net/" target="_blank">mod_setenvifplus</a>, or 
+<a href="http://opensource.adnovum.ch/mod_setenvifplus/" target="_blank">mod_setenvifplus</a>, or 
 by other Apache modules.
 Please adhere to the <a href="mod_qos_seq.gif">order</a> of command 
 execution to ensure that the necessary variables are set.
