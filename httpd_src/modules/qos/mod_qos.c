@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.414 2012-06-05 16:44:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.415 2012-06-07 05:35:57 pbuchbinder Exp $";
 static const char g_revision[] = "10.8";
 
 /************************************************************************
@@ -1065,7 +1065,8 @@ static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_conf
 
 
 /**
- * Similar to strstr but restricting the length of s1 (if not null terminated).
+ * Similar to strstr but restricting the length of s1 (supports strings which
+ * are not NULL terminated).
  *
  * @param s1 String to search in
  * @param s2 Pattern to ind
@@ -1073,7 +1074,6 @@ static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_conf
  * @return pointer to the beginning of the substring s2 within s1, or NULL
  *         if the substring is not found
  */
-
 static char *qos_strnstr(const char *s1, const char *s2, int len) {
   const char *e1 = &s1[len-1];
   char *p1, *p2;
@@ -1108,27 +1108,6 @@ static char *qos_strnstr(const char *s1, const char *s2, int len) {
   }
   return((char *)s1);
 }
-/*
-static char *_qos_strnstr(const char *s1, const char *s2, int len) {
-  const char *e1 = &s1[len-1];
-  const char *p, *q;
-  for (; *s1 && (s1 <= e1); s1++) {
-    p = s1, q = s2;
-    while(*q && *p && (q <= e1)) {
-      if (*q != *p) {
-        break;
-      }
-      p++, q++;
-    }
-    if(q > e1) {
-      return NULL;
-    }
-    if(*q == 0) {
-      return (char *)s1;
-    }
-  }
-  return 0;
-}*/
 
 /**
  * Comperator (ip search) for the client ip store qos_cc_*() functions (used by bsearch/qsort)
