@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.11 2012-02-28 19:07:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.12 2012-06-08 19:34:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -31,9 +31,10 @@ static const char revision[] = "$Id: qs_util.c,v 1.11 2012-02-28 19:07:08 pbuchb
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <fcntl.h>
+#include <dirent.h>
 
 #include "qs_util.h"
-
 
 /* ----------------------------------
  * global stat counter
@@ -427,4 +428,65 @@ long qs_countEvent(qs_event_t **l_qs_event) {
     }
   }
   return count;
+}
+
+/* logs ------------------------------------------------------- */
+
+/**
+ * Keeps only the specified number of files
+ *
+ * @param file_name Absolute file name
+ * @param generations Number of files to keep
+ */
+void qs_deleteOldFiles(const char *file_name, int generations) {
+  char dirname[QS_HUGE_STR];
+  char *p;
+  strcpy(dirname, file_name);
+  p = strrchr(dirname, '/');
+  if(strlen(file_name) > (QS_HUGE_STR - 10)) {
+    // invalid file length
+    return;
+  }
+  if(p) {
+    DIR *dir;
+    p[0] = '\0'; p++;
+    dir = opendir(dirname);
+    if(dir) {
+      int num = 0;
+      struct dirent *de;
+      char filename[QS_HUGE_STR];
+      snprintf(filename, sizeof(filename), "%s.20", p);
+      /* determine how many files to delete */
+      while((de = readdir(dir)) != 0) {
+	if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
+	  num++;
+	}
+      }
+      /* delete the oldest files (assumes they are ordered by their creation date) */
+      while(num > generations) {
+	char old[QS_HUGE_STR];
+	old[0] = '\0';
+	rewinddir(dir);
+	while((de = readdir(dir)) != 0) {
+	  if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
+	    if(strcmp(old, de->d_name) > 0) {
+	      snprintf(old, sizeof(old), "%s", de->d_name);
+	    } else {
+	      if(old[0] == '\0') {
+		snprintf(old, sizeof(old), "%s", de->d_name);
+	      }
+	    }
+	  }
+	}
+	{
+	  /* build abs path and delete it */
+	  char unl[QS_HUGE_STR];
+	  snprintf(unl, sizeof(unl), "%s/%s", dirname, old);
+	  unlink(unl);
+	}
+	num--;
+      }
+      closedir(dir);
+    }
+  }
 }
