@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.46 2012-05-15 18:51:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.47 2012-06-08 19:34:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -59,6 +59,7 @@ static const char revision[] = "$Id: qslog.c,v 1.46 2012-05-15 18:51:27 pbuchbin
 #define LOG_DET ".detailed"
 #define RULE_DELIM ':'
 #define MAX_CLIENT_ENTRIES 25000
+#define QS_GENERATIONS 14
 
 /* ----------------------------------
  * structures
@@ -133,6 +134,7 @@ static FILE *m_f2 = NULL;
 static char  m_file_name[MAX_LINE];
 static char  m_file_name2[MAX_LINE];
 static int   m_rotate = 0;
+static int   m_generations = QS_GENERATIONS;
 /* regex to search the time string */
 static regex_t m_trx;
 static regex_t m_trx2;
@@ -1131,10 +1133,12 @@ static void *loggerThread(void *argv) {
         if(rename(m_file_name, arch) != 0) {
           qerror("failed to move file '%s': %s", arch, strerror(errno));
         }
+        qs_deleteOldFiles(m_file_name, m_generations);
         m_f = fopen(m_file_name, "a+");
         if(m_f2) {
           fclose(m_f2);
           rename(m_file_name2, arch2);
+          qs_deleteOldFiles(m_file_name2, m_generations);
           m_f2 = fopen(m_file_name2, "a+");
         }
       }
@@ -1161,7 +1165,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p [-v]] [-x] [-u <name>] [-m] [-c <path>]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p [-v]] [-x [<num>]] [-u <name>] [-m] [-c <path>]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -1236,9 +1240,10 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n");
   qs_man_print(man, "     Verbose mode.\n");
   if(man) printf("\n.TP\n");
-  qs_man_print(man, "  -x\n");
+  qs_man_print(man, "  -x [<num>]\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Rotates the output file once a day (move).\n");
+  qs_man_print(man, "     Rotates the output file once a day (move). You may specify the number of\n");
+  qs_man_print(man, "     rotated files to keep. Default are %d.\n", QS_GENERATIONS);
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -u <name>\n");
   if(man) printf("\n");
@@ -1398,6 +1403,13 @@ int main(int argc, const char *const argv[]) {
       m_verbose = 1;
     } else if(strcmp(*argv,"-x") == 0) { /* activate log rotation */
       m_rotate = 1;
+      if(argc > 1) {
+        if(*argv[1] >= '0' && *argv[1] <= '9') {
+          argc--;
+          argv++;
+          m_generations = atoi(*argv);
+        }
+      }
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd, 0);
     } else if(strcmp(*argv,"--help") == 0) {

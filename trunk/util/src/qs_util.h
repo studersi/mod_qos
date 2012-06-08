@@ -36,6 +36,7 @@ static const char man_date[] = "June 2012";
  * definitions
  * ---------------------------------- */
 #define MAX_LINE 32768
+#define QS_HUGE_STR 2048
 #define CR 13
 #define LF 10
 
@@ -77,5 +78,8 @@ int  qs_insertEvent(qs_event_t **l_qs_event, char *id);
 long qs_countEvent(qs_event_t **l_qs_event);
 void qs_deleteEvent(qs_event_t **l_qs_event, char *id);
 void qs_GCEvent(qs_event_t **l_qs_event);
+
+/* log */
+void qs_deleteOldFiles(const char *file_name, int generations);
 
 #endif

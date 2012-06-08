@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.11 2012-03-30 19:05:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.12 2012-06-08 19:34:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -167,55 +167,6 @@ static int openFile(const char *cmd, const char *file_name) {
   return m_nLogFD;
 }
 
-static void deleteOldFiles(const char *cmd, const char *file_name) {
-  char dirname[HUGE_STR];
-  char *p;
-  strcpy(dirname, file_name);
-  p = strrchr(dirname, '/');
-  if(p) {
-    DIR *dir;
-    p[0] = '\0'; p++;
-    dir = opendir(dirname);
-    if(dir) {
-      int num = 0;
-      struct dirent *de;
-      char filename[HUGE_STR];
-      snprintf(filename, sizeof(filename), "%s.20", p);
-      /* determine how many files to delete */
-      while((de = readdir(dir)) != 0) {
-	if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
-	  num++;
-	}
-      }
-      /* delete the oldes files */
-      while(num > m_generations) {
-	char old[HUGE_STR];
-	old[0] = '\0';
-	rewinddir(dir);
-	while((de = readdir(dir)) != 0) {
-	  if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
-	    if(strcmp(old, de->d_name) > 0) {
-	      snprintf(old, sizeof(old), "%s", de->d_name);
-	    } else {
-	      if(old[0] == '\0') {
-		snprintf(old, sizeof(old), "%s", de->d_name);
-	      }
-	    }
-	  }
-	}
-	{
-	  /* build abs path and delete it */
-	  char unl[HUGE_STR];
-	  snprintf(unl, sizeof(unl), "%s/%s", dirname, old);
-	  unlink(unl);
-	}
-	num--;
-      }
-      closedir(dir);
-    }
-  }
-}
-
 /**
  * Compress method called by a child process (forked)
  * used to compress the rotated file.
@@ -306,7 +257,7 @@ static void rotate(const char *cmd, const char *file_name, long *messages) {
 	  compressThread(cmd, arch);
 	}
 	if(m_generations != -1) {
-	  deleteOldFiles(cmd, file_name);
+	  qs_deleteOldFiles(file_name, m_generations);
 	}
 	exit(0);
       }

@@ -1,3 +1,8 @@
+Version
+
+ - qslog option "-x" allows the specification how many files to keep.
+   Default are 14 days.
+
 Version 10.8
 
  - Fixed: QS_SetEnvIfResBody did not properly detect pattern.
