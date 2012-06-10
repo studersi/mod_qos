@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.202 2012-05-29 16:33:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.203 2012-06-10 20:08:16 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -694,7 +694,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SrvRequestRate_off.htt"
 fi
 
-./run.sh -s ./scripts/QS_SrvResponseRate_0.htt
+./htt.sh -s ./scripts/QS_SrvResponseRate_0.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvResponseRate_0.htt"

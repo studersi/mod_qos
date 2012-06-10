@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.27 2012-05-29 06:52:31 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.28 2012-06-10 20:08:16 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -73,6 +73,9 @@ if [ ! -f htdocs/image.iso ]; then
     done
     cp htdocs/image.iso htdocs/demo/c/image.iso
     cp htdocs/image.iso htdocs/bbb/image.iso
+    for E in `seq 10`; do
+      cat htdocs/image.iso >> htdocs/dvd.iso
+    done
 fi
 
 CONFFILES="conf/httpd.conf conf/demo.conf conf/simple.conf conf/dos.conf conf/qos_viewer.conf appl_conf/httpd.conf"
