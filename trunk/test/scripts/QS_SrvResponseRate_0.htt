@@ -9,9 +9,9 @@ __Host: localhost.host.ch
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
-_SLEEP 10000
+_SLEEP 11000
 _RECV 100
-_SLEEP 10000
+_SLEEP 11000
 _RECV 100
 _EXPECT ERROR ""
 _WAIT
@@ -37,6 +37,5 @@ __Content-Type: text/html
 __
 _PIPE
 _EXEC tail -1 logs/error_log
-
 
 END
