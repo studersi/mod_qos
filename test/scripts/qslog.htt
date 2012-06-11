@@ -1,5 +1,5 @@
 #
-# $Id: qslog.htt,v 1.10 2011-01-05 20:08:08 pbuchbinder Exp $
+# $Id: qslog.htt,v 1.11 2012-06-11 05:32:37 pbuchbinder Exp $
 #
 # test the qslog and qsrotate tools
 
@@ -26,8 +26,8 @@ __GET /count HTTP/1.1
 __Host: localhost
 __
 _EXPECT . "count"
-# 94 lines, 2 files
-_EXPECT . "94 2"
+# 95 lines, 2 files
+_EXPECT . "95 2"
 _WAIT
 
 _CLOSE
