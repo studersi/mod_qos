@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.15 2012-05-24 20:32:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.16 2012-06-18 15:53:07 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -268,7 +268,6 @@ int main(int argc, const char * const argv[]) {
   int executed = 0;
   pcre *preg;
   pcre *clearpreg;
-  int nsub;
   const char *errptr = NULL;
   int erroffset;
   regmatch_t regm[MAX_REG_MATCH];
@@ -370,7 +369,6 @@ int main(int argc, const char * const argv[]) {
 	    pattern, erroffset, errptr);
     exit(1);
   }
-  nsub = pcre_info((const pcre *)preg, NULL, NULL);
   if(clearpattern) {
     clearpreg = pcre_compile(clearpattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
     if(!clearpreg) {
