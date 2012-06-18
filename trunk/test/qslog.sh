@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.13 2012-04-05 19:46:09 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.14 2012-06-18 15:46:25 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -46,12 +46,23 @@ case "$1" in
 	done
 	sleep 1
 	;;
+        custom)
+	rm -f qs.log
+ 	echo "$PFX custom"
+        (printf "2 4 6\n8 10 12\n"; ./sleep.sh 1>/dev/null; sleep 2) | ../util/src/qslog -f saA -o qs.log
+	if [ `grep -c "s;10;a;7;A;9;" qs.log` -eq 0 ]; then
+	  cat qs.log
+	  echo "$PFX FAILED"
+	  exit 1
+	fi
+	echo "$PFX OK"
+	;;
 	apache)
 	# apache access log test using piped logging
 	rm -f qs.log
 	rm -f qs.log.detailed
 	./sleep.sh
-	echo "$PFX apache"
+ 	echo "$PFX apache"
 	./qslog.sh test writeapache | ../util/src/qslog -f I....RSB.TkC -o qs.log -c qslog.conf
 	if [ `grep -c 'r/s;3;req;236;b/s;590;esco;59;1xx;0;2xx;177;3xx;0;4xx;0;5xx;59;av;1;<1s;177;1s;0;2s;0;3s;0;4s;59;5s;0;>5s;0;ip;3;usr;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log` -ne 2 ]; then
 	    cat qs.log

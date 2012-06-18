@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.47 2012-06-08 19:34:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.48 2012-06-18 15:46:25 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -104,6 +104,10 @@ typedef struct stat_rec_st {
   long duration_6;
   long connections;
 
+  unsigned long long sum;
+  unsigned long long average;
+  unsigned long long averAge;
+
   long status_1;
   long status_2;
   long status_3;
@@ -144,6 +148,7 @@ static int   m_offline_data = 0;
 static char  m_date_str[MAX_LINE];
 static int   m_mem = 0;
 static int   m_avms = 0;
+static int   m_customcounter = 0;
 static apr_table_t *m_client_entries = NULL;
 static int   m_max_client_entries = 0;
 static int   m_offline_count = 0;
@@ -209,6 +214,21 @@ static char *skipElement(const char* line) {
     p++;
   }
   return p;
+}
+
+/**
+ * Cut fp
+ */
+static void qsNoFloat(char *s) {
+  char *pn = strchr(s, '.');
+  if(pn) {
+    pn[0] = '\0';
+  } else {
+    pn = strchr(s, ',');
+    if(pn) {
+      pn[0] = '\0';
+    }
+  }
 }
 
 /**
@@ -362,9 +382,11 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   char ip[256];
   char usr[256];
   char avms[256];
+  char custom[256];
   bis[0] = '\0';
   esco[0] = '\0';
   avms[0] = '\0';
+
   if(stat_rec->i_byte_count != -1) {
     sprintf(bis, NBIS";%lld;", stat_rec->i_byte_count/LOG_INTERVAL);
   }
@@ -376,6 +398,13 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
             stat_rec->duration_count_ms/(stat_rec->line_count == 0 ? 1 : stat_rec->line_count));
     // improve accuracy (rounding errors):
     stat_rec->duration_count = stat_rec->duration_count_ms / 1000;
+  }
+  if(m_customcounter) {
+    // max len: 18446744073709551615
+    sprintf(custom, "s;%llu;a;%llu;A;%llu;",
+            stat_rec->sum,
+            stat_rec->average / (stat_rec->line_count == 0 ? 1 : stat_rec->line_count),
+            stat_rec->averAge / (stat_rec->line_count == 0 ? 1 : stat_rec->line_count));
   }
   if(main) {
     sprintf(ip, "ip;%ld;", qs_countEvent(&m_ip_list));
@@ -415,6 +444,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
           "qT;%ld;"
           "qL;%ld;"
           "qs;%ld;"
+          "%s"
           ,
           timeStr,
           main ? "" : stat_rec->id,
@@ -445,7 +475,8 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
           stat_rec->qos_k,
           stat_rec->qos_t,
           stat_rec->qos_l,
-          stat_rec->qos_ser
+          stat_rec->qos_ser,
+          custom
           );
   stat_rec->line_count = 0;
   stat_rec->byte_count = 0;
@@ -455,6 +486,9 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   if(main && (stat_rec->connections != -1)) {
     stat_rec->connections = 0;
   }
+  stat_rec->sum = 0;
+  stat_rec->average = 0;
+  stat_rec->averAge = 0;
   stat_rec->status_1 = 0;
   stat_rec->status_2 = 0;
   stat_rec->status_3 = 0;
@@ -519,6 +553,10 @@ static stat_rec_t *createRec(const char *id, const char *pattern) {
   rec->duration_5 = 0;
   rec->duration_6 = 0;
   rec->connections = -1;
+
+  rec->sum = 0;
+  rec->average = 0;
+  rec->averAge = 0;
 
   rec->status_1 = 0;
   rec->status_2 = 0;
@@ -682,6 +720,7 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
  * Updates standard record
  */
 static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
+                      char *s, char *a, char *A,
                       char *BI, char *B, char *R, char *I, char *U, char *Q,
                       char *k, char *C, long tme, long tmems) {
   if(Q != NULL) {
@@ -727,6 +766,15 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     if(k[0] == '0' && k[1] == '\0') {
       rec->connections++;
     }
+  }
+  if(s != NULL) {
+    rec->sum += atol(s);
+  }
+  if(a != NULL) {
+    rec->average += atol(a);
+  }
+  if(A != NULL) {
+    rec->averAge += atol(A);
   }
   if(S != NULL) {
     if(S[0] == '1') {
@@ -793,6 +841,9 @@ static void updateStat(const char *cstr, char *line) {
   char *Q = NULL; /* mod_qos event message */
   char *k = NULL; /* connections (keep alive requests = 0) */
   char *C = NULL; /* custom patter matching the config file */
+  char *s = NULL; /* sum */
+  char *a = NULL; /* avarage 1 */
+  char *A = NULL; /* average 2 */
   const char *c = cstr;
   char *l = line;
   long tme;
@@ -852,6 +903,18 @@ static void updateStat(const char *cstr, char *line) {
       if(l != NULL && l[0] != '\0') {
         Q = cutNext(&l);
       }
+    } else if(c[0] == 's') {
+      if(l != NULL && l[0] != '\0') {
+        s = cutNext(&l);
+      }
+    } else if(c[0] == 'a') {
+      if(l != NULL && l[0] != '\0') {
+        a = cutNext(&l);
+      }
+    } else if(c[0] == 'A') {
+      if(l != NULL && l[0] != '\0') {
+        A = cutNext(&l);
+      }
     } else if(c[0] == ' ') {
       /* do nothing */
     } else {
@@ -881,6 +944,18 @@ static void updateStat(const char *cstr, char *line) {
   if(S != NULL) {
     stripNum(&S);
   }
+  if(s != NULL) {
+    stripNum(&s);
+    qsNoFloat(s);
+  }
+  if(a != NULL) {
+    stripNum(&a);
+    qsNoFloat(a);
+  }
+  if(A != NULL) {
+    stripNum(&A);
+    qsNoFloat(A);
+  }
   tme = 0;
   if(T != NULL || t != NULL || D != NULL) {
     /* response duration */
@@ -898,9 +973,9 @@ static void updateStat(const char *cstr, char *line) {
       tme = tmems / 1000;
     }
   }
-  updateRec(m_stat_rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme, tmems);
+  updateRec(m_stat_rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, k, C, tme, tmems);
   if(rec) {
-    updateRec(rec, T, t, D, S, BI, B, R, I, U, Q, k, C, tme, tmems);
+    updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, k, C, tme, tmems);
   }
   if(m_offline_count) {
     updateClient(NULL, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
@@ -1220,6 +1295,9 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   qs_man_println(man, "     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
   qs_man_println(man, "     C defines the element for the detailed log (-c option), e.g. \"%%U\"\n");
+  qs_man_println(man, "     s arbitraty counter to add up (sum within a minute)\n");
+  qs_man_println(man, "     a arbitraty counter to build an average from (average per request)\n");
+  qs_man_println(man, "     A arbitraty counter to build an average from (average per request)\n");
   qs_man_println(man, "     . defines an element to ignore (unknown string)\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -o <out_file>\n");
@@ -1378,6 +1456,10 @@ int main(int argc, const char *const argv[]) {
           // enable average duration in ms
           m_avms = 1;
         }
+        if(strchr(config, 's') || strchr(config, 'a') || strchr(config, 'A')) {
+          // enable custom counter
+          m_customcounter = 1;
+        }
       }
     } else if(strcmp(*argv,"-o") == 0) { /* this is the out file */
       if (--argc >= 1) {
@@ -1459,7 +1541,7 @@ int main(int argc, const char *const argv[]) {
     if(file) {
       m_f = fopen(file, "a+");
       if(!m_f) {
-        m_f == stdout;
+        m_f = stdout;
       }
     }
     for(i = 0; i < apr_table_elts(m_client_entries)->nelts; i++) {
