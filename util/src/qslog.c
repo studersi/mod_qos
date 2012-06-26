@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.48 2012-06-18 15:46:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.49 2012-06-26 19:58:16 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -386,6 +386,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   bis[0] = '\0';
   esco[0] = '\0';
   avms[0] = '\0';
+  custom[0] = '\0';
 
   if(stat_rec->i_byte_count != -1) {
     sprintf(bis, NBIS";%lld;", stat_rec->i_byte_count/LOG_INTERVAL);
