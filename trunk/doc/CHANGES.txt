@@ -1,3 +1,7 @@
+Version
+
+ - qslog "-pc" supports counting established connections.
+
 Version 10.9
 
  - CR 3535677: Don't use prce_info() any longer.

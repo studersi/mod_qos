@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.49 2012-06-26 19:58:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.50 2012-06-28 20:18:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -81,6 +81,7 @@ typedef struct {
   long status_3;
   long status_4;
   long status_5;
+  long connections;
 } client_rec_t;
 
 typedef struct stat_rec_st {
@@ -677,10 +678,16 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     client_rec->status_3 = 0;
     client_rec->status_4 = 0;
     client_rec->status_5 = 0;
+    client_rec->connections = 0;
     apr_table_setn(m_client_entries, tid, (char *)client_rec);
   }
   client_rec->request_count++;
   client_rec->duration += tme;
+  if(k != NULL) {
+    if(k[0] == '0' && k[1] == '\0') {
+      client_rec->connections++;
+    }
+  }
   if(tme < 1) {
     client_rec->duration_0++;
   } else if(tme == 1) {
@@ -1547,9 +1554,14 @@ int main(int argc, const char *const argv[]) {
     }
     for(i = 0; i < apr_table_elts(m_client_entries)->nelts; i++) {
       client_rec_t *client_rec = (client_rec_t *)entry[i].val;
+      char esco[256];
+      esco[0] = '\0';
+      if(m_stat_rec->connections != -1) {
+        sprintf(esco, "esco;%ld;", client_rec->connections);
+      }
       fprintf(m_f, "%s;req;%ld;errors;%ld;"
               "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;"
-              "av;%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;"
+              "av;%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;%s"
               "\n",
               entry[i].key,
               client_rec->request_count,
@@ -1566,7 +1578,8 @@ int main(int argc, const char *const argv[]) {
               client_rec->duration_3,
               client_rec->duration_4,
               client_rec->duration_5,
-              client_rec->duration_6);
+              client_rec->duration_6,
+              esco);
     }
     if(file && m_f != stdout) {
       fclose(m_f);
