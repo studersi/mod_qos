@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.50 2012-06-28 20:18:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.51 2012-06-29 16:00:37 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1415,13 +1415,17 @@ static stat_rec_t *loadRule(const char *confFile) {
       }
       next = createRec(id, p);
       if(rec == NULL) {
+        // first record
         rec = next;
       }
       if(prev) {
+        // has previous, append it to the list
         prev->next = next;
       } else {
-        rec->next = next;
+        // sole record, no next
+        rec->next = NULL;
       }
+      // prev points now to the new record
       prev = next;
     }
   }
