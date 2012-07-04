@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.219 2012-05-29 16:33:47 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.220 2012-07-04 19:57:35 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -151,6 +151,8 @@ LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.s
 LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
 LoadModule              parp_module libexec/mod_parp.so
 LoadModule              setenvifplus_module libexec/mod_setenvifplus.so
+LoadModule              cache_module ##ROOT##/../httpd/modules/cache/.libs/mod_cache.so
+LoadModule              mem_cache_module ##ROOT##/../httpd/modules/cache/.libs/mod_mem_cache.so
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
@@ -220,6 +222,15 @@ ErrorDocument 404 /error-docs/error404.html
    # mod_parp:
    QS_SetEnvIfParp  body=([a-z]*)         BODY=parp[$1]
    QS_SetEnvIfParp  postdata=([a-z]*)     PARP_PATTERN=parp[$1]
+
+   # cache
+   <IfDefine cache>
+   CacheEnable mem  /localpages
+   MCacheSize 4096
+   MCacheMaxObjectCount 100
+   MCacheMinObjectSize 1
+   MCacheMaxObjectSize 2048
+   </IfDefine>
 
    ProxyPass                  /killme !
    ProxyPass                  /loopme !
