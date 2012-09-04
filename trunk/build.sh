@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.58 2012-07-04 19:57:34 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.59 2012-09-04 20:10:59 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -91,15 +91,13 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-if [ `echo $APACHE_VER | awk '{print substr($0, 1, 3)}'` = "2.2" ]; then
-  ./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-cache=shared --enable-mem_cache=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate --enable-reqtimeout=shared $ADDMOD
+#if [ `echo $APACHE_VER | awk '{print substr($0, 1, 3)}'` = "2.2" ]; then
+  ./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-cache=shared --enable-mem_cache=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate --enable-reqtimeout=shared --enable-rewrite=shared $ADDMOD
   RC=$?
-else
-  ./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate $ADDMOD
-#  ./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate --with-apr=/usr/bin/apr-1-config --with-apr-util=/usr/bin/apr-1-config $ADDMOD
-#  ./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate --with-apr=`pwd`/../../apr/apr-2-config --with-apr-util=`pwd`/../../apr/apr-2-config $ADDMOD
-  RC=$?
-fi
+#else
+#  ./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate $ADDMOD
+#  RC=$?
+#fi
 if [ $RC -ne 0 ]; then
   echo "ERROR"
   exit 1

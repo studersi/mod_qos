@@ -1,0 +1,64 @@
+INCLUDE scripts/ports
+
+CLIENT
+
+# client from DE
+_EXEC echo "127.0.0.0\",\"127.255.255.255\",\"2130706432\",\"2147483647\",\"DE\",\"Germany\"" > conf/GeoDynamic.csv
+_EXEC ./ctl.sh restart -D geodynamic 1>/dev/null
+
+_REQ localhost $QS_PORT_BASE9
+__GET /bbb/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: event
+__
+_EXPECT . "!bbb index.html"
+_EXPECT . "302"
+_EXPECT . "Location: http://www.modqos.de"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE9
+__GET /bbb/index.html HTTP/1.1
+__Host: www.modqos.de
+__Connection: keep-alive
+__User-Agent: event
+__
+_EXPECT . "bbb index.html"
+_EXPECT . "!302"
+_EXPECT . "!Location: http://www.modqos.de"
+_WAIT
+_CLOSE
+
+# client from FR
+_EXEC echo "127.0.0.0\",\"127.255.255.255\",\"2130706432\",\"2147483647\",\"FR\",\"France\"" > conf/GeoDynamic.csv
+_EXEC ./ctl.sh restart -D geodynamic 1>/dev/null
+
+_REQ localhost $QS_PORT_BASE9
+__GET /bbb/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: event
+__
+_EXPECT . "!bbb index.html"
+_EXPECT . "302"
+_EXPECT . "Location: http://www.modqos.fr"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE9
+__GET /bbb/index.html HTTP/1.1
+__Host: www.modqos.fr
+__Connection: keep-alive
+__User-Agent: event
+__
+_EXPECT . "bbb index.html"
+_EXPECT . "!302"
+_EXPECT . "!Location: http://www.modqos.fr"
+_WAIT
+
+END
+
+BLOCK FINALLY
+
+_EXEC ./ctl.sh restart -D geodynamic 1>/dev/null
+
+END
