@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.203 2012-06-10 20:08:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.204 2012-09-04 20:11:00 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -791,7 +791,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SrvConn.htt"
 fi
 
-GEO="QS_ClientGeoIPPriv.htt QS_ClientGeoIPPriv2.htt QS_ClientGeoIPPriv3.htt QS_AllConn.htt QS_ClientGeoIPVar.htt"
+GEO="QS_ClientGeoIPPriv.htt QS_ClientGeoIPPriv2.htt QS_ClientGeoIPPriv3.htt QS_AllConn.htt QS_ClientGeoIPVar.htt QS_Country_Redirect.htt"
 for G in $GEO; do
   ./run.sh -s ./scripts/$G
   if [ $? -ne 0 ]; then

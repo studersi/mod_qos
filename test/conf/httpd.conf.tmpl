@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.220 2012-07-04 19:57:35 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.221 2012-09-04 20:11:00 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -153,6 +153,7 @@ LoadModule              parp_module libexec/mod_parp.so
 LoadModule              setenvifplus_module libexec/mod_setenvifplus.so
 LoadModule              cache_module ##ROOT##/../httpd/modules/cache/.libs/mod_cache.so
 LoadModule              mem_cache_module ##ROOT##/../httpd/modules/cache/.libs/mod_mem_cache.so
+LoadModule              rewrite_module ##ROOT##/../httpd/modules/mappers/.libs/mod_rewrite.so
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
@@ -166,6 +167,9 @@ QS_UserTrackingCookieName stat
 QS_UserTrackingCookieName stat /error-docs/cookie.html
 </IfDefine>
 
+<IfDefine geodynamic>
+QS_ClientGeoCountryDB        conf/GeoDynamic.csv
+</IfDefine>
 <IfDefine geoprivwrong>
 QS_ClientGeoCountryPriv      DE,GB,LO,CH,EU   10
 </IfDefine>
@@ -750,6 +754,31 @@ Listen                  127.0.0.1:##QS_PORT_BASE9##
    <Location /ddd>
      QS_RequestHeaderFilter   off
    </Location>
+
+<IfDefine geodynamic>
+   # redirect test
+   # DE to www.modqos.de
+   # FR to www.modqos.fr
+   # CH to www.modqos.ch
+   SetEnvIf QS_Country DE LOC_DE
+   SetEnvIf QS_Country FR LOC_FR
+   SetEnvIf QS_Country CH LOC_CH
+   SetEnvIf Host www.modqos.de.* HOST_DE
+   SetEnvIf Host www.modqos.fr.* HOST_FR
+   SetEnvIf Host www.modqos.ch.* HOST_CH
+   QS_SetEnvIf LOC_DE !HOST_DE REDIRECT_TO=de
+   QS_SetEnvIf LOC_FR !HOST_FR REDIRECT_TO=fr
+   QS_SetEnvIf LOC_CH !HOST_CH REDIRECT_TO=ch
+   <Location /bbb>
+     RewriteEngine on
+     RewriteCond %{ENV:REDIRECT_TO} ^de
+     RewriteRule ^/(.*)$ http://www.modqos.de/$1 [L,R]
+     RewriteCond %{ENV:REDIRECT_TO} ^fr
+     RewriteRule ^/(.*)$ http://www.modqos.fr/$1 [L,R]
+     RewriteCond %{ENV:REDIRECT_TO} ^ch
+     RewriteRule ^/(.*)$ http://www.modqos.ch/$1 [L,R]
+   </Location>
+</IfDefine>
 
 </VirtualHost>
 
