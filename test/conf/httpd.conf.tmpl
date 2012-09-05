@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.221 2012-09-04 20:11:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.222 2012-09-05 05:32:25 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -760,15 +760,19 @@ Listen                  127.0.0.1:##QS_PORT_BASE9##
    # DE to www.modqos.de
    # FR to www.modqos.fr
    # CH to www.modqos.ch
+   # *  to www.modqos.com
    SetEnvIf QS_Country DE LOC_DE
    SetEnvIf QS_Country FR LOC_FR
    SetEnvIf QS_Country CH LOC_CH
+   SetEnvIf QS_Country (DE)|(FR)|(CH) LOC_KNOWN
    SetEnvIf Host www.modqos.de.* HOST_DE
    SetEnvIf Host www.modqos.fr.* HOST_FR
    SetEnvIf Host www.modqos.ch.* HOST_CH
+   SetEnvIf Host www.modqos.com.* HOST_COM
    QS_SetEnvIf LOC_DE !HOST_DE REDIRECT_TO=de
    QS_SetEnvIf LOC_FR !HOST_FR REDIRECT_TO=fr
    QS_SetEnvIf LOC_CH !HOST_CH REDIRECT_TO=ch
+   QS_SetEnvIf !LOC_KNOWN !HOST_COM REDIRECT_TO=com
    <Location /bbb>
      RewriteEngine on
      RewriteCond %{ENV:REDIRECT_TO} ^de
@@ -777,6 +781,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE9##
      RewriteRule ^/(.*)$ http://www.modqos.fr/$1 [L,R]
      RewriteCond %{ENV:REDIRECT_TO} ^ch
      RewriteRule ^/(.*)$ http://www.modqos.ch/$1 [L,R]
+     RewriteCond %{ENV:REDIRECT_TO} ^com
+     RewriteRule ^/(.*)$ http://www.modqos.com/$1 [L,R]
    </Location>
 </IfDefine>
 
