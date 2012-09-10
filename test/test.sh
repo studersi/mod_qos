@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.204 2012-09-04 20:11:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.205 2012-09-10 20:49:17 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -798,6 +798,16 @@ for G in $GEO; do
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED $G"
   fi
+done
+
+# tests which automatically restart the server
+TEST="mod_cache.htt"
+for E in $TEST; do 
+    ./run.sh -s ./scripts/$E
+    if [ $? -ne 0 ]; then
+	ERRORS=`expr $ERRORS + 1`
+	echo "FAILED $E"
+    fi
 done
 
 ./ctl.sh restart -D MILESTONES >/dev/null
