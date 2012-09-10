@@ -98,6 +98,6 @@ END
 
 BLOCK FINALLY
 
-_EXEC ./ctl.sh restart -D geodynamic 1>/dev/null
+_EXEC ./ctl.sh restart 1>/dev/null
 
 END

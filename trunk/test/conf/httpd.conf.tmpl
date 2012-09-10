@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.222 2012-09-05 05:32:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.223 2012-09-10 20:49:18 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -234,6 +234,8 @@ ErrorDocument 404 /error-docs/error404.html
    MCacheMaxObjectCount 100
    MCacheMinObjectSize 1
    MCacheMaxObjectSize 2048
+   CacheIgnoreNoLastMod on
+   CacheIgnoreQueryString on
    </IfDefine>
 
    ProxyPass                  /killme !
