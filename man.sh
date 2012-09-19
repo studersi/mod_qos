@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/man.sh,v 2.5 2012-03-30 19:06:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/man.sh,v 2.6 2012-09-19 18:48:51 pbuchbinder Exp $
 #
 
 set -e
@@ -16,7 +16,7 @@ mkdir -p ../man1
 make clean 1>/dev/null
 make 2>/dev/null 1>/dev/null
 
-tools="qsexec qsfilter2 qsgrep qslog qslogger qspng qsrotate qssign qstail qsgeo"
+tools="qsexec qsfilter2 qsgrep qslog qslogger qspng qsrotate qssign qstail qsgeo qshead"
 
 for t in $tools; do
   echo "./$t --man"
