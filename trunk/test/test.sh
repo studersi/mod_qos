@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.206 2012-09-19 18:48:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.207 2012-09-19 20:51:25 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -315,7 +315,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED MultiRequest.htt"
 fi
-sleep 1
+sleep 60
 
 ./ctl.sh restart -D ignore404 > /dev/null
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit404.htt" >>  logs/error_log
@@ -526,6 +526,8 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_ClientEventRequestLimit.htt"
 fi
 
+sleep 60
+
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SrvMinDataRate.htt" >>  logs/error_log
 ./ctl.sh restart -D no_reqrate -D reqrate10 > /dev/null
 ./run.sh -se ./scripts/QS_SrvMinDataRate.htt
@@ -720,6 +722,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SetEnvResHeadersMatch.htt"
 fi
+sleep 60
 ./ctl.sh restart -D cc -D real_ip -D usertrack> /dev/null
 ./run.sh -s ./scripts/QS_SetEnvResBody.htt
 if [ $? -ne 0 ]; then
