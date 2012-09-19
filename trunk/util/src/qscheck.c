@@ -6,7 +6,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007 Pascal Buchbinder
+ * Copyright (C) 2007-2012 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qscheck.c,v 1.4 2010-12-22 11:33:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qscheck.c,v 1.5 2012-09-19 18:48:51 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -134,6 +134,9 @@ static unsigned long getAddress(const char *hostname) {
   }
   if (ip) {
     address = inet_addr(hostname);
+    if(address == -1) {
+      return 0L;
+    }
   } else {
     hoste = gethostbyname(hostname);
     if (!hoste || !hoste->h_addr_list[ 0 ]) {
@@ -335,6 +338,7 @@ static int checkFile(const char *cmd, const char *filename) {
 int main(int argc, char **argv) {
   char *config = NULL;
   char *cmd = strrchr(argv[0], '/');
+  char *single = NULL;
   int status = 1;
   if(cmd == NULL) {
     cmd = argv[0];
@@ -347,14 +351,52 @@ int main(int argc, char **argv) {
       if (--argc >= 1) {
 	config = *(++argv);
       }
+    } else if(strcmp(*argv,"-i") == 0) {
+      if (--argc >= 1) {
+	single = *(++argv);
+      }
     } else if(strcmp(*argv,"-v") == 0) {
       m_verbose = 1;
     }
     argc--;
     argv++;
   }
-  if(config == NULL) usage(cmd);
-  status = checkFile(cmd, config);
+  if(single) {
+    char *hostName = single;
+    char *portNumber = strchr(single, ':');
+    if(portNumber) {
+      unsigned long addr;
+      int prt;
+      portNumber[0] = '\0';
+      portNumber++;
+      addr = getAddress(hostName);
+      prt = atoi(portNumber);
+      if(addr && prt) {
+	if(ping(addr, prt)) {
+	  if(m_verbose) {
+	    printf("[%s]: %s:%d Up\n", cmd, hostName, prt);
+	  }
+	  status = 1;
+	} else {
+	  printf("[%s]: %s:%d Down\n", cmd, hostName, prt);
+	  status = 0;
+	}
+      } else {
+	// could not resolve
+	fprintf(stderr,"[%s]: ERROR, unknown host/port\n", cmd); 
+	status = 0;
+      }
+    } else {
+      // invalid input
+      fprintf(stderr,"[%s]: ERROR, invalid format\n", cmd); 
+      status = 0;
+    }
+  } else {
+    if(config == NULL) {
+      usage(cmd);
+    }
+    status = checkFile(cmd, config);
+  }
   if(status == 0) {
     fprintf(stderr,"[%s]: ERROR, check failed\n", cmd);
     exit(1);

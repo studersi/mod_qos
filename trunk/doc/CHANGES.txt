@@ -4,6 +4,8 @@ Version
 
  - Fixed: endless loop when using option "-c" with only one rule.
 
+ - New utility qshead.
+
 Version 10.9
 
  - CR 3535677: Don't use prce_info() any longer.
