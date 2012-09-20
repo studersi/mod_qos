@@ -29,7 +29,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.71 2012-05-15 18:51:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.72 2012-09-20 15:19:21 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -547,7 +547,7 @@ static void usage(char *cmd, int man) {
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
-    printf("qsexec(1), qsgeo(1), qsgrep(1), qslog(1), qslogger(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf("qsexec(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
     printf(".SH AUTHOR\n");
     printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
   } else {
@@ -983,9 +983,11 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
               pcre_extra *extra;
               qs_rule_t *rs;
               if(p[0] == '"') {
-                pattern = apr_psprintf(pool, "%.*s", strlen(p)-2, &p[1]);
+                int fl = strlen(p)-2;
+                pattern = apr_psprintf(pool, "%.*s", fl, &p[1]);
               } else {
-                pattern = apr_psprintf(pool, "%.*s", strlen(p), p);
+                int fl = strlen(p);
+                pattern = apr_psprintf(pool, "%.*s", fl, p);
               }
               pcre_test = qos_pcre_compile(pattern, option);
               extra = pcre_study(pcre_test, 0, &errptr);
@@ -1072,7 +1074,8 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
         }
       } else {
         qos_unescaping(pos);
-        ret = apr_psprintf(pool, "%s[%s]{0,%d}[&]?", ret, qos_2pcre(pool, pos), strlen(pos)+m_query_len_pcre);
+        ret = apr_psprintf(pool, "%s[%s]{0,%"APR_SIZE_T_FMT"}[&]?", ret, qos_2pcre(pool, pos),
+                           strlen(pos) + m_query_len_pcre);
         if(open) {
           ret = apr_pstrcat(pool, ret, ")?", NULL);
           open = 0;
@@ -1087,7 +1090,8 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
   if(pos != copy) {
     qos_unescaping(pos);
     if(isValue) {
-      ret = apr_psprintf(pool, "%s[%s]{0,%d}[&]?", ret, qos_2pcre(pool, pos), strlen(pos)+m_query_len_pcre);
+      ret = apr_psprintf(pool, "%s[%s]{0,%"APR_SIZE_T_FMT"}[&]?", ret, qos_2pcre(pool, pos),
+                         strlen(pos) + m_query_len_pcre);
     } else {
       if(!open) {
         ret = apr_pstrcat(pool, "(", ret, NULL);

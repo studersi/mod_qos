@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qscheck.c,v 1.5 2012-09-19 18:48:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qscheck.c,v 1.6 2012-09-20 15:19:21 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,13 +61,16 @@ static char *checkedHosts = NULL;
  */
 static void usage(char *cmd) {
   printf("\n");
-  printf("Monitor testing tcp connectivity to servers.\n");
+  printf("Monitor programm testing the TCP connectivity to servers.\n");
   printf("\n");
   printf("Usage: %s -c <httpd.conf> [-v]\n", cmd);
   printf("\n");
   printf("Verifies the connectivity to the server referred either\n");
   printf("by the ProxyPass, ProxyPassReverse, or ProxyReverse\n");
   printf("directive used by mod_proxy.\n");
+  printf("\n");
+  printf("You may alternatively use \"%s -i <hostname>:<port>\" if\n", cmd);
+  printf("you want to check the TCP connectivity to a single host.\n");
   printf("\n");
   printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
   exit(1);
