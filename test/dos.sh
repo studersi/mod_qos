@@ -45,7 +45,7 @@ set +e
 # up to 1% slower (incl rounding) is still okay (since the server
 # has not really anything else to do)
 if [ $dif -gt 2 ]; then
-  echo " dos.sh test was to slow"
+  echo " dos.sh test was too slow"
   exit 1
 fi
 
