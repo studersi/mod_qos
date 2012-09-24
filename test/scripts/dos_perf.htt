@@ -1,0 +1,23 @@
+#
+# $Id: dos_perf.htt,v 1.1 2012-09-24 19:06:34 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 5
+
+_LOOP 2500
+_LOOP 10
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "aaa index"
+_WAIT
+_END LOOP
+_CLOSE
+_END LOOP
+
+END
