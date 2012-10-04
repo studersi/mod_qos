@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssearch.c,v 1.2 2012-10-04 19:52:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssearch.c,v 1.3 2012-10-04 20:09:11 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -182,6 +182,15 @@ int main(int argc, const char *const argv[]) {
     } else if(strcmp(*argv,"-p") == 0) {
       if (--argc >= 1) {
 	pattern = *(++argv);
+      }
+    } else if(strcmp(*argv,"-b") == 0) {
+      if (--argc >= 1) {
+	int len;
+	const char *b = *(++argv);
+	char *dec= apr_pcalloc(pool, apr_base64_decode_len(b));
+	len = apr_base64_decode(dec, b);
+	dec[len] = '\0';
+	pattern = dec;
       }
     } else if(strcmp(*argv,"-?") == 0) {
       usage(cmd, 0);
