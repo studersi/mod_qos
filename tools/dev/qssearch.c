@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssearch.c,v 1.1 2012-10-04 18:44:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssearch.c,v 1.2 2012-10-04 19:52:15 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -53,6 +53,8 @@ static const char revision[] = "$Id: qssearch.c,v 1.1 2012-10-04 18:44:24 pbuchb
 
 static void usage(char *cmd, int man) {
 
+  printf("%s%s -h <hours> -p <pattern> -t <type>\n",
+	 man ? "" : "Usage: ", cmd);
   if(man) {
     exit(0);
   } else {
@@ -103,6 +105,8 @@ static char *qs_time_t4(apr_pool_t *pool, int offset) {
  * 4 - [03/Dec/2010:07:36:51
  */
 static pcre *qs_calc_regex(apr_pool_t *pool, int hours, int type) {
+  const char *errptr = NULL;
+  int erroffset;
   pcre *preg;
   char *pattern = "";
   int h = 1;
@@ -125,15 +129,35 @@ static pcre *qs_calc_regex(apr_pool_t *pool, int hours, int type) {
     pattern = apr_pstrcat(pool, pattern, "|", f(pool, h), NULL);
   }
 
+  if(type == 1 || type == 2) {
+    pattern = apr_pstrcat(pool, "^", pattern, NULL);
+  }
+  if(type == 3) {
+    pattern = apr_pstrcat(pool, "^\\[", pattern, NULL);
+  }
+  if(type == 4) {
+    pattern = apr_pstrcat(pool, "\\[", pattern, NULL);
+  }
+
+  preg = pcre_compile(pattern, 0, &errptr, &erroffset, NULL);
+  if(preg == NULL) {
+    printf("faild to compile pattern %s: %s\n", pattern, errptr);
+    exit(1);
+  }
+
   return preg;
 }
 
 int main(int argc, const char *const argv[]) {
+  char line[32768];
   int hours = 0;
   int type = 0;
   const char *pattern = NULL;
   apr_pool_t *pool;
   char *cmd = strrchr(argv[0], '/');
+  const char *errptr = NULL;
+  int erroffset;
+  pcre *preg_tme;
   pcre *preg;
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
@@ -147,7 +171,7 @@ int main(int argc, const char *const argv[]) {
   argc--;
   argv++;
   while(argc >= 1) {
-    if(strcmp(*argv,"-d") == 0) {
+    if(strcmp(*argv,"-h") == 0) {
       if (--argc >= 1) {
 	hours = atoi(*(++argv));
       }
@@ -169,8 +193,25 @@ int main(int argc, const char *const argv[]) {
     argc--;
     argv++;
   }
-  
-  preg = qs_calc_regex(pool, hours, type);
+
+  if(pattern == NULL) {
+    usage(cmd, 0);
+  }
+  preg = pcre_compile(pattern, 0, &errptr, &erroffset, NULL);
+  if(preg == NULL) {
+    printf("faild to compile pattern %s: %s\n", pattern, errptr);
+    exit(1);
+  }
+
+  preg_tme = qs_calc_regex(pool, hours, type);
+
+  while(fgets(line, sizeof(line), stdin) != NULL) {
+    if(pcre_exec(preg_tme, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+      if(pcre_exec(preg, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+	printf("%s", line);
+      }
+    }
+  }
   
   apr_pool_destroy(pool);
   return 0;
