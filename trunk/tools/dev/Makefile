@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex regexspeed b64 crs mem json pws
+PROGRAMS = regex regexspeed b64 crs mem json pws qssearch
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -47,6 +47,11 @@ json_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 json: $(json_OBJECTS)
 	$(LINK) $(json_LTFLAGS) -static $(json_OBJECTS) $(json_LDADD)
 
+qssearch_OBJECTS = qssearch.lo
+qssearch_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+qssearch: $(qssearch_OBJECTS)
+	$(LINK) $(qssearch_LTFLAGS) -static $(qssearch_OBJECTS) $(qssearch_LDADD)
+
 pws_OBJECTS = pws.lo
 pws_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 pws: $(pws_OBJECTS)
@@ -61,4 +66,4 @@ stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
 clean:
-	rm *.o stack regex regexspeed b64 crs mem json pws
+	rm *.o stack regex regexspeed b64 crs mem json pws qssearch
