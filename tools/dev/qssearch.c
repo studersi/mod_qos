@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssearch.c,v 1.4 2012-10-06 20:40:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssearch.c,v 1.5 2012-10-06 20:49:10 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -64,6 +64,14 @@ static void usage(char *cmd, int man) {
 
 #define TMSRTLEN 128
 
+/**
+ * Creates the time pattern type 1 resp 2 accordin to qs_calc_regex()
+ * for the current time minus the specified offset
+ *
+ * @param pool
+ * @param offset Time offset in hours
+ * @return Pattern to match the log longes for the defined time (hour) only
+ */
 static char *qs_time_t12(apr_pool_t *pool, int offset) {
   time_t tm = time(NULL);
   struct tm *ptr;
@@ -75,6 +83,14 @@ static char *qs_time_t12(apr_pool_t *pool, int offset) {
   return time_string;
 }
 
+/**
+ * Creates the time pattern type 3 accordin to qs_calc_regex()
+ * for the current time minus the specified offset
+ *
+ * @param pool
+ * @param offset Time offset in hours
+ * @return Pattern to match the log longes for the defined time (hour) only
+ */
 static char *qs_time_t3(apr_pool_t *pool, int offset) {
   time_t tm = time(NULL);
   struct tm *ptr;
@@ -86,6 +102,14 @@ static char *qs_time_t3(apr_pool_t *pool, int offset) {
   return time_string;
 }
 
+/**
+ * Creates the time pattern type 4 accordin to qs_calc_regex()
+ * for the current time minus the specified offset
+ *
+ * @param pool
+ * @param offset Time offset in hours
+ * @return Pattern to match the log longes for the defined time (hour) only
+ */
 static char *qs_time_t4(apr_pool_t *pool, int offset) {
   time_t tm = time(NULL);
   struct tm *ptr;
@@ -97,6 +121,13 @@ static char *qs_time_t4(apr_pool_t *pool, int offset) {
   return time_string;
 }
 
+/**
+ * Determines tha date format using the first log line
+ *
+ * @param pool
+ * @param line log line
+ * @retrun type (or 0 if unknown)
+ */
 static int qs_get_type(apr_pool_t *pool, const char *line) {
   const char *errptr = NULL;
   int erroffset;
@@ -125,12 +156,17 @@ static int qs_get_type(apr_pool_t *pool, const char *line) {
 }
 
 /**
+ * Creates the regular expression to match log lines for the curent hours
+ * and all previous hours defined by the "hours" parameter.
  *
- * type:
- * 1 - ^2010-04-14 20:18:37
- * 2 - ^2010 12 04 20:46:45
- * 3 - ^[Mon Dec 06 21:29:07 2010]
- * 4 - [03/Dec/2010:07:36:51
+ * @param pool
+ * @param hours How many hours (in past) to match
+ * @param type Defines which time format is used within the log file.
+ *             1 - ^2010-04-14 20:18:37
+ *             2 - ^2010 12 04 20:46:45
+ *             3 - ^[Mon Dec 06 21:29:07 2010]
+ *             4 - [03/Dec/2010:07:36:51
+ * @retrun pattern
  */
 static pcre *qs_calc_regex(apr_pool_t *pool, int hours, int type) {
   const char *errptr = NULL;
@@ -240,12 +276,15 @@ int main(int argc, const char *const argv[]) {
     exit(1);
   }
 
-
+  // start reading from stdin...
   if(fgets(line, sizeof(line), stdin) != NULL) {
     if(type == 0) {
+      // auto detection of the time format
       type = qs_get_type(pool, line);
     }
+    // compile the time matching pattern
     preg_tme = qs_calc_regex(pool, hours, type);
+
     // process the first line
     if(pcre_exec(preg_tme, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
       if(pcre_exec(preg, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
