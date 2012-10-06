@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssearch.c,v 1.3 2012-10-04 20:09:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssearch.c,v 1.4 2012-10-06 20:40:39 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -53,7 +53,7 @@ static const char revision[] = "$Id: qssearch.c,v 1.3 2012-10-04 20:09:11 pbuchb
 
 static void usage(char *cmd, int man) {
 
-  printf("%s%s -h <hours> -p <pattern> -t <type>\n",
+  printf("%s%s -h <hours> -p <pattern> [-t <type>]\n",
 	 man ? "" : "Usage: ", cmd);
   if(man) {
     exit(0);
@@ -63,6 +63,18 @@ static void usage(char *cmd, int man) {
 }
 
 #define TMSRTLEN 128
+
+static char *qs_time_t12(apr_pool_t *pool, int offset) {
+  time_t tm = time(NULL);
+  struct tm *ptr;
+  char *time_string = apr_pcalloc(pool, TMSRTLEN);
+  tm -= (offset * 3600);
+  ptr = localtime(&tm);
+  strftime(time_string, TMSRTLEN,
+	   "(%Y[ -]%m[ -]%d %H:)", ptr);
+  return time_string;
+}
+
 static char *qs_time_t3(apr_pool_t *pool, int offset) {
   time_t tm = time(NULL);
   struct tm *ptr;
@@ -71,17 +83,6 @@ static char *qs_time_t3(apr_pool_t *pool, int offset) {
   ptr = localtime(&tm);
   strftime(time_string, TMSRTLEN,
 	   "(%a %b %d %H:[0-9]{2}:[0-9]{2} %Y)", ptr);
-  return time_string;
-}
-
-static char *qs_time_t1(apr_pool_t *pool, int offset) {
-  time_t tm = time(NULL);
-  struct tm *ptr;
-  char *time_string = apr_pcalloc(pool, TMSRTLEN);
-  tm -= (offset * 3600);
-  ptr = localtime(&tm);
-  strftime(time_string, TMSRTLEN,
-	   "(%Y[ -]%m[ -]%d %H:)", ptr);
   return time_string;
 }
 
@@ -94,6 +95,33 @@ static char *qs_time_t4(apr_pool_t *pool, int offset) {
   strftime(time_string, TMSRTLEN,
 	   "(%d/%b/%Y:%H:)", ptr);
   return time_string;
+}
+
+static int qs_get_type(apr_pool_t *pool, const char *line) {
+  const char *errptr = NULL;
+  int erroffset;
+  pcre *preg;
+  preg = pcre_compile("^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}",
+		      0, &errptr, &erroffset, NULL);
+  if(pcre_exec(preg, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+    return 1;
+  }
+  preg = pcre_compile("^[0-9]{4} [0-9]{2} [0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}",
+		      0, &errptr, &erroffset, NULL);
+  if(pcre_exec(preg, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+    return 2;
+  }
+  preg = pcre_compile("^\\{[a-zA-Z]{3} [a-zA-Z]{3} [0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4}",
+		      0, &errptr, &erroffset, NULL);
+  if(pcre_exec(preg, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+    return 3;
+  }
+  preg = pcre_compile("\\[[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}",
+		      0, &errptr, &erroffset, NULL);
+  if(pcre_exec(preg, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+    return 4;
+  }
+  return 0;
 }
 
 /**
@@ -112,9 +140,9 @@ static pcre *qs_calc_regex(apr_pool_t *pool, int hours, int type) {
   int h = 1;
   char *(*f)(apr_pool_t *, int) = NULL;
   if(type == 1) {
-    f = &qs_time_t1;
+    f = &qs_time_t12;
   } else if(type == 2) {
-    f = &qs_time_t1;
+    f = &qs_time_t12;
   } else if(type == 3) {
     f = &qs_time_t3;
   } else if(type == 4) {
@@ -212,12 +240,24 @@ int main(int argc, const char *const argv[]) {
     exit(1);
   }
 
-  preg_tme = qs_calc_regex(pool, hours, type);
 
-  while(fgets(line, sizeof(line), stdin) != NULL) {
+  if(fgets(line, sizeof(line), stdin) != NULL) {
+    if(type == 0) {
+      type = qs_get_type(pool, line);
+    }
+    preg_tme = qs_calc_regex(pool, hours, type);
+    // process the first line
     if(pcre_exec(preg_tme, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
       if(pcre_exec(preg, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
 	printf("%s", line);
+      }
+    }
+    // continue reading
+    while(fgets(line, sizeof(line), stdin) != NULL) {
+      if(pcre_exec(preg_tme, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+	if(pcre_exec(preg, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+	  printf("%s", line);
+	}
       }
     }
   }
