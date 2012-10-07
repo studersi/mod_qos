@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssearch.c,v 1.5 2012-10-06 20:49:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssearch.c,v 1.6 2012-10-07 19:09:11 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -213,6 +213,7 @@ static pcre *qs_calc_regex(apr_pool_t *pool, int hours, int type) {
 }
 
 int main(int argc, const char *const argv[]) {
+  int start = 0;
   char line[32768];
   int hours = 0;
   int type = 0;
@@ -293,7 +294,11 @@ int main(int argc, const char *const argv[]) {
     }
     // continue reading
     while(fgets(line, sizeof(line), stdin) != NULL) {
-      if(pcre_exec(preg_tme, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
+      if(!start && 
+	 (pcre_exec(preg_tme, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0)) {
+	start = 1; // found matching time string (all following lines are newer)
+      }
+      if(start) {
 	if(pcre_exec(preg, NULL, line, strlen(line), 0, 0, NULL, 0) >= 0) {
 	  printf("%s", line);
 	}
