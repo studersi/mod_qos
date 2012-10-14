@@ -1,4 +1,6 @@
-Version
+Version 10.10
+
+ - Add DNT HTTP request header to the default request header white list.
 
  - qslog "-pc" supports counting established connections.
 

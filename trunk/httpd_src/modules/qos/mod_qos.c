@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.416 2012-06-26 19:58:13 pbuchbinder Exp $";
-static const char g_revision[] = "10.9";
+static const char revision[] = "$Id: mod_qos.c,v 5.417 2012-10-14 14:01:11 pbuchbinder Exp $";
+static const char g_revision[] = "10.10";
 
 /************************************************************************
  * Includes
@@ -816,6 +816,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Content-Type", "^("QS_H_CONTENT"){1}([ ]?,[ ]?"QS_H_CONTENT")*$", QS_FLT_ACTION_DENY, 200 },
   { "Cookie", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 3000 },
   { "Cookie2", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 3000 },
+  { "DNT", "^[0-9]+$", QS_FLT_ACTION_DROP, 3 },
   { "Expect", "^"QS_H_EXPECT"+$", QS_FLT_ACTION_DROP, 200 },
   { "From", "^"QS_H_FROM"+$", QS_FLT_ACTION_DROP, 100 },
   { "Host", "^"QS_H_HOST"$", QS_FLT_ACTION_DROP, 100 },

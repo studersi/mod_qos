@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.207 2012-09-19 20:51:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.208 2012-10-14 14:01:11 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -774,6 +774,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_UserTrackingCookieNameForce.htt"
 fi
 
+sleep 60
 # MaxRequestsPerChild&QS_SrvMinDataRate
 ./run.sh -s ./scripts/MaxRequestsPerChild.htt
 if [ $? -ne 0 ]; then
