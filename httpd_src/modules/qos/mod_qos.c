@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.418 2012-11-19 20:05:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.419 2012-11-19 20:10:13 pbuchbinder Exp $";
 static const char g_revision[] = "10.11";
 
 /************************************************************************
@@ -5691,28 +5691,28 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
           int level = APLOG_ERR;
           /* disabled by vip priv */
           if(cconf && cconf->is_vip) {
-            level = APLOG_INFO;
+            level = APLOG_DEBUG;
             cconf->has_lowrate = 1; /* mark connection low rate */
           }
           /* disabled for this request/connection */
           if(inctx->disabled) {
-            level = APLOG_INFO;
+            level = APLOG_DEBUG;
             cconf->has_lowrate = 1; /* mark connection low rate */
           }
           /* enable only if min. num of connection reached */
           if(currentcon <= sconf->req_rate_start) {
-            level = APLOG_INFO;
+            level = APLOG_DEBUG;
             cconf->has_lowrate = 1; /* mark connection low rate */
           }
           ip = qos_inc_block(inctx->c, sconf, cconf, ip);
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
                        QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
                        " c=%s",
-                       level == APLOG_INFO ? 
+                       level == APLOG_DEBUG ? 
                        "log only (allowed)" 
                        : "access denied",
                        QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
-          if(level == APLOG_INFO) {
+          if(level == APLOG_DEBUG) {
             inctx->time = now;
             inctx->nbytes = 0;
           } else {
@@ -5732,17 +5732,17 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
               int level = APLOG_ERR;
               /* disabled by vip priv */
               if(cconf && cconf->is_vip) {
-                level = APLOG_INFO;
+                level = APLOG_DEBUG;
                 cconf->has_lowrate = 1; /* mark connection low rate */
               }
               /* disabled for this request/connection */
               if(inctx->disabled) {
-                level = APLOG_INFO;
+                level = APLOG_DEBUG;
                 cconf->has_lowrate = 1; /* mark connection low rate */
               }
               /* enable only if min. num of connection reached */
               if(currentcon <= sconf->req_rate_start) {
-                level = APLOG_INFO;
+                level = APLOG_DEBUG;
                 cconf->has_lowrate = 1; /* mark connection low rate */
               }
               ip = qos_inc_block(inctx->c, sconf, cconf, ip);
@@ -5750,14 +5750,14 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                            QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
                            " this connection=%d,"
                            " c=%s",
-                           level == APLOG_INFO ? 
+                           level == APLOG_DEBUG ? 
                            "log only (allowed)" 
                            : "access denied",
                            inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
                            req_rate,
                            rate,
                            QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
-              if(level == APLOG_INFO) {
+              if(level == APLOG_DEBUG) {
                 inctx->time = interval + sconf->qs_req_rate_tm;
                 inctx->nbytes = 0;
               } else {
