@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.27 2011-09-09 19:53:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.28 2012-11-19 20:05:49 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,6 +53,7 @@ typedef struct {
   /* ev block */
   short int block;
   short int limit;
+  short int blockMsg;
   time_t time;
   time_t block_time;
   time_t limit_time;
