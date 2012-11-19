@@ -3,6 +3,8 @@ Version 10.11
  - Don't write QS_ClientEventBlockCount event messages (060) every
    time a client is blocked.
 
+ - Adjust log message severity of permitted QS_SrvMinDataRate rule
+   violations from 'info' to 'debug'.
 
 Version 10.10
 
