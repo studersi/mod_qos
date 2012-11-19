@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvMaxConnPerIP_10.htt,v 1.2 2010-08-02 17:47:38 pbuchbinder Exp $
+# $Id: QS_SrvMaxConnPerIP_10.htt,v 1.3 2012-11-19 20:18:06 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -88,7 +88,7 @@ _WAIT
 _CLOSE
 
 _SLEEP 200
-_EXPECT EXEC "\[error\] mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=10, concurrent connections=.*, message repeated 17 times"
+_EXPECT EXEC "\[error\] mod_qos\(031\): access denied \(previously\), QS_SrvMaxConnPerIP rule: max=10, concurrent connections=.*, message repeated 17 times"
 _EXEC tail -1 logs/error_log
 
 END
