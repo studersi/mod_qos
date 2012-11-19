@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.417 2012-10-14 14:01:11 pbuchbinder Exp $";
-static const char g_revision[] = "10.10";
+static const char revision[] = "$Id: mod_qos.c,v 5.418 2012-11-19 20:05:49 pbuchbinder Exp $";
+static const char g_revision[] = "10.11";
 
 /************************************************************************
  * Includes
@@ -275,6 +275,7 @@ typedef struct {
   /* ev block */
   short int block;
   short int limit;
+  short int blockMsg;
   time_t time;
   time_t block_time;
   time_t limit_time;
@@ -1275,6 +1276,7 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->vip = 0;
   (*pB)->lowrate = 0;
   (*pB)->block = 0;
+  (*pB)->blockMsg = 0;
   (*pB)->block_time = 0;
   (*pB)->limit = 0;
   (*pB)->limit_time = 0;
@@ -4352,6 +4354,19 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     if(block_event || limit_event || lowrate || unusual_bahavior) {
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
+        if((*e)->blockMsg > QS_LOG_REPEAT) {
+          // write remaining log lines
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r->connection->base_server,
+                       QOS_LOG_PFX(060)"access denied (previously), QS_ClientEventBlockCount rule: "
+                       "max=%d, current=%d, "
+                       "message repeated %d times, "
+                       "c=%s",
+                       sconf->qos_cc_block,
+                       (*e)->block,
+                       (*e)->blockMsg % QS_LOG_REPEAT,
+                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection));
+          (*e)->blockMsg = 0;
+        }
         (*e)->block = 0;
         (*e)->block_time = 0;
       }
@@ -4508,6 +4523,19 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       const char *block_event_str = apr_table_get(r->subprocess_env, QS_BLOCK);
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
+        if((*e)->blockMsg > QS_LOG_REPEAT) {
+          // write remaining log lines
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r->connection->base_server,
+                       QOS_LOG_PFX(060)"access denied (previously), QS_ClientEventBlockCount rule: "
+                       "max=%d, current=%d, "
+                       "message repeated %d times, "
+                       "c=%s",
+                       sconf->qos_cc_block,
+                       (*e)->block,
+                       (*e)->blockMsg % QS_LOG_REPEAT,
+                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection));
+          (*e)->blockMsg = 0;
+        }
         (*e)->block = 0;
         (*e)->block_time = 0;
       }
@@ -6296,9 +6324,9 @@ static int qos_process_connection(conn_rec *c) {
           return qos_return_error(c);
         }
       } else {
-        if(e->error > 0) {
+        if(e->error > QS_LOG_REPEAT) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                       QOS_LOG_PFX(031)"access denied, QS_SrvMaxConnPerIP rule: max=%d,"
+                       QOS_LOG_PFX(031)"access denied (previously), QS_SrvMaxConnPerIP rule: max=%d,"
                        " concurrent connections=%d,"
                        " message repeated %d times,"
                        " c=%s",
@@ -6355,18 +6383,47 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
     if((*e)->block >= sconf->qos_cc_block) {
       apr_time_t now = time(NULL);
       if(((*e)->block_time + sconf->qos_cc_block_time) > now) {
-        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                     QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
-                     "max=%d, current=%d, c=%s",
-                     sconf->qos_cc_block,
-                     (*e)->block,
-                     QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
+        (*e)->blockMsg++;;
+        // stop logging every event if we have logged it many times
+        if((*e)->blockMsg > QS_LOG_REPEAT) {
+          if(((*e)->blockMsg % QS_LOG_REPEAT) == 0) {
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                         QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
+                         "max=%d, current=%d, "
+                         "message repeated %d times, "
+                         "c=%s",
+                         sconf->qos_cc_block,
+                         (*e)->block,
+                         QS_LOG_REPEAT,
+                         QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
+          }
+        } else {
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                       QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
+                       "max=%d, current=%d, c=%s",
+                       sconf->qos_cc_block,
+                       (*e)->block,
+                       QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
+        }
         if(!sconf->log_only) {
           c->keepalive = AP_CONN_CLOSE;
           ret = m_retcode;
         }
       } else {
         /* release */
+        if((*e)->blockMsg > QS_LOG_REPEAT) {
+          // write remaining log lines
+          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                       QOS_LOG_PFX(060)"access denied (previously), QS_ClientEventBlockCount rule: "
+                       "max=%d, current=%d, "
+                       "message repeated %d times, "
+                       "c=%s",
+                       sconf->qos_cc_block,
+                       (*e)->block,
+                       (*e)->blockMsg % QS_LOG_REPEAT,
+                       QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));          
+          (*e)->blockMsg = 0;
+        }
         (*e)->block = 0;
         (*e)->block_time = 0;
       }

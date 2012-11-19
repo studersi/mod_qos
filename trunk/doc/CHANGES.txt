@@ -1,3 +1,9 @@
+Version 10.11
+
+ - Don't write QS_ClientEventBlockCount event messages (060) every
+   time a client is blocked.
+
+
 Version 10.10
 
  - Add DNT HTTP request header to the default request header white list.
