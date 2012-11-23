@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.419 2012-11-19 20:10:13 pbuchbinder Exp $";
-static const char g_revision[] = "10.11";
+static const char revision[] = "$Id: mod_qos.c,v 5.420 2012-11-23 20:21:49 pbuchbinder Exp $";
+static const char g_revision[] = "10.12";
 
 /************************************************************************
  * Includes
@@ -4291,23 +4291,23 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
 
     ne.ip = cconf->ip;
     if(sconf->qos_cc_forwardedfor) {
-      const char *forwadedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
-      if(forwadedfor == NULL && r->prev) {
+      const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
+      if(forwardedfor == NULL && r->prev) {
         // experimental (internal redirect?)
-        forwadedfor = apr_table_get(r->prev->headers_in, sconf->qos_cc_forwardedfor);
+        forwardedfor = apr_table_get(r->prev->headers_in, sconf->qos_cc_forwardedfor);
       }
-      if(forwadedfor == NULL && r->main) {
+      if(forwardedfor == NULL && r->main) {
         // experimental (internal redirect?)
-        forwadedfor = apr_table_get(r->main->headers_in, sconf->qos_cc_forwardedfor);
+        forwardedfor = apr_table_get(r->main->headers_in, sconf->qos_cc_forwardedfor);
       }
-      if(forwadedfor) {
-        nef.ip = qos_ip_str2long(r, forwadedfor);
+      if(forwardedfor) {
+        nef.ip = qos_ip_str2long(r, forwardedfor);
         if(nef.ip == 0) {
           if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                           QOS_LOG_PFX(069)"no valid IP header found (@logger):"
                           " invalid header value '%s', fallback to connection's IP %s, id=%s",
-                          forwadedfor,
+                          forwardedfor,
                           QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "069"));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
@@ -4432,15 +4432,15 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     ne.ip = cconf->ip;
     nef.ip = 0;
     if(sconf->qos_cc_forwardedfor) {
-      const char *forwadedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
-      if(forwadedfor) {
-        nef.ip = qos_ip_str2long(r, forwadedfor);
+      const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
+      if(forwardedfor) {
+        nef.ip = qos_ip_str2long(r, forwardedfor);
         if(nef.ip == 0) {
           if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                           QOS_LOG_PFX(069)"no valid IP header found (@hp):"
                           " invalid header value '%s', fallback to connection's IP %s, id=%s",
-                          forwadedfor,
+                          forwardedfor,
                           QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "069"));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
@@ -5096,11 +5096,11 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
         unsigned long ip = qos_inet_addr(address);
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
         if(ip) {
-          unsigned long long html;
-          unsigned long long cssjs;
-          unsigned long long img;
-          unsigned long long other;
-          unsigned long long notmodified;
+          unsigned long html;
+          unsigned long cssjs;
+          unsigned long img;
+          unsigned long other;
+          unsigned long notmodified;
           qos_s_entry_t **e = NULL;
           qos_s_entry_t new;
           int found = 0;
@@ -5201,23 +5201,28 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           ap_rprintf(r, "<tr class=\"rows\">"
                      "<td colspan=\"3\"></td>"
                      "<td style=\"width:9%%\">all clients</td>"
-                     "<td style=\"width:9%%\">%llu</td>"
-                     "<td style=\"width:9%%\">%llu</td>"
-                     "<td style=\"width:9%%\">%llu</td>"
-                     "<td style=\"width:9%%\">%llu</td>"
-                     "<td style=\"width:9%%\">%llu</td>"
+                     "<td style=\"width:9%%\">%lu</td>"
+                     "<td style=\"width:9%%\">%lu</td>"
+                     "<td style=\"width:9%%\">%lu</td>"
+                     "<td style=\"width:9%%\">%lu</td>"
+                     "<td style=\"width:9%%\">%lu</td>"
                      "</tr>", html, cssjs, img, other, notmodified);
           if(sconf->static_on == 1) {
+            unsigned long shtml = sconf->static_html;
+            unsigned long scssjs = sconf->static_cssjs;
+            unsigned long simg = sconf->static_img;
+            unsigned long sother = sconf->static_other;
+            unsigned long snotmodified = sconf->static_notmodified;
             ap_rprintf(r, "<tr class=\"rows\">"
                        "<td colspan=\"3\"></td>"
                        "<td style=\"width:9%%\">configured (global)</td>"
-                       "<td style=\"width:9%%\">%llu</td>"
-                       "<td style=\"width:9%%\">%llu</td>"
-                       "<td style=\"width:9%%\">%llu</td>"
-                       "<td style=\"width:9%%\">%llu</td>"
-                       "<td style=\"width:9%%\">%llu</td>"
-                       "</tr>", sconf->static_html, sconf->static_cssjs,
-                       sconf->static_img, sconf->static_other, sconf->static_notmodified);
+                       "<td style=\"width:9%%\">%lu</td>"
+                       "<td style=\"width:9%%\">%lu</td>"
+                       "<td style=\"width:9%%\">%lu</td>"
+                       "<td style=\"width:9%%\">%lu</td>"
+                       "<td style=\"width:9%%\">%lu</td>"
+                       "</tr>", shtml, scssjs,
+                       simg, sother, snotmodified);
           }
         }
       }
@@ -6511,9 +6516,9 @@ static int qos_post_read_request(request_rec *r) {
   const char *connectionid = apr_table_get(r->connection->notes, QS_CONNID);
   if(country) {
     if(sconf->qos_cc_forwardedfor) {
-      const char *forwadedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
-      if(forwadedfor) {
-        unsigned long ip = qos_geo_str2long(r->pool, forwadedfor);
+      const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
+      if(forwardedfor) {
+        unsigned long ip = qos_geo_str2long(r->pool, forwardedfor);
         if(ip) {
           qos_geo_t *pB = bsearch(&ip,
                                   sconf->geodb,
@@ -6528,7 +6533,7 @@ static int qos_post_read_request(request_rec *r) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                           QOS_LOG_PFX(069)"no valid IP header found (@prr):"
                           " invalid header value '%s', fallback to connection's IP %s, id=%s",
-                          forwadedfor,
+                          forwardedfor,
                           QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "069"));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");

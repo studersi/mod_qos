@@ -1,3 +1,8 @@
+Version 10.12
+
+ - Fixed: Per-client status viewer did not show numbers correctly
+   (depending on the platform it has been compiled for).
+
 Version 10.11
 
  - Don't write QS_ClientEventBlockCount event messages (060) every

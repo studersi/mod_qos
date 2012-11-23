@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.10 2012-09-20 15:19:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.11 2012-11-23 20:21:51 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -246,7 +246,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     determine the severity (syslog level) for each log line.\n");
   qs_man_print(man, "     The default pattern '"QS_DEFAULTPATTERN"' can\n");
   qs_man_print(man, "     be used for Apache error log messages but you may configure\n");
-  qs_man_print(man, "     your own pattern matchin and other log format too. Use brackets\n");
+  qs_man_print(man, "     your own pattern matching and other log format too. Use brackets\n");
   qs_man_print(man, "     to define the string enclosing the severity string.\n");
   qs_man_print(man, "     Default level (if severity can't be determined) is defined by the\n");
   qs_man_print(man, "     option '-d' (see below).\n");
