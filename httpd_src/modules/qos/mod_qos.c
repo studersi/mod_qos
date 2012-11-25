@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.421 2012-11-25 19:48:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.422 2012-11-25 21:59:11 pbuchbinder Exp $";
 static const char g_revision[] = "10.13";
 
 /************************************************************************
@@ -3848,7 +3848,7 @@ static void qos_lg_event_update(request_rec *r, apr_time_t *t) {
 }
 
 /**
- * QS_EventLimitCount
+ * QS_EventLimitCount, detect and enforce
  */
 static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
   apr_status_t rv = DECLINED;
@@ -3860,6 +3860,8 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
     apr_global_mutex_lock(act->lock);     /* @CRT41 */
     for(i = 0; i < sconf->event_limit_a->nelts; i++) {
       if(apr_table_get(r->subprocess_env, entry->env_var) != NULL) {
+        char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, entry->env_var, NULL);
+        apr_table_set(r->notes, eventLimitId, "");
         // reset required (expired)?
         if(entry->limit_time + entry->seconds < now) {
           entry->limit = 0;
@@ -3881,7 +3883,6 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
                         entry->env_var, entry->max, entry->limit,
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "013"));
-          apr_table_set(r->notes, QS_R013_ALREADY_BLOCKED, "");
         }
       }
       // next rule
@@ -4353,6 +4354,41 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
 //                          const char *errstr) {
 //  return;
 //}
+
+/**
+ * QS_EventLimitCount, detect/update only
+ */
+static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
+  qs_actable_t *act = sconf->act;
+  if(act->event_entry) {
+    apr_time_t now = apr_time_sec(r->request_time);
+    int i;
+    qos_event_limit_entry_t *entry = act->event_entry;
+    apr_global_mutex_lock(act->lock);     /* @CRT42 */
+    for(i = 0; i < sconf->event_limit_a->nelts; i++) {
+      if(apr_table_get(r->subprocess_env, entry->env_var) != NULL) {
+        // increment only once
+        char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, entry->env_var, NULL);
+        if(apr_table_get(r->notes, eventLimitId) == NULL) {
+          // reset required (expired)?
+          if(entry->limit_time + entry->seconds < now) {
+            entry->limit = 0;
+            entry->limit_time = 0;
+          }
+          /* increment limit event */
+          entry->limit++;
+          if(entry->limit == 1) {
+            /* ... and start timer */
+            entry->limit_time = now;
+          }
+        }
+      }
+      // next rule
+      entry++;
+    }
+    apr_global_mutex_unlock(act->lock);   /* @CRT42 */
+  }
+}
 
 /**
  * client contol rules at log transaction
@@ -5612,6 +5648,35 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         }
         ap_rputs("</tr>\n", r);
         e = e->next;
+      }
+      /* event limit */
+      if(sconf->event_limit_a->nelts > 0) {
+        int ie = 0;
+        qos_event_limit_entry_t *event_limit = sconf->act->event_entry;
+        ap_rputs("<tr class=\"rowt\">"
+                 "<td colspan=\"5\"><div title=\"QS_EventLimitCount\">events</div></td>"
+                 "<td colspan=\"1\">limit</td>"
+                 "<td colspan=\"1\">seconds</td>"
+                 "<td colspan=\"2\">current</td>", r);
+        ap_rputs("</tr>\n", r);
+        for(ie = 0; ie < sconf->event_limit_a->nelts; ie++) {
+          int edelta = event_limit->limit_time + event_limit->seconds - now;
+          int elimit = event_limit->limit;
+          if(event_limit->limit_time + event_limit->seconds <= now) {
+            elimit = 0;
+            edelta = 0;
+          }
+          ap_rprintf(r, "<tr class=\"rows\">"
+                     "<td colspan=\"5\">%s</td>"
+                     "<td>%d</td><td>%ds</td><td>%d</td><td>%ds</td>"
+                     "</tr>\n",
+                     event_limit->env_var,
+                     event_limit->max,
+                     event_limit->seconds,
+                     elimit,
+                     edelta);
+          event_limit++;
+        }
       }
       /* connection level */
       if(sconf) {
@@ -7868,6 +7933,7 @@ static int qos_logger(request_rec *r) {
   qos_end_res_rate(r, sconf);
   qos_setenvif(r, sconf);
   qos_logger_cc(r, sconf, rctx);
+  qos_logger_event_limit(r, sconf);
   if(base) {
     base->requests++;
   }
