@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.420 2012-11-23 20:21:49 pbuchbinder Exp $";
-static const char g_revision[] = "10.12";
+static const char revision[] = "$Id: mod_qos.c,v 5.421 2012-11-25 19:48:47 pbuchbinder Exp $";
+static const char g_revision[] = "10.13";
 
 /************************************************************************
  * Includes
@@ -108,6 +108,7 @@ static const char g_revision[] = "10.12";
 #define QS_REC_COOKIE "mod_qos::gc"
 #define QS_R010_ALREADY_BLOCKED "R010B"
 #define QS_R012_ALREADY_BLOCKED "R012B"
+#define QS_R013_ALREADY_BLOCKED "R013B"
 #define QS_PKT_RATE_TH    3
 #define QS_BW_SAMPLING_RATE 10
 // split linear QS_SrvMaxConnPerIP* entry (conn->conn_ip) search:
@@ -426,6 +427,17 @@ typedef struct {
   time_t time;
 } qos_session_t;
 
+/**
+ * cfg/act entry for event limitation
+ */
+typedef struct {
+  const char *env_var;// configured environment variable name
+  int max;            // configured max. num
+  int seconds;        // configured duration
+  int limit;          // event counter
+  time_t limit_time;  // timer
+} qos_event_limit_entry_t;
+
 /** 
  * access control table entry
  */
@@ -473,6 +485,8 @@ typedef struct qs_actable_st {
   /** rule entry list */
   qs_acentry_t *entry; /* shm pointer */
   int has_events;
+  /** event limit list */
+  qos_event_limit_entry_t *event_entry;
   /** mutex */
   char *lock_file;
   apr_global_mutex_t *lock;
@@ -586,6 +600,7 @@ typedef struct {
   /* event rule (enables rule validation) */
   int has_event_filter;
   int has_event_limit;
+  apr_array_header_t *event_limit_a;
   /* min data rate */
   int req_rate;               /* GLOBAL ONLY */
   int req_rate_start;         /* GLOBAL ONLY */
@@ -1946,10 +1961,13 @@ static apr_status_t qos_cleanup_shm(void *p) {
 
 /**
  * init the shared memory of the act
- * act->conn          <- start
- * act->conn->conn_ip <- start + sizeof(conn) * QS_MEM_SEG
- *                     + [max_ip]
- * act->entry         <- 
+ *  act->conn          <- start
+ *  act->conn->conn_ip <- start + sizeof(conn) * QS_MEM_SEG
+ *                      + [max_ip]
+ *  act->entry         <- 
+ *                      + [rule_entries]
+ *  act->event_limit   <-
+ *                      + [event_limit_entries]
  */
 static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actable_t *act,
                                  apr_table_t *table, int maxclients) {
@@ -1958,6 +1976,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   int i;
   int rule_entries = apr_table_elts(table)->nelts;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(table)->elts;
+  int event_limit_entries = sconf->event_limit_a->nelts;
   qs_acentry_t *e = NULL;
   int max_ip;
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &sconf->server_limit);
@@ -1967,8 +1986,9 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   max_ip = maxclients > 0 ? maxclients : max_ip;
   act->size = (max_ip * QS_MEM_SEG * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
+    (event_limit_entries * APR_ALIGN_DEFAULT(sizeof(qos_event_limit_entry_t))) +
     APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
-    1024;
+    2048;
   /* use anonymous shm by default */
   res = apr_shm_create(&act->m, act->size, NULL, act->pool);
   if(APR_STATUS_IS_ENOTIMPL(res)) {
@@ -2046,6 +2066,32 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
         e = e->next;
       } else {
         e->next = NULL;
+      }
+    }
+    if(event_limit_entries == 0) {
+      act->event_entry = NULL;
+    } else {
+      // source (config) event limit array
+      qos_event_limit_entry_t *eves = (qos_event_limit_entry_t *)sconf->event_limit_a->elts;
+      // target (act) event limit array
+      qos_event_limit_entry_t *evet;
+      if(e) {
+        // end of the last act rule entry
+        act->event_entry = (qos_event_limit_entry_t *)&e[1];
+      } else {
+        // end of the last connection entry
+        act->event_entry = (qos_event_limit_entry_t *)ce;
+      }
+      evet = act->event_entry;
+      // set config
+      for(i = 0; i < event_limit_entries; i++) {
+        evet->env_var = eves->env_var;
+        evet->max = eves->max;
+        evet->seconds = eves->seconds;
+        evet->limit = 0;
+        evet->limit_time = 0;
+        evet++;
+        eves++;
       }
     }
   }
@@ -3799,6 +3845,65 @@ static void qos_lg_event_update(request_rec *r, apr_time_t *t) {
       apr_global_mutex_unlock(act->lock);   /* @CRT13 */
     }
   }
+}
+
+/**
+ * QS_EventLimitCount
+ */
+static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
+  apr_status_t rv = DECLINED;
+  qs_actable_t *act = sconf->act;
+  if(act->event_entry) {
+    apr_time_t now = apr_time_sec(r->request_time);
+    int i;
+    qos_event_limit_entry_t *entry = act->event_entry;
+    apr_global_mutex_lock(act->lock);     /* @CRT41 */
+    for(i = 0; i < sconf->event_limit_a->nelts; i++) {
+      if(apr_table_get(r->subprocess_env, entry->env_var) != NULL) {
+        // reset required (expired)?
+        if(entry->limit_time + entry->seconds < now) {
+          entry->limit = 0;
+          entry->limit_time = 0;
+        }
+        /* increment limit event */
+        entry->limit++;
+        if(entry->limit == 1) {
+          /* ... and start timer */
+          entry->limit_time = now;
+        }
+        // check limit
+        if(entry->limit > entry->max) {
+          rv = m_retcode;
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                        QOS_LOG_PFX(013)"access denied, QS_EventLimitCount rule: %s,"
+                        " max=%d, current=%d,"
+                        " c=%s, id=%s",
+                        entry->env_var, entry->max, entry->limit,
+                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                        qos_unique_id(r, "013"));
+          apr_table_set(r->notes, QS_R013_ALREADY_BLOCKED, "");
+        }
+      }
+      // next rule
+      entry++;
+    }
+    apr_global_mutex_unlock(act->lock);   /* @CRT41 */
+  }
+  if(rv != DECLINED) {
+    int rc;
+    const char *error_page = sconf->error_page;
+    qs_req_ctx *rctx = qos_rctx_config_get(r);
+    rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+    if(!sconf->log_only) {
+      rc = qos_error_response(r, error_page);
+      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+        rv = rc;
+      }
+    } else {
+      return DECLINED;
+    }
+  }
+  return rv;
 }
 
 /**
@@ -6808,6 +6913,14 @@ static int qos_header_parser(request_rec * r) {
     }
 
     /*
+     * QS_EventLimitCount
+     */
+    status = qos_hp_event_limit(r, sconf);
+    if(status != DECLINED) {
+      return status;
+    }
+
+    /*
      * QS_EventRequestLimit
      */
     if(sconf->has_event_filter) {
@@ -8671,6 +8784,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_clients = 1024;
   sconf->has_event_filter = 0;
   sconf->has_event_limit = 0;
+  sconf->event_limit_a = apr_array_make(p, 2, sizeof(qos_event_limit_entry_t));
   sconf->mfile = NULL;
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
@@ -8802,6 +8916,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->req_rate_start = b->req_rate_start;
   o->min_rate = b->min_rate;
   o->min_rate_max = b->min_rate_max;
+  o->event_limit_a = apr_array_append(p, b->event_limit_a, o->event_limit_a);
   /* end GLOBAL ONLY directives */
   if(o->disable_handler == -1) {
     o->disable_handler = b->disable_handler;
@@ -9234,6 +9349,25 @@ const char *qos_event_bps_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
   rule->condition = NULL;
   rule->limit = -1;
   apr_table_setn(sconf->location_t, rule->url, (char *)rule);
+  return NULL;
+}
+
+const char *qos_event_limit_cmd(cmd_parms *cmd, void *dcfg, const char *event,
+                                const char *number, const char *seconds) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qos_event_limit_entry_t *new = apr_array_push(sconf->event_limit_a);
+  new->env_var = apr_pstrdup(cmd->pool, event);
+  new->max = atoi(number);
+  new->seconds = atoi(seconds);
+  if(new->max == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  if(new->seconds == 0) {
+    return apr_psprintf(cmd->pool, "%s: seconds must be numeric value >0", 
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
@@ -10772,6 +10906,12 @@ static const command_rec qos_config_cmds[] = {
                 " longer delay than smaller ones). By default, no limitation is active."
                 " This directive should be used in conjunction with QS_EventRequestLimit"
                 " only (you must use the same variable name for both directives)."),
+  AP_INIT_TAKE3("QS_EventLimitCount", qos_event_limit_cmd, NULL,
+                RSRC_CONF,
+                "QS_EventLimitCount <env-variable> <number> <seconds>,"
+                " Defines the maximum number of events allowed within the defined"
+                " time. Requests are denied when reaching this limitation for the"
+                " specified time (blocked at request level)."),
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIf [!]<variable1> [!]<variable1> [!]<variable=value>,"

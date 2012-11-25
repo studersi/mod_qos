@@ -721,12 +721,14 @@ execution to ensure that the necessary variables are set.
 
 <ul>
 <li>
+<a name="QS_EventRequestLimit"></a>
 <code>QS_EventRequestLimit &lt;env-variable&gt;[=&lt;regex&gt] &lt;number&gt;</code><br>
 Defines the number of concurrent events. Directive works similar to 
 <code>QS_LocRequestLimit</code>, but counts the requests having the same 
 environment variable (and optionally matching its value, too) rather than those that have the same URL pattern.
 </li>
 <li>
+<a name="QS_EventPerSecLimit"></a>
 <code>QS_EventPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
 Defines how often requests may have the defined environment variable 
 (literal string) set. It measures the occurrences of the defined 
@@ -740,6 +742,7 @@ Events are limited by adding a delay to each request causing an
 event.
 </li>
 <li>
+<a name="QS_EventKBytesPerSecLimit"></a>
 <code>QS_EventKBytesPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
 Throttles the download bandwidth of all requests having the defined 
 variable set to the defined kbytes per second. Responses are slowed 
@@ -749,6 +752,13 @@ This directive should be used in conjunction with <code>QS_EventRequestLimit</co
 only (you must use the same variable name for both directives).
 </li>
 <li>
+<a name="QS_EventLimitCount"></a>
+<code>QS_EventLimitCount &lt;env-variable&gt; &lt;number&gt; &lt;seconds&gt;</code><br>
+Defines the maximum number of events allowed within the defined time. Requests are 
+denied when reaching this limitation for the specified time (blocked at request level).
+</li>
+<li>
+<a name="QS_SetEnvIf"></a>
 <code>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; [!]&lt;variable=value&gt;</code><br>
 Sets (or unsets) the "variable=value" (literal string) if variable1 (literal string) 
 AND variable2 (literal string) are set in the request environment 
@@ -756,12 +766,14 @@ variable list (not case sensitive). This is used to combine multiple
 variables to a new event type.
 </li>
 <li>
+<a name="QS_SetEnv"></a>
 <code>QS_SetEnv &lt;env-variable&gt; &lt;value&gt;</code><br>
 Sets the defined variable with the value where the value string may contain 
 other environment variables surrounded by "${" and "}". The variable is only 
 set if all defined variables within the value have been resolved.
 </li>
 <li>
+<a name="QS_SetEnvIfQuery"></a>
 <code>QS_SetEnvIfQuery &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Directive works quite similar to the <code>SetEnvIf</code> directive 
 of the Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html" target="_blank">mod_setenvif</a>, 
@@ -771,6 +783,7 @@ recognizes the occurrences of $1..$9 within value and replaces them by
 the sub-expressions of the defined regex pattern.
 </li>
 <li>
+<a name="QS_SetEnvIfParp"></a>
 <code>QS_SetEnvIfParp &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Directive parsing the request payload using the Apache module 
 <a href="http://parp.sourceforge.net" target="_blank">mod_parp</a>. It matches 
@@ -791,6 +804,7 @@ request message body using the <code>QS_LimitRequestBody</code> directive
 when using <code>QS_SetEnvIfParp</code>!
 </li>
 <li>
+<a name="QS_SetEnvIfBody"></a>
 <code>QS_SetEnvIfBody &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Directive parsing the request body using the Apache module 
 <a href="http://parp.sourceforge.net" target="_blank">mod_parp</a>. Specify the content 
@@ -804,6 +818,7 @@ the variable value and replaces it by the sub-expressions of the defined regex
 pattern.
 </li>
 <li>
+<a name="QS_SetEnvIfStatus"></a>
 <code>QS_SetEnvIfStatus &lt;code&gt; &lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Sets the defined variable in the request environment if the HTTP 
 response status code matches the defined code. This may be used 
@@ -816,6 +831,7 @@ the special code <code>NullConnection</code> detects connections which are
 closed event no HTTP request has been received.
 </li>
 <li>
+<a name="QS_SetEnvIfResBody"></a>
 <code>QS_SetEnvIfResBody &lt;string&gt; &lt;env-variable&gt;</code><br>
 Adds the defined environment variable (e.g., <code>QS_Block</code>) if the 
 response body contains the defined literal string. Used on a per-
@@ -824,28 +840,33 @@ level. Only one directive may be defined per location
 (one search string per response).
 </li>
 <li>
+<a name="QS_SetEnvResHeader"></a>
 <code>QS_SetEnvResHeader &lt;header name&gt; [drop]</code><br>
 Sets the defined HTTP response header to the request environment variables. 
 Deletes the specified header if the action 'drop' has been specified.
 </li>
 <li>
+<a name="QS_SetEnvResHeaderMatch"></a>
 <code>QS_SetEnvResHeaderMatch &lt;header name&gt; &lt;regex&gt;</code><br>
 Sets the defined HTTP response header to the request environment variables if 
 the specified regular expression (pcre not case sensitive) matches 
 the header value.
 </li>
 <li>
+<a name="QS_SetEnvRes"></a>
 <code>QS_SetEnvRes &lt;env-variable&gt; &lt;regex&gt; &lt;env-variable2&gt;[=&lt;value&gt;]</code><br>
 Sets the environmet variable (env-variable2) if the regular expression (regex) matches 
 against the value of the environment variable (env-variable). Occurrences of $1..$9 within 
 the value are replaced by parenthesized subexpressions of the regular expression.
 </li>
 <li>
+<a name="QS_SetReqHeader"></a>
 <code>QS_SetReqHeader &lt;header name&gt; &lt;env-variable&gt;</code><br>
 Sets the defined HTTP request header to the request if the specified 
 environment variable is set.
 </li>
 <li>
+<a name="QS_UnsetResHeader"></a>
 <code>QS_UnsetResHeader &lt;header name&gt;</code><br>
 Removes the specified response header.
 </li>
