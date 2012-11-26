@@ -1,7 +1,7 @@
 #
-# $Id: QS_EventLimitCount.htt,v 1.1 2012-11-26 13:06:25 pbuchbinder Exp $
+# $Id: QS_EventLimitCount.htt,v 1.2 2012-11-26 19:45:13 pbuchbinder Exp $
 #
-#   QS_SetEnvIfQuery              TicketEvent TicketEvent1
+#   QS_SetEnvIfQuery              TicketEvent1 TicketEvent1
 #   QS_EventLimitCount            TicketEvent1 10 5
 #   QS_SetEnvIfStatus             409 TicketEvent2
 #   QS_EventLimitCount            TicketEvent2 10 5
@@ -16,7 +16,7 @@ CLIENT
 #
 _LOOP 10
 _REQ localhost $QS_PORT_BASE
-__GET /htt/index1.html?TicketEvent HTTP/1.1
+__GET /htt/index1.html?TicketEvent1 HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __Req: 01
@@ -27,7 +27,7 @@ _WAIT
 _END LOOP
 
 _REQ localhost $QS_PORT_BASE
-__GET /htt/index1.html?TicketEvent HTTP/1.1
+__GET /htt/index1.html?TicketEvent1 HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __Req: 02
@@ -94,7 +94,7 @@ _CLOSE
 _SLEEP 6000
 
 _REQ localhost $QS_PORT_BASE
-__GET /htt/index1.html?TicketEvent HTTP/1.1
+__GET /htt/index1.html?TicketEvent1 HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __Req: 07
