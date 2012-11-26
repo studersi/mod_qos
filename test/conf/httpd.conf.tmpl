@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.224 2012-11-25 21:59:12 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.225 2012-11-26 13:06:25 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -303,9 +303,11 @@ ErrorDocument 404 /error-docs/error404.html
    QS_LocRequestLimitMatch       .*YODA.* 4
    QS_CondLocRequestLimitMatch   .*YODA.* 4 YODA
 
-   # event linit
-   QS_SetEnvIfQuery              TicketEvent TicketEvent
-   QS_EventLimitCount            TicketEvent 10 10
+   # event limit
+   QS_SetEnvIfQuery              TicketEvent TicketEvent1
+   QS_EventLimitCount            TicketEvent1 10 5
+   QS_SetEnvIfStatus             409 TicketEvent2
+   QS_EventLimitCount            TicketEvent2 10 5
 
    # local, no proxy
    QS_LocRequestLimit            /demo/sn-fb-dstk-war/getStatus       100
