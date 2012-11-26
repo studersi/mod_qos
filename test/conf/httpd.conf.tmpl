@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.225 2012-11-26 13:06:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.226 2012-11-26 19:45:12 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -304,7 +304,7 @@ ErrorDocument 404 /error-docs/error404.html
    QS_CondLocRequestLimitMatch   .*YODA.* 4 YODA
 
    # event limit
-   QS_SetEnvIfQuery              TicketEvent TicketEvent1
+   QS_SetEnvIfQuery              TicketEvent1 TicketEvent1
    QS_EventLimitCount            TicketEvent1 10 5
    QS_SetEnvIfStatus             409 TicketEvent2
    QS_EventLimitCount            TicketEvent2 10 5
