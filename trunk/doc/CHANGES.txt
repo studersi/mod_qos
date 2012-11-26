@@ -1,3 +1,7 @@
+Version 10.13
+
+ - Add new directive QS_EventLimitCount.
+
 Version 10.12
 
  - Fixed: Per-client status viewer did not show numbers correctly

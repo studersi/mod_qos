@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.422 2012-11-25 21:59:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.423 2012-11-26 13:06:25 pbuchbinder Exp $";
 static const char g_revision[] = "10.13";
 
 /************************************************************************
@@ -4996,6 +4996,23 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
                      now > (e->interval + (QS_BW_SAMPLING_RATE*3)) ? 0 : e->req_per_sec);
         }
         e = e->next;
+      }
+      /* event limit */
+      if(sconf->event_limit_a->nelts > 0) {
+        int ie = 0;
+        qos_event_limit_entry_t *event_limit = sconf->act->event_entry;
+        for(ie = 0; ie < sconf->event_limit_a->nelts; ie++) {
+          int elimit = event_limit->limit;
+          if(event_limit->limit_time + event_limit->seconds <= now) {
+            elimit = 0;
+          }
+          ap_rprintf(r, "%s"QOS_DELIM"QS_EventLimitCount"QOS_DELIM"%d/%d[%s]: %d\n", sn,
+                     event_limit->max,
+                     event_limit->seconds,
+                     event_limit->env_var,
+                     elimit);
+          event_limit++;
+        }
       }
       if(sconf->max_conn != -1) {
         ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConn"QOS_DELIM"%d[]: %d\n", sn,
