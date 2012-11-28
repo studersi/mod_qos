@@ -1,3 +1,8 @@
+Version 
+
+ - Minor changes to status viewer (color for QS_EventLimitCount
+   counter).
+
 Version 10.13
 
  - Add new directive QS_EventLimitCount.
