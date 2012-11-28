@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.423 2012-11-26 13:06:25 pbuchbinder Exp $";
-static const char g_revision[] = "10.13";
+static const char revision[] = "$Id: mod_qos.c,v 5.424 2012-11-28 19:49:52 pbuchbinder Exp $";
+static const char g_revision[] = "10.14";
 
 /************************************************************************
  * Includes
@@ -5668,6 +5668,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       }
       /* event limit */
       if(sconf->event_limit_a->nelts > 0) {
+        char *red = "style=\"background-color: rgb(240,153,155);\"";
         int ie = 0;
         qos_event_limit_entry_t *event_limit = sconf->act->event_entry;
         ap_rputs("<tr class=\"rowt\">"
@@ -5685,11 +5686,12 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           }
           ap_rprintf(r, "<tr class=\"rows\">"
                      "<td colspan=\"5\">%s</td>"
-                     "<td>%d</td><td>%ds</td><td>%d</td><td>%ds</td>"
+                     "<td>%d</td><td>%ds</td><td %s>%d</td><td>%ds</td>"
                      "</tr>\n",
                      event_limit->env_var,
                      event_limit->max,
                      event_limit->seconds,
+                     elimit >= event_limit->max ? red : "",
                      elimit,
                      edelta);
           event_limit++;
