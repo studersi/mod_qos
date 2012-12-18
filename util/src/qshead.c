@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qshead.c,v 1.1 2012-09-19 18:48:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qshead.c,v 1.2 2012-12-18 19:32:50 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -48,7 +48,9 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  qs_man_print(man, "Utility reads from stdin and prints all lines to stdout until reaching the defined pattern.\n");
+  qs_man_print(man, "%s - an utility reading from stdin and printing all"
+               " lines to stdout until"
+               " reaching the defined pattern.\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SYNOPSIS\n");

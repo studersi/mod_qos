@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.10 2012-09-20 15:19:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.11 2012-12-18 19:32:50 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -73,7 +73,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  qs_man_print(man, "Print matching patterns within a file.\n");
+  qs_man_print(man, "%s - prints matching patterns within a file.\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SYNOPSIS\n");

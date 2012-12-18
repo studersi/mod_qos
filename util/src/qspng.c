@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.16 2012-09-20 15:19:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.17 2012-12-18 19:32:50 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -558,7 +558,7 @@ static void usage(char *cmd, int man) {
   printf("\n");
   if(man) {
     printf(".SH NAME\n");
-    qs_man_print(man, "Utility to draw a png graph from qslog(1) output data.\n");
+    qs_man_print(man, "%s - an utility to draw a png graph from qslog(1) output data.\n", cmd);
   } else {
     qs_man_print(man, "Utility to draw a png graph from qslog output data.\n");
   }
