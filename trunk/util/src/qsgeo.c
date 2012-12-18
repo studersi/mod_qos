@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.7 2012-09-20 15:19:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.8 2012-12-18 19:32:50 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -150,7 +150,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  qs_man_print(man, "%s - lookup of the client's country code.\n", cmd);
+  qs_man_print(man, "%s - an utility to lookup a client's country code.\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SYNOPSIS\n");

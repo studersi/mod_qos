@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qscheck.c,v 1.6 2012-09-20 15:19:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qscheck.c,v 1.7 2012-12-18 19:32:50 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +35,10 @@ static const char revision[] = "$Id: qscheck.c,v 1.6 2012-09-20 15:19:21 pbuchbi
 #include <sys/socket.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <ctype.h>
+#include <arpa/inet.h>
+
+#include "qs_util.h"
 
 //#include <config.h>
 

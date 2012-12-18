@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.17 2012-09-20 15:19:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.18 2012-12-18 19:32:50 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -75,7 +75,8 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  printf("%s - parses the data received via stdin and executes the defined command on a pattern match.\n", cmd);
+  printf("%s %s- parses the data received via stdin and executes the defined command on a pattern match.\n",
+         cmd, man ? "\\" : "");
   printf("\n");
   if(man) {
     printf(".SH SYNOPSIS\n");

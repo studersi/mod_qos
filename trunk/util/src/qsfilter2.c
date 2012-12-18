@@ -29,7 +29,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.72 2012-09-20 15:19:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.73 2012-12-18 19:32:50 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -349,7 +349,8 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  qs_man_print(man, "Utility to generate mod_qos request line rules out from\n");
+  qs_man_print(man, "%s - an utility to generate mod_qos request line rules out from\n",
+               cmd);
   qs_man_print(man, "existing access/audit log data.\n");
   printf("\n");
   if(man) {
