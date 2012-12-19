@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.424 2012-11-28 19:49:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.425 2012-12-19 19:28:50 pbuchbinder Exp $";
 static const char g_revision[] = "10.14";
 
 /************************************************************************
@@ -215,11 +215,13 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 #if (AP_SERVER_MINORVERSION_NUMBER == 4)
 #define QS_APACHE_24 1
 #define QS_CONN_REMOTEIP(c) c->client_ip
+#define QS_CONN_REMOTEADDR(c) c->client_addr
 #define QOS_MY_GENERATION(g) ap_mpm_query(AP_MPMQ_GENERATION, &g)
 #define qos_unixd_set_global_mutex_perms ap_unixd_set_global_mutex_perms
 #else
 #define QS_APACHE_22 1
 #define QS_CONN_REMOTEIP(c) c->remote_ip
+#define QS_CONN_REMOTEADDR(c) c->remote_addr
 #define QOS_MY_GENERATION(g) g = ap_my_generation
 #define qos_unixd_set_global_mutex_perms unixd_set_global_mutex_perms
 #endif

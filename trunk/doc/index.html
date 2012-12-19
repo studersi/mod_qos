@@ -650,7 +650,7 @@ that has occured during a request.
 </li>
 <li>
 <code>QS_Country</code><br>
-ISO 3166 country code of client IP address. Only available if the <a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.<br>
+ISO 3166 country code of client IPv4 address. Only available if the <a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.<br>
 Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 override the client's IP address based on the value within the defined HTTP request 
 header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
@@ -1404,10 +1404,10 @@ The file is a Comma Separated Value (CSV) format file
 Each line contains the following fields:
 <ul>
 <li>
-Double quoted beginning <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">IP number</id></i> of the address range, e.g. "1052272128" for 62.184.102.0
+Double quoted beginning <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">IPv4 number</id></i> of the address range, e.g. "1052272128" for 62.184.102.0
 </li>
 <li>
-Double quoted ending <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">IP number</id></i> of the address range, e.g. "1052272543" for 62.184.103.159.
+Double quoted ending <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">IPv4 number</id></i> of the address range, e.g. "1052272543" for 62.184.103.159.
 </li>
 <li>
 Double quoted ISO 3166 country code, e.g. "FR" for France.
@@ -1416,7 +1416,7 @@ Double quoted ISO 3166 country code, e.g. "FR" for France.
 </li>
 <li>
 <code>QS_ClientGeoCountryPriv &lt;list&gt; &lt;connections&gt;</code><br>
-Defines a comma separated list of country codes for origin client IP address 
+Defines a comma separated list of country codes for origin client IPv4 address 
 which are allowed to access the server even if the number of busy TCP 
 connections reaches the defined number of connections.
 </li>
