@@ -107,7 +107,6 @@ Listen         ##QS_PORT_BASE##
 
 </VirtualHost>
 
-
 Listen         ##QS_PORT_BASE1##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE1##>
   ServerName   127.0.0.1
@@ -122,3 +121,16 @@ Listen         ##QS_PORT_BASE1##
   </Location>
 
 </VirtualHost>
+
+Listen                  [::1]:##QS_PORT_BASE10##
+<VirtualHost [::1]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+
+   QS_LocRequestLimit         /htt/limit2      2
+
+</VirtualHost>
+
