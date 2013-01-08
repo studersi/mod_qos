@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.226 2012-11-26 19:45:12 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.227 2013-01-08 06:33:08 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -110,6 +110,10 @@ QS_ResponseHeaderFilterRule serverheader  "^[0-9]+$" 20
 
 <IfDefine real_ip>
 QS_EnableInternalIPSimulation off
+</IfDefine>
+
+<IfDefine ErrorResponse503>
+QS_ErrorResponseCode    503
 </IfDefine>
 
 QS_ClientEventRequestLimit 2
