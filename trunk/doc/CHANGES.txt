@@ -5,6 +5,9 @@ Version
 
  - 3594444: adapted man page subject.
 
+ - QS_ErrorResponseCode verifies that the defined error code is
+   valid resp. known by Apache.
+
 Version 10.13
 
  - Add new directive QS_EventLimitCount.

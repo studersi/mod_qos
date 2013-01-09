@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.426 2013-01-03 19:41:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.427 2013-01-09 20:03:16 pbuchbinder Exp $";
 static const char g_revision[] = "10.14";
 
 /************************************************************************
@@ -4701,7 +4701,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                             cconf->sconf->qos_cc_block,
                             (*e)->block,
                             QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
-        ret = m_retcode;
+        ret = m_retcode; // FIXME (check for log only mode)
         (*e)->lowrate = apr_time_sec(r->request_time);
       }
     }
@@ -9780,13 +9780,21 @@ const char *qos_chroot_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
  */
 const char *qos_error_code_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  int idx500 = ap_index_of_response(HTTP_INTERNAL_SERVER_ERROR);
   if (err != NULL) {
     return err;
   }
   m_retcode = atoi(arg);
   if((m_retcode < 400) || (m_retcode > 599)) {
-    return apr_psprintf(cmd->pool, "%s: error code must be a numeric value between 400 and 599", 
+    return apr_psprintf(cmd->pool, "%s: HTTP response code code must be a"
+                        " numeric value between 400 and 599", 
                         cmd->directive->directive);
+  }
+  if(m_retcode != 500) {
+    if(ap_index_of_response(m_retcode) == idx500) {
+      return apr_psprintf(cmd->pool, "%s: unsupported HTTP response code", 
+                          cmd->directive->directive);
+    }
   }
   return NULL;
 }

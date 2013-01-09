@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.227 2013-01-08 06:33:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.228 2013-01-09 20:03:16 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -114,6 +114,10 @@ QS_EnableInternalIPSimulation off
 
 <IfDefine ErrorResponse503>
 QS_ErrorResponseCode    503
+</IfDefine>
+<IfDefine ErrorResponse429>
+# unknown status code
+QS_ErrorResponseCode    429
 </IfDefine>
 
 QS_ClientEventRequestLimit 2
