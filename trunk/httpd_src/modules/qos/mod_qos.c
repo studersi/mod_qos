@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.428 2013-01-09 20:09:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.429 2013-01-10 19:19:24 pbuchbinder Exp $";
 static const char g_revision[] = "10.14";
 
 /************************************************************************
@@ -4707,7 +4707,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                             cconf->sconf->qos_cc_block,
                             (*e)->block,
                             QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
-        ret = m_retcode; // FIXME (check for log only mode)
+        ret = m_retcode;
         (*e)->lowrate = apr_time_sec(r->request_time);
       }
     }
