@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.429 2013-01-10 19:19:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.430 2013-01-10 21:41:06 pbuchbinder Exp $";
 static const char g_revision[] = "10.14";
 
 /************************************************************************
@@ -1749,7 +1749,11 @@ static char *qos_get_remove_cookie(request_rec *r, const char *cookie_name) {
       /* restore cookie header appending the part left*/
       if(p && p[0]) {
         if(cookie_h[0]) {
-          cookie_h = apr_pstrcat(r->pool, cookie_h, " ", p, NULL);
+          if(p[0] == ' ') {
+            cookie_h = apr_pstrcat(r->pool, cookie_h, p, NULL);
+          } else {
+            cookie_h = apr_pstrcat(r->pool, cookie_h, " ", p, NULL);
+          }
         } else {
           cookie_h = apr_pstrcat(r->pool, p, NULL);
         }
