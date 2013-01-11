@@ -22,6 +22,10 @@ __Host: localhost
 __
 _EXPECT . "AS1"
 _WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(010\): access denied, QS_LocRequestLimit\* rule"
+_EXEC tail -1 logs/error_log
 
 END
 
