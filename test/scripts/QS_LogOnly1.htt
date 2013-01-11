@@ -18,6 +18,9 @@ __
 _EXPECT . "test index.html"
 _WAIT
 _END LOOP
-
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3"
+_EXEC tail -1 logs/error_log
 
 END
