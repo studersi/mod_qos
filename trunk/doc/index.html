@@ -312,7 +312,9 @@ match the request. By default, no limitations are active.
 <a name="QS_LocRequestPerSecLimitMatch"></a>
 <code>QS_LocRequestPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
 Defines the allowed number of requests per second to the URL (path and query) 
-pattern. Requests are limited by adding a delay to each request (linear). 
+pattern. Requests are limited by adding a delay to each request (linear). The 
+delay calculation is based on an average request rate measurement using a 
+sampling rate of 10 seconds. 
 By default, no limitation is active. This directive should be used in 
 conjunction with <code>QS_LocRequestLimitMatch</code> only (you must use 
 the very same regex pattern with the <code>QS_LocRequestPerSecLimitMatch</code> 
@@ -347,22 +349,24 @@ number of concurrent requests to a virtual host.
 <li>
 <a name="QS_LocRequestPerSecLimit"></a>
 <code>QS_LocRequestPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
-Defines the allowed number of requests per second to a location. The maximum 
-number of requests is limited by adding a delay to each request (linear, each 
-request gets the same delay). By default, no limitation is active. This 
-directive should be used in conjunction with <code>QS_LocRequestLimit</code> 
+Defines the allowed number of requests per second to a location, similar to 
+the <a href="#QS_LocRequestPerSecLimitMatch"><code>QS_LocRequestPerSecLimitMatch</code></a> 
+directive. The maximum number of requests is limited by adding a delay to 
+each request (linear, each request gets the same delay). By default, 
+no limitation is active.
+This directive should be used in conjunction with <code>QS_LocRequestLimit</code> 
 only (you must use the same location for both directives). 
 Has lower priority than <code>QS_LocRequestPerSecLimitMatch</code>.
 </li>
 <li>
 <a name="QS_LocKBytesPerSecLimit"></a>
 <code>QS_LocKBytesPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
-Throttles the download bandwidth to the defined kbytes per second. works simlar 
-as the <code>QS_LocKBytesPerSecLimitMatch</code> directive slowing down HTTP 
-responses by adding a delay to each response. By default, no limitation is active. 
-This directive should be used in conjunction with <code>QS_LocRequestLimit</code> 
-only (you must use the same location for both directives). Has lower priority 
-than <code>QS_LocKBytesPerSecLimitMatch</code>.
+Throttles the download bandwidth to the defined kbytes per second. Works simlar 
+as the <a href="#QS_LocKBytesPerSecLimitMatch"><code>QS_LocKBytesPerSecLimitMatch</code></a> 
+directive slowing down HTTP responses by adding a delay to each response. 
+By default, no limitation is active. This directive should be used in conjunction 
+with <code>QS_LocRequestLimit</code> only (you must use the same location for 
+both directives). Has lower priority than <code>QS_LocKBytesPerSecLimitMatch</code>.
 </li>
 <li>
 <a name="QS_ErrorPage"></a>
@@ -748,9 +752,9 @@ environment variable (and optionally matching its value, too) rather than those 
 Defines how often requests may have the defined environment variable 
 (literal string) set. It measures the occurrences of the defined 
 environment variable on a request per seconds level and tries to 
-limit this occurrence to the defined number. It works similar to
-as <code>QS_LocRequestPerSecLimit</code>, but counts only 
-the requests with the specified variable (or without it
+limit this occurrence to the defined number. It works similar as 
+<a href="#QS_LocRequestPerSecLimit"><code>QS_LocRequestPerSecLimit</code></a>, 
+but counts only the requests with the specified variable (or without it
 if the variable name is prefixed by a "!"). If a request matches 
 multiple events, the rule with the lowest bandwidth is applied. 
 Events are limited by adding a delay to each request causing an 
@@ -762,7 +766,9 @@ event.
 Throttles the download bandwidth of all requests having the defined 
 variable set to the defined kbytes per second. Responses are slowed 
 by adding a delay to each response (non-linear, bigger files get 
-longer delay than smaller ones). By default, no limitation is active. 
+longer delay than smaller ones). The delay calculation is based on 
+an average request rate measurement using a sampling rate of 10 seconds.
+By default, no limitation is active. 
 This directive should be used in conjunction with <code>QS_EventRequestLimit</code> 
 only (you must use the same variable name for both directives).
 </li>
@@ -1572,13 +1578,15 @@ A machine-readable version of the status information is available when using
 the request query string <code>auto</code>, e.g., <code>http://your.server.name/qos?auto</code>. 
 The page updates itself automatically every 10 seconds if you add the request 
 query string <code>refresh</code>, e.g., <code>http://your.server.name/qos?refresh</code>.
+</p>
+<p>
 The status information is also provided on the server status page of  
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_status.html" target="_blank">mod_status</a>.
 </p>
 <p>
 Use the directive <code>QS_DisableHandler on</code> to disable the qos-viewer and qos-console for 
 a virtual host in order to prevent accidental activation of these functions, includng by configuration 
-settings by per-directory files (e.g., .htaccess).
+settings of per-directory files (e.g., .htaccess).
 </p>
 
 <a name="webconsole"></a>
