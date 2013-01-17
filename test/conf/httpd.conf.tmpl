@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.228 2013-01-09 20:03:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.229 2013-01-17 20:32:30 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -162,6 +162,7 @@ LoadModule              setenvifplus_module libexec/mod_setenvifplus.so
 LoadModule              cache_module ##ROOT##/../httpd/modules/cache/.libs/mod_cache.so
 LoadModule              mem_cache_module ##ROOT##/../httpd/modules/cache/.libs/mod_mem_cache.so
 LoadModule              rewrite_module ##ROOT##/../httpd/modules/mappers/.libs/mod_rewrite.so
+LoadModule              websocket_module libexec/mod_websocket.so
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
@@ -260,6 +261,7 @@ ErrorDocument 404 /error-docs/error404.html
    ProxyPass                  /cgi-local !
    ProxyPass                  /cgi-local_s !
    ProxyPass                  /hadsu !
+   ProxyPass                  /echo !
 
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
@@ -440,6 +442,10 @@ ErrorDocument 404 /error-docs/error404.html
    </Location>
    <Location /info>
        SetHandler server-info
+   </Location>
+   <Location /echo>
+       SetHandler websocket-handler
+       WebSocketHandler libexec/mod_websocket_echo.so echo_init
    </Location>
 
 <IfDefine DisableHandler>
