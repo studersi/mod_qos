@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.29 2013-01-03 19:41:14 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.30 2013-01-17 20:32:30 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -109,6 +109,13 @@ if [ -f ../3thrdparty/modsecurity/rules/modsecurity_crs_40_generic_attacks.conf 
 	MSID=`expr $MSID + 1`
     done
 fi
+
+cd libexec
+rm -f mod_websocket.so
+rm -f mod_websocket_echo.so
+ln -s ../../mod-websocket/.libs/mod_websocket.so .
+ln -s ../../mod-websocket/.libs/mod_websocket_echo.so .
+cd ..
 
 cd ./bin
 cc -o sleep sleep.c

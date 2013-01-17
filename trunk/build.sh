@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.61 2013-01-14 21:59:50 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.62 2013-01-17 20:32:30 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -71,6 +71,7 @@ if [ "$1" = "release" ]; then
   echo "release binary"
   CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_REQ_RATE_TM=10 -DI_INSIST_ON_EXTRA_CYCLES_FOR_CLF_COMPLIANCE"
   export CFLAGS 
+  ADDMOD="--prefix=/var/tmp/apache"
 else
   CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g -Wall"
   export CFLAGS 
@@ -113,6 +114,7 @@ if [ $? -ne 0 ]; then
   echo "ERROR"
   exit 1
 fi
+make install
 
 if [ "$1" = "release" ]; then
   strip modules/qos/.libs/mod_qos.so
@@ -121,6 +123,13 @@ if [ "$1" = "release" ]; then
     exit 1
   fi
 fi
+cd ..
+
+mkdir -p mod-websocket
+cd mod-websocket
+tar xfz ../3thrdparty/apache-websocket.tgz
+/var/tmp/apache/bin/apxs -c mod_websocket.c
+/var/tmp/apache/bin/apxs -c mod_websocket_echo.c
 cd ..
 
 cd util
