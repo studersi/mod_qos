@@ -1,6 +1,8 @@
 /**
  *
- * Copyright (C) 2012 Pascal Buchbinder
+ * (very) simple password vault.
+ * 
+ * Copyright (C) 2012-2013 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -26,6 +28,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/stat.h>
 
 /* apr */
 #include <pcre.h>
@@ -50,7 +53,7 @@
 #include <openssl/err.h>
 #include <openssl/safestack.h>
 
-static const char revision[] = "$Id: pws.c,v 1.8 2012-01-17 19:44:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: pws.c,v 1.9 2013-01-21 19:08:15 pbuchbinder Exp $";
 
 #define MAX_LINE 32768
 #define QOSCR    13
@@ -60,9 +63,9 @@ static const char revision[] = "$Id: pws.c,v 1.8 2012-01-17 19:44:40 pbuchbinder
 #define CHECKA   "pws-dummyaccount"
 
 typedef struct {
-  char *d;
-  char *e;
-  char *comment;
+  char *name;    // account/login id
+  char *pwd;     // encrypted password
+  char *comment; // comment about the account
 } pwd_t;
 
 /**
@@ -88,6 +91,9 @@ static int fgetLine(char *s, int n, apr_file_t *f) {
   }
 }
 
+/**
+ * Decrypts the b64 encoded data, see encrypt64()
+ */
 static char *decrypt64(apr_pool_t *pool, unsigned char *key, const char *str) {
   EVP_CIPHER_CTX cipher_ctx;
   int len = 0;
@@ -126,7 +132,9 @@ static char *decrypt64(apr_pool_t *pool, unsigned char *key, const char *str) {
   return NULL;
 }
 
-// TODO vary length
+/**
+ * Encryptes and b64 encodes the provided string, see decrypt64()
+ */
 static char *encrypt64(apr_pool_t *pool, unsigned char *key, const char *str) {
   char *e;
   EVP_CIPHER_CTX cipher_ctx;
@@ -167,17 +175,20 @@ static char *encrypt64(apr_pool_t *pool, unsigned char *key, const char *str) {
   return NULL;
 }
 
+/**
+ * creates a new passphrase (proposal, user can modify it)
+ */
 static char *genPwd(apr_pool_t *pool) {
   char *p;
   char *e;
-  int len;
   unsigned char *rand = apr_pcalloc(pool, RAND_SIZE);
   RAND_bytes(rand, RAND_SIZE);
   e = (char *)apr_pcalloc(pool, 1 + apr_base64_encode_len(RAND_SIZE));
-  len = apr_base64_encode(e, (const char *)rand, RAND_SIZE);
+  apr_base64_encode(e, (const char *)rand, RAND_SIZE);
   e[12] = '\0';
-  e[e[2]%10+1] = '.';
+  e[e[2]%10+1] = '.'; // ensure we have at least one special char
   p = e;
+  // replace chars which we don't like
   while(p && p[0]) {
     if(p[0] == 'I') {
       p[0] = 'i';
@@ -186,35 +197,22 @@ static char *genPwd(apr_pool_t *pool) {
       p[0] = 'L';
     }
     if(p[0] == '1') {
-      p[0] = ',';
+      p[0] = 'k';
+    }
+    if(p[0] == '+') {
+      p[0] = '5';
+    }
+    if(p[0] == '/') {
+      p[0] = 'B';
     }
     p++;
   }
   return e;
 }
 
-static void writeDb(apr_pool_t *pool, const char *db, apr_table_t *entries) {
-  apr_file_t *f = NULL;
-  char *bak = apr_pstrcat(pool, db, ".bak", NULL);
-  rename(db, bak);
-  if(apr_file_open(&f, db, APR_WRITE|APR_CREATE|APR_TRUNCATE,
-		   APR_OS_DEFAULT, pool) == APR_SUCCESS) {
-    int i;
-    apr_table_entry_t *entry = (apr_table_entry_t *) apr_table_elts(entries)->elts;
-    for(i = 0; i < apr_table_elts(entries)->nelts; i++) {
-      char *name = entry[i].key;
-      pwd_t *e = (pwd_t *)entry[i].val;
-      apr_file_printf(f, "%s%s%s%s%s\n", name,
-		      DELIM, e->e, 
-		      DELIM, e->comment ? e->comment : "");
-    }
-    apr_file_close(f);
-    chmod(db, S_IRUSR|S_IWUSR);
-  } else {
-    fprintf(stderr, "ERROR, failed to write database file\n");
-  }
-}
-
+/**
+ * Sets the master passphrase for the db
+ */
 static void setKey(apr_pool_t *pool, const char *pwd, unsigned char *key) {
   unsigned char *sec = (unsigned char *)apr_pstrcat(pool, pwd, "ksG2.asd/amindHdç5", NULL);
   int len = strlen((char *)sec);
@@ -224,6 +222,9 @@ static void setKey(apr_pool_t *pool, const char *pwd, unsigned char *key) {
   memset((char *)pwd, len, 0);
 }
 
+/**
+ * Gets passphrase from stdin (no echo)
+ */
 static char *readPassword(apr_pool_t *pool, const char *prompt) {
   char buf[MAX_LINE];
   buf[0] = '\0';
@@ -231,25 +232,63 @@ static char *readPassword(apr_pool_t *pool, const char *prompt) {
   return apr_pstrdup(pool, buf);
 }
 
+/**
+ * We add a dummy entry to ensure db integrity
+ */
 static void addCheckEntry(apr_pool_t *pool, apr_table_t *entries, unsigned char *key) {
   pwd_t *e = (pwd_t *)apr_table_get(entries, CHECKA);
   if(e == NULL) {
     e = apr_pcalloc(pool, sizeof(pwd_t));
-    e->d = apr_pstrdup(pool, CHECKA);
-    e->e = encrypt64(pool, key, CHECKA);
-    apr_table_setn(entries, CHECKA, (char *)e);
+    e->name = apr_pstrdup(pool, CHECKA);
+    e->pwd = apr_pstrdup(pool, CHECKA);
+    e->comment = apr_pstrdup(pool, CHECKA);
+    apr_table_setn(entries, apr_pstrdup(pool, CHECKA), (char *)e);
   }
 }
 
-static apr_table_t *readDb(apr_pool_t *pool, const char *db, unsigned char *key) {
+/**
+ * Writes all entries to the db file
+ */
+static void writeDb(apr_pool_t *pool, const char *db, unsigned char *key,
+		    apr_table_t *entries) {
   apr_file_t *f = NULL;
-  apr_table_t *entries = apr_table_make(pool, 20);
+  char *bak = apr_pstrcat(pool, db, ".bak", NULL);
+  rename(db, bak);
+  if(apr_file_open(&f, db, APR_WRITE|APR_CREATE|APR_TRUNCATE,
+		   APR_OS_DEFAULT, pool) == APR_SUCCESS) {
+    int i;
+    apr_table_entry_t *entry = (apr_table_entry_t *) apr_table_elts(entries)->elts;
+    addCheckEntry(pool, entries, key);
+    for(i = 0; i < apr_table_elts(entries)->nelts; i++) {
+      pwd_t *e = (pwd_t *)entry[i].val;
+      apr_file_printf(f, "%s"DELIM"%s"DELIM"%s\n",
+		      encrypt64(pool, key, e->name),
+		      encrypt64(pool, key, e->pwd), 
+		      encrypt64(pool, key, e->comment));
+    }
+    apr_file_close(f);
+    chmod(db, S_IRUSR|S_IWUSR);
+  } else {
+    fprintf(stderr, "ERROR, failed to write database file\n");
+  }
+}
+
+/**
+ * Reads all entries from the db file
+ */
+static apr_table_t *readDb(apr_pool_t *pool, const char *db,
+			   unsigned char *key, int action) {
+  apr_file_t *f = NULL;
+  apr_table_t *entries = apr_table_make(pool, 2000);
   char *pwd;
   pwd = readPassword(pool, "enter your passphrase: ");
   setKey(pool, pwd, key);
   if(apr_file_open(&f, db, APR_READ, APR_OS_DEFAULT, pool) == APR_SUCCESS) {
     char line[MAX_LINE];
+    int hasCHECKA = 0;
+    int lines = 0;
     while(!fgetLine(line, sizeof(line), f)) {
+      lines++;
       char *v = strstr(line, DELIM);
       char *c;
       if(v) {
@@ -260,46 +299,75 @@ static apr_table_t *readDb(apr_pool_t *pool, const char *db, unsigned char *key)
 	if(c) {
 	  c[0] = '\0';
 	  c += strlen(DELIM);
-	  entry->comment = apr_pstrdup(pool, c);
+	  entry->comment = decrypt64(pool, key, c);
 	} else {
 	  entry->comment = apr_pstrdup(pool, "");
 	}
-	entry->e = apr_pstrdup(pool, v);
-	entry->d = decrypt64(pool, key, v); 
-	if(entry->d == NULL) {
-	  if(strcmp(line, CHECKA) == 0) {
-	    // invalid passphrase!
-	    fprintf(stderr, "ERROR, invalid passphrase\n");
-	    exit(1);
+	entry->pwd = decrypt64(pool, key, v); 
+	entry->name = decrypt64(pool, key, line);
+	if(entry->pwd && entry->name && entry->comment) {
+	  if(strcmp(entry->pwd, CHECKA) == 0) {
+	    hasCHECKA = 1;
+	  } else {
+	    apr_table_addn(entries, apr_psprintf(pool, "%03d", lines), (char *)entry);
 	  }
-	  fprintf(stderr, "ERROR, failed to decrypt password for id '%s'\n", line);
 	}
-	apr_table_addn(entries, apr_pstrdup(pool, line), (char *)entry);
       }
     }
     apr_file_close(f);
+    if(lines && !hasCHECKA) {
+      // invalid passphrase!
+      fprintf(stderr, "ERROR, invalid passphrase\n");
+      exit(1);
+    }
   } else {
-    fprintf(stderr, "ERROR, failed to read database file\n");
+    if(action) {
+      fprintf(stderr, "failed to open the database file - create new file\n");
+    } else {
+      // readonly
+      fprintf(stderr, "failed to open the database file (file does not exist"
+	      " or is not readable)\n");
+    }
   }
-  addCheckEntry(pool, entries, key);
   return entries;
+}
+
+/**
+ * Prints all entries to stdout
+ */
+static void printEntries(apr_pool_t *pool, apr_table_t *entries) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *) apr_table_elts(entries)->elts;
+  for(i = 0; i < apr_table_elts(entries)->nelts; i++) {
+    pwd_t *e = (pwd_t *)entry[i].val;
+    if(strcmp(e->pwd, CHECKA) != 0) {
+      printf("%s: [%s] %s (%s)\n", 
+	     entry[i].key,
+	     e->name,
+	     e->pwd ? e->pwd : "UNKNOWN",
+	     e->comment ? e->comment : "");
+    }
+  }
 }
 
 static void usage(const char *cmd) {
   printf("\n");
   printf("Simple password store.\n");
   printf("\n");
-  printf("Usage: %s -d <db file> [-c <id> [<comment>]] [-a <id> [<password> [<comment>]]]\n", cmd);
+  printf("Usage: %s -d <db file> [-a]|[-r]|[-m]\n", cmd);
+  printf("\n");
+  printf(" Options:\n");
+  printf(" -a Adds a new entry.\n");
+  printf(" -r Removes an entry.\n");
+  printf(" -m Changes the db's passphrase.\n");
   printf("\n");
   exit(1);
 }
 
 int main(int argc, const char *const argv[]) {
+  int action = 0;
   unsigned char key[EVP_MAX_KEY_LENGTH];
   const char *db = NULL;
-  const char *id = NULL;
-  const char *password = NULL;
-  const char *comment = NULL;
   const char *cmd = strrchr(argv[0], '/');
   apr_pool_t *pool;
   apr_table_t *entries;
@@ -320,25 +388,11 @@ int main(int argc, const char *const argv[]) {
 	db = *(++argv);
       }
     } else if(strcmp(*argv, "-a") == 0) {
-      if (--argc >= 1) {
-	id = *(++argv);
-	if (argc >= 1 && *argv[0] != '-') {
-	  password = *(++argv);
-	  argc--;
-	}
-	if (argc >= 1 && *argv[0] != '-') {
-	  comment = *(++argv);
-	  argc--;
-	}
-      }
-    } else if(argc >= 1 && strcmp(*argv, "-c") == 0) {
-      if (--argc >= 1) {
-	id = *(++argv);
-	if (argc >= 1 && *argv[0] != '-') {
-	  comment = *(++argv);
-	  argc--;
-	}
-      }
+      action = 1;
+    } else if(strcmp(*argv, "-r") == 0) {
+      action = 2;
+    } else if(strcmp(*argv, "-m") == 0) {
+      action = 3;
     } else if(argc >= 1 && strcmp(*argv,"-h") == 0) {
       usage(cmd);
     } else if(argc >= 1 && strcmp(*argv,"-?") == 0) {
@@ -352,45 +406,91 @@ int main(int argc, const char *const argv[]) {
     argv++;
   }
 
-
   if(db == NULL) {
     usage(cmd);
   }
 
-  entries = readDb(pool, db, key);
+  entries = readDb(pool, db, key, action);
 
-  if(id) {
-    // create a new entry
-    pwd_t *entry = apr_pcalloc(pool, sizeof(pwd_t));
-    if(password == NULL) {
-      password = genPwd(pool);
+  if(action == 1) {
+    // add
+    int entrynr = apr_table_elts(entries)->nelts + 1;
+    char *uid = NULL;
+    char line[1024];
+    char *pwdd = genPwd(pool);
+    char *pwd;
+    char *comment;
+    char *ack;
+    pwd_t *e = apr_pcalloc(pool, sizeof(pwd_t));
+    printf("\n");
+    while(!uid || !uid[0]) {
+      printf(" user id                  : ");
+      uid = gets(line);
     }
-    entry->d = apr_pstrdup(pool, password);
-    entry->e = encrypt64(pool, key, password);
-    if(comment) {
-      entry->comment = apr_pstrdup(pool, comment);
-    } else {
-      entry->comment = NULL;
+    e->name = apr_pstrdup(pool, uid);
+    printf(" passphrase [%s]: ", pwdd);
+    pwd = gets(line);
+    if(!pwd || !pwd[0]) {
+      pwd = pwdd;
     }
-    printf("[%s] %s (%s)\n", id,
-	   entry->d ? entry->d : "UNKNOWN",
-	   entry->comment ? entry->comment : "");
-    apr_table_setn(entries, id, (char *)entry);
-    writeDb(pool, db, entries);
-  } else {
-    // display all entries
-    int i;
-    apr_table_entry_t *entry = (apr_table_entry_t *) apr_table_elts(entries)->elts;
-    for(i = 0; i < apr_table_elts(entries)->nelts; i++) {
-      char *name = entry[i].key;
-      pwd_t *e = (pwd_t *)entry[i].val;
-      if(strcmp(name, CHECKA) != 0) {
-	printf("[%s] %s (%s)\n", name,
-	       e->d ? e->d : "UNKNOWN",
-	       e->comment ? e->comment : "");
+    e->pwd = apr_pstrdup(pool, pwd);
+    printf(" comment                  : ");
+    comment = gets(line);
+    e->comment = apr_pstrdup(pool, comment);
+
+    printf("\n %03d: [%s] %s (%s)\n\nadd this entry (y/n)? ",
+	   entrynr,
+	   e->name, e->pwd, e->comment);
+    ack = gets(line);
+    if(strcasecmp(ack, "y") == 0) {
+      apr_table_addn(entries,
+		     apr_psprintf(pool, "%03d", entrynr),
+		     (char *)e);
+      writeDb(pool, db, key, entries);
+    }
+  } else if(action == 2) {
+    // remove
+    pwd_t *e = NULL;
+    char line[1024];
+    char *id;
+    int entrynr = 0;
+    char *ack;
+    printEntries(pool, entries);
+    while(!entrynr) {
+      printf("\nenter number of the entry to remove: ");
+      id = gets(line);
+      entrynr = atoi(id);
+      e = (pwd_t *)apr_table_get(entries, apr_psprintf(pool, "%03d", entrynr));
+      if(e == NULL) {
+	entrynr = 0;
       }
     }
+    if(e) {
+      printf("\n %03d: [%s] %s (%s)\n\nremove this entry (y/n)? ",
+	     entrynr,
+	     e->name, e->pwd, e->comment);
+      ack = gets(line);
+      if(strcasecmp(ack, "y") == 0) {
+	apr_table_unset(entries,
+		       apr_psprintf(pool, "%03d", entrynr));
+	writeDb(pool, db, key, entries);
+      }
+    }
+  } else if(action == 3) {
+    // change passphrase
+    char *pwd = readPassword(pool, "enter new passphrase: ");
+    char *pwdv = readPassword(pool, "re-enter your passphrase: ");
+    if(strcmp(pwd, pwdv) == 0 && pwd[0]) {
+      setKey(pool, pwd, key);
+      writeDb(pool, db, key, entries);
+    } else {
+      fprintf(stderr, "ERROR, passphrase do not match\n");
+      exit(1);
+    }
+    return 0;
   }
+  printf("\n");
+  printEntries(pool, entries);
 
   apr_pool_destroy(pool);
   return 0;
