@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.229 2013-01-17 20:32:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.230 2013-02-19 19:34:14 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -197,6 +197,10 @@ SetEnvIf                     QS_Country  (DE)|(CH)|(AT) DACH
 SetEnvIf                     Request_URI /              QS_CR
 QS_SetEnvIf                  !DACH       QS_CR          QS_CountryLimit=limit
 QS_EventKBytesPerSecLimit    QS_CountryLimit            200
+</IfDefine>
+
+<IfDefine excludelocalglobal>
+QS_SrvMaxConnExcludeIP       127.0.0.1
 </IfDefine>
 
 ErrorDocument 404 /error-docs/error404.html
@@ -620,6 +624,9 @@ Listen                  server1:##QS_PORT_BASE1##
    # 67% of MaxClients 896 = 600
    QS_SrvMaxConnClose                        67%
    QS_SrvMaxConnPerIP                        10
+<IfDefine excludelocal>
+   QS_SrvMaxConnExcludeIP                    127.0.0.1
+</IfDefine>
 
    QS_LocRequestLimit         /no           200
    QS_LocRequestLimit         /cgi          200

@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.214 2013-01-11 19:45:34 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.215 2013-02-19 19:34:14 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -59,9 +59,20 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_QS_SrvMaxConnPerIP_10.htt"
 fi
-./ctl.sh stop > /dev/null
+./ctl.sh restart -D real_ip -D excludelocal > /dev/null
+./run.sh -se ./scripts/QS_SrvMaxConnExclude.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvMaxConnExclude.htt"
+fi
+./ctl.sh restart -D real_ip -D excludelocalglobal > /dev/null
+./run.sh -se ./scripts/QS_SrvMaxConnExclude2.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvMaxConnExclude2.htt"
+fi
 sleep 2
-./ctl.sh start > /dev/null
+./ctl.sh restart > /dev/null
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.htt" >>  logs/error_log
