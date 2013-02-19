@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.430 2013-01-10 21:41:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.431 2013-02-19 19:33:50 pbuchbinder Exp $";
 static const char g_revision[] = "10.14";
 
 /************************************************************************
@@ -259,6 +259,9 @@ static const qos_errelt_t m_error_pages[] = {
   { "/errorpages/error.html", "work/errorpages/error.html" },
   { "/errorpages/error500.html", "work/errorpages/error500.html" },
   { "/errorpages/gateway_error.html", "work/errorpages/gateway_error.html" },
+  { "/errorpages/server_error.html", "/errorpages/server_error.html" },
+  { "/errorpages/error.html", "/errorpages/error.html" },
+  { "/errorpages/error500.html", "/errorpages/error500.html" },
   { NULL, NULL }
 };
 
