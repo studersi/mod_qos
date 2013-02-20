@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.215 2013-02-19 19:34:14 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.216 2013-02-20 20:51:32 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -595,6 +595,13 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED Count.htt"
+fi
+
+./ctl.sh restart -D ErrorResponse503 -D autoerrorpage > /dev/null
+./run.sh -se ./scripts/QS_ErrorPage2.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ErrorPage2.htt"
 fi
 
 ./ctl.sh restart -D ErrorResponse503 > /dev/null

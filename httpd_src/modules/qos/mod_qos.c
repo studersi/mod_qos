@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.431 2013-02-19 19:33:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.432 2013-02-20 20:51:32 pbuchbinder Exp $";
 static const char g_revision[] = "10.14";
 
 /************************************************************************
@@ -259,9 +259,9 @@ static const qos_errelt_t m_error_pages[] = {
   { "/errorpages/error.html", "work/errorpages/error.html" },
   { "/errorpages/error500.html", "work/errorpages/error500.html" },
   { "/errorpages/gateway_error.html", "work/errorpages/gateway_error.html" },
-  { "/errorpages/server_error.html", "/errorpages/server_error.html" },
-  { "/errorpages/error.html", "/errorpages/error.html" },
-  { "/errorpages/error500.html", "/errorpages/error500.html" },
+  { "/errorpages/server_error.html", "errorpages/server_error.html" },
+  { "/errorpages/error.html", "errorpages/error.html" },
+  { "/errorpages/error500.html", "errorpages/error500.html" },
   { NULL, NULL }
 };
 
@@ -8147,13 +8147,40 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   }
 }
 
-static const char *detectErrorPage(apr_pool_t *ptemp, server_rec *bs) {
+static const char *qos_search_docroot(apr_pool_t *pconf, server_rec *bs,
+                                      ap_directive_t *node) {
+  ap_directive_t *pdir;
+  for(pdir = node; pdir != NULL; pdir = pdir->next) {
+    if(strcasecmp(pdir->directive, "DocumentRoot") == 0) {
+      return pdir->args;
+    }
+    if(pdir->first_child != NULL) {
+      const char *docroot = qos_search_docroot(pconf, bs, pdir->first_child);
+      if(docroot != NULL) {
+        return docroot;
+      }
+    }
+  }
+  return NULL;
+}
+
+static const char *detectErrorPage(apr_pool_t *ptemp, server_rec *bs, ap_directive_t *pdir) {
   const qos_errelt_t *e = m_error_pages;
   apr_finfo_t finfo;
+  const char *docroot = qos_search_docroot(ptemp, bs, pdir);
+  if(docroot) {
+    docroot = ap_server_root_relative(ptemp, docroot);
+  }
   while(e->path != NULL) {
     char *path = ap_server_root_relative(ptemp, e->path);
     if(apr_stat(&finfo, path, APR_FINFO_TYPE, ptemp) == APR_SUCCESS) {
       return e->url;
+    }
+    if(docroot) {
+      path = apr_pstrcat(ptemp, docroot, "/", e->path, NULL);
+      if(apr_stat(&finfo, path, APR_FINFO_TYPE, ptemp) == APR_SUCCESS) {
+        return e->url;
+      }
     }
     e++;
   }
@@ -8169,9 +8196,9 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_user_t *u;
   int net_prefer = 0;
   int cc_net_prefer_limit = 0;
-  ap_directive_t *pdir;
   apr_status_t rv;
-  const char *error_page = detectErrorPage(ptemp, bs);
+  ap_directive_t *pdir = ap_conftree;
+  const char *error_page = detectErrorPage(ptemp, bs, pdir);
   int auto_error_page = 0;
   qos_hostcode(ptemp, bs);
   QOS_MY_GENERATION(sconf->act->generation);

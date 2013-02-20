@@ -8,6 +8,9 @@ Version
  - QS_ErrorResponseCode verifies that the defined error code is
    valid resp. known by Apache.
 
+ - Additional html documents which may be automatically detected
+   as suitable default error documents for QS_ErrorPage.
+
 Version 10.13
 
  - Add new directive QS_EventLimitCount.
