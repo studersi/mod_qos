@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.230 2013-02-19 19:34:14 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.231 2013-02-20 20:51:32 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -200,7 +200,7 @@ QS_EventKBytesPerSecLimit    QS_CountryLimit            200
 </IfDefine>
 
 <IfDefine excludelocalglobal>
-QS_SrvMaxConnExcludeIP       127.0.0.1
+QS_SrvMaxConnExcludeIP       127.
 </IfDefine>
 
 ErrorDocument 404 /error-docs/error404.html
@@ -327,7 +327,9 @@ ErrorDocument 404 /error-docs/error404.html
    QS_LocRequestLimit            /demo/sn-fb-dstk-war/getStatus       100
    QS_LocRequestPerSecLimit      /demo/sn-fb-dstk-war/getStatus       120
 
+<IfDefine !autoerrorpage>
    QS_ErrorPage               /error-docs/error.shtml
+</IfDefine>
    SetEnvIf                   Request_URI /qos/parp/err302  QS_ErrorPage=http://server1/error.html
 
    QS_LocRequestLimitDefault                 30
