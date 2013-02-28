@@ -7,7 +7,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2012 Pascal Buchbinder
+ * Copyright (C) 2007-2013 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.14 2012-12-18 19:32:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.15 2013-02-28 20:56:06 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -65,6 +65,8 @@ static long m_messages = 0;
 static char *m_cmd = NULL;
 static int m_compress = 0;
 static int m_stdout = 0;
+static long m_counter = 0;
+static long m_limit = 2147483648 - (128 * 1024);
 
 static void usage(char *cmd, int man) {
   if(man) {
@@ -99,11 +101,15 @@ static void usage(char *cmd, int man) {
   if(man) printf(".TP\n");
   qs_man_print(man, "  -o <file>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Output log file to write the data to.\n");
+  qs_man_print(man, "     Output log file to write the data to (use absolute path).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -s <sec>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Rotation interval in seconds, default are 86400 seconds.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -b <bytes>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     File size limitation (default are %ld bytes).\n", m_limit);
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -f\n");
   if(man) printf("\n");
@@ -225,8 +231,11 @@ static void rotate(const char *cmd, const char *file_name, long *messages) {
   struct tm *ptr = localtime(&now);
   strftime(tmb, sizeof(tmb), "%Y%m%d%H%M%S", ptr);
   snprintf(arch, sizeof(arch), "%s.%s", file_name, tmb);
+
   /* set next rotation time */
   m_tLogEnd = ((now / m_tRotation) * m_tRotation) + m_tRotation;
+  // reset byte counter
+  m_counter = 0;
   
   /* rename current file */
   if(m_nLogFD >= 0) {
@@ -323,6 +332,10 @@ int main(int argc, char **argv) {
       if (--argc >= 1) {
 	m_generations = atoi(*(++argv));
       } 
+    } else if(strcmp(*argv,"-b") == 0) {
+      if (--argc >= 1) {
+	m_limit = atoi(*(++argv));
+      } 
     } else if(strcmp(*argv,"-z") == 0) {
       m_compress = 1;
     } else if(strcmp(*argv,"-p") == 0) {
@@ -344,6 +357,7 @@ int main(int argc, char **argv) {
   }
 
   if(m_file_name == NULL) usage(m_cmd, 0);
+  if(m_limit < (1024 * 1024)) usage(m_cmd, 0);
 
   if(username && getuid() == 0) {
     struct passwd *pwd = getpwnam(username);
@@ -388,6 +402,7 @@ int main(int argc, char **argv) {
     if(m_force_rotation) {
       qs_csLock();
     }
+    m_counter += nRead;
     now = time(NULL);
     /* write data if we have a file handle (else continue but drop log data,
        re-try to open the file at next rotation time) */
@@ -411,7 +426,7 @@ int main(int argc, char **argv) {
     } else {
       m_messages++;
     }
-    if(now > m_tLogEnd) {
+    if((now > m_tLogEnd) || (m_counter > m_limit)) {
       /* rotate! */
       rotate(m_cmd, m_file_name, &m_messages);
     }
@@ -421,4 +436,3 @@ int main(int argc, char **argv) {
   }
   return 0;
 }
-

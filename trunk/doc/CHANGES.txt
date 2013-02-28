@@ -11,6 +11,8 @@ Version
  - Additional html documents which may be automatically detected
    as suitable default error documents for QS_ErrorPage.
 
+ - Add option "-b" to the qsrotate utility.
+
 Version 10.13
 
  - Add new directive QS_EventLimitCount.
