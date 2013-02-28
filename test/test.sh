@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.216 2013-02-20 20:51:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.217 2013-02-28 20:56:06 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -332,9 +332,9 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED MultiRequest.htt"
 fi
-sleep 60
 
 ./ctl.sh restart -D ignore404 > /dev/null
+sleep 60
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_EventPerSecLimit404.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_EventPerSecLimit404.htt
 if [ $? -ne 0 ]; then
@@ -597,7 +597,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED Count.htt"
 fi
 
-./ctl.sh restart -D ErrorResponse503 -D autoerrorpage > /dev/null
+./ctl.sh restart -D real_ip -D autoerrorpage > /dev/null
 ./run.sh -se ./scripts/QS_ErrorPage2.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
