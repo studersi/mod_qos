@@ -1,4 +1,4 @@
-Version 
+Version 10.14
 
  - Minor changes to status viewer (color for QS_EventLimitCount
    counter).
@@ -7,9 +7,6 @@ Version
 
  - QS_ErrorResponseCode verifies that the defined error code is
    valid resp. known by Apache.
-
- - Additional html documents which may be automatically detected
-   as suitable default error documents for QS_ErrorPage.
 
  - Add option "-b" to the qsrotate utility.
 
