@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.14 2012-04-13 22:03:48 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.15 2013-03-01 12:24:08 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -134,7 +134,7 @@ Listen                  server1:##QS_PORT_BASE##
    SSLEngine              on
    ServerName             server1
 
-   TransferLog            "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
+   TransferLog            "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -f -b 103833600"
    CustomLog              "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQC -c ##ROOT##/conf/applications" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
 
    ProxyRequests              Off

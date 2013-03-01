@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.432 2013-02-20 20:51:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.433 2013-03-01 12:24:08 pbuchbinder Exp $";
 static const char g_revision[] = "10.14";
 
 /************************************************************************
@@ -259,9 +259,11 @@ static const qos_errelt_t m_error_pages[] = {
   { "/errorpages/error.html", "work/errorpages/error.html" },
   { "/errorpages/error500.html", "work/errorpages/error500.html" },
   { "/errorpages/gateway_error.html", "work/errorpages/gateway_error.html" },
+  /*
   { "/errorpages/server_error.html", "errorpages/server_error.html" },
   { "/errorpages/error.html", "errorpages/error.html" },
   { "/errorpages/error500.html", "errorpages/error500.html" },
+  */
   { NULL, NULL }
 };
 
@@ -8147,6 +8149,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   }
 }
 
+/*
 static const char *qos_search_docroot(apr_pool_t *pconf, server_rec *bs,
                                       ap_directive_t *node) {
   ap_directive_t *pdir;
@@ -8163,25 +8166,30 @@ static const char *qos_search_docroot(apr_pool_t *pconf, server_rec *bs,
   }
   return NULL;
 }
+*/
 
 static const char *detectErrorPage(apr_pool_t *ptemp, server_rec *bs, ap_directive_t *pdir) {
   const qos_errelt_t *e = m_error_pages;
   apr_finfo_t finfo;
+  /*
   const char *docroot = qos_search_docroot(ptemp, bs, pdir);
   if(docroot) {
     docroot = ap_server_root_relative(ptemp, docroot);
   }
+  */
   while(e->path != NULL) {
     char *path = ap_server_root_relative(ptemp, e->path);
     if(apr_stat(&finfo, path, APR_FINFO_TYPE, ptemp) == APR_SUCCESS) {
       return e->url;
     }
+    /*
     if(docroot) {
       path = apr_pstrcat(ptemp, docroot, "/", e->path, NULL);
       if(apr_stat(&finfo, path, APR_FINFO_TYPE, ptemp) == APR_SUCCESS) {
         return e->url;
       }
     }
+    */
     e++;
   }
   return NULL;

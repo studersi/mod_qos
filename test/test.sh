@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.217 2013-02-28 20:56:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.218 2013-03-01 12:24:09 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -597,12 +597,12 @@ if [ $? -ne 0 ]; then
     echo "FAILED Count.htt"
 fi
 
-./ctl.sh restart -D real_ip -D autoerrorpage > /dev/null
-./run.sh -se ./scripts/QS_ErrorPage2.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_ErrorPage2.htt"
-fi
+#./ctl.sh restart -D real_ip -D autoerrorpage > /dev/null
+#./run.sh -se ./scripts/QS_ErrorPage2.htt
+#if [ $? -ne 0 ]; then
+#    ERRORS=`expr $ERRORS + 1`
+#    echo "FAILED QS_ErrorPage2.htt"
+#fi
 
 ./ctl.sh restart -D ErrorResponse503 > /dev/null
 ./run.sh -se ./scripts/QS_ErrorResponseCode.htt
@@ -975,6 +975,11 @@ fi
 if [ $? -ne 0 ]; then
   ERRORS=`expr $ERRORS + 1`
   echo "FAILED qssign test failed"
+fi
+
+./qsrotate.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
 fi
 
 echo "- qsgrep"
