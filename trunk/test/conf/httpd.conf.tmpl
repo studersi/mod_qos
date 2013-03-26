@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.232 2013-03-01 12:24:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.233 2013-03-26 19:35:46 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -438,7 +438,10 @@ ErrorDocument 404 /error-docs/error404.html
 
    BrowserMatch "pass"                       QS_VipRequest=yes
    SetEnvIf     Request_URI /cgi/index2.cgi  QS_VipRequest=yes
-   #SetEnvIf     Remote_Addr 127.0.0.1       QS_VipRequest=yes
+<IfDefine ip_not_blocked>
+   SetEnvIf     Remote_Addr   127.0.0.1      QS_VipRequest=yes
+   QS_SetEnvIf  QS_VipRequest QS_Block       !QS_Block
+</IfDefine>
    <Directory /error-docs>
       SetHandler              default
    </Directory>
