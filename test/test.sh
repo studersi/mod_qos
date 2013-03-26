@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.218 2013-03-01 12:24:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.219 2013-03-26 19:35:46 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -529,6 +529,13 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventBlockCount_Status_graceful.htt"
+fi
+sleep 1
+./ctl.sh restart -D real_ip -D ip_not_blocked >/dev/null
+./run.sh -se ./scripts/QS_ClientEventBlockCount_StatusAllow.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventBlockCount_StatusAllow.htt"
 fi
 sleep 1
 
