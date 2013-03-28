@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.16 2013-03-28 19:57:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.17 2013-03-28 20:31:42 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -67,11 +67,6 @@ static int m_compress = 0;
 static int m_stdout = 0;
 static long m_counter = 0;
 static long m_limit = 2147483648 - (128 * 1024);
-
-static time_t get_now() {
-  time_t now = time(NULL);
-  return now;
-}
 
 static void usage(char *cmd, int man) {
   if(man) {
@@ -167,6 +162,15 @@ static void usage(char *cmd, int man) {
   } else {
     exit(1);
   }
+}
+
+static time_t get_now() {
+  time_t now = time(NULL);
+  struct tm lcl = *localtime(&now);
+  if(lcl.tm_isdst) {
+    now += 3600;
+  }
+  return now;
 }
 
 static int openFile(const char *cmd, const char *file_name) {
