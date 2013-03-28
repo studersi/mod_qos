@@ -1,3 +1,7 @@
+Version 10.
+
+ - qsrotate supports DST.
+
 Version 10.14
 
  - Minor changes to status viewer (color for QS_EventLimitCount
