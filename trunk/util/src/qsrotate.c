@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.15 2013-02-28 20:56:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.16 2013-03-28 19:57:48 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -67,6 +67,11 @@ static int m_compress = 0;
 static int m_stdout = 0;
 static long m_counter = 0;
 static long m_limit = 2147483648 - (128 * 1024);
+
+static time_t get_now() {
+  time_t now = time(NULL);
+  return now;
+}
 
 static void usage(char *cmd, int man) {
   if(man) {
@@ -220,14 +225,15 @@ void sigchild(int signo) {
  * Rotates a file
  *
  * @param cmd Command name to be used in log messages
+ * @param now
  * @param file_name Name of the file to rotate (rename)
  * @param messages Error message if rotation was not successful
  */
-static void rotate(const char *cmd, const char *file_name, long *messages) {
+static void rotate(const char *cmd, time_t now,
+		   const char *file_name, long *messages) {
   int rc;
   char arch[HUGE_STR+20];
   char tmb[20];
-  time_t now = time(NULL);
   struct tm *ptr = localtime(&now);
   strftime(tmb, sizeof(tmb), "%Y%m%d%H%M%S", ptr);
   snprintf(arch, sizeof(arch), "%s.%s", file_name, tmb);
@@ -285,12 +291,12 @@ static void *forcedRotationThread(void *argv) {
   time_t n;
   while(1) {
     qs_csLock();
-    now = time(NULL);
+    now = get_now();
     if(now > m_tLogEnd) {
-      rotate(m_cmd, m_file_name, &m_messages);
+      rotate(m_cmd, now, m_file_name, &m_messages);
     }
     qs_csUnLock();
-    now = time(NULL);
+    now = get_now();
     n = 1 + m_tLogEnd - now;
     sleep(n);
   }
@@ -381,7 +387,7 @@ int main(int argc, char **argv) {
   }
   
   /* set next rotation time */
-  now = time(NULL);
+  now = get_now();
   m_tLogEnd = ((now / m_tRotation) * m_tRotation) + m_tRotation;
   /* open file */
   m_nLogFD = openFile(m_cmd, m_file_name);
@@ -403,7 +409,7 @@ int main(int argc, char **argv) {
       qs_csLock();
     }
     m_counter += nRead;
-    now = time(NULL);
+    now = get_now();
     /* write data if we have a file handle (else continue but drop log data,
        re-try to open the file at next rotation time) */
     if(m_nLogFD >= 0) {
@@ -428,7 +434,7 @@ int main(int argc, char **argv) {
     }
     if((now > m_tLogEnd) || (m_counter > m_limit)) {
       /* rotate! */
-      rotate(m_cmd, m_file_name, &m_messages);
+      rotate(m_cmd, now, m_file_name, &m_messages);
     }
     if(m_force_rotation) {
       qs_csUnLock();

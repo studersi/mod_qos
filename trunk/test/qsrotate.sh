@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: qsrotate.sh,v 2.2 2013-03-26 19:35:46 pbuchbinder Exp $
+# $Id: qsrotate.sh,v 2.3 2013-03-28 19:57:48 pbuchbinder Exp $
 
 cd `dirname $0`
 PFX=[`basename $0`]
@@ -42,6 +42,7 @@ fi
 if [ $ERROR -ne 0 ]; then
     exit 1
 fi
+rm -f ${LOGFILE}*
 echo "$PFX normal end"
 exit 0
 
