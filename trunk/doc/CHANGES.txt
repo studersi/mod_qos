@@ -1,6 +1,6 @@
 Version 10.
 
- - qsrotate supports DST.
+ - qsrotate supports DST and offset to UTC.
 
 Version 10.14
 

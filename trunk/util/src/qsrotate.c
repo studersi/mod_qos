@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.17 2013-03-28 20:31:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.18 2013-03-29 19:58:25 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -67,6 +67,8 @@ static int m_compress = 0;
 static int m_stdout = 0;
 static long m_counter = 0;
 static long m_limit = 2147483648 - (128 * 1024);
+static int m_offset = 0;
+static int m_offset_enabled = 0;
 
 static void usage(char *cmd, int man) {
   if(man) {
@@ -106,6 +108,9 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "  -s <sec>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Rotation interval in seconds, default are 86400 seconds.\n");
+  qs_man_print(man, "  -t <hours>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Offset to UTC (enables also DST support), default is 0.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -b <bytes>\n");
   if(man) printf("\n");
@@ -166,9 +171,12 @@ static void usage(char *cmd, int man) {
 
 static time_t get_now() {
   time_t now = time(NULL);
-  struct tm lcl = *localtime(&now);
-  if(lcl.tm_isdst) {
-    now += 3600;
+  if(m_offset_enabled) {
+    struct tm lcl = *localtime(&now);
+    if(lcl.tm_isdst) {
+      now += 3600;
+    }
+    now += m_offset;
   }
   return now;
 }
@@ -337,6 +345,12 @@ int main(int argc, char **argv) {
     } else if(strcmp(*argv,"-s") == 0) {
       if (--argc >= 1) {
 	m_tRotation = atoi(*(++argv));
+      } 
+    } else if(strcmp(*argv,"-t") == 0) {
+      if (--argc >= 1) {
+	m_offset = atoi(*(++argv));
+	m_offset = m_offset * 3600;
+	m_offset_enabled = 1;
       } 
     } else if(strcmp(*argv,"-g") == 0) {
       if (--argc >= 1) {
