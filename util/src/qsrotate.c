@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.18 2013-03-29 19:58:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.19 2013-04-01 08:31:21 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -85,7 +85,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -o <file> [-s <sec>] [-f] [-z] [-g <num>] [-u <name>] [-p]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -o <file> [-s <sec> [-t <hours>]] [-f] [-z] [-g <num>] [-u <name>] [-p]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
