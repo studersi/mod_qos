@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.219 2013-03-26 19:35:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.220 2013-04-08 18:44:30 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -57,7 +57,13 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- client opens more than 10 con
 ./run.sh -se ./scripts/QS_SrvMaxConnPerIP_10.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_QS_SrvMaxConnPerIP_10.htt"
+    echo "FAILED QS_SrvMaxConnPerIP_10.htt"
+fi
+./ctl.sh restart -D real_ip -D SrvMaxConnPerIPConnections > /dev/null
+./run.sh -se ./scripts/QS_SrvMaxConnPerIP_10_idle.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SrvMaxConnPerIP_10_idle.htt"
 fi
 ./ctl.sh restart -D real_ip -D excludelocal > /dev/null
 ./run.sh -se ./scripts/QS_SrvMaxConnExclude.htt

@@ -1,6 +1,9 @@
-Version 10.
+Version 10.15
 
  - qsrotate supports DST and offset to UTC.
+
+ - Add the "connections" argument to the QS_SrvMaxConnPerIP directive
+   to disable the rule enforcement on idle web servers.
 
 Version 10.14
 

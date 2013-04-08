@@ -1,12 +1,12 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.233 2013-03-26 19:35:46 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.234 2013-04-08 18:44:30 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2010 Pascal Buchbinder
+# Copyright (C) 2007-2013 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -631,6 +631,10 @@ Listen                  server1:##QS_PORT_BASE1##
    QS_SrvMaxConnPerIP                        10
 <IfDefine excludelocal>
    QS_SrvMaxConnExcludeIP                    127.0.0.1
+</IfDefine>
+
+<IfDefine SrvMaxConnPerIPConnections>
+   QS_SrvMaxConnPerIP                        5 8
 </IfDefine>
 
    QS_LocRequestLimit         /no           200
