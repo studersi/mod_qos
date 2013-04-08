@@ -1238,8 +1238,11 @@ connections as a percentage of MaxClients if adding the suffix '%' to the specif
 </li>
 <li>
 <a name="QS_SrvMaxConnPerIP"></a>
-<code>QS_SrvMaxConnPerIP &lt;number&gt;</code><br>
-Defines the maximum number of connections per source IP address for this server (virtual host).
+<code>QS_SrvMaxConnPerIP &lt;number&gt; [&lt;connections&gt;]</code><br>
+Defines the maximum number of connections per source IP address for this server (virtual host). 
+The "connections" argument defines the number of busy connections of the server 
+(all virtual hosts) to enable this limitation, default is 0 (which means that the limitation 
+is always enabled, even the server is idle).
 </li>
 <li>
 <code>QS_SrvMaxConnExcludeIP &lt;address&gt;</code><br>
@@ -1728,8 +1731,9 @@ of concurrent connections for a singe IP source address.
 # used hardware):
 MaxClients              896
 
-# don't allow a single client to open more than 50 TCP connections:
-QS_SrvMaxConnPerIP      50
+# don't allow a single client to open more than 50 TCP connections if
+# the server has not more than 196 free connections:
+QS_SrvMaxConnPerIP      50 700
 </pre>
 </td></tr>
 </table>
@@ -1806,16 +1810,17 @@ QS_VipIPHeaderName       mod-qos-login
 QS_ClientPrefer          80
 
 # minimum request/response speed (deny slow clients blocking the server, 
-# e.g. defending slowloris):
-QS_SrvMinDataRate        120 1500 400
+# e.g. defending slowloris) if the server has 500 or more open connections:
+QS_SrvMinDataRate        120 1500 500
 
 # and limit request line, header and body:
 LimitRequestLine         7168
 LimitRequestFields       30
 QS_LimitRequestBody      102400
 
-# don't allow more than 30 TCP connections per client source address:
-QS_SrvMaxConnPerIP       30
+# don't allow more than 30 TCP connections per client source address if
+# 500 connections are open to the server:
+QS_SrvMaxConnPerIP       30 500
 
 # block clients violating some basic rules frequently (don't allows more than 20
 # violations within 5 minutes):

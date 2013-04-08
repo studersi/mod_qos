@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.433 2013-03-01 12:24:08 pbuchbinder Exp $";
-static const char g_revision[] = "10.14";
+static const char revision[] = "$Id: mod_qos.c,v 5.434 2013-04-08 18:44:30 pbuchbinder Exp $";
+static const char g_revision[] = "10.15";
 
 /************************************************************************
  * Includes
@@ -141,9 +141,11 @@ static const char g_revision[] = "10.14";
 #define QS_RuleId         "QS_RuleId"
 #define QS_MFILE          "/var/tmp/"
 
+// enable connection counter if one of the following feature is used
 #define QS_COUNT_CONNECTIONS(sconf) (sconf->max_conn != -1) || \
                                     (sconf->min_rate_max != -1) || \
                                     (sconf->max_conn_close != -1) || \
+                                    (sconf->max_conn_per_ip_connections != 1) || \
                                      sconf->geodb
 
 
@@ -600,6 +602,7 @@ typedef struct {
   int max_conn_close;
   int max_conn_close_percent;
   int max_conn_per_ip;
+  int max_conn_per_ip_connections;
   apr_table_t *exclude_ip;
   qos_ifctx_list_t *inctx_t;
   apr_table_t *hfilter_table; /* GLOBAL ONLY */
@@ -6508,7 +6511,8 @@ static int qos_process_connection(conn_rec *c) {
     }
     /* single source ip */
     if((sconf->max_conn_per_ip != -1) && !vip) {
-      if(current > sconf->max_conn_per_ip) {
+      if((current > sconf->max_conn_per_ip) &&
+         (all_connections >= sconf->max_conn_per_ip_connections)) {
         e->error++;
         /* only print the first 20 messages for this client */
         if(e->error <= QS_LOG_REPEAT) {
@@ -8946,6 +8950,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_conn = -1;
   sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
+  sconf->max_conn_per_ip_connections = -1;
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->hfilter_table = apr_table_make(p, 5);
   sconf->reshfilter_table = apr_table_make(p, 5);
@@ -9127,6 +9132,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->max_conn_per_ip == -1) {
     o->max_conn_per_ip = b->max_conn_per_ip;
+  }
+  if(o->max_conn_per_ip_connections == -1) {
+    o->max_conn_per_ip_connections = b->max_conn_per_ip_connections;
   }
   if(o->has_event_filter == 0) {
     o->has_event_filter = b->has_event_filter;
@@ -10020,13 +10028,22 @@ const char *qos_max_conn_close_cmd(cmd_parms *cmd, void *dcfg, const char *numbe
 /**
  * max concurrent connections per client ip
  */
-const char *qos_max_conn_ip_cmd(cmd_parms *cmd, void *dcfg, const char *number) {
+const char *qos_max_conn_ip_cmd(cmd_parms *cmd, void *dcfg, const char *number,
+                                const char *connections) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   sconf->max_conn_per_ip = atoi(number);
   if(sconf->max_conn_per_ip == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
+  }
+  if(connections) {
+    sconf->max_conn_per_ip_connections = atoi(connections);
+    if((sconf->max_conn_per_ip_connections == 0) &&
+       (strcmp(connections, "0") != 0)) {
+      return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                          cmd->directive->directive);
+    }
   }
   return NULL;
 }
@@ -10944,10 +10961,12 @@ static const command_rec qos_config_cmds[] = {
                 " each requests. You may specify the number of connections"
                 " as a percentage of MaxClients if adding the suffix '%'"
                 " to the specified value."),
-  AP_INIT_TAKE1("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
-                RSRC_CONF,
-                "QS_SrvMaxConnPerIP <number>, defines the maximum number"
-                " of connections per source IP address for this server (virtual host)."),
+  AP_INIT_TAKE12("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_SrvMaxConnPerIP <number> [<connections>], defines the maximum number"
+                 " of connections per source IP address for this server (virtual host)."
+                 " 'connections' defines the number of busy connections of the server"
+                 " (all virtual hosts) to enable this limitation, default is 0."),
   AP_INIT_TAKE1("QS_SrvMaxConnExcludeIP", qos_max_conn_ex_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an ip address or"
