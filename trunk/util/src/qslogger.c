@@ -6,7 +6,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2012 Pascal Buchbinder
+ * Copyright (C) 2007-2013 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.11 2012-11-23 20:21:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.12 2013-04-09 06:05:24 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -230,9 +230,9 @@ static void usage(const char *cmd, int man) {
   } else {
     printf("Summary\n");
   }
-  qs_man_print(man, "Use this utility to to forward log messages to the systems syslog\n");
+  qs_man_print(man, "Use this utility to forward log messages to the systems syslog\n");
   qs_man_print(man, "facility, e.g., to forward the messages to a remote host.\n");
-  qs_man_print(man, "It ready data from stdin.\n");
+  qs_man_print(man, "It reads data from stdin.\n");
   printf("\n");
   if(man) {
     printf(".SH OPTIONS\n");
