@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.26 2012-12-18 19:32:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.27 2013-04-09 06:05:24 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -589,7 +589,7 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Example (sign):\n");
   }
-  qs_man_println(man, " TransferLog \"|./bin/%s -s password -e |./bin/qsrotate -o /var/log/apache/access_log\"\n", cmd);
+  qs_man_println(man, " TransferLog \"|/bin/%s -s password -e |/bin/qsrotate -o /var/log/apache/access_log\"\n", cmd);
   printf("\n");
   if(man) {
     printf("\n");
