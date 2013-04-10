@@ -1,3 +1,7 @@
+Version
+
+ - Add 'E' to the format string of qslog.
+
 Version 10.15
 
  - qsrotate supports DST and offset to UTC.

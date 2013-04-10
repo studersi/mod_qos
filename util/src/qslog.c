@@ -9,7 +9,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2012 Pascal Buchbinder
+ * Copyright (C) 2007-2013 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,13 +28,14 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.53 2013-04-09 06:05:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.54 2013-04-10 18:39:24 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include <stdlib.h>
 #include <unistd.h>
@@ -48,6 +49,7 @@ static const char revision[] = "$Id: qslog.c,v 1.53 2013-04-09 06:05:24 pbuchbin
 #include <apr.h>
 #include <apr_portable.h>
 #include <apr_support.h>
+#include <apr_strings.h>
 
 #include "qs_util.h"
 
@@ -60,6 +62,7 @@ static const char revision[] = "$Id: qslog.c,v 1.53 2013-04-09 06:05:24 pbuchbin
 #define RULE_DELIM ':'
 #define MAX_CLIENT_ENTRIES 25000
 #define QS_GENERATIONS 14
+#define EVENT_DELIM ','
 
 /* ----------------------------------
  * structures
@@ -122,6 +125,9 @@ typedef struct stat_rec_st {
   long qos_t;
   long qos_l;
   long qos_ser;
+
+  apr_table_t *events;
+  apr_pool_t *pool;
 } stat_rec_t;
 
 /* ----------------------------------
@@ -521,7 +527,44 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
       m_offline_data = 0;
     }
   }
+  if(apr_table_elts(stat_rec->events)->nelts > 0) {
+    int i;
+    apr_table_entry_t *entry = (apr_table_entry_t *) apr_table_elts(stat_rec->events)->elts;
+    for(i = 0; i < apr_table_elts(stat_rec->events)->nelts; i++) {
+      const char *eventName = entry[i].key;
+      int *eventVal = (int *)entry[i].val;
+      fprintf(f, ";%s;%d", eventName, *eventVal);
+      (*eventVal) = 0;
+    }
+  }
   fprintf(f, "\n");
+}
+
+static void qs_updateEvents(apr_pool_t *pool, char *E, apr_table_t *events) {
+  if(!E[0]) {
+    return;
+  }
+  while(E) {
+    char *sep = strchr(E, EVENT_DELIM);
+    int *val;
+    if(sep) {
+      sep[0] = '\0';
+      sep++;
+    }
+    if(isalnum(E[0])) {
+      val = (int *)apr_table_get(events, E);
+      if(val) {
+        (*val)++;
+      } else {
+        // new event
+        char *name = apr_pstrdup(pool, E);
+        val = apr_pcalloc(pool, sizeof(int));
+        (*val) = 1;
+        apr_table_setn(events, name, (char *)val);
+      }
+    }
+    E = sep;
+  }
 }
 
 /**
@@ -531,7 +574,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
  * @param pattern Pattern to match the log data line
  * @return
  */
-static stat_rec_t *createRec(const char *id, const char *pattern) {
+static stat_rec_t *createRec(apr_pool_t *pool, const char *id, const char *pattern) {
   stat_rec_t *rec = calloc(sizeof(stat_rec_t), 1);
   rec->id = calloc(strlen(id)+2, 1);
   sprintf(rec->id, "%s;", id);
@@ -573,6 +616,9 @@ static stat_rec_t *createRec(const char *id, const char *pattern) {
   rec->qos_t = 0;
   rec->qos_l = 0;
   rec->qos_ser = 0;
+
+  rec->events = apr_table_make(pool, 30);
+  rec->pool = pool;
   return rec;
 }
 
@@ -639,7 +685,7 @@ static void printAndResetStat(char *timeStr) {
  */
 static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
                          char *BI, char *B, char *R, char *I, char *U, char *Q,
-                         char *k, char *C, long tme) {
+                         char *E, char *k, char *C, long tme) {
   client_rec_t *client_rec;
   const char *id = I; // ip
   if(id == NULL) {
@@ -730,7 +776,7 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
 static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
                       char *s, char *a, char *A,
                       char *BI, char *B, char *R, char *I, char *U, char *Q,
-                      char *k, char *C, long tme, long tmems) {
+                      char *E, char *k, char *C, long tme, long tmems) {
   if(Q != NULL) {
     if(strchr(Q, 'V') != NULL) {
       rec->qos_v++;
@@ -753,6 +799,9 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     if(strchr(Q, 's') != NULL) {
       rec->qos_ser++;
     }
+  }
+  if(E != NULL) {
+    qs_updateEvents(rec->pool, E, rec->events);
   }
   if(I != NULL) {
     /* update/store client IP */
@@ -852,6 +901,7 @@ static void updateStat(const char *cstr, char *line) {
   char *s = NULL; /* sum */
   char *a = NULL; /* avarage 1 */
   char *A = NULL; /* average 2 */
+  char *E = NULL; /* events */
   const char *c = cstr;
   char *l = line;
   long tme;
@@ -923,10 +973,14 @@ static void updateStat(const char *cstr, char *line) {
       if(l != NULL && l[0] != '\0') {
         A = cutNext(&l);
       }
+    } else if(c[0] == 'E') {
+      if(l != NULL && l[0] != '\0') {
+        E = cutNext(&l);
+      }
     } else if(c[0] == ' ') {
       /* do nothing */
     } else {
-      /* undedined char, skip it */
+      /* undefined/unknown char, skip it */
       if(l != NULL && l[0] != '\0') {
         l++;
       }
@@ -981,12 +1035,12 @@ static void updateStat(const char *cstr, char *line) {
       tme = tmems / 1000;
     }
   }
-  updateRec(m_stat_rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, k, C, tme, tmems);
+  updateRec(m_stat_rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
   if(rec) {
-    updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, k, C, tme, tmems);
+    updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
   }
   if(m_offline_count) {
-    updateClient(NULL, T, t, D, S, BI, B, R, I, U, Q, k, C, tme);
+    updateClient(NULL, T, t, D, S, BI, B, R, I, U, Q, E, k, C, tme);
   }
   qs_csUnLock();
 
@@ -1306,6 +1360,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     s arbitraty counter to add up (sum within a minute)\n");
   qs_man_println(man, "     a arbitraty counter to build an average from (average per request)\n");
   qs_man_println(man, "     A arbitraty counter to build an average from (average per request)\n");
+  qs_man_println(man, "     E comma separated list of event strings\n");
   qs_man_println(man, "     . defines an element to ignore (unknown string)\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -o <out_file>\n");
@@ -1394,7 +1449,7 @@ static void usage(const char *cmd, int man) {
  * @param confFile Path to the rule file to load
  * @return
  */
-static stat_rec_t *loadRule(const char *confFile) {
+static stat_rec_t *loadRule(apr_pool_t *pool, const char *confFile) {
   char line[MAX_LINE];
   FILE *file = fopen(confFile, "r"); 
   stat_rec_t *rec = NULL;
@@ -1413,7 +1468,7 @@ static stat_rec_t *loadRule(const char *confFile) {
       if(m_verbose) {
         printf("load rule %s: %s\n", id, p);
       }
-      next = createRec(id, p);
+      next = createRec(pool, id, p);
       if(rec == NULL) {
         // first record
         rec = next;
@@ -1441,7 +1496,10 @@ int main(int argc, const char *const argv[]) {
   const char *username = NULL;
   pthread_attr_t *tha = NULL;
   pthread_t tid;
-  m_stat_rec = createRec("", "");
+  apr_pool_t *pool;
+  apr_app_initialize(&argc, &argv, NULL);
+  apr_pool_create(&pool, NULL);
+  m_stat_rec = createRec(pool, "", "");
 
   qs_csInitLock();
   qs_setExpiration(ACTIVE_TIME);
@@ -1540,11 +1598,8 @@ int main(int argc, const char *const argv[]) {
   if(m_offline_count) {
     int i;
     apr_table_entry_t *entry;
-    apr_pool_t *pool;
     nice(10);
     if(config == NULL) usage(cmd, 0);
-    apr_app_initialize(&argc, &argv, NULL);
-    apr_pool_create(&pool, NULL);
     m_client_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES);
     readStdinOffline(config);
     fprintf(stdout, ".\n");
@@ -1632,7 +1687,7 @@ int main(int argc, const char *const argv[]) {
       qerror("you need to add 'C' to the format string when enabling the pattern list (-c)");
       exit(1);
     }
-    m_stat_sub = loadRule(confFile);
+    m_stat_sub = loadRule(pool, confFile);
     m_f2 = fopen(m_file_name2, "a+");
     if(m_f == NULL) {
       qerror("could not open file for writing '%s': %s", m_file_name2, strerror(errno));
