@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.54 2013-04-10 18:39:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.55 2013-04-10 19:51:25 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1031,7 +1031,8 @@ static void updateStat(const char *cstr, char *line) {
       tme = tmems / 1000;
     } else if(D) {
       stripNum(&D);
-      tmems = atol(D) / 1000;
+      tmems = atol(D);
+      tmems = tmems / 1000;
       tme = tmems / 1000;
     }
   }
