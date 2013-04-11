@@ -1,6 +1,6 @@
 Version
 
- - Add 'E' to the format string of qslog.
+ - Add 'E' (event identifiers) to the format string of qslog.
 
 Version 10.15
 
