@@ -48,4 +48,5 @@ if [ `grep -c "mod-qos-logger: \[$TMST\] mod_qos(000): qslogger test message" /v
   exit 1
 fi
 
+echo "$PFX OK"
 exit 0

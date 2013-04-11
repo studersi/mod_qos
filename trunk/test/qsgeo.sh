@@ -1,6 +1,9 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 
+PFX=[`basename $0`]
+
+echo "$PFX start"
 
 cat >geo.log <<EOF
 195.112.173.221 - - [07/Feb/2012:19:25:33 +0100] "GET /cgi/sleep.cgi?s=4 HTTP/1.1" 200 5 "-" 4 5 - 5 id=TzFsnX8AAQEAACL4ApQAAAAA - - - 0 - 1 a=1 #8952
@@ -25,4 +28,5 @@ fi
 
 rm geo.log
 rm geo.log.c
+echo "$PFX OK"
 exit 0

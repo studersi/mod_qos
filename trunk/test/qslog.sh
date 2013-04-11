@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.14 2012-06-18 15:46:25 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.15 2013-04-11 18:31:14 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -21,6 +21,14 @@ case "$1" in
     # stand alone tests
     shift
     case "$1" in
+        writeapacheD)
+	  # %h %t %>s %b %D %{Event}e
+	  echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] 200 1000 52637 A01,A02"
+	  echo "127.0.0.1 [24/Aug/2011:18:11:30 +0200] 200 2000 152637 A01"
+          echo "127.0.0.1 [24/Aug/2011:18:12:00 +0200] 200 1000 52637 A01,X02" 
+	  echo "127.0.0.1 [24/Aug/2011:18:13:00 +0200] 200 1000 52637 -"
+	  echo "127.0.0.1 [24/Aug/2011:18:14:00 +0200] 200 1000 52637 -"
+	  ;;
 	writeapache)
 	# test data for the apache access log test
 	# - 4 req/sec
@@ -86,6 +94,38 @@ case "$1" in
 	fi
 	echo "$PFX OK"
 	;;
+        apacheD)
+	# %D: The time taken to serve the request, in microseconds
+	# E: comma separated list of event strings
+	echo "$PFX D E"
+	rm -f qs.log
+	./qslog.sh test writeapacheD | ../util/src/qslog -f I..SBDE -o qs.log -p 2>/dev/null 1>/dev/null
+	if [ `grep -c "b/s;16;" qs.log` -lt 1 ]; then
+	  echo "$PFX failed, wrong bytes/sec"
+	fi
+	if [ `grep -c "b/s;50;" qs.log` -ne 1 ]; then
+	  echo "$PFX failed, wrong bytes/sec"
+	fi
+	if [ `grep -c "avms;52;av;0;" qs.log` -lt 1 ]; then
+	  echo "$PFX failed, wrong average req time"
+	fi
+	if [ `grep -c "avms;102;av;0;" qs.log` -ne 1 ]; then
+	  echo "$PFX failed, wrong average req time"
+	fi
+	# first two req within first minute:
+	if [ `grep -c "A01;2;A02;1" qs.log` -ne 1 ]; then
+	  echo "$PFX failed, wrong events"
+	fi
+	# second minute:
+	if [ `grep -c "A01;1;A02;0;X02;1" qs.log` -ne 1 ]; then
+	  echo "$PFX failed, wrong events"
+	fi
+	# third minute
+	if [ `grep -c "A01;0;A02;0;X02;0" qs.log` -ne 1 ]; then
+	  echo "$PFX failed, wrong events"
+	fi
+	echo "$PFX OK"
+	;;
 	pc)
 	echo "$PFX pc"
 	./qslog.sh test writeapache 0 | ../util/src/qslog -f I....RSB.TkC -pc > pc
@@ -102,6 +142,7 @@ case "$1" in
 	    exit 1
 	fi
 	rm -f pc
+	echo "$PFX OK"
 	;;
 	writelog4j)
 	for min in `seq 0 1`; do
@@ -117,7 +158,6 @@ case "$1" in
 	echo "$PFX log4j"
 	# offline foreign log
 	rm -f qs.log
-	echo "$PFX log4j"
 	./qslog.sh test writelog4j | ../util/src/qslog -f ......IB.TS -o qs.log -p 2>/dev/null 1>/dev/null
 	if [ `grep -c 'r/s;4;req;240;b/s;600;1xx;0;2xx;180;3xx;0;4xx;0;5xx;60;av;1;<1s;180;1s;0;2s;0;3s;0;4s;60;5s;0;>5s;0;ip;3;usr;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log` -ne 2 ]; then
 	    echo "$PFX FAILED"
