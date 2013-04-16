@@ -1,5 +1,10 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
+#
+# /etc/rsyslog.conf:
+# local5.error	/var/log/local5.error
+# local5.info	/var/log/local5.info
+#
 
 cd `dirname $0`
 PFX=[`basename $0`]
