@@ -2,6 +2,10 @@ Version
 
  - Add 'E' (event identifiers) to the format string of qslog.
 
+ - qslog: QSEVENTPATH environment variable specifies a file
+          containing all known event names (comma separated
+          list).
+
 Version 10.15
 
  - qsrotate supports DST and offset to UTC.

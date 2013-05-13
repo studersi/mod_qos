@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.55 2013-04-10 19:51:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.56 2013-05-13 06:23:07 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -63,6 +63,7 @@ static const char revision[] = "$Id: qslog.c,v 1.55 2013-04-10 19:51:25 pbuchbin
 #define MAX_CLIENT_ENTRIES 25000
 #define QS_GENERATIONS 14
 #define EVENT_DELIM ','
+#define QSEVENTPATH "QSEVENTPATH" /* varibale name to find event definitions */
 
 /* ----------------------------------
  * structures
@@ -568,6 +569,44 @@ static void qs_updateEvents(apr_pool_t *pool, char *E, apr_table_t *events) {
 }
 
 /**
+ * Initializes the event table by the events specified within the
+ * file whose path is defined by the QSEVENTPATH environment
+ * variable.
+ *
+ * @param pool To allocate memory
+ * @param events Table to init
+ */
+static void qsInitEvent(apr_pool_t *pool, apr_table_t *events) {
+  const char *envFile = getenv(QSEVENTPATH);
+  if(envFile != NULL) {
+    FILE *file = fopen(envFile, "r"); 
+    if(file != NULL) {
+      char line[MAX_LINE];
+      while(!qs_getLinef(line, sizeof(line), file)) {
+        char *p = line;
+        char *name;
+        int *val;
+        while(p && p[0]) {
+          /* file contains a list of known events (comma sep.
+             event names on one or multiple lines) */
+          char *n = strchr(p, EVENT_DELIM);
+          if(n) {
+            n[0] = '\0';
+            n++;
+          }
+          name = apr_pstrdup(pool, p);
+          val = apr_pcalloc(pool, sizeof(int));
+          (*val) = 0;
+          apr_table_setn(events, name, (char *)val);
+          p = n;
+        }
+      }
+      fclose(file);
+    }
+  }
+}
+
+/**
  * Creates and init new status rec
  *
  * @param id Identification of the id
@@ -617,8 +656,9 @@ static stat_rec_t *createRec(apr_pool_t *pool, const char *id, const char *patte
   rec->qos_l = 0;
   rec->qos_ser = 0;
 
-  rec->events = apr_table_make(pool, 30);
+  rec->events = apr_table_make(pool, 300);
   rec->pool = pool;
+  qsInitEvent(pool, rec->events);
   return rec;
 }
 
