@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.15 2013-04-11 18:31:14 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.16 2013-05-13 06:23:07 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -102,28 +102,50 @@ case "$1" in
 	./qslog.sh test writeapacheD | ../util/src/qslog -f I..SBDE -o qs.log -p 2>/dev/null 1>/dev/null
 	if [ `grep -c "b/s;16;" qs.log` -lt 1 ]; then
 	  echo "$PFX failed, wrong bytes/sec"
+	  exit 1
 	fi
 	if [ `grep -c "b/s;50;" qs.log` -ne 1 ]; then
 	  echo "$PFX failed, wrong bytes/sec"
+	  exit 1
 	fi
 	if [ `grep -c "avms;52;av;0;" qs.log` -lt 1 ]; then
 	  echo "$PFX failed, wrong average req time"
+	  exit 1
 	fi
 	if [ `grep -c "avms;102;av;0;" qs.log` -ne 1 ]; then
 	  echo "$PFX failed, wrong average req time"
+	  exit 1
 	fi
 	# first two req within first minute:
 	if [ `grep -c "A01;2;A02;1" qs.log` -ne 1 ]; then
 	  echo "$PFX failed, wrong events"
+	  exit 1
 	fi
 	# second minute:
 	if [ `grep -c "A01;1;A02;0;X02;1" qs.log` -ne 1 ]; then
 	  echo "$PFX failed, wrong events"
+	  exit 1
 	fi
 	# third minute
 	if [ `grep -c "A01;0;A02;0;X02;0" qs.log` -ne 1 ]; then
 	  echo "$PFX failed, wrong events"
+	  exit 1
 	fi
+	# init event table
+	echo "A01,A02,A03,A04" > event.conf
+	echo "B01,B02,B03,B04," >> event.conf
+	echo "C01,C02,C03,C04" >> event.conf
+	echo "D01,D02,D03,D04" >> event.conf
+	echo "X01,X02,X03,X04" >> event.conf
+	rm -f qs.log
+	QSEVENTPATH=`pwd`/event.conf; export QSEVENTPATH
+	./qslog.sh test writeapacheD | ../util/src/qslog -f I..SBDE -o qs.log -p 2>/dev/null 1>/dev/null
+	# first two req within first minute:
+	if [ `grep -c "A01;2;A02;1;A03;0;A04;0;B01;0;B02;0;B03;0;B04;0;C01;0;C02;0;C03;0;C04;0;D01;0;D02;0;D03;0;D04;0;X01;0;X02;0;X03;0;X04;0" qs.log` -ne 1 ]; then
+	  echo "$PFX failed, wrong events in initialized event list"
+	  exit 1
+	fi
+	rm -f event.conf
 	echo "$PFX OK"
 	;;
 	pc)
