@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.56 2013-05-13 06:23:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.57 2013-05-27 06:51:25 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -86,6 +86,8 @@ typedef struct {
   long status_4;
   long status_5;
   long connections;
+  apr_table_t *events;
+  apr_pool_t *pool;
 } client_rec_t;
 
 typedef struct stat_rec_st {
@@ -723,7 +725,7 @@ static void printAndResetStat(char *timeStr) {
 /**
  * Updates the per client record
  */
-static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
+static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
                          char *BI, char *B, char *R, char *I, char *U, char *Q,
                          char *E, char *k, char *C, long tme) {
   client_rec_t *client_rec;
@@ -765,6 +767,9 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     client_rec->status_4 = 0;
     client_rec->status_5 = 0;
     client_rec->connections = 0;
+    client_rec->events = apr_table_make(pool, 100);
+    client_rec->pool = pool;
+    qsInitEvent(pool, client_rec->events);
     apr_table_setn(m_client_entries, tid, (char *)client_rec);
   }
   client_rec->request_count++;
@@ -806,6 +811,9 @@ static void updateClient(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     } else if(S[0] == '5') {
       client_rec->status_5++;
     }
+  }
+  if(E != NULL) {
+    qs_updateEvents(client_rec->pool, E, client_rec->events);
   }
   return;
 }
@@ -924,7 +932,7 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
  * 127.0.0.1 [03/Nov/2006:21:06:41 +0100] "GET /index.html HTTP/1.1" 200 2836 "Wget/1.9.1" 0
  * .         .                     .      R                                   .            T
  */
-static void updateStat(const char *cstr, char *line) {
+static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
   stat_rec_t *rec = NULL;
   char *T = NULL; /* time */
   char *t = NULL; /* time ms */
@@ -1076,12 +1084,13 @@ static void updateStat(const char *cstr, char *line) {
       tme = tmems / 1000;
     }
   }
-  updateRec(m_stat_rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
-  if(rec) {
-    updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
-  }
-  if(m_offline_count) {
-    updateClient(NULL, T, t, D, S, BI, B, R, I, U, Q, E, k, C, tme);
+  if(!m_offline_count) {
+    updateRec(m_stat_rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
+    if(rec) {
+      updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
+    }
+  } else {
+    updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, tme);
   }
   qs_csUnLock();
 
@@ -1202,7 +1211,7 @@ static time_t getMinutes(char *line) {
  * reads from stdin and calls updateStat()
  * => used for real time analysis
  */
-static void readStdin(const char *cstr) {
+static void readStdin(apr_pool_t *pool, const char *cstr) {
   char line[MAX_LINE];
   int line_len;
   while(fgets(line, sizeof(line), stdin) != NULL) {
@@ -1214,7 +1223,7 @@ static void readStdin(const char *cstr) {
       line[line_len] = '\0';
       line_len--;
     }
-    updateStat(cstr, line);
+    updateStat(pool, cstr, line);
   }
 }
 
@@ -1225,7 +1234,7 @@ static void readStdin(const char *cstr) {
  * access log lines
  * => used for offline analysis
  */
-static void readStdinOffline(const char *cstr) {
+static void readStdinOffline(apr_pool_t *pool, const char *cstr) {
   char line[MAX_LINE];
   char buf[32];
   time_t unitTime = 0;
@@ -1247,10 +1256,10 @@ static void readStdinOffline(const char *cstr) {
       qs_setTime(unitTime * 60);
     }
     if(unitTime == l_time) {
-      updateStat(cstr, line);
+      updateStat(pool, cstr, line);
     } if(l_time < unitTime) {
       /* leap in time... */
-      updateStat(cstr, line);
+      updateStat(pool, cstr, line);
       fprintf(stdout, "X");
       fflush(stdout);
       unitTime = 0;
@@ -1269,7 +1278,7 @@ static void readStdinOffline(const char *cstr) {
         unitTime++;
         qs_setTime(unitTime * 60);;
       }
-      updateStat(cstr, line);
+      updateStat(pool, cstr, line);
     }
   }
   if(m_offline_data) {
@@ -1642,7 +1651,7 @@ int main(int argc, const char *const argv[]) {
     nice(10);
     if(config == NULL) usage(cmd, 0);
     m_client_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES);
-    readStdinOffline(config);
+    readStdinOffline(pool, config);
     fprintf(stdout, ".\n");
     entry = (apr_table_entry_t *) apr_table_elts(m_client_entries)->elts;
     m_f = stdout;
@@ -1661,8 +1670,7 @@ int main(int argc, const char *const argv[]) {
       }
       fprintf(m_f, "%s;req;%ld;errors;%ld;"
               "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;"
-              "av;%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;%s"
-              "\n",
+              "av;%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;%s",
               entry[i].key,
               client_rec->request_count,
               client_rec->error_count,
@@ -1680,6 +1688,17 @@ int main(int argc, const char *const argv[]) {
               client_rec->duration_5,
               client_rec->duration_6,
               esco);
+      if(apr_table_elts(client_rec->events)->nelts > 0) {
+        int k;
+        apr_table_entry_t *client_entry = (apr_table_entry_t *) apr_table_elts(client_rec->events)->elts;
+        for(k = 0; k < apr_table_elts(client_rec->events)->nelts; k++) {
+          const char *eventName = client_entry[k].key;
+          int *eventVal = (int *)client_entry[k].val;
+          fprintf(m_f, "%s;%d;", eventName, *eventVal);
+          (*eventVal) = 0;
+        }
+      }
+      fprintf(m_f, "\n");
     }
     if(file && m_f != stdout) {
       fclose(m_f);
@@ -1745,7 +1764,7 @@ int main(int argc, const char *const argv[]) {
     nice(10);
     fprintf(stderr, "[%s]: offline mode (writes to %s)\n", cmd, file);
     m_date_str[0] = '\0';
-    readStdinOffline(config);
+    readStdinOffline(pool, config);
     if(!m_verbose) {
       fprintf(stdout, "\n");
     }
@@ -1755,7 +1774,7 @@ int main(int argc, const char *const argv[]) {
      * to write the data every minute. 
      */
     pthread_create(&tid, tha, loggerThread, NULL);
-    readStdin(config);
+    readStdin(pool, config);
   }
   fclose(m_f);
   return 0;

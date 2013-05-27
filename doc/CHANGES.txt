@@ -1,5 +1,4 @@
-
- - qslog adds QSEVENTPATH environment variable specifies a fileVersion
+Version
 
  - qslog adds 'E' (event identifiers) to the format string.
    QSEVENTPATH environment variable specifies a file containing
