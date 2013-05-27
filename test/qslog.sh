@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.18 2013-05-27 07:11:54 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.19 2013-05-27 18:34:15 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -23,11 +23,11 @@ case "$1" in
     case "$1" in
         writeapacheD)
 	  # %h %t %>s %b %D %{Event}e
-	  echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] 200 1000 52637 A01,A02"
-	  echo "127.0.0.2 [24/Aug/2011:18:11:30 +0200] 200 2000 152637 A01"
-          echo "127.0.0.1 [24/Aug/2011:18:12:00 +0200] 200 1000 52637 A01,X02" 
-	  echo "127.0.0.1 [24/Aug/2011:18:13:00 +0200] 200 1000 52637 -"
-	  echo "127.0.0.1 [24/Aug/2011:18:14:00 +0200] 200 1000 52637 -"
+	  echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] \"/a/\" 200 1000 52637 A01,A02"
+	  echo "127.0.0.2 [24/Aug/2011:18:11:30 +0200] \"/a/\" 200 2000 152637 A01,"
+          echo "127.0.0.1 [24/Aug/2011:18:12:00 +0200] \"/b/\" 200 1000 52637 A01,X02" 
+	  echo "127.0.0.1 [24/Aug/2011:18:13:00 +0200] \"/a/\" 200 1000 52637 -"
+	  echo "127.0.0.1 [24/Aug/2011:18:14:00 +0200] \"/a/\" 200 1000 52637 -"
 	  ;;
 	writeapache)
 	# test data for the apache access log test
@@ -99,7 +99,8 @@ case "$1" in
 	# E: comma separated list of event strings
 	echo "$PFX D E"
 	rm -f qs.log
-	./qslog.sh test writeapacheD | ../util/src/qslog -f I..SBDE -o qs.log -p 2>/dev/null 1>/dev/null
+	rm -f qs.log.detailed
+	./qslog.sh test writeapacheD | ../util/src/qslog -f I..CSBDE -o qs.log -p -c qslog.conf 2>/dev/null 1>/dev/null
 	if [ `grep -c "b/s;16;" qs.log` -lt 1 ]; then
 	  echo "$PFX failed, wrong bytes/sec"
 	  exit 1
@@ -121,9 +122,18 @@ case "$1" in
 	  echo "$PFX failed, wrong events"
 	  exit 1
 	fi
+	# first detailed: 2x A01, 1x A02 for application 01 (/a)
+	if [ `grep -c "18:11:00;01;r/s;0;req;2;b/s;50;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;102;av;0;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;;A01;2;A02;1" qs.log.detailed` -ne 1 ]; then
+	  echo "$PFX failed, wrong detailed"
+	  exit 1
+	fi
 	# second minute:
 	if [ `grep -c "A01;1;A02;0;X02;1" qs.log` -ne 1 ]; then
 	  echo "$PFX failed, wrong events"
+	  exit 1
+	fi
+	if [ `grep -c "24.08.2011 18:12:00;02;r/s;0;req;1;b/s;16;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;52;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;;A01;1;X02;1" qs.log.detailed` -ne 1 ]; then
+	  echo "$PFX failed, wrong detailed 2"
 	  exit 1
 	fi
 	# third minute
@@ -139,7 +149,7 @@ case "$1" in
 	echo "X01,X02,X03,X04" >> event.conf
 	rm -f qs.log
 	QSEVENTPATH=`pwd`/event.conf; export QSEVENTPATH
-	./qslog.sh test writeapacheD | ../util/src/qslog -f I..SBDE -o qs.log -p 2>/dev/null 1>/dev/null
+	./qslog.sh test writeapacheD | ../util/src/qslog -f I..RSBDE -o qs.log -p 2>/dev/null 1>/dev/null
 	# first two req within first minute:
 	if [ `grep -c "A01;2;A02;1;A03;0;A04;0;B01;0;B02;0;B03;0;B04;0;C01;0;C02;0;C03;0;C04;0;D01;0;D02;0;D03;0;D04;0;X01;0;X02;0;X03;0;X04;0" qs.log` -ne 1 ]; then
 	  echo "$PFX failed, wrong events in initialized event list"
@@ -164,7 +174,7 @@ case "$1" in
 	    exit 1
 	fi
 	rm -f pc
-	./qslog.sh test writeapacheD | ../util/src/qslog -f I..SBDE -pc > pc
+	./qslog.sh test writeapacheD | ../util/src/qslog -f I..RSBDE -pc > pc
 	if [ `grep -c "127.0.0.1;req;4;errors;0;1xx;0;2xx;4;3xx;0;4xx;0;5xx;0;av;0;<1s;4;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;2;A02;1;X02;1" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.4)"
 	    exit 1

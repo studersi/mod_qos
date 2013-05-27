@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.58 2013-05-27 07:11:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.59 2013-05-27 18:34:15 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -548,10 +548,12 @@ static void qs_updateEvents(apr_pool_t *pool, char *E, apr_table_t *events) {
     return;
   }
   while(E) {
+    char *restore = NULL;
     char *sep = strchr(E, EVENT_DELIM);
     int *val;
     if(sep) {
       sep[0] = '\0';
+      restore = sep;
       sep++;
     }
     if(isalnum(E[0])) {
@@ -567,6 +569,10 @@ static void qs_updateEvents(apr_pool_t *pool, char *E, apr_table_t *events) {
       }
     }
     E = sep;
+    if(restore) {
+      // suports multiple parsing of the event string
+      restore[0] = EVENT_DELIM;
+    }
   }
 }
 
