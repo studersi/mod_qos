@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.57 2013-05-27 06:51:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.58 2013-05-27 07:11:54 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1640,7 +1640,7 @@ int main(int argc, const char *const argv[]) {
   }
 
   /*
-   * offline count mode creates statitis
+   * offline count mode creates statistics
    * on a per client basis (e.g. per source
    * ip or user id using the user tracking
    * feature of mod_qos)

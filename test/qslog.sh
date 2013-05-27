@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.17 2013-05-27 06:51:25 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.18 2013-05-27 07:11:54 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -165,11 +165,11 @@ case "$1" in
 	fi
 	rm -f pc
 	./qslog.sh test writeapacheD | ../util/src/qslog -f I..SBDE -pc > pc
-	if [ `grep -c "127.0.0.1;req;4;errors;0;1xx;0;2xx;4;3xx;0;4xx;0;5xx;0;av;0;<1s;4;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;2;A02;1;X02;1;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.1;req;4;errors;0;1xx;0;2xx;4;3xx;0;4xx;0;5xx;0;av;0;<1s;4;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;2;A02;1;X02;1" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.4)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.2;req;1;errors;0;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;1;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.2;req;1;errors;0;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;1" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.5)"
 	    exit 1
 	fi
