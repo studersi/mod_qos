@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.59 2013-05-27 18:34:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.60 2013-05-28 05:50:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -523,10 +523,10 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   stat_rec->qos_ser = 0;
   if(main) {
     if(!offline) {
-      fprintf(f, "sl;%.2f;m;%s",
+      fprintf(f, "sl;%.2f;m;%s;",
               av[0], mem[0] ? mem : "-");
     } else {
-      fprintf(f, "sl;-;m;-");
+      fprintf(f, "sl;-;m;-;");
       m_offline_data = 0;
     }
   }
@@ -536,7 +536,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
     for(i = 0; i < apr_table_elts(stat_rec->events)->nelts; i++) {
       const char *eventName = entry[i].key;
       int *eventVal = (int *)entry[i].val;
-      fprintf(f, ";%s;%d", eventName, *eventVal);
+      fprintf(f, "%s;%d;", eventName, *eventVal);
       (*eventVal) = 0;
     }
   }
