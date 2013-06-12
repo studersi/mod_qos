@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.20 2013-05-28 05:50:59 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.21 2013-06-12 19:05:25 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -57,8 +57,8 @@ case "$1" in
         custom)
 	rm -f qs.log
  	echo "$PFX custom"
-        (printf "2 4 6\n8 10 12\n"; ./sleep.sh 1>/dev/null; sleep 2) | ../util/src/qslog -f saA -o qs.log
-	if [ `grep -c "s;10;a;7;A;9;" qs.log` -eq 0 ]; then
+        (printf "2 4 6\n8 10 12\n3 4,000 -\n"; ./sleep.sh 1>/dev/null; sleep 2) | ../util/src/qslog -f saA -o qs.log
+	if [ `grep -c "s;13;a;6;A;9;" qs.log` -eq 0 ]; then
 	  cat qs.log
 	  echo "$PFX FAILED"
 	  exit 1
@@ -215,7 +215,7 @@ case "$1" in
 	#   cat qslog.data | awk '{print $(NF-8)}' |  awk '{total+=$NF/1000} END{print total/106}'
 	rm -f qs.log
 	cat qslog.data  | ../util/src/qslog -f I....RSB.D -p -o qs.log 2>/dev/null 1>/dev/null
-	if [ `grep -c "r/s;1;req;106;b/s;10192;1xx;0;2xx;101;3xx;5;4xx;0;5xx;0;avms;2206;av;2;<1s;59;1s;0;2s;0;3s;16;4s;4;5s;21;>5s;6;ip;1;usr;0;" qs.log` -ne 1 ]; then
+	if [ `grep -c "r/s;1;req;106;b/s;1019[12];1xx;0;2xx;101;3xx;5;4xx;0;5xx;0;avms;2206;av;2;<1s;59;1s;0;2s;0;3s;16;4s;4;5s;21;>5s;6;ip;1;usr;0;" qs.log` -ne 1 ]; then
 	  echo "$PFX FAILED"
 	  exit 1
 	fi

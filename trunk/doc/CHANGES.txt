@@ -4,6 +4,9 @@ Version
    QSEVENTPATH environment variable specifies a file containing
    all known event names (comma separated list).
 
+ - qslog average counter (a/A) count only if a numeric value
+   is available.
+
 Version 10.15
 
  - qsrotate supports DST and offset to UTC.
@@ -16,7 +19,7 @@ Version 10.14
  - Minor changes to status viewer (color for QS_EventLimitCount
    counter).
 
- - 3594444: adapted man page subject.
+ - Q3594444: adapted man page subject.
 
  - QS_ErrorResponseCode verifies that the defined error code is
    valid resp. known by Apache.
@@ -52,7 +55,7 @@ Version 10.10
 
 Version 10.9
 
- - CR 3535677: Don't use prce_info() any longer.
+ - Q3535677: Don't use prce_info() any longer.
 
  - qslog option "-x" allows the specification how many files to keep.
    Default are 14 days.
@@ -196,7 +199,7 @@ Version 9.74
 
 Version 9.73
 
- - 3429879: Format usage text of the mod_qos utilities to man page
+ - Q3429879: Format usage text of the mod_qos utilities to man page
    format. Use "<utility> --man" to generate the man page.
 
  - Make "NullConnection" detection (known by QS_SetEnvIfStatus)
@@ -585,7 +588,7 @@ Version 9.23
 
  - New directives: QS_MileStone*.
 
- - Q3032708, see http://www.openssl.org/support/faq.html#LEGAL2.
+ - Q3032708: see http://www.openssl.org/support/faq.html#LEGAL2.
 
  - Add Access-Control-Allow-Origin to the default response header rules.
 
