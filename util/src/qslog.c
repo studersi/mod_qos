@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.60 2013-05-28 05:50:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.61 2013-06-12 19:05:25 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -113,7 +113,9 @@ typedef struct stat_rec_st {
 
   unsigned long long sum;
   unsigned long long average;
+  long average_count;
   unsigned long long averAge;
+  long averAge_count;
 
   long status_1;
   long status_2;
@@ -247,7 +249,7 @@ static void qsNoFloat(char *s) {
 static void stripNum(char **p) {
   char *s = *p;
   int len;
-  while(s && (s[0] < '0' || s[0] > '9')) {
+  while(s && s[0] && (s[0] < '0' || s[0] > '9')) {
     s++;
   }
   len = strlen(s);
@@ -414,8 +416,8 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
     // max len: 18446744073709551615
     sprintf(custom, "s;%llu;a;%llu;A;%llu;",
             stat_rec->sum,
-            stat_rec->average / (stat_rec->line_count == 0 ? 1 : stat_rec->line_count),
-            stat_rec->averAge / (stat_rec->line_count == 0 ? 1 : stat_rec->line_count));
+            stat_rec->average / (stat_rec->average_count == 0 ? 1 : stat_rec->average_count),
+            stat_rec->averAge / (stat_rec->averAge_count == 0 ? 1 : stat_rec->averAge_count));
   }
   if(main) {
     sprintf(ip, "ip;%ld;", qs_countEvent(&m_ip_list));
@@ -499,7 +501,9 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   }
   stat_rec->sum = 0;
   stat_rec->average = 0;
+  stat_rec->average_count = 0;
   stat_rec->averAge = 0;
+  stat_rec->averAge_count = 0;
   stat_rec->status_1 = 0;
   stat_rec->status_2 = 0;
   stat_rec->status_3 = 0;
@@ -648,7 +652,9 @@ static stat_rec_t *createRec(apr_pool_t *pool, const char *id, const char *patte
 
   rec->sum = 0;
   rec->average = 0;
+  rec->average_count = 0;
   rec->averAge = 0;
+  rec->averAge_count = 0;
 
   rec->status_1 = 0;
   rec->status_2 = 0;
@@ -881,11 +887,13 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
   if(s != NULL) {
     rec->sum += atol(s);
   }
-  if(a != NULL) {
+  if(a != NULL && a[0]) {
     rec->average += atol(a);
+    rec->average_count++;
   }
-  if(A != NULL) {
+  if(A != NULL && A[0]) {
     rec->averAge += atol(A);
+    rec->averAge_count++;
   }
   if(S != NULL) {
     if(S[0] == '1') {
