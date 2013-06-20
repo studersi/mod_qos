@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.13 2012-12-18 19:32:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.14 2013-06-20 19:53:27 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -124,7 +124,7 @@ static void qs_readline(long pos, FILE *f) {
 
 static int qs_tail(const char *cmd, FILE *f, const char *pattern) {
   char *cont = NULL;
-  long search_win_len = strlen(pattern) * 2 + 32;
+  long search_win_len = (strlen(pattern) * 2) + 32;
   char line[search_win_len + 10];
   long pos = 0;
   size_t len;
@@ -157,7 +157,7 @@ static int qs_tail(const char *cmd, FILE *f, const char *pattern) {
       s++;
       end = startpattern;
       /* search the end of the line */
-      while(end && end[0] && end[0] != CR && end[0] != LF) {
+      while((offset < search_win_len) && end[0] && end[0] != CR && end[0] != LF) {
         end++;
         offset++;
       }

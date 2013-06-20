@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.434 2013-04-08 18:44:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.435 2013-06-20 19:53:26 pbuchbinder Exp $";
 static const char g_revision[] = "10.15";
 
 /************************************************************************
@@ -7097,22 +7097,18 @@ static int qos_header_parser(request_rec * r) {
       }
       rctx->entry_cond = e_cond;
       rctx->entry = e;
-      if(e || e_cond) {
+      if(e) {
         apr_global_mutex_lock(e->lock);   /* @CRT5 */
         if(e_cond) {
           e_cond->counter++;
         }
-        if(e) {
-          e->counter++;
-          if(e->req_per_sec_block_rate > req_per_sec_block) {
-            /* update req_per_sec_block if event restriction has returned worse block rate */
-            req_per_sec_block = e->req_per_sec_block_rate;
-          }
+        e->counter++;
+        if(e->req_per_sec_block_rate > req_per_sec_block) {
+          /* update req_per_sec_block if event restriction has returned worse block rate */
+          req_per_sec_block = e->req_per_sec_block_rate;
         }
         apr_global_mutex_unlock(e->lock); /* @CRT5 */
-      }
-        
-      if(e) {
+
         /*
          * QS_LocRequestLimitMatch/QS_LocRequestLimit/QS_LocRequestLimitDefault enforcement
          */
@@ -7988,7 +7984,7 @@ static int qos_logger(request_rec *r) {
   if(sconf->has_event_limit) {
     qos_lg_event_update(r, &now);
   }
-  if(e || e_cond) {
+  if(e) {
     char *h = apr_psprintf(r->pool, "%d", e->counter);
     if(!now) {
       now = apr_time_sec(r->request_time);
@@ -7999,25 +7995,24 @@ static int qos_logger(request_rec *r) {
         e_cond->counter--;
       }
     }
-    if(e) {
-      if(e->counter > 0) {
-        e->counter--;
-      }
-      if(apr_table_get(r->notes, QS_R010_ALREADY_BLOCKED) == NULL) {
-        e->req++;
-        e->bytes = e->bytes + r->bytes_sent;
-        if(now > (e->interval + QS_BW_SAMPLING_RATE)) {
-          e->req_per_sec = e->req / (now - e->interval);
-          e->req = 0;
-          e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
-          e->bytes = 0;
-          e->interval = now;
-          if(e->req_per_sec_limit) {
-            qos_cal_req_sec(r, e);
-          }
-          if(e->kbytes_per_sec_limit) {
-            qos_cal_bytes_sec(r, e);
-          }
+
+    if(e->counter > 0) {
+      e->counter--;
+    }
+    if(apr_table_get(r->notes, QS_R010_ALREADY_BLOCKED) == NULL) {
+      e->req++;
+      e->bytes = e->bytes + r->bytes_sent;
+      if(now > (e->interval + QS_BW_SAMPLING_RATE)) {
+        e->req_per_sec = e->req / (now - e->interval);
+        e->req = 0;
+        e->kbytes_per_sec = e->bytes / (now - e->interval) / 1024;
+        e->bytes = 0;
+        e->interval = now;
+        if(e->req_per_sec_limit) {
+          qos_cal_req_sec(r, e);
+        }
+        if(e->kbytes_per_sec_limit) {
+          qos_cal_bytes_sec(r, e);
         }
       }
     }
@@ -8576,7 +8571,7 @@ static int qos_handler_console(request_rec * r) {
     return HTTP_NOT_ACCEPTABLE;
   }
   addr = qos_inet_addr(ip);
-  if(sconf && sconf->has_qos_cc) {
+  if(sconf->has_qos_cc) {
     char *msg = "not available";
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     qos_s_entry_t **e = NULL;
