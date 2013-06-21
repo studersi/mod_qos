@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.234 2013-04-08 18:44:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.235 2013-06-21 19:05:25 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -572,6 +572,9 @@ ErrorDocument 404 /error-docs/error404.html
    QS_EventRequestLimit   CODEAPPLI=A1       1
    QS_EventRequestLimit   CODEAPPLI=A2       5
    QS_EventRequestLimit   CODEAPPLI=A3       10
+
+   QS_SetEnvIfBody  '<ns15:Username>([\x20-\x3b\x3d\x3f-\x7e]+)</ns15:Username>[\x0a\x0d ]*<ns15:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">([\x20-\x3b\x3d\x3f-\x7e]+)' SECURITY_HEADER_EX=:$1:$2:
+
    <Location /support>
      QS_DenyEvent        +BADCODEAPPLI deny !CODEAPPLI
      QS_DenyEvent        +BADCODEAPPLI02 deny INVALIDCODEAPPL
@@ -588,6 +591,10 @@ ErrorDocument 404 /error-docs/error404.html
    </Location>
    <Location /htt/resheaderfilter/silent>
        QS_ResponseHeaderFilter silent
+   </Location>
+
+   <Location /htt/soap>
+      RequestHeaderPlus set X-User-Name-PWD ${SECURITY_HEADER_EX} late
    </Location>
 
 </VirtualHost>
