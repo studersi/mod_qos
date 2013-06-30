@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.27 2013-04-09 06:05:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.28 2013-06-30 18:55:53 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -369,7 +369,7 @@ static long qs_verify(const char *sec) {
   int line_size = sizeof(line);
   int line_len;
   m_nr = -1; // sequence number
-  while(fgets(line, sizeof(line), stdin) != NULL) {
+  while(fgets(line, line_size, stdin) != NULL) {
     int valid = 0;
     long ns = 0;
     HMAC_CTX ctx;
@@ -499,6 +499,9 @@ static char *qs_readpwd(apr_pool_t *pool, const char *prg) {
   }
   args[i] = NULL;
 
+  if(cmd == NULL) {
+    qs_failedexec("can't read password, invalid executable", prg, APR_EGENERAL);
+  }
   if((status = apr_procattr_create(&attr, pool)) != APR_SUCCESS) {
     qs_failedexec("while reading password from executable", prg, status);
   }
