@@ -37,11 +37,11 @@ t3=`date '+%s'`
 t4=`date '+%s'`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+set +e
 tw=`expr $t2 - $t1`
 to=`expr $t4 - $t3`
 echo " with: $tw, without: $to"
 dif=`expr $tw - $to`
-set +e
 # up to 1% slower (incl rounding) is still okay (since the server
 # has not really anything else to do)
 if [ $dif -gt 2 ]; then
