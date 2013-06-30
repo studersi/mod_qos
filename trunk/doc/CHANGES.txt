@@ -7,6 +7,8 @@ Version
  - qslog average counter (a/A) count only if a numeric value
    is available.
 
+ - qssing does not try to execute invalud program name (space).
+
 Version 10.15
 
  - qsrotate supports DST and offset to UTC.
