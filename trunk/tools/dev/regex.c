@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regex.c,v 1.8 2011-07-05 17:51:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: regex.c,v 1.9 2013-07-05 06:32:39 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -95,6 +95,10 @@ int main(int argc, const char *const argv[]) {
   const char *in;
   const char *pattern;
   FILE *file;
+  apr_pool_t *pool;
+  char *raw = "";
+  apr_app_initialize(&argc, &argv, NULL);
+  apr_pool_create(&pool, NULL);
 
   argc--;
   argv++;
@@ -103,7 +107,6 @@ int main(int argc, const char *const argv[]) {
   }
   in = argv[0];
   pattern = argv[1];
-
   //pcre = pcre_compile(pattern, PCRE_CASELESS, &errptr, &erroffset, NULL);
   pcre = pcre_compile(pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(pcre == NULL) {
@@ -117,6 +120,7 @@ int main(int argc, const char *const argv[]) {
     char readline[MAX_LINE];
     while(fgets(readline, MAX_LINE-1, file) != NULL) {
       int len = strlen(readline);
+      raw = apr_pstrcat(pool, raw, readline, NULL);
       while(len > 0 && readline[len] < 32) {
 	readline[len] = '\0';
 	len--;
@@ -127,6 +131,8 @@ int main(int argc, const char *const argv[]) {
       }
     }
     fclose(file);
+    printf("all:\n");
+    rc_c = rmatch(raw, pcre);
   } else {
     line = in;
     rc_c = rmatch(line, pcre);
