@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regex.c,v 1.9 2013-07-05 06:32:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: regex.c,v 1.10 2013-07-05 06:50:58 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -97,6 +97,7 @@ int main(int argc, const char *const argv[]) {
   FILE *file;
   apr_pool_t *pool;
   char *raw = "";
+  int linenr = 0;
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
 
@@ -120,6 +121,8 @@ int main(int argc, const char *const argv[]) {
     char readline[MAX_LINE];
     while(fgets(readline, MAX_LINE-1, file) != NULL) {
       int len = strlen(readline);
+      linenr++;
+      printf("line %.3d:\n", linenr);
       raw = apr_pstrcat(pool, raw, readline, NULL);
       while(len > 0 && readline[len] < 32) {
 	readline[len] = '\0';
