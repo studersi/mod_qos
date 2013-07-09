@@ -1,3 +1,10 @@
+Version
+
+ - Add Content-Security-Policy to the default response header
+   white list.
+
+ - qslog features enhanced "-pc" mode collecting more information.
+
 Version 10.16
 
  - qslog adds 'E' (event identifiers) to the format string.
