@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.436 2013-06-30 19:21:51 pbuchbinder Exp $";
-static const char g_revision[] = "10.16";
+static const char revision[] = "$Id: mod_qos.c,v 5.437 2013-07-09 10:57:42 pbuchbinder Exp $";
+static const char g_revision[] = "10.17";
 
 /************************************************************************
  * Includes
@@ -886,6 +886,7 @@ static const qos_her_t qs_res_header_rules[] = {
   { "Content-Location", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Content-MD5", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Content-Range", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Content-Security-Policy", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 8000 },
   { "Content-Type", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Connection", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Date", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
@@ -904,7 +905,7 @@ static const qos_her_t qs_res_header_rules[] = {
   { "Strict-Transport-Security", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Vary", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "WWW-Authenticate", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
-  { "X-Content-Security-Policy", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "X-Content-Security-Policy", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 8000 },
   { "X-Content-Type-Options", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "X-Frame-Options", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "X-XSS-Protection", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
