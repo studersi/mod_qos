@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.22 2013-07-09 10:57:54 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.23 2013-07-09 18:17:55 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -176,11 +176,11 @@ case "$1" in
 	fi
 	rm -f pc
 	./qslog.sh test writeapacheD | ../util/src/qslog -f I..RSBDEc -pc > pc
-	if [ `grep -c "127.0.0.1;req;4;errors;0;duration;180;1xx;0;2xx;4;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;52;<1s;4;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;2;A02;1;X02;1;html;2;css/js;0;img;1;other;1;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.1;req;4;errors;0;duration;180;1xx;0;2xx;4;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;52;<1s;4;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;html;2;css/js;0;img;1;other;1;A01;2;A02;1;X02;1;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.4)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.2;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;1;html;1;css/js;0;img;0;other;0;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.2;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;html;1;css/js;0;img;0;other;0;A01;1;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.5)"
 	    exit 1
 	fi

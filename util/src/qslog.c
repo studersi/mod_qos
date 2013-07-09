@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.62 2013-07-09 10:57:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.63 2013-07-09 18:17:55 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1789,6 +1789,13 @@ int main(int argc, const char *const argv[]) {
               client_rec->duration_5,
               client_rec->duration_6,
               esco);
+      if(m_ct) {
+        fprintf(m_f, "html;%ld;css/js;%ld;img;%ld;other;%ld;",
+                client_rec->html,
+                client_rec->cssjs,
+                client_rec->img,
+                client_rec->other);
+      }
       if(apr_table_elts(client_rec->events)->nelts > 0) {
         int k;
         apr_table_entry_t *client_entry = (apr_table_entry_t *) apr_table_elts(client_rec->events)->elts;
@@ -1798,13 +1805,6 @@ int main(int argc, const char *const argv[]) {
           fprintf(m_f, "%s;%d;", eventName, *eventVal);
           (*eventVal) = 0;
         }
-      }
-      if(m_ct) {
-        fprintf(m_f, "html;%ld;css/js;%ld;img;%ld;other;%ld;",
-                client_rec->html,
-                client_rec->cssjs,
-                client_rec->img,
-                client_rec->other);
       }
       fprintf(m_f, "\n");
     }
