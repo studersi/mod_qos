@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.61 2013-06-12 19:05:25 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.62 2013-07-09 10:57:54 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -73,6 +73,7 @@ typedef struct {
   long request_count;
   long error_count;
   long long duration;
+  long long duration_count_ms;
   long duration_0;
   long duration_1;
   long duration_2;
@@ -85,9 +86,16 @@ typedef struct {
   long status_3;
   long status_4;
   long status_5;
+  long status_304;
   long connections;
   apr_table_t *events;
   apr_pool_t *pool;
+  long html;
+  long img;
+  long cssjs;
+  long other;
+  time_t start_s;
+  time_t end_s;
 } client_rec_t;
 
 typedef struct stat_rec_st {
@@ -160,6 +168,7 @@ static int   m_offline_data = 0;
 static char  m_date_str[MAX_LINE];
 static int   m_mem = 0;
 static int   m_avms = 0;
+static int   m_ct = 0;
 static int   m_customcounter = 0;
 static apr_table_t *m_client_entries = NULL;
 static int   m_max_client_entries = 0;
@@ -182,6 +191,40 @@ static void qerror(const char *fmt,...) {
   time_string[strlen(time_string) - 1] = '\0';
   fprintf(stderr, "[%s] [error] qslog: %s\n", time_string, buf);
   fflush(stderr);
+}
+
+/*
+ * Similar to standard strstr() but we ignore case in this version.
+ * see server/util.c
+ */
+static char *qsstrcasestr(const char *s1, const char *s2) {
+    char *p1, *p2;
+    if (*s2 == '\0') {
+        /* an empty s2 */
+        return((char *)s1);
+    }
+    while(1) {
+        for ( ; (*s1 != '\0') && (tolower(*s1) != tolower(*s2)); s1++);
+        if (*s1 == '\0') {
+            return(NULL);
+        }
+        /* found first character of s2, see if the rest matches */
+        p1 = (char *)s1;
+        p2 = (char *)s2;
+        for (++p1, ++p2; tolower(*p1) == tolower(*p2); ++p1, ++p2) {
+            if (*p1 == '\0') {
+                /* both strings ended together */
+                return((char *)s1);
+            }
+        }
+        if (*p2 == '\0') {
+            /* second string ended, a match */
+            break;
+        }
+        /* didn't find a match here, try starting at next character in s1 */
+        s1++;
+    }
+    return((char *)s1);
 }
 
 /*
@@ -739,7 +782,7 @@ static void printAndResetStat(char *timeStr) {
  */
 static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
                          char *BI, char *B, char *R, char *I, char *U, char *Q,
-                         char *E, char *k, char *C, long tme) {
+                         char *E, char *k, char *C, char *ct, long tme, long tmems) {
   client_rec_t *client_rec;
   const char *id = I; // ip
   if(id == NULL) {
@@ -766,6 +809,7 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     client_rec->request_count = 0;
     client_rec->error_count = 0;
     client_rec->duration = 0;
+    client_rec->duration_count_ms = 0;
     client_rec->duration_0 = 0;
     client_rec->duration_1 = 0;
     client_rec->duration_2 = 0;
@@ -778,14 +822,24 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     client_rec->status_3 = 0;
     client_rec->status_4 = 0;
     client_rec->status_5 = 0;
+    client_rec->status_304 = 0;
     client_rec->connections = 0;
     client_rec->events = apr_table_make(pool, 100);
     client_rec->pool = pool;
+    client_rec->html = 0;
+    client_rec->img = 0;
+    client_rec->cssjs = 0;
+    client_rec->other = 0;
+    qs_time(&client_rec->start_s);
+    client_rec->end_s = client_rec->start_s + 1; // +1 prevents div by 0
     qsInitEvent(pool, client_rec->events);
     apr_table_setn(m_client_entries, tid, (char *)client_rec);
+  } else {
+    qs_time(&client_rec->end_s);
   }
   client_rec->request_count++;
   client_rec->duration += tme;
+  client_rec->duration_count_ms += tmems;
   if(k != NULL) {
     if(k[0] == '0' && k[1] == '\0') {
       client_rec->connections++;
@@ -806,6 +860,19 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
   } else {
     client_rec->duration_6++;
   }
+  if(ct) {
+    if(qsstrcasestr(ct, "html")) {
+      client_rec->html++;
+    } else if(qsstrcasestr(ct, "image")) {
+      client_rec->img++;
+    } else if(qsstrcasestr(ct, "css")) {
+      client_rec->cssjs++;
+    } else if(qsstrcasestr(ct, "javascript")) {
+      client_rec->cssjs++;
+    } else {
+      client_rec->other++;
+    }
+  }
   if(S != NULL) {
     if(strcmp(S, "200") != 0 && strcmp(S, "304") != 0 && strcmp(S, "302") != 0) {
       client_rec->error_count++;
@@ -818,6 +885,9 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
       client_rec->status_2++;
     } else if(S[0] == '3') {
       client_rec->status_3++;
+      if(S[1] == '0' && S[2] == '4') {
+        client_rec->status_304++;
+      }
     } else if(S[0] == '4') {
       client_rec->status_4++;
     } else if(S[0] == '5') {
@@ -964,6 +1034,7 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
   char *a = NULL; /* avarage 1 */
   char *A = NULL; /* average 2 */
   char *E = NULL; /* events */
+  char *ct = NULL; /* content type */
   const char *c = cstr;
   char *l = line;
   long tme;
@@ -1006,6 +1077,10 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
     } else if(c[0] == 'C') {
       if(l != NULL && l[0] != '\0') {
         C = cutNext(&l);
+      }
+    } else if(c[0] == 'c') {
+      if(l != NULL && l[0] != '\0') {
+        ct = cutNext(&l);
       }
     } else if(c[0] == 'R') {
       if(l != NULL && l[0] != '\0') {
@@ -1104,7 +1179,7 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
       updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
     }
   } else {
-    updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, tme);
+    updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, ct, tme, tmems);
   }
   qs_csUnLock();
 
@@ -1366,7 +1441,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p [-v]] [-x [<num>]] [-u <name>] [-m] [-c <path>]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p[c] [-v]] [-x [<num>]] [-u <name>] [-m] [-c <path>]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -1425,6 +1500,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     a arbitraty counter to build an average from (average per request)\n");
   qs_man_println(man, "     A arbitraty counter to build an average from (average per request)\n");
   qs_man_println(man, "     E comma separated list of event strings\n");
+  qs_man_println(man, "     c content type (%%{content-type}o), available in -pc mode only\n");
   qs_man_println(man, "     . defines an element to ignore (unknown string)\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -o <out_file>\n");
@@ -1586,6 +1662,10 @@ int main(int argc, const char *const argv[]) {
           // enable esco
           m_stat_rec->connections = 0;
         }
+        if(strchr(config, 'c')) {
+          // enable content type
+          m_ct = 1;
+        }
         if(strchr(config, 'D') || strchr(config, 't')) {
           // enable average duration in ms
           m_avms = 1;
@@ -1682,18 +1762,25 @@ int main(int argc, const char *const argv[]) {
       if(m_stat_rec->connections != -1) {
         sprintf(esco, "esco;%ld;", client_rec->connections);
       }
-      fprintf(m_f, "%s;req;%ld;errors;%ld;"
-              "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;"
-              "av;%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;%s",
+      if(m_avms == 0) {
+        // no ms available
+        client_rec->duration_count_ms = 1000 * client_rec->duration;
+      }
+      fprintf(m_f, "%s;req;%ld;errors;%ld;duration;%ld;"
+              "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;304;%ld;"
+              "av;%lld;"NAVMS";%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;%s",
               entry[i].key,
               client_rec->request_count,
               client_rec->error_count,
+              client_rec->end_s - client_rec->start_s,
               client_rec->status_1,
               client_rec->status_2,
               client_rec->status_3,
               client_rec->status_4,
               client_rec->status_5,
+              client_rec->status_304,
               client_rec->duration / client_rec->request_count,
+              client_rec->duration_count_ms / client_rec->request_count,
               client_rec->duration_0,
               client_rec->duration_1,
               client_rec->duration_2,
@@ -1711,6 +1798,13 @@ int main(int argc, const char *const argv[]) {
           fprintf(m_f, "%s;%d;", eventName, *eventVal);
           (*eventVal) = 0;
         }
+      }
+      if(m_ct) {
+        fprintf(m_f, "html;%ld;css/js;%ld;img;%ld;other;%ld;",
+                client_rec->html,
+                client_rec->cssjs,
+                client_rec->img,
+                client_rec->other);
       }
       fprintf(m_f, "\n");
     }
