@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.23 2013-07-09 18:17:55 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.24 2013-07-15 16:59:31 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -21,6 +21,12 @@ case "$1" in
     # stand alone tests
     shift
     case "$1" in
+        writeapacheci)
+          for E in `seq 12`; do
+	    min=`printf "%.2d" $E`
+	    echo "127.0.0.${E} [24/Aug/2011:18:${min}:00 +0200] \"/a/\" 200 2000 152637 <NULL> text/html"
+          done
+        ;;
         writeapacheD)
 	  # %h %t %>s %b %D %{Event}e
 	  echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] \"/a/\" 200 1000 52637 A01,A02 text/html"
@@ -176,12 +182,25 @@ case "$1" in
 	fi
 	rm -f pc
 	./qslog.sh test writeapacheD | ../util/src/qslog -f I..RSBDEc -pc > pc
-	if [ `grep -c "127.0.0.1;req;4;errors;0;duration;180;1xx;0;2xx;4;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;52;<1s;4;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;html;2;css/js;0;img;1;other;1;A01;2;A02;1;X02;1;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.1;req;4;errors;0;duration;180;1xx;0;2xx;4;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;52;<1s;4;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;0;html;2;css/js;0;img;1;other;1;A01;2;A02;1;X02;1;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.4)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.2;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;html;1;css/js;0;img;0;other;0;A01;1;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.2;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;40;html;1;css/js;0;img;0;other;0;A01;1;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.5)"
+	    exit 1
+	fi
+	./qslog.sh test writeapacheci | ../util/src/qslog -f I..RSBDE -pc > pc
+	if [ `grep -c "127.0.0.6;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;50;" pc` -ne 1 ]; then
+	    echo "$PFX FAILED (.6)"
+	    exit 1
+	fi
+	if [ `grep -c "127.0.0.10;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;17;" pc` -ne 1 ]; then
+	    echo "$PFX FAILED (.7)"
+	    exit 1
+	fi
+	if [ `grep -c "127.0.0.3;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;25;" pc` -ne 1 ]; then
+	    echo "$PFX FAILED (.8)"
 	    exit 1
 	fi
         rm pc
