@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.63 2013-07-09 18:17:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.64 2013-07-15 16:59:31 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -96,6 +96,8 @@ typedef struct {
   long other;
   time_t start_s;
   time_t end_s;
+  long firstLine;
+  long lastLine;
 } client_rec_t;
 
 typedef struct stat_rec_st {
@@ -173,7 +175,7 @@ static int   m_customcounter = 0;
 static apr_table_t *m_client_entries = NULL;
 static int   m_max_client_entries = 0;
 static int   m_offline_count = 0;
-/* debug */
+/* debug/offline */
 static long  m_lines = 0;
 static int   m_verbose = 0;
 
@@ -832,11 +834,13 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     client_rec->other = 0;
     qs_time(&client_rec->start_s);
     client_rec->end_s = client_rec->start_s + 1; // +1 prevents div by 0
+    client_rec->firstLine = m_lines;
     qsInitEvent(pool, client_rec->events);
     apr_table_setn(m_client_entries, tid, (char *)client_rec);
   } else {
     qs_time(&client_rec->end_s);
   }
+  client_rec->lastLine = m_lines;
   client_rec->request_count++;
   client_rec->duration += tme;
   client_rec->duration_count_ms += tmems;
@@ -1040,6 +1044,9 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
   long tme;
   long tmems;
   if(!line[0]) return;
+  if(m_offline || m_offline_count) {
+    m_lines++;
+  }
   while(c[0]) {
     /* process known types */
     if(c[0] == '.') {
@@ -1184,7 +1191,6 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
   qs_csUnLock();
 
   if(m_verbose && (m_offline || m_offline_count)) {
-    m_lines++;
     printf("[%ld] I=[%s] U=[%s] B=[%s] i=[%s] S=[%s] T=[%ld] Q=[%s]\n", m_lines,
            I == NULL ? "(null)" : I,
            U == NULL ? "(null)" : U,
@@ -1758,6 +1764,14 @@ int main(int argc, const char *const argv[]) {
     for(i = 0; i < apr_table_elts(m_client_entries)->nelts; i++) {
       client_rec_t *client_rec = (client_rec_t *)entry[i].val;
       char esco[256];
+      /* ci (coverage index): low value indicates that we have seen the client
+                              at the end or beginning of the file (maybe not all
+                              requests due to log rotation) */
+      long coverage = (client_rec->firstLine * 100 / m_lines);
+      long coverageend = 100 - ((client_rec->lastLine * 100) / m_lines);
+      if(coverageend < coverage) {
+        coverage = coverageend;
+      }
       esco[0] = '\0';
       if(m_stat_rec->connections != -1) {
         sprintf(esco, "esco;%ld;", client_rec->connections);
@@ -1768,7 +1782,8 @@ int main(int argc, const char *const argv[]) {
       }
       fprintf(m_f, "%s;req;%ld;errors;%ld;duration;%ld;"
               "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;304;%ld;"
-              "av;%lld;"NAVMS";%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;%s",
+              "av;%lld;"NAVMS";%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;%s"
+              "ci;%ld;",
               entry[i].key,
               client_rec->request_count,
               client_rec->error_count,
@@ -1788,7 +1803,8 @@ int main(int argc, const char *const argv[]) {
               client_rec->duration_4,
               client_rec->duration_5,
               client_rec->duration_6,
-              esco);
+              esco,
+              coverage);
       if(m_ct) {
         fprintf(m_f, "html;%ld;css/js;%ld;img;%ld;other;%ld;",
                 client_rec->html,

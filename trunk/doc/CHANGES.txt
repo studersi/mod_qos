@@ -3,7 +3,13 @@ Version
  - Add Content-Security-Policy to the default response header
    white list.
 
- - qslog features enhanced "-pc" mode collecting more information.
+ - qslog features enhanced "-pc" mode providing more information:
+   * Collects content type information (%{content-type}o).
+   * Duration between the first and the last request.
+   * Average response in ms.
+   * "ci" indicates if we have seen the client at the end or the
+     beginning of the file (maybe not all requests in the log
+     due to log rotation).
 
 Version 10.16
 
