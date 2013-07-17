@@ -11,6 +11,8 @@ Version
      beginning of the file (maybe not all requests in the log
      due to log rotation).
 
+- qsgeo features option "-l"
+
 Version 10.16
 
  - qslog adds 'E' (event identifiers) to the format string.
