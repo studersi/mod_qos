@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.64 2013-07-15 16:59:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.65 2013-07-17 19:56:45 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1779,6 +1779,9 @@ int main(int argc, const char *const argv[]) {
       if(m_avms == 0) {
         // no ms available
         client_rec->duration_count_ms = 1000 * client_rec->duration;
+      } else {
+        // improve accuracy (rounding errors):
+        client_rec->duration = client_rec->duration_count_ms / 1000;
       }
       fprintf(m_f, "%s;req;%ld;errors;%ld;duration;%ld;"
               "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;304;%ld;"
