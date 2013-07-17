@@ -6,7 +6,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2012 Pascal Buchbinder
+ * Copyright (C) 2007-2013 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.8 2012-12-18 19:32:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.9 2013-07-17 19:57:03 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,6 +56,21 @@ static const char revision[] = "$Id: qsgeo.c,v 1.8 2012-12-18 19:32:50 pbuchbind
 #define QS_GEO_PATTERN_D "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
 // 182.12.34.23
 #define IPPATTERN "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"'\x0d\x0a, ]+"
+
+static int m_inject = 0;
+
+typedef struct {
+  unsigned long start;
+  char *c;
+} qos_inj_t;
+
+static const qos_inj_t m_inj[] = {
+  { 167772160, "\"10.0.0.0\",\"10.255.255.255.255\",\"167772160\",\"184549375\",\"PV\",\"private network\"" },
+  { 2130706432, "\"127.0.0.0\",\"127.255.255.255\",\"2130706432\",\"2147483647\",\"LO\",\"local loopback\"" },
+  { 2886729728, "\"172.16.0.0\",\"172.31.255.255\",\"2886729728\",\"2887778303\",\"PV\",\"private network\"" },
+  { 3232235520, "\"192.168.0.0\",\"192.168.255.255\",\"3232235520\",\"3232301055\",\"PV\",\"private network\"" },
+  { 0, NULL }
+};
 
 typedef struct {
   unsigned long start;
@@ -155,7 +170,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -d <path> [-s] [-ip <ip>]\n",  man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -d <path> [-l] [-s] [-ip <ip>]\n",  man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -181,6 +196,11 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "  -s\n");
   if(man) printf("\n");
   qs_man_print(man, "     Writes a summary of the requests per country only.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -l\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Writes the database to stdout inserting local (127.*) and\n");
+  qs_man_print(man, "     private (10.*, 172.16*, 192.168.*) network addresses.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -ip <ip>\n");
   if(man) printf("\n");
@@ -258,7 +278,9 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
   qos_geo_t *last = NULL;
   int lines = 0;
   char line[HUGE_STRING_LEN];
+  char buf[HUGE_STRING_LEN];
   FILE *file = fopen(db, "r");
+  const qos_inj_t *inj = m_inj;
   *size = 0;
   if(!file) {
     return NULL;
@@ -289,6 +311,9 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
     lines++;
     if(strlen(line) > 0) {
       int plus = 0;
+      if(m_inject) {
+        strcpy(buf, line);
+      }
       if(regexec(&pregd, line, MAX_REG_MATCH, ma, 0) == 0) {
 	plus = 1;
       }
@@ -299,6 +324,14 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 	g->start = atoll(&line[ma[1].rm_so]);
 	g->end = atoll(&line[ma[2].rm_so]);
 	g->c[0] = '\0';
+        if(m_inject) {
+          if(inj->start && (g->start > inj->start)) {
+            printf("%s\n", inj->c);
+            inj++;
+          } else {
+            printf("%s", buf);
+          }
+        }
 	strncpy(g->country, &line[ma[3].rm_so], 2);
 	if(last) {
 	  if(g->start < last->start) {
@@ -351,6 +384,8 @@ int main(int argc, const char * const argv[]) {
       }
     } else if(strcmp(*argv, "-s") == 0) {
       stat = 1;
+    } else if(strcmp(*argv, "-l") == 0) {
+      m_inject = 1;
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd, 0);
     } else if(strcmp(*argv,"--help") == 0) {
@@ -376,6 +411,9 @@ int main(int argc, const char * const argv[]) {
   if(geo == NULL || msg != NULL) {
     fprintf(stderr, "failed to load database: %s\n", msg ? msg : "-");
     exit(1);
+  }
+  if(m_inject) {
+    exit(0);
   }
   
   if(ip) {
