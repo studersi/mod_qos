@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.437 2013-07-09 10:57:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.438 2013-07-24 18:22:22 pbuchbinder Exp $";
 static const char g_revision[] = "10.17";
 
 /************************************************************************
@@ -2180,7 +2180,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
         strncpy(g->country, &line[ma[3].rm_so], 2);
         if(last) {
           if(g->start < last->start) {
-            *msg = apr_psprintf(pool, "wrong order/lines not storted (line %d)", lines);
+            *msg = apr_psprintf(pool, "wrong order/lines not sorted (line %d)", lines);
           }
         }
         last = g;

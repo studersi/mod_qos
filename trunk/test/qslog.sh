@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.24 2013-07-15 16:59:31 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.25 2013-07-24 18:22:22 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -168,38 +168,38 @@ case "$1" in
 	pc)
 	echo "$PFX pc"
 	./qslog.sh test writeapache 0 | ../util/src/qslog -f I....RSB.TkC -pc > pc
-	if [ `grep -c "127.0.0.1;req;236;errors;0;duration;60;1xx;0;2xx;236;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;0;<1s;236;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;" pc` -eq 0 ]; then
+	if [ `grep -c "127.0.0.1;req;236;errors;0;duration;60;bytes;23600;1xx;0;2xx;236;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;0;<1s;236;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;" pc` -eq 0 ]; then
 	    echo "$PFX FAILED (.1)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.2;req;118;errors;0;duration;60;1xx;0;2xx;118;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;0;<1s;118;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;" pc` -eq 0 ]; then
+	if [ `grep -c "127.0.0.2;req;118;errors;0;duration;60;bytes;23600;1xx;0;2xx;118;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;0;<1s;118;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;" pc` -eq 0 ]; then
 	    echo "$PFX FAILED (.2)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.3;req;118;errors;118;duration;60;1xx;0;2xx;0;3xx;0;4xx;0;5xx;118;304;0;av;4;avms;4000;<1s;0;1s;0;2s;0;3s;0;4s;118;5s;0;>5s;0;" pc` -eq 0 ]; then
+	if [ `grep -c "127.0.0.3;req;118;errors;118;duration;60;bytes;23600;1xx;0;2xx;0;3xx;0;4xx;0;5xx;118;304;0;av;4;avms;4000;<1s;0;1s;0;2s;0;3s;0;4s;118;5s;0;>5s;0;" pc` -eq 0 ]; then
 	    echo "$PFX FAILED (.3)"
 	    exit 1
 	fi
 	rm -f pc
 	./qslog.sh test writeapacheD | ../util/src/qslog -f I..RSBDEc -pc > pc
-	if [ `grep -c "127.0.0.1;req;4;errors;0;duration;180;1xx;0;2xx;4;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;52;<1s;4;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;0;html;2;css/js;0;img;1;other;1;A01;2;A02;1;X02;1;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.1;req;4;errors;0;duration;180;bytes;4000;1xx;0;2xx;4;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;52;<1s;4;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;0;html;2;css/js;0;img;1;other;1;A01;2;A02;1;X02;1;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.4)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.2;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;40;html;1;css/js;0;img;0;other;0;A01;1;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.2;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;40;html;1;css/js;0;img;0;other;0;A01;1;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.5)"
 	    exit 1
 	fi
 	./qslog.sh test writeapacheci | ../util/src/qslog -f I..RSBDE -pc > pc
-	if [ `grep -c "127.0.0.6;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;50;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.6;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;50;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.6)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.10;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;17;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.10;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;17;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.7)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.3;req;1;errors;0;duration;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;25;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.3;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;25;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.8)"
 	    exit 1
 	fi
