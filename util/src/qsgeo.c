@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.9 2013-07-17 19:57:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.10 2013-07-24 18:22:22 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -335,7 +335,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 	strncpy(g->country, &line[ma[3].rm_so], 2);
 	if(last) {
 	  if(g->start < last->start) {
-	    *msg = apr_psprintf(pool, "wrong order/lines not storted (line %d)", lines);
+	    *msg = apr_psprintf(pool, "wrong order/lines not sorted (line %d)", lines);
 	  }
 	}
 	if(plus) {

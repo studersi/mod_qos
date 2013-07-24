@@ -10,6 +10,7 @@ Version
    * "ci" indicates if we have seen the client at the end or the
      beginning of the file (maybe not all requests in the log
      due to log rotation).
+   * Bytes downloaded.
 
 - qsgeo features option "-l"
 
@@ -22,7 +23,7 @@ Version 10.16
  - qslog average counter (a/A) count only if a numeric value
    is available.
 
- - qssing does not try to execute invalud program name (space).
+ - qssing does not try to execute invalid program name (space only).
 
 Version 10.15
 

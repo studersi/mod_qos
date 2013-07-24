@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.65 2013-07-17 19:56:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.66 2013-07-24 18:22:22 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -72,6 +72,7 @@ static const char revision[] = "$Id: qslog.c,v 1.65 2013-07-17 19:56:45 pbuchbin
 typedef struct {
   long request_count;
   long error_count;
+  long long byte_count;
   long long duration;
   long long duration_count_ms;
   long duration_0;
@@ -810,6 +811,7 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     tid[strlen(id)] = '\0';
     client_rec->request_count = 0;
     client_rec->error_count = 0;
+    client_rec->byte_count = 0;
     client_rec->duration = 0;
     client_rec->duration_count_ms = 0;
     client_rec->duration_0 = 0;
@@ -863,6 +865,9 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     client_rec->duration_5++;
   } else {
     client_rec->duration_6++;
+  }
+  if(B != NULL) {
+    client_rec->byte_count += atol(B);
   }
   if(ct) {
     if(qsstrcasestr(ct, "html")) {
@@ -1783,7 +1788,7 @@ int main(int argc, const char *const argv[]) {
         // improve accuracy (rounding errors):
         client_rec->duration = client_rec->duration_count_ms / 1000;
       }
-      fprintf(m_f, "%s;req;%ld;errors;%ld;duration;%ld;"
+      fprintf(m_f, "%s;req;%ld;errors;%ld;duration;%ld;bytes;%lld;"
               "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;304;%ld;"
               "av;%lld;"NAVMS";%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;%s"
               "ci;%ld;",
@@ -1791,6 +1796,7 @@ int main(int argc, const char *const argv[]) {
               client_rec->request_count,
               client_rec->error_count,
               client_rec->end_s - client_rec->start_s,
+              client_rec->byte_count,
               client_rec->status_1,
               client_rec->status_2,
               client_rec->status_3,
