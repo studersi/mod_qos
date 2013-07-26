@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.25 2013-07-24 18:22:22 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.26 2013-07-26 20:22:50 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -201,6 +201,11 @@ case "$1" in
 	fi
 	if [ `grep -c "127.0.0.3;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;25;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.8)"
+	    exit 1
+	fi
+	echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] \"/a/\" 200 1000 52637 49 text/html\n127.0.0.1 [24/Aug/2011:18:12:00 +0200] \"/a/\" 200 2000 10000 8 text/css" | ../util/src/qslog -f I..RSBDAc -pc > pc
+	if [ `grep -c "127.0.0.1;req;2;errors;0;duration;60;bytes;3000;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;31;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;0;html;1;css/js;1;img;0;other;0;" pc` -eq 0 ]; then
+	    echo "$PFX FAILED (.9)"
 	    exit 1
 	fi
         rm pc

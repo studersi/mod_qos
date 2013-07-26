@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.66 2013-07-24 18:22:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.67 2013-07-26 20:22:50 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1339,6 +1339,10 @@ static void readStdinOffline(apr_pool_t *pool, const char *cstr) {
   char buf[32];
   time_t unitTime = 0;
   int line_len;
+  FILE *outdev = stdout;
+  if(m_offline_count) {
+    outdev = stderr;
+  }
   while(fgets(line, sizeof(line), stdin) != NULL) {
     time_t l_time;
     line_len = strlen(line) - 1;
@@ -1360,14 +1364,14 @@ static void readStdinOffline(apr_pool_t *pool, const char *cstr) {
     } if(l_time < unitTime) {
       /* leap in time... */
       updateStat(pool, cstr, line);
-      fprintf(stdout, "X");
-      fflush(stdout);
+      fprintf(outdev, "X");
+      fflush(outdev);
       unitTime = 0;
     } else {
       if(l_time > unitTime) {
         if(!m_verbose) {
-          fprintf(stdout, ".");
-          fflush(stdout);
+          fprintf(outdev, ".");
+          fflush(outdev);
         }
       }
       while(l_time > unitTime) {
@@ -1526,7 +1530,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     The option \"-pc\" may be used alternatively if you want to gather request\n");
   qs_man_print(man, "     information per client (identified by IP address (I) or user tracking id (U)\n");
   qs_man_print(man, "     showing how many request each client has performed within the captured period\n");
-  qs_man_print(man, "     of time).\n");
+  qs_man_print(man, "     of time). \"-pc\" supports the format characters IURSBTtDkEc.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -v\n");
   if(man) printf("\n");
@@ -1757,7 +1761,7 @@ int main(int argc, const char *const argv[]) {
     if(config == NULL) usage(cmd, 0);
     m_client_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES);
     readStdinOffline(pool, config);
-    fprintf(stdout, ".\n");
+    fprintf(stderr, ".\n");
     entry = (apr_table_entry_t *) apr_table_elts(m_client_entries)->elts;
     m_f = stdout;
     if(file) {

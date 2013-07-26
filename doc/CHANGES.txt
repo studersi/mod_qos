@@ -11,6 +11,7 @@ Version
      beginning of the file (maybe not all requests in the log
      due to log rotation).
    * Bytes downloaded.
+   * Writes status characters to stderr.
 
 - qsgeo features option "-l"
 
