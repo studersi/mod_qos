@@ -12,6 +12,7 @@ Version
      due to log rotation).
    * Bytes downloaded.
    * Writes status characters to stderr.
+   * HTTP request methods (GET/POST)
 
 - qsgeo features option "-l"
 

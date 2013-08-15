@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.67 2013-07-26 20:22:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.68 2013-08-15 06:44:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -91,6 +91,8 @@ typedef struct {
   long connections;
   apr_table_t *events;
   apr_pool_t *pool;
+  long get;
+  long post;
   long html;
   long img;
   long cssjs;
@@ -176,6 +178,7 @@ static int   m_customcounter = 0;
 static apr_table_t *m_client_entries = NULL;
 static int   m_max_client_entries = 0;
 static int   m_offline_count = 0;
+static int   m_methods = 0;
 /* debug/offline */
 static long  m_lines = 0;
 static int   m_verbose = 0;
@@ -785,7 +788,8 @@ static void printAndResetStat(char *timeStr) {
  */
 static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
                          char *BI, char *B, char *R, char *I, char *U, char *Q,
-                         char *E, char *k, char *C, char *ct, long tme, long tmems) {
+                         char *E, char *k, char *C, char *ct, long tme, long tmems,
+                         char *m) {
   client_rec_t *client_rec;
   const char *id = I; // ip
   if(id == NULL) {
@@ -830,6 +834,8 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     client_rec->connections = 0;
     client_rec->events = apr_table_make(pool, 100);
     client_rec->pool = pool;
+    client_rec->get = 0;
+    client_rec->post = 0;
     client_rec->html = 0;
     client_rec->img = 0;
     client_rec->cssjs = 0;
@@ -880,6 +886,13 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
       client_rec->cssjs++;
     } else {
       client_rec->other++;
+    }
+  }
+  if(m) {
+    if(strcasecmp(m, "get") == 0) {
+      client_rec->get++;
+    } else if(strcasecmp(m, "post") == 0) {
+      client_rec->post++;
     }
   }
   if(S != NULL) {
@@ -1044,6 +1057,7 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
   char *A = NULL; /* average 2 */
   char *E = NULL; /* events */
   char *ct = NULL; /* content type */
+  char *m = NULL; /* method */
   const char *c = cstr;
   char *l = line;
   long tme;
@@ -1093,6 +1107,10 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
     } else if(c[0] == 'c') {
       if(l != NULL && l[0] != '\0') {
         ct = cutNext(&l);
+      }
+    } else if(c[0] == 'm') {
+      if(l != NULL && l[0] != '\0') {
+        m = cutNext(&l);
       }
     } else if(c[0] == 'R') {
       if(l != NULL && l[0] != '\0') {
@@ -1191,7 +1209,7 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
       updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
     }
   } else {
-    updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, ct, tme, tmems);
+    updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, ct, tme, tmems, m);
   }
   qs_csUnLock();
 
@@ -1484,6 +1502,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - number of mod_qos events within the last minute (qV=create session,\n");
   qs_man_print(man, "    qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
   qs_man_print(man, "    keep-alive, qL=request/response slow down, qs=serialized request)\n");
+  qs_man_println(man, "  - number of events identified by the 'E' format character\n");
   printf("\n");
   if(man) {
     printf(".SH OPTIONS\n");
@@ -1516,6 +1535,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     A arbitraty counter to build an average from (average per request)\n");
   qs_man_println(man, "     E comma separated list of event strings\n");
   qs_man_println(man, "     c content type (%%{content-type}o), available in -pc mode only\n");
+  qs_man_println(man, "     m request methode (GET/POST) (%%m), available in -pc mode only\n");
   qs_man_println(man, "     . defines an element to ignore (unknown string)\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -o <out_file>\n");
@@ -1530,7 +1550,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     The option \"-pc\" may be used alternatively if you want to gather request\n");
   qs_man_print(man, "     information per client (identified by IP address (I) or user tracking id (U)\n");
   qs_man_print(man, "     showing how many request each client has performed within the captured period\n");
-  qs_man_print(man, "     of time). \"-pc\" supports the format characters IURSBTtDkEc.\n");
+  qs_man_print(man, "     of time). \"-pc\" supports the format characters IURSBTtDkEcm.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -v\n");
   if(man) printf("\n");
@@ -1685,6 +1705,9 @@ int main(int argc, const char *const argv[]) {
           // enable average duration in ms
           m_avms = 1;
         }
+        if(strchr(config, 'm')) {
+          m_methods = 1;
+        }
         if(strchr(config, 's') || strchr(config, 'a') || strchr(config, 'A')) {
           // enable custom counter
           m_customcounter = 1;
@@ -1773,6 +1796,7 @@ int main(int argc, const char *const argv[]) {
     for(i = 0; i < apr_table_elts(m_client_entries)->nelts; i++) {
       client_rec_t *client_rec = (client_rec_t *)entry[i].val;
       char esco[256];
+      char m[256];
       /* ci (coverage index): low value indicates that we have seen the client
                               at the end or beginning of the file (maybe not all
                               requests due to log rotation) */
@@ -1785,6 +1809,12 @@ int main(int argc, const char *const argv[]) {
       if(m_stat_rec->connections != -1) {
         sprintf(esco, "esco;%ld;", client_rec->connections);
       }
+      m[0] = '\0';
+      if(m_methods) {
+        sprintf(m, "GET;%ld;POST;%ld;",
+                client_rec->get,
+                client_rec->post);
+      }
       if(m_avms == 0) {
         // no ms available
         client_rec->duration_count_ms = 1000 * client_rec->duration;
@@ -1794,7 +1824,9 @@ int main(int argc, const char *const argv[]) {
       }
       fprintf(m_f, "%s;req;%ld;errors;%ld;duration;%ld;bytes;%lld;"
               "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;304;%ld;"
-              "av;%lld;"NAVMS";%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;%s"
+              "av;%lld;"NAVMS";%lld;<1s;%ld;1s;%ld;2s;%ld;3s;%ld;4s;%ld;5s;%ld;>5s;%ld;"
+              "%s"
+              "%s"
               "ci;%ld;",
               entry[i].key,
               client_rec->request_count,
@@ -1817,6 +1849,7 @@ int main(int argc, const char *const argv[]) {
               client_rec->duration_5,
               client_rec->duration_6,
               esco,
+              m,
               coverage);
       if(m_ct) {
         fprintf(m_f, "html;%ld;css/js;%ld;img;%ld;other;%ld;",
