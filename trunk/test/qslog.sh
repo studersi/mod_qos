@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.26 2013-07-26 20:22:50 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.27 2013-08-15 06:44:17 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -24,7 +24,7 @@ case "$1" in
         writeapacheci)
           for E in `seq 12`; do
 	    min=`printf "%.2d" $E`
-	    echo "127.0.0.${E} [24/Aug/2011:18:${min}:00 +0200] \"/a/\" 200 2000 152637 <NULL> text/html"
+	    echo "127.0.0.${E} [24/Aug/2011:18:${min}:00 +0200] \"/a/\" GET 200 2000 152637 <NULL> text/html"
           done
         ;;
         writeapacheD)
@@ -190,21 +190,21 @@ case "$1" in
 	    echo "$PFX FAILED (.5)"
 	    exit 1
 	fi
-	./qslog.sh test writeapacheci | ../util/src/qslog -f I..RSBDE -pc > pc
-	if [ `grep -c "127.0.0.6;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;50;" pc` -ne 1 ]; then
+	./qslog.sh test writeapacheci | ../util/src/qslog -f I..RmSBDE -pc > pc
+	if [ `grep -c "127.0.0.6;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;GET;1;POST;0;ci;50;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.6)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.10;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;17;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.10;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;GET;1;POST;0;ci;17;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.7)"
 	    exit 1
 	fi
-	if [ `grep -c "127.0.0.3;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;25;" pc` -ne 1 ]; then
+	if [ `grep -c "127.0.0.3;req;1;errors;0;duration;1;bytes;2000;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;152;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;GET;1;POST;0;ci;25;" pc` -ne 1 ]; then
 	    echo "$PFX FAILED (.8)"
 	    exit 1
 	fi
-	echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] \"/a/\" 200 1000 52637 49 text/html\n127.0.0.1 [24/Aug/2011:18:12:00 +0200] \"/a/\" 200 2000 10000 8 text/css" | ../util/src/qslog -f I..RSBDAc -pc > pc
-	if [ `grep -c "127.0.0.1;req;2;errors;0;duration;60;bytes;3000;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;31;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;0;html;1;css/js;1;img;0;other;0;" pc` -eq 0 ]; then
+	echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] \"/a/\" POST 200 1000 52637 49 text/html\n127.0.0.1 [24/Aug/2011:18:12:00 +0200] \"/a/\" GET 200 2000 10000 8 text/css" | ../util/src/qslog -f I..RmSBDAc -pc > pc
+	if [ `grep -c "127.0.0.1;req;2;errors;0;duration;60;bytes;3000;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;31;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;GET;1;POST;1;ci;0;html;1;css/js;1;img;0;other;0;" pc` -eq 0 ]; then
 	    echo "$PFX FAILED (.9)"
 	    exit 1
 	fi
