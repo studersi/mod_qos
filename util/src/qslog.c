@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.68 2013-08-15 06:44:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.69 2013-08-16 13:04:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1499,10 +1499,10 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - free memory (m) (not available for all platforms)\n");
   qs_man_println(man, "  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
   qs_man_println(man, "  - number of different users seen withn the last %d seconds (usr)\n", ACTIVE_TIME);
+  qs_man_println(man, "  - number of events identified by the 'E' format character\n");
   qs_man_println(man, "  - number of mod_qos events within the last minute (qV=create session,\n");
   qs_man_print(man, "    qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
   qs_man_print(man, "    keep-alive, qL=request/response slow down, qs=serialized request)\n");
-  qs_man_println(man, "  - number of events identified by the 'E' format character\n");
   printf("\n");
   if(man) {
     printf(".SH OPTIONS\n");
