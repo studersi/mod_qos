@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.10 2013-07-24 18:22:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.11 2013-08-16 19:07:53 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,6 +56,7 @@ static const char revision[] = "$Id: qsgeo.c,v 1.10 2013-07-24 18:22:22 pbuchbin
 #define QS_GEO_PATTERN_D "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
 // 182.12.34.23
 #define IPPATTERN "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"'\x0d\x0a, ]+"
+#define IPPATTERN2 "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"'\x0d\x0a,; ]+"
 
 static int m_inject = 0;
 
@@ -190,8 +191,8 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -d <path>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Specifies the path to the geographical database files (CSV file\n");
-  qs_man_print(man, "     containing IP address ranges and country codes.\n");
+  qs_man_print(man, "     Specifies the path to the geographical database files (CSV\n");
+  qs_man_print(man, "     file containing IP address ranges and country codes).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -s\n");
   if(man) printf("\n");
@@ -199,8 +200,9 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -l\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Writes the database to stdout inserting local (127.*) and\n");
-  qs_man_print(man, "     private (10.*, 172.16*, 192.168.*) network addresses.\n");
+  qs_man_print(man, "     Writes the database to stdout (ignoring stdin) inserting\n");
+  qs_man_print(man, "     local (127.*) and private (10.*, 172.16*, 192.168.*)\n");
+  qs_man_print(man, "     network addresses.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -ip <ip>\n");
   if(man) printf("\n");
@@ -440,13 +442,23 @@ int main(int argc, const char * const argv[]) {
     apr_pool_t *tmp;
     char line[HUGE_STRING_LEN];
     regex_t preg;
+    regex_t preg2;
     regmatch_t ma[MAX_REG_MATCH];
     apr_pool_create(&tmp, NULL);
     if(regcomp(&preg, IPPATTERN, REG_EXTENDED)) {
       exit(1);
     }
+    regcomp(&preg2, IPPATTERN2, REG_EXTENDED);
     while(fgets(line, sizeof(line), stdin) != NULL) {
-      if(regexec(&preg, line, MAX_REG_MATCH, ma, 0) == 0) {
+      int match = regexec(&preg, line, MAX_REG_MATCH, ma, 0);
+      if(match != 0) {
+        char *dx = strchr(line, ';');
+        if(dx && ((dx - line) <= 15)) {
+          // file starts probably with <ip>; => a qslog -pc file?
+          match = regexec(&preg2, line, MAX_REG_MATCH, ma, 0);
+        }
+      }
+      if(match == 0) {
         unsigned long search;
         prev = line[ma[1].rm_eo];
         line[ma[1].rm_eo] = '\0';
@@ -474,15 +486,39 @@ int main(int argc, const char * const argv[]) {
           /* modifies each log line inserting the country code
            */
           char cr = prev;
+          char delw[2];
+          char delx[2];
+          delw[1] = '\0';
+          delw[0] = ' ';
+          delx[1] = '\0';
+          delx[0] = ' ';
+          if(line[ma[1].rm_eo+1] == ' ') {
+            delx[0] = '\0';
+          }
+          if(line[ma[1].rm_eo+1] == ';') {
+            delx[0] = ';';
+          }
           if(prev <= CR) {
             prev = ' ';
           }
+          if(prev == ' ') {
+            delw[0] = '\0';
+          }
+          if(prev == ';') {
+            delw[0] = '\0';
+            delx[0] = ';';
+          }
           if(pB) {
-            printf("%s%c%s%s%s%s", line, prev, prev == ' ' ? "" : " ", pB->country,
-                   line[ma[1].rm_eo+1] == ' ' ? "" : " ", &line[ma[1].rm_eo+1]);
+            printf("%s%c%s%s%s%s", line, prev,
+                   delw,
+                   pB->country,
+                   delx,
+                   &line[ma[1].rm_eo+1]);
           } else {
-            printf("%s%c%s--%s%s", line, prev, prev == ' ' ? "" : " ",
-                   line[ma[1].rm_eo+1] == ' ' ? "" : " ", &line[ma[1].rm_eo+1]);
+            printf("%s%c%s--%s%s", line, prev,
+                   delw,
+                   delx,
+                   &line[ma[1].rm_eo+1]);
           }
           if(cr <= CR) {
             printf("\n");
