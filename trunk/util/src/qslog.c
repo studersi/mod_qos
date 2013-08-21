@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.69 2013-08-16 13:04:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.70 2013-08-21 11:29:12 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1535,7 +1535,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     A arbitraty counter to build an average from (average per request)\n");
   qs_man_println(man, "     E comma separated list of event strings\n");
   qs_man_println(man, "     c content type (%%{content-type}o), available in -pc mode only\n");
-  qs_man_println(man, "     m request methode (GET/POST) (%%m), available in -pc mode only\n");
+  qs_man_println(man, "     m request method (GET/POST) (%%m), available in -pc mode only\n");
   qs_man_println(man, "     . defines an element to ignore (unknown string)\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -o <out_file>\n");
@@ -1563,7 +1563,7 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -u <name>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Become another user, e.g. www-data.\n");
+  qs_man_print(man, "     Becomes another user, e.g. www-data.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -m\n");
   if(man) printf("\n");

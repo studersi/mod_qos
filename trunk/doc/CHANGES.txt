@@ -14,7 +14,8 @@ Version
    * Writes status characters to stderr.
    * HTTP request methods (GET/POST)
 
-- qsgeo features option "-l"
+- qsgeo features option "-l" and is able to process "qslog -pc"
+  files.
 
 Version 10.16
 
