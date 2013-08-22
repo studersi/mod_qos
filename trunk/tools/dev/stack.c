@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.29 2012-11-23 20:21:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.30 2013-08-22 19:12:58 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,9 +33,15 @@ static const char revision[] = "$Id: stack.c,v 1.29 2012-11-23 20:21:50 pbuchbin
 #include <sys/time.h>
 
 #define QSMOD 4
+#define LIMIT 1
 
 static int m_qsmod = QSMOD;
 static int m_silent = 0;
+
+typedef struct {
+  short int limit;
+  time_t limit_time;
+} qos_s_entry_limit_t;
 
 typedef struct {
   unsigned long ip;
@@ -52,11 +58,10 @@ typedef struct {
   short int vip;
   /* ev block */
   short int block;
-  short int limit;
   short int blockMsg;
   time_t time;
   time_t block_time;
-  time_t limit_time;
+  qos_s_entry_limit_t *limit;
   /* ev/sec */
   time_t interval;
   long req;
@@ -92,21 +97,25 @@ static int qoss_comp_time(const void *_pA, const void *_pB) {
 }
 
 static qos_s_t *qoss_new(int size) {
+  int lsize = (sizeof(qos_s_entry_limit_t) * LIMIT * size);
   int msize = sizeof(qos_s_t) + 
     (sizeof(qos_s_entry_t) * size) + 
     (2 * sizeof(qos_s_entry_t *) * size);
   int i;
   qos_s_t *s = calloc(msize, 1);
   qos_s_entry_t *e = (qos_s_entry_t *)&s[1];
+  qos_s_entry_limit_t *l = calloc(lsize, 1);
   s->ipd = (qos_s_entry_t **)&e[size];
   s->timed = (qos_s_entry_t **)&s->ipd[size];
   s->num = 0;
   s->max = size;
-  s->msize = msize;
+  s->msize = msize + lsize;
   for(i = 0; i < size; i++) {
     s->ipd[i] = e;
     s->timed[i] = e;
+    e->limit = l;
     e++;
+    l++;
   }
   return s;
 }
@@ -158,6 +167,10 @@ static void qoss_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->ip = pA->ip;
   (*pB)->time = now;
   qsort(&s->ipd[start], max, sizeof(qos_s_entry_t *), qoss_comp);
+
+  (*pB)->block = 0;
+  (*pB)->blockMsg = 0;
+  (*pB)->block_time = 0;
 }
 
 static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA, long i) {

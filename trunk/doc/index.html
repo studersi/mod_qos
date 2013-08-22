@@ -605,7 +605,7 @@ directive.
 </li>
 <li>
 <code>QS_Limit</code><br>
-Variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+(Default) variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
 directive.
 </li>
 <li>
@@ -1323,9 +1323,9 @@ These directives must only be used in the global server context.
 <code>QS_ClientEntries &lt;number&gt;</code><br>
 Defines the number of individual clients managed by mod_qos. 
 Default is 50'000 concurrent IP addresses. Each client requires 
-about 88 bytes of shared memory on a 32bit system or 128 bytes 
-on a 64bit system respectively. Client IP source address store 
-survives graceful server restart.
+about 150 bytes memory on a 64bit system (depending on how many 
+<code>QS_ClientEventLimitCount</code> events you have configured). 
+Client IP source address store survives graceful server restart.
 </li>
 <li>
 <a name="QS_ClientEventRequestLimit"></a>
@@ -1355,14 +1355,21 @@ level: user might not always get a user friendly error response).
 </li>
 <li>
 <a name="QS_ClientEventLimitCount"></a>
-<code>QS_ClientEventLimitCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
-Defines the maximum number of <code>QS_Limit</code> events allowed 
-within the defined time (default is 600 seconds). Requests from client IP's reaching 
-this limitation are denied for the specified time (blocked at request level). <br>
+<code>QS_ClientEventLimitCount &lt;number&gt; [&lt;seconds&gt; [&lt;variable&gt;]]</code><br>
+Defines the maximum number of the defined environment variables (<code>QS_Limit</code> by default) 
+allowed within the defined time (default is 600 seconds). Requests from client IP's reaching 
+this limitation are denied for the specified time (blocked at request level). <br/>
+
 Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 determine the client's IP address based on the defined HTTP request header (e.g., 
 X-Forwarded-For) instead of taking the IP address of the client which has opened 
-the TCP connection.
+the TCP connection.<br/>
+
+Note: The current value if this counter is stored within the variable suffixed 
+by <code>_Counter</code>, e.g. <code>QS_Limit_Counter</code> for further processing by 
+other rules. <br/>
+
+Note: Adding/removing events require a server restart (graceful restart is not supported).
 </li>
 <li>
 <a name="QS_ClientSerialize"></a>
