@@ -1,5 +1,7 @@
 Version
 
+ - QS_ClientEventLimitCount supports unlimited number of events.
+
  - Add Content-Security-Policy to the default response header
    white list.
 
