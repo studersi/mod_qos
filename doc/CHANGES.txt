@@ -1,6 +1,11 @@
-Version
+Version 10.17
 
  - QS_ClientEventLimitCount supports unlimited number of events.
+
+ - Stores the value of the QS_ClientEventLimitCount variables as
+   environment variables suffixed by "_Counter", e.g. QS_Limit_Counter
+   for the default QS_Limit variable, in order to be processed by
+   other rules.
 
  - Add Content-Security-Policy to the default response header
    white list.
