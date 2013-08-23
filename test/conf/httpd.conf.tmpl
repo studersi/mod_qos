@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.235 2013-06-21 19:05:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.236 2013-08-23 19:06:32 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -90,6 +90,8 @@ QS_ClientContentTypes 150 50 200 30 60
 QS_ClientEventBlockCount 3 10
 </IfDefine>
 QS_ClientEventLimitCount 3 10
+#QS_ClientEventLimitCount 6 5 QS_LimitVar2
+#QS_ClientEventLimitCount 100 600 QS_LimitVar3
 QS_ClientEventPerSecLimit  5
 <IfDefine X-Forwarded-For>
 QS_ClientIpFromHeader    Y-Forwarded-For
@@ -370,6 +372,8 @@ ErrorDocument 404 /error-docs/error404.html
    QS_SetEnvResHeaderMatch    X-Login           failed
    QS_SetEnvIf                X-Login    !QSNOT QS_Limit=yes
    QS_UnsetResHeader          X-Login
+   QS_SetEnvIfQuery           QS_LimitVar2      QS_LimitVar2=yes
+   QS_SetEnvIfQuery           QS_LimitVar3      QS_LimitVar3=yes
 
    # concurrent requests with certain event
    QS_SetEnvIfQuery           QS_EventRequestLimit query
@@ -595,6 +599,8 @@ ErrorDocument 404 /error-docs/error404.html
 
    <Location /htt/soap>
       RequestHeaderPlus set X-User-Name-PWD ${SECURITY_HEADER_EX} late
+      SetEnvIfPlus      QS_LimitVar3_Counter 10 ForwardVar3 late
+      RequestHeaderPlus set X-Var3 ${QS_LimitVar3_Counter} env=ForwardVar3 late
    </Location>
 
 </VirtualHost>

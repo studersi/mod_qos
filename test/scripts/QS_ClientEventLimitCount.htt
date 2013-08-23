@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventLimitCount.htt,v 1.4 2013-08-22 19:12:58 pbuchbinder Exp $
+# $Id: QS_ClientEventLimitCount.htt,v 1.5 2013-08-23 19:06:32 pbuchbinder Exp $
 #
 #  QS_ClientEventLimitCount 3 10
 #  QS_ClientIpFromHeader      Y-Forwarded-For
@@ -8,6 +8,8 @@
 #  QS_SetEnvIf                X-Login    !QSNOT QS_Limit=yes
 #  QS_UnsetResHeader          X-Login
 #
+#  QS_SetEnvIfQuery           QS_LimitVar2      QS_LimitVar2=yes
+
 
 INCLUDE scripts/ports
 
@@ -53,7 +55,7 @@ _WAIT
 _CLOSE
 _SLEEP 200
 
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=3"
 _EXEC tail -1 logs/error_log
 
 _SET MSG_MISSINGHEADER=mod_qos\(069\): no valid IP header found .@hp.: header 'Y-Forwarded-For' not available, fallback to connection's IP 127.0.0.1
@@ -118,6 +120,135 @@ _CLOSE
 _SLEEP 200
 _EXPECT EXEC "${MSG_MISSINGHEADER2}"
 _EXEC tail -1 logs/error_log
+
+# ----------------
+# udpate config (change value): QS_ClientEventLimitCount 5 10
+_EXEC sed "s:QS_ClientEventLimitCount 3:QS_ClientEventLimitCount 5:g" -i conf/httpd.conf
+_SLEEP 100
+_EXEC ./ctl.sh graceful >/dev/null
+_SLEEP 100
+
+_LOOP 4
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Y-Forwarded-For: 10.10.10.2
+__
+_EXPECT . "!X-Login"
+_EXPECT . "200"
+_EXPECT . "AS6"
+_WAIT
+_CLOSE
+_END LOOP
+_SLEEP 200
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Y-Forwarded-For: 10.10.10.2
+__
+_EXPECT . "code=067"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=5, current=5"
+_EXEC tail -1 logs/error_log
+_SLEEP 12000
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Y-Forwarded-For: 10.10.10.2
+__
+_EXPECT . "AS07"
+_WAIT
+_CLOSE
+
+_EXEC sed "s:QS_ClientEventLimitCount 5:QS_ClientEventLimitCount 3:g" -i conf/httpd.conf
+_SLEEP 100
+_EXEC ./ctl.sh graceful >/dev/null
+
+
+# ----------------
+# udpate config:
+#  enable QS_ClientEventLimitCount 6 5 QS_LimitVar2
+#  enable QS_ClientEventLimitCount 100 600 QS_LimitVar3
+_EXEC sed "s:#QS_ClientEventLimitCount 6:QS_ClientEventLimitCount 6:g" -i conf/httpd.conf
+_EXEC sed "s:#QS_ClientEventLimitCount 100:QS_ClientEventLimitCount 100:g" -i conf/httpd.conf
+_SLEEP 100
+_EXEC ./ctl.sh graceful >/dev/null
+_SLEEP 2000
+# not allowed to add a variable
+_EXPECT EXEC "\[error\] mod_qos\(001\): QS_ClientEventLimitCount directives can't be added/removed by graceful restart. A server restart is required to apply the new configuration!"
+_EXEC tail -10 logs/error_log
+_EXEC ./ctl.sh restart -D real_ip > /dev/null
+
+_LOOP 5
+_REQ localhost $QS_PORT_BASE
+__GET /qos/?trigger=QS_LimitVar2 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "<title>mod_qos</title>"
+_WAIT
+_CLOSE
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/?trigger=QS_LimitVar2 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "!<title>mod_qos</title>"
+_EXPECT . "code=067"
+_WAIT
+_CLOSE
+_SLEEP 6000
+
+# ----------------
+#      SetEnvIfPlus      QS_LimitVar3_Counter 10 ForwardVar3 late
+#      RequestHeaderPlus set X-Var3 ${QS_LimitVar3_Counter} env=ForwardVar3 late
+
+_LOOP 8
+_REQ localhost $QS_PORT_BASE
+__GET /qos/?trigger=QS_LimitVar3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "<title>mod_qos</title>"
+_WAIT
+_CLOSE
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/soap/?QS_LimitVar3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "AS08"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/soap/?QS_LimitVar3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "AS09"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/soap/?QS_LimitVar3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "AS10"
+_WAIT
+_CLOSE
 
 END
 
@@ -185,6 +316,57 @@ __Content-Type: text/html
 __X-Login: failed
 __
 __==AS5==
+_CLOSE
+
+_LOOP 4
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__X-Login: failed
+__
+__==AS6==
+_CLOSE
+_END LOOP
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS07==
+_CLOSE
+
+_RES
+_EXPECT . "!X-Var3"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS08==
+_CLOSE
+
+_RES
+_EXPECT . "X-Var3: 10"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS09==
+_CLOSE
+
+_RES
+_EXPECT . "!X-Var3"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS10==
 _CLOSE
 
 END
