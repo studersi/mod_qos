@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.439 2013-08-22 19:12:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.440 2013-08-23 19:06:32 pbuchbinder Exp $";
 static const char g_revision[] = "10.17";
 
 /************************************************************************
@@ -4863,7 +4863,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                                 "max=%d, current=%d, c=%s",
                                 eventName,
                                 eventLimit->limit,
-                                (*e)->limit[limitTableIndex].limit,
+                                (*ef)->limit[limitTableIndex].limit,
                                 QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
             ret = m_retcode;
           }
@@ -8216,7 +8216,7 @@ static int qos_chroot(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, se
     if(sconf->chroot) {
       int rc = 0;
       ap_log_error(APLOG_MARK, APLOG_INFO, 0, bs, 
-                   QOS_LOG_PFX(001)"change root to %s", sconf->chroot);
+                   QOS_LOG_PFX(000)"change root to %s", sconf->chroot);
       if((rc = chroot(sconf->chroot)) < 0) {
         ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                      QOS_LOG_PFX(000)"chroot failed: %s", strerror(errno));
@@ -8454,13 +8454,47 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                    he->text, he->size);
     }
   }
-  if(sconf->has_qos_cc && !u->qos_cc) {
-    u->qos_cc = qos_cc_new(bs->process->pool, bs, sconf->qos_cc_size, sconf->qos_cc_limitTable);
-    if(u->qos_cc == NULL) {
-      return !OK;
+  if(sconf->has_qos_cc) {
+    if(!u->qos_cc) {
+      u->qos_cc = qos_cc_new(bs->process->pool, bs, sconf->qos_cc_size, sconf->qos_cc_limitTable);
+      if(u->qos_cc == NULL) {
+        return !OK;
+      }
+    } else {
+      int configOk = 1;
+      int limitTableSize = apr_table_elts(sconf->qos_cc_limitTable)->nelts;
+      if(u->qos_cc->limitTable) {
+        int i;
+        apr_table_entry_t *te = (apr_table_entry_t *)apr_table_elts(sconf->qos_cc_limitTable)->elts;
+        for(i = 0; i < limitTableSize; i++) {
+          const char *name = te[i].key;
+          qos_s_entry_limit_t *newentry = (qos_s_entry_limit_t *)te[i].val;
+          qos_s_entry_limit_t *entry = (qos_s_entry_limit_t *)apr_table_get(u->qos_cc->limitTable, name);
+          if(entry) {
+            entry->limit = newentry->limit;
+            entry->limit_time = newentry->limit_time;
+          } else {
+            // new variable
+            configOk = 0;
+          }
+          if(apr_table_elts(u->qos_cc->limitTable)->nelts != limitTableSize) {
+            // removed variable
+            configOk = 0;
+          }
+        }
+      } else {
+        if(limitTableSize > 0) {
+          // enabled after graceful restart
+          configOk = 0;
+        }
+      }
+      if(!configOk) {
+        ap_log_error(APLOG_MARK, APLOG_ERR, 0, bs, 
+                     QOS_LOG_PFX(001)"QS_ClientEventLimitCount directives"
+                     " can't be added/removed by graceful restart. A server"
+                     " restart is required to apply the new configuration!");
+      }
     }
-  } else {
-    // TODO $$$ update limit table settings (and log error if event names have changed!!!)
   }
   if(sconf->error_page == NULL && error_page != NULL) {
     sconf->error_page = error_page;

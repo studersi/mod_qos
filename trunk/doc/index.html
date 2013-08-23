@@ -1365,11 +1365,14 @@ determine the client's IP address based on the defined HTTP request header (e.g.
 X-Forwarded-For) instead of taking the IP address of the client which has opened 
 the TCP connection.<br/>
 
-Note: The current value if this counter is stored within the variable suffixed 
+Note: The current value of this counter is stored within the variable suffixed 
 by <code>_Counter</code>, e.g. <code>QS_Limit_Counter</code> for further processing by 
 other rules. <br/>
 
-Note: Adding/removing events require a server restart (graceful restart is not supported).
+Note: Adding/removing events require a server restart (graceful restart is not supported).<br/>
+
+Note: Only the default rule (<code>QS_Limit</code>) is accessibly by the 
+<a href="#statusviewer">status viewer</a> and the <a href="#webconsole">console</a>.
 </li>
 <li>
 <a name="QS_ClientSerialize"></a>
