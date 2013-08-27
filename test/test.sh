@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.223 2013-06-21 19:05:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.224 2013-08-27 19:56:08 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -423,11 +423,15 @@ fi
 ./prefer.sh
 EXT_ERR=$?
 if [ $EXT_ERR -gt 0 ]; then
-    echo "run again ..."
+    echo "WARNING run again ..."
+    WARNINGS=`expr $WARNINGS + 1`
     ./prefer.sh
     EXT_ERR=$?
     if [ $EXT_ERR -eq 0 ]; then
 	echo "                 OK"
+    else
+      echo ""
+      echo "FAILED prefer.sh"
     fi
 fi
 ERRORS=`expr $ERRORS + $EXT_ERR`
