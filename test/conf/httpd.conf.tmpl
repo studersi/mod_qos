@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.236 2013-08-23 19:06:32 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.237 2013-08-27 06:57:41 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -374,6 +374,7 @@ ErrorDocument 404 /error-docs/error404.html
    QS_UnsetResHeader          X-Login
    QS_SetEnvIfQuery           QS_LimitVar2      QS_LimitVar2=yes
    QS_SetEnvIfQuery           QS_LimitVar3      QS_LimitVar3=yes
+   QS_SetEnvIfQuery           QS_LimitVar3_Reset QS_LimitVar3_Clear=yes
 
    # concurrent requests with certain event
    QS_SetEnvIfQuery           QS_EventRequestLimit query

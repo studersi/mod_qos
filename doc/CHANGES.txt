@@ -1,3 +1,8 @@
+Version 10.18
+
+ - QS_ClientEventLimitCount may be cleared by environment
+   variable (suffixed by "_Clear", e.g. QS_Limit_Clear).
+ 
 Version 10.17
 
  - QS_ClientEventLimitCount supports unlimited number of events.
