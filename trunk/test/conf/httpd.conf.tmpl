@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.237 2013-08-27 06:57:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.238 2013-08-27 19:56:08 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -601,6 +601,7 @@ ErrorDocument 404 /error-docs/error404.html
    <Location /htt/soap>
       RequestHeaderPlus set X-User-Name-PWD ${SECURITY_HEADER_EX} late
       SetEnvIfPlus      QS_LimitVar3_Counter 10 ForwardVar3 late
+      SetEnvIfPlus      QS_LimitVar3_Counter [23456789][0-9] ForwardVar3 late
       RequestHeaderPlus set X-Var3 ${QS_LimitVar3_Counter} env=ForwardVar3 late
    </Location>
 
