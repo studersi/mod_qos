@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventLimitCount.htt,v 1.5 2013-08-23 19:06:32 pbuchbinder Exp $
+# $Id: QS_ClientEventLimitCount.htt,v 1.6 2013-08-27 06:57:41 pbuchbinder Exp $
 #
 #  QS_ClientEventLimitCount 3 10
 #  QS_ClientIpFromHeader      Y-Forwarded-For
@@ -8,13 +8,26 @@
 #  QS_SetEnvIf                X-Login    !QSNOT QS_Limit=yes
 #  QS_UnsetResHeader          X-Login
 #
+#
+# ---
+# OPTIONAL (enabled during this test):
+#
+#  QS_ClientEventLimitCount 6 5 QS_LimitVar2
+#  QS_ClientEventLimitCount 100 600 QS_LimitVar3
+#
 #  QS_SetEnvIfQuery           QS_LimitVar2      QS_LimitVar2=yes
+#  QS_SetEnvIfQuery           QS_LimitVar3      QS_LimitVar3=yes
+#  QS_SetEnvIfQuery           QS_LimitVar3_Reset QS_LimitVar3_Clear=yes
+#   <Location /htt/soap>
+#     SetEnvIfPlus      QS_LimitVar3_Counter 10 ForwardVar3 late
+#     RequestHeaderPlus set X-Var3 ${QS_LimitVar3_Counter} env=ForwardVar3 late
 
 
 INCLUDE scripts/ports
 
 CLIENT
 
+# 2 trigger for 10.10.10.1
 _LOOP 2
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
@@ -29,6 +42,7 @@ _WAIT
 _CLOSE
 _END LOOP
 
+# 3 trigger for 10.10.10.2 => reaches limit
 _LOOP 3
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
@@ -44,6 +58,7 @@ _CLOSE
 _END LOOP
 _SLEEP 200
 
+# 10.10.10.2 is now blocked
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
 __Host: localhost
@@ -65,6 +80,7 @@ _EXEC tail -3 logs/error_log
 _EXPECT EXEC "!${MSG_MISSINGHEADER2}"
 _EXEC tail -3 logs/error_log
 
+# other clients still allowed
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
 __Host: localhost
@@ -77,6 +93,7 @@ _EXPECT . "AS3"
 _WAIT
 _CLOSE
 
+# release/expire limit
 _SLEEP 12000
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
@@ -90,7 +107,7 @@ _EXPECT . "AS2"
 _WAIT
 _CLOSE
 
-# missing header
+# missing Y-Forwarded-For header
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
 __Host: localhost
@@ -105,7 +122,7 @@ _SLEEP 200
 _EXPECT EXEC "${MSG_MISSINGHEADER}"
 _EXEC tail -1 logs/error_log
 
-# invalid header
+# invalid Y-Forwarded-For header
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
 __Host: localhost
@@ -143,6 +160,7 @@ _CLOSE
 _END LOOP
 _SLEEP 200
 
+# blocked after 5 requests (not 3 any longer)
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
 __Host: localhost
@@ -157,6 +175,7 @@ _EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: even
 _EXEC tail -1 logs/error_log
 _SLEEP 12000
 
+# expired
 _REQ localhost $QS_PORT_BASE
 __GET /htt/index1.html HTTP/1.1
 __Host: localhost
@@ -167,6 +186,7 @@ _EXPECT . "AS07"
 _WAIT
 _CLOSE
 
+# rollback change
 _EXEC sed "s:QS_ClientEventLimitCount 5:QS_ClientEventLimitCount 3:g" -i conf/httpd.conf
 _SLEEP 100
 _EXEC ./ctl.sh graceful >/dev/null
@@ -181,9 +201,11 @@ _EXEC sed "s:#QS_ClientEventLimitCount 100:QS_ClientEventLimitCount 100:g" -i co
 _SLEEP 100
 _EXEC ./ctl.sh graceful >/dev/null
 _SLEEP 2000
-# not allowed to add a variable
+# not allowed to add/remove a variable by sigusr1
 _EXPECT EXEC "\[error\] mod_qos\(001\): QS_ClientEventLimitCount directives can't be added/removed by graceful restart. A server restart is required to apply the new configuration!"
 _EXEC tail -10 logs/error_log
+
+# apply new setting by restart
 _EXEC ./ctl.sh restart -D real_ip > /dev/null
 
 _LOOP 5
@@ -196,7 +218,7 @@ _EXPECT . "<title>mod_qos</title>"
 _WAIT
 _CLOSE
 _END LOOP
-
+# blocked by new rule
 _REQ localhost $QS_PORT_BASE
 __GET /qos/?trigger=QS_LimitVar2 HTTP/1.1
 __Host: localhost
@@ -247,6 +269,37 @@ __Host: localhost
 __Connection: keep-alive
 __
 _EXPECT . "AS10"
+_WAIT
+_CLOSE
+
+# reset counter
+_REQ localhost $QS_PORT_BASE
+__GET /htt/soap/?QS_LimitVar3_Reset HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "AS11"
+_WAIT
+_CLOSE
+
+_LOOP 9
+_REQ localhost $QS_PORT_BASE
+__GET /qos/?trigger=QS_LimitVar3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__QS_LimitVar3_Clear: ignore me
+__
+_EXPECT . "<title>mod_qos</title>"
+_WAIT
+_CLOSE
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/soap/?QS_LimitVar3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "AS12"
 _WAIT
 _CLOSE
 
@@ -367,6 +420,26 @@ __Content-Length: AUTO
 __Content-Type: text/html
 __
 __==AS10==
+_CLOSE
+
+_RES
+_EXPECT . "!X-Var3"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS11==
+_CLOSE
+
+_RES
+_EXPECT . "X-Var3: 10"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS12==
 _CLOSE
 
 END

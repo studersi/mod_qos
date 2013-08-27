@@ -1359,20 +1359,21 @@ level: user might not always get a user friendly error response).
 Defines the maximum number of the defined environment variables (<code>QS_Limit</code> by default) 
 allowed within the defined time (default is 600 seconds). Requests from client IP's reaching 
 this limitation are denied for the specified time (blocked at request level). <br/>
-
-Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+Notes:
+<ul>
+<li>You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 determine the client's IP address based on the defined HTTP request header (e.g., 
 X-Forwarded-For) instead of taking the IP address of the client which has opened 
-the TCP connection.<br/>
-
-Note: The current value of this counter is stored within the variable suffixed 
+the TCP connection.</li>
+<li>The current value of this counter is stored within the variable suffixed 
 by <code>_Counter</code>, e.g. <code>QS_Limit_Counter</code> for further processing by 
-other rules. <br/>
-
-Note: Adding/removing events require a server restart (graceful restart is not supported).<br/>
-
-Note: Only the default rule (<code>QS_Limit</code>) is accessibly by the 
-<a href="#statusviewer">status viewer</a> and the <a href="#webconsole">console</a>.
+other rules. </li>
+<li>The counter can be resed by setting the environment variable which name is suffixed by 
+<code>_Clear</code>, e.g. <code>QS_Limt_Clear</code>.
+<li>Adding/removing events require a server restart (graceful restart is not supported).</li>
+<li>Only the default rule (<code>QS_Limit</code>) is accessibly by the 
+<a href="#statusviewer">status viewer</a> and the <a href="#webconsole">console</a>.</li>
+</ul>
 </li>
 <li>
 <a name="QS_ClientSerialize"></a>
