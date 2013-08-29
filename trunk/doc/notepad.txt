@@ -15,6 +15,8 @@
   - request/response duration
   - other
   - log event
+  + multiple "per client" event counter
+    + combine these counters (if c1>n AND c2>m then c3++)
 + geo location
   + country
   - region, city. latitude/longitude
@@ -22,6 +24,7 @@
 - more "dynamic" rules:
   - enforce rules on certain conditions only (e.g. overall server usage)
     + QS_SrvMinDataRate <bytes per second> [<max bytes per second> [ <free>% ] ]
+    + QS_SrvMaxConnPerIP <number> [<onnections>]
   - adjust metrics dynamically
   - learning and permissive mode
     + server wide (global)
@@ -29,6 +32,7 @@
   + store metrics as environment variables (used by QS_EventRequestLimit,
     QS_CondLocRequestLimitMatch and others)
     + QS_SrvConn 
+    + QS_ClientEventLimitCount value
     - more variables
 - dynamic rule adjustment for the generic request filter
   - "in module" learing (instead of qsfilter2)
@@ -36,6 +40,7 @@
   - automatic rule adjustment
     - privileged users/ip/??? to learn from automatically
   - crawler
+  + reset of QS_ClientEventLimitCount counters
 - request filter:
   + json in request query (not body)
   - gwt parser (req id to build parameter names?)
