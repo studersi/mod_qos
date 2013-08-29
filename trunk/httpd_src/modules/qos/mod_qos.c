@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.441 2013-08-27 06:57:41 pbuchbinder Exp $";
-static const char g_revision[] = "10.18";
+static const char revision[] = "$Id: mod_qos.c,v 5.442 2013-08-29 19:56:48 pbuchbinder Exp $";
+static const char g_revision[] = "10.19";
 
 /************************************************************************
  * Includes
@@ -10302,7 +10302,7 @@ const char *qos_req_rate_cmd(cmd_parms *cmd, void *dcfg, const char *sec, const 
                         cmd->directive->directive);
   }
   if(sconf->req_rate != -1) {
-    return apr_psprintf(cmd->pool, "%s: directive can't be used together with QS_SrvRequestRate", 
+    return apr_psprintf(cmd->pool, "%s: directive can't be used together with QS_SrvMinDataRate", 
                         cmd->directive->directive);
   }
   sconf->req_rate = atoi(sec);
@@ -10375,7 +10375,7 @@ const char *qos_min_rate_cmd(cmd_parms *cmd, void *dcfg, const char *_sec, const
                         cmd->directive->directive);
   }
   if(sconf->req_rate != -1) {
-    return apr_psprintf(cmd->pool, "%s: directive can't be used together with QS_SrvMinDataRate", 
+    return apr_psprintf(cmd->pool, "%s: directive can't be used together with QS_SrvRequestRate", 
                         cmd->directive->directive);
   }
   sconf->req_rate = atoi(sec);
