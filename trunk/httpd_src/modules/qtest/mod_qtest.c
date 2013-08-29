@@ -10,7 +10,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qtest.c,v 1.3 2012-03-06 06:58:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qtest.c,v 1.4 2013-08-29 19:43:51 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -98,6 +98,17 @@ static int qtest_handler(request_rec * r) {
     r->method_number = M_GET;
     sleep(1);
     ap_internal_redirect(r->args, r);
+    return OK;
+  }
+  if(strcmp(r->parsed_uri.path, "/dumpvar/") == 0) {
+    int i;
+    apr_table_entry_t *e = (apr_table_entry_t *) apr_table_elts(r->subprocess_env)->elts;
+    ap_set_content_type(r, "text/plain");
+    for (i = 0; i < apr_table_elts(r->subprocess_env)->nelts; ++i) {
+      ap_rprintf(r, "var %s=%s\n",
+                 ap_escape_html(r->pool, e[i].key),
+                 ap_escape_html(r->pool, e[i].val));
+    }
     return OK;
   }
   return DECLINED;

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.239 2013-08-29 05:53:17 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.240 2013-08-29 19:43:51 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -272,6 +272,7 @@ ErrorDocument 404 /error-docs/error404.html
    ProxyPass                  /cgi-local_s !
    ProxyPass                  /hadsu !
    ProxyPass                  /echo !
+   ProxyPass                  /dumpvar !
 
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
@@ -452,6 +453,7 @@ ErrorDocument 404 /error-docs/error404.html
    SetEnvIf     Remote_Addr   127.0.0.1      QS_VipRequest=yes
    QS_SetEnvIf  QS_VipRequest QS_Block       !QS_Block
 </IfDefine>
+
    <Directory /error-docs>
       SetHandler              default
    </Directory>
@@ -459,9 +461,11 @@ ErrorDocument 404 /error-docs/error404.html
    <Location /status>
        SetHandler server-status
    </Location>
+
    <Location /info>
        SetHandler server-info
    </Location>
+
    <Location /echo>
        SetHandler websocket-handler
        WebSocketHandler libexec/mod_websocket_echo.so echo_init
