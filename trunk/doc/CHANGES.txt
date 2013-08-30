@@ -1,3 +1,7 @@
+Version 10.19
+
+ - New directive QS_RedirectIf.
+
 Version 10.18
 
  - QS_ClientEventLimitCount may be cleared by environment

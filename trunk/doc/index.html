@@ -609,6 +609,12 @@ directive.
 directive.
 </li>
 <li>
+<code>*_Clear</code><br>
+The counter of the variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> directive  
+are reset if you set the same variable suffixed by <code>_Clear</code>, 
+e.g. <code>QS_Limit_Clear</code>.
+</li>
+<li>
 <code>QS_Serialize</code><br>
 Variable processed by the <code><a href="#QS_ClientSerialize">QS_ClientSerialize</a></code> 
 directive.
@@ -646,6 +652,12 @@ The variable is set for requests by clients which have been marked to be process
 <a name="QS_IsVipRequest"></a>
 <code>QS_IsVipRequest</code><br>
 Variable is set when detecting a VIP request (either by cookie, IP address status, valid user, etc.). May be used by various event based directives.
+</li>
+<li>
+<code>*_Counter</code><br>
+The counter values of the variables used by <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> directive  
+are stored within the variable whose name is suffixed by <code>_Counter</code>, 
+e.g. <code>QS_Limit_Counter</code>.
 </li>
 <li>
 <code>QS_ErrorNotes</code><br>
@@ -890,6 +902,14 @@ environment variable is set.
 <a name="QS_UnsetResHeader"></a>
 <code>QS_UnsetResHeader &lt;header name&gt;</code><br>
 Removes the specified response header.
+</li>
+<li>
+<a name="QS_RedirectIf"></a>
+<code>QS_RedirectIf &lt;variable&gt; &lt;regex&gt; &lt;url&gt;</code><br>
+Redirects the client to the configured url if the regular expression 
+matches the value of the the environment variable. Occurrences of $1..$9 
+within the url are replaced by parenthesized subexpressions of the 
+regular expression.
 </li>
 </ul>
 
@@ -1370,7 +1390,7 @@ of the client which has opened the TCP connection.</li>
 by <code>_Counter</code>, e.g. <code>QS_Limit_Counter</code> for further 
 processing by other rules. </li>
 <li>The counter can be reset by setting the environment variable which name is 
-suffixed by <code>_Clear</code>, e.g. <code>QS_Limt_Clear</code>.
+suffixed by <code>_Clear</code>, e.g. <code>QS_Limit_Clear</code>.
 <li>Adding/removing events require a server restart (graceful restart is 
 not supported).</li>
 <li>Only the default rule (<code>QS_Limit</code>) is accessibly by the 
