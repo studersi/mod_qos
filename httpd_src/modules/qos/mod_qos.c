@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.442 2013-08-29 19:56:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.443 2013-08-30 19:35:57 pbuchbinder Exp $";
 static const char g_revision[] = "10.19";
 
 /************************************************************************
@@ -244,6 +244,15 @@ APR_IMPLEMENT_OPTIONAL_HOOK_RUN_ALL(qos, QOS, apr_status_t, query_decode_hook,
 /************************************************************************
  * structures
  ***********************************************************************/
+typedef struct {
+  const char *name;             /* variable name */
+#ifdef AP_REGEX_H
+  ap_regex_t *preg;
+#else
+  regex_t *preg;
+#endif
+  const char *url;              /* redirect url */
+} qos_redirectif_entry_t;
 
 typedef struct {
   unsigned long start;
@@ -588,6 +597,7 @@ typedef struct {
   apr_table_t *setenvres_t;
   qs_headerfilter_mode_e headerfilter;
   qs_headerfilter_mode_e resheaderfilter;
+  apr_array_header_t *redirectif;
   char *cookie_name;
   char *cookie_path;
   char *user_tracking_cookie;
@@ -8084,10 +8094,17 @@ static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
 }
 
 static int qos_fixup(request_rec * r) {
+#ifdef AP_REGEX_H
+  ap_regmatch_t regm[AP_MAX_REG_MATCH];
+#else
+  regmatch_t regm[AP_MAX_REG_MATCH];
+#endif
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
   qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                 &qos_module);
+  qos_redirectif_entry_t *entries;
+  int i;
   /* QS_VipUser/QS_VipIpUser */
   if(sconf && (sconf->vip_user || sconf->vip_ip_user) && r->user) {
     /* check r->user early (final status is update is implemented in output-filter) */
@@ -8101,6 +8118,28 @@ static int qos_fixup(request_rec * r) {
 #if APR_HAS_THREADS
   qos_disable_rate(r, sconf, dconf);
 #endif
+  entries = (qos_redirectif_entry_t *)sconf->redirectif->elts;
+  for(i = 0; i < sconf->redirectif->nelts; ++i) {
+    qos_redirectif_entry_t *entry = &entries[i];
+    const char *val = apr_table_get(r->subprocess_env, entry->name);
+    if(val) {
+      if(ap_regexec(entry->preg, val, AP_MAX_REG_MATCH, regm, 0) == 0) {
+        char *replaced = ap_pregsub(r->pool, entry->url, val, AP_MAX_REG_MATCH, regm);
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOS_LOG_PFX(049)"redirect to %s,"
+                      " action=%s, c=%s, id=%s",
+                      replaced,
+                      sconf->log_only ? "log only" : "redirect",
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
+                      QS_CONN_REMOTEIP(r->connection),
+                      qos_unique_id(r, "049"));
+        if(!sconf->log_only) {
+          apr_table_set(r->headers_out, "Location", replaced);
+          return HTTP_MOVED_TEMPORARILY;
+        }
+      }
+    }
+  }
   return DECLINED;
 }
 
@@ -9123,6 +9162,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenvres_t = apr_table_make(sconf->pool, 1);
   sconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
   sconf->resheaderfilter = QS_HEADERFILTER_OFF_DEFAULT;
+  sconf->redirectif = apr_array_make(p, 20, sizeof(qos_redirectif_entry_t));
   sconf->error_page = NULL;
   sconf->req_rate = -1;
   sconf->req_rate_start = 0;
@@ -9295,6 +9335,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   if(o->resheaderfilter == QS_HEADERFILTER_OFF_DEFAULT) {
     o->resheaderfilter = b->resheaderfilter;
   }
+  o->redirectif = apr_array_append(p, b->redirectif, o->redirectif);
   if(o->mfile == NULL) {
     o->mfile = b->mfile;
   }
@@ -9842,6 +9883,25 @@ const char *qos_event_setenvresheadermatch_cmd(cmd_parms *cmd, void *dcfg, const
   }
   apr_pool_cleanup_register(cmd->pool, pr, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
   apr_table_setn(sconf->setenvresheadermatch_t, apr_pstrdup(cmd->pool, hdr), (char *)pr);
+  return NULL;
+}
+
+const char *qos_redirectif_cmd(cmd_parms *cmd, void *dcfg, const char *var,
+                               const char *pattern, const char *url) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qos_redirectif_entry_t *new = apr_array_push(sconf->redirectif);
+  new->name = apr_pstrdup(cmd->pool, var);
+#ifdef AP_REGEX_H
+  new->preg = ap_pregcomp(cmd->pool, pattern, (AP_REG_EXTENDED | AP_REG_ICASE));
+#else
+  new->preg = ap_pregcomp(cmd->pool, pattern, (REG_EXTENDED | REG_ICASE));
+#endif
+  if(new->preg == NULL) {
+    return apr_psprintf(cmd->pool, "%s: could not compile regex %s",
+                        cmd->directive->directive, pattern);
+  }
+  new->url = apr_pstrdup(cmd->pool, url);
   return NULL;
 }
 
@@ -11389,6 +11449,11 @@ static const command_rec qos_config_cmds[] = {
                 " variable2 if the regular expression matches against the value of"
                 " the environment variable. Occurrences of $1..$9 within the value"
                 " and replace them by parenthesized subexpressions of the regular expression."),
+  AP_INIT_TAKE3("QS_RedirectIf", qos_redirectif_cmd, NULL,
+                RSRC_CONF,
+                "QS_RedirectIf <variable> <regex> <url>, redirects the client to the"
+                " configured url if the regular expression matches the value of the"
+                " the environment variable."),
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
                 ACCESS_CONF,

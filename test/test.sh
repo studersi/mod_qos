@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.224 2013-08-27 19:56:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.225 2013-08-30 19:35:57 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -641,6 +641,13 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventLimitCount" >> 
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventLimitCount.htt"
+fi
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventLimitCount2" >>  logs/error_log
+./ctl.sh restart -D real_ip > /dev/null
+./run.sh -s ./scripts/QS_ClientEventLimitCount2.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventLimitCount2.htt"
 fi
 
 # - DDoS -------------------------------------------------------
