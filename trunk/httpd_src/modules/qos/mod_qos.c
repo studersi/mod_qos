@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.443 2013-08-30 19:35:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.444 2013-08-30 20:04:44 pbuchbinder Exp $";
 static const char g_revision[] = "10.19";
 
 /************************************************************************
@@ -8127,8 +8127,10 @@ static int qos_fixup(request_rec * r) {
         char *replaced = ap_pregsub(r->pool, entry->url, val, AP_MAX_REG_MATCH, regm);
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX(049)"redirect to %s,"
+                      " var=%s,"
                       " action=%s, c=%s, id=%s",
                       replaced,
+                      entry->name,
                       sconf->log_only ? "log only" : "redirect",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
                       QS_CONN_REMOTEIP(r->connection),

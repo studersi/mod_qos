@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.241 2013-08-30 19:35:57 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.242 2013-08-30 20:04:44 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -609,6 +609,7 @@ ErrorDocument 404 /error-docs/error404.html
 
    QS_SetEnvIf          MAXVAR3 MAXVAR4 QS_LimitVar5=max3and4
    QS_RedirectIf        QS_LimitVar4_Counter (23) http://127.0.0.1/error.html?c=$1
+   QS_RedirectIf        MAXVAR425 (.*) $1
    <Location /htt/soap>
       RequestHeaderPlus set X-User-Name-PWD ${SECURITY_HEADER_EX} late
       SetEnvIfPlus      QS_LimitVar3_Counter 10 ForwardVar3 late
@@ -618,6 +619,7 @@ ErrorDocument 404 /error-docs/error404.html
       # QS_LimitVar3>=10 AND QS_LimitVar4 >=10
       SetEnvIfPlus      QS_LimitVar3_Counter [123456789][0-9] MAXVAR3 late
       SetEnvIfPlus      QS_LimitVar4_Counter [123456789][0-9] MAXVAR4 late
+      SetEnvIfPlus      QS_LimitVar4_Counter 25 MAXVAR425=http://127.0.0.1/go late
    </Location>
 
 </VirtualHost>
