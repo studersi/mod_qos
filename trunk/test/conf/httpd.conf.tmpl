@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.242 2013-08-30 20:04:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.243 2013-09-02 18:42:00 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -207,6 +207,10 @@ QS_EventKBytesPerSecLimit    QS_CountryLimit            200
 
 <IfDefine excludelocalglobal>
 QS_SrvMaxConnExcludeIP       127.
+</IfDefine>
+
+<IfDefine globalredirect>
+QS_RedirectIf        QS_LimitVar4_Counter (20) http://127.0.0.1/global/error.html?c=$1
 </IfDefine>
 
 ErrorDocument 404 /error-docs/error404.html
@@ -620,6 +624,7 @@ ErrorDocument 404 /error-docs/error404.html
       SetEnvIfPlus      QS_LimitVar3_Counter [123456789][0-9] MAXVAR3 late
       SetEnvIfPlus      QS_LimitVar4_Counter [123456789][0-9] MAXVAR4 late
       SetEnvIfPlus      QS_LimitVar4_Counter 25 MAXVAR425=http://127.0.0.1/go late
+      QS_RedirectIf     QS_LimitVar4_Counter (27) http://127.0.0.1/dir/error.html?c=$1
    </Location>
 
 </VirtualHost>

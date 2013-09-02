@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.444 2013-08-30 20:04:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.445 2013-09-02 18:41:59 pbuchbinder Exp $";
 static const char g_revision[] = "10.19";
 
 /************************************************************************
@@ -567,6 +567,7 @@ typedef struct {
   qs_rfilter_action_e urldecoding;
   char *response_pattern;
   char *response_pattern_var;
+  apr_array_header_t *redirectif;
   int decodings; 
   apr_table_t *disable_reqrate_events;
   apr_table_t *setenvstatus_t;
@@ -6429,6 +6430,48 @@ static void qos_version_check(server_rec *bs) {
   }
 }
 
+/**
+ * enforces the QS_RedirectIf varibale
+ * @param r
+ * @param sconf
+ * @param rules Rules array
+ * @retrun HTTP_MOVED_TEMPORARILY or DECLINED
+ */
+static int qos_redirectif(request_rec *r, qos_srv_config *sconf, apr_array_header_t *rules) {
+#ifdef AP_REGEX_H
+  ap_regmatch_t regm[AP_MAX_REG_MATCH];
+#else
+  regmatch_t regm[AP_MAX_REG_MATCH];
+#endif
+  int i;
+  qos_redirectif_entry_t *entries = (qos_redirectif_entry_t *)rules->elts;
+  for(i = 0; i < rules->nelts; ++i) {
+    qos_redirectif_entry_t *entry = &entries[i];
+    const char *val = apr_table_get(r->subprocess_env, entry->name);
+    if(val) {
+      if(ap_regexec(entry->preg, val, AP_MAX_REG_MATCH, regm, 0) == 0) {
+        int severity = sconf->log_only ? APLOG_WARNING : APLOG_ERR;
+        char *replaced = ap_pregsub(r->pool, entry->url, val, AP_MAX_REG_MATCH, regm);
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
+                      QOS_LOG_PFX(049)"redirect to %s,"
+                      " var=%s,"
+                      " action=%s, c=%s, id=%s",
+                      replaced,
+                      entry->name,
+                      sconf->log_only ? "log only" : "redirect",
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
+                      QS_CONN_REMOTEIP(r->connection),
+                      qos_unique_id(r, "049"));
+        if(!sconf->log_only) {
+          apr_table_set(r->headers_out, "Location", replaced);
+          return HTTP_MOVED_TEMPORARILY;
+        }
+      }
+    }
+  }
+  return DECLINED;
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -8094,17 +8137,11 @@ static void qos_event_reset(qos_srv_config *sconf, qs_req_ctx *rctx) {
 }
 
 static int qos_fixup(request_rec * r) {
-#ifdef AP_REGEX_H
-  ap_regmatch_t regm[AP_MAX_REG_MATCH];
-#else
-  regmatch_t regm[AP_MAX_REG_MATCH];
-#endif
+  int rc = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
   qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                 &qos_module);
-  qos_redirectif_entry_t *entries;
-  int i;
   /* QS_VipUser/QS_VipIpUser */
   if(sconf && (sconf->vip_user || sconf->vip_ip_user) && r->user) {
     /* check r->user early (final status is update is implemented in output-filter) */
@@ -8118,30 +8155,15 @@ static int qos_fixup(request_rec * r) {
 #if APR_HAS_THREADS
   qos_disable_rate(r, sconf, dconf);
 #endif
-  entries = (qos_redirectif_entry_t *)sconf->redirectif->elts;
-  for(i = 0; i < sconf->redirectif->nelts; ++i) {
-    qos_redirectif_entry_t *entry = &entries[i];
-    const char *val = apr_table_get(r->subprocess_env, entry->name);
-    if(val) {
-      if(ap_regexec(entry->preg, val, AP_MAX_REG_MATCH, regm, 0) == 0) {
-        char *replaced = ap_pregsub(r->pool, entry->url, val, AP_MAX_REG_MATCH, regm);
-        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(049)"redirect to %s,"
-                      " var=%s,"
-                      " action=%s, c=%s, id=%s",
-                      replaced,
-                      entry->name,
-                      sconf->log_only ? "log only" : "redirect",
-                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
-                      QS_CONN_REMOTEIP(r->connection),
-                      qos_unique_id(r, "049"));
-        if(!sconf->log_only) {
-          apr_table_set(r->headers_out, "Location", replaced);
-          return HTTP_MOVED_TEMPORARILY;
-        }
-      }
-    }
+  rc = qos_redirectif(r, sconf, sconf->redirectif);
+  if(rc == HTTP_MOVED_TEMPORARILY) {
+    return HTTP_MOVED_TEMPORARILY;
   }
+  rc = qos_redirectif(r, sconf, dconf->redirectif);
+  if(rc == HTTP_MOVED_TEMPORARILY) {
+    return HTTP_MOVED_TEMPORARILY;
+  }
+
   return DECLINED;
 }
 
@@ -9075,6 +9097,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->urldecoding = QS_OFF_DEFAULT;
   dconf->response_pattern = NULL;
   dconf->response_pattern_var = NULL;
+  dconf->redirectif = apr_array_make(p, 20, sizeof(qos_redirectif_entry_t));
   dconf->disable_reqrate_events = apr_table_make(p, 1);
   dconf->setenvstatus_t = apr_table_make(p, 5);
   return dconf;
@@ -9138,6 +9161,7 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   dconf->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
                                                          o->disable_reqrate_events);
+  dconf->redirectif = apr_array_append(p, b->redirectif, o->redirectif);
   dconf->setenvstatus_t = apr_table_copy(p, b->setenvstatus_t);
   qos_table_merge(dconf->setenvstatus_t, o->setenvstatus_t);
   return dconf;
@@ -9892,7 +9916,13 @@ const char *qos_redirectif_cmd(cmd_parms *cmd, void *dcfg, const char *var,
                                const char *pattern, const char *url) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  qos_redirectif_entry_t *new = apr_array_push(sconf->redirectif);
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  qos_redirectif_entry_t *new;
+  if(cmd->path) {
+    new = apr_array_push(dconf->redirectif);
+  } else {
+    new = apr_array_push(sconf->redirectif);
+  }
   new->name = apr_pstrdup(cmd->pool, var);
 #ifdef AP_REGEX_H
   new->preg = ap_pregcomp(cmd->pool, pattern, (AP_REG_EXTENDED | AP_REG_ICASE));
@@ -11452,7 +11482,7 @@ static const command_rec qos_config_cmds[] = {
                 " the environment variable. Occurrences of $1..$9 within the value"
                 " and replace them by parenthesized subexpressions of the regular expression."),
   AP_INIT_TAKE3("QS_RedirectIf", qos_redirectif_cmd, NULL,
-                RSRC_CONF,
+                RSRC_CONF|ACCESS_CONF,
                 "QS_RedirectIf <variable> <regex> <url>, redirects the client to the"
                 " configured url if the regular expression matches the value of the"
                 " the environment variable."),
