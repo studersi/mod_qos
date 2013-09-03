@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.30 2013-01-17 20:32:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.31 2013-09-03 18:36:36 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -78,7 +78,7 @@ if [ ! -f htdocs/image.iso ]; then
     done
 fi
 
-CONFFILES="conf/httpd.conf conf/demo.conf conf/simple.conf conf/dos.conf conf/qos_viewer.conf appl_conf/httpd.conf"
+CONFFILES="conf/httpd.conf conf/demo.conf conf/simple.conf conf/dos.conf conf/qos_viewer.conf appl_conf/httpd.conf conf/uc1.conf"
 for E in $CONFFILES; do
     sed <$E.tmpl >$E \
 	-e "s;##ROOT##;$ROOT;g" \
