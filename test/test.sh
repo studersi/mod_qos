@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.225 2013-08-30 19:35:57 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.226 2013-09-03 18:36:36 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -649,6 +649,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventLimitCount2.htt"
 fi
+sleep 20
 
 # - DDoS -------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_markslow.htt" >>  logs/error_log
@@ -928,6 +929,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED stack.htt"
 fi
 
+sleep 10
 ./ctl.sh restart -D logonly -D real_ip >/dev/null
 TEST="QS_LogOnly.htt QS_LogOnly1.htt QS_LogOnly1a.htt QS_LogOnly1b.htt QS_LogOnly2.htt QS_LogOnly3.htt QS_LogOnly4.htt QS_LogOnly5.htt QS_LogOnly6.htt QS_LogOnly7.htt"
 for E in $TEST; do 
@@ -999,11 +1001,16 @@ fi
 sleep 1
 IPCS2=`ipcs | wc -l`
 
-./dos.sh
-if [ $? -ne 0 ]; then
+# some simple configurations
+usscripts="dos.sh uc1.sh"
+for E in $usscripts; do
+  echo "> $E"
+  $E
+  if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
-    echo "FAILED dos.sh (minimal DoS prevention test)"
-fi
+    echo "FAILED $E"
+  fi
+done
 
 ./qssign.sh
 if [ $? -ne 0 ]; then
