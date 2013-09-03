@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.1 2013-09-03 18:36:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.2 2013-09-03 18:41:39 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -103,6 +103,6 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_LocRequestLimitMatch    "^(/htt/a/|/htt/b/|/htt/c/).*$" 2
 
    QS_SetEnvIfQuery           QueryLimit query
-   QS_EventRequestLimit       query                           3
+   QS_EventRequestLimit       query                           2
 
 </VirtualHost>
