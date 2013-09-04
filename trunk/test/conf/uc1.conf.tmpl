@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.2 2013-09-03 18:41:39 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.3 2013-09-04 16:21:53 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -80,6 +80,12 @@ LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 LoadModule              parp_module libexec/mod_parp.so
 
+<IfDefine uc1b>
+QS_ClientEventLimitCount 3 3
+QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
+QS_ErrorPage             /error-docs/error.html
+</IfDefine>
+
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
 
@@ -100,9 +106,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /aaa http://localhost:##QS_PORT_BASE6##/aaa retry=0
    ProxyPassReverse           /aaa http://localhost:##QS_PORT_BASE6##/aaa
 
+<IfDefine uc1a>
    QS_LocRequestLimitMatch    "^(/htt/a/|/htt/b/|/htt/c/).*$" 2
 
    QS_SetEnvIfQuery           QueryLimit query
    QS_EventRequestLimit       query                           2
+</IfDefine>
 
 </VirtualHost>
