@@ -1,3 +1,8 @@
+Version 10.20
+
+ - Fixed: QS_CondLocRequestLimitMatch did work only if other QS_Loc*
+   directive had been configured.
+
 Version 10.19
 
  - New directive QS_RedirectIf.
