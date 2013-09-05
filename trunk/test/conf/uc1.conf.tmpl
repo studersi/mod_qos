@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.3 2013-09-04 16:21:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.4 2013-09-05 19:58:34 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -101,10 +101,18 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /error-docs !
    ProxyPass                  /status !
    ProxyPass                  /test !
+   ProxyPass                  /a !
+   ProxyPass                  /b !
+   ProxyPass                  /c !
+   ProxyPass                  /cgi-local !
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
-   ProxyPass                  /aaa http://localhost:##QS_PORT_BASE6##/aaa retry=0
-   ProxyPassReverse           /aaa http://localhost:##QS_PORT_BASE6##/aaa
+
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /b/            ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
 
 <IfDefine uc1a>
    QS_LocRequestLimitMatch    "^(/htt/a/|/htt/b/|/htt/c/).*$" 2
@@ -112,5 +120,16 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_SetEnvIfQuery           QueryLimit query
    QS_EventRequestLimit       query                           2
 </IfDefine>
+
+<IfDefine uc1c>
+   QS_SetEnvIfQuery           Limit QS_Cond=1
+   QS_CondLocRequestLimitMatch "^(/a/|/b/|/c/).*$" 2 [0-9]+
+</IfDefine>
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
 
 </VirtualHost>
