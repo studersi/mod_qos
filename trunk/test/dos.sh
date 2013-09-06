@@ -6,24 +6,36 @@ set -e
 set -u
 ulimit -c unlimited
 
+waitApache() {
+  COUNT=0
+  while [ $COUNT -lt 20 ]; do
+    if [ -f logs/apache.pid ]; then
+      COUNT=20
+    else
+      let COUNT=$COUNT+1
+      ./bin/sleep 200
+    fi
+  done
+}
+
 ../httpd/httpd -d `pwd` -f conf/dos.conf 2>/dev/null 1>/dev/null
-sleep 2
+waitApache
 ./run.sh -s scripts/QS_SrvRequestRate_0.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
 ../httpd/httpd -d `pwd` -f conf/dos.conf 2>/dev/null 1>/dev/null
-sleep 2
+waitApache
 ./run.sh -s scripts/dos_session.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
 ../httpd/httpd -d `pwd` -f conf/dos.conf 2>/dev/null 1>/dev/null
-sleep 2
+waitApache
 ./run.sh -s scripts/dos_keepalive.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
 # performance with loaded mod_qos (mod_proxy)
 ../httpd/httpd -d `pwd` -f conf/dos.conf 2>/dev/null 1>/dev/null
-sleep 2
+waitApache
 t1=`date '+%s'`
 ./run.sh -s scripts/dos_perf.htt
 t2=`date '+%s'`
@@ -31,7 +43,7 @@ t2=`date '+%s'`
 
 # performance WITHOUT mod_qos
 ../httpd/httpd -d `pwd` -f conf/dos.conf -D no_qos 2>/dev/null 1>/dev/null
-sleep 2
+waitApache
 t3=`date '+%s'`
 ./run.sh -s scripts/dos_perf.htt
 t4=`date '+%s'`
