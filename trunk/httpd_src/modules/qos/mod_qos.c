@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.446 2013-09-05 19:58:34 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.447 2013-09-06 06:01:30 pbuchbinder Exp $";
 static const char g_revision[] = "10.20";
 
 /************************************************************************
@@ -7358,33 +7358,30 @@ static int qos_header_parser(request_rec * r) {
           }
         }
       }
-    }
-
-    /*
-     * QS_LocRequestPerSecLimit/QS_EventPerSecLimit enforcement
-     */
-    if(req_per_sec_block) {
-      if(rctx->is_vip) {
-        rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
-      } else {
-        int sec = req_per_sec_block / 1000;
-        int nsec = req_per_sec_block % 1000;
-        struct timespec delay;
-        rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
-        delay.tv_sec  = sec;
-        delay.tv_nsec = nsec * 1000000;
-        if(!sconf->log_only) {
-          nanosleep(&delay,NULL);
+      /*
+       * QS_LocRequestPerSecLimit/QS_EventPerSecLimit enforcement
+       */
+      if(req_per_sec_block) {
+        if(rctx->is_vip) {
+          rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+        } else {
+          int sec = req_per_sec_block / 1000;
+          int nsec = req_per_sec_block % 1000;
+          struct timespec delay;
+          rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+          delay.tv_sec  = sec;
+          delay.tv_nsec = nsec * 1000000;
+          if(!sconf->log_only) {
+            nanosleep(&delay,NULL);
+          }
+          /* don't wait more than once */
+          req_per_sec_block = 0;
         }
-        /* don't wait more than once */
-        req_per_sec_block = 0;
       }
-    }
-
-    /*
-     * QS_LocKBytesPerSecLimit enforcement
-     */
-    if(e) {
+    
+      /*
+       * QS_LocKBytesPerSecLimit enforcement
+       */
       if(e->kbytes_per_sec_block_rate) {
         if(rctx->is_vip) {
           rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
