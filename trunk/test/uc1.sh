@@ -24,4 +24,9 @@ sleep 2
 ./run.sh -s scripts/UC1_QS_CondLocRequestLimitMatch.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1d 2>/dev/null 1>/dev/null
+sleep 2
+./run.sh -s scripts/UC1_QS_LocRequestLimit.htt
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 exit 0

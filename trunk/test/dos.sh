@@ -48,5 +48,5 @@ if [ $dif -gt 2 ]; then
   echo " dos.sh test was too slow"
   exit 1
 fi
-
+sleep 10
 exit 0
