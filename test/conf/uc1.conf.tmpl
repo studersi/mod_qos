@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.4 2013-09-05 19:58:34 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.5 2013-09-06 16:11:09 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -124,6 +124,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 <IfDefine uc1c>
    QS_SetEnvIfQuery           Limit QS_Cond=1
    QS_CondLocRequestLimitMatch "^(/a/|/b/|/c/).*$" 2 [0-9]+
+</IfDefine>
+
+<IfDefine uc1d>
+   QS_LocRequestLimit         /a 2
 </IfDefine>
 
    <Location /cgi-local>
