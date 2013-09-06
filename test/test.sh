@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.226 2013-09-03 18:36:36 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.227 2013-09-06 19:18:27 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -1005,7 +1005,7 @@ IPCS2=`ipcs | wc -l`
 usscripts="dos.sh uc1.sh"
 for E in $usscripts; do
   echo "> $E"
-  $E
+  ./$E
   if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED $E"

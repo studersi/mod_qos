@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.5 2013-09-06 16:11:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.6 2013-09-06 19:18:27 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -86,6 +86,11 @@ QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
 QS_ErrorPage             /error-docs/error.html
 </IfDefine>
 
+<IfDefine uc1e>
+QS_ClientEventBlockCount 3 3
+QS_SetEnvIfStatus        404 QS_Block
+</IfDefine>
+
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
 
@@ -128,6 +133,17 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
 <IfDefine uc1d>
    QS_LocRequestLimit         /a 2
+</IfDefine>
+
+<IfDefine uc1f>
+   SetEnvIf Request_URI       /a limit
+   QS_EventRequestLimit       limit                           2
+</IfDefine>
+
+<IfDefine uc1g>
+   SetEnvIf Request_URI       /a limit=a
+   SetEnvIf Request_URI       /b limit=b
+   QS_RedirectIf              limit a  http://localhost/error
 </IfDefine>
 
    <Location /cgi-local>
