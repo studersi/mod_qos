@@ -1,12 +1,12 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.6 2013-09-06 19:18:27 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.7 2013-09-09 16:19:33 pbuchbinder Exp $
 #
-# mod_qos test configuration using mod_proxy
+# mod_qos test configuration using single use cases
 #
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2010 Pascal Buchbinder
+# Copyright (C) 2013 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -89,6 +89,14 @@ QS_ErrorPage             /error-docs/error.html
 <IfDefine uc1e>
 QS_ClientEventBlockCount 3 3
 QS_SetEnvIfStatus        404 QS_Block
+</IfDefine>
+
+<IfDefine uc1h>
+QS_ClientEventLimitCount 3 2
+QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
+QS_ErrorPage             /error-docs/error_c.html
+# allow access to content of the error page
+SetEnvIf Request_URI     ^/error-docs/(.*) QS_ErrorPage=/error-docs/$1
 </IfDefine>
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
