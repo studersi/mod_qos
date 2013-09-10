@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.7 2013-09-09 16:19:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.8 2013-09-10 20:03:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -152,6 +152,23 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    SetEnvIf Request_URI       /a limit=a
    SetEnvIf Request_URI       /b limit=b
    QS_RedirectIf              limit a  http://localhost/error
+</IfDefine>
+
+<IfDefine uc1i>
+   QS_LocRequestPerSecLimit   / 10
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine uc1j>
+   QS_EventLimitCount ALIMIT 3 2
+   SetEnvIf User-Agent limitme ALIMIT   
+</IfDefine>
+
+<IfDefine uc1k>
+   QS_MileStone deny "^GET /index.html "
+   QS_MileStone deny "^GET /a/sleep.cgi "
 </IfDefine>
 
    <Location /cgi-local>
