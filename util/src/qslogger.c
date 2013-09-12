@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.12 2013-04-09 06:05:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.13 2013-09-12 05:53:51 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,36 +51,41 @@ static const char revision[] = "$Id: qslogger.c,v 1.12 2013-04-09 06:05:24 pbuch
 static int m_default_severity = LOG_NOTICE;
 
 /**
- * ap_strcasestr()
+ * Similar to standard strstr() but case insensitive and lenght limitation
+ * (string which is not 0 terminated).
  *
- * Finds the first occurrence of the substring s2 in the string s1.
- *
- * @param s1 Text to search the string in.
- * @param s2 Search string.
- * @return Position of s1 where ths string s2 has been found or NULL if
- *         s1 does not contain s2.
+ * @param s1 String to search in
+ * @param s2 Pattern to ind
+ * @param len Length of s1
+ * @return pointer to the beginning of the substring s2 within s1, or NULL
+ *         if the substring is not found
  */
-static char *qs_strcasestr(const char *s1, const char *s2) {
+static const char *qs_strncasestr(const char *s1, const char *s2, int len) {
+  const char *e1 = &s1[len-1];
   char *p1, *p2;
-  if(*s2 == '\0') {
+  if (*s2 == '\0') {
     /* an empty s2 */
     return((char *)s1);
   }
   while(1) {
-    for( ; (*s1 != '\0') && (apr_tolower(*s1) != apr_tolower(*s2)); s1++);
-    if(*s1 == '\0') {
+    for ( ; (*s1 != '\0') && (s1 <= e1) && (apr_tolower(*s1) != apr_tolower(*s2)); s1++);
+    if (*s1 == '\0' || s1 > e1) {
       return(NULL);
     }
     /* found first character of s2, see if the rest matches */
     p1 = (char *)s1;
     p2 = (char *)s2;
-    for(++p1, ++p2; apr_tolower(*p1) == apr_tolower(*p2); ++p1, ++p2) {
-      if(*p1 == '\0') {
+    for (++p1, ++p2; (apr_tolower(*p1) == apr_tolower(*p2)) && (p1 <= e1); ++p1, ++p2) {
+      if((p1 > e1) && (*p2 != '\0')) {
+        // reached the end without match
+        return NULL;
+      }
+      if (*p2 == '\0') {
         /* both strings ended together */
         return((char *)s1);
       }
     }
-    if(*p2 == '\0') {
+    if (*p2 == '\0') {
       /* second string ended, a match */
       break;
     }
@@ -93,31 +98,32 @@ static char *qs_strcasestr(const char *s1, const char *s2) {
 /**
  * Rerurns the priority value
  *
- * @param priorityname
+ * @param priorityname Part of the log message to search the priority in
+ * @param len Length of the priority string
  * @return Priority, LOG_NOTICE (see m_default_severity) if provided name is not recognized.
  */ 
-static int qsgetprio(const char *priorityname) {
+static int qsgetprio(const char *priorityname, int len) {
   int p = m_default_severity;
   if(!priorityname) {
     return p;
   }
-  if(qs_strcasestr(priorityname, "alert")) {
+  if(qs_strncasestr(priorityname, "alert", len)) {
     p = LOG_ALERT;
-  } else if(qs_strcasestr(priorityname, "crit")) {
+  } else if(qs_strncasestr(priorityname, "crit", len)) {
     p = LOG_CRIT;
-  } else if(qs_strcasestr(priorityname, "debug")) {
+  } else if(qs_strncasestr(priorityname, "debug", len)) {
     p = LOG_DEBUG;
-  } else if(qs_strcasestr(priorityname, "emerg")) {
+  } else if(qs_strncasestr(priorityname, "emerg", len)) {
     p = LOG_EMERG;
-  } else if(qs_strcasestr(priorityname, "err")) {
+  } else if(qs_strncasestr(priorityname, "err", len)) {
     p = LOG_ERR;
-  } else if(qs_strcasestr(priorityname, "info")) {
+  } else if(qs_strncasestr(priorityname, "info", len)) {
     p = LOG_INFO;
-  } else if(qs_strcasestr(priorityname, "notice")) {
+  } else if(qs_strncasestr(priorityname, "notice", len)) {
     p = LOG_NOTICE;
-  } else if(qs_strcasestr(priorityname, "panic")) {
+  } else if(qs_strncasestr(priorityname, "panic", len)) {
     p = LOG_EMERG;
-  } else if(qs_strcasestr(priorityname, "warn")) {
+  } else if(qs_strncasestr(priorityname, "warn", len)) {
     p = LOG_WARNING;
   }
   return p;
@@ -136,7 +142,8 @@ static int qsgetlevel(regex_t preg, const char *line) {
   int level = m_default_severity;
   regmatch_t ma[QS_MAX_PATTERN_MA];
   if(regexec(&preg, line, QS_MAX_PATTERN_MA, ma, 0) == 0) {
-    level = qsgetprio(&line[ma[1].rm_so]);
+    int len = ma[1].rm_eo - ma[1].rm_so;
+    level = qsgetprio(&line[ma[1].rm_so], len);
   }
   return level;
 }
@@ -327,12 +334,12 @@ int main(int argc, const char * const argv[]) {
     } else if(strcmp(*argv, "-l") == 0) {
       if (--argc >= 1) {
 	const char *severityname = *(++argv);
-        severity = qsgetprio(severityname);
+        severity = qsgetprio(severityname, strlen(severityname));
       }
     } else if(strcmp(*argv, "-d") == 0) {
       if (--argc >= 1) {
 	const char *severityname = *(++argv);
-        m_default_severity = qsgetprio(severityname);
+        m_default_severity = qsgetprio(severityname, strlen(severityname));
       }
     } else if(strcmp(*argv, "-t") == 0) {
       if (--argc >= 1) {
