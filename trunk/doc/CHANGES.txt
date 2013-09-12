@@ -1,3 +1,7 @@
+Version
+
+ - Fixed: qslogger may had detected the wrong message severity.
+
 Version 10.20
 
  - Fixed: QS_CondLocRequestLimitMatch did work only if other QS_Loc*
