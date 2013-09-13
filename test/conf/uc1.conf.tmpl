@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.9 2013-09-11 18:41:43 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.10 2013-09-13 20:01:35 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -89,6 +89,7 @@ QS_ErrorPage             /error-docs/error.html
 <IfDefine uc1e>
 QS_ClientEventBlockCount 3 3
 QS_SetEnvIfStatus        404 QS_Block
+QS_SetEnvIfStatus        NullConnection    QS_Block
 </IfDefine>
 
 <IfDefine uc1h>

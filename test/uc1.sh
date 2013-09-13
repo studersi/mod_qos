@@ -44,6 +44,7 @@ waitApache
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1e 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UC1_QS_ClientEventBlockCount.htt
+./run.sh -s scripts/UC1_QS_ClientEventBlockCount2.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1f 2>/dev/null 1>/dev/null
