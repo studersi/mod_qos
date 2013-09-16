@@ -2,7 +2,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2010 Pascal Buchbinder
+ * Copyright (C) 2007-2013 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regex.c,v 1.10 2013-07-05 06:50:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: regex.c,v 1.11 2013-09-16 06:39:41 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -59,7 +59,7 @@ static const char revision[] = "$Id: regex.c,v 1.10 2013-07-05 06:50:58 pbuchbin
 
 
 static void usage() {
-  printf("usage: regex <string>|<path> <pcre>\n");
+  printf("usage: regex <string>|<path> <pcre>|<path>\n");
   printf("\n");
   printf("Regular expression matching test tool (pcre pattern, case less).\n");
   printf("\n");
@@ -108,6 +108,22 @@ int main(int argc, const char *const argv[]) {
   }
   in = argv[0];
   pattern = argv[1];
+
+  file = fopen(pattern, "r");
+  if(file) {
+    char readline[MAX_LINE];
+    if(fgets(readline, MAX_LINE-1, file) != NULL) {
+      int len = strlen(readline);
+      while(len > 0 && readline[len] < 32) {
+	readline[len] = '\0';
+	len--;
+      }
+      pattern = apr_pstrdup(pool, readline);
+    }
+    fclose(file);
+  }
+  printf("pattern: %s\n", pattern);
+
   //pcre = pcre_compile(pattern, PCRE_CASELESS, &errptr, &erroffset, NULL);
   pcre = pcre_compile(pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(pcre == NULL) {
