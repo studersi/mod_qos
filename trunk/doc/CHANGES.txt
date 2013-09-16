@@ -2,6 +2,8 @@ Version
 
  - Fixed: qslogger may had detected the wrong message severity.
 
+ - Adds debug message when detecting "NullConnection" events.
+
 Version 10.20
 
  - Fixed: QS_CondLocRequestLimitMatch did work only if other QS_Loc*
