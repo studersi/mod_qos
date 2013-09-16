@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.447 2013-09-06 06:01:30 pbuchbinder Exp $";
-static const char g_revision[] = "10.20";
+static const char revision[] = "$Id: mod_qos.c,v 5.448 2013-09-16 18:49:02 pbuchbinder Exp $";
+static const char g_revision[] = "10.21";
 
 /************************************************************************
  * Includes
@@ -95,6 +95,7 @@ static const char g_revision[] = "10.20";
  * defines
  ***********************************************************************/
 #define QOS_LOG_PFX(id)  "mod_qos("#id"): "
+#define QOS_LOGD_PFX  "mod_qos(): "
 #define QOS_RAN 10
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
@@ -222,12 +223,14 @@ static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 #define QS_CONN_REMOTEADDR(c) c->client_addr
 #define QOS_MY_GENERATION(g) ap_mpm_query(AP_MPMQ_GENERATION, &g)
 #define qos_unixd_set_global_mutex_perms ap_unixd_set_global_mutex_perms
+#define QS_ISDEBUG(s) APLOG_IS_LEVEL(s, APLOG_DEBUG)
 #else
 #define QS_APACHE_22 1
 #define QS_CONN_REMOTEIP(c) c->remote_ip
 #define QS_CONN_REMOTEADDR(c) c->remote_addr
 #define QOS_MY_GENERATION(g) g = ap_my_generation
 #define qos_unixd_set_global_mutex_perms unixd_set_global_mutex_perms
+#define QS_ISDEBUG(s) s->loglevel >= APLOG_DEBUG
 #endif
 
 #ifdef QS_MOD_EXT_HOOKS
@@ -1204,7 +1207,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size, apr_tab
   int i;
   qos_s_t *s;
   qos_s_entry_t *e;
-  qos_s_entry_limit_t *limitTableEntry;
+  qos_s_entry_limit_t *limitTableEntry = NULL;
   msize = msize + 1024;
   if(limitTableSize > 0) {
     lsize = APR_ALIGN_DEFAULT(sizeof(qos_s_entry_limit_t)) * limitTableSize * size;
@@ -1233,7 +1236,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size, apr_tab
     res = apr_shm_create(&m, msize, file, pool);
   }
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, srec, 
-               QOS_LOG_PFX(000)"create shared memory (client control)(%s): %d bytes",
+               QOS_LOGD_PFX"create shared memory (client control)(%s): %d bytes",
                file, msize + lsize);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
@@ -1264,7 +1267,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size, apr_tab
   s->lock_file = apr_psprintf(pool, "%s_ccl.mod_qos", 
                               qos_tmpnam(pool, srec));
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, srec, 
-               QOS_LOG_PFX(000)"create mutex (client control)(%s)",
+               QOS_LOGD_PFX"create mutex (client control)(%s)",
                s->lock_file);
   res = apr_global_mutex_create(&s->lock, s->lock_file, APR_LOCK_DEFAULT, pool);
   if(res != APR_SUCCESS) {
@@ -1943,7 +1946,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
  */
 static void qos_destroy_act(qs_actable_t *act) {
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, NULL,
-               QOS_LOG_PFX(000)"cleanup shared memory: %"APR_SIZE_T_FMT" bytes",
+               QOS_LOGD_PFX"cleanup shared memory: %"APR_SIZE_T_FMT" bytes",
                act->size);
   act->child_init = 0;
   if(act->lock_file && act->lock_file[0]) {
@@ -2093,7 +2096,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     res = apr_shm_create(&act->m, act->size, file, act->pool);
   }
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, s, 
-               QOS_LOG_PFX(000)"%s(%s), create shared memory (ACT)(%s): %"APR_SIZE_T_FMT" bytes"
+               QOS_LOGD_PFX"%s(%s), create shared memory (ACT)(%s): %"APR_SIZE_T_FMT" bytes"
                " (r=%d,ip=%d)", 
                s->server_hostname == NULL ? "-" : s->server_hostname,
                s->is_virtual ? "v" : "b",
@@ -6512,6 +6515,13 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
         (*e)->block_time = apr_time_sec(apr_time_now());
       }
       apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT40 */
+      if(QS_ISDEBUG(base->c->base_server)) {
+        ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, base->c->base_server, 
+                     QOS_LOGD_PFX"QS_ClientEventBlockCount rule: "
+                     QS_EMPTY_CON " event detected "
+                     "c=%s",
+                     QS_CONN_REMOTEIP(base->c) == NULL ? "-" : QS_CONN_REMOTEIP(base->c));
+      }
     }
   }
   return APR_SUCCESS;
@@ -6773,7 +6783,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   if(c->sbh == NULL) {
     // proxy connections do NOT have any relation to the score board, don't handle them
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, c->base_server, 
-                 QOS_LOG_PFX(000)"skip processing of outgoing connection %s<->%s",
+                 QOS_LOGD_PFX"skip processing of outgoing connection %s<->%s",
                  QS_CONN_REMOTEIP(c) ? QS_CONN_REMOTEIP(c) : "UNKNOWN", c->local_ip ? c->local_ip : "UNKNOWN");
     return ret;
   }
@@ -6826,6 +6836,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
                        QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         }
         if(!sconf->log_only) {
+          apr_table_set(c->notes, QS_BLOCK_SEEN, ""); // supress NullConnection messages
           c->keepalive = AP_CONN_CLOSE;
           ret = m_retcode;
         }
@@ -8490,7 +8501,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
                                          qos_tmpnam(sconf->act->pool, bs));
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                 QOS_LOG_PFX(000)"create mutex (ACT)(%s)",
+                 QOS_LOGD_PFX"create mutex (ACT)(%s)",
                  sconf->act->lock_file);
     rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
                                  APR_LOCK_DEFAULT, sconf->act->pool);
@@ -8540,7 +8551,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     for(i = 0; i < apr_table_elts(sconf->hfilter_table)->nelts; i++) {
       qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
       ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                   QOS_LOG_PFX(000)"request header filter rule (%s) %s: %s max=%d",
+                   QOS_LOGD_PFX"request header filter rule (%s) %s: %s max=%d",
                    he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key,
                    he->text, he->size);
     }
@@ -8548,7 +8559,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     for(i = 0; i < apr_table_elts(sconf->reshfilter_table)->nelts; i++) {
       qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
       ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                   QOS_LOG_PFX(000)"response header filter rule (%s) %s: %s max=%d",
+                   QOS_LOGD_PFX"response header filter rule (%s) %s: %s max=%d",
                    he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key,
                    he->text, he->size);
     }
@@ -8599,7 +8610,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     sconf->error_page = error_page;
     auto_error_page = 1;
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                 QOS_LOG_PFX(000)"QS_ErrorPage: use %s for server %s:%d (global)",
+                 QOS_LOGD_PFX"QS_ErrorPage: use %s for server %s:%d (global)",
                  error_page,
                  bs->server_hostname == NULL ? "-" : bs->server_hostname,
                  bs->addrs->host_port);
@@ -8636,7 +8647,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
         ssconf->error_page = error_page;
         auto_error_page |= 2;
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-                     QOS_LOG_PFX(000)"QS_ErrorPage: use %s for server %s:%d",
+                     QOS_LOGD_PFX"QS_ErrorPage: use %s for server %s:%d",
                      error_page,
                      s->server_hostname == NULL ? "-" : s->server_hostname,
                      s->addrs->host_port);
