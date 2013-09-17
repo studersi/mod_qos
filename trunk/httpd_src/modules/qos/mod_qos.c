@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.448 2013-09-16 18:49:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.449 2013-09-17 19:47:00 pbuchbinder Exp $";
 static const char g_revision[] = "10.21";
 
 /************************************************************************
@@ -839,13 +839,15 @@ static const qos_her_t qs_header_rules[] = {
 #define QS_URL             "["QS_URL_GEN""QS_URL_SUB""QS_URL_UNRESERVED"]"
 #define QS_2616TOKEN       "[\\x21\\x23-\\x27\\x2a-\\x2e0-9A-Z\\x5-\\x60a-z\\x7e]+"
 #define QS_B64_SP          "[a-zA-Z0-9 \\+/\\$=:]"
+#define QS_PIPE            "\\|"
+#define QS_WEAK            "(W/)?"
 #define QS_H_ACCEPT        "[a-zA-Z0-9_\\*\\+\\-]+/[a-zA-Z0-9_\\*\\+\\.\\-]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_C      "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_E      "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_L      "[a-zA-Z\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_CACHE         "no-cache|no-store|max-age=[0-9]+|max-stale(=[0-9]+)?|min-fresh=[0-9]+|no-transform|only-if-chached"
 #define QS_H_CONTENT       "[\"a-zA-Z0-9\\*/; =\\-]+"
-#define QS_H_COOKIE        "["QS_URL_GEN""QS_URL_SUB" "QS_URL_UNRESERVED"]"
+#define QS_H_COOKIE        "["QS_URL_GEN""QS_URL_SUB"\""QS_URL_UNRESERVED"]"
 #define QS_H_EXPECT        "[a-zA-Z0-9= ;\\.,\\-]"
 #define QS_H_PRAGMA        "[a-zA-Z0-9= ;\\.,\\-]"
 #define QS_H_FROM          "[a-zA-Z0-9=@;\\.,\\(\\)\\-]"
@@ -874,9 +876,9 @@ static const qos_her_t qs_header_rules[] = {
   { "From", "^"QS_H_FROM"+$", QS_FLT_ACTION_DROP, 100 },
   { "Host", "^"QS_H_HOST"$", QS_FLT_ACTION_DROP, 100 },
   { "If-Invalid", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 500 },
-  { "If-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
+  { "If-Match", "^"QS_WEAK""QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
-  { "If-None-Match", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
+  { "If-None-Match", "^"QS_WEAK""QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Range", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Unmodified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Valid", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 500 },

@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.14 2011-09-19 18:49:58 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.15 2013-09-17 19:47:00 pbuchbinder Exp $
 #
 
 
@@ -21,6 +21,7 @@ __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713
 __X-FORWARDED-FOR: 127.0.0.1
 __X-FORWARDED-HOST: localhost:5960
 __X-FORWARDED-SERVER: 127.0.0.1
+__Cookie: umt="123 abce"; q=22
 __myheader: static_content
 __
 _EXPECT . "200 OK"
@@ -30,6 +31,7 @@ _EXPECT . "HTTP_ACCEPT_CHARSET"
 _EXPECT . "HTTP_ACCEPT_ENCODING"
 _EXPECT . "HTTP_ACCEPT_LANGUAGE"
 _EXPECT . "HTTP_CACHE_CONTROL"
+_EXPECT . "HTTP_COOKIE"
 _EXPECT . "HTTP_CONNECTION"
 _EXPECT . "HTTP_HOST"
 _EXPECT . "HTTP_MAX_FORWARDS"
