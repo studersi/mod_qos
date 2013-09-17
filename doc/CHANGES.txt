@@ -4,6 +4,9 @@ Version
 
  - Adds debug message when detecting "NullConnection" events.
 
+ - Built-in request header rules: adapt If-Match/If-None-Match/Cookie
+   header patterns.
+
 Version 10.20
 
  - Fixed: QS_CondLocRequestLimitMatch did work only if other QS_Loc*

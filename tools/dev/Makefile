@@ -66,4 +66,4 @@ stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
 clean:
-	rm *.o stack regex regexspeed b64 crs mem json pws qssearch
+	rm -f *.o stack regex regexspeed b64 crs mem json pws qssearch
