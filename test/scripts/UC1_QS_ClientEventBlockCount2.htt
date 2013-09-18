@@ -27,6 +27,7 @@ _END LOOP
 _EXPECT ERROR "Connection reset by peer"
 _REQ localhost $QS_PORT_BASE
 _CLOSE
+_SLEEP 200
 _EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3, current=3"
 _EXEC tail -1 logs/error_log
 
