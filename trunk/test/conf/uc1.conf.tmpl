@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.10 2013-09-13 20:01:35 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.11 2013-09-18 16:33:23 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -127,6 +127,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /b/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
+
+<IfDefine uc1m>
+   QS_SrvMaxConn              6
+</IfDefine>
 
 <IfDefine uc1a>
    QS_LocRequestLimitMatch    "^(/htt/a/|/htt/b/|/htt/c/).*$" 2
