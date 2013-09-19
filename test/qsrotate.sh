@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: qsrotate.sh,v 2.3 2013-03-28 19:57:48 pbuchbinder Exp $
+# $Id: qsrotate.sh,v 2.4 2013-09-19 15:25:54 pbuchbinder Exp $
 
 cd `dirname $0`
 PFX=[`basename $0`]
@@ -21,9 +21,10 @@ d1k="d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k d1k
 # generates 3MB data (1.5 files)
 rm -f ${LOGFILE}*
 for E in `seq 3072`; do echo "$d1k"; done | ../util/src/qsrotate -b 2097152 -o ${LOGFILE}
+sleep 1
 ROT2MB=`ls -l ${LOGFILE}* | egrep '209.... [a-zA-Z]+ .*qsrotate\.log\.[0-9]+' | wc -l`
 if [ "$ROT2MB" -ne 1 ]; then
-    echo "$PFX FAILED, rotate -b, expected 1 (is $ROT2MB"
+    echo "$PFX FAILED, rotate -b, expected 1 (is $ROT2MB)"
     ERROR=1
 fi
 if [ "`ls -l ${LOGFILE}* | wc -l`" -ne 2 ]; then
