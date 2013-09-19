@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.11 2013-09-18 16:33:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.12 2013-09-19 15:25:54 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -130,6 +130,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
 <IfDefine uc1m>
    QS_SrvMaxConn              6
+</IfDefine>
+
+<IfDefine uc1n>
+   QS_SrvMaxConnClose         10%
 </IfDefine>
 
 <IfDefine uc1a>
