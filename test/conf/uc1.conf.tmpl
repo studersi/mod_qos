@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.12 2013-09-19 15:25:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.13 2013-09-20 17:59:48 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -182,6 +182,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
 <IfDefine uc1l>
    QS_LocKBytesPerSecLimitMatch ^/image.iso$ 3000
+</IfDefine>
+
+<IfDefine uc1o>
+   SetEnvIf Request_URI  /index.html limit=a
+   QS_EventPerSecLimit   limit 10
 </IfDefine>
 
    <Location /cgi-local>
