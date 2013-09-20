@@ -21,6 +21,8 @@ __Host: localhost
 __
 _EXPECT . "200 OK"
 _WAIT
+_EXPECT EXEC "GET /a/sleep.cgi\?s=1 HTTP/1.1\" 200 . ... . . - . id"
+_EXEC tail -1 logs/access_log
 
 END
 
@@ -33,6 +35,9 @@ __
 _EXPECT . "200 OK"
 _EXPECT . "Connection: close"
 _WAIT
+_SLEEP 100
+_EXPECT EXEC "GET /a/sleep.cgi\?s=1 HTTP/1.1\" 200 . ... . . K; . id"
+_EXEC tail -1 logs/access_log
 
 _REQ localhost $QS_PORT_BASE
 __GET /a/sleep.cgi?s=1 HTTP/1.1
