@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.30 2013-08-22 19:12:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.31 2013-09-20 18:00:54 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -199,9 +199,10 @@ static void speed(long size) {
   long long average = 0;
   long items[] = { 12, 48333, size-2, size-1000, size/2, size/8, 9827, 25998, 77, 58 };
 
-  if(!m_silent) {
-    printf("> %d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
-  }
+  printf("> memory size=%dMbytes entries=%d: %d bytes per client\n",
+	 s->msize / 1024 / 1024,
+	 s->max, s->msize/s->max);
+
   new.ip = 0;
   qoss_set(s, &new, time(NULL));
   for(i = 0; i < size; i++) {
