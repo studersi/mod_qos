@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.228 2013-09-16 20:27:59 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.229 2013-09-23 19:00:37 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -1002,7 +1002,7 @@ sleep 1
 IPCS2=`ipcs | wc -l`
 
 # some simple configurations
-usscripts="dos.sh uc1.sh"
+usscripts="dos.sh uc1.sh ucn.sh"
 for E in $usscripts; do
   echo "> $E"
   ./$E
