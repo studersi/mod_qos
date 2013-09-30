@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.2 2013-09-24 11:01:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.3 2013-09-30 20:19:53 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -90,6 +90,13 @@ SetEnvIfPlus                  Request_Query limitme  QS_Limit01
 SetEnvIfPlus                  User-Agent    allowme  QS_Limit02
 QS_ClientEventLimitCount      10    5 QS_Limit01
 QS_ClientEventLimitCount      10000 5 QS_Limit02
+</IfDefine>
+
+<IfDefine ucnc>
+SetEnvIfPlus                  Request_URI     ^/htt/aaa/.* EventApp
+QS_SetEnvIfStatus             302                          Event302
+QS_SetEnvIf                   EventApp Event302        QS_LimitCL=1
+QS_ClientEventLimitCount      3 2 QS_LimitCL
 </IfDefine>
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>

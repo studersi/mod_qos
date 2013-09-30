@@ -34,4 +34,9 @@ waitApache
 ./run.sh -s scripts/UCN_QS_ClientEventLimitCount.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnc 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UCN_QS_ClientEventLimitCount2.htt
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 exit 0
