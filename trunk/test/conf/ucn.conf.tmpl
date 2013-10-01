@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.3 2013-09-30 20:19:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.4 2013-10-01 06:34:26 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -93,7 +93,7 @@ QS_ClientEventLimitCount      10000 5 QS_Limit02
 </IfDefine>
 
 <IfDefine ucnc>
-SetEnvIfPlus                  Request_URI     ^/htt/aaa/.* EventApp
+SetEnvIfPlus                  Request_URI     ^(/htt/aaa/|/htt/ccc/).* EventApp
 QS_SetEnvIfStatus             302                          Event302
 QS_SetEnvIf                   EventApp Event302        QS_LimitCL=1
 QS_ClientEventLimitCount      3 2 QS_LimitCL
