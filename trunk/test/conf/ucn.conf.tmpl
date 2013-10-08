@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.4 2013-10-01 06:34:26 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.5 2013-10-08 18:57:54 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -80,6 +80,9 @@ LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 LoadModule              parp_module libexec/mod_parp.so
 LoadModule              setenvifplus_module libexec/mod_setenvifplus.so
+<IfDefine ucnd>
+LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
+</IfDefine>
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
@@ -99,6 +102,13 @@ QS_SetEnvIf                   EventApp Event302        QS_LimitCL=1
 QS_ClientEventLimitCount      3 2 QS_LimitCL
 </IfDefine>
 
+<IfDefine ucnd>
+SetEnvIfPlus                  Request_URI     ^(/htt/aaa/|/htt/ccc/|/qsforbidden/limit).* EventApp
+QS_SetEnvRes                  qsforbidden     true                     Event302
+QS_SetEnvIf                   EventApp        Event302                 QS_LimitCL=1
+QS_ClientEventLimitCount      3 2 QS_LimitCL
+</IfDefine>
+
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
    ServerName                 127.0.0.1
 
@@ -115,6 +125,7 @@ QS_ClientEventLimitCount      3 2 QS_LimitCL
    ProxyPass                  /b !
    ProxyPass                  /c !
    ProxyPass                  /cgi-local !
+   ProxyPass                  /qsforbidden !
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
 
