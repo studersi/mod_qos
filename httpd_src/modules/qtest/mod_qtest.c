@@ -10,7 +10,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qtest.c,v 1.4 2013-08-29 19:43:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qtest.c,v 1.5 2013-10-08 18:57:54 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -110,6 +110,10 @@ static int qtest_handler(request_rec * r) {
                  ap_escape_html(r->pool, e[i].val));
     }
     return OK;
+  }
+  if(strncmp(r->parsed_uri.path, "/qsforbidden/", 13) == 0) {
+    apr_table_set(r->subprocess_env, "qsforbidden", "true");
+    return HTTP_FORBIDDEN;
   }
   return DECLINED;
 }

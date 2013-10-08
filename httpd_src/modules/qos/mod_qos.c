@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.449 2013-09-17 19:47:00 pbuchbinder Exp $";
-static const char g_revision[] = "10.21";
+static const char revision[] = "$Id: mod_qos.c,v 5.450 2013-10-08 18:57:53 pbuchbinder Exp $";
+static const char g_revision[] = "10.22";
 
 /************************************************************************
  * Includes
@@ -8140,9 +8140,12 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 static apr_status_t qos_out_err_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+
   if(sconf) {
     qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
     qos_setenvstatus(r, sconf, dconf);
+    qos_setenvresheader(r, sconf);
+    qos_setenvres(r, sconf);
   }
   ap_remove_output_filter(f);
   return ap_pass_brigade(f->next, bb);

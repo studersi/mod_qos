@@ -1,3 +1,8 @@
+Version 10.22
+
+ - Process QS_SetEnvResHeader(Match) and QS_SetEnvRes at error
+   filter too.
+
 Version 10.21
 
  - Fixed: qslogger may had detected the wrong message severity.
