@@ -1,3 +1,9 @@
+Version 10.23
+
+ - Fixed: QS_ClientEventLimitCount log message 067 contains now
+   the IP address of the request header if QS_ClientIpFromHeader
+   is used.
+
 Version 10.22
 
  - Process QS_SetEnvResHeader(Match) and QS_SetEnvRes at error

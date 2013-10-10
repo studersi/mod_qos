@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.450 2013-10-08 18:57:53 pbuchbinder Exp $";
-static const char g_revision[] = "10.22";
+static const char revision[] = "$Id: mod_qos.c,v 5.451 2013-10-10 06:11:46 pbuchbinder Exp $";
+static const char g_revision[] = "10.23";
 
 /************************************************************************
  * Includes
@@ -4693,6 +4693,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     qos_s_entry_t ne;
     qos_s_entry_t nef;
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
+    const char *forardedForIp = QS_CONN_REMOTEIP(cconf->c);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     ne.ip = cconf->ip;
     nef.ip = 0;
@@ -4710,6 +4711,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                           qos_unique_id(r, "069"));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
           }
+        } else {
+          forardedForIp = forwardedfor;
         }
       } else {
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
@@ -4893,7 +4896,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                                 eventName,
                                 eventLimitConf->limit,
                                 (*ef)->limit[limitTableIndex].limit,
-                                QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
+                                forardedForIp == NULL ? "-" : forardedForIp);
             ret = m_retcode;
           }
           (*ef)->lowrate = apr_time_sec(r->request_time);
