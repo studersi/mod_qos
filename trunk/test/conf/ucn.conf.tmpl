@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.5 2013-10-08 18:57:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.6 2013-10-10 06:11:47 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -104,9 +104,13 @@ QS_ClientEventLimitCount      3 2 QS_LimitCL
 
 <IfDefine ucnd>
 SetEnvIfPlus                  Request_URI     ^(/htt/aaa/|/htt/ccc/|/qsforbidden/limit).* EventApp
-QS_SetEnvRes                  qsforbidden     true                     Event302
-QS_SetEnvIf                   EventApp        Event302                 QS_LimitCL=1
+QS_SetEnvRes                  qsforbidden     true                     EventForbidden
+QS_SetEnvIf                   EventApp        EventForbidden           QS_LimitCL=1
 QS_ClientEventLimitCount      3 2 QS_LimitCL
+</IfDefine>
+
+<IfDefine ucne>
+QS_ClientIpFromHeader         X-Forwarded-For
 </IfDefine>
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
