@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.451 2013-10-10 06:11:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.452 2013-10-10 09:10:50 pbuchbinder Exp $";
 static const char g_revision[] = "10.23";
 
 /************************************************************************
@@ -9999,7 +9999,7 @@ const char *qos_setenvres_cmd(cmd_parms *cmd, void *dcfg, const char *var,
     return apr_psprintf(cmd->pool, "%s: could not compile regex %s",
                         cmd->directive->directive, pattern);
   }
-  apr_table_setn(sconf->setenvres_t, apr_pstrdup(cmd->pool, var), (char *)pregval);
+  apr_table_addn(sconf->setenvres_t, apr_pstrdup(cmd->pool, var), (char *)pregval);
   return NULL;
 }
 
