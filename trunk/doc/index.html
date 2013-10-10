@@ -1385,10 +1385,12 @@ is 600 seconds). Requests from client IP's reaching this limitation are
 denied for the specified time (blocked at request level). <br/>
 Notes:
 <ul>
-<li>You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
+<li><a name="QS_ClientIpFromHeader"></a>
+You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
 directive to determine the client's IP address based on the defined HTTP 
 request header (e.g., X-Forwarded-For) instead of taking the IP address 
-of the client which has opened the TCP connection.</li>
+of the client which has opened the TCP connection. The header must only contain 
+a single IP address.</li>
 <li>The current value of this counter is stored within the variable suffixed 
 by <code>_Counter</code>, e.g. <code>QS_Limit_Counter</code> for further 
 processing by other rules. </li>

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.7 2013-10-10 09:10:50 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.8 2013-10-10 20:41:52 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -104,11 +104,12 @@ QS_ClientEventLimitCount      3 2 QS_LimitCL
 
 <IfDefine ucnd>
 SetEnvIfPlus                  Request_URI     ^(/htt/aaa/|/htt/ccc/|/qsforbidden/limit).* EventApp
-QS_SetEnvRes                  qsforbidden     blockme                  EventForbidden
-QS_SetEnvRes                  qsforbidden     true                     EventForbidden
-QS_SetEnvRes                  qsforbidden     you                      EventForbidden
-QS_SetEnvIf                   EventApp        EventForbidden           QS_LimitCL=1
-QS_ClientEventLimitCount      3 2 QS_LimitCL
+# note: "qsforbidden=true" is set by mod_qtest when accessing /qsforbidden/
+QS_SetEnvRes                  qsforbidden   blockme          EventForbidden
+QS_SetEnvRes                  qsforbidden   true             EventForbidden
+QS_SetEnvRes                  qsforbidden   you              EventForbidden
+QS_SetEnvIf                   EventApp      EventForbidden   QS_LimitCL=1
+QS_ClientEventLimitCount      3             2                QS_LimitCL
 </IfDefine>
 
 <IfDefine ucne>
