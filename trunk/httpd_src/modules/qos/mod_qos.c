@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.452 2013-10-10 09:10:50 pbuchbinder Exp $";
-static const char g_revision[] = "10.23";
+static const char revision[] = "$Id: mod_qos.c,v 5.453 2013-10-23 20:04:46 pbuchbinder Exp $";
+static const char g_revision[] = "10.24";
 
 /************************************************************************
  * Includes
@@ -292,6 +292,12 @@ typedef struct {
   short int limit;
   time_t limit_time;
   const char *eventClearStr; // name of the var clearing the counter
+  const char *condStr;
+#ifdef AP_REGEX_H
+  ap_regex_t *preg;
+#else
+  regex_t *preg;
+#endif
 } qos_s_entry_limit_conf_t;
 
 typedef struct {
@@ -1257,10 +1263,20 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size, apr_tab
     for(i = 0; i < limitTableSize; i++) {
       char *eventName = apr_pstrdup(pool, te[i].key);
       qos_s_entry_limit_conf_t *eventLimitConf = apr_pcalloc(pool, sizeof(qos_s_entry_limit_conf_t));
-      qos_s_entry_limit_t *src = (qos_s_entry_limit_t*)te[i].val;
+      qos_s_entry_limit_conf_t *src = (qos_s_entry_limit_conf_t*)te[i].val;
       eventLimitConf->limit = src->limit;
       eventLimitConf->limit_time = src->limit_time;
       eventLimitConf->eventClearStr = apr_pstrcat(pool, eventName, QS_LIMIT_CLEAR, NULL);
+      eventLimitConf->condStr = NULL;
+      eventLimitConf->preg = NULL;
+      if(src->condStr) {
+        eventLimitConf->condStr = apr_pstrdup(pool, src->condStr);
+#ifdef AP_REGEX_H
+        eventLimitConf->preg = ap_pregcomp(pool, src->condStr, AP_REG_EXTENDED);
+#else
+        eventLimitConf->preg = ap_pregcomp(pool, src->condStr, REG_EXTENDED);
+#endif
+      }
       apr_table_addn(s->limitTable, eventName, (char *)eventLimitConf);
     }
   } else {
@@ -4886,18 +4902,35 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
          * enforce limit
          */
         if((*ef)->limit[limitTableIndex].limit >= eventLimitConf->limit) {
-          if(ret == DECLINED || ef != e) {
-            /* log only one error (either block or limit) */
-            *uid = apr_pstrdup(cconf->c->pool, "067");
-            *msg = apr_psprintf(cconf->c->pool, 
-                                QOS_LOG_PFX(067)"access denied, QS_ClientEventLimitCount rule: "
-                                "event=%s, "
-                                "max=%d, current=%d, c=%s",
-                                eventName,
-                                eventLimitConf->limit,
-                                (*ef)->limit[limitTableIndex].limit,
-                                forardedForIp == NULL ? "-" : forardedForIp);
-            ret = m_retcode;
+          int block = 1;
+          char *conditional = "";
+          if(eventLimitConf->condStr != NULL) {
+            // conditional enforcement...
+            const char *condition = apr_table_get(r->subprocess_env, QS_COND);
+            conditional = apr_pstrdup(r->pool, "Cond");
+            if(condition == NULL) {
+              block = 0; // variable not set
+            } else {
+              if(ap_regexec(eventLimitConf->preg, condition, 0, NULL, 0) != 0) {
+                block = 0; // pattern does not match
+              }
+            }
+          }
+          if(block) {
+            if(ret == DECLINED || ef != e) {
+              /* log only one error (either block or limit) */
+              *uid = apr_pstrdup(cconf->c->pool, "067");
+              *msg = apr_psprintf(cconf->c->pool, 
+                                  QOS_LOG_PFX(067)"access denied, QS_%sClientEventLimitCount rule: "
+                                  "event=%s, "
+                                  "max=%d, current=%d, c=%s",
+                                  conditional,
+                                  eventName,
+                                  eventLimitConf->limit,
+                                  (*ef)->limit[limitTableIndex].limit,
+                                  forardedForIp == NULL ? "-" : forardedForIp);
+              ret = m_retcode;
+            }
           }
           (*ef)->lowrate = apr_time_sec(r->request_time);
         }
@@ -8586,11 +8619,21 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
         apr_table_entry_t *te = (apr_table_entry_t *)apr_table_elts(sconf->qos_cc_limitTable)->elts;
         for(i = 0; i < limitTableSize; i++) {
           const char *name = te[i].key;
-          qos_s_entry_limit_t *newentry = (qos_s_entry_limit_t *)te[i].val;
+          qos_s_entry_limit_conf_t *newentry = (qos_s_entry_limit_conf_t *)te[i].val;
           qos_s_entry_limit_conf_t *entryConf = (qos_s_entry_limit_conf_t *)apr_table_get(u->qos_cc->limitTable, name);
           if(entryConf) {
             entryConf->limit = newentry->limit;
             entryConf->limit_time = newentry->limit_time;
+            entryConf->condStr = NULL;
+            entryConf->preg = NULL;
+            if(newentry->condStr) {
+              entryConf->condStr = apr_pstrdup(bs->process->pool, newentry->condStr);
+#ifdef AP_REGEX_H
+              entryConf->preg = ap_pregcomp(bs->process->pool, newentry->condStr, AP_REG_EXTENDED);
+#else
+              entryConf->preg = ap_pregcomp(bs->process->pool, newentry->condStr, REG_EXTENDED);
+#endif
+            }
           } else {
             // new variable
             configOk = 0;
@@ -11003,39 +11046,76 @@ const char *qos_client_block_cmd(cmd_parms *cmd, void *dcfg, const char *arg1,
   return NULL;
 }
 
-const char *qos_client_limit_cmd(cmd_parms *cmd, void *dcfg, const char *arg1,
-                                 const char *arg2, const char *arg3) {
+const char *qos_client_limit_int_cmd(cmd_parms *cmd, void *dcfg, const char *arg_number,
+                                     const char *arg_sec, const char *arg_varname,
+                                     const char *arg_condition) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *limit_name = QS_LIMIT_DEFAULT;
   int limit;
   time_t limit_time = 600;
-  qos_s_entry_limit_t *entry = apr_pcalloc(cmd->pool, sizeof(qos_s_entry_limit_t));
+  qos_s_entry_limit_conf_t *entry = apr_pcalloc(cmd->pool, sizeof(qos_s_entry_limit_conf_t));
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
     return err;
   }
   sconf->has_qos_cc = 1;
-  limit = atoi(arg1);
-  if((limit < 0) || ((limit == 0) && (strcmp(arg1, "0") != 0))) {
+  limit = atoi(arg_number);
+  if((limit < 0) || ((limit == 0) && (strcmp(arg_number, "0") != 0))) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
                         cmd->directive->directive);
   }
-  if(arg2) {
-    limit_time = atoi(arg2);
+  if(arg_sec) {
+    limit_time = atoi(arg_sec);
   }
   if(limit_time == 0) {
     return apr_psprintf(cmd->pool, "%s: time must be numeric value >0", 
                         cmd->directive->directive);
   }
-  if(arg3) {
-    limit_name = apr_pstrdup(cmd->pool, arg3);
+  if(arg_varname) {
+    limit_name = apr_pstrdup(cmd->pool, arg_varname);
   }
   entry->limit = limit;
   entry->limit_time = limit_time;
+  entry->condStr = NULL;
+  entry->preg = NULL;
+  if(arg_condition) {
+    entry->condStr = apr_pstrdup(cmd->pool, arg_condition);
+#ifdef AP_REGEX_H
+    entry->preg = ap_pregcomp(cmd->pool, entry->condStr, AP_REG_EXTENDED);
+#else
+    entry->preg = ap_pregcomp(cmd->pool, entry->condStr, REG_EXTENDED);
+#endif
+    if(entry->preg == NULL) {
+      return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
+                          cmd->directive->directive, entry->condStr);
+    }
+  }
+  if(apr_table_get(sconf->qos_cc_limitTable, limit_name) != NULL) {
+      return apr_psprintf(cmd->pool, "%s: variable %s has already been used by"
+                          " another QS_[Cond]ClientEventLimitCount directive",
+                          cmd->directive->directive, limit_name);    
+  }
   apr_table_setn(sconf->qos_cc_limitTable, limit_name, (char *)entry);
   return NULL;
 }
+
+/* QS_ClientEventLimitCount <number> <seconds> <variable> */
+const char *qos_client_limit_cmd(cmd_parms *cmd, void *dcfg, const char *arg_number,
+                                 const char *arg_sec, const char *arg_varname) {
+  return qos_client_limit_int_cmd(cmd, dcfg, arg_number, arg_sec, arg_varname, NULL);
+}
+
+#ifdef AP_TAKE_ARGV
+/* QS_CondClientEventLimitCount <number> <seconds> <variable> <pattern> */
+const char *qos_cond_client_limit_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
+  if(argc != 4) {
+    return apr_psprintf(cmd->pool, "%s: takes 4 arguments",
+                        cmd->directive->directive);
+  }
+  return qos_client_limit_int_cmd(cmd, dcfg, argv[0], argv[1], argv[2], argv[3]);
+}
+#endif
 
 const char *qos_client_forwardedfor_cmd(cmd_parms *cmd, void *dcfg, const char *header) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -11095,7 +11175,7 @@ const char *qos_client_contenttype(cmd_parms *cmd, void *dcfg, int argc, char *c
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   if(argc != 5) {
-    return apr_psprintf(cmd->pool, "%s: requires four arguments",
+    return apr_psprintf(cmd->pool, "%s: requires five arguments",
                         cmd->directive->directive);
   }
   sconf->static_on = 1;
@@ -11698,6 +11778,18 @@ static const command_rec qos_config_cmds[] = {
                   " of the specified environment variable ("QS_LIMIT_DEFAULT" by default)"
                   " allowed within the defined time (default are 10 minutes)."
                   " Directive is allowed in global server context only."),
+#ifdef AP_TAKE_ARGV
+  AP_INIT_TAKE_ARGV("QS_CondClientEventLimitCount", qos_cond_client_limit_cmd, NULL,
+                    RSRC_CONF,
+                    "QS_CondClientEventLimitCount <number> <seconds> <variable> <pattern>,"
+                    " defines the maximum number"
+                    " of the specified environment variable"
+                    " allowed within the defined time."
+                    " Directive works similar as QS_ClientEventLimitCount but"
+                    " requests are only blocked if the "QS_COND" variable matches"
+                    " the defined pattern (regex)."
+                    " Directive is allowed in global server context only."),
+#endif
   AP_INIT_TAKE1("QS_ClientIpFromHeader", qos_client_forwardedfor_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientIpFromHeader <header>, defines a HTTP request header to read"

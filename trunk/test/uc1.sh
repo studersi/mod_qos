@@ -97,4 +97,14 @@ waitApache
 ./run.sh -s scripts/UC1_QS_EventPerSecLimit.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1p 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_CondClientEventLimitCount.htt
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1p -D uc1q 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_CondClientEventLimitCount2.htt
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 exit 0

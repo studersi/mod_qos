@@ -714,12 +714,22 @@ variable matches the specified pattern.
 <li>
 <a name="QS_CondLocRequestLimitMatch"></a>
 <code>QS_CondLocRequestLimitMatch &lt;regex&gt; &lt;number&gt; &lt;condition&gt;</code><br>
-Rule works similar to <code>QS_LocRequestLimitMatch</code> but it is only 
+Rule works similar to <a href="#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a> but it is only 
 enforced for requests whose <code>QS_Cond</code> variable matches the 
 specified condition (regular expression). Every request matching the defined 
 pattern is counted, but the defined limitation is only enforced for those requests 
 matching the specified condition. <br>
 Only one <code>QS_CondLocRequestLimitMatch</code> rule is evaluated per request.
+</li>
+<li>
+<a name="QS_CondClientEventLimitCount"</a>
+<code>QS_CondClientEventLimitCount &lt;number&gt; &lt;seconds&gt; &lt;variable&gt; &lt;pattern&gt</code><br>
+Defines the maximum number of the specified environment variable
+allowed within the defined time. Directive works similar as 
+<a href="#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
+but requests are only blocked if the value of the <code>QS_Cond</code> 
+variable matches the defined pattern (regex). Directive is allowed 
+in global server context only. <br>
 </li>
 </ul>
 
@@ -1401,6 +1411,8 @@ not supported).</li>
 <li>Only the default rule (<code>QS_Limit</code>) is accessibly by the 
 <a href="#statusviewer">status viewer</a> and the 
 <a href="#webconsole">console</a>.</li>
+<li>See also <a href="#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></a> 
+if you want to enforce a rule only under certain conditions.
 </ul>
 </li>
 <li>

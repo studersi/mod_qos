@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.13 2013-09-20 17:59:48 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.14 2013-10-23 20:04:47 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -98,6 +98,16 @@ QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
 QS_ErrorPage             /error-docs/error_c.html
 # allow access to content of the error page
 SetEnvIf Request_URI     ^/error-docs/(.*) QS_ErrorPage=/error-docs/$1
+</IfDefine>
+
+<IfDefine uc1p>
+QS_CondClientEventLimitCount 3  2        QS_CondLimit /htt/a
+SetEnvIf                     Request_URI ^/htt/a      QS_Cond=/htt/a
+QS_SetEnvIfQuery             QS_Limit    QS_CondLimit=yes
+</IfDefine>
+
+<IfDefine uc1q>
+QS_ClientIpFromHeader        Y-Forwarded-For
 </IfDefine>
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
