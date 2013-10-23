@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvMinDataRate.htt,v 1.1 2011-02-17 20:48:22 pbuchbinder Exp $
+# $Id: QS_SrvMinDataRate.htt,v 1.2 2013-10-23 20:04:47 pbuchbinder Exp $
 #
 # QS_SrvMinDataRate.htt for 10 or more clients only
 #
@@ -94,6 +94,39 @@ _REQ localhost $QS_PORT_BASE
 __GET /cgi100/sleep.cgi?s=10 HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+CLIENT
+_LOOP 11
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_END LOOP
+
+END
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=22 HTTP/1.1
+__Host: localhost
+__User-Agent: SLOW Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __
 _EXPECT . "200 OK"
 _WAIT
