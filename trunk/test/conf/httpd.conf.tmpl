@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.243 2013-09-02 18:42:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.244 2013-10-25 16:48:06 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -96,6 +96,13 @@ QS_ClientEventLimitCount 3 10
 #QS_ClientEventLimitCount 100 600 QS_LimitVar4
 #QS_ClientEventLimitCount 1   600 QS_LimitVar5
 # enabled by QS_ClientEventLimitCount.htt: end
+<IfDefine CondClientLimit>
+QS_CondClientEventLimitCount 3 2 QS_ConditionalLimitFirst enforce
+QS_CondClientEventLimitCount 3 2 QS_ConditionalLimitSecond enforce
+QS_CondClientEventLimitCount 3 2 QS_ConditionalLimit enforce
+QS_CondClientEventLimitCount 3 2 QS_ConditionalLimitSecLast enforce
+QS_CondClientEventLimitCount 3 2 QS_ConditionalLimitLast enforce
+</IfDefine>
 QS_ClientEventPerSecLimit  5
 <IfDefine X-Forwarded-For>
 QS_ClientIpFromHeader    Y-Forwarded-For
@@ -333,6 +340,10 @@ ErrorDocument 404 /error-docs/error404.html
    QS_EventLimitCount            TicketEvent1 10 5
    QS_SetEnvIfStatus             409 TicketEvent2
    QS_EventLimitCount            TicketEvent2 10 5
+
+   # cond client limit
+   SetEnvIfPlus                  Request_Method POST QS_ConditionalLimit=yes
+   SetEnvIf                      Request_URI /htt/restricted/ QS_Cond=enforce
 
    # local, no proxy
    QS_LocRequestLimit            /demo/sn-fb-dstk-war/getStatus       100
