@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.229 2013-09-23 19:00:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.230 2013-10-25 16:48:06 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -648,6 +648,13 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventLimitCount2" >>
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventLimitCount2.htt"
+fi
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_CondClientEventLimitCount" >>  logs/error_log
+./ctl.sh restart -D real_ip -D CondClientLimit > /dev/null
+./run.sh -s ./scripts/QS_CondClientEventLimitCount.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_CondClientEventLimitCount.htt"
 fi
 sleep 20
 
