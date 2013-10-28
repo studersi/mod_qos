@@ -2,6 +2,10 @@ Version 10.24
 
  - New directive QS_CondClientEventLimitCount.
 
+ - QS_SrvMinDataRate: limits the max. data rate to the configured
+   value (prevents invalid rate due to misconfiguration server or
+   died child process).
+
 Version 10.23
 
  - Fixed: QS_ClientEventLimitCount log message 067 contains now

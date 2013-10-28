@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.453 2013-10-23 20:04:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.454 2013-10-28 21:43:22 pbuchbinder Exp $";
 static const char g_revision[] = "10.24";
 
 /************************************************************************
@@ -2404,13 +2404,15 @@ static int qos_count_free_ip(qos_srv_config *sconf) {
 /**
  * adds an ip entry (insert or increment)
  *
+ * @param sconf
  * @param cconf Configuration record containing the ip table(s)
  * @param e Pointer to the IP entry
  *          NOTE: we can't sort the list since the address of this pointer
  *                must not be change (we don't keep the lock)
  * @return The number of connections open by this IP
  */
-static int qos_inc_ip(qs_conn_ctx *cconf, qs_ip_entry_t **e) {
+static int qos_inc_ip(qos_srv_config *sconf, 
+                      qs_conn_ctx *cconf, qs_ip_entry_t **e) {
   int num = -1;
   qs_ip_entry_t *free = NULL;
   int i = cconf->sconf->act->conn->conn_ip_len / QS_MEM_SEG; // size of the array
@@ -2436,14 +2438,20 @@ static int qos_inc_ip(qs_conn_ctx *cconf, qs_ip_entry_t **e) {
     conn_ip++;
     i--;
   }
-  if(free && (num == -1)) {
+  if(num == -1) {
     // no entry found, use the first free entry
-    free->ip = cconf->ip;
-    free->counter++;
-    num = free->counter;
-    *e = free;
+    if(free) {
+      free->ip = cconf->ip;
+      free->counter++;
+      num = free->counter;
+      *e = free;
+    } else {
+      ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
+                   QOS_LOG_PFX(035)"QS_SrvMaxConn: no free IP slot available!"
+                   " Check log for unclean child exit.");
+    }
   }
-
+  
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
 
   return num;
@@ -5107,6 +5115,17 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
     if(connections > sconf->req_rate_start) {
       /* keep the minimal rate until reaching the min connections */
       req_rate = req_rate + ((sconf->min_rate_max / sconf->max_clients) * connections);
+      if(connections > sconf->max_clients) {
+        // limit the max rate if we have more connections then expected
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
+                     QOS_LOG_PFX(036)"QS_SrvMinDataRate: unexpected connection status!"
+                     " connections=%d,"
+                     " cal. request rate=%d,"
+                     " max. limit=%d."
+                     " Check log for unclean child exit.",
+                     connections, req_rate, sconf->min_rate_max);
+        req_rate = sconf->min_rate_max;
+      }
     }
     *current = connections;
   }
@@ -6674,7 +6693,7 @@ static int qos_process_connection(conn_rec *c) {
 
     /* single source ip */
     if(sconf->max_conn_per_ip != -1) {
-      current = qos_inc_ip(cconf, &e);
+      current = qos_inc_ip(sconf, cconf, &e);
     }
     /* Check for vip (by ip) */
     if(apr_table_elts(sconf->exclude_ip)->nelts > 0) {
@@ -6781,7 +6800,7 @@ static int qos_process_connection(conn_rec *c) {
                          QOS_LOG_PFX(031)"access denied, QS_SrvMaxConnPerIP rule: max=%d,"
                          " concurrent connections=%d,"
                          " message repeated %d times,"
-                         " c=%s",
+                           " c=%s",
                          sconf->max_conn_per_ip, current,
                          QS_LOG_REPEAT,
                          QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
@@ -6792,17 +6811,19 @@ static int qos_process_connection(conn_rec *c) {
           return qos_return_error(c);
         }
       } else {
-        if(e->error > QS_LOG_REPEAT) {
-          ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                       QOS_LOG_PFX(031)"access denied (previously), QS_SrvMaxConnPerIP rule: max=%d,"
-                       " concurrent connections=%d,"
-                       " message repeated %d times,"
-                       " c=%s",
-                       sconf->max_conn_per_ip, current,
-                       e->error % QS_LOG_REPEAT,
-                       QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
+        if(e) {
+          if(e->error > QS_LOG_REPEAT) {
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
+                         QOS_LOG_PFX(031)"access denied (previously), QS_SrvMaxConnPerIP rule: max=%d,"
+                         " concurrent connections=%d,"
+                         " message repeated %d times,"
+                         " c=%s",
+                         sconf->max_conn_per_ip, current,
+                         e->error % QS_LOG_REPEAT,
+                         QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
+          }
+          e->error = 0;
         }
-        e->error = 0;
       }
     }
   }
