@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.8 2013-10-10 20:41:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.9 2013-10-29 20:25:53 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -161,6 +161,12 @@ QS_ClientIpFromHeader         X-Forwarded-For
       SetEnvIfPlus               QS_Limit02_Counter [1-9][0-9]* !QS_Redirect   late
    </Location>
    QS_RedirectIf                 QS_Redirect (.+) http://127.0.0.1/redirect.html?c=$1
+</IfDefine>
+
+<IfDefine ucnf>
+   SetEnvIfPlus                  Request_Query limitMe limitEvent
+   QS_EventLimitCount            limitEvent 5 3
+   QS_RedirectIf                 limitEvent_Counter (3) http://127.0.0.1/redirect.html?c=$1
 </IfDefine>
 
    <Location /cgi-local>

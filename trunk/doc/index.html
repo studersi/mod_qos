@@ -800,7 +800,9 @@ only (you must use the same variable name for both directives).
 <a name="QS_EventLimitCount"></a>
 <code>QS_EventLimitCount &lt;env-variable&gt; &lt;number&gt; &lt;seconds&gt;</code><br>
 Defines the maximum number of events allowed within the defined time. Requests are 
-denied when reaching this limitation for the specified time (blocked at request level).
+denied when reaching this limitation for the specified time (blocked at request level).<br>
+Note: The current counter value is propagated to the process environment within the variable 
+<code>&lt;env-variable&gt;_Counter</code>.
 </li>
 <li>
 <a name="QS_SetEnvIf"></a>

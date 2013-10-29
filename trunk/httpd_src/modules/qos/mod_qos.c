@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.456 2013-10-29 07:37:39 pbuchbinder Exp $";
-static const char g_revision[] = "10.24";
+static const char revision[] = "$Id: mod_qos.c,v 5.457 2013-10-29 20:25:53 pbuchbinder Exp $";
+static const char g_revision[] = "10.25";
 
 /************************************************************************
  * Includes
@@ -132,7 +132,7 @@ static const char g_revision[] = "10.24";
 #define QS_BLOCK_SEEN     "QS_Block_seen"
 #define QS_LIMIT_DEFAULT  "QS_Limit"
 #define QS_LIMIT_SEEN     "QS_Limit_seen"
-#define QS_LIMIT_SUFFIX   "_Counter"
+#define QS_COUNTER_SUFFIX "_Counter"
 #define QS_LIMIT_CLEAR    "_Clear"
 #define QS_EVENT          "QS_Event"
 #define QS_COND           "QS_Cond"
@@ -4007,6 +4007,10 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
                         qos_unique_id(r, "013"));
         }
       }
+      // propagte to environment
+      apr_table_set(r->subprocess_env,
+                    apr_pstrcat(r->pool, entry->env_var, QS_COUNTER_SUFFIX, NULL),
+                    apr_psprintf(r->pool, "%d", entry->limit));
       // next rule
       entry++;
     }
@@ -4904,7 +4908,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
          * propagate to env
          */
         apr_table_set(r->subprocess_env,
-                      apr_pstrcat(r->pool, eventName, QS_LIMIT_SUFFIX, NULL),
+                      apr_pstrcat(r->pool, eventName, QS_COUNTER_SUFFIX, NULL),
                       apr_psprintf(r->pool, "%d", (*ef)->limit[limitTableIndex].limit));
 
         /*
