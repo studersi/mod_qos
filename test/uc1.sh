@@ -4,6 +4,7 @@
 # execute tests using config for single use cases (only one feature enabled)
 #
 
+PFX=[`basename $0`]
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 set -e
 set -u
@@ -107,4 +108,6 @@ waitApache
 ./run.sh -s scripts/UC1_QS_CondClientEventLimitCount2.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+echo "$PFX normal end"
 exit 0
+

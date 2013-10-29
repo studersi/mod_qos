@@ -1,3 +1,8 @@
+Version
+
+ - QS_EventLimitCount writes the current value to the process
+   environment variables.
+
 Version 10.24
 
  - New directive QS_CondClientEventLimitCount.
