@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.454 2013-10-28 21:43:22 pbuchbinder Exp $";
-static const char g_revision[] = "10.24";
+static const char revision[] = "$Id: mod_qos.c,v 5.455 2013-10-29 07:35:25 pbuchbinder Exp $";
+static const char g_revision[] = "10.25";
 
 /************************************************************************
  * Includes
@@ -2448,7 +2448,8 @@ static int qos_inc_ip(qos_srv_config *sconf,
     } else {
       ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
                    QOS_LOG_PFX(035)"QS_SrvMaxConn: no free IP slot available!"
-                   " Check log for unclean child exit.");
+                   " Check log for unclean child exit and consider"
+                   " to do a graceful server restart.");
     }
   }
   
@@ -5122,7 +5123,8 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
                      " connections=%d,"
                      " cal. request rate=%d,"
                      " max. limit=%d."
-                     " Check log for unclean child exit.",
+                     " Check log for unclean child exit and consider"
+                     " to do a graceful server restart.",
                      connections, req_rate, sconf->min_rate_max);
         req_rate = sconf->min_rate_max;
       }

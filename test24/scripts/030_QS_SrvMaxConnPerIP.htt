@@ -1,5 +1,5 @@
 #
-# $Id: 030_QS_SrvMaxConnPerIP.htt,v 1.1 2012-03-12 19:15:43 pbuchbinder Exp $
+# $Id: 030_QS_SrvMaxConnPerIP.htt,v 1.2 2013-10-29 07:35:25 pbuchbinder Exp $
 #
 #      QS_SrvMaxConnPerIP         30
 #
@@ -12,6 +12,17 @@ CLIENT 30
 
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+# QS_Srv* directives shall not be used (connection cleanup takes very long)
+_SLEEP 1000
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
