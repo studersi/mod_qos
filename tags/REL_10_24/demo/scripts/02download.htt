@@ -1,0 +1,35 @@
+
+INCLUDE scripts/ports
+
+SET HOST=server1
+
+BLOCK REQUEST URL
+_REQ $HOST SSL:$QS_PORT_BASE
+__GET $URL HTTP/1.1
+__Host: $HOST:$QS_PORT_BASE
+__User-Agent: htt
+__Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+__Accept-Language: en-us,de-ch;q=0.7,en;q=0.3
+__Accept-Encoding: gzip,deflate
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Connection: keep-alive
+__
+_WAIT
+
+END
+
+CLIENT 10
+
+_RAND 0 10000 SLEEP
+_SLEEP $SLEEP
+
+_IGNORE_BODY on
+_LOOP 60
+# each loop takes about 30 sec
+_CALL REQUEST /c/image.iso
+_CLOSE
+_RAND 1500 4500 SLEEP
+_SLEEP $SLEEP
+_END LOOP
+
+END
