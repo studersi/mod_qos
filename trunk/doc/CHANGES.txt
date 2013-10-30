@@ -3,6 +3,9 @@ Version
  - QS_EventLimitCount writes the current value to the process
    environment variables.
 
+ - Fixed: QS_[Cond]ClientEventLimitCount logs request id and propagtes
+   message code (067) to the QS_ErrorNotes variable.
+
 Version 10.24
 
  - New directive QS_CondClientEventLimitCount.

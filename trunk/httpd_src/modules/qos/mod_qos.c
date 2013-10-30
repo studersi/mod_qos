@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.457 2013-10-29 20:25:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.458 2013-10-30 07:33:02 pbuchbinder Exp $";
 static const char g_revision[] = "10.25";
 
 /************************************************************************
@@ -4936,12 +4936,13 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
               *msg = apr_psprintf(cconf->c->pool, 
                                   QOS_LOG_PFX(067)"access denied, QS_%sClientEventLimitCount rule: "
                                   "event=%s, "
-                                  "max=%d, current=%d, c=%s",
+                                  "max=%d, current=%d, c=%s, id=%s",
                                   conditional,
                                   eventName,
                                   eventLimitConf->limit,
                                   (*ef)->limit[limitTableIndex].limit,
-                                  forardedForIp == NULL ? "-" : forardedForIp);
+                                  forardedForIp == NULL ? "-" : forardedForIp,
+                                  qos_unique_id(r, "067"));
               ret = m_retcode;
             }
           }

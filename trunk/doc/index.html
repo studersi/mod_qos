@@ -657,9 +657,12 @@ Variable is set when detecting a VIP request (either by cookie, IP address statu
 </li>
 <li>
 <code>*_Counter</code><br>
-The counter values of the variables used by <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> directive  
-are stored within the variable whose name is suffixed by <code>_Counter</code>, 
-e.g. <code>QS_Limit_Counter</code>.
+The counter values of the variables used by the 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+and <code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code> 
+directive are stored within the variable whose name is suffixed by 
+<code>_Counter</code>, e.g. <code>QS_Limit_Counter</code> when limiting 
+<code>QS_Limit</code> events.
 </li>
 <li>
 <code>QS_ErrorNotes</code><br>
@@ -1401,8 +1404,8 @@ Notes:
 You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
 directive to determine the client's IP address based on the defined HTTP 
 request header (e.g., X-Forwarded-For) instead of taking the IP address 
-of the client which has opened the TCP connection. The header must only contain 
-a single IP address.</li>
+of the client which has opened the TCP connection. The header must only 
+contain a single IP address.</li>
 <li>The current value of this counter is stored within the variable suffixed 
 by <code>_Counter</code>, e.g. <code>QS_Limit_Counter</code> for further 
 processing by other rules. </li>
