@@ -78,6 +78,12 @@ Listen         ##QS_PORT_BASE##
    QS_SrvMaxConnPerIP         30
    QS_SrvMaxConn              45
 
+   SetEnvIf User-Agent        limitme ALIMIT   
+   QS_EventLimitCount         ALIMIT 3 2
+
+   SetEnvIf User-Agent        limipersec limit=a
+   QS_EventPerSecLimit        limit 10
+
    QS_VipHeaderName              X-Login        drop
 
    QS_LocRequestLimitMatch       ^/htt/limit2/.*   2
