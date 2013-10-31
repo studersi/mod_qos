@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.9 2013-10-29 20:25:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.10 2013-10-31 13:06:23 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -116,6 +116,14 @@ QS_ClientEventLimitCount      3             2                QS_LimitCL
 QS_ClientIpFromHeader         X-Forwarded-For
 </IfDefine>
 
+<IfDefine ucng>
+QS_SrvMaxConnPerIP                      100
+Browsermatch  (slurp|googlebot|bingbot) Spider
+SetEnvIf      QS_IPConn                 [3-9][0-9]*  ThreeOrMoreConnections
+QS_SetEnvIf   ThreeOrMoreConnections    Spider       LimitSpider=yes
+QS_RedirectIf LimitSpider               .*           http://127.0.0.1/redirect.html
+</IfDefine>
+
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
    ServerName                 127.0.0.1
 
@@ -131,6 +139,7 @@ QS_ClientIpFromHeader         X-Forwarded-For
    ProxyPass                  /a !
    ProxyPass                  /b !
    ProxyPass                  /c !
+   ProxyPass                  /qos !
    ProxyPass                  /cgi-local !
    ProxyPass                  /qsforbidden !
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
