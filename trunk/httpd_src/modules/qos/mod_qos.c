@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.458 2013-10-30 07:33:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.459 2013-10-31 13:06:23 pbuchbinder Exp $";
 static const char g_revision[] = "10.25";
 
 /************************************************************************
@@ -6701,6 +6701,7 @@ static int qos_process_connection(conn_rec *c) {
     /* single source ip */
     if(sconf->max_conn_per_ip != -1) {
       current = qos_inc_ip(sconf, cconf, &e);
+      apr_table_set(c->notes, "QS_IPConn", apr_psprintf(c->pool, "%d", current));
     }
     /* Check for vip (by ip) */
     if(apr_table_elts(sconf->exclude_ip)->nelts > 0) {
@@ -7005,6 +7006,7 @@ static int qos_post_read_request(request_rec *r) {
   const char *country = apr_table_get(r->connection->notes, QS_COUNTRY);
   const char *connections = apr_table_get(r->connection->notes, "QS_SrvConn");
   const char *all_connections = apr_table_get(r->connection->notes, "QS_AllConn");
+  const char *fromCurrentIp = apr_table_get(r->connection->notes, "QS_IPConn");
   const char *connectionid = apr_table_get(r->connection->notes, QS_CONNID);
   if(country) {
     if(sconf->qos_cc_forwardedfor) {
@@ -7047,6 +7049,9 @@ static int qos_post_read_request(request_rec *r) {
   }
   if(connections) {
     apr_table_set(r->subprocess_env, "QS_SrvConn", connections);
+  }
+  if(fromCurrentIp) {
+    apr_table_set(r->subprocess_env, "QS_IPConn", fromCurrentIp);
   }
   if(all_connections) {
     apr_table_set(r->subprocess_env, "QS_AllConn", all_connections);

@@ -631,29 +631,50 @@ Variable processed by the <code><a href="#QS_ClientEventRequestLimit">QS_ClientE
 </li>
 </ul>
 
-Variables set by mod_qos which may be processed by conditional or event based rules, e.g., 
+Variables set by mod_qos which may be processed by conditional or event based 
+rules, e.g., 
 <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLocRequestLimitMatch</a></code>:
 <ul>
 <li>
+<a name="QS_SrvConn"></a>
 <code>QS_SrvConn</code><br>
-Number of concurrent connections for this server/virtual host. Value is set when using 
-either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, <code>QS_SrvMinDataRate</code>, 
-<code>QS_SrvMaxConnClose</code>, or <code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> directive.
+Number of concurrent connections for this server/virtual host. Value is set 
+when using either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, 
+<code>QS_SrvMinDataRate</code>, <code>QS_SrvMaxConnClose</code>, or 
+<code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> 
+directive.
+<br>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.
 </li>
 <li>
+<a name="QS_AllConn"></a>
 <code>QS_AllConn</code><br>
-Number of all concurrent connections for this Apache instance. Value is set when using 
-either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, <code>QS_SrvMinDataRate</code>, 
-<code>QS_SrvMaxConnClose</code>, or <code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> directive.
+Number of all concurrent connections for this Apache instance. Value is set 
+when using either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, 
+<code>QS_SrvMinDataRate</code>, <code>QS_SrvMaxConnClose</code>, or 
+<code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> 
+directive.
+<br>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.
+</li>
+<li>
+<a name="QS_IPConn"></a>
+<code>QS_IPConn</code><br>
+Number of IP connections open from the current IP address. Variable is 
+available when using the <code>QS_SrvMaxConnPerIP</code> directive.
+<br>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.
 </li>
 <li>
 <code>QS_ClientLowPrio</code><br>
-The variable is set for requests by clients which have been marked to be processed with low priority, see <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code>.
+The variable is set for requests by clients which have been marked to be 
+processed with low priority, see <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code>.
 </li>
 <li>
 <a name="QS_IsVipRequest"></a>
 <code>QS_IsVipRequest</code><br>
-Variable is set when detecting a VIP request (either by cookie, IP address status, valid user, etc.). May be used by various event based directives.
+Variable is set when detecting a VIP request (either by cookie, IP address 
+status, valid user, etc.). May be used by various event based directives.
 </li>
 <li>
 <code>*_Counter</code><br>
