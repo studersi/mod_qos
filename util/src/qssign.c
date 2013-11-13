@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.28 2013-06-30 18:55:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.29 2013-11-13 20:36:32 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -237,6 +237,24 @@ static void qs_end_lx(const char *sec) {
   return;
 }
 
+/*
+ * 2013/11/13 17:38:41 [error] 6577#0: *1 open()
+ */
+static void qs_end_ngx(const char *sec) {
+  int sec_len = strlen(sec);
+  char line[MAX_LINE];
+  int dig = atoi(SEQDIG);
+  /* <data> ' ' <sequence number> '#' <hmac>*/
+  int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
+  char time_string[1024];
+  time_t tm = time(NULL);
+  struct tm *ptr = localtime(&tm);
+  strftime(time_string, sizeof(time_string), "%Y/%m/%d %H:%M:%S", ptr);
+  sprintf(line, "%s [notice] 0#0: "QS_END, time_string);
+  qs_write(line, line_size, sec, sec_len);
+  return;
+}
+
 void qs_signal_exit(int e) {
   if(m_logend && (m_end != NULL)) {
     m_end(m_sec);
@@ -266,6 +284,7 @@ static void qs_set_format(char *s) {
   regex_t r_apache_acc;
   regex_t r_nj;
   regex_t r_lx;
+  regex_t r_ngx;
   if(regcomp(&r_apache_err,
 	     "^\\[[a-zA-Z]{3} [a-zA-Z]{3} [0-9]+ [0-9]+:[0-9]+:[0-9]+ [0-9]+\\] \\[[a-zA-Z]+\\] ",
 	     REG_EXTENDED) != 0) {
@@ -290,6 +309,14 @@ static void qs_set_format(char *s) {
     fprintf(stderr, "failed to compile regex (lx)\n");
     exit(1);
   }
+  if(regcomp(&r_ngx,
+	     "^[0-9]{4}/[0-9]{2}/[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} \\[[a-z]+\\] [0-9]+#[0-9]+: ",
+	     REG_EXTENDED) != 0) {
+    fprintf(stderr, "failed to compile regex (ngx)\n");
+    exit(1);
+  }
+    
+
   if(regexec(&r_apache_err, s, 0, NULL, 0) == 0) {
     m_end = &qs_end_apache_err;
   } else if(regexec(&r_apache_acc, s, 0, NULL, 0) == 0) {
@@ -306,6 +333,8 @@ static void qs_set_format(char *s) {
     m_end = &qs_end_nj;
   } else if(regexec(&r_lx, s, 0, NULL, 0) == 0) {
     m_end = &qs_end_lx;    
+  } else if(regexec(&r_ngx, s, 0, NULL, 0) == 0) {
+    m_end = &qs_end_ngx;    
   }
   // search within the generic yyyy-mm-dd hh-mm-ss,mmm patterns
   if(!m_end) {

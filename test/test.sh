@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.231 2013-10-28 21:43:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.232 2013-11-13 20:36:30 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -1036,6 +1036,9 @@ if [ $LOCH -lt 1 ]; then
   ERRORS=`expr $ERRORS + 1`
   echo "FAILED qsgrep"
 fi
+# qsgrep -e "([0-9.: ]+) isi3web    NProxyOp   [0-9a-zA-Z.-]+ .* sCF=([0-9,<>A-Z]*) .* dTF=([0-9,,<>A-Z]*) .* sCB=([0-9,<>A-Z]*) .* dTr1B=([0-9,<>A-Z]*) .* cR=([0-9]+) .* Event=([0-9,<>A-Z]*) .* trID=([0-9a-zA-Z.-]*)" -o '$1 $2 $3 $4 $5 $6 $7 $8' na.log > short.log
+# cat short.log | qslog -p -f  ....St.a.E -o stat.log
+
 
 echo "- qsexec"
 PAT=`./genlog.sh | ../util/src/qsexec -e 'mod_qos\(031\).*, c=([0-9.]*)' -t 5:10 'printf $1'`
