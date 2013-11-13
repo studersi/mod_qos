@@ -71,29 +71,67 @@ fi
 #
 ## log4j (some of many, many possible formats)
 echo "=============================================="
-echo "2010-04-14 20:18:37,464 | INFO  | org.hibernate.cfg         ::getInputStream:1081  resource: /hibernate.cfg.xml" | ../util/src/qssign -s 1234567890 -e
+echo "2010-04-14 20:18:37,464 | INFO  | org.hibernate.cfg         ::getInputStream:1081  resource: /hibernate.cfg.xml" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+if [ `grep -c "000 | INFO  | qssign" qssignend.log` -ne 1 ]; then
+  echo "ERROR: invalid format"
+  exit 1
+fi
 echo "=============================================="
-echo "2011-08-30 07:27:22,738 INFO  loginId='test'" | ../util/src/qssign -s 1234567890 -e
+echo "2011-08-30 07:27:22,738 INFO  loginId='test'" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+if [ `grep -c "000 \| INFO  qssign" qssignend.log` -ne 1 ]; then
+  echo "ERROR: invalid format"
+  exit 1
+fi
 echo "=============================================="
-echo "2011-09-01 07:37:17,275 main            org.apache.catalina.startup.Catalina     INFO  Server startup in 5770 ms" | ../util/src/qssign -s 1234567890 -e
+echo "2011-09-01 07:37:17,275 main            org.apache.catalina.startup.Catalina     INFO  Server startup in 5770 ms" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+if [ `grep -c "000 qssign          end" qssignend.log` -ne 1 ]; then
+  echo "ERROR: invalid format"
+  exit 1
+fi
 echo "=============================================="
-echo "2011-08-30 07:27:22,738 anything..." | ../util/src/qssign -s 1234567890 -e
+echo "2011-08-30 07:27:22,738 anything..." | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+if [ `grep -c "000 INFO  qssign" qssignend.log` -ne 1 ]; then
+  echo "ERROR: invalid format"
+  exit 1
+fi
 #
 ## linux: postfix, auth, ...
 #Dec  5 07:01:02 titan postfix/cleanup[5524]: AFEF8E6AC6: message-id=<20101205060102.79228E6AB2@server>
 #Dec  5 07:15:03 localhost CRON[5556]: pam_unix(cron:session): session closed for user root
 echo "=============================================="
-echo "Dec  6 04:00:06 localhost kernel: kjournald starting.  Commit interval 5 seconds" | ../util/src/qssign -s 1234567890 -e
+echo "Dec  6 04:00:06 localhost kernel: kjournald starting.  Commit interval 5 seconds" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+if [ `grep -c "qssign: qssign" qssignend.log` -ne 1 ]; then
+  echo "ERROR: invalid format"
+  exit 1
+fi
 #
 ##
 echo "=============================================="
-echo "2010 12 04 20:46:45.118 dispatch   IWWWauthCo 07148.4046314384 3-ERROR :  AuthsessClient_1_0::execute: no valid" | ../util/src/qssign -s 1234567890 -e
+echo "2010 12 04 20:46:45.118 dispatch   IWWWauthCo 07148.4046314384 3-ERROR :  AuthsessClient_1_0::execute: no valid" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+if [ `grep -c "000 qssign     end" qssignend.log` -ne 1 ]; then
+  echo "ERROR: invalid format"
+  exit 1
+fi
 
 echo "=============================================="
-echo "[Mon Dec 06 21:29:07 2010] [notice] Apache/2.2.17 (Unix) mod_ssl/2.2.17 OpenSSL/0.9.8k" | ../util/src/qssign -s 1234567890 -e
+echo "[Mon Dec 06 21:29:07 2010] [notice] Apache/2.2.17 (Unix) mod_ssl/2.2.17 OpenSSL/0.9.8k" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+if [ `grep -c "\[notice\] qssign" qssignend.log` -ne 1 ]; then
+  echo "ERROR: invalid format"
+  exit 1
+fi
 
 echo "=============================================="
-echo "127.0.0.1 - - [06/Dec/2010:21:26:57 +0100] \"GET /qos/favicon.ico HTTP/1.1\" 200 1150" | ../util/src/qssign -s 1234567890 -e
+echo "127.0.0.1 - - [06/Dec/2010:21:26:57 +0100] \"GET /qos/favicon.ico HTTP/1.1\" 200 1150" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+
+echo "=============================================="
+echo "127.0.0.1 - - [31/Oct/2013:21:41:21 +0100] \"GET /auth/index.html HTTP/1.1\" 401 194 \"-\" \"Mozilla/5.0 1\"" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+
+echo "=============================================="
+echo "2013/11/07 17:44:07 [error] 4640#0: *55 auth_token_module(014): request not authorized: invalid signature, client: 127.0.0.1, server: localhost, request: \"GET /app/index.html?req=1 HTTP/1.1\", host: \"127.0.0.1:8204\"" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+if [ `grep -c "0#0: qssign" qssignend.log` -ne 1 ]; then
+  echo "ERROR: invalid format"
+  exit 1
+fi
 
 echo "- end"
 head -4 logs/access_log | ../util/src/qssign -s 1234567890 -e > logs/signed_access_log.1
@@ -144,5 +182,6 @@ if [ `echo $OUT | grep -c "log starts with sequence"` -eq 0 ]; then
   exit 1
 fi
 
+rm qssignend.log
 echo "normal end"
 exit 0
