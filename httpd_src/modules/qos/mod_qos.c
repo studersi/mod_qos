@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.459 2013-10-31 13:06:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.460 2013-11-14 20:29:29 pbuchbinder Exp $";
 static const char g_revision[] = "10.25";
 
 /************************************************************************
@@ -6431,6 +6431,7 @@ static char *qos_this_host(request_rec *r) {
   const char *hostport= apr_table_get(r->headers_in, "Host");
   int port = 0;
   int ssl = 0;
+  int default_port;
   const char *server_hostname = r->server->server_hostname;
   if(qos_is_https) {
     ssl = qos_is_https(r->connection);
@@ -6448,17 +6449,23 @@ static char *qos_this_host(request_rec *r) {
     }
   }
   if(port == 0) {
-    int default_port = ssl ? 443 : 80;
-    if(r->server->addrs->host_port == default_port) {
-      return apr_psprintf(r->pool, "%s%s",
-                          ssl ? "https://" : "http://",
-                          server_hostname);
-    }
+    // pref. vhost
+    port = r->server->addrs->host_port;
+  }
+  if(port == 0) {
+    // main srv
+    port = r->server->port;
+  }
+  default_port = ssl ? 443 : 80;
+  if(port == default_port) {
+    return apr_psprintf(r->pool, "%s%s",
+                        ssl ? "https://" : "http://",
+                        server_hostname);
   }
   return apr_psprintf(r->pool, "%s%s:%d",
                       ssl ? "https://" : "http://",
                       server_hostname,
-                      r->server->addrs->host_port);
+                      port);
 }
 
 /**
