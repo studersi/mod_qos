@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.11 2013-11-18 17:55:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.12 2013-11-18 21:38:40 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -122,6 +122,13 @@ Browsermatch  (slurp|googlebot|bingbot) Spider
 SetEnvIf      QS_IPConn                 [3-9][0-9]*  ThreeOrMoreConnections
 QS_SetEnvIf   ThreeOrMoreConnections    Spider       LimitSpider=yes
 QS_RedirectIf LimitSpider               .*           http://127.0.0.1/redirect.html
+</IfDefine>
+
+<IfDefine ucni>
+SetEnvIf                      Content-Length [0-9]{2,} SerialPostSize
+SetEnvIf                      Request_URI ^/a SerialPostURL
+QS_SetEnvIf                   SerialPostSize SerialPostURL   QS_Serialize=yes
+QS_ClientSerialize
 </IfDefine>
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
