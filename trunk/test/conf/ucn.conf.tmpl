@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.12 2013-11-18 21:38:40 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.13 2013-11-20 06:56:05 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -130,6 +130,13 @@ SetEnvIf                      Request_URI ^/a SerialPostURL
 QS_SetEnvIf                   SerialPostSize SerialPostURL   QS_Serialize=yes
 QS_ClientSerialize
 </IfDefine>
+
+<IfDefine ucnj>
+QS_ClientIpFromHeader         Y-Forwarded-For
+SetEnvIfPlus                  User-Agent serializeme QS_Serialize=yes
+QS_ClientSerialize
+</IfDefine>
+
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
    ServerName                 127.0.0.1

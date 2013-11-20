@@ -529,6 +529,7 @@ The following table shows if a rules may be deactivated for VIPs:
 <tr><td>QS_ClientSerialize</td><td>no</td></tr>
 <tr><td>QS_ClientGeoCountryPriv</td><td>no</td></tr>
 <tr><td>QS_CondLocRequestLimitMatch</td><td>yes</td></tr>
+<tr><td>QS_CondClientEventLimitCount</td><td>no</td></tr>
 <tr><td>QS_DenyQueryBody</td><td>no</td></tr>
 <tr><td>QS_PermitUriBody</td><td>no</td></tr>
 <tr><td>QS_DenyEvent</td><td>no</td></tr>
@@ -1445,7 +1446,11 @@ if you want to enforce a rule under certain conditions only.
 <a name="QS_ClientSerialize"></a>
 <code>QS_ClientSerialize</code><br>
 Serializes requests having the <code>QS_Serialize</code> variable set if they are comming 
-from the same IP address.
+from the same IP address.<br>
+Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+override the client's IP address based on the value within the defined HTTP request 
+header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
+the TCP connection.
 </li>
 <li>
 <a name="QS_ClientPrefer"></a>

@@ -1,4 +1,6 @@
-Version
+Version 10.26
+
+ - QS_ClientSerialize supports the QS_ClientIpFromHeader directive.
 
  - Refactor method used to determine redirect port (user tracking)
    supporting servers not using virtual hosts.
