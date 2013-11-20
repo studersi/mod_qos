@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.14 2013-10-23 20:04:47 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.15 2013-11-20 21:27:08 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -108,6 +108,12 @@ QS_SetEnvIfQuery             QS_Limit    QS_CondLimit=yes
 
 <IfDefine uc1q>
 QS_ClientIpFromHeader        Y-Forwarded-For
+</IfDefine>
+
+<IfDefine uc1r>
+QS_UserTrackingCookieName utc /error-docs/cookie.html
+SetEnvIf                  Request_Method POST DISABLE_UTC_ENFORCEMENT
+SetEnvIf                  DNT 1 DISABLE_UTC_ENFORCEMENT
 </IfDefine>
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
