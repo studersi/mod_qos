@@ -108,6 +108,11 @@ waitApache
 ./run.sh -s scripts/UC1_QS_CondClientEventLimitCount2.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1r 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_UserTrackingCookieName.htt
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 echo "$PFX normal end"
 exit 0
 
