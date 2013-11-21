@@ -41,7 +41,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.461 2013-11-20 06:56:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.462 2013-11-21 07:20:18 pbuchbinder Exp $";
 static const char g_revision[] = "10.26";
 
 /************************************************************************
@@ -6992,7 +6992,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
  * @return DECLINED or 302
  */
 static int qos_post_read_request_later(request_rec *r) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
   if(ap_is_initial_req(r)) {
     /* QS_UserTrackingCookieName */
@@ -7051,7 +7051,7 @@ static int qos_post_read_request_later(request_rec *r) {
  * @return DECLINED
  */
 static int qos_post_read_request(request_rec *r) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->connection->base_server->module_config,
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
   qos_ifctx_t *inctx = NULL;
 

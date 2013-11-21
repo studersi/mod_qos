@@ -5,6 +5,9 @@ Version 10.26
  - Refactor method used to determine redirect port (user tracking)
    supporting servers not using virtual hosts.
 
+ - Fixed: QS_UserTrackingCookieName uses correct server_rec to
+   retrieve configuration.
+
 Version 10.25
 
  - QS_EventLimitCount writes the current value to the process
