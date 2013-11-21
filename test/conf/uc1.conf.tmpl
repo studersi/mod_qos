@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.15 2013-11-20 21:27:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.16 2013-11-21 07:20:19 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -64,7 +64,7 @@ DefaultType             text/plain
 AddType                 text/html .shtml
 AddOutputFilter         INCLUDES .shtml
 
-LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i #%P"
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e u=%{mod_qos_user_id}e %{qs_special}e %{content-length}i #%P"
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
@@ -110,9 +110,10 @@ QS_SetEnvIfQuery             QS_Limit    QS_CondLimit=yes
 QS_ClientIpFromHeader        Y-Forwarded-For
 </IfDefine>
 
-<IfDefine uc1r>
+<IfDefine uc1s>
 QS_UserTrackingCookieName utc /error-docs/cookie.html
-SetEnvIf                  Request_Method POST DISABLE_UTC_ENFORCEMENT
+# note: redirects GET requests only
+# SetEnvIf                Request_Method POST DISABLE_UTC_ENFORCEMENT
 SetEnvIf                  DNT 1 DISABLE_UTC_ENFORCEMENT
 </IfDefine>
 
@@ -143,6 +144,13 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /b/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
+
+<IfDefine uc1r>
+   QS_UserTrackingCookieName utc /error-docs/cookie.html
+   # note: redirects GET requests only
+   # SetEnvIf                Request_Method POST DISABLE_UTC_ENFORCEMENT
+   SetEnvIf                  DNT 1 DISABLE_UTC_ENFORCEMENT
+</IfDefine>
 
 <IfDefine uc1m>
    QS_SrvMaxConn              6

@@ -1,3 +1,9 @@
+#
+# QS_UserTrackingCookieName utc /error-docs/cookie.html
+# SetEnvIf                  DNT 1 DISABLE_UTC_ENFORCEMENT
+#
+# note: redirects GET requests only
+#
 
 INCLUDE scripts/ports
 
@@ -54,5 +60,25 @@ __
 _EXPECT . "200 OK"
 _EXPECT . "this is the root index.html"
 _WAIT
+_SLEEP 100
+_MATCH EXEC "u=(.*) - -" TC1
+_EXEC tail -1 logs/access_log
+
+_REQ localhost $QS_PORT_BASE
+__GET $LOC HTTP/1.1
+__Host: localhost
+__Cookie: utc=$UTC
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_SLEEP 100
+_MATCH EXEC "u=(.*) - -" TC2
+_EXEC tail -1 logs/access_log
+
+_IF "${TC1}" NOT MATCH "${TC2}"
+_EXIT FAILED
+_END IF
+
 
 END
