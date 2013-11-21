@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.16 2013-11-21 07:20:19 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.17 2013-11-21 21:51:05 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -111,6 +111,7 @@ QS_ClientIpFromHeader        Y-Forwarded-For
 </IfDefine>
 
 <IfDefine uc1s>
+QS_SessionKey             1234567890
 QS_UserTrackingCookieName utc /error-docs/cookie.html
 # note: redirects GET requests only
 # SetEnvIf                Request_Method POST DISABLE_UTC_ENFORCEMENT
@@ -146,6 +147,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
 
 <IfDefine uc1r>
+   QS_SessionKey             1234567890
    QS_UserTrackingCookieName utc /error-docs/cookie.html
    # note: redirects GET requests only
    # SetEnvIf                Request_Method POST DISABLE_UTC_ENFORCEMENT
