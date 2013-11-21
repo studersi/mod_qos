@@ -1,4 +1,5 @@
 #
+# QS_SessionKey             1234567890
 # QS_UserTrackingCookieName utc /error-docs/cookie.html
 # SetEnvIf                  DNT 1 DISABLE_UTC_ENFORCEMENT
 #
@@ -64,6 +65,33 @@ _SLEEP 100
 _MATCH EXEC "u=(.*) - -" TC1
 _EXEC tail -1 logs/access_log
 
+_SLEEP 400
+
+_REQ localhost $QS_PORT_BASE
+__GET $LOC HTTP/1.1
+__Host: localhost
+__Cookie: utc=$UTC
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+_SLEEP 100
+_MATCH EXEC "u=(.*) - -" TC2
+_EXEC tail -1 logs/access_log
+
+_IF "${TC1}" NOT MATCH "${TC2}"
+_EXIT FAILED
+_END IF
+
+_IF "${TC1}" NOT MATCH "[a-z0-9]+"
+_EXIT FAILED
+_END IF
+
+_EXEC ./ctl.sh stop 2>/dev/null
+_EXEC ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1s 2>/dev/null 1>/dev/null
+_SLEEP 500
+
 _REQ localhost $QS_PORT_BASE
 __GET $LOC HTTP/1.1
 __Host: localhost
@@ -79,6 +107,5 @@ _EXEC tail -1 logs/access_log
 _IF "${TC1}" NOT MATCH "${TC2}"
 _EXIT FAILED
 _END IF
-
 
 END

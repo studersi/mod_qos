@@ -41,7 +41,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.462 2013-11-21 07:20:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.463 2013-11-21 21:51:05 pbuchbinder Exp $";
 static const char g_revision[] = "10.26";
 
 /************************************************************************
@@ -812,6 +812,7 @@ static int m_worker_mpm = 1; // note: mod_qos shall be used for Apache 2.2 worke
 static unsigned int m_hostcode = 0;
 static int m_generation = 0;
 static int m_qos_cc_partition = QSMOD;
+static int m_unique_id_counter = 0;
 
 /* mod_parp, forward and optional function */
 static apr_status_t qos_cleanup_conn(void *p);
@@ -1543,9 +1544,11 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
     apr_table_set(r->subprocess_env, QS_ErrorNotes, eid);
   }
   if(uid == NULL) {
-    /* generate simple id (not more than one error per pid/tid within a millisecond) */
-    uid = apr_psprintf(r->pool, "%"APR_TIME_T_FMT"%"APR_PID_T_FMT"%lu",
-                       r->request_time, getpid(), apr_os_thread_current());
+    /* generate simple id if mod_unique_id has not been not loaded */
+    m_unique_id_counter++;
+    uid = apr_psprintf(r->pool, "%"APR_TIME_T_FMT"%"APR_PID_T_FMT"%lu%.4d",
+                       r->request_time, getpid(), apr_os_thread_current(),
+                       m_unique_id_counter);
     apr_table_set(r->subprocess_env, "UNIQUE_ID", uid);
   }
   return uid;
@@ -8484,6 +8487,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   srand(seed);
 #endif
 #endif
+  m_unique_id_counter = time(NULL);
   m_generation = u->generation;
 #if APR_HAS_THREADS
   if(sconf->req_rate != -1) {
