@@ -8,7 +8,7 @@ Version 10.26
  - Fixed: QS_UserTrackingCookieName uses correct server_rec to
    retrieve configuration.
 
- - Slightly changed unique id generator.
+ - Slightly changed unique-id generator.
 
 Version 10.25
 
