@@ -1,7 +1,6 @@
 /* -*-mode: c; indent-tabs-mode: nil; c-basic-offset: 2; -*-
  */
 
-
 /**
  * Quality of service module for Apache Web Server.
  *
@@ -41,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.463 2013-11-21 21:51:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.464 2013-11-25 20:34:54 pbuchbinder Exp $";
 static const char g_revision[] = "10.26";
 
 /************************************************************************
@@ -802,6 +801,15 @@ typedef struct {
   int size;
 } qos_fhlt_r_t;
 
+typedef struct {
+  apr_time_t request_time;
+  unsigned int in_addr;
+  unsigned int conn;
+  unsigned int pid;
+  unsigned int tid;
+  unsigned int unique_id_counter;
+} qos_unique_id_t;
+
 /************************************************************************
  * globals
  ***********************************************************************/
@@ -812,7 +820,9 @@ static int m_worker_mpm = 1; // note: mod_qos shall be used for Apache 2.2 worke
 static unsigned int m_hostcode = 0;
 static int m_generation = 0;
 static int m_qos_cc_partition = QSMOD;
-static int m_unique_id_counter = 0;
+static qos_unique_id_t m_unique_id;
+static const char qos_basis_64[] =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
 
 /* mod_parp, forward and optional function */
 static apr_status_t qos_cleanup_conn(void *p);
@@ -975,6 +985,38 @@ static pcre_extra *qos_pcre_study(apr_pool_t *pool, pcre *pc) {
 #endif
 
   return extra;
+}
+
+static int qos_encode64_binary(char *encoded,
+                               const char *string, int len) {
+  int i;
+  char *p;
+  
+  p = encoded;
+  for (i = 0; i < len - 2; i += 3) {
+    *p++ = qos_basis_64[(string[i] >> 2) & 0x3F];
+    *p++ = qos_basis_64[((string[i] & 0x3) << 4) |
+                        ((int) (string[i + 1] & 0xF0) >> 4)];
+    *p++ = qos_basis_64[((string[i + 1] & 0xF) << 2) |
+                        ((int) (string[i + 2] & 0xC0) >> 6)];
+    *p++ = qos_basis_64[string[i + 2] & 0x3F];
+  }
+  if (i < len) {
+    *p++ = qos_basis_64[(string[i] >> 2) & 0x3F];
+    if (i == (len - 1)) {
+      *p++ = qos_basis_64[((string[i] & 0x3) << 4)];
+      *p++ = '=';
+    }
+    else {
+      *p++ = qos_basis_64[((string[i] & 0x3) << 4) |
+                          ((int) (string[i + 1] & 0xF0) >> 4)];
+      *p++ = qos_basis_64[((string[i + 1] & 0xF) << 2)];
+    }
+    *p++ = '=';
+  }
+  
+  *p++ = '\0';
+  return (int)(p - encoded);
 }
 
 /**
@@ -1545,10 +1587,21 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
   }
   if(uid == NULL) {
     /* generate simple id if mod_unique_id has not been not loaded */
-    m_unique_id_counter++;
-    uid = apr_psprintf(r->pool, "%"APR_TIME_T_FMT"%"APR_PID_T_FMT"%lu%.4d",
-                       r->request_time, getpid(), apr_os_thread_current(),
-                       m_unique_id_counter);
+    qos_unique_id_t id;
+    char *uidstr;
+    int len;
+
+    m_unique_id.unique_id_counter++;
+    id.request_time = r->request_time;
+    id.in_addr = m_unique_id.in_addr;
+    id.pid = m_unique_id.pid;
+    id.tid = apr_os_thread_current();
+    id.conn = r->connection->id;
+    id.unique_id_counter = m_unique_id.unique_id_counter;
+    uidstr = (char *)apr_pcalloc(r->pool, apr_base64_encode_len(sizeof(qos_unique_id_t)));
+    len = qos_encode64_binary(uidstr, (const char *)&id, sizeof(qos_unique_id_t));
+    uidstr[len-2] = '\0';
+    uid = uidstr;
     apr_table_set(r->subprocess_env, "UNIQUE_ID", uid);
   }
   return uid;
@@ -6595,6 +6648,23 @@ static int qos_redirectif(request_rec *r, qos_srv_config *sconf, apr_array_heade
   return DECLINED;
 }
 
+static void qos_init_unique_id(apr_pool_t *p, server_rec *bs) {
+  char str[APRMAXHOSTLEN + 1];
+  apr_sockaddr_t *sockaddr;
+  str[APRMAXHOSTLEN] = '\0';
+  m_unique_id.in_addr = 0;
+  if(apr_gethostname(str, sizeof(str) - 1, p) == APR_SUCCESS) {
+    if(apr_sockaddr_info_get(&sockaddr, str, AF_INET, 0, 0, p) == APR_SUCCESS) {
+      m_unique_id.in_addr = sockaddr->sa.sin.sin_addr.s_addr;
+    }
+  }
+  m_unique_id.pid = getpid();
+  if(m_unique_id.in_addr == 0) {
+    m_unique_id.in_addr = m_unique_id.pid;
+  }
+  m_unique_id.unique_id_counter = time(NULL);
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -8487,7 +8557,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   srand(seed);
 #endif
 #endif
-  m_unique_id_counter = time(NULL);
+  qos_init_unique_id(p, bs);
   m_generation = u->generation;
 #if APR_HAS_THREADS
   if(sconf->req_rate != -1) {
