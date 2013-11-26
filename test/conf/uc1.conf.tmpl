@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.17 2013-11-21 21:51:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.18 2013-11-26 21:08:07 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -116,6 +116,11 @@ QS_UserTrackingCookieName utc /error-docs/cookie.html
 # note: redirects GET requests only
 # SetEnvIf                Request_Method POST DISABLE_UTC_ENFORCEMENT
 SetEnvIf                  DNT 1 DISABLE_UTC_ENFORCEMENT
+</IfDefine>
+
+<IfDefine uc1t>
+LoadModule              unique_id_module ##ROOT##/../httpd/modules/metadata/.libs/mod_unique_id.so
+QS_UserTrackingCookieName utc /error-docs/cookie.html
 </IfDefine>
 
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##

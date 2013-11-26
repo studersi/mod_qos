@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.11 2012-12-18 19:32:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.12 2013-11-26 21:08:08 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -317,6 +317,7 @@ int main(int argc, const char * const argv[]) {
 	fprintf(stderr, "ERROR, failed to substitute submatches (line=%d)\n", nr);
       } else {
 	printf("%s\n", replaced);
+        fflush(stdout);
       }
       apr_pool_clear(pool);
     }
