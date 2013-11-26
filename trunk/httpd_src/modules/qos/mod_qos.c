@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.464 2013-11-25 20:34:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.465 2013-11-26 21:08:07 pbuchbinder Exp $";
 static const char g_revision[] = "10.26";
 
 /************************************************************************
@@ -1581,8 +1581,8 @@ static int qos_unescaping(char *x, int mode, int *error) {
  */
 static const char *qos_unique_id(request_rec *r, const char *eid) {
   const char *uid = apr_table_get(r->subprocess_env, "UNIQUE_ID");
-  apr_table_set(r->notes, "error-notes", eid ? eid : "-");
   if(eid) {
+    apr_table_set(r->notes, "error-notes", eid);
     apr_table_set(r->subprocess_env, QS_ErrorNotes, eid);
   }
   if(uid == NULL) {
@@ -1736,46 +1736,44 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
  *
  * syntax: b64(enc(<rand><magic><month><UNIQUE_ID>))
  *
+ * shall be called after(!) mod_unique_id has created an id
+ *
  * @param r
  * @param sconf
  * @param value Cookie received from the client, possibly null (see qos_get_remove_cookie())
  */
-static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf, const char *value) {
+static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
+                                         const char *value) {
   const char *uid = qos_unique_id(r, NULL);
   const char *verified = NULL;
-  if((uid == NULL) || (strcmp(uid, "-") == 0)) {
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                  QOS_LOG_PFX(066)"user tracking requires mod_unique_id");
-  } else {
-    if(value != NULL) {
-      int buf_len = 0;
-      unsigned char *buf;
-      buf_len = qos_decrypt(r, sconf, &buf, value);
-      if((buf_len > (QOS_MAGIC_LEN + QOS_RAN)) &&
-         (strncmp((char *)&buf[QOS_RAN], qs_magic, QOS_MAGIC_LEN) == 0)) {
-        verified = (char *)&buf[QOS_RAN+QOS_MAGIC_LEN];
-      }
+  if(value != NULL) {
+    int buf_len = 0;
+    unsigned char *buf;
+    buf_len = qos_decrypt(r, sconf, &buf, value);
+    if((buf_len > (QOS_MAGIC_LEN + QOS_RAN)) &&
+       (strncmp((char *)&buf[QOS_RAN], qs_magic, QOS_MAGIC_LEN) == 0)) {
+      verified = (char *)&buf[QOS_RAN+QOS_MAGIC_LEN];
     }
-    if(verified == NULL) {
-      verified = uid;
-      apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
-    } else if(strlen(verified) > 2) {
-      /* renew, if not from this month */
-      apr_size_t retcode;
-      char tstr[MAX_STRING_LEN];
-      apr_time_exp_t n;
-      apr_time_exp_gmt(&n, r->request_time);
-      apr_strftime(tstr, &retcode, sizeof(tstr), "%m", &n);
-      if(strncmp(tstr, verified, 2) != 0) {
-        apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, &verified[2]);
-      }
-      verified = &verified[2];
-    } else {
-      verified = uid;
-      apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
-    }
-    apr_table_set(r->subprocess_env, QOS_USER_TRACKING, verified);
   }
+  if(verified == NULL) {
+    verified = uid;
+    apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
+  } else if(strlen(verified) > 2) {
+    /* renew, if not from this month */
+    apr_size_t retcode;
+    char tstr[MAX_STRING_LEN];
+    apr_time_exp_t n;
+    apr_time_exp_gmt(&n, r->request_time);
+    apr_strftime(tstr, &retcode, sizeof(tstr), "%m", &n);
+    if(strncmp(tstr, verified, 2) != 0) {
+      apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, &verified[2]);
+    }
+    verified = &verified[2];
+  } else {
+    verified = uid;
+    apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
+  }
+  apr_table_set(r->subprocess_env, QOS_USER_TRACKING, verified);
   return;
 }
 
@@ -11991,6 +11989,7 @@ static const command_rec qos_config_cmds[] = {
  ***********************************************************************/
 static void qos_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_parp.c", NULL };
+  static const char *preuid[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_parp.c", "mod_unique_id.c", NULL };
   static const char *pressl[] = { "mod_ssl.c", NULL };
   static const char *preconf[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_parp.c", "mod_ssl.c", NULL };
   static const char *post[] = { "mod_setenvif.c", "mod_setenvifplus.c", NULL };
@@ -12005,7 +12004,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_pre_connection(qos_pre_connection, NULL, pressl, APR_HOOK_FIRST);
   ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);
-  ap_hook_post_read_request(qos_post_read_request_later, pre, NULL, APR_HOOK_MIDDLE);
+  ap_hook_post_read_request(qos_post_read_request_later, preuid, NULL, APR_HOOK_MIDDLE);
   ap_hook_header_parser(qos_header_parser0, NULL, post, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser1, post, parp, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);

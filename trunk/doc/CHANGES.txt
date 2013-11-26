@@ -10,6 +10,8 @@ Version 10.26
 
  - Slightly changed unique-id generator.
 
+ - Adds fflush() to qsgrep utility when writing data to stdout.
+ 
 Version 10.25
 
  - QS_EventLimitCount writes the current value to the process
@@ -177,11 +179,11 @@ Version 10.7
    is not supported (mod_qos has been implemented for Apache 2.2
    worker binaries only).
 
- - Use pcre_study() API call only if QOS_EXTRA_USE_PCRE_STUDY has been defined
-   while compiling mod_qos.
+ - Use pcre_study() API call only if QOS_EXTRA_USE_PCRE_STUDY has been
+   defined while compiling mod_qos.
 
- - Add fflush() to qslogger/qsexec/qsgeo/qslogger utility when writing data
-   to stdout.
+ - Adds fflush() to qslogger/qsexec/qsgeo/qslogger utility when writing
+   data to stdout.
 
 Version 10.6
 
