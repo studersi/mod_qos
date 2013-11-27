@@ -29,10 +29,11 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.73 2012-12-18 19:32:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.74 2013-11-27 07:09:06 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
+#include <error.h>
 #include <string.h>
 
 #include <stdlib.h>
@@ -1628,6 +1629,9 @@ int main(int argc, const char * const argv[]) {
   blacklist = apr_table_make(pool, 10);
   rules_url = apr_table_make(pool, 10);
   rc = nice(10);
+  if(rc == -1) {
+    fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
+  }
   if(cmd == NULL) {
     cmd = (char *)argv[0];
   } else {

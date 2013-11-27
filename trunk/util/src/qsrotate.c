@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.19 2013-04-01 08:31:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.20 2013-11-27 07:09:06 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -207,6 +207,9 @@ static void compressThread(const char *cmd, const char *arch) {
   snprintf(dest, sizeof(dest), "%s.gz", arch);
   /* low prio */
   rc = nice(10);
+  if(nice(10) == -1) {
+    fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
+  }
   if((infp = open(arch, O_RDONLY)) == -1) {
     /* failed to open file, can't compress it */
     fprintf(stderr,"[%s]: ERROR, could not open file for compression <%s>\n", cmd, arch);

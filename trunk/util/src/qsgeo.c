@@ -25,11 +25,12 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.11 2013-08-16 19:07:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.12 2013-11-27 07:09:06 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <error.h>
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
@@ -408,6 +409,9 @@ int main(int argc, const char * const argv[]) {
   }
 
   rc = nice(10);
+  if(rc == -1) {
+    fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
+  }
 
   geo = qos_loadgeo(pool, db, &size, &msg);
   if(geo == NULL || msg != NULL) {

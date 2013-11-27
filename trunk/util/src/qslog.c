@@ -28,9 +28,10 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.70 2013-08-21 11:29:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.71 2013-11-27 07:09:06 pbuchbinder Exp $";
 
 #include <stdio.h>
+#include <error.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -1780,7 +1781,9 @@ int main(int argc, const char *const argv[]) {
   if(m_offline_count) {
     int i;
     apr_table_entry_t *entry;
-    nice(10);
+    if(nice(10) == -1) {
+      fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
+    }
     if(config == NULL) usage(cmd, 0);
     m_client_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES);
     readStdinOffline(pool, config);
@@ -1931,7 +1934,9 @@ int main(int argc, const char *const argv[]) {
    * the date string match of the log
    * enties. */
   if(m_offline) {
-    nice(10);
+    if(nice(10) == -1) {
+      fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
+    }
     fprintf(stderr, "[%s]: offline mode (writes to %s)\n", cmd, file);
     m_date_str[0] = '\0';
     readStdinOffline(pool, config);
