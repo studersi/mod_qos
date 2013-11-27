@@ -5,7 +5,7 @@
  *
  * See http://opensource.adnovum.ch/mod_qos/ for further details.
  *
- * Copyright (C) 2011-2012 Pascal Buchbinder
+ * Copyright (C) 2011-2013 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,10 +27,11 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.12 2013-11-26 21:08:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.13 2013-11-27 07:09:06 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
+#include <error.h>
 #include <string.h>
 
 #include <stdlib.h>
@@ -238,8 +239,7 @@ int qs_regexec(pcre *preg, const char *string,
 }
 
 int main(int argc, const char * const argv[]) {
-  int rc;
-  int nr = 0;
+  unsigned long nr = 0;
   char line[32768];
   FILE *file = 0;
   apr_pool_t *pool;
@@ -290,7 +290,9 @@ int main(int argc, const char * const argv[]) {
     usage(cmd, 0);
   }
 
-  rc = nice(10);
+  if(nice(10) == -1) {
+    fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
+  }
 
   preg = pcre_compile(pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(!preg) {
@@ -314,7 +316,7 @@ int main(int argc, const char * const argv[]) {
     if(qs_regexec(preg, line, MAX_REG_MATCH, regm) == 0) {
       char *replaced = qs_pregsub(pool, out, line, MAX_REG_MATCH, regm);
       if(!replaced) {
-	fprintf(stderr, "ERROR, failed to substitute submatches (line=%d)\n", nr);
+	fprintf(stderr, "ERROR, failed to substitute submatches (line=%lu)\n", nr);
       } else {
 	printf("%s\n", replaced);
         fflush(stdout);
