@@ -8,6 +8,8 @@ Version 10.26
  - Fixed: QS_UserTrackingCookieName uses correct server_rec to
    retrieve configuration.
 
+ - Hook implementing user tracking is now called after mod_unique_id.
+
  - Slightly changed unique-id generator.
 
  - Adds fflush() to qsgrep utility when writing data to stdout.
