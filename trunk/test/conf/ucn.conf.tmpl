@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.13 2013-11-20 06:56:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.14 2013-11-27 19:45:00 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -190,6 +190,13 @@ QS_ClientSerialize
    SetEnvIfPlus                  Request_Query limitMe limitEvent
    QS_EventLimitCount            limitEvent 5 3
    QS_RedirectIf                 limitEvent_Counter (3) http://127.0.0.1/redirect.html?c=$1
+</IfDefine>
+
+<IfDefine ucnk>
+   SetEnvIfPlusNoCase            Cookie JSESSIONID  hasSession
+   SetEnvIfPlus                  Request_URI ^/content limitUrl
+   QS_SetEnvIf                   !hasSession limitUrl limitAccess=yes
+   QS_EventLimitCount            limitAccess 2 2
 </IfDefine>
 
 <IfDefine ucnh>

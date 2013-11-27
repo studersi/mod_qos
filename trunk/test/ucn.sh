@@ -76,5 +76,10 @@ waitApache
 ./run.sh -s scripts/UCN_QS_ClientSerialize2.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnk 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UCN_QS_EventLimitCount2.htt
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 echo "$PFX normal end"
 exit 0
