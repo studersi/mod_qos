@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.71 2013-11-27 07:09:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.72 2013-12-02 20:43:24 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <error.h>
@@ -69,6 +69,16 @@ static const char revision[] = "$Id: qslog.c,v 1.71 2013-11-27 07:09:06 pbuchbin
 /* ----------------------------------
  * structures
  * ---------------------------------- */
+
+typedef struct {
+  long request_count;
+  long status_1;
+  long status_2;
+  long status_3;
+  long status_4;
+  long status_5;
+  long long duration_count_ms;
+} url_rec_t;
 
 typedef struct {
   long request_count;
@@ -169,6 +179,7 @@ static int   m_generations = QS_GENERATIONS;
 static regex_t m_trx;
 static regex_t m_trx2;
 /* real time mode (default) or offline */
+static int   m_off = 0;
 static int   m_offline = 0;
 static int   m_offline_data = 0;
 static char  m_date_str[MAX_LINE];
@@ -179,6 +190,8 @@ static int   m_customcounter = 0;
 static apr_table_t *m_client_entries = NULL;
 static int   m_max_client_entries = 0;
 static int   m_offline_count = 0;
+static apr_table_t *m_url_entries = NULL;
+static int   m_offline_url = 0;
 static int   m_methods = 0;
 /* debug/offline */
 static long  m_lines = 0;
@@ -251,7 +264,7 @@ static char *skipElement(const char* line) {
     p++;
   } else {
     char *eq = NULL;
-    if(m_offline || m_offline_count) {
+    if(m_off) {
       // offline mode: check for <name>='<value>' entry
       eq = strstr(p, "='");
       if(eq && (eq - p) < 10) {
@@ -785,6 +798,70 @@ static void printAndResetStat(char *timeStr) {
 }
 
 /**
+ * Updates the per url records
+ */
+static void updateUrl(apr_pool_t *pool, char *R, char *S, long tmems) {
+  url_rec_t *url_rec;
+  char *marker;
+  if(R == NULL) {
+    return;
+  }
+  if(!isalpha(R[0])) {
+    fprintf(stdout, "E");
+    return;
+  }
+  marker = strchr(R, ' ');
+  if(marker == NULL) {
+    fprintf(stdout, "E");
+    return;
+  }
+  marker[0] = ';';
+  marker = strrchr(R, ' ');
+  if(marker) {
+    marker[0] = '\0';
+  }
+  marker = strchr(R, '?');
+  if(marker) {
+    marker[0] = '\0';
+  }
+  url_rec = (url_rec_t *)apr_table_get(m_url_entries, R);
+  if(url_rec == NULL) {
+    if(apr_table_elts(m_url_entries)->nelts >= MAX_CLIENT_ENTRIES) {
+      // limitation
+      if(!m_max_client_entries) {
+        fprintf(stderr, "\nreached max url enries (%d)\n", MAX_CLIENT_ENTRIES);
+        m_max_client_entries = 1;
+      }
+      return;
+    }
+    url_rec = apr_pcalloc(pool, sizeof(url_rec_t));
+    url_rec->request_count = 0;
+    url_rec->status_1 = 0;
+    url_rec->status_2 = 0;
+    url_rec->status_3 = 0;
+    url_rec->status_4 = 0;
+    url_rec->status_5 = 0;
+    url_rec->duration_count_ms = 0;
+    apr_table_setn(m_url_entries, apr_pstrdup(pool, R), (char *)url_rec);
+  }
+  url_rec->request_count++;
+  if(S[0] == '1') {
+    url_rec->status_1++;
+  } else if(S[0] == '1') {
+    url_rec->status_1++;
+  } else if(S[0] == '2') {
+    url_rec->status_2++;
+  } else if(S[0] == '3') {
+    url_rec->status_3++;
+  } else if(S[0] == '4') {
+    url_rec->status_4++;
+  } else if(S[0] == '5') {
+    url_rec->status_5++;
+  }
+  url_rec->duration_count_ms += tmems;
+}
+
+/**
  * Updates the per client record
  */
 static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
@@ -1064,7 +1141,7 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
   long tme;
   long tmems;
   if(!line[0]) return;
-  if(m_offline || m_offline_count) {
+  if(m_off) {
     m_lines++;
   }
   while(c[0]) {
@@ -1204,25 +1281,32 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
       tme = tmems / 1000;
     }
   }
-  if(!m_offline_count) {
+  if(m_offline_count) {
+    updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, ct, tme, tmems, m);
+  } else if(m_offline_url) {
+    if((tmems) == 0 && (tme > 0)) {
+      tmems = 1000 * tme;
+    }
+    updateUrl(pool, R, S, tmems);
+  } else {
     updateRec(m_stat_rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
     if(rec) {
       updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
     }
-  } else {
-    updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, ct, tme, tmems, m);
   }
   qs_csUnLock();
 
-  if(m_verbose && (m_offline || m_offline_count)) {
-    printf("[%ld] I=[%s] U=[%s] B=[%s] i=[%s] S=[%s] T=[%ld] Q=[%s]\n", m_lines,
+  if(m_verbose && m_off) {
+    printf("[%ld] I=[%s] U=[%s] B=[%s] i=[%s] S=[%s] T=[%ld] Q=[%s] E=[%s] k=[%s]\n", m_lines,
            I == NULL ? "(null)" : I,
            U == NULL ? "(null)" : U,
            B == NULL ? "(null)" : B,
            BI == NULL ? "(null)" : BI,
            S == NULL ? "(null)" : S,
            tme,
-           Q == NULL ? "(null)" : Q
+           Q == NULL ? "(null)" : Q,
+           E == NULL ? "(null)" : E,
+           k == NULL ? "(null)" : k
            );
   }
   line[0] = '\0';
@@ -1552,6 +1636,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     information per client (identified by IP address (I) or user tracking id (U)\n");
   qs_man_print(man, "     showing how many request each client has performed within the captured period\n");
   qs_man_print(man, "     of time). \"-pc\" supports the format characters IURSBTtDkEcm.\n");
+  qs_man_print(man, "     The option \"-pu\" collects statistics on a per URL level (RSTtD).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -v\n");
   if(man) printf("\n");
@@ -1732,6 +1817,9 @@ int main(int argc, const char *const argv[]) {
     } else if(strcmp(*argv,"-pc") == 0) { /* activate offline counting analysis */
       m_offline_count = 1;
       qs_set2OfflineMode();
+    } else if(strcmp(*argv,"-pu") == 0) { /* activate offline url analysis */
+      m_offline_url = 1;
+      qs_set2OfflineMode();
     } else if(strcmp(*argv,"-m") == 0) { /* activate memory usage */
       m_mem = 1;
     } else if(strcmp(*argv,"-v") == 0) {
@@ -1760,8 +1848,8 @@ int main(int argc, const char *const argv[]) {
     argc--;
     argv++;
   }
-
-  if(m_offline || m_offline_count) {
+  m_off = m_offline || m_offline_count || m_offline_url;
+  if(m_off) {
     /* init time pattern regex, std apache access log */
     regcomp(&m_trx, 
             "[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}",
@@ -1770,6 +1858,48 @@ int main(int argc, const char *const argv[]) {
     regcomp(&m_trx2, 
             "[0-9]{4}[ -]{1}[0-9]{2}[ -]{1}[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[,.]{1}[0-9]{3}",
             REG_EXTENDED);
+  }
+
+  /*
+   * offline url mod
+   */
+  if(m_offline_url) {
+    int i;
+    apr_table_entry_t *entry;
+    if(nice(10) == -1) {
+      fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
+    }
+    m_url_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES + 1);
+    readStdinOffline(pool, config);
+    fprintf(stderr, ".\n");
+
+    m_f = stdout;
+    if(file) {
+      m_f = fopen(file, "a+");
+      if(!m_f) {
+        m_f = stdout;
+      }
+    }
+    entry = (apr_table_entry_t *) apr_table_elts(m_url_entries)->elts;
+    for(i = 0; i < apr_table_elts(m_url_entries)->nelts; i++) {
+      url_rec_t *url_rec = (url_rec_t *)entry[i].val;
+      fprintf(m_f, "%s;req;%ld;"
+              "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;"
+              NAVMS";%lld;\n",
+              entry[i].key,
+              url_rec->request_count,
+              url_rec->status_1,
+              url_rec->status_2,
+              url_rec->status_3,
+              url_rec->status_4,
+              url_rec->status_5,
+              url_rec->duration_count_ms / url_rec->request_count);
+      
+    }
+    if(file && m_f != stdout) {
+      fclose(m_f);
+    }
+    return 0;
   }
 
   /*
@@ -1785,7 +1915,7 @@ int main(int argc, const char *const argv[]) {
       fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
     }
     if(config == NULL) usage(cmd, 0);
-    m_client_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES);
+    m_client_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES + 1);
     readStdinOffline(pool, config);
     fprintf(stderr, ".\n");
     entry = (apr_table_entry_t *) apr_table_elts(m_client_entries)->elts;
