@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.28 2013-08-21 11:29:12 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.29 2013-12-03 06:56:08 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -211,6 +211,25 @@ case "$1" in
         rm pc
 	echo "$PFX OK"
 	;;
+	pu)
+	echo "$PFX pu"
+	rm -rf pu.csv
+	echo "127.0.0.1 - - [28/Nov/2013:08:09:51 +0100] \"GET /cgi100/sleep.cgi?s=6 HTTP/1.1\" 200 5 \"-\" 3 6 - 6 id=UpbsR38AAQEAAB-yBPUAAAAD - - - 0 - 2 a=2 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /cgi100/sleep.cgi?s=6 HTTP/1.1\" 200 5 \"-\" 6 6 - 6 id=UpbsR38AAQEAAB-yBPUAAAAD - - - 0 - 2 a=2 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"POST /view HTTP/1.1\" 200 5 \"-\" 6 5 - 5 id=UpbsR38AAQEAAB-yBPkAAAAG - - - 0 - 6 a=6 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /index.html HTTP/1.1\" 500 5 \"-\" 6 4 - 4 id=UpbsR38AAQEAAB-yBPgAAAAE - - - 0 - 5 a=5 #8178" | ../util/src/qslog -f I....RSB.T -pu -o pu.csv 2>/dev/null
+	if [ `grep -c "GET;/cgi100/sleep.cgi;req;2;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;4500;" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (pu query)"
+	    exit 1	  
+	fi
+	if [ `grep -c "POST;/view;req;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;6000;" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (pu POST)"
+	    exit 1	  
+	fi
+	if [ `grep -c "GET;/index.html;req;1;1xx;0;2xx;0;3xx;0;4xx;0;5xx;1;avms;6000;" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (pu 500)"
+	    exit 1	  
+	fi
+	rm -rf pu.csv
+	echo "$PFX OK"
+	;;
 	writelog4j)
 	for min in `seq 0 1`; do
 	    for sec in `seq 0 59`; do
@@ -276,6 +295,11 @@ case "$1" in
 	     if [ $? -ne 0 ]; then
 	       ERRORS=`expr $ERRORS + 1`
 	       echo "FAILED qslog.sh test pc"
+	     fi
+	     ./qslog.sh test pu
+	     if [ $? -ne 0 ]; then
+	       ERRORS=`expr $ERRORS + 1`
+	       echo "FAILED qslog.sh test pu"
 	     fi
 	     ./qslog.sh test avms
 	     if [ $? -ne 0 ]; then
