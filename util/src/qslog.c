@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.75 2013-12-03 07:29:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.76 2013-12-03 19:41:06 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <error.h>
@@ -1297,16 +1297,17 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
   qs_csUnLock();
 
   if(m_verbose && m_off) {
-    printf("[%ld] I=[%s] U=[%s] B=[%s] i=[%s] S=[%s] T=[%ld] Q=[%s] E=[%s] k=[%s]\n", m_lines,
+    printf("[%ld] I=[%s] U=[%s] B=[%s] i=[%s] S=[%s] T=[%ld](%ld) Q=[%s] E=[%s] k=[%s] R=[%s]\n", m_lines,
            I == NULL ? "(null)" : I,
            U == NULL ? "(null)" : U,
            B == NULL ? "(null)" : B,
            BI == NULL ? "(null)" : BI,
            S == NULL ? "(null)" : S,
-           tme,
+           tme, tmems,
            Q == NULL ? "(null)" : Q,
            E == NULL ? "(null)" : E,
-           k == NULL ? "(null)" : k
+           k == NULL ? "(null)" : k,
+           R == NULL ? "(null)" : R
            );
   }
   line[0] = '\0';
@@ -1443,7 +1444,7 @@ static void readStdinOffline(apr_pool_t *pool, const char *cstr) {
   time_t unitTime = 0;
   int line_len;
   FILE *outdev = stdout;
-  if(m_offline_count) {
+  if(m_offline_count || m_offline_url) {
     outdev = stderr;
   }
   while(fgets(line, sizeof(line), stdin) != NULL) {
@@ -1883,17 +1884,17 @@ int main(int argc, const char *const argv[]) {
     entry = (apr_table_entry_t *) apr_table_elts(m_url_entries)->elts;
     for(i = 0; i < apr_table_elts(m_url_entries)->nelts; i++) {
       url_rec_t *url_rec = (url_rec_t *)entry[i].val;
-      fprintf(m_f, "%s;req;%ld;"
+      fprintf(m_f, "req;%ld;"
               "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;"
-              NAVMS";%lld;\n",
-              entry[i].key,
+              NAVMS";%lld;%s\n",
               url_rec->request_count,
               url_rec->status_1,
               url_rec->status_2,
               url_rec->status_3,
               url_rec->status_4,
               url_rec->status_5,
-              url_rec->duration_count_ms / url_rec->request_count);
+              url_rec->duration_count_ms / url_rec->request_count,
+              entry[i].key);
       
     }
     if(file && m_f != stdout) {
