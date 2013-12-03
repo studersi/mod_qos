@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.73 2013-12-02 21:15:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.74 2013-12-03 06:56:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <error.h>
@@ -1630,8 +1630,8 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "  -p\n");
   if(man) printf("\n");
   qs_man_print(man, "     Used for post processing when reading the log data from a file (cat/pipe).\n");
-  qs_man_print(man, "     %s is started using it's offline mode in order to process existing log\n", cmd);
-  qs_man_print(man, "     files (post processing).\n");
+  qs_man_print(man, "     %s is started using it's offline mode (extracting the time stamps from\n", cmd);
+  qs_man_print(man, "     the log lines) in order to process existing log files.\n");
   qs_man_print(man, "     The option \"-pc\" may be used alternatively if you want to gather request\n");
   qs_man_print(man, "     information per client (identified by IP address (I) or user tracking id (U)\n");
   qs_man_print(man, "     showing how many request each client has performed within the captured period\n");
