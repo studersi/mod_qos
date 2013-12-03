@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.74 2013-12-03 06:56:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.75 2013-12-03 07:29:32 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <error.h>
@@ -807,12 +807,12 @@ static void updateUrl(apr_pool_t *pool, char *R, char *S, long tmems) {
     return;
   }
   if(!isalpha(R[0])) {
-    fprintf(stdout, "E");
+    fprintf(stdout, "A(%ld)", m_lines);
     return;
   }
   marker = strchr(R, ' ');
   if(marker == NULL) {
-    fprintf(stdout, "E");
+    fprintf(stdout, "E(%ld)", m_lines);
     return;
   }
   marker[0] = ';';
@@ -1371,7 +1371,7 @@ static time_t getMinutes(char *line) {
       return minutes;
     } else {
       // unknown format
-      fprintf(stdout, "E");
+      fprintf(stdout, "F(%ld)", m_lines);
       return 0;
     }
   } else {
