@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.30 2013-12-03 19:41:06 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.31 2013-12-04 20:05:49 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -62,21 +62,21 @@ case "$1" in
 	;;
         custom)
 	rm -f qs.log
- 	echo "$PFX custom"
+ 	echo "$PFX > custom"
         (printf "2 4 6\n8 10 12\n3 4,000 -\n"; ./sleep.sh 1>/dev/null; sleep 2) | ../util/src/qslog -f saA -o qs.log
 	if [ `grep -c "s;13;a;6;A;9;" qs.log` -eq 0 ]; then
 	  cat qs.log
 	  echo "$PFX FAILED"
 	  exit 1
 	fi
-	echo "$PFX OK"
+	echo "$PFX < OK"
 	;;
 	apache)
 	# apache access log test using piped logging
 	rm -f qs.log
 	rm -f qs.log.detailed
 	./sleep.sh
- 	echo "$PFX apache"
+ 	echo "$PFX > apache"
 	./qslog.sh test writeapache | ../util/src/qslog -f I....RSB.TkC -o qs.log -c qslog.conf
 	if [ `grep -c 'r/s;3;req;236;b/s;590;esco;59;1xx;0;2xx;177;3xx;0;4xx;0;5xx;59;av;1;<1s;177;1s;0;2s;0;3s;0;4s;59;5s;0;>5s;0;ip;3;usr;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log` -ne 2 ]; then
 	    cat qs.log
@@ -98,12 +98,12 @@ case "$1" in
 	    echo "$PFX FAILED (rule 03)"
 	    exit 1
 	fi
-	echo "$PFX OK"
+	echo "$PFX < OK"
 	;;
         apacheD)
 	# %D: The time taken to serve the request, in microseconds
 	# E: comma separated list of event strings
-	echo "$PFX D E"
+	echo "$PFX > D E"
 	rm -f qs.log
 	rm -f qs.log.detailed
 	./qslog.sh test writeapacheD | ../util/src/qslog -f I..CSBDE -o qs.log -p -c qslog.conf 2>/dev/null 1>/dev/null
@@ -163,10 +163,10 @@ case "$1" in
 	  exit 1
 	fi
 	rm -f event.conf
-	echo "$PFX OK"
+	echo "$PFX < OK"
 	;;
 	pc)
-	echo "$PFX pc"
+	echo "$PFX > pc"
 	./qslog.sh test writeapache 0 | ../util/src/qslog -f I....RSB.TkC -pc 2>/dev/null > pc
 	if [ `grep -c "127.0.0.1;req;236;errors;0;duration;60;bytes;23600;1xx;0;2xx;236;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;0;<1s;236;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;" pc` -eq 0 ]; then
 	    echo "$PFX FAILED (.1)"
@@ -209,26 +209,61 @@ case "$1" in
 	    exit 1
 	fi
         rm pc
-	echo "$PFX OK"
+	echo "$PFX < OK"
 	;;
 	pu)
-	echo "$PFX pu"
+	echo "$PFX > pu"
 	rm -rf pu.csv
-	echo "127.0.0.1 - - [28/Nov/2013:08:09:51 +0100] \"GET /cgi100/sleep.cgi?s=6 HTTP/1.1\" 200 5 \"-\" 3 6 - 6 id=UpbsR38AAQEAAB-yBPUAAAAD - - - 0 - 2 a=2 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /cgi100/sleep.cgi?s=6 HTTP/1.1\" 200 5 \"-\" 6 6 - 6 id=UpbsR38AAQEAAB-yBPUAAAAD - - - 0 - 2 a=2 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"POST /view HTTP/1.1\" 200 5 \"-\" 6 5 - 5 id=UpbsR38AAQEAAB-yBPkAAAAG - - - 0 - 6 a=6 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /index.html HTTP/1.1\" 500 5 \"-\" 6 4 - 4 id=UpbsR38AAQEAAB-yBPgAAAAE - - - 0 - 5 a=5 #8178" | ../util/src/qslog -f I....RSB.T -pu -o pu.csv 2>/dev/null
+	echo "127.0.0.1 - - [28/Nov/2013:08:09:51 +0100] \"GET /cgi100/sleep.cgi?s=6 HTTP/1.1\" 200 5 \"-\" 3 6 - 6 id=UpbsR38AAQEAAB-yBPUAAAAD - - - 0 - 2 a=2 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /cgi100/sleep.cgi?s=6 HTTP/1.1\" 200 5 \"-\" 6 6 - 6 id=UpbsR38AAQEAAB-yBPUAAAAD - - - 0 - 2 a=2 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"POST /view HTTP/1.1\" 200 5 \"-\" 6 5 - 5 id=UpbsR38AAQEAAB-yBPkAAAAG - - - 0 - 6 a=6 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /index.html HTTP/1.1\" 500 5 \"-\" 6 4 - 4 id=UpbsR38AAQEAAB-yBPgAAAAE - - - 0 - 5 a=5 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /sap(hasd)mode;jsessionid=111111?name=value HTTP/1.1\" 403 5 \"-\" 0 4 - 4 id=UpbsR38AAQEAAB-yBPgAAAAE - - - 0 - 5 a=5 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /images/1.jpg HTTP/1.1\" 200 5 \"-\" 0 4 - 4 id=UpbsR38AAQEAAB-yBPgAAAAE - - - 0 - 5 a=5 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /images/2.jpg HTTP/1.1\" 200 5 \"-\" 2 4 - 4 id=UpbsR38AAQEAAB-yBPgAAAAE - - - 0 - 5 a=5 #8178" | ../util/src/qslog -f I....RSB.T -pu -o pu.csv 2>/dev/null
 	if [ `grep -c "req;2;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;4500;GET;/cgi100/sleep.cgi" pu.csv` -ne 1 ]; then
 	    echo "$PFX FAILED (pu query)"
-	    exit 1	  
+	    exit 1
 	fi
 	if [ `grep -c "req;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;6000;POST;/view" pu.csv` -ne 1 ]; then
 	    echo "$PFX FAILED (pu POST)"
-	    exit 1	  
+	    exit 1
 	fi
 	if [ `grep -c "req;1;1xx;0;2xx;0;3xx;0;4xx;0;5xx;1;avms;6000;GET;/index.html" pu.csv` -ne 1 ]; then
 	    echo "$PFX FAILED (pu 500)"
-	    exit 1	  
+	    exit 1
+	fi
+	if [ `grep -c "req;1;1xx;0;2xx;0;3xx;0;4xx;1;5xx;0;avms;0;GET;/sap(hasd)mode;jsessionid=111111" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (pu 500)"
+	    exit 1
+	fi
+	if [ `grep -c "req;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;0;GET;/images/1.jpg" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (pu same path)"
+	    exit 1
+	fi
+	if [ `grep -c "req;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;2000;GET;/images/2.jpg" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (pu same path 2)"
+	    exit 1
 	fi
 	rm -rf pu.csv
-	echo "$PFX OK"
+	echo "$PFX < OK"
+	;;
+	puc)
+	echo "$PFX > puc"
+	rm -rf pu.csv
+	echo "127.0.0.1 - - [28/Nov/2013:08:09:51 +0100] \"GET /cgi100/sleep.cgi?s=6 HTTP/1.1\" 200 5 \"-\" 3 6 - 6 id=UpbsR38AAQEAAB-yBPUAAAAD - - - 0 - 2 a=2 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /cgi100/sleep.cgi?s=6 HTTP/1.1\" 200 5 \"-\" 6 6 - 6 id=UpbsR38AAQEAAB-yBPUAAAAD - - - 0 - 2 a=2 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"POST /view HTTP/1.1\" 200 5 \"-\" 6 5 - 5 id=UpbsR38AAQEAAB-yBPkAAAAG - - - 0 - 6 a=6 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /index.html HTTP/1.1\" 500 5 \"-\" 6 4 - 4 id=UpbsR38AAQEAAB-yBPgAAAAE - - - 0 - 5 a=5 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /images/1.jpg HTTP/1.1\" 200 5 \"-\" 0 4 - 4 id=UpbsR38AAQEAAB-yBPgAAAAE - - - 0 - 5 a=5 #8178\n127.0.0.1 - - [28/Nov/2013:08:09:59 +0100] \"GET /images/2.jpg HTTP/1.1\" 200 5 \"-\" 2 4 - 4 id=UpbsR38AAQEAAB-yBPgAAAAE - - - 0 - 5 a=5 #8178" | ../util/src/qslog -f I....RSB.T -puc -o pu.csv 2>/dev/null
+	if [ `grep -c "req;2;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;4500;GET;/cgi100" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (puc query)"
+	    exit 1
+	fi
+	if [ `grep -c "req;1;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;6000;POST;/view" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (puc POST)"
+	    exit 1
+	fi
+	if [ `grep -c "req;1;1xx;0;2xx;0;3xx;0;4xx;0;5xx;1;avms;6000;GET;/index.html" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (puc 500)"
+	    exit 1
+	fi
+	if [ `grep -c "req;2;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;1000;GET;/images" pu.csv` -ne 1 ]; then
+	    echo "$PFX FAILED (puc same path)"
+	    exit 1
+	fi
+	rm -rf pu.csv
+	echo "$PFX < OK"
 	;;
 	writelog4j)
 	for min in `seq 0 1`; do
@@ -241,7 +276,7 @@ case "$1" in
 	done
 	;;
 	log4j)
-	echo "$PFX log4j"
+	echo "$PFX > log4j"
 	# offline foreign log
 	rm -f qs.log
 	./qslog.sh test writelog4j | ../util/src/qslog -f ......IB.TS -o qs.log -p 2>/dev/null 1>/dev/null
@@ -249,10 +284,10 @@ case "$1" in
 	    echo "$PFX FAILED"
 	    exit 1
 	fi
-	echo "$PFX OK"
+	echo "$PFX < OK"
 	;;
 	avms)
-	echo "$PFX avms"
+	echo "$PFX > avms"
 	# offline analysis measuring average req time in ms
 	# verification: 
 	#   cat qslog.data | awk '{print $(NF-8)}' |  awk '{total+=$NF/1000} END{print total/106}'
@@ -262,7 +297,7 @@ case "$1" in
 	  echo "$PFX FAILED"
 	  exit 1
 	fi
-	echo "$PFX OK"
+	echo "$PFX < OK"
 	;;
         all)
 	     ERRORS=0
@@ -300,6 +335,11 @@ case "$1" in
 	     if [ $? -ne 0 ]; then
 	       ERRORS=`expr $ERRORS + 1`
 	       echo "FAILED qslog.sh test pu"
+	     fi
+	     ./qslog.sh test puc
+	     if [ $? -ne 0 ]; then
+	       ERRORS=`expr $ERRORS + 1`
+	       echo "FAILED qslog.sh test puc"
 	     fi
 	     ./qslog.sh test avms
 	     if [ $? -ne 0 ]; then

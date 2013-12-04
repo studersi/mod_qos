@@ -1,3 +1,8 @@
+Version
+
+ - qslog features the option "-pu" and "-puc" used to gather
+   request information on a per URL basis.
+
 Version 10.26
 
  - QS_ClientSerialize supports the QS_ClientIpFromHeader directive.

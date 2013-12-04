@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.76 2013-12-03 19:41:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.77 2013-12-04 20:05:49 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <error.h>
@@ -188,10 +188,11 @@ static int   m_avms = 0;
 static int   m_ct = 0;
 static int   m_customcounter = 0;
 static apr_table_t *m_client_entries = NULL;
-static int   m_max_client_entries = 0;
+static int   m_max_entries = 0;
 static int   m_offline_count = 0;
 static apr_table_t *m_url_entries = NULL;
 static int   m_offline_url = 0;
+static int   m_offline_url_cropped = 0;
 static int   m_methods = 0;
 /* debug/offline */
 static long  m_lines = 0;
@@ -824,13 +825,20 @@ static void updateUrl(apr_pool_t *pool, char *R, char *S, long tmems) {
   if(marker) {
     marker[0] = '\0';
   }
+  if(m_offline_url_cropped) {
+    char *root = strchr(R, '/');
+    marker = strrchr(R, '/');
+    if(marker && marker != root) {
+      marker[0] = '\0';
+    }
+  }
   url_rec = (url_rec_t *)apr_table_get(m_url_entries, R);
   if(url_rec == NULL) {
     if(apr_table_elts(m_url_entries)->nelts >= MAX_CLIENT_ENTRIES) {
       // limitation
-      if(!m_max_client_entries) {
-        fprintf(stderr, "\nreached max url enries (%d)\n", MAX_CLIENT_ENTRIES);
-        m_max_client_entries = 1;
+      if(!m_max_entries) {
+        fprintf(stderr, "\nreached max url entries (%d)\n", MAX_CLIENT_ENTRIES);
+        m_max_entries = 1;
       }
       return;
     }
@@ -881,9 +889,9 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     char *tid;
     if(apr_table_elts(m_client_entries)->nelts >= MAX_CLIENT_ENTRIES) {
       // limitation: speed (table to big) and memory
-      if(!m_max_client_entries) {
-        fprintf(stderr, "\nreached max client enries (%d)\n", MAX_CLIENT_ENTRIES);
-        m_max_client_entries = 1;
+      if(!m_max_entries) {
+        fprintf(stderr, "\nreached max client entries (%d)\n", MAX_CLIENT_ENTRIES);
+        m_max_entries = 1;
       }
       return;
     }
@@ -1560,7 +1568,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p[c|u] [-v]] [-x [<num>]] [-u <name>] [-m] [-c <path>]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p[c|u[c]] [-v]] [-x [<num>]] [-u <name>] [-m] [-c <path>]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -1571,7 +1579,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "the data from stdin. The output is written to the specified\n");
   qs_man_println(man, "file every minute and includes the following entries:\n");
   qs_man_println(man, "  - requests per second ("NRS")\n");
-  qs_man_println(man, "  - requests within the last minute (req)\n");
+  qs_man_println(man, "  - number of requests within measured time (req)\n");
   qs_man_println(man, "  - bytes sent to the client per second ("NBS")\n");
   qs_man_println(man, "  - bytes received from the client per second ("NBIS")\n");
   qs_man_println(man, "  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");
@@ -1580,7 +1588,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - distribution of response durations within the last minute\n");
   qs_man_print(man, "    (<1s,1s,2s,3s,4s,5s,>5)\n");
   if(man) printf("\n");
-  qs_man_println(man, "  - number of established (new) connections within the last minutes (esco)\n");
+  qs_man_println(man, "  - number of established (new) connections within the measured time (esco)\n");
   qs_man_println(man, "  - average system load (sl)\n");
   qs_man_println(man, "  - free memory (m) (not available for all platforms)\n");
   qs_man_println(man, "  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
@@ -1616,9 +1624,9 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   qs_man_println(man, "     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
   qs_man_println(man, "     C defines the element for the detailed log (-c option), e.g. \"%%U\"\n");
-  qs_man_println(man, "     s arbitraty counter to add up (sum within a minute)\n");
-  qs_man_println(man, "     a arbitraty counter to build an average from (average per request)\n");
-  qs_man_println(man, "     A arbitraty counter to build an average from (average per request)\n");
+  qs_man_println(man, "     s arbitrary counter to add up (sum within a minute)\n");
+  qs_man_println(man, "     a arbitrary counter to build an average from (average per request)\n");
+  qs_man_println(man, "     A arbitrary counter to build an average from (average per request)\n");
   qs_man_println(man, "     E comma separated list of event strings\n");
   qs_man_println(man, "     c content type (%%{content-type}o), available in -pc mode only\n");
   qs_man_println(man, "     m request method (GET/POST) (%%m), available in -pc mode only\n");
@@ -1637,7 +1645,9 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     information per client (identified by IP address (I) or user tracking id (U)\n");
   qs_man_print(man, "     showing how many request each client has performed within the captured period\n");
   qs_man_print(man, "     of time). \"-pc\" supports the format characters IURSBTtDkEcm.\n");
-  qs_man_print(man, "     The option \"-pu\" collects statistics on a per URL level (RSTtD).\n");
+  qs_man_print(man, "     The option \"-pu\" collects statistics on a per URL level (supports format\n");
+  qs_man_print(man, "     characters RSTtD).\n");
+  qs_man_print(man, "     \"-puc\" is very similar to \"-pu\" but cuts the end (handler) of each URL.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -v\n");
   if(man) printf("\n");
@@ -1812,14 +1822,18 @@ int main(int argc, const char *const argv[]) {
       if (--argc >= 1) {
         confFile = *(++argv);
       }
-    } else if(strcmp(*argv,"-p") == 0) { /* activate offline analysis */
+    } else if(strcmp(*argv,"-p") == 0) {   /* activate offline analysis */
       m_offline = 1;
       qs_set2OfflineMode();
-    } else if(strcmp(*argv,"-pc") == 0) { /* activate offline counting analysis */
+    } else if(strcmp(*argv,"-pc") == 0) {  /* activate offline counting analysis */
       m_offline_count = 1;
       qs_set2OfflineMode();
-    } else if(strcmp(*argv,"-pu") == 0) { /* activate offline url analysis */
+    } else if(strcmp(*argv,"-pu") == 0) {  /* activate offline url analysis */
       m_offline_url = 1;
+      qs_set2OfflineMode();
+    } else if(strcmp(*argv,"-puc") == 0) { /* activate offline url analysis */
+      m_offline_url = 1;
+      m_offline_url_cropped = 1;
       qs_set2OfflineMode();
     } else if(strcmp(*argv,"-m") == 0) { /* activate memory usage */
       m_mem = 1;
