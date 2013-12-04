@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.18 2013-11-26 21:08:07 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.19 2013-12-04 20:04:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -84,6 +84,10 @@ LoadModule              parp_module libexec/mod_parp.so
 QS_ClientEventLimitCount 3 3
 QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
 QS_ErrorPage             /error-docs/error.html
+</IfDefine>
+
+<IfDefine uc1u>
+QS_SrvMinDataRate        120 1500 5
 </IfDefine>
 
 <IfDefine uc1e>
