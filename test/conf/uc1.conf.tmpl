@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.19 2013-12-04 20:04:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.20 2013-12-05 07:47:11 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -88,6 +88,10 @@ QS_ErrorPage             /error-docs/error.html
 
 <IfDefine uc1u>
 QS_SrvMinDataRate        120 1500 5
+</IfDefine>
+
+<IfDefine uc1v>
+QS_SrvMinDataRate        120 1500
 </IfDefine>
 
 <IfDefine uc1e>
