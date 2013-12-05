@@ -27,11 +27,11 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.13 2013-11-27 07:09:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.14 2013-12-05 08:12:44 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
-#include <error.h>
+#include <errno.h>
 #include <string.h>
 
 #include <stdlib.h>
