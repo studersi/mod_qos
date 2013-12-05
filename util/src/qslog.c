@@ -28,10 +28,9 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.77 2013-12-04 20:05:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.78 2013-12-05 08:12:44 pbuchbinder Exp $";
 
 #include <stdio.h>
-#include <error.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <errno.h>
