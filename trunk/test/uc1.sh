@@ -125,6 +125,10 @@ waitApache
 waitApache
 ./run.sh -s scripts/UC1_QS_SrvMinDataRate.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1v 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_SrvMinDataRate2.htt
+./ctl.sh stop 2>/dev/null 1>/dev/null
 
 echo "$PFX normal end"
 exit 0
