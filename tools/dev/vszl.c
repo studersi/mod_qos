@@ -23,9 +23,9 @@ int main(int argc, const char * const argv[]) {
   int pagesize = getpagesize();
   char buf[1024];
 
-  //long pageSize = sysconf(_SC_PAGESIZE);
-  //long freePages = sysconf(_SC_AVPHYS_PAGES);
-  //pageSize * freePages / 1024;
+  long pageSize = sysconf(_SC_PAGESIZE);
+  long freePages = sysconf(_SC_AVPHYS_PAGES);
+  int sysmem = pageSize * freePages / 1024;
 
   const char *cmd = strrchr(argv[0], '/');
   if(cmd == NULL) {
@@ -52,6 +52,7 @@ int main(int argc, const char * const argv[]) {
     if(7 == fscanf(f,"%ld %ld %ld %ld %ld %ld %ld",
 		   &result.size, &result.resident, &result.share,
 		   &result.text,&result.lib,&result.data,&result.dt)) {
+      //printf("free %d\n", sysmem);
       printf("vsz %ld\n", result.size * pagesize / 1024);
     }
     fclose(f);

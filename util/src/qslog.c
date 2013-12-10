@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.80 2013-12-10 09:58:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.81 2013-12-10 19:27:15 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -389,12 +389,12 @@ static void getFreeMem(char *buf, int sz) {
     snprintf(buf, sz, "%d", mem);
   } else {
     // non linux
-#ifdef _SC_AVPHYS_PAGES
-    long pageSize = sysconf(_SC_PAGESIZE);
-    long freePages = sysconf(_SC_AVPHYS_PAGES);
-    mem = pageSize * freePages / 1024;
-    snprintf(buf, sz, "%d", mem);
-#else
+//#ifdef _SC_AVPHYS_PAGES
+//    long pageSize = sysconf(_SC_PAGESIZE);
+//    long freePages = sysconf(_SC_AVPHYS_PAGES);
+//    mem = pageSize * freePages / 1024;
+//    snprintf(buf, sz, "%d", mem);
+//#else
     /* fallback using vmstat (experimental code) */
     char vmstat[] = "/usr/bin/vmstat";
     struct stat attr;
@@ -435,7 +435,7 @@ static void getFreeMem(char *buf, int sz) {
         unlink(outfile);
       }
     }
-#endif
+//#endif
   }
 }
 
@@ -598,10 +598,11 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   stat_rec->qos_ser = 0;
   if(main) {
     if(!offline) {
-      fprintf(f, "sl;%.2f;m;%s;",
-              av[0], mem[0] ? mem : "-");
+      fprintf(f, "sl;%.2f;", av[0]);
+      if(m_mem) {
+        fprintf(f, "m;%s;", mem[0] ? mem : "-");
+      }
     } else {
-      fprintf(f, "sl;-;m;-;");
       m_offline_data = 0;
     }
   }
