@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.79 2013-12-07 10:25:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.80 2013-12-10 09:58:32 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -388,7 +388,14 @@ static void getFreeMem(char *buf, int sz) {
     fclose(f);
     snprintf(buf, sz, "%d", mem);
   } else {
-    /* experimental code using vmstat */
+    // non linux
+#ifdef _SC_AVPHYS_PAGES
+    long pageSize = sysconf(_SC_PAGESIZE);
+    long freePages = sysconf(_SC_AVPHYS_PAGES);
+    mem = pageSize * freePages / 1024;
+    snprintf(buf, sz, "%d", mem);
+#else
+    /* fallback using vmstat (experimental code) */
     char vmstat[] = "/usr/bin/vmstat";
     struct stat attr;
     if(stat(vmstat, &attr) == 0) {
@@ -403,7 +410,7 @@ static void getFreeMem(char *buf, int sz) {
         int i = 1;
         while(!qs_getLinef(line, sizeof(line), f)) {
           if(i == 4) {
-            // free memory only (ignores cache on linux)
+            // free memory only (ignores cache)
             int j = 0;
             char *p = line;
             while(p && j < 4) {
@@ -428,6 +435,7 @@ static void getFreeMem(char *buf, int sz) {
         unlink(outfile);
       }
     }
+#endif
   }
 }
 
