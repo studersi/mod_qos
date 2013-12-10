@@ -3,6 +3,11 @@ Version
  - qslog features the option "-pu" and "-puc" used to gather
    request information on a per URL basis.
 
+ - qslog uses _SC_PAGESIZE/_SC_AVPHYS_PAGES to determine free memory
+   on non-linux systems.
+
+ - Fixed: Wrong includes within the support utilities.
+
 Version 10.26
 
  - QS_ClientSerialize supports the QS_ClientIpFromHeader directive.
@@ -154,7 +159,7 @@ Version 10.10
 
  - qslog "-pc" supports counting established connections.
 
- - Fixed: endless loop when using option "-c" with only one rule.
+ - Fixed: Endless loop when using option "-c" with only one rule.
 
  - New utility qshead.
 
@@ -229,7 +234,7 @@ Version 10.2
 
  - Add the qsgeo utility to the distribution archive file.
 
- - Fixed: supress warning message about missing mod_unique_id
+ - Fixed: Supress warning message about missing mod_unique_id
    if mod_navajo.cpp is available.
 
  - New connection correlation id QS_ConnectionId (available as
@@ -280,7 +285,7 @@ Version 9.76
  
  - qslog measures new connections per minute (%k == 0).
 
- - Fixed: don't show connections in the overview if not measured.
+ - Fixed: Don't show connections in the overview if not measured.
 
  - Internal: QS_EventRequestLimit are added (insted of set) to the
    event table in order to prevent multiple increments by the very
@@ -404,7 +409,7 @@ Version 9.66
 
 Version 9.65
 
- - Fixed: could not compile the support utility qscheck.
+ - Fixed: Could not compile the support utility qscheck.
 
  - qsexec features option "-c" (pattern clearing the event counter).
 
@@ -465,9 +470,9 @@ Version 9.55
 
  - Add allowed response header X-Content-Security-Policy.
 
- - Fixed in qslog: cut last character if parameter is at end of line.
+ - Fixed: qslog cuts last character if parameter is at end of line.
 
- - Fixed in qsfilter2: handling of 0 byte characters.
+ - Fixed: qsfilter2 handling of 0 byte characters.
 
 Version 9.54
 
@@ -558,18 +563,18 @@ Version 9.42
 
  - Console "action=search&address=*" returns a list of all clients.
 
- - Fixed: remove the apr_shm_destroy() calls to avaoid double-free
+ - Fixed: Removes the apr_shm_destroy() calls to avaoid double-free
    errors on Linux with old APR library versions.
 
 Version 9.41
 
- - Fixed: console action 'block' did not set event number.
+ - Fixed: Console action 'block' did not set event number.
 
 Version 9.40
 
- - Fixed: search IP in console
+ - Fixed: Search IP in console
 
- - Fixed: user tracking set-cookie is set twice.
+ - Fixed: User tracking set-cookie is set twice.
 
  - Process QS_SetEnvIfStatus on internal errors (protocol).
 
@@ -687,7 +692,7 @@ Version 9.24
  - QS_SrvMinConnPerIP: don't log every rule violation (consolidate log
    messages and log only every 20th event, see QS_LOG_REPEAT).
 
- - Fixed: remove thread_join for MPM prefork binaries.
+ - Fixed: Removes thread_join for MPM prefork binaries.
 
 Version 9.23
 
@@ -709,12 +714,12 @@ Version 9.21
 
 Version 9.20
 
- - Fixed: racing condition when using QS_SrvMinDataRate
+ - Fixed: Racing condition when using QS_SrvMinDataRate
    and ThreadsPerChild > 64 may cause segfault.
 
 Version 9.19
 
- - Fixed: segfault at server start if no vhost has been
+ - Fixed: Segfault at server start if no vhost has been
    defined.
 
  - QS_SrvMinDataRateOffEvent may be used at server and/or
@@ -904,7 +909,7 @@ Version 8.2
 
 Version 8.1
 
- - Fixed: check for enabled cc in input filter.
+ - Fixed: Checks for enabled cc in input filter.
 
  - Don't allow requests without an URL.
 
@@ -919,7 +924,7 @@ Version 8.0
 
 Version 7.20
 
- - Fixed url decoding detecting %HH encoding (full range).
+ - Fixed: Url decoding detecting %HH encoding (full range).
 
 Version 7.19
 
@@ -1002,7 +1007,7 @@ Version 7.8
    upload/download bandwith on multiple simultaneously
    connections.
 
- - Fixed: activation of QS_SrvMinDataRate did not work
+ - Fixed: Activation of QS_SrvMinDataRate did not work
    (QS_SrvRequestRate only).
 
 Version 7.7
@@ -1122,7 +1127,7 @@ Version 5.17
  - New directive QS_SetEnvIf allows combination of multiple
    environment variables.
 
- - Fixed sem/shm leak when using QS_SrvPreferNet.
+ - Fixed: sem/shm leak when using QS_SrvPreferNet.
 
 Version 5.16
 
@@ -1202,7 +1207,7 @@ Version 5.1
 
 Version 4.30
 
- - Fixed: segfault at server startup when no virtual host has
+ - Fixed: Segfault at server startup when no virtual host has
    been configured.       
 
 Version 4.29
