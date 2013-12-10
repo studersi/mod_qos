@@ -3,9 +3,6 @@ Version
  - qslog features the option "-pu" and "-puc" used to gather
    request information on a per URL basis.
 
- - qslog uses _SC_PAGESIZE/_SC_AVPHYS_PAGES to determine free memory
-   on non-linux systems.
-
  - Fixed: Wrong includes within the support utilities.
 
 Version 10.26
