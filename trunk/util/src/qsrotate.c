@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.20 2013-11-27 07:09:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.21 2013-12-11 07:33:29 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -103,11 +103,12 @@ static void usage(char *cmd, int man) {
   if(man) printf(".TP\n");
   qs_man_print(man, "  -o <file>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Output log file to write the data to (use absolute path).\n");
+  qs_man_print(man, "     Output log file to write the data to (use an absolute path).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -s <sec>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Rotation interval in seconds, default are 86400 seconds.\n");
+  if(man) printf("\n.TP\n");
   qs_man_print(man, "  -t <hours>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Offset to UTC (enables also DST support), default is 0.\n");
@@ -150,9 +151,9 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH NOTE\n");
   } else {
-    printf("Note\n");
+    printf("Note:\n");
   }
-  qs_man_print(man, "  Each %s instance must use an individual file!\n", cmd);
+  qs_man_print(man, "  Each %s instance must use an individual file.\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
@@ -198,7 +199,6 @@ static int openFile(const char *cmd, const char *file_name) {
  * @param arch Path to the file to compress. File gets renamed to <arch>.gz
  */
 static void compressThread(const char *cmd, const char *arch) {
-  int rc;
   gzFile *outfp;
   int infp;
   char dest[HUGE_STR+20];
@@ -206,7 +206,6 @@ static void compressThread(const char *cmd, const char *arch) {
   int len;
   snprintf(dest, sizeof(dest), "%s.gz", arch);
   /* low prio */
-  rc = nice(10);
   if(nice(10) == -1) {
     fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
   }
