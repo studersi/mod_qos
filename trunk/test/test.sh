@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.233 2013-12-03 06:56:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.234 2013-12-19 19:42:10 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -587,7 +587,7 @@ if [ $? -ne 0 ]; then
 fi
 
 ./ctl.sh restart -D forwardproxy > /dev/null
-./run.sh -se ./scripts/ForwardPorxy.htt
+./run.sh -se ./scripts/ForwardProxy.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED ForwardPorxy.htt"

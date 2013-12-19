@@ -1,5 +1,5 @@
 #
-# $Id: ForwardPorxy.htt,v 1.1 2012-05-29 06:52:31 pbuchbinder Exp $
+# $Id: ForwardProxy.htt,v 1.1 2013-12-19 19:42:10 pbuchbinder Exp $
 #
 # ensure the module can be used in a forward proxy (HTTP)
 #
