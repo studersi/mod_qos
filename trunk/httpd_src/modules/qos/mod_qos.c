@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.465 2013-11-26 21:08:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.466 2013-12-19 19:41:37 pbuchbinder Exp $";
 static const char g_revision[] = "10.26";
 
 /************************************************************************
@@ -11617,7 +11617,7 @@ static const command_rec qos_config_cmds[] = {
                     " setting is reached when the number of sending/receiving"
                     " clients is equal to the MaxClients setting."
                     " No limitation is set by default."),
-#endif // Apache 2.0
+#endif // ARGV
   AP_INIT_TAKE1("QS_SrvMinDataRateOffEvent", qos_min_rate_off_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SrvMinDataRateOffEvent  '+'|'-'<env-variable>,"
