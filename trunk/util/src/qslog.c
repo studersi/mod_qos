@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.81 2013-12-10 19:27:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.82 2013-12-19 19:38:32 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1873,6 +1873,9 @@ int main(int argc, const char *const argv[]) {
   }
   m_off = m_offline || m_offline_count || m_offline_url;
   if(m_off) {
+    if(nice(10) == -1) {
+      fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
+    }
     /* init time pattern regex, std apache access log */
     regcomp(&m_trx, 
             "[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}",
@@ -1895,9 +1898,6 @@ int main(int argc, const char *const argv[]) {
     long long duration_count_ms = 0;
     long long duration_count_ms_min = -1;
     long long duration_count_ms_max = 0;
-    if(nice(10) == -1) {
-      fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
-    }
     m_url_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES + 1);
     readStdinOffline(pool, config);
     fprintf(stderr, ".\n");
@@ -1975,9 +1975,6 @@ int main(int argc, const char *const argv[]) {
   if(m_offline_count) {
     int i;
     apr_table_entry_t *entry;
-    if(nice(10) == -1) {
-      fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
-    }
     if(config == NULL) usage(cmd, 0);
     m_client_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES + 1);
     readStdinOffline(pool, config);
@@ -2128,9 +2125,6 @@ int main(int argc, const char *const argv[]) {
    * the date string match of the log
    * enties. */
   if(m_offline) {
-    if(nice(10) == -1) {
-      fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
-    }
     fprintf(stderr, "[%s]: offline mode (writes to %s)\n", cmd, file);
     m_date_str[0] = '\0';
     readStdinOffline(pool, config);
