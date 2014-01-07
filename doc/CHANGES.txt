@@ -5,6 +5,8 @@ Version
 
  - Fixed: Wrong includes within the support utilities.
 
+ - Extends QS_ClientSerialize max. timeout from 1 to 5 minutes.
+
 Version 10.26
 
  - QS_ClientSerialize supports the QS_ClientIpFromHeader directive.
