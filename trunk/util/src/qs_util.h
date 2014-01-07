@@ -4,7 +4,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2013 Pascal Buchbinder
+ * Copyright (C) 2007-2014 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -30,7 +30,7 @@
  * version info
  * ---------------------------------- */
 static const char man_version[] = "10.27";
-static const char man_date[] = "December 2013";
+static const char man_date[] = "January 2014";
 
 /* ----------------------------------
  * definitions

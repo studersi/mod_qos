@@ -2,7 +2,7 @@
  Quality of service module for Apache Web Server.
  http://opensource.adnovum.ch/mod_qos/
 
- Copyright (C) 2007-2013 Pascal Buchbinder
+ Copyright (C) 2007-2014 Pascal Buchbinder
 
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License

@@ -30,7 +30,7 @@
 
  See http://opensource.adnovum.ch/mod_qos/ for further details.
 
- Copyright (C) 2007-2013 Pascal Buchbinder
+ Copyright (C) 2007-2014 Pascal Buchbinder
 
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
@@ -1483,10 +1483,16 @@ if you want to enforce a rule under certain conditions only.
 <code>QS_ClientSerialize</code><br>
 Serializes requests having the <code>QS_Serialize</code> variable set if they are comming 
 from the same IP address.<br>
-Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+Notes:
+<ul>
+<li>You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 override the client's IP address based on the value within the defined HTTP request 
 header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
 the TCP connection.
+</li>
+<li>Maximum wait time for a request is 5 minutes.
+</li>
+</ul>
 </li>
 <li>
 <a name="QS_ClientPrefer"></a>
@@ -1604,8 +1610,8 @@ single letter which is used to signalize an event: "D"=denied, "S"=pass
 due to an available <a href="#privilegedusers">VIP</a> session, 
 "V"=create VIP session, "K"=connection closed 
 (no keep-alive), "T"=dynamic keep-alive, "r"=IP is marked as a 
-slow/bad client, "L"=means a request slowdown, and "s" is used for serialized 
-requests.
+slow/bad client, "L"=means a request slowdown, and "s" is used for 
+serialized requests.
 </li>
 <li>
 <code>mod_qos_cr</code> <br> The number of concurrent requests to a 
@@ -1976,6 +1982,6 @@ QS_SetEnvIfStatus        NullConnection    QS_Block
 <hr>
 <a href="http://www.nevis.ch"><img align="right" border="0" 
 src="nevis.gif" title="Nevis: The professional source for web application security." alt="Nevis" /></a>
-<SMALL><SMALL>&copy; 2007-2013, Pascal Buchbinder</SMALL></SMALL>
+<SMALL><SMALL>&copy; 2007-2014, Pascal Buchbinder</SMALL></SMALL>
 </body>
 </html>

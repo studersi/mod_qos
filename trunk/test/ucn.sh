@@ -56,6 +56,11 @@ waitApache
 ./run.sh -s scripts/UCN_QS_EventLimitCount.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnk 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UCN_QS_EventLimitCount2.htt
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucng 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UCN_QS_IPConn.htt
@@ -74,11 +79,7 @@ waitApache
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnj 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UCN_QS_ClientSerialize2.htt
-./ctl.sh stop 2>/dev/null 1>/dev/null
-
-../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnk 2>/dev/null 1>/dev/null
-waitApache
-./run.sh -s scripts/UCN_QS_EventLimitCount2.htt
+./run.sh -s scripts/UCN_QS_ClientSerialize3.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
 echo "$PFX normal end"

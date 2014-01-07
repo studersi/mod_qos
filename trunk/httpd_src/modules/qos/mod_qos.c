@@ -15,7 +15,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2013 Pascal Buchbinder
+ * Copyright (C) 2007-2014 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.466 2013-12-19 19:41:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.467 2014-01-07 21:32:43 pbuchbinder Exp $";
 static const char g_revision[] = "10.26";
 
 /************************************************************************
@@ -372,6 +372,11 @@ typedef enum  {
 } qs_flt_action_e;
 
 typedef enum  {
+  QS_EVENT_ACTION_DENY,
+  QS_EVENT_ACTION_SERIALIZE
+} qs_event_action_e;
+
+typedef enum  {
   QS_DENY_REQUEST_LINE,
   QS_DENY_PATH,
   QS_DENY_QUERY,
@@ -472,6 +477,7 @@ typedef struct {
   int seconds;        // configured duration
   int limit;          // event counter
   time_t limit_time;  // timer
+  qs_event_action_e action;
 } qos_event_limit_entry_t;
 
 /** 
@@ -2253,6 +2259,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
         evet->seconds = eves->seconds;
         evet->limit = 0;
         evet->limit_time = 0;
+        evet->action = eves->action;
         evet++;
         eves++;
       }
@@ -4031,36 +4038,38 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
     qos_event_limit_entry_t *entry = act->event_entry;
     apr_global_mutex_lock(act->lock);     /* @CRT41 */
     for(i = 0; i < sconf->event_limit_a->nelts; i++) {
-      if(apr_table_get(r->subprocess_env, entry->env_var) != NULL) {
-        char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, entry->env_var, NULL);
-        apr_table_set(r->notes, eventLimitId, "");
-        // reset required (expired)?
-        if(entry->limit_time + entry->seconds < now) {
-          entry->limit = 0;
-          entry->limit_time = 0;
+      if(entry->action == QS_EVENT_ACTION_DENY) {
+        if(apr_table_get(r->subprocess_env, entry->env_var) != NULL) {
+          char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, entry->env_var, NULL);
+          apr_table_set(r->notes, eventLimitId, "");
+          // reset required (expired)?
+          if(entry->limit_time + entry->seconds < now) {
+            entry->limit = 0;
+            entry->limit_time = 0;
+          }
+          /* increment limit event */
+          entry->limit++;
+          if(entry->limit == 1) {
+            /* ... and start timer */
+            entry->limit_time = now;
+          }
+          // check limit
+          if(entry->limit > entry->max) {
+            rv = m_retcode;
+            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                          QOS_LOG_PFX(013)"access denied, QS_EventLimitCount rule: %s,"
+                          " max=%d, current=%d,"
+                          " c=%s, id=%s",
+                          entry->env_var, entry->max, entry->limit,
+                          QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                          qos_unique_id(r, "013"));
+          }
         }
-        /* increment limit event */
-        entry->limit++;
-        if(entry->limit == 1) {
-          /* ... and start timer */
-          entry->limit_time = now;
-        }
-        // check limit
-        if(entry->limit > entry->max) {
-          rv = m_retcode;
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX(013)"access denied, QS_EventLimitCount rule: %s,"
-                        " max=%d, current=%d,"
-                        " c=%s, id=%s",
-                        entry->env_var, entry->max, entry->limit,
-                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
-                        qos_unique_id(r, "013"));
-        }
+        // propagte to environment
+        apr_table_set(r->subprocess_env,
+                      apr_pstrcat(r->pool, entry->env_var, QS_COUNTER_SUFFIX, NULL),
+                      apr_psprintf(r->pool, "%d", entry->limit));
       }
-      // propagte to environment
-      apr_table_set(r->subprocess_env,
-                    apr_pstrcat(r->pool, entry->env_var, QS_COUNTER_SUFFIX, NULL),
-                    apr_psprintf(r->pool, "%d", entry->limit));
       // next rule
       entry++;
     }
@@ -4261,10 +4270,10 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
         }
         nanosleep(&delay, NULL);
       }
-      // max wait time: 10 minutes
-      if(loops >= 600) {
+      // max wait time: 5 minutes
+      if(loops >= 3000) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                      QOS_LOG_PFX(068)"QS_ClientSerialize exceeds limit of 10 minutes, "
+                      QOS_LOG_PFX(068)"QS_ClientSerialize exceeds limit of 5 minutes, "
                       "c=%s, id=%s",
                       forardedForIp == NULL ? "-" : forardedForIp,
                       qos_unique_id(r, "068"));
@@ -4578,20 +4587,22 @@ static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
     qos_event_limit_entry_t *entry = act->event_entry;
     apr_global_mutex_lock(act->lock);     /* @CRT42 */
     for(i = 0; i < sconf->event_limit_a->nelts; i++) {
-      if(apr_table_get(r->subprocess_env, entry->env_var) != NULL) {
-        // increment only once
-        char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, entry->env_var, NULL);
-        if(apr_table_get(r->notes, eventLimitId) == NULL) {
-          // reset required (expired)?
-          if(entry->limit_time + entry->seconds < now) {
-            entry->limit = 0;
-            entry->limit_time = 0;
-          }
-          /* increment limit event */
-          entry->limit++;
-          if(entry->limit == 1) {
-            /* ... and start timer */
-            entry->limit_time = now;
+      if(entry->action == QS_EVENT_ACTION_DENY) {
+        if(apr_table_get(r->subprocess_env, entry->env_var) != NULL) {
+          // increment only once
+          char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, entry->env_var, NULL);
+          if(apr_table_get(r->notes, eventLimitId) == NULL) {
+            // reset required (expired)?
+            if(entry->limit_time + entry->seconds < now) {
+              entry->limit = 0;
+              entry->limit_time = 0;
+            }
+            /* increment limit event */
+            entry->limit++;
+            if(entry->limit == 1) {
+              /* ... and start timer */
+              entry->limit_time = now;
+            }
           }
         }
       }
@@ -5346,11 +5357,17 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
           if(event_limit->limit_time + event_limit->seconds <= now) {
             elimit = 0;
           }
-          ap_rprintf(r, "%s"QOS_DELIM"QS_EventLimitCount"QOS_DELIM"%d/%d[%s]: %d\n", sn,
-                     event_limit->max,
-                     event_limit->seconds,
-                     event_limit->env_var,
-                     elimit);
+          if(event_limit->action == QS_EVENT_ACTION_DENY) {
+            ap_rprintf(r, "%s"QOS_DELIM"QS_EventLimitCount"QOS_DELIM"%d/%d[%s]: %d\n", sn,
+                       event_limit->max,
+                       event_limit->seconds,
+                       event_limit->env_var,
+                       elimit);
+          } else if(event_limit->action == QS_EVENT_ACTION_SERIALIZE) {
+            ap_rprintf(r, "%s"QOS_DELIM"QS_EventSerialize"QOS_DELIM"[%s]: %d\n", sn,
+                       event_limit->env_var,
+                       event_limit->limit);
+          }
           event_limit++;
         }
       }
@@ -6034,16 +6051,18 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
             elimit = 0;
             edelta = 0;
           }
-          ap_rprintf(r, "<tr class=\"rows\">"
-                     "<td colspan=\"5\">%s</td>"
-                     "<td>%d</td><td>%ds</td><td %s>%d</td><td>%ds</td>"
-                     "</tr>\n",
-                     event_limit->env_var,
-                     event_limit->max,
-                     event_limit->seconds,
-                     elimit >= event_limit->max ? red : "",
-                     elimit,
-                     edelta);
+          if(event_limit->action == QS_EVENT_ACTION_DENY) {
+            ap_rprintf(r, "<tr class=\"rows\">"
+                       "<td colspan=\"5\">%s</td>"
+                       "<td>%d</td><td>%ds</td><td %s>%d</td><td>%ds</td>"
+                       "</tr>\n",
+                       event_limit->env_var,
+                       event_limit->max,
+                       event_limit->seconds,
+                       elimit >= event_limit->max ? red : "",
+                       elimit,
+                       edelta);
+          }
           event_limit++;
         }
       }
@@ -10020,6 +10039,7 @@ const char *qos_event_limit_cmd(cmd_parms *cmd, void *dcfg, const char *event,
   new->env_var = apr_pstrdup(cmd->pool, event);
   new->max = atoi(number);
   new->seconds = atoi(seconds);
+  new->action = QS_EVENT_ACTION_DENY;
   if(new->max == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
@@ -10028,6 +10048,17 @@ const char *qos_event_limit_cmd(cmd_parms *cmd, void *dcfg, const char *event,
     return apr_psprintf(cmd->pool, "%s: seconds must be numeric value >0", 
                         cmd->directive->directive);
   }
+  return NULL;
+}
+
+const char *qos_event_serialize_cmd(cmd_parms *cmd, void *dcfg, const char *event) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qos_event_limit_entry_t *new = apr_array_push(sconf->event_limit_a);
+  new->env_var = apr_pstrdup(cmd->pool, event);
+  new->max = 0;
+  new->seconds = 0;
+  new->action = QS_EVENT_ACTION_SERIALIZE;
   return NULL;
 }
 
@@ -11660,9 +11691,14 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE3("QS_EventLimitCount", qos_event_limit_cmd, NULL,
                 RSRC_CONF,
                 "QS_EventLimitCount <env-variable> <number> <seconds>,"
-                " Defines the maximum number of events allowed within the defined"
+                " defines the maximum number of events allowed within the defined"
                 " time. Requests are denied when reaching this limitation for the"
                 " specified time (blocked at request level)."),
+  AP_INIT_TAKE1("QS_EventSerialize", qos_event_serialize_cmd, NULL,
+                RSRC_CONF,
+                "QS_EventSerialize <env-variable>,"
+                " serializes requests having the defined variable"
+                " set."),
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIf [!]<variable1> [!]<variable1> [!]<variable=value>,"
