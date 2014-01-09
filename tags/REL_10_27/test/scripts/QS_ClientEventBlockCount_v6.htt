@@ -1,0 +1,48 @@
+#
+# $Id: QS_ClientEventBlockCount_v6.htt,v 1.3 2013-12-19 19:42:10 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ [::1] 6666
+__GET /test/index.html?1 HTTP/1.1
+__Host: ip6-localhost
+__Connection: keep-alive
+__
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+_REQ [::1] $QS_PORT_BASE10
+__GET /test/index.html?1 HTTP/1.1
+__Host: ip6-localhost
+__Connection: keep-alive
+__Referer: /block
+__
+_EXPECT . "test index.html"
+_WAIT
+_CLOSE
+
+_REQ [::1] $QS_PORT_BASE10
+__GET /test/index.html?2 HTTP/1.1
+__Host: ip6-localhost
+__Connection: keep-alive
+__Referer: /block
+__
+_EXPECT . "test index.html"
+_WAIT
+
+END
+
+SERVER [::1]:6666
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO
+__Content-Type: text/plain
+__
+__==AS1==
+
+END
