@@ -1,4 +1,4 @@
-Version
+Version 10.27
 
  - qslog features the option "-pu" and "-puc" used to gather
    request information on a per URL basis.
