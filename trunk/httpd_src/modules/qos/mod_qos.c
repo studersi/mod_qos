@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.467 2014-01-07 21:32:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.468 2014-01-09 08:13:06 pbuchbinder Exp $";
 static const char g_revision[] = "10.26";
 
 /************************************************************************
@@ -372,8 +372,7 @@ typedef enum  {
 } qs_flt_action_e;
 
 typedef enum  {
-  QS_EVENT_ACTION_DENY,
-  QS_EVENT_ACTION_SERIALIZE
+  QS_EVENT_ACTION_DENY = 0
 } qs_event_action_e;
 
 typedef enum  {
@@ -4252,6 +4251,10 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
       if(!e) {
         e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
       }
+      /* Which request is getting the lock? We assume all requests comming
+         from the same client (no proxy), so it's up to the client how many
+         requests are waiting at the same time and every request waits
+         the same amount of time (100ms) before re-trying it again. */
       if((*e)->serialize == 0) {
         (*e)->serialize = 1;
         locked = 1;
@@ -5363,10 +5366,6 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
                        event_limit->seconds,
                        event_limit->env_var,
                        elimit);
-          } else if(event_limit->action == QS_EVENT_ACTION_SERIALIZE) {
-            ap_rprintf(r, "%s"QOS_DELIM"QS_EventSerialize"QOS_DELIM"[%s]: %d\n", sn,
-                       event_limit->env_var,
-                       event_limit->limit);
           }
           event_limit++;
         }
@@ -10051,17 +10050,6 @@ const char *qos_event_limit_cmd(cmd_parms *cmd, void *dcfg, const char *event,
   return NULL;
 }
 
-const char *qos_event_serialize_cmd(cmd_parms *cmd, void *dcfg, const char *event) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
-                                                                &qos_module);
-  qos_event_limit_entry_t *new = apr_array_push(sconf->event_limit_a);
-  new->env_var = apr_pstrdup(cmd->pool, event);
-  new->max = 0;
-  new->seconds = 0;
-  new->action = QS_EVENT_ACTION_SERIALIZE;
-  return NULL;
-}
-
 const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *rc, const char *var) {
   apr_table_t *setenvstatus_t;
   if(cmd->path) {
@@ -11694,11 +11682,6 @@ static const command_rec qos_config_cmds[] = {
                 " defines the maximum number of events allowed within the defined"
                 " time. Requests are denied when reaching this limitation for the"
                 " specified time (blocked at request level)."),
-  AP_INIT_TAKE1("QS_EventSerialize", qos_event_serialize_cmd, NULL,
-                RSRC_CONF,
-                "QS_EventSerialize <env-variable>,"
-                " serializes requests having the defined variable"
-                " set."),
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIf [!]<variable1> [!]<variable1> [!]<variable=value>,"
