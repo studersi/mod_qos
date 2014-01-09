@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.236 2014-01-09 08:13:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.237 2014-01-09 20:15:22 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -986,10 +986,12 @@ usscripts="dos.sh uc1.sh ucn.sh"
 for E in $usscripts; do
   echo "> $E"
   ./$E
-  if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
+  URC=$?
+  if [ $URC -ne 0 ]; then
+    ERRORS=`expr $ERRORS + $URC`
     echo "FAILED $E"
   fi
+  echo "< $E"
 done
 
 ./qssign.sh
