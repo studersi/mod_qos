@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.469 2014-01-09 20:15:21 pbuchbinder Exp $";
-static const char g_revision[] = "10.27";
+static const char revision[] = "$Id: mod_qos.c,v 5.470 2014-01-10 22:29:11 pbuchbinder Exp $";
+static const char g_revision[] = "10.28";
 
 /************************************************************************
  * Includes
@@ -1361,7 +1361,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size, apr_tab
     s->timed[i] = e;
     if(limitTableSize > 0) {
       e->limit = limitTableEntry;
-      limitTableEntry++;
+      limitTableEntry += limitTableSize;
     } else {
       e->limit = NULL;
     }
@@ -4203,7 +4203,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
     rctx = qos_rctx_config_get(r);
   }
   if(u && cconf) {
-    const char *forardedForIp = QS_CONN_REMOTEIP(cconf->c);
+    const char *forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
     int loops = 0;
     int locked = 0;
     rctx->cc_serialize_set = 1;
@@ -4228,7 +4228,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
               apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
             }
           } else {
-            forardedForIp = forwardedfor;
+            forwardedForLogIP = forwardedfor;
           }
         } else {
           if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
@@ -4278,7 +4278,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                       QOS_LOG_PFX(068)"QS_ClientSerialize exceeds limit of 5 minutes, "
                       "c=%s, id=%s",
-                      forardedForIp == NULL ? "-" : forardedForIp,
+                      forwardedForLogIP == NULL ? "-" : forwardedForLogIP,
                       qos_unique_id(r, "068"));
         break;
       }
@@ -4825,7 +4825,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     qos_s_entry_t ne;
     qos_s_entry_t nef;
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
-    const char *forardedForIp = QS_CONN_REMOTEIP(cconf->c);
+    const char *forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     ne.ip = cconf->ip;
     nef.ip = 0;
@@ -4845,7 +4845,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
           }
         } else {
-          forardedForIp = forwardedfor;
+          forwardedForLogIP = forwardedfor;
         }
       } else {
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
@@ -5050,7 +5050,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                                   eventName,
                                   eventLimitConf->limit,
                                   (*ef)->limit[limitTableIndex].limit,
-                                  forardedForIp == NULL ? "-" : forardedForIp,
+                                  forwardedForLogIP == NULL ? "-" : forwardedForLogIP,
                                   qos_unique_id(r, "067"));
               ret = m_retcode;
             }
@@ -10846,7 +10846,7 @@ const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
   int erroffset;
   qos_milestone_t *ms = apr_pcalloc(cmd->pool, sizeof(qos_milestone_t));
   if(sconf->milestones == NULL) {
-    sconf->milestones = apr_table_make(cmd->pool, 10);
+    sconf->milestones = apr_table_make(cmd->pool, 100);
   }
   ms->preg = pcre_compile(pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(ms->preg == NULL) {

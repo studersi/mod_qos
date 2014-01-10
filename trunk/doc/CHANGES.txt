@@ -1,3 +1,8 @@
+Version 10.28
+
+ - Fixed: QS_ClientEventLimit did overwrite counters of other
+   clients if multiple events have been configured.
+
 Version 10.27
 
  - qslog features the option "-pu" and "-puc" used to gather

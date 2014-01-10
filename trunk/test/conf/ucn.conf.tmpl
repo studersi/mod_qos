@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.15 2014-01-09 08:13:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.16 2014-01-10 22:29:11 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -137,6 +137,27 @@ SetEnvIfPlus                  User-Agent serializeme QS_Serialize=yes
 QS_ClientSerialize
 </IfDefine>
 
+<IfDefine ucnl>
+QS_ClientIpFromHeader         Y-Forwarded-For
+
+QS_MileStone       deny       "^[A-Z]+ /index.html\?id=1 HTTP/...$"
+QS_MileStone       deny       "^[A-Z]+ /index.html\?id=2 HTTP/...$"
+QS_MileStone       deny       "^[A-Z]+ /index.html\?id=3 HTTP/...$"
+
+SetEnvIfPlus      Request_URI  ^/index.html$ URILIMIT
+SetEnvIfPlus    Request_Query  ^id=1$        QUERYLIMIT1
+SetEnvIfPlus    Request_Query  ^id=2$        QUERYLIMIT2
+SetEnvIfPlus    Request_Query  ^id=3$        QUERYLIMIT3
+QS_SetEnvIf     URILIMIT  QUERYLIMIT1        ClientLimit1=y
+QS_SetEnvIf     URILIMIT  QUERYLIMIT2        ClientLimit2=y
+QS_SetEnvIf     URILIMIT  QUERYLIMIT3        ClientLimit3=y
+QS_SetEnvIf     URILIMIT  QUERYLIMIT1        QS_Cond=1
+QS_SetEnvIf     URILIMIT  QUERYLIMIT2        QS_Cond=2
+QS_SetEnvIf     URILIMIT  QUERYLIMIT3        QS_Cond=3
+QS_CondClientEventLimitCount    2    5       ClientLimit1 ^1$ 
+QS_CondClientEventLimitCount    2    5       ClientLimit2 ^2$
+QS_CondClientEventLimitCount    2    5       ClientLimit3 ^3$
+</IfDefine>
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
    ServerName                 127.0.0.1
