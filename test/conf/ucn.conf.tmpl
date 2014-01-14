@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.16 2014-01-10 22:29:11 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.17 2014-01-14 22:03:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -157,6 +157,10 @@ QS_SetEnvIf     URILIMIT  QUERYLIMIT3        QS_Cond=3
 QS_CondClientEventLimitCount    2    5       ClientLimit1 ^1$ 
 QS_CondClientEventLimitCount    2    5       ClientLimit2 ^2$
 QS_CondClientEventLimitCount    2    5       ClientLimit3 ^3$
+
+ResponseHeaderPlus set X-ClientLimit1 ${ClientLimit1_Counter}
+ResponseHeaderPlus set X-ClientLimit2 ${ClientLimit2_Counter}
+ResponseHeaderPlus set X-ClientLimit3 ${ClientLimit3_Counter}
 </IfDefine>
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
