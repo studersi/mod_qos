@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.64 2014-01-09 08:13:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.65 2014-01-15 20:47:58 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -29,7 +29,7 @@
 TOP=`pwd`
 
 #APACHE_VER=2.0.59
-APACHE_VER=2.2.24
+APACHE_VER=2.2.26
 MPM=worker
 #MPM=prefork
 #MPM=event
