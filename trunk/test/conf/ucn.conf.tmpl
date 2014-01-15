@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.17 2014-01-14 22:03:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.18 2014-01-15 21:52:50 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -25,22 +25,26 @@
 #
 
 ServerName              127.0.0.1
-<IfModule worker.c>
+
+<IfDefine !ucnm>
 StartServers            1
 ServerLimit             1
 MinSpareThreads         5
 MaxSpareThreads         64
 ThreadsPerChild         64
-</IfModule>
-<IfModule prefork.c>
-StartServers            64
-ServerLimit             64
-MinSpareServers         4
-MaxSpareServers         64
-</IfModule>
-
 MaxClients              64
 MaxRequestsPerChild     0
+</IfDefine>
+
+<IfDefine ucnm>
+StartServers            1
+ServerLimit             2
+MinSpareThreads         5
+MaxSpareThreads         32
+ThreadsPerChild         16
+MaxClients              32
+MaxRequestsPerChild     32
+</IfDefine>
 
 User                    ##USR##
 Group                   users
@@ -75,6 +79,7 @@ PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
 
 TypesConfig             conf/mime.types
+LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
@@ -244,5 +249,12 @@ ResponseHeaderPlus set X-ClientLimit3 ${ClientLimit3_Counter}
        Order allow,deny
        Allow from all
    </Location>
+
+<IfDefine ucnm>
+   QS_LocRequestLimitDefault                              30
+   <Location /status>
+       SetHandler server-status
+   </Location>
+</IfDefine>
 
 </VirtualHost>
