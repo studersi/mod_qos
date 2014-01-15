@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/man.sh,v 2.6 2012-09-19 18:48:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/man.sh,v 2.7 2014-01-15 07:52:44 pbuchbinder Exp $
 #
 
 set -e
@@ -27,6 +27,8 @@ for t in $tools; do
    grep -v "Time: " | \
    sed -e "s:../man1/::g" \
        -e "s:../index.html:index.html#utilities:g" \
+       -e "s:</HEAD>:<meta name='KeyWords' content='Quality of Service, QoS, Apache Web Server, Web application security, WAF, Open Source Software, AdNovum Informatik, Nevis, Security, Proxy'/>\n</HEAD>:g" \
+       -e "s:</HEAD>:<meta name='author' content='Pascal Buchbinder' />\n</HEAD>:g" \
        -e "s:This document was created by:<img align=\"right\" border=\"0\" src=\"nevis.gif\"/>:g" \
    > ../../doc/${t}.1.html
 done
