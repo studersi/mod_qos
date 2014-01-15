@@ -108,6 +108,14 @@ ERRORS=`expr $ERRORS + $?`
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+sleep 1
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnm 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UCN_QS_LocRequestLimitMaxClients.htt
+ERRORS=`expr $ERRORS + $?`
+sleep 2
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 if [ $ERRORS -ne 0 ]; then
   echo "$PFX test failed with $ERRORS errors"
   exit $ERRORS
