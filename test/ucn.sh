@@ -104,7 +104,7 @@ ERRORS=`expr $ERRORS + $?`
 waitApache
 ./run.sh -s scripts/UCN_QS_Milestone.htt
 ERRORS=`expr $ERRORS + $?`
-./run.sh -s scripts/QS_CondClientEventLimitCount2.htt
+./run.sh -s scripts/UCN_QS_CondClientEventLimitCount.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
