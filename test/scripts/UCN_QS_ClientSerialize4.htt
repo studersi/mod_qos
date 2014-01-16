@@ -20,6 +20,7 @@ __
 _EXPECT . "Location: http"
 _WAIT
 _CLOSE
+_SLEEP 100
 _EXPECT EXEC "GET /htt HTTP/1.1\" 302 [0-9]+ \"serializeme\" 1 - -"
 _EXEC tail -1 logs/access_log
 
@@ -33,6 +34,7 @@ __
 _EXPECT . "502 Proxy Error"
 _WAIT
 _CLOSE
+_SLEEP 100
 _EXPECT EXEC "GET /htt HTTP/1.1\" 502 [0-9]+ \"serializeme 2\" 0 - -"
 _EXEC tail -1 logs/access_log
 
@@ -46,6 +48,7 @@ __
 _EXPECT . "404"
 _WAIT
 _CLOSE
+_SLEEP 100
 _EXPECT EXEC "GET /404 HTTP/1.1\" 404 [0-9]+ \"serializeme 3\" 0 - -"
 _EXEC tail -1 logs/access_log
 
@@ -59,6 +62,7 @@ __
 _EXPECT . "404"
 _WAIT
 _CLOSE
+_SLEEP 100
 _EXPECT EXEC "GET /htt HTTP/1.1\" 404 [0-9]+ \"serializeme 4\" 0 - -"
 _EXEC tail -1 logs/access_log
 
@@ -72,6 +76,7 @@ __
 _EXPECT . "==AS6=="
 _WAIT
 _CLOSE
+_SLEEP 100
 _EXPECT EXEC "GET /htt HTTP/1.1\" 200 [0-9]+ \"serializeme 6\" 1 - -"
 _EXEC tail -1 logs/access_log
 
