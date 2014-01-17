@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.19 2014-01-17 15:12:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.20 2014-01-17 15:27:28 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -27,23 +27,39 @@
 ServerName              127.0.0.1
 
 <IfDefine !ucnm>
-StartServers            1
-ServerLimit             1
-MinSpareThreads         5
-MaxSpareThreads         64
-ThreadsPerChild         64
-MaxClients              64
-MaxRequestsPerChild     0
+<IfModule worker.c>
+ StartServers            1
+ ServerLimit             1
+ MinSpareThreads         5
+ MaxSpareThreads         64
+ ThreadsPerChild         64
+ MaxClients              64
+ MaxRequestsPerChild     0
+</IfModule>
+<IfModule prefork.c>
+ StartServers            64
+ ServerLimit             64
+ MinSpareServers         4
+ MaxSpareServers         64
+</IfModule>
 </IfDefine>
 
 <IfDefine ucnm>
-StartServers            1
-ServerLimit             2
-MinSpareThreads         5
-MaxSpareThreads         32
-ThreadsPerChild         16
-MaxClients              32
-MaxRequestsPerChild     32
+<IfModule worker.c>
+ StartServers            1
+ ServerLimit             2
+ MinSpareThreads         5
+ MaxSpareThreads         32
+ ThreadsPerChild         16
+ MaxClients              32
+ MaxRequestsPerChild     32
+</IfModule>
+<IfModule prefork.c>
+ StartServers            10
+ ServerLimit             32
+ MinSpareServers         4
+ MaxSpareServers         32
+</IfModule>
 </IfDefine>
 
 User                    ##USR##
