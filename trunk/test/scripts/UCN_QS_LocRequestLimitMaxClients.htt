@@ -120,14 +120,15 @@ _CLOSE
 
 END
 
-BLOCK FINALLY
-
+#BLOCK FINALLY
+CLIENT
+_SLEEP 12000
 _SLEEP 1000
 _REQ localhost $QS_PORT_BASE
 __GET /status?auto HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
-__User-Agent: verify
+__User-Agent: verify counter
 __
 _EXPECT . "v;.*QS_LocRequestLimit;30\[/\]: 1$"
 _EXPECT . "200 OK"

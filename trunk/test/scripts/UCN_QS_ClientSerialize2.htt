@@ -19,7 +19,7 @@ _EXPECT . "done"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme\" 1 - -"
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme\" 1 . -"
 _EXEC tail -1 logs/access_log
 
 END
@@ -47,7 +47,7 @@ _EXIT FAILED
 _END IF
 
 _SLEEP 100
-_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme\" 2 - s;"
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme\" 2 . s;"
 _EXEC tail -1 logs/access_log
 
 _DATE:GET_TIME START1
