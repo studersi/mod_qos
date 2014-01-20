@@ -6,6 +6,7 @@ INCLUDE scripts/ports
 
 CLIENT
 
+# proxy error
 _REQ localhost $QS_PORT_BASE
 __GET /htt HTTP/1.1
 __Host: localhost
@@ -15,6 +16,7 @@ _EXPECT . "503 Service Temporarily Unavailable"
 _WAIT
 _CLOSE
 
+# client closes connection (while proxy request)
 _REQ localhost $QS_PORT_BASE
 __GET /htt HTTP/1.1
 __Host: localhost
@@ -23,6 +25,7 @@ __
 _FLUSH
 _CLOSE
 
+# client closes connection
 _REQ localhost $QS_PORT_BASE
 __GET /a/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
@@ -31,6 +34,7 @@ __
 _FLUSH
 _CLOSE
 
+# request denied (apache built-in error page)
 _REQ localhost $QS_PORT_BASE
 __GET /status?dontallowme HTTP/1.1
 __Host: localhost
@@ -41,6 +45,7 @@ _EXPECT . "403 Forbidden"
 _WAIT
 _CLOSE
 
+# request denied (internal redirect to error page)
 _REQ localhost $QS_PORT_BASE
 __GET /status?dontallowme&errorpage HTTP/1.1
 __Host: localhost
@@ -51,6 +56,29 @@ _EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 
+# internal redirect by handler
+_REQ localhost $QS_PORT_BASE
+__GET /qstredirectme/ HTTP/1.1
+__Host: localhost
+__User-Agent: errors
+__
+_EXPECT . "body background=./error-docs/red.png."
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+# internal redirect by handler to an invalid page
+_REQ localhost $QS_PORT_BASE
+__GET /qstredirectme404/ HTTP/1.1
+__Host: localhost
+__User-Agent: errors
+__
+_EXPECT . "!body background=./error-docs/red.png."
+_EXPECT . "404 Not Found"
+_WAIT
+_CLOSE
+
+# verify all requests have been "closed"
 _SLEEP 1100
 _REQ localhost $QS_PORT_BASE
 __GET /status?auto HTTP/1.1

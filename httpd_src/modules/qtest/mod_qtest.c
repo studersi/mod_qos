@@ -10,7 +10,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qtest.c,v 1.5 2013-10-08 18:57:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qtest.c,v 1.6 2014-01-20 20:23:03 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -99,6 +99,18 @@ static int qtest_handler(request_rec * r) {
     sleep(1);
     ap_internal_redirect(r->args, r);
     return OK;
+  }
+  if(strcmp(r->parsed_uri.path, "/qstredirectme/") == 0) {
+    r->method = apr_pstrdup(r->pool, "GET");
+    r->method_number = M_GET;
+    ap_internal_redirect("/error-docs/error_c.html", r);
+    return OK;
+  }
+  if(strcmp(r->parsed_uri.path, "/qstredirectme404/") == 0) {
+    r->method = apr_pstrdup(r->pool, "GET");
+    r->method_number = M_GET;
+    ap_internal_redirect("/error-docs/error_c_404.html", r);
+    return HTTP_INTERNAL_SERVER_ERROR;
   }
   if(strcmp(r->parsed_uri.path, "/dumpvar/") == 0) {
     int i;
