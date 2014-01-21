@@ -59,7 +59,8 @@
       (instead of closing the TCP connection)
     - detect, if counter was incremented at http response, e.g. session cookie
        => show error page at next request
-  + add more (user defined variable) QS_Block counter?
+  - add more (user defined variable) QS_Block counter?
+    + implemented for QS_ClientEventLimitCount
 - re-design/re-implementation of some parts/functions
   + maybe dropping some features
     + remove QS_SrvPreferNet
