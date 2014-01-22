@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.22 2014-01-21 21:07:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.23 2014-01-22 22:18:09 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -64,7 +64,7 @@ DefaultType             text/plain
 AddType                 text/html .shtml
 AddOutputFilter         INCLUDES .shtml
 
-LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e u=%{mod_qos_user_id}e %{qs_special}e %{content-length}i #%P"
+LogFormat               "%h %{QS_Country}e %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e u=%{mod_qos_user_id}e %{qs_special}e %{content-length}i #%P"
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
@@ -92,6 +92,12 @@ QS_SrvMinDataRate        120 1500 5
 
 <IfDefine uc1v>
 QS_SrvMinDataRate        120 1500
+</IfDefine>
+
+<IfDefine uc1x>
+QS_ClientGeoCountryDB    conf/GeoIPCountryWhois.csv
+QS_ClientIpFromHeader    Y-Forwarded-For
+QS_RedirectIf            QS_Country DE http://qos.de/
 </IfDefine>
 
 <IfDefine uc1e>
