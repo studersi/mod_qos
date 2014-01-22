@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.470 2014-01-10 22:29:11 pbuchbinder Exp $";
-static const char g_revision[] = "10.28";
+static const char revision[] = "$Id: mod_qos.c,v 5.471 2014-01-22 13:23:06 pbuchbinder Exp $";
+static const char g_revision[] = "10.29";
 
 /************************************************************************
  * Includes
@@ -2288,18 +2288,21 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
   qos_geo_t *last = NULL;
   int lines = 0;
   char line[HUGE_STRING_LEN];
-  FILE *file = fopen(db, "r");
+  FILE *file;
   *size = 0;
-  if(!file) {
-    return NULL;
-  }
 #ifdef AP_REGEX_H
   preg = ap_pregcomp(pool, QS_GEO_PATTERN, AP_REG_EXTENDED);
 #else
   preg = ap_pregcomp(pool, QS_GEO_PATTERN, REG_EXTENDED);
 #endif
   if(preg == NULL) {
+    // internal error
     *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN);
+    return NULL;
+  }
+  file = fopen(db, "r");
+  if(!file) {
+    *msg = apr_psprintf(pool, "could not open file %s (%s)", db, strerror(errno));
     return NULL;
   }
   while(fgets(line, sizeof(line), file) != NULL) {
@@ -2336,6 +2339,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
       }
     }
   }
+  fclose(file);
   return geo;
 }
 

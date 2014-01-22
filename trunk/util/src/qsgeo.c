@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.14 2014-01-09 08:13:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.15 2014-01-22 13:23:06 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -282,18 +282,21 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
   int lines = 0;
   char line[HUGE_STRING_LEN];
   char buf[HUGE_STRING_LEN];
-  FILE *file = fopen(db, "r");
+  FILE *file;
   const qos_inj_t *inj = m_inj;
   *size = 0;
-  if(!file) {
-    return NULL;
-  }
   if(regcomp(&preg, QS_GEO_PATTERN, REG_EXTENDED)) {
+    // internal error
     *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN);
     return NULL;
   }
   if(regcomp(&pregd, QS_GEO_PATTERN_D, REG_EXTENDED)) {
+    // internal error
     *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN_D);
+    return NULL;
+  }
+  file = fopen(db, "r");
+  if(!file) {
     return NULL;
   }
   while(fgets(line, sizeof(line), file) != NULL) {
@@ -350,6 +353,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
       }
     }
   }
+  fclose(file);
   return geo;
 }
 
