@@ -18,7 +18,7 @@ _EXPECT . "200 OK"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "127.0.0.1 FR - -"
+_EXPECT EXEC "127.0.0.1 FR -"
 _EXEC tail -1 logs/access_log
 
 _REQ localhost $QS_PORT_BASE
@@ -32,7 +32,7 @@ _EXPECT . "Location: http://qos.de/"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "127.0.0.1 DE - -"
+_EXPECT EXEC "127.0.0.1 DE -"
 _EXEC tail -1 logs/access_log
 
 END
