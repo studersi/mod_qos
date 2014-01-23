@@ -166,6 +166,17 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1x1 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_ClientGeoCountryPriv.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1x2 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_ClientGeoCountryPriv2.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 if [ $ERRORS -ne 0 ]; then
   echo "$PFX test failed with $ERRORS errors"
   exit $ERRORS
