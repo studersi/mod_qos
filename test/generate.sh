@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.33 2014-01-09 08:13:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.34 2014-01-27 07:08:38 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -113,8 +113,10 @@ fi
 cd libexec
 rm -f mod_websocket.so
 rm -f mod_websocket_echo.so
+rm -f mod_websocket_mirror.so
 ln -s ../../mod-websocket/.libs/mod_websocket.so .
 ln -s ../../mod-websocket/.libs/mod_websocket_echo.so .
+ln -s ../../mod-websocket/.libs/mod_websocket_mirror.so .
 cd ..
 
 cd ./bin

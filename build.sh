@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.66 2014-01-16 08:06:50 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.67 2014-01-27 07:08:38 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -128,8 +128,11 @@ cd ..
 mkdir -p mod-websocket
 cd mod-websocket
 tar xfz ../3thrdparty/apache-websocket.tgz
+rm -f mod_websocket_mirror.c
+ln -s ../3thrdparty/mod_websocket_mirror.c .
 /var/tmp/apache/bin/apxs -c mod_websocket.c
 /var/tmp/apache/bin/apxs -c mod_websocket_echo.c
+/var/tmp/apache/bin/apxs -c mod_websocket_mirror.c
 cd ..
 
 cd util

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.245 2014-01-09 08:13:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.246 2014-01-27 07:08:39 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -283,6 +283,7 @@ ErrorDocument 404 /error-docs/error404.html
    ProxyPass                  /cgi-local_s !
    ProxyPass                  /hadsu !
    ProxyPass                  /echo !
+   ProxyPass                  /mirror !
    ProxyPass                  /dumpvar !
 
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
@@ -359,6 +360,8 @@ ErrorDocument 404 /error-docs/error404.html
    QS_LocRequestLimit         /cgi100       100
    QS_LocRequestLimit         /test          50
    QS_LocRequestLimitMatch    "^.*\.gif$"     2
+
+   QS_LocRequestLimit         /echo           3
 
    QS_LocRequestLimitMatch    "^(/app/a/|/app/b/|/app/c/).*$" 1
    QS_LocRequestLimitMatch    "^/app/d/.*$"                   1
@@ -484,6 +487,10 @@ ErrorDocument 404 /error-docs/error404.html
    <Location /echo>
        SetHandler websocket-handler
        WebSocketHandler libexec/mod_websocket_echo.so echo_init
+   </Location>
+   <Location /mirror>
+       SetHandler websocket-handler
+       WebSocketHandler libexec/mod_websocket_mirror.so mirror_init
    </Location>
 
 <IfDefine DisableHandler>
