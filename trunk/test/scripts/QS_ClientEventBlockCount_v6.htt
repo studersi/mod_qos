@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventBlockCount_v6.htt,v 1.3 2013-12-19 19:42:10 pbuchbinder Exp $
+# $Id: QS_ClientEventBlockCount_v6.htt,v 1.4 2014-01-27 11:29:02 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -15,7 +15,7 @@ _EXPECT . "==AS1=="
 _WAIT
 _CLOSE
 
-_REQ [::1] $QS_PORT_BASE10
+_REQ [fc00::111] $QS_PORT_BASE10
 __GET /test/index.html?1 HTTP/1.1
 __Host: ip6-localhost
 __Connection: keep-alive
@@ -25,7 +25,7 @@ _EXPECT . "test index.html"
 _WAIT
 _CLOSE
 
-_REQ [::1] $QS_PORT_BASE10
+_REQ [fc00::111] $QS_PORT_BASE10
 __GET /test/index.html?2 HTTP/1.1
 __Host: ip6-localhost
 __Connection: keep-alive
