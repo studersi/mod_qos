@@ -49,6 +49,7 @@ __Host: localhost
 __
 _EXPECT . "404"
 _WAIT
+_CLOSE
 
 _REQ localhost $QS_PORT_BASE
 __GET /index.html HTTP/1.1
