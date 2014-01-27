@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.472 2014-01-27 14:47:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.473 2014-01-27 20:39:55 pbuchbinder Exp $";
 static const char g_revision[] = "10.29";
 
 /************************************************************************
@@ -2449,13 +2449,17 @@ unsigned long qos_crc32(const char *s, int len) {
  * TODO: only ipv4 support (hash for IPv6 addresses)
  *
  * @param address IP address sting
- * @return IP address (of hash)
+ * @return IP address (or hash) or 0 on error
  */
 static unsigned long qos_inet_addr(const char *address) {
   long ip = inet_addr(address);
   if(ip == -1) {
-    /* not a ipv4 address, generate a checksum instead ("kind of" v6 support)
-       see also inet_pton() */
+    struct in6_addr ipaddr;
+    if(inet_pton(AF_INET6, address, &ipaddr) != 1) {
+      // neither ipv4 nor ipv6
+      return 0;
+    }
+    /* not a ipv4 address, generate a checksum instead ("kind of" v6 support) */
     ip = qos_crc32(address, strlen(address));
   }
   return ip;
