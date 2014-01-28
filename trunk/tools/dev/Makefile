@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex regexspeed b64 crs mem json pws qssearch vszl
+PROGRAMS = regex regexspeed b64 crs mem json pws qssearch vszl stack2
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -18,6 +18,11 @@ regex_OBJECTS = regex.lo
 regex_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 regex: $(regex_OBJECTS)
 	$(LINK) $(regex_LTFLAGS) -static $(regex_OBJECTS) $(regex_LDADD)
+
+stack2_OBJECTS = stack2.lo
+stack2_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+stack2: $(stack2_OBJECTS)
+	$(LINK) $(stack2_LTFLAGS) -static $(stack2_OBJECTS) $(stack2_LDADD)
 
 regexspeed_OBJECTS = regexspeed.lo
 regexspeed_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
