@@ -4,7 +4,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2008 Pascal Buchbinder
+ * Copyright (C) 2007-2014 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.32 2014-01-28 21:58:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack2.c,v 1.1 2014-01-28 21:58:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,12 +31,14 @@ static const char revision[] = "$Id: stack.c,v 1.32 2014-01-28 21:58:17 pbuchbin
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
+#include <arpa/inet.h>
 
 #define QSMOD 4
 #define LIMIT 1
 
 static int m_qsmod = QSMOD;
 static int m_silent = 0;
+static int m_addrsize = sizeof(struct in6_addr);
 
 typedef struct {
   short int limit;
@@ -44,7 +46,8 @@ typedef struct {
 } qos_s_entry_limit_t;
 
 typedef struct {
-  unsigned long ip;
+  struct in6_addr ip;
+  //unsigned long ip;
   time_t lowrate;
   /* behavior */
   unsigned int html;
@@ -83,8 +86,9 @@ typedef struct {
 static int qoss_comp(const void *_pA, const void *_pB) {
   qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
   qos_s_entry_t *pB=*(( qos_s_entry_t **)_pB);
-  if(pA->ip > pB->ip) return 1;
-  if(pA->ip < pB->ip) return -1;
+  return memcmp(&pA->ip, &pB->ip, m_addrsize);
+  //if(pA->ip > pB->ip) return 1;
+  //if(pA->ip < pB->ip) return -1;
   return 0;
 }
 
@@ -129,7 +133,8 @@ static void qoss_free(qos_s_t *s) {
  */
 static qos_s_entry_t **qoss_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  int mod = pA->ip % m_qsmod;
+  //int mod = pA->ip % m_qsmod;
+  int mod = pA->ip.__in6_u.__u6_addr32[3] % m_qsmod;
   int max = (s->max / m_qsmod);
   int start = mod * max;
   pB = bsearch((const void *)&pA, (const void *)&s->ipd[start], max, sizeof(qos_s_entry_t *), qoss_comp);
@@ -155,7 +160,8 @@ static void qoss_sort(qos_s_t *s) {
 
 static void qoss_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  int mod = pA->ip % m_qsmod;
+  //int mod = pA->ip % m_qsmod;
+  int mod = pA->ip.__in6_u.__u6_addr32[3] % m_qsmod;
   int max = (s->max / m_qsmod);
   int start = mod * max;
   s->t = now;
@@ -175,7 +181,8 @@ static void qoss_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
 
 static void qoss_set_fast(qos_s_t *s, qos_s_entry_t *pA, long i) {
   qos_s_entry_t **pB;
-  int mod = pA->ip % m_qsmod;
+  int mod = pA->ip.__in6_u.__u6_addr32[3] % m_qsmod;
+  //int mod = pA->ip % m_qsmod;
   int max = (s->max / m_qsmod);
   int start = mod * max;
   if(s->num <= s->max) {
@@ -203,10 +210,12 @@ static void speed(long size) {
 	 s->msize / 1024 / 1024,
 	 s->max, m_qsmod, s->msize/s->max);
 
-  new.ip = 0;
+  //new.ip = 0;
+  memset(&new.ip, 0, m_addrsize);
   qoss_set(s, &new, time(NULL));
   for(i = 0; i < size; i++) {
-    new.ip = i;
+    new.ip.__in6_u.__u6_addr32[3] = i;
+    //new.ip = i;
     qoss_set_fast(s, &new, i);
   }
   i--;
@@ -217,13 +226,14 @@ static void speed(long size) {
   
   /* get */
   for(i = 0; i < (sizeof(items)/sizeof(long)); i++) {
-    new.ip = items[i];
+    //new.ip = items[i];
+    new.ip.__in6_u.__u6_addr32[3] = items[i];
     gettimeofday(&tv, NULL);
     start = tv.tv_sec * 1000000 + tv.tv_usec;
     e = qoss_get0(s, &new, 0);
     gettimeofday(&tv, NULL);
     if(e == NULL) {
-      printf("ERROR, %ld not found\n", new.ip);
+      printf("ERROR, %ld not found\n", new.ip.__in6_u.__u6_addr32[3]);
       exit(1);
     } else {
       if(!m_silent) {
@@ -239,23 +249,23 @@ static void speed(long size) {
   /* set */
   sleep(1); // those entries are newer
   for(i = 0; i < (sizeof(items)/sizeof(long)); i++) {
-    new.ip = items[i]+50000;
+    new.ip.__in6_u.__u6_addr32[3] = items[i]+50000;
     gettimeofday(&tv, NULL);
     start = tv.tv_sec * 1000000 + tv.tv_usec;
     qoss_set(s, &new, time(NULL));
     gettimeofday(&tv, NULL);
     if(!m_silent) {
-      printf("set:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, new.ip);
+      printf("set:   %.6lld usec (%ld)\n", (tv.tv_sec * 1000000 + tv.tv_usec) - start, new.ip.__in6_u.__u6_addr32[3]);
     }
     average = average + (tv.tv_sec * 1000000 + tv.tv_usec) - start;
   }
   printf("set     mod=%d size=%ld:\t average %.6lld usec\n", m_qsmod, size, average / i);
 
   for(i = 0; i < (sizeof(items)/sizeof(long)); i++) {
-    new.ip = items[i]+50000;
+    new.ip.__in6_u.__u6_addr32[3] = items[i]+50000;
     e = qoss_get0(s, &new, 0);
     if(e == NULL) {
-      printf("ERROR, %ld not found\n", new.ip);
+      printf("ERROR, %ld not found\n", new.ip.__in6_u.__u6_addr32[3]);
       exit(1);
     }
   }
@@ -274,10 +284,10 @@ static void func() {
   unsigned long ar[] = { 1, 5, 6, 7, 8, 9, 10, 100 };
   printf("> %d %d: %d bytes per client\n", s->msize, s->max, s->msize/s->max);
   for(i = 0; i < sizeof(ar)/sizeof(unsigned long); i++) {
-    new.ip = ar[i];
+    new.ip.__in6_u.__u6_addr32[3] = ar[i];
     e = qoss_get0(s, &new, 0);
     if(!e) {
-      printf("[%lu]", new.ip); fflush(stdout);
+      printf("[%lu]", new.ip.__in6_u.__u6_addr32[3]); fflush(stdout);
       sleep(1);
       qoss_set(s, &new, time(NULL));
     }
@@ -289,10 +299,10 @@ static void func() {
     printf("pos=%d %lu %lu\n", i, (*e)->ip, (*e)->time);
   }
   for(i = 0; i < sizeof(ar)/sizeof(unsigned long); i++) {
-    new.ip = ar[i];
+    new.ip.__in6_u.__u6_addr32[3] = ar[i];
     e = qoss_get0(s, &new, 0);
     if(!e) {
-      printf("ERROR-1 pos=%d %lu\n", i, new.ip); fflush(stdout);
+      printf("ERROR-1 pos=%d %lu\n", i, new.ip.__in6_u.__u6_addr32[3]); fflush(stdout);
       exit(1);
     }
   }
@@ -309,7 +319,7 @@ static void func() {
       v = (*e)->time;
     }
   }
-  /* lowest first */
+  /* lowest first 
   for(m = 0; m < m_qsmod; m++) {
     v = 0;
     for(i = (m * s->max/m_qsmod); i < (m+1) * (s->max/m_qsmod); i++) {
@@ -320,11 +330,24 @@ static void func() {
       }
       v = (*e)->ip;
     }
-  }
+    }*/
   qoss_free(s);
 }
 
 int main(int argc, char **argv) {
+  struct in6_addr ipaddr;
+  struct in6_addr ipaddr2;
+  struct in6_addr ipaddr3;
+  inet_pton(AF_INET6, "fc00::112", &ipaddr3);
+  inet_pton(AF_INET6, "fc00::112", &ipaddr2);
+  inet_pton(AF_INET6, "fc00::111", &ipaddr);
+
+  printf("%d %d %d %d\n",
+	 memcmp(&ipaddr, &ipaddr3, m_addrsize),
+	 memcmp(&ipaddr, &ipaddr2, m_addrsize),
+	 memcmp(&ipaddr2, &ipaddr, m_addrsize),
+	 memcmp(&ipaddr2, &ipaddr3, m_addrsize));
+
   func();
   printf("\n"); 
   m_qsmod = 1;
