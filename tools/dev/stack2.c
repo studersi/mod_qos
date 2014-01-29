@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack2.c,v 1.2 2014-01-29 16:19:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack2.c,v 1.3 2014-01-29 16:26:19 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,6 +44,11 @@ typedef struct {
   short int limit;
   time_t limit_time;
 } qos_s_entry_limit_t;
+
+typedef struct {
+  unsigned long ip;
+  unsigned long ip6;
+} qos_s_ip_t;
 
 typedef struct {
   struct in6_addr ip;
@@ -334,6 +339,7 @@ static void func() {
 }
 
 int main(int argc, char **argv) {
+  qos_s_ip_t saddr;
   long in4_addr = inet_addr("127.0.0.1");
   struct in6_addr ipaddr;
   struct in6_addr ipaddr2;
@@ -348,6 +354,7 @@ int main(int argc, char **argv) {
 
   inet_pton(AF_INET6, "::ffff:127.0.0.1", &ipaddr4);
   inet_pton(AF_INET6, "::ffff:127.0.0.1", &myaddr3);
+  inet_pton(AF_INET6, "::ffff:127.0.0.1", &saddr.ip);
   inet_pton(AF_INET6, "fc00::112", &ipaddr3);
   inet_pton(AF_INET6, "fc00::112", &ipaddr2);
   inet_pton(AF_INET6, "fc00::112", &buf);
@@ -355,13 +362,15 @@ int main(int argc, char **argv) {
   inet_pton(AF_INET6, "fc00::111", &ipaddr);
   inet_pton(AF_INET6, "fc00::111", &myaddr2);
 
-  printf("int %d long %d myaddr %d in6_addr %d in_addr_t %d\n",
-	 sizeof(int), sizeof(unsigned long), sizeof(myaddr), m_addrsize, sizeof(in_addr_t));
+  printf("int %d long %d myaddr %d in6_addr %d in_addr_t %d struct %d\n",
+	 sizeof(int), sizeof(unsigned long), sizeof(myaddr), m_addrsize, sizeof(in_addr_t), sizeof(qos_s_ip_t));
   inet_ntop(AF_INET6, myaddr, str, INET6_ADDRSTRLEN);
   printf("<%s>\n", str);
   inet_ntop(AF_INET6, myaddr2, str, INET6_ADDRSTRLEN);
   printf("<%s>\n", str);
   inet_ntop(AF_INET6, myaddr3, str, INET6_ADDRSTRLEN);
+  printf("<%s>\n", str);
+  inet_ntop(AF_INET6, &saddr.ip, str, INET6_ADDRSTRLEN);
   printf("<%s>\n", str);
   printf("%d %d %d %d\n",
 	 memcmp(&ipaddr, &ipaddr3, m_addrsize),
