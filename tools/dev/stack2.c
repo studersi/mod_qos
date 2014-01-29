@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack2.c,v 1.1 2014-01-28 21:58:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack2.c,v 1.2 2014-01-29 16:19:52 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,7 +81,6 @@ typedef struct {
   int max;
   int msize;
 } qos_s_t;
-
 
 static int qoss_comp(const void *_pA, const void *_pB) {
   qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
@@ -335,18 +334,46 @@ static void func() {
 }
 
 int main(int argc, char **argv) {
+  long in4_addr = inet_addr("127.0.0.1");
   struct in6_addr ipaddr;
   struct in6_addr ipaddr2;
   struct in6_addr ipaddr3;
+  struct in6_addr ipaddr4;
+  unsigned char buf[sizeof(struct in6_addr)];
+  unsigned long myaddr[2];
+  unsigned long myaddr2[2];
+  unsigned long myaddr3[2];
+  char str[INET6_ADDRSTRLEN];
+  memset(str, 0, INET6_ADDRSTRLEN);
+
+  inet_pton(AF_INET6, "::ffff:127.0.0.1", &ipaddr4);
+  inet_pton(AF_INET6, "::ffff:127.0.0.1", &myaddr3);
   inet_pton(AF_INET6, "fc00::112", &ipaddr3);
   inet_pton(AF_INET6, "fc00::112", &ipaddr2);
+  inet_pton(AF_INET6, "fc00::112", &buf);
+  inet_pton(AF_INET6, "fc00::112", &myaddr);
   inet_pton(AF_INET6, "fc00::111", &ipaddr);
+  inet_pton(AF_INET6, "fc00::111", &myaddr2);
 
+  printf("int %d long %d myaddr %d in6_addr %d in_addr_t %d\n",
+	 sizeof(int), sizeof(unsigned long), sizeof(myaddr), m_addrsize, sizeof(in_addr_t));
+  inet_ntop(AF_INET6, myaddr, str, INET6_ADDRSTRLEN);
+  printf("<%s>\n", str);
+  inet_ntop(AF_INET6, myaddr2, str, INET6_ADDRSTRLEN);
+  printf("<%s>\n", str);
+  inet_ntop(AF_INET6, myaddr3, str, INET6_ADDRSTRLEN);
+  printf("<%s>\n", str);
   printf("%d %d %d %d\n",
 	 memcmp(&ipaddr, &ipaddr3, m_addrsize),
 	 memcmp(&ipaddr, &ipaddr2, m_addrsize),
 	 memcmp(&ipaddr2, &ipaddr, m_addrsize),
 	 memcmp(&ipaddr2, &ipaddr3, m_addrsize));
+
+  printf("%lu,  %lu:%lu:%lu:%lu\n", in4_addr,
+	 ipaddr4.__in6_u.__u6_addr32[0], 
+	 ipaddr4.__in6_u.__u6_addr32[1],
+	 ipaddr4.__in6_u.__u6_addr32[2],
+	 ipaddr4.__in6_u.__u6_addr32[3]);
 
   func();
   printf("\n"); 
