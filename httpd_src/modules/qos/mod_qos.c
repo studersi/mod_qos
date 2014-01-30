@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.477 2014-01-30 20:39:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.478 2014-01-30 21:19:35 pbuchbinder Exp $";
 static const char g_revision[] = "10.29";
 
 /************************************************************************
@@ -4217,6 +4217,8 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
     while(!locked) {
       qos_s_entry_t **e = NULL;
       qos_s_entry_t searchE;
+      searchE.ip6[0] = 0;
+      searchE.ip6[1] = 0;
       if(sconf->qos_cc_forwardedfor) {
         const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
         if(forwardedfor) {
@@ -4640,6 +4642,8 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     qos_s_entry_t **ef = NULL; // client ip entry from header
     qos_s_entry_t searchE;
     qos_s_entry_t searchEFromHeader;
+    searchEFromHeader.ip6[0] = 0;
+    searchEFromHeader.ip6[1] = 0;
 
     if(sconf->qos_cc_prefer_limit || (sconf->req_rate != -1)) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
@@ -4843,6 +4847,9 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     searchE.ip6[0] = cconf->ip6[0];
     searchE.ip6[1] = cconf->ip6[1];
+    searchEFromHeader.ip6[0] = 0;
+    searchEFromHeader.ip6[1] = 0;
+
     if(sconf->qos_cc_forwardedfor) {
       const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
       if(forwardedfor) {
