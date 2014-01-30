@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.474 2014-01-28 15:53:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.475 2014-01-30 20:17:08 pbuchbinder Exp $";
 static const char g_revision[] = "10.29";
 
 /************************************************************************
@@ -118,6 +118,8 @@ static const char g_revision[] = "10.29";
 #ifndef QS_LOG_REPEAT
 #define QS_LOG_REPEAT     20
 #endif
+
+#define QS_IP4IN6         "::ffff:"
 
 #define QS_PARP_Q         "qos-parp-query"
 #define QS_PARP_QUERY     "qos-query"
@@ -296,7 +298,7 @@ typedef struct {
 } qos_s_entry_limit_conf_t;
 
 typedef struct {
-  unsigned long ip;
+  unsigned long ip6[2];
   time_t lowrate;
   /* behavior */
   unsigned int html;
@@ -447,7 +449,7 @@ typedef struct {
  * ip entry
  */
 typedef struct qs_ip_entry_st {
-  unsigned long ip;
+  unsigned long ip6[2];
   int counter;
   int error;
 } qs_ip_entry_t;
@@ -719,7 +721,7 @@ typedef struct {
  * connection configuration
  */
 typedef struct {
-  unsigned long ip;
+  unsigned long ip6[2];
   conn_rec *c;
   char *evmsg;
   qos_srv_config *sconf;
@@ -843,10 +845,6 @@ static int m_enable_audit = 0;
 APR_DECLARE_OPTIONAL_FN(int, ssl_is_https, (conn_rec *));
 static APR_OPTIONAL_FN_TYPE(ssl_is_https) *qos_is_https = NULL;
 
-/************************************************************************
- * private functions
- ***********************************************************************/
-
 /* simple header rules allowing "the usual" header formats only (even drop requests using
    extensions which are used rarely) */
 /* reserved (to be escaped): {}[]()^$.|*+?\ */
@@ -958,6 +956,54 @@ static const qos_her_t qs_res_header_rules[] = {
   { "X-XSS-Protection", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { NULL, NULL, 0, 0 }
 };
+
+/************************************************************************
+ * private functions
+ ***********************************************************************/
+
+/**
+ * Converts an ip long array back to a string representation
+ *
+ * @param pool
+ * @param src Array of two unsigned long
+ * @return String or null for an invalid address
+ */
+static char *qos_ip_long2str(apr_pool_t *pool, const void *src) {
+  char *dst = apr_pcalloc(pool, INET6_ADDRSTRLEN);
+  char *ret = (char *)inet_ntop(AF_INET6, src, dst, INET6_ADDRSTRLEN);
+  if(ret) {
+    if((strncmp(ret, QS_IP4IN6, 7) == 0) &&
+       strchr(ret, '.')) {
+      ret = &ret[7];
+    }
+  }
+  return ret;
+}
+
+/**
+ * Converts an ip string to long array (128 bit) representation
+ *
+ * @param src String representation, e.g. 139.12.33.1 or 1::8
+ * @param dst Pointer to array of unsigned long (2) (contains "{ 0, 0 }" on errror)
+ * @return 1 on success, 0 on error
+ */
+static int qos_ip_str2long(const char *src, void *dst) {
+  char str[INET6_ADDRSTRLEN];
+  const char *convert = src;
+  unsigned long *n = dst;
+  n[0] = 0;
+  n[1] = 0;
+  if(convert == NULL) {
+    return 0;
+  }
+  if((strchr(convert, ':') == NULL) && 
+     (strlen(convert) <= 15)) {
+    // looks like an IPv4 address
+    sprintf(str, QS_IP4IN6"%s", src);
+    convert = str;
+  }
+  return inet_pton(AF_INET6, convert, dst);
+}
 
 /**
  * Studies pcre pattern (for perfomance improvement) and sets match limits.
@@ -1222,8 +1268,10 @@ static char *qos_strnstr(const char *s1, const char *s2, int len) {
 static int qos_cc_comp(const void *_pA, const void *_pB) {
   qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
   qos_s_entry_t *pB=*(( qos_s_entry_t **)_pB);
-  if(pA->ip > pB->ip) return 1;
-  if(pA->ip < pB->ip) return -1;
+  if(pA->ip6[0] > pB->ip6[0]) return 2;
+  if(pA->ip6[0] < pB->ip6[0]) return -2;
+  if(pA->ip6[1] > pB->ip6[1]) return 1;
+  if(pA->ip6[1] < pB->ip6[1]) return -1;
   return 0;
 }
 
@@ -1395,7 +1443,7 @@ static void qos_cc_free(qos_s_t *s) {
  */
 static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  int mod = pA->ip % m_qos_cc_partition;
+  int mod = pA->ip6[1] % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
   pB = bsearch((const void *)&pA, (const void *)&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_comp);
@@ -1417,7 +1465,7 @@ static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
  */
 static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  int mod = pA->ip % m_qos_cc_partition;
+  int mod = pA->ip6[0] % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
   s->t = now;
@@ -1426,7 +1474,8 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
     s->num++;
   }
   pB = &s->timed[start];
-  (*pB)->ip = pA->ip;
+  (*pB)->ip6[0] = pA->ip6[0];
+  (*pB)->ip6[1] = pA->ip6[1];
   (*pB)->time = now;
   qsort(&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_comp);
 
@@ -2192,7 +2241,8 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     act->conn->conn_ip = ce;
     act->conn->connections = 0;
     for(i = 0; i < act->conn->conn_ip_len; i++) {
-      ce->ip = 0;
+      ce->ip6[0] = 0;
+      ce->ip6[1] = 0;
       ce->counter = 0;
       ce->error = 0;
       ce++;
@@ -2344,22 +2394,6 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 }
 
 /**
- * Converts a ip to string representation
- * TODO: only ipv4 support
- */
-static char *qos_ip_long2str(request_rec *r, unsigned long ip) {
-  int a,b,c,d;
-  a = ip % 256;
-  ip = ip / 256;
-  b = ip % 256;
-  ip = ip / 256;
-  c = ip % 256;
-  ip = ip / 256;
-  d = ip % 256;
-  return apr_psprintf(r->pool, "%d.%d.%d.%d", a, b, c, d);
-}
-
-/**
  * Verifies if the string is a number
  * @param num Number to test
  * @param 1 if numeric (0 if not)
@@ -2376,45 +2410,6 @@ static int qos_is_num(const char *num) {
 }
 
 /**
- * Converts an ip string to a long
- * TODO: only ipv4 support
- */
-static unsigned long qos_ip_str2long(request_rec *r, const char *ip) {
-  char *p;
-  char *i = apr_pstrdup(r->pool, ip);
-  unsigned long addr = 0;
-
-  p = strchr(i, '.');
-  if(!p) return 0;
-  p[0] = '\0';
-  if(!qos_is_num(i)) return 0;
-  addr += (atol(i));
-  i = p;
-  i++;
-
-  p = strchr(i, '.');
-  if(!p) return 0;
-  p[0] = '\0';
-  if(!qos_is_num(i)) return 0;
-  addr += (atol(i) * 256);
-  i = p;
-  i++;
-
-  p = strchr(i, '.');
-  if(!p) return 0;
-  p[0] = '\0';
-  if(!qos_is_num(i)) return 0;
-  addr += (atol(i) * 65536);
-  i = p;
-  i++;
-
-  if(!qos_is_num(i)) return 0;
-  addr += (atol(i) * 16777216);
-
-  return addr;
-}
-
-/**
  * Helper for the status viewer (unsigned long to char).
  */
 static void qos_collect_ip(request_rec *r, qos_srv_config *sconf,
@@ -2424,15 +2419,15 @@ static void qos_collect_ip(request_rec *r, qos_srv_config *sconf,
   qs_ip_entry_t *conn_ip = sconf->act->conn->conn_ip;
   apr_global_mutex_lock(sconf->act->lock);   /* @CRT8 */
   while(i) {
-    if(conn_ip->ip) {
+    if(conn_ip->ip6[0] || conn_ip->ip6[1]) {
       char *red = "style=\"background-color: rgb(240,153,155);\"";
       if(html) {
         apr_table_addn(entries, apr_psprintf(r->pool, "%s</td><td %s colspan=\"3\">%d",
-                                             qos_ip_long2str(r, conn_ip->ip),
+                                             qos_ip_long2str(r->pool, conn_ip->ip6),
                                              ((limit != -1) && conn_ip->counter >= limit) ? red : "",
                                              conn_ip->counter), "");
       } else {
-        apr_table_addn(entries, qos_ip_long2str(r, conn_ip->ip), apr_psprintf(r->pool, "%d", conn_ip->counter));
+        apr_table_addn(entries, qos_ip_long2str(r->pool, conn_ip->ip6), apr_psprintf(r->pool, "%d", conn_ip->counter));
       }
     }
     conn_ip++;
@@ -2451,7 +2446,8 @@ static int qos_count_free_ip(qos_srv_config *sconf) {
   qs_ip_entry_t *conn_ip = sconf->act->conn->conn_ip;
   apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
   while(i) {
-    if(conn_ip->ip != 0) {
+    if((conn_ip->ip6[0] != 0) ||
+       (conn_ip->ip6[1] != 0)) {
       c--;
     }
     conn_ip++;
@@ -2476,7 +2472,7 @@ static int qos_inc_ip(qos_srv_config *sconf,
   int num = -1;
   qs_ip_entry_t *free = NULL;
   int i = cconf->sconf->act->conn->conn_ip_len / QS_MEM_SEG; // size of the array
-  int seqnum = (cconf->ip % QS_MEM_SEG) * i;                 // array offset
+  int seqnum = (cconf->ip6[1] % QS_MEM_SEG) * i;             // array offset
   qs_ip_entry_t *conn_ip = cconf->sconf->act->conn->conn_ip;
   conn_ip = &conn_ip[seqnum];                                // address of the first entry
 
@@ -2484,11 +2480,14 @@ static int qos_inc_ip(qos_srv_config *sconf,
 
   // search the whole list (until we find an exiting entry for this ip)
   while(i) {
-    if(conn_ip->ip == 0 && free == NULL) {
+    if((conn_ip->ip6[0] == 0) &&
+       (conn_ip->ip6[1] == 0) &&
+       (free == NULL)) {
       // first free entry
       free = conn_ip;
     }
-    if(conn_ip->ip == cconf->ip) {
+    if((conn_ip->ip6[0] == cconf->ip6[0]) &&
+       (conn_ip->ip6[1] == cconf->ip6[1])) {
       // found an existing entry
       conn_ip->counter++;
       num = conn_ip->counter;
@@ -2501,7 +2500,8 @@ static int qos_inc_ip(qos_srv_config *sconf,
   if(num == -1) {
     // no entry found, use the first free entry
     if(free) {
-      free->ip = cconf->ip;
+      free->ip6[0] = cconf->ip6[0];
+      free->ip6[1] = cconf->ip6[1];
       free->counter++;
       num = free->counter;
       *e = free;
@@ -2523,17 +2523,19 @@ static int qos_inc_ip(qos_srv_config *sconf,
  */
 static void qos_dec_ip(qs_conn_ctx *cconf) {
   int i = cconf->sconf->act->conn->conn_ip_len / QS_MEM_SEG;
-  int seqnum = (cconf->ip % QS_MEM_SEG) * i;
+  int seqnum = (cconf->ip6[1] % QS_MEM_SEG) * i;
   qs_ip_entry_t *conn_ip = cconf->sconf->act->conn->conn_ip;
   conn_ip = &conn_ip[seqnum];
   apr_global_mutex_lock(cconf->sconf->act->lock);   /* @CRT2 */
   while(i) {
-    if(conn_ip->ip == cconf->ip) {
+    if((conn_ip->ip6[0] == cconf->ip6[0]) &&
+       (conn_ip->ip6[1] == cconf->ip6[1])) {
       // entry found, decrement and exit
       conn_ip->counter--;
       if(conn_ip->counter == 0) {
         // entry is no longer used by this ip
-        conn_ip->ip = 0;
+        conn_ip->ip6[0] = 0;
+        conn_ip->ip6[1] = 0;
         conn_ip->error = 0;
       }
       break;
@@ -4214,13 +4216,11 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
     /* wait until we get a lock */
     while(!locked) {
       qos_s_entry_t **e = NULL;
-      qos_s_entry_t new;
-      new.ip = 0;
+      qos_s_entry_t searchE;
       if(sconf->qos_cc_forwardedfor) {
         const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
         if(forwardedfor) {
-          new.ip = qos_ip_str2long(r, forwardedfor);
-          if(new.ip == 0) {
+          if(qos_ip_str2long(forwardedfor, &searchE.ip6) == 0) {
             if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
               ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                             QOS_LOG_PFX(069)"no valid IP header found (@hp):"
@@ -4247,13 +4247,16 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
           }
         }
       }
-      if(new.ip == 0) {
-        new.ip = cconf->ip;
+      if((searchE.ip6[0] == 0) &&
+         (searchE.ip6[1] == 0)) {
+        // use real ip from the connection
+        searchE.ip6[0] = cconf->ip6[0];
+        searchE.ip6[1] = cconf->ip6[1];
       }
       apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36 */
-      e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
+      e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
       if(!e) {
-        e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
+        e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
       }
       /* Which request is getting the lock? We assume all requests comming
          from the same client (no proxy), so it's up to the client how many
@@ -4305,13 +4308,14 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
     int vip = 0;
     int count = 0;
     qos_s_entry_t **e = NULL;
-    qos_s_entry_t new;
+    qos_s_entry_t searchE;
     rctx->cc_event_req_set = 1;
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT33 */
-    new.ip = cconf->ip;
-    e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
+    searchE.ip6[0] = cconf->ip6[0];
+    searchE.ip6[1] = cconf->ip6[1];
+    e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, apr_time_sec(r->request_time));
+      e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     }
     (*e)->event_req++;
     count = (*e)->event_req;
@@ -4634,9 +4638,8 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     apr_time_t now = apr_time_sec(r->request_time);
     qos_s_entry_t **e = NULL;
     qos_s_entry_t **ef = NULL; // client ip entry from header
-    qos_s_entry_t ne;
-    qos_s_entry_t nef;
-    nef.ip = 0;
+    qos_s_entry_t searchE;
+    qos_s_entry_t searchEFromHeader;
 
     if(sconf->qos_cc_prefer_limit || (sconf->req_rate != -1)) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
@@ -4658,7 +4661,8 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       }
     }
 
-    ne.ip = cconf->ip;
+    searchE.ip6[0] = cconf->ip6[0];
+    searchE.ip6[1] = cconf->ip6[1];
     if(sconf->qos_cc_forwardedfor) {
       const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
       if(forwardedfor == NULL && r->prev) {
@@ -4670,8 +4674,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         forwardedfor = apr_table_get(r->main->headers_in, sconf->qos_cc_forwardedfor);
       }
       if(forwardedfor) {
-        nef.ip = qos_ip_str2long(r, forwardedfor);
-        if(nef.ip == 0) {
+        if(qos_ip_str2long(forwardedfor, &searchEFromHeader.ip6) == 0) {
           if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                           QOS_LOG_PFX(069)"no valid IP header found (@logger):"
@@ -4683,6 +4686,11 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
           }
         }
+        fprintf(stderr, "$$$ CHECK %s => %lu %lu => %s\n", 
+                forwardedfor,
+                searchEFromHeader.ip6[0], searchEFromHeader.ip6[1],
+                qos_ip_long2str(r->pool, searchEFromHeader.ip6));
+        fflush(stderr);
       } else {
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -4696,14 +4704,14 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       }
     }
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
-    e = qos_cc_get0(u->qos_cc, &ne, apr_time_sec(r->request_time));
+    e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &ne, apr_time_sec(r->request_time));
+      e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     }
-    if(nef.ip) {
-      ef = qos_cc_get0(u->qos_cc, &nef, apr_time_sec(r->request_time));
+    if(searchEFromHeader.ip6[0] && searchEFromHeader.ip6[1]) {
+      ef = qos_cc_get0(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
       if(!ef) {
-        ef = qos_cc_set(u->qos_cc, &nef, apr_time_sec(r->request_time));
+        ef = qos_cc_set(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
       }
     } else {
       ef = e; // use either ip from header or connection
@@ -4826,18 +4834,17 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     int req_per_sec_block_rate = 0;
     qos_s_entry_t **e = NULL;
     qos_s_entry_t **ef = NULL;
-    qos_s_entry_t ne;
-    qos_s_entry_t nef;
+    qos_s_entry_t searchE;
+    qos_s_entry_t searchEFromHeader;
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     const char *forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-    ne.ip = cconf->ip;
-    nef.ip = 0;
+    searchE.ip6[0] = cconf->ip6[0];
+    searchE.ip6[1] = cconf->ip6[1];
     if(sconf->qos_cc_forwardedfor) {
       const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
       if(forwardedfor) {
-        nef.ip = qos_ip_str2long(r, forwardedfor);
-        if(nef.ip == 0) {
+        if(qos_ip_str2long(forwardedfor, &searchEFromHeader.ip6) == 0) {
           if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                           QOS_LOG_PFX(069)"no valid IP header found (@hp):"
@@ -4865,17 +4872,17 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       }
     }
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT17 */
-    e = qos_cc_get0(u->qos_cc, &ne, apr_time_sec(r->request_time));
+    e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &ne, apr_time_sec(r->request_time));
+      e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     } else {
       /* update time */
       (*e)->time = apr_time_sec(r->request_time);
     }
-    if(nef.ip) {
-      ef = qos_cc_get0(u->qos_cc, &nef, apr_time_sec(r->request_time));
+    if(searchEFromHeader.ip6[0] && searchEFromHeader.ip6[1]) {
+      ef = qos_cc_get0(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
       if(!ef) {
-        ef = qos_cc_set(u->qos_cc, &nef, apr_time_sec(r->request_time));
+        ef = qos_cc_set(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
       } else {
         /* update time */
         (*ef)->time = apr_time_sec(r->request_time);
@@ -5138,12 +5145,13 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
   int ret = DECLINED;
   if(cconf->sconf->has_qos_cc) {
     qos_s_entry_t **e = NULL;
-    qos_s_entry_t ne;
-    ne.ip = cconf->ip;
+    qos_s_entry_t searchE;
+    searchE.ip6[0] = cconf->ip6[0];
+    searchE.ip6[1] = cconf->ip6[1];
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT14 */
-    e = qos_cc_get0(u->qos_cc, &ne, 0);
+    e = qos_cc_get0(u->qos_cc, &searchE, 0);
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &ne, time(NULL));
+      e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
     }
     /* early vip detection */
     if((*e)->vip) {
@@ -5403,74 +5411,6 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
   }
 }
 
-static unsigned long qos_crc32_tab[] = {
-  0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL, 0x076dc419L,
-  0x706af48fL, 0xe963a535L, 0x9e6495a3L, 0x0edb8832L, 0x79dcb8a4L,
-  0xe0d5e91eL, 0x97d2d988L, 0x09b64c2bL, 0x7eb17cbdL, 0xe7b82d07L,
-  0x90bf1d91L, 0x1db71064L, 0x6ab020f2L, 0xf3b97148L, 0x84be41deL,
-  0x1adad47dL, 0x6ddde4ebL, 0xf4d4b551L, 0x83d385c7L, 0x136c9856L,
-  0x646ba8c0L, 0xfd62f97aL, 0x8a65c9ecL, 0x14015c4fL, 0x63066cd9L,
-  0xfa0f3d63L, 0x8d080df5L, 0x3b6e20c8L, 0x4c69105eL, 0xd56041e4L,
-  0xa2677172L, 0x3c03e4d1L, 0x4b04d447L, 0xd20d85fdL, 0xa50ab56bL,
-  0x35b5a8faL, 0x42b2986cL, 0xdbbbc9d6L, 0xacbcf940L, 0x32d86ce3L,
-  0x45df5c75L, 0xdcd60dcfL, 0xabd13d59L, 0x26d930acL, 0x51de003aL,
-  0xc8d75180L, 0xbfd06116L, 0x21b4f4b5L, 0x56b3c423L, 0xcfba9599L,
-  0xb8bda50fL, 0x2802b89eL, 0x5f058808L, 0xc60cd9b2L, 0xb10be924L,
-  0x2f6f7c87L, 0x58684c11L, 0xc1611dabL, 0xb6662d3dL, 0x76dc4190L,
-  0x01db7106L, 0x98d220bcL, 0xefd5102aL, 0x71b18589L, 0x06b6b51fL,
-  0x9fbfe4a5L, 0xe8b8d433L, 0x7807c9a2L, 0x0f00f934L, 0x9609a88eL,
-  0xe10e9818L, 0x7f6a0dbbL, 0x086d3d2dL, 0x91646c97L, 0xe6635c01L,
-  0x6b6b51f4L, 0x1c6c6162L, 0x856530d8L, 0xf262004eL, 0x6c0695edL,
-  0x1b01a57bL, 0x8208f4c1L, 0xf50fc457L, 0x65b0d9c6L, 0x12b7e950L,
-  0x8bbeb8eaL, 0xfcb9887cL, 0x62dd1ddfL, 0x15da2d49L, 0x8cd37cf3L,
-  0xfbd44c65L, 0x4db26158L, 0x3ab551ceL, 0xa3bc0074L, 0xd4bb30e2L,
-  0x4adfa541L, 0x3dd895d7L, 0xa4d1c46dL, 0xd3d6f4fbL, 0x4369e96aL,
-  0x346ed9fcL, 0xad678846L, 0xda60b8d0L, 0x44042d73L, 0x33031de5L,
-  0xaa0a4c5fL, 0xdd0d7cc9L, 0x5005713cL, 0x270241aaL, 0xbe0b1010L,
-  0xc90c2086L, 0x5768b525L, 0x206f85b3L, 0xb966d409L, 0xce61e49fL,
-  0x5edef90eL, 0x29d9c998L, 0xb0d09822L, 0xc7d7a8b4L, 0x59b33d17L,
-  0x2eb40d81L, 0xb7bd5c3bL, 0xc0ba6cadL, 0xedb88320L, 0x9abfb3b6L,
-  0x03b6e20cL, 0x74b1d29aL, 0xead54739L, 0x9dd277afL, 0x04db2615L,
-  0x73dc1683L, 0xe3630b12L, 0x94643b84L, 0x0d6d6a3eL, 0x7a6a5aa8L,
-  0xe40ecf0bL, 0x9309ff9dL, 0x0a00ae27L, 0x7d079eb1L, 0xf00f9344L,
-  0x8708a3d2L, 0x1e01f268L, 0x6906c2feL, 0xf762575dL, 0x806567cbL,
-  0x196c3671L, 0x6e6b06e7L, 0xfed41b76L, 0x89d32be0L, 0x10da7a5aL,
-  0x67dd4accL, 0xf9b9df6fL, 0x8ebeeff9L, 0x17b7be43L, 0x60b08ed5L,
-  0xd6d6a3e8L, 0xa1d1937eL, 0x38d8c2c4L, 0x4fdff252L, 0xd1bb67f1L,
-  0xa6bc5767L, 0x3fb506ddL, 0x48b2364bL, 0xd80d2bdaL, 0xaf0a1b4cL,
-  0x36034af6L, 0x41047a60L, 0xdf60efc3L, 0xa867df55L, 0x316e8eefL,
-  0x4669be79L, 0xcb61b38cL, 0xbc66831aL, 0x256fd2a0L, 0x5268e236L,
-  0xcc0c7795L, 0xbb0b4703L, 0x220216b9L, 0x5505262fL, 0xc5ba3bbeL,
-  0xb2bd0b28L, 0x2bb45a92L, 0x5cb36a04L, 0xc2d7ffa7L, 0xb5d0cf31L,
-  0x2cd99e8bL, 0x5bdeae1dL, 0x9b64c2b0L, 0xec63f226L, 0x756aa39cL,
-  0x026d930aL, 0x9c0906a9L, 0xeb0e363fL, 0x72076785L, 0x05005713L,
-  0x95bf4a82L, 0xe2b87a14L, 0x7bb12baeL, 0x0cb61b38L, 0x92d28e9bL,
-  0xe5d5be0dL, 0x7cdcefb7L, 0x0bdbdf21L, 0x86d3d2d4L, 0xf1d4e242L,
-  0x68ddb3f8L, 0x1fda836eL, 0x81be16cdL, 0xf6b9265bL, 0x6fb077e1L,
-  0x18b74777L, 0x88085ae6L, 0xff0f6a70L, 0x66063bcaL, 0x11010b5cL,
-  0x8f659effL, 0xf862ae69L, 0x616bffd3L, 0x166ccf45L, 0xa00ae278L,
-  0xd70dd2eeL, 0x4e048354L, 0x3903b3c2L, 0xa7672661L, 0xd06016f7L,
-  0x4969474dL, 0x3e6e77dbL, 0xaed16a4aL, 0xd9d65adcL, 0x40df0b66L,
-  0x37d83bf0L, 0xa9bcae53L, 0xdebb9ec5L, 0x47b2cf7fL, 0x30b5ffe9L,
-  0xbdbdf21cL, 0xcabac28aL, 0x53b39330L, 0x24b4a3a6L, 0xbad03605L,
-  0xcdd70693L, 0x54de5729L, 0x23d967bfL, 0xb3667a2eL, 0xc4614ab8L,
-  0x5d681b02L, 0x2a6f2b94L, 0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL,
-  0x2d02ef8dL
-};
-
-/**
- * Simple hash (to represent IPv6 within unsigned long)
- */
-unsigned long qos_crc32(const char *s, int len) {
-  unsigned int i;
-  unsigned long crc32val;
-  crc32val = 0;
-  for (i = 0;  i < len;  i ++) {
-    crc32val = qos_crc32_tab[(crc32val ^ s[i]) & 0xff] ^ (crc32val >> 8);
-  }
-  return crc32val;
-}
-
 /**
  * Comperator for bsearch function
  */
@@ -5527,23 +5467,6 @@ static unsigned long qos_geo_str2long(apr_pool_t *pool, const char *ip) {
 }
 
 /**
- * Translagtes an address string to it's numeric representation.
- *
- * TODO: only ipv4 support (hash for IPv6 addresses)
- *
- * @param address IP address sting
- * @return IP address (of hash)
- */
-static unsigned long qos_inet_addr(const char *address) {
-  long ip = inet_addr(address);
-  if(ip == -1) {
-    /* not a ipv4 address, generate a checksum instead ("kind of" v6 support) */
-    ip = qos_crc32(address, strlen(address));
-  }
-  return ip;
-}
-
-/**
  * Viewer settings about ip address information.
  */
 static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) {
@@ -5596,6 +5519,12 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
   
     if(sconf->has_qos_cc) {
       const char *address = apr_table_get(qt, "address");
+      if(address) {
+        int escerr = 0;
+        char *ta = apr_pstrdup(r->pool, address);
+        qos_unescaping(ta, QOS_DEC_MODE_FLAGS_URL, &escerr);
+        address = ta;
+      }
       ap_rputs("    <tr class=\"rows\">\n"
                "      <td colspan=\"1\">search a client ip entry</td>\n", r); 
       ap_rputs("      <td colspan=\"8\">\n", r);
@@ -5611,16 +5540,16 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
       ap_rputs("      </td>\n", r);
       ap_rputs("    </tr>\n", r);
       if(address) {
-        unsigned long ip = qos_inet_addr(address);
+        unsigned long ip[2];
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-        if(ip) {
+        if(qos_ip_str2long(address, &ip)) {
           unsigned long html;
           unsigned long cssjs;
           unsigned long img;
           unsigned long other;
           unsigned long notmodified;
           qos_s_entry_t **e = NULL;
-          qos_s_entry_t new;
+          qos_s_entry_t searchE;
           int found = 0;
           apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT20 */
           html = u->qos_cc->html;
@@ -5628,24 +5557,25 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           img = u->qos_cc->img;
           other = u->qos_cc->other;
           notmodified = u->qos_cc->notmodified;
-          new.ip = ip;
-          e = qos_cc_get0(u->qos_cc, &new, 0);
+          searchE.ip6[0] = ip[0];
+          searchE.ip6[1] = ip[1];
+          e = qos_cc_get0(u->qos_cc, &searchE, 0);
           if(e) {
             found = 1;
-            new.vip = (*e)->vip;
-            new.lowrate = (*e)->lowrate;
-            new.time = (*e)->time;
-            new.block = (*e)->block;
-            new.block_time = (*e)->block_time;
-            new.limit = (*e)->limit;
-            new.req_per_sec = (*e)->req_per_sec;
-            new.req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
-            new.other = (*e)->other - 1;
-            new.html = (*e)->html - 1;
-            new.cssjs = (*e)->cssjs - 1;
-            new.img = (*e)->img - 1;
-            new.notmodified = (*e)->notmodified - 1;
-            new.event_req = (*e)->event_req;
+            searchE.vip = (*e)->vip;
+            searchE.lowrate = (*e)->lowrate;
+            searchE.time = (*e)->time;
+            searchE.block = (*e)->block;
+            searchE.block_time = (*e)->block_time;
+            searchE.limit = (*e)->limit;
+            searchE.req_per_sec = (*e)->req_per_sec;
+            searchE.req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
+            searchE.other = (*e)->other - 1;
+            searchE.html = (*e)->html - 1;
+            searchE.cssjs = (*e)->cssjs - 1;
+            searchE.img = (*e)->img - 1;
+            searchE.notmodified = (*e)->notmodified - 1;
+            searchE.event_req = (*e)->event_req;
           }
           apr_global_mutex_unlock(u->qos_cc->lock);            /* @CRT20 */
           ap_rputs("    <tr class=\"rowt\">\n", r);
@@ -5668,13 +5598,13 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             ap_rputs("<td colspan=\"8\"><i>not found</i></td>\n", r);
           } else {
             char buf[1024];
-            struct tm *ptr = localtime(&new.time);
+            struct tm *ptr = localtime(&searchE.time);
             strftime(buf, sizeof(buf), "%d.%m.%Y %H:%M:%S", ptr);
             ap_rprintf(r, "<td colspan=\"2\">%s</td>", buf);
-            ap_rprintf(r, "<td colspan=\"1\">%s</td>", new.vip ? "yes" : "no");
-            if(sconf->qos_cc_block_time > (time(NULL) - new.block_time)) {
+            ap_rprintf(r, "<td colspan=\"1\">%s</td>", searchE.vip ? "yes" : "no");
+            if(sconf->qos_cc_block_time > (time(NULL) - searchE.block_time)) {
               ap_rprintf(r, "<td colspan=\"1\">%d, %ld&nbsp;sec</td>",
-                         new.block, time(NULL) - new.block_time);
+                         searchE.block, time(NULL) - searchE.block_time);
             } else {
               ap_rprintf(r, "<td colspan=\"1\">no</td>");
             }
@@ -5683,9 +5613,9 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
               int limitTableIndex;
               qos_s_entry_limit_conf_t *eventLimitConf = qos_getDefaultQSLimitEvent(u, &limitTableIndex);
               if(eventLimitConf) {
-                if(eventLimitConf->limit_time > (time(NULL) - new.limit[limitTableIndex].limit_time)) {
+                if(eventLimitConf->limit_time > (time(NULL) - searchE.limit[limitTableIndex].limit_time)) {
                   ap_rprintf(r, "<td colspan=\"1\">%d, %ld&nbsp;sec</td>",
-                             new.limit[limitTableIndex].limit, time(NULL) - new.limit[limitTableIndex].limit_time);
+                             searchE.limit[limitTableIndex].limit, time(NULL) - searchE.limit[limitTableIndex].limit_time);
                 } else {
                   ap_rprintf(r, "<td colspan=\"1\">no</td>");
                 }
@@ -5695,9 +5625,9 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             } else {
               ap_rprintf(r, "<td colspan=\"1\">off</td>");
             }
-            ap_rprintf(r, "<td colspan=\"1\">%ld</td>", new.req_per_sec);
-            ap_rprintf(r, "<td colspan=\"1\">%d&nbsp;ms</td>", new.req_per_sec_block_rate);
-            ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", new.lowrate > 0 ? "yes" : "no");
+            ap_rprintf(r, "<td colspan=\"1\">%ld</td>", searchE.req_per_sec);
+            ap_rprintf(r, "<td colspan=\"1\">%d&nbsp;ms</td>", searchE.req_per_sec_block_rate);
+            ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", searchE.lowrate > 0 ? "yes" : "no");
 
             ap_rputs("</tr>\n", r);
             ap_rprintf(r, "<tr class=\"rows\">"
@@ -5706,7 +5636,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                        "<div title=\"QS_ClientEventRequestLimit\">events:</div></td>"
                        "<td style=\"width:9%%\">%s</td>"
                        "<td colspan=\"1\"></td>"
-                       "</tr>", (sconf->qos_cc_event_req == -1 ? "off" : apr_psprintf(r->pool, "%d", new.event_req)));
+                       "</tr>", (sconf->qos_cc_event_req == -1 ? "off" : apr_psprintf(r->pool, "%d", searchE.event_req)));
           }
           ap_rprintf(r, "<tr class=\"rowt\">"
                      "<td colspan=\"4\"></td>"
@@ -5724,7 +5654,11 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                        "<td style=\"width:9%%\">%u</td>"
                        "<td style=\"width:9%%\">%u</td>"
                        "<td style=\"width:9%%\">%u</td>"
-                       "</tr>", new.html, new.cssjs, new.img, new.other, new.notmodified);
+                       "</tr>", searchE.html,
+                       searchE.cssjs,
+                       searchE.img,
+                       searchE.other,
+                       searchE.notmodified);
           }
           ap_rprintf(r, "<tr class=\"rows\">"
                      "<td colspan=\"3\"></td>"
@@ -5881,13 +5815,15 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   }
 #ifdef QS_INTERNAL_TEST
   {
-    unsigned long remoteip = qos_inet_addr(QS_CONN_REMOTEIP(r->connection));
+    unsigned long remoteip[2];
+    qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &remoteip);
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     if(cconf) {
-      remoteip = cconf->ip;
+      remoteip[0] = cconf->ip6[0];
+      remoteip[1] = cconf->ip6[1];
     }
     ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE<br>\n", r);
-    ap_rprintf(r, "client ip=%s</p>\n", qos_ip_long2str(r, remoteip));
+    ap_rprintf(r, "client ip=%s</p>\n", qos_ip_long2str(r->pool, remoteip));
   }
 #endif
   if(strcmp(r->handler, "qos-viewer") == 0) {
@@ -6200,14 +6136,19 @@ static void qos_disable_req_rate(server_rec *bs, const char *msg) {
   }
 }
 
-/** determine ip (for QS_Block for connection errors) */
+/** 
+ * stores the IP of the connection into the array and
+ * increments the array pointer (for QS_Block for connection errors)
+ */
 static unsigned long *qos_inc_block(conn_rec *c, qos_srv_config *sconf,
                                     qs_conn_ctx *cconf, unsigned long *ip) {
   if(sconf->qos_cc_block &&
      apr_table_get(sconf->setenvstatus_t, QS_CLOSE) &&
      !apr_table_get(c->notes, QS_BLOCK_SEEN)) {
     apr_table_set(c->notes, QS_BLOCK_SEEN, "");
-    *ip = cconf->ip;
+    *ip = cconf->ip6[0];
+    ip++;
+    *ip = cconf->ip6[1];
     ip++;
   }
   return ip;
@@ -6229,7 +6170,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   // list of ip addr. for whose we shall inc. block count
-  unsigned long *ips = malloc(sconf->max_clients * sizeof(unsigned long)); 
+  unsigned long *ips = calloc(1, sconf->max_clients * sizeof(unsigned long) * 2);
   while(!sconf->inctx_t->exit) {
     unsigned long *ip = ips;
     int currentcon = 0;
@@ -6238,7 +6179,6 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     apr_time_t interval = now - sconf->qs_req_rate_tm;
     int i;
     apr_table_entry_t *entry;
-    *ip = 0;
     sleep(1);
     if(sconf->inctx_t->exit) {
       break;
@@ -6352,13 +6292,15 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     while(ip != ips) {
       qos_user_t *u = qos_get_user_conf(sconf->act->ppool);    
       qos_s_entry_t **e = NULL;
-      qos_s_entry_t new;
-      ip--;
+      qos_s_entry_t searchE;
       apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT38 */
-      new.ip = *ip;
-      e = qos_cc_get0(u->qos_cc, &new, 0);
+      ip--;
+      searchE.ip6[1] = *ip;
+      ip--;
+      searchE.ip6[0] = *ip;
+      e = qos_cc_get0(u->qos_cc, &searchE, 0);
       if(!e) {
-        e = qos_cc_set(u->qos_cc, &new, time(NULL));
+        e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
       }
       /* increment block event */
       (*e)->block++;
@@ -6711,12 +6653,12 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
     if(norequests) {
       qos_user_t *u = qos_get_user_conf(base->sconf->act->ppool);
       qos_s_entry_t **e = NULL;
-      qos_s_entry_t new;
-      new.ip = qos_inet_addr(QS_CONN_REMOTEIP(base->c)); // no ip simulation here
+      qos_s_entry_t searchE;
+      qos_ip_str2long(QS_CONN_REMOTEIP(base->c), &searchE.ip6); // no ip simulation here
       apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT40 */
-      e = qos_cc_get0(u->qos_cc, &new, 0);
+      e = qos_cc_get0(u->qos_cc, &searchE, 0);
       if(!e) {
-        e = qos_cc_set(u->qos_cc, &new, time(NULL));
+        e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
       }
       /* increment block event */
       (*e)->block++;
@@ -6750,15 +6692,16 @@ static apr_status_t qos_cleanup_conn(void *p) {
   if(cconf->sconf->has_qos_cc || cconf->sconf->qos_cc_prefer) {
     qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool);
     qos_s_entry_t **e = NULL;
-    qos_s_entry_t new;
-    new.ip = cconf->ip;
+    qos_s_entry_t searchE;
+    searchE.ip6[0] = cconf->ip6[0];
+    searchE.ip6[1] = cconf->ip6[1];
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT15 */
     if(m_generation == u->generation && u->qos_cc->connections > 0) {
       u->qos_cc->connections--;
     }
-    e = qos_cc_get0(u->qos_cc, &new, 0);
+    e = qos_cc_get0(u->qos_cc, &searchE, 0);
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
     }
     (*e)->events++; // update event activity even there is no valid request (logger)
     if(cconf->is_vip_by_header) {
@@ -6815,13 +6758,13 @@ static int qos_process_connection(conn_rec *c) {
     /* evaluates client ip */
     if((sconf->max_conn_per_ip != -1) ||
        sconf->has_qos_cc) {
-      cconf->ip = qos_inet_addr(QS_CONN_REMOTEIP(c));
+      qos_ip_str2long(QS_CONN_REMOTEIP(c), &cconf->ip6);
 #ifdef QS_INTERNAL_TEST
       /* use one of the predefined ip addresses */
       if(cconf->sconf->enable_testip) {
         char *testid = apr_psprintf(c->pool, "%d", rand()%(QS_SIM_IP_LEN-1));
         const char *testip = apr_table_get(cconf->sconf->testip, testid);
-        cconf->ip = qos_inet_addr(testip);
+        qos_ip_str2long(testip, &cconf->ip6);
       }
 #endif
     }
@@ -7016,12 +6959,12 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   if(sconf->qos_cc_block) {
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     qos_s_entry_t **e = NULL;
-    qos_s_entry_t new;
-    new.ip = qos_inet_addr(QS_CONN_REMOTEIP(c)); // no ip simulation here
+    qos_s_entry_t searchE;
+    qos_ip_str2long(QS_CONN_REMOTEIP(c), &searchE.ip6); // no ip simulation here
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT39 */
-    e = qos_cc_get0(u->qos_cc, &new, 0);
+    e = qos_cc_get0(u->qos_cc, &searchE, 0);
     if(!e) {
-      e = qos_cc_set(u->qos_cc, &new, time(NULL));
+      e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
     }
     if((*e)->block >= sconf->qos_cc_block) {
       apr_time_t now = time(NULL);
@@ -7879,12 +7822,12 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
       if(sconf && sconf->has_qos_cc) {
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
         qos_s_entry_t **e = NULL;
-        qos_s_entry_t new;
+        qos_s_entry_t searchE;
         apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
-        new.ip = qos_inet_addr(QS_CONN_REMOTEIP(inctx->c));
-        e = qos_cc_get0(u->qos_cc, &new, 0);
+        qos_ip_str2long(QS_CONN_REMOTEIP(inctx->c), &searchE.ip6);
+        e = qos_cc_get0(u->qos_cc, &searchE, 0);
         if(!e) {
-          e = qos_cc_set(u->qos_cc, &new, time(NULL));
+          e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
         }
         (*e)->lowrate = time(NULL);
         apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT18 */
@@ -9020,7 +8963,8 @@ static int qos_console_dump(request_rec * r) {
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT35 */
     e = u->qos_cc->ipd;
     for(i = 0; i < u->qos_cc->max; i++) {
-      if(e[i]->ip != 0) {
+      if((e[i]->ip6[0] != 0) ||
+         (e[i]->ip6[1] != 0)) {
         char *k;
         int limit = 0;
         time_t limit_time = 0;
@@ -9035,7 +8979,7 @@ static int qos_console_dump(request_rec * r) {
         }
         k = apr_psprintf(r->pool,
                          "%s: vip=%s lowprio=%s block=%d/%ld limit=%d/%ld", 
-                         qos_ip_long2str(r, e[i]->ip),
+                         qos_ip_long2str(r->pool, e[i]->ip6),
                          e[i]->vip ? "yes" : "no",
                          e[i]->lowrate ? "yes" : "no",
                          e[i]->block,
@@ -9062,7 +9006,7 @@ static int qos_handler_console(request_rec * r) {
   apr_table_t *qt;
   const char *ip;
   const char *cmd;
-  unsigned long addr = 0;
+  unsigned long addr[2];
   qos_srv_config *sconf;
   int status = HTTP_NOT_ACCEPTABLE;;
   if (strcmp(r->handler, "qos-console") != 0) {
@@ -9083,6 +9027,12 @@ static int qos_handler_console(request_rec * r) {
                   QOS_LOG_PFX(070)"console, not acceptable, missing request query (action/address)");
     return HTTP_NOT_ACCEPTABLE;
   }
+  if(ip) {
+    int escerr = 0;
+    char *ta = apr_pstrdup(r->pool, ip);
+    qos_unescaping(ta, QOS_DEC_MODE_FLAGS_URL, &escerr);
+    ip = ta;
+  }
   if(!sconf->has_qos_cc) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(070)"console, client data store has not been enabled");
@@ -9091,13 +9041,11 @@ static int qos_handler_console(request_rec * r) {
   if((strcasecmp(cmd, "search") == 0) && (strcmp(ip, "*") == 0)) {
     return qos_console_dump(r);
   }
-  addr = qos_ip_str2long(r, ip);
-  if(addr == 0) {
+  if(qos_ip_str2long(ip, &addr) == 0) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(070)"console, not acceptable, invalid ip/wrong format");
     return HTTP_NOT_ACCEPTABLE;
   }
-  addr = qos_inet_addr(ip);
   if(sconf->has_qos_cc) {
     char *msg = "not available";
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
@@ -9108,7 +9056,8 @@ static int qos_handler_console(request_rec * r) {
     int limit = 0;
     time_t limit_time = 0;
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT34 */
-    new.ip = addr;
+    new.ip6[0] = addr[0];
+    new.ip6[1] = addr[1];
     e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
     if(!e) {
       if(strcasecmp(cmd, "search") != 0) {
@@ -9172,11 +9121,13 @@ static int qos_handler_console(request_rec * r) {
       ap_set_content_type(r, "text/plain");
       ap_rprintf(r, "%s\n", msg);
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                    QOS_LOG_PFX(071)"console, action '%s' applied to client ip entry '%s'", cmd, ip);
+                    QOS_LOG_PFX(071)"console, action '%s' applied to client ip entry '%s'",
+                    cmd, ip);
     }
   } else {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(070)"console, not acceptable, qos client control has not been activated");
+                  QOS_LOG_PFX(070)"console, not acceptable,"
+                  " qos client control has not been activated");
     status = HTTP_NOT_ACCEPTABLE;
   }
   return status;
