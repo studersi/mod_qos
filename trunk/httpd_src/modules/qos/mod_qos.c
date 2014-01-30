@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.475 2014-01-30 20:17:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.476 2014-01-30 20:31:06 pbuchbinder Exp $";
 static const char g_revision[] = "10.29";
 
 /************************************************************************
@@ -1465,7 +1465,7 @@ static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
  */
 static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  int mod = pA->ip6[0] % m_qos_cc_partition;
+  int mod = pA->ip6[1] % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
   s->t = now;
@@ -4686,11 +4686,13 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
           }
         }
+        /*
         fprintf(stderr, "$$$ CHECK %s => %lu %lu => %s\n", 
                 forwardedfor,
                 searchEFromHeader.ip6[0], searchEFromHeader.ip6[1],
                 qos_ip_long2str(r->pool, searchEFromHeader.ip6));
         fflush(stderr);
+        */
       } else {
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -4857,6 +4859,13 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
           }
         } else {
           forwardedForLogIP = forwardedfor;
+          /*
+          fprintf(stderr, "$$$ CHECK %s => %lu %lu => %s\n", 
+                  forwardedfor,
+                  searchEFromHeader.ip6[0], searchEFromHeader.ip6[1],
+                  qos_ip_long2str(r->pool, searchEFromHeader.ip6));
+          fflush(stderr);
+          */
         }
       } else {
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
