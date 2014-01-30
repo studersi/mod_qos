@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.476 2014-01-30 20:31:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.477 2014-01-30 20:39:48 pbuchbinder Exp $";
 static const char g_revision[] = "10.29";
 
 /************************************************************************
@@ -4710,7 +4710,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     if(!e) {
       e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     }
-    if(searchEFromHeader.ip6[0] && searchEFromHeader.ip6[1]) {
+    if(searchEFromHeader.ip6[0] || searchEFromHeader.ip6[1]) {
       ef = qos_cc_get0(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
       if(!ef) {
         ef = qos_cc_set(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
@@ -4888,7 +4888,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       /* update time */
       (*e)->time = apr_time_sec(r->request_time);
     }
-    if(searchEFromHeader.ip6[0] && searchEFromHeader.ip6[1]) {
+    if(searchEFromHeader.ip6[0] || searchEFromHeader.ip6[1]) {
       ef = qos_cc_get0(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
       if(!ef) {
         ef = qos_cc_set(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
