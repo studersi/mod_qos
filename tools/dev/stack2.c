@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack2.c,v 1.4 2014-01-29 18:10:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack2.c,v 1.5 2014-01-30 20:17:10 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,6 +31,10 @@ static const char revision[] = "$Id: stack2.c,v 1.4 2014-01-29 18:10:20 pbuchbin
 #include <string.h>
 #include <time.h>
 #include <sys/time.h>
+#include <arpa/inet.h>
+
+#include <apr.h>
+#include <apr_strings.h>
 
 #define QSMOD 4
 #define LIMIT 1
@@ -331,7 +335,52 @@ static void func() {
   qoss_free(s);
 }
 
-int main(int argc, char **argv) {
+static char *qos_ip_long2str(apr_pool_t *pool, const void *src) {
+  char *dst = apr_pcalloc(pool, INET6_ADDRSTRLEN);
+  return (char *)inet_ntop(AF_INET6, src, dst, INET6_ADDRSTRLEN);
+}
+
+static int qos_ip_str2long(const char *src, void *dst) {
+  char str[INET6_ADDRSTRLEN];
+  const char *convert = src;
+  unsigned long *n = dst;
+  n[0] = 0;
+  n[1] = 0;
+  if(convert == NULL) {
+    return 0;
+  }
+  if((strchr(convert, ':') == NULL) && 
+     (strlen(convert) <= 15)) {
+    // looks like an IPv4 address
+    sprintf(str, "::ffff:%s", src);
+    convert = str;
+  }
+  return inet_pton(AF_INET6, convert, dst);
+}
+
+int main(int argc, const char * const argv[]) {
+  char *str;
+  apr_pool_t *pool;
+  unsigned long dst[2];
+  int rc;
+  apr_app_initialize(&argc, &argv, NULL);
+  apr_pool_create(&pool, NULL);
+
+  rc = qos_ip_str2long("fc00::112", &dst);
+  printf("%d %lu %lu\n", rc, dst[0], dst[1]);
+  str = qos_ip_long2str(pool, dst);
+  printf("%d %s\n", rc, str);
+
+  rc = qos_ip_str2long("127.0.0.1", &dst);
+  printf("%d %lu %lu\n", rc, dst[0], dst[1]);
+  str = qos_ip_long2str(pool, dst);
+  printf("%d %s\n", rc, str);
+
+  rc = qos_ip_str2long("gaga", &dst);
+  printf("%d %lu %lu\n", rc, dst[0], dst[1]);
+  str = qos_ip_long2str(pool, dst);
+  printf("%d %s\n", rc, str);
+
   func();
   printf("\n"); 
   m_qsmod = 1;
