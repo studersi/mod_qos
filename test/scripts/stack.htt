@@ -1,5 +1,5 @@
 #
-# $Id: stack.htt,v 1.5 2011-07-22 18:55:52 pbuchbinder Exp $
+# $Id: stack.htt,v 1.6 2014-01-31 13:34:58 pbuchbinder Exp $
 #
 # inserts  50'000 client entries and verifies that they are available
 #
@@ -17,7 +17,7 @@ _SET E=1
 _LOOP 4
 _LOOP 10
 _LOOP 50
-_LOOP 25
+_LOOP 23
 
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /console?action=setvip&address=$H.$G.$F.$E HTTP/1.1
@@ -50,7 +50,7 @@ _SET E=1
 _LOOP 4
 _LOOP 10
 _LOOP 50
-_LOOP 25
+_LOOP 23
 
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /console?action=search&address=$H.$G.$F.$E HTTP/1.1
