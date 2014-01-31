@@ -1,3 +1,7 @@
+Version 10.29
+
+ - Supports IPv6 clients.
+
 Version 10.28
 
  - Fixed: QS_ClientEventLimit did overwrite counters of other
