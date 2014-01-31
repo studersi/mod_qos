@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.480 2014-01-31 13:34:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.481 2014-01-31 13:48:37 pbuchbinder Exp $";
 static const char g_revision[] = "10.29";
 
 /************************************************************************
@@ -999,7 +999,7 @@ static char *qos_ip_long2str(apr_pool_t *pool, const void *src) {
 static int qos_ip_str2long(const char *src, void *dst) {
   char str[INET6_ADDRSTRLEN];
   const char *convert = src;
-  unsigned long *n = dst;
+  apr_uint64_t *n = dst;
   n[0] = 0;
   n[1] = 0;
   if(convert == NULL) {
@@ -5573,7 +5573,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
       ap_rputs("      </td>\n", r);
       ap_rputs("    </tr>\n", r);
       if(address) {
-        unsigned long ip[2];
+        apr_uint64_t ip[2];
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
         if(qos_ip_str2long(address, &ip)) {
           unsigned long html;
@@ -5848,7 +5848,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   }
 #ifdef QS_INTERNAL_TEST
   {
-    unsigned long remoteip[2];
+    apr_uint64_t remoteip[2];
     qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &remoteip);
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     if(cconf) {
@@ -6173,8 +6173,8 @@ static void qos_disable_req_rate(server_rec *bs, const char *msg) {
  * stores the IP of the connection into the array and
  * increments the array pointer (for QS_Block for connection errors)
  */
-static unsigned long *qos_inc_block(conn_rec *c, qos_srv_config *sconf,
-                                    qs_conn_ctx *cconf, unsigned long *ip) {
+static apr_uint64_t *qos_inc_block(conn_rec *c, qos_srv_config *sconf,
+                                   qs_conn_ctx *cconf, apr_uint64_t *ip) {
   if(sconf->qos_cc_block &&
      apr_table_get(sconf->setenvstatus_t, QS_CLOSE) &&
      !apr_table_get(c->notes, QS_BLOCK_SEEN)) {
@@ -6203,9 +6203,9 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   // list of ip addr. for whose we shall inc. block count
-  unsigned long *ips = calloc(1, sconf->max_clients * sizeof(unsigned long) * 2);
+  apr_uint64_t *ips = calloc(1, sconf->max_clients * sizeof(apr_uint64_t) * 2);
   while(!sconf->inctx_t->exit) {
-    unsigned long *ip = ips;
+    apr_uint64_t *ip = ips;
     int currentcon = 0;
     int req_rate = qos_req_rate_calc(sconf, &currentcon);
     apr_time_t now = apr_time_sec(apr_time_now());
@@ -9046,7 +9046,7 @@ static int qos_handler_console(request_rec * r) {
   apr_table_t *qt;
   const char *ip;
   const char *cmd;
-  unsigned long addr[2];
+  apr_uint64_t addr[2];
   qos_srv_config *sconf;
   int status = HTTP_NOT_ACCEPTABLE;;
   if (strcmp(r->handler, "qos-console") != 0) {
