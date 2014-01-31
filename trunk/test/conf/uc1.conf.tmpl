@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.24 2014-01-23 20:59:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.25 2014-01-31 15:12:39 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -257,3 +257,47 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    </Location>
 
 </VirtualHost>
+
+<IfDefine uc1v6c>
+QS_SrvMaxConnPerIP      2
+</IfDefine>
+
+<IfDefine v6>
+Listen                  [fc00::111]:##QS_PORT_BASE10##
+
+<VirtualHost [fc00::111]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+
+   ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/
+
+   <Location /qos>
+       SetHandler             qos-viewer
+   </Location>
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
+</VirtualHost>
+
+Listen                  [fc00::112]:##QS_PORT_BASE10##
+
+<VirtualHost [fc00::112]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+
+   ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/
+
+   <Location /qos>
+       SetHandler             qos-viewer
+   </Location>
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
+</VirtualHost>
+</IfDefine>
