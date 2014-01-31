@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.478 2014-01-30 21:19:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.479 2014-01-31 10:20:07 pbuchbinder Exp $";
 static const char g_revision[] = "10.29";
 
 /************************************************************************
@@ -348,6 +348,12 @@ typedef struct {
   /* data */
   int connections;
 } qos_s_t;
+
+typedef enum  {
+  QS_IP_V6_DEFAULT = 0,
+  QS_IP_V6,
+  QS_IP_V4
+} qs_ip_type_e;
 
 typedef enum  {
   QS_CONN_STATE_NEW = 0,
@@ -681,6 +687,7 @@ typedef struct {
   int geodb_size;             /* GLOBAL ONLY */
   int geo_limit;              /* GLOBAL ONLY */
   apr_table_t *geo_priv;      /* GLOBAL ONLY */
+  qs_ip_type_e ip_type;       /* GLOBAL ONLY */
   int server_limit;
   int thread_limit;
   apr_table_t *milestones;
@@ -834,6 +841,8 @@ static const char qos_basis_64[] =
 /* mod_parp, forward and optional function */
 static apr_status_t qos_cleanup_conn(void *p);
 static apr_status_t qos_base_cleanup_conn(void *p);
+
+static qs_ip_type_e m_ip_type = QS_IP_V6_DEFAULT;
 
 APR_DECLARE_OPTIONAL_FN(apr_table_t *, parp_hp_table, (request_rec *));
 APR_DECLARE_OPTIONAL_FN(char *, parp_body_data, (request_rec *, apr_size_t *));
@@ -1275,6 +1284,14 @@ static int qos_cc_comp(const void *_pA, const void *_pB) {
   return 0;
 }
 
+static int qos_cc_compv4(const void *_pA, const void *_pB) {
+  qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
+  qos_s_entry_t *pB=*(( qos_s_entry_t **)_pB);
+  if(pA->ip6[1] > pB->ip6[1]) return 1;
+  if(pA->ip6[1] < pB->ip6[1]) return -1;
+  return 0;
+}
+
 /**
  * Comperator (time search) for the client ip store qos_cc_*() functions (used by bsearch/qsort)
  */
@@ -1446,7 +1463,13 @@ static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   int mod = pA->ip6[1] % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
-  pB = bsearch((const void *)&pA, (const void *)&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_comp);
+  if(m_ip_type == QS_IP_V4) {
+    pB = bsearch((const void *)&pA, (const void *)&s->ipd[start], 
+                 max, sizeof(qos_s_entry_t *), qos_cc_compv4);
+  } else {
+    pB = bsearch((const void *)&pA, (const void *)&s->ipd[start], 
+                 max, sizeof(qos_s_entry_t *), qos_cc_comp);
+  }
   if(pB) {
     if(now != 0) {
       s->t = now;
@@ -1477,7 +1500,11 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->ip6[0] = pA->ip6[0];
   (*pB)->ip6[1] = pA->ip6[1];
   (*pB)->time = now;
-  qsort(&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_comp);
+  if(m_ip_type == QS_IP_V4) {
+    qsort(&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_compv4);
+  } else {
+    qsort(&s->ipd[start], max, sizeof(qos_s_entry_t *), qos_cc_comp);
+  }
 
   (*pB)->vip = 0;
   (*pB)->lowrate = 0;
@@ -4690,13 +4717,6 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
           }
         }
-        /*
-        fprintf(stderr, "$$$ CHECK %s => %lu %lu => %s\n", 
-                forwardedfor,
-                searchEFromHeader.ip6[0], searchEFromHeader.ip6[1],
-                qos_ip_long2str(r->pool, searchEFromHeader.ip6));
-        fflush(stderr);
-        */
       } else {
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -4866,13 +4886,6 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
           }
         } else {
           forwardedForLogIP = forwardedfor;
-          /*
-          fprintf(stderr, "$$$ CHECK %s => %lu %lu => %s\n", 
-                  forwardedfor,
-                  searchEFromHeader.ip6[0], searchEFromHeader.ip6[1],
-                  qos_ip_long2str(r->pool, searchEFromHeader.ip6));
-          fflush(stderr);
-          */
         }
       } else {
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
@@ -8636,6 +8649,13 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   ap_directive_t *pdir = ap_conftree;
   const char *error_page = detectErrorPage(ptemp, bs, pdir);
   int auto_error_page = 0;
+
+  if(sconf->ip_type == QS_IP_V4) {
+    m_ip_type = QS_IP_V4;
+  } else {
+    m_ip_type = QS_IP_V6;
+  }
+
   qos_hostcode(ptemp, bs);
   QOS_MY_GENERATION(sconf->act->generation);
   for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
@@ -9477,6 +9497,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->geodb_size = 0;
   sconf->geo_limit = -1;
   sconf->geo_priv = apr_table_make(p, 20);
+  sconf->ip_type = QS_IP_V6_DEFAULT;
   sconf->qos_cc_block_time = 600;
   sconf->qos_cc_limitTable = apr_table_make(p, 5);
   sconf->qos_cc_forwardedfor = NULL;
@@ -9557,6 +9578,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->geodb_size = b->geodb_size;
   o->geo_limit = b->geo_limit;
   o->geo_priv = b->geo_priv;
+  o->ip_type = b->ip_type;
   o->req_rate = b->req_rate;
   o->req_rate_start = b->req_rate_start;
   o->min_rate = b->min_rate;
@@ -11110,6 +11132,21 @@ const char *qos_geopriv_cmd(cmd_parms *cmd, void *dcfg, const char *list, const 
   return NULL;
 }
 
+const char *qos_enable_ipv6_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  if(flag) {
+    sconf->ip_type = QS_IP_V6;
+  } else {
+    sconf->ip_type = QS_IP_V4;
+  }
+  return NULL;
+}
+
 const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -11881,6 +11918,10 @@ static const command_rec qos_config_cmds[] = {
                 "QS_ClientEntries <number>, defines the number of individual"
                 " clients managed by mod_qos. Default is 50000."
                 " Directive is allowed in global server context only."),
+  AP_INIT_FLAG("QS_SupportIPv6", qos_enable_ipv6_cmd, NULL,
+               RSRC_CONF,
+               "QS_SupportIPv6 'on'|'off', enables IPv6 address support."
+               " Default is on."),
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_ClientPrefer", qos_client_pref_cmd, NULL,
                     RSRC_CONF,
