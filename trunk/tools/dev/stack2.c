@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack2.c,v 1.5 2014-01-30 20:17:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack2.c,v 1.6 2014-01-31 13:20:48 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -358,6 +358,42 @@ static int qos_ip_str2long(const char *src, void *dst) {
   return inet_pton(AF_INET6, convert, dst);
 }
 
+static void segm() {
+  unsigned char *b;
+  int i, j, k, l;
+  int crm[m_qsmod];
+  int tot = 0;
+  for(i = 0; i < m_qsmod; i++) {
+    crm[i] = 0;
+  }
+  for(i = 125; i < (125 + m_qsmod); i++) {
+    for(j = 0; j < (6 + m_qsmod); j++) {
+      for(k = 0; k < (46 + m_qsmod); k++) {
+	for(l = 1; l < (22 + m_qsmod); l++) {
+	  char str[INET6_ADDRSTRLEN];
+	  unsigned long dst[2];
+	  int cr = 0;
+	  tot++;
+	  sprintf(str, "%d.%d.%d.1%d", i, j, k, l);
+	  //printf("%s\n", str);
+	  if(qos_ip_str2long(str, &dst) == 0) {
+	    printf("ERROR %s\n", str);
+	    exit(1);
+	  }
+	  b = (void *)&dst[1];
+	  cr = b[7] % m_qsmod;
+	  crm[cr]++;
+	}
+      }
+    }
+  }
+  printf("mod %d", m_qsmod);
+  for(i = 0; i < m_qsmod; i++) {
+    printf(" %d", crm[i]);
+  }
+  printf(" total=%d\n", tot);
+}
+
 int main(int argc, const char * const argv[]) {
   char *str;
   apr_pool_t *pool;
@@ -366,13 +402,23 @@ int main(int argc, const char * const argv[]) {
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
 
+  rc = qos_ip_str2long("fe80::250:56ff:fec0:8", &dst);
+  printf("%d %lu %lu\n", rc, dst[0], dst[1]);
+  str = qos_ip_long2str(pool, dst);
+  printf("%d %s\n", rc, str);
+
   rc = qos_ip_str2long("fc00::112", &dst);
   printf("%d %lu %lu\n", rc, dst[0], dst[1]);
   str = qos_ip_long2str(pool, dst);
   printf("%d %s\n", rc, str);
 
-  rc = qos_ip_str2long("127.0.0.1", &dst);
+  rc = qos_ip_str2long("fc00::111", &dst);
   printf("%d %lu %lu\n", rc, dst[0], dst[1]);
+  str = qos_ip_long2str(pool, dst);
+  printf("%d %s\n", rc, str);
+
+  rc = qos_ip_str2long("127.0.0.1", &dst);
+  printf("%d %lu %lu (%d)\n", rc, dst[0], dst[1], inet_addr("127.0.0.1"));
   str = qos_ip_long2str(pool, dst);
   printf("%d %s\n", rc, str);
 
@@ -380,6 +426,18 @@ int main(int argc, const char * const argv[]) {
   printf("%d %lu %lu\n", rc, dst[0], dst[1]);
   str = qos_ip_long2str(pool, dst);
   printf("%d %s\n", rc, str);
+
+  m_qsmod = 2;
+  segm();
+  m_qsmod = 4;
+  segm();
+  m_qsmod = 8;
+  segm();
+  m_qsmod = 16;
+  segm();
+  m_qsmod = 32;
+  segm();
+  m_qsmod = QSMOD;
 
   func();
   printf("\n"); 
