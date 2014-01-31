@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.479 2014-01-31 10:20:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.480 2014-01-31 13:34:35 pbuchbinder Exp $";
 static const char g_revision[] = "10.29";
 
 /************************************************************************
@@ -298,7 +298,7 @@ typedef struct {
 } qos_s_entry_limit_conf_t;
 
 typedef struct {
-  unsigned long ip6[2];
+  apr_uint64_t ip6[2];
   time_t lowrate;
   /* behavior */
   unsigned int html;
@@ -455,7 +455,7 @@ typedef struct {
  * ip entry
  */
 typedef struct qs_ip_entry_st {
-  unsigned long ip6[2];
+  apr_uint64_t ip6[2];
   int counter;
   int error;
 } qs_ip_entry_t;
@@ -728,7 +728,7 @@ typedef struct {
  * connection configuration
  */
 typedef struct {
-  unsigned long ip6[2];
+  apr_uint64_t ip6[2];
   conn_rec *c;
   char *evmsg;
   qos_srv_config *sconf;
@@ -1460,7 +1460,9 @@ static void qos_cc_free(qos_s_t *s) {
  */
 static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  int mod = pA->ip6[1] % m_qos_cc_partition;
+  unsigned char *b = (void *)&pA->ip6[1];
+  int mod = b[7] % m_qos_cc_partition;
+  // int mod = pA->ip6[1] % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
   if(m_ip_type == QS_IP_V4) {
@@ -1488,7 +1490,9 @@ static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
  */
 static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
-  int mod = pA->ip6[1] % m_qos_cc_partition;
+  unsigned char *b = (void *)&pA->ip6[1];
+  int mod = b[7] % m_qos_cc_partition;
+  //  int mod = pA->ip6[1] % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
   s->t = now;
