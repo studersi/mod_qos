@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.238 2014-01-27 07:08:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.239 2014-01-31 13:34:58 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -360,12 +360,13 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_EventRequestLimit404.htt"
 fi
 
-echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req limit, websocket_QS_LocRequestLimit.htt" >>  logs/error_log
-./run.sh -se ./scripts/websocket_QS_LocRequestLimit.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED websocket_QS_LocRequestLimit.htt"
-fi
+# requires httest 2.4.9
+#echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req limit, websocket_QS_LocRequestLimit.htt" >>  logs/error_log
+#./run.sh -se ./scripts/websocket_QS_LocRequestLimit.htt
+#if [ $? -ne 0 ]; then
+#    ERRORS=`expr $ERRORS + 1`
+#    echo "FAILED websocket_QS_LocRequestLimit.htt"
+#fi
 
 ./ctl.sh  restart -D ignore404 -D cont > /dev/null
 sleep 90 # lets the server close sockets
