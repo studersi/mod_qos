@@ -44,6 +44,50 @@ _EXPECT . "200 OK"
 _EXPECT . "this is the root index.html"
 _WAIT
 
+_SLEEP 200
+_REQ [fc00::111] $QS_PORT_BASE10
+__GET /qos HTTP/1.1
+__Host: [fc00::111]:$QS_PORT_BASE10
+__
+_MATCH body "client ip=(.*)</p>" IP
+_WAIT
+
+_CODER:URLENC $IP ENCIP
+
+_REQ [fc00::111] $QS_PORT_BASE10
+__GET /qos?address=${ENCIP}&action=search HTTP/1.1
+__Host: [fc00::111]:$QS_PORT_BASE10
+__
+_EXPECT . "<tr class=.rows.><td colspan=.1.>fc00..111</td><td colspan=.2.>.......... ........</td><td colspan=.1.>no</td><td colspan=.1.>no</td><td colspan=.1.>1, 0&nbsp;sec</td><td colspan=.1.>"
+_WAIT
+
+_REQ [fc00::111] $QS_PORT_BASE10
+__GET /qos?address=${ENCIP}&action=search&QS_Limit HTTP/1.1
+__Host: [fc00::111]:$QS_PORT_BASE10
+__
+_EXPECT . "<tr class=.rows.><td colspan=.1.>fc00..111</td><td colspan=.2.>.......... ........</td><td colspan=.1.>no</td><td colspan=.1.>no</td><td colspan=.1.>2, 0&nbsp;sec</td><td colspan=.1.>"
+_WAIT
+_CLOSE
+
+_REQ [fc00::111] $QS_PORT_BASE10
+__GET /console?address=${ENCIP}&action=unlimit HTTP/1.1
+__Host: [fc00::111]:$QS_PORT_BASE10
+__
+_EXPECT . "fc00::111: vip=no lowprio=yes block=0/0 limit=0/0"
+_WAIT
+_CLOSE
+
+_REQ [fc00::111] $QS_PORT_BASE10
+__GET /qos?address=${ENCIP}&action=search HTTP/1.1
+__Host: [fc00::111]:$QS_PORT_BASE10
+__
+_EXPECT . "<tr class=.rows.><td colspan=.1.>fc00..111</td><td colspan=.2.>.......... ........</td><td colspan=.1.>no</td><td colspan=.1.>no</td><td colspan=.1.>no</td><td colspan=.1.>"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "GET /qos\?address=fc00%3A%3A111&action=search"
+_EXEC tail -1 logs/access_log
+
 END
 
 CLIENT
