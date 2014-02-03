@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.26 2014-02-03 08:22:01 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.27 2014-02-03 21:23:26 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -292,6 +292,7 @@ Listen                  [fc00::112]:##QS_PORT_BASE10##
    ServerName                 ip6-localhost
 
    ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
 
    <Location /qos>
        SetHandler             qos-viewer

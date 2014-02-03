@@ -35,7 +35,7 @@ _EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3, current=3"
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3, current=3, c=127.0.0.1"
 _EXEC tail -1 logs/error_log
 
 _EXPECT ERROR "Connection reset by peer"
