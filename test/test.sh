@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.239 2014-01-31 13:34:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.240 2014-02-04 20:58:13 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -361,12 +361,14 @@ if [ $? -ne 0 ]; then
 fi
 
 # requires httest 2.4.9
-#echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req limit, websocket_QS_LocRequestLimit.htt" >>  logs/error_log
-#./run.sh -se ./scripts/websocket_QS_LocRequestLimit.htt
-#if [ $? -ne 0 ]; then
-#    ERRORS=`expr $ERRORS + 1`
-#    echo "FAILED websocket_QS_LocRequestLimit.htt"
-#fi
+export ENV_HTTEST=/usr/local/bin/httest-2.4.9
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- concurrent req limit, websocket_QS_LocRequestLimit.htt" >>  logs/error_log
+./run.sh -se ./scripts/websocket_QS_LocRequestLimit.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED websocket_QS_LocRequestLimit.htt"
+fi
+unset ENV_HTTEST
 
 ./ctl.sh  restart -D ignore404 -D cont > /dev/null
 sleep 90 # lets the server close sockets
@@ -516,6 +518,15 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventBlockCount.htt"
 fi
+
+./ctl.sh restart -D real_ip -D v6 > /dev/null
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventBlockCount_v6.htt" >>  logs/error_log
+./run.sh -se ./scripts/QS_ClientEventBlockCount_v6.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_ClientEventBlockCount_v6.htt"
+fi
+
 sleep 3
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_ClientEventPerSecLimit.htt

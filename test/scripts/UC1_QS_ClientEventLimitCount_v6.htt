@@ -110,7 +110,7 @@ _EXPECT . "this is the root index.html"
 _WAIT
 _CLOSE
 
-_SLEEP 1000
+_SLEEP 500
 _REQ [fc00::112] $QS_PORT_BASE10
 __GET /index.html?QS_Limit HTTP/1.1
 __Host: [fc00::112]:$QS_PORT_BASE10
@@ -122,7 +122,7 @@ _SLEEP 100
 _EXPECT EXEC " mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=3, c=fc00::112"
 _EXEC tail -1 logs/error_log
 
-_SLEEP 1000
+_SLEEP 1200
 _REQ [fc00::112] $QS_PORT_BASE10
 __GET /index.html?QS_Limit HTTP/1.1
 __Host: [fc00::112]:$QS_PORT_BASE10
