@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.249 2014-01-31 15:12:39 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.250 2014-02-04 20:58:13 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -888,6 +888,8 @@ Listen                  [fc00::111]:##QS_PORT_BASE10##
 <VirtualHost [fc00::111]:##QS_PORT_BASE10##>
    ServerName                 ip6-localhost
 
+   SetEnvIf Referer  /block   QS_Block=yes
+
    <Location /qos>
        SetHandler             qos-viewer
    </Location>
@@ -898,6 +900,8 @@ Listen                  [fc00::112]:##QS_PORT_BASE10##
 
 <VirtualHost [fc00::112]:##QS_PORT_BASE10##>
    ServerName                 ip6-localhost
+
+   SetEnvIf Referer  /block   QS_Block=yes
 
    <Location /qos>
        SetHandler             qos-viewer

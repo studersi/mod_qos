@@ -1,5 +1,6 @@
 #!/bin/sh
 
+HTTEST=${ENV_HTTEST-/usr/local/bin/httest}
 RC=0
 START=`date '+%s'`
 if [ "$1" = "-s" -o "$1" = "-se" ]; then
@@ -8,7 +9,7 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
     if [ `expr length $2` -lt 38 ]; then
 	echo "\t\c"
     fi
-    /usr/local/bin/httest $2 2>&1 > .${LOG}.log
+    $HTTEST $2 2>&1 > .${LOG}.log
     RC=$?
     if [ $RC -ne 0 ]; then
 	echo "FAILED"
@@ -21,6 +22,7 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
 	rm .${LOG}.log
     fi
 else
-    /usr/local/bin/httest $@
+    $HTTEST $@
+    RC=$?
 fi
 exit $RC
