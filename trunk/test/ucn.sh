@@ -116,9 +116,18 @@ ERRORS=`expr $ERRORS + $?`
 sleep 2
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+sleep 1
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucno 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UCN_QS_CondClientEventLimitCount_adm.htt
+ERRORS=`expr $ERRORS + $?`
+sleep 2
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 if [ $ERRORS -ne 0 ]; then
   echo "$PFX test failed with $ERRORS errors"
   exit $ERRORS
 fi
 echo "$PFX normal end"
 exit 0
+
