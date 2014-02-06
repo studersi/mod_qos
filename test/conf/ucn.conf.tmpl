@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.22 2014-01-20 20:23:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.23 2014-02-06 07:34:45 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -187,6 +187,11 @@ ResponseHeaderPlus set X-ClientLimit2 ${ClientLimit2_Counter}
 ResponseHeaderPlus set X-ClientLimit3 ${ClientLimit3_Counter}
 </IfDefine>
 
+<IfDefine ucno>
+QS_CondClientEventLimitCount 2 3 CL01 _CL01_URI_
+QS_ClientIpFromHeader        Y-Forwarded-For
+</IfDefine>
+
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
    ServerName                 127.0.0.1
 
@@ -283,6 +288,27 @@ ResponseHeaderPlus set X-ClientLimit3 ${ClientLimit3_Counter}
        SetHandler server-status
        QS_DenyQuery +id01 deny dontallowme
    </Location>
+</IfDefine>
+
+<IfDefine ucno>
+   SetEnvIfPlus Request_URI "/aaa/" CL01_URI
+   SetEnvIfPlus Request_URI "/aaa/" QS_Cond=${QS_Cond}_CL01_URI_
+   SetEnvIfPlus Request_Query AU10 CL01_EVENT
+   QS_SetEnvIf CL01_EVENT CL01_URI CL01=true
+</IfDefine>
+
+<IfDefine ucnp>
+   # start page url
+   SetEnvIfPlus Request_URI   ^/aaa/index.html$ CL01_URI=application
+   # application code (only if start url has been set)
+   SetEnvIfPlus Request_Query application=([a-zA-Z0-9]+) CL01_APP=${CL01_URI}=$1
+   ResponseHeaderPlus set Set-Cookie ${CL01_APP}
+
+   # fetch application cookie
+   SetEnvIfPlus Cookie application=([a-zA-Z0-9]+) CL01_COOKIE=$1
+   # detect error page
+   SetEnvIfPlus Request_URI ^/error CL01_ERR=/aaa/index.html?application=${CL01_COOKIE}
+   QS_RedirectIf CL01_ERR (.+) $1
 </IfDefine>
 
 </VirtualHost>
