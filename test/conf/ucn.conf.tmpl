@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.23 2014-02-06 07:34:45 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.24 2014-02-06 07:38:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -308,7 +308,7 @@ QS_ClientIpFromHeader        Y-Forwarded-For
    SetEnvIfPlus Cookie application=([a-zA-Z0-9]+) CL01_COOKIE=$1
    # detect error page
    SetEnvIfPlus Request_URI ^/error CL01_ERR=/aaa/index.html?application=${CL01_COOKIE}
-   QS_RedirectIf CL01_ERR (.+) $1
+   QS_RedirectIf CL01_ERR (.+) http://localhost$1
 </IfDefine>
 
 </VirtualHost>
