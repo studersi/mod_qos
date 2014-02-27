@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.481 2014-01-31 13:48:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.482 2014-02-27 20:51:47 pbuchbinder Exp $";
 static const char g_revision[] = "10.29";
 
 /************************************************************************
@@ -5089,13 +5089,12 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
               *msg = apr_psprintf(cconf->c->pool, 
                                   QOS_LOG_PFX(067)"access denied, QS_%sClientEventLimitCount rule: "
                                   "event=%s, "
-                                  "max=%d, current=%d, c=%s, id=%s",
+                                  "max=%d, current=%d, c=%s",
                                   conditional,
                                   eventName,
                                   eventLimitConf->limit,
                                   (*ef)->limit[limitTableIndex].limit,
-                                  forwardedForLogIP == NULL ? "-" : forwardedForLogIP,
-                                  qos_unique_id(r, "067"));
+                                  forwardedForLogIP == NULL ? "-" : forwardedForLogIP);
               ret = m_retcode;
             }
           }
@@ -7089,7 +7088,7 @@ static int qos_post_read_request_later(request_rec *r) {
                   return HTTP_MOVED_TEMPORARILY;
                 }
               }
-          } /* else, grant access to the error page */
+            } /* else, "grant access" to the error page */
           } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
             if(r->method_number == M_GET) {
               /* no valid cookie in request, redirect to check page */
