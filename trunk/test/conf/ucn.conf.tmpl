@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.24 2014-02-06 07:38:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.25 2014-03-12 20:35:37 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -88,7 +88,7 @@ LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_q
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
-TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 14400 -f"
 CustomLog               "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
 
 PidFile                 ##ROOT##/logs/apache.pid
@@ -302,7 +302,7 @@ QS_ClientIpFromHeader        Y-Forwarded-For
    SetEnvIfPlus Request_URI   ^/aaa/index.html$ CL01_URI=application
    # application code (only if start url has been set)
    SetEnvIfPlus Request_Query application=([a-zA-Z0-9]+) CL01_APP=${CL01_URI}=$1
-   ResponseHeaderPlus set Set-Cookie ${CL01_APP}
+   ResponseHeaderPlus add Set-Cookie ${CL01_APP}
 
    # fetch application cookie
    SetEnvIfPlus Cookie application=([a-zA-Z0-9]+) CL01_COOKIE=$1
