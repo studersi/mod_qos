@@ -61,13 +61,13 @@ Listen         ##QS_PORT_BASE##
    ProxyPass                  /error-pages !
    ProxyPass                  /limitrs !
 
-   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
-   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
 
-   ProxyPass                  /cgi http://localhost:##QS_PORT_BASE1##/cgi retry=0
-   ProxyPassReverse           /cgi http://localhost:##QS_PORT_BASE1##/cgi
-   ProxyPass                  /limitbs http://localhost:##QS_PORT_BASE1##/limitbs retry=0
-   ProxyPassReverse           /limitbs http://localhost:##QS_PORT_BASE1##/limitbs
+   ProxyPass                  /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi retry=0
+   ProxyPassReverse           /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi
+   ProxyPass                  /limitbs http://127.0.0.1:##QS_PORT_BASE1##/limitbs retry=0
+   ProxyPassReverse           /limitbs http://127.0.0.1:##QS_PORT_BASE1##/limitbs
 
    AddType                    text/html .shtml
    AddOutputFilter            INCLUDES .shtml
@@ -132,8 +132,8 @@ Listen                  [::1]:##QS_PORT_BASE10##
 <VirtualHost [::1]:##QS_PORT_BASE10##>
    ServerName                 ip6-localhost
 
-   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
-   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
 
 
    QS_LocRequestLimit         /htt/limit2      2
