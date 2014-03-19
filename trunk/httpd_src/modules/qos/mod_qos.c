@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.482 2014-02-27 20:51:47 pbuchbinder Exp $";
-static const char g_revision[] = "10.29";
+static const char revision[] = "$Id: mod_qos.c,v 5.483 2014-03-19 20:26:45 pbuchbinder Exp $";
+static const char g_revision[] = "10.30";
 
 /************************************************************************
  * Includes
@@ -604,6 +604,7 @@ typedef struct {
   apr_table_t *location_t;
   apr_table_t *setenv_t;
   apr_table_t *setreqheader_t;
+  apr_table_t *setreqheaderlate_t;
   apr_table_t *unsetresheader_t;
   apr_table_t *setenvif_t;
   apr_table_t *setenvifquery_t;
@@ -3879,12 +3880,12 @@ static void qos_setenv(request_rec *r, qos_srv_config *sconf) {
 /**
  * QS_SetReqHeader
  * @param r
- * @param sconf 
+ * @param header_t
  */
-static void qos_setreqheader(request_rec *r, qos_srv_config *sconf) {
+static void qos_setreqheader(request_rec *r, apr_table_t *header_t) {
   int i;
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setreqheader_t)->elts;
-  for(i = 0; i < apr_table_elts(sconf->setreqheader_t)->nelts; i++) {
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(header_t)->elts;
+  for(i = 0; i < apr_table_elts(header_t)->nelts; i++) {
     char *header = entry[i].val;
     char *variable = apr_pstrdup(r->pool, strchr(entry[i].key, '='));
     const char *val;
@@ -7417,7 +7418,7 @@ static int qos_header_parser(request_rec * r) {
     qos_setenvifquery(r, sconf);
     qos_setenvif(r, sconf);
     qos_setenv(r, sconf);
-    qos_setreqheader(r, sconf);
+    qos_setreqheader(r, sconf->setreqheader_t);
 
     /*
      * QS_DenyEvent
@@ -8378,6 +8379,9 @@ static int qos_fixup(request_rec * r) {
 #if APR_HAS_THREADS
   qos_disable_rate(r, sconf, dconf);
 #endif
+
+  qos_setreqheader(r, sconf->setreqheaderlate_t);
+
   rc = qos_redirectif(r, sconf, sconf->redirectif);
   if(rc == HTTP_MOVED_TEMPORARILY) {
     return HTTP_MOVED_TEMPORARILY;
@@ -9432,8 +9436,9 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->location_t = apr_table_make(sconf->pool, 2);
   sconf->setenvif_t = apr_table_make(sconf->pool, 1);
   sconf->setenv_t = apr_table_make(sconf->pool, 1);
-  sconf->setreqheader_t = apr_table_make(sconf->pool, 1);
-  sconf->unsetresheader_t = apr_table_make(sconf->pool, 1);
+  sconf->setreqheader_t = apr_table_make(sconf->pool, 5);
+  sconf->setreqheaderlate_t = apr_table_make(sconf->pool, 5);
+  sconf->unsetresheader_t = apr_table_make(sconf->pool, 5);
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparp_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparpbody_t = apr_table_make(sconf->pool, 1);
@@ -9601,6 +9606,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_table_merge(o->setenvif_t, b->setenvif_t);
   qos_table_merge(o->setenv_t, b->setenv_t);
   qos_table_merge(o->setreqheader_t, b->setreqheader_t);
+  qos_table_merge(o->setreqheaderlate_t, b->setreqheaderlate_t);
   qos_table_merge(o->unsetresheader_t, b->unsetresheader_t);
   qos_table_merge(o->setenvifquery_t, b->setenvifquery_t);
   qos_table_merge(o->setenvifparp_t, b->setenvifparp_t);
@@ -10120,7 +10126,7 @@ const char *qos_setenv_cmd(cmd_parms *cmd, void *dcfg, const char *variable,
 
 /* QS_SetReqHeader */
 const char *qos_setreqheader_cmd(cmd_parms *cmd, void *dcfg, const char *header,
-                                 const char *variable) {
+                                 const char *variable, const char *late) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
 
@@ -10132,7 +10138,17 @@ const char *qos_setreqheader_cmd(cmd_parms *cmd, void *dcfg, const char *header,
     return apr_psprintf(cmd->pool, "%s: header name must not contain a '='",
                         cmd->directive->directive);
   }
-  apr_table_set(sconf->setreqheader_t, apr_pstrcat(cmd->pool, header, "=", variable, NULL), header);
+  if(late != NULL) {
+    if(strcasecmp(late, "late") != 0) {
+      return apr_psprintf(cmd->pool, "%s: third parameter can only be 'late'",
+                          cmd->directive->directive);
+    }
+    apr_table_set(sconf->setreqheaderlate_t, 
+                  apr_pstrcat(cmd->pool, header, "=", variable, NULL), header);
+  } else {
+    apr_table_set(sconf->setreqheader_t, 
+                  apr_pstrcat(cmd->pool, header, "=", variable, NULL), header);
+  }
   return NULL;
 }
 
@@ -11767,9 +11783,9 @@ static const command_rec qos_config_cmds[] = {
                 " other environment variables surrounded by \"${\" and \"}\"."
                 " The variable is only set if all defined variables within"
                 " the value can be resolved."),
-  AP_INIT_TAKE2("QS_SetReqHeader", qos_setreqheader_cmd, NULL,
+  AP_INIT_TAKE23("QS_SetReqHeader", qos_setreqheader_cmd, NULL,
                 RSRC_CONF,
-                "QS_SetReqHeader <header name> <variable>, sets the defined"
+                "QS_SetReqHeader <header name> <variable> ['late'], sets the defined"
                 " HTTP request header to the request if the specified"
                 " environment variable is set."),
   AP_INIT_TAKE1("QS_UnsetResHeader", qos_unsetresheader_cmd, NULL,
