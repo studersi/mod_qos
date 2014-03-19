@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.25 2014-03-12 20:35:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.26 2014-03-19 20:26:45 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -192,6 +192,21 @@ QS_CondClientEventLimitCount 2 3 CL01 _CL01_URI_
 QS_ClientIpFromHeader        Y-Forwarded-For
 </IfDefine>
 
+<IfDefine ucnq>
+QS_ClientIpFromHeader        Y-Forwarded-For
+
+SetEnvIfPlus Request_Query   id=([0-9]+) ClientLimit1=$1
+QS_ClientEventLimitCount     10 5        ClientLimit1
+QS_SetReqHeader              X-ClientLimit1 ClientLimit1
+QS_SetReqHeader              Y-ClientLimit1_Counter ClientLimit1_Counter late
+
+QS_ClientGeoCountryDB        conf/GeoIPCountryWhois.csv
+QS_SetReqHeader              X-QS_Country QS_Country
+
+QS_SrvMaxConn                10
+QS_SetReqHeader              X-QS_SrvConn QS_SrvConn
+</IfDefine>
+
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
    ServerName                 127.0.0.1
 
@@ -238,6 +253,12 @@ QS_ClientIpFromHeader        Y-Forwarded-For
       SetEnvIfPlus               QS_Limit02_Counter [1-9][0-9]* !QS_Redirect   late
    </Location>
    QS_RedirectIf                 QS_Redirect (.+) http://127.0.0.1/redirect.html?c=$1
+</IfDefine>
+
+<IfDefine ucnq>
+   <Location />
+     RequestHeaderPlus       set X-ClientLimit1_Counter ${ClientLimit1_Counter} late
+   </Location>
 </IfDefine>
 
 <IfDefine ucnf>
