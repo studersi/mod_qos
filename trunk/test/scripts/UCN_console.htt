@@ -1,0 +1,40 @@
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.3
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=22 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: fc00::112
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=* HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.2
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "127.0.0.2"
+_EXPECT . "127.0.0.3"
+_EXPECT . "fc00::112"
+_WAIT
+_CLOSE
+
+END
