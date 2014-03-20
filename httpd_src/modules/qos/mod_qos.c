@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.483 2014-03-19 20:26:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.484 2014-03-20 21:10:52 pbuchbinder Exp $";
 static const char g_revision[] = "10.30";
 
 /************************************************************************
@@ -9021,7 +9021,8 @@ static int qos_console_dump(request_rec * r) {
           }
         }
         k = apr_psprintf(r->pool,
-                         "%s: vip=%s lowprio=%s block=%d/%ld limit=%d/%ld", 
+                         "%010d %s: vip=%s lowprio=%s block=%d/%ld limit=%d/%ld",
+                         i,
                          qos_ip_long2str(r->pool, e[i]->ip6),
                          e[i]->vip ? "yes" : "no",
                          e[i]->lowrate ? "yes" : "no",
@@ -11187,8 +11188,8 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   if(sconf->qos_cc_size >= 1000000) {
     m_qos_cc_partition = 32;
   }
-  if(sconf->qos_cc_size == 0) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+  if(sconf->qos_cc_size <= 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >=100", 
                         cmd->directive->directive);
   }
   return NULL;
