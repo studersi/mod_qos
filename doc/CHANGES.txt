@@ -2,6 +2,8 @@ Version 10.30
 
  - QS_SetReqHeader features the option 'late'.
 
+ - New console output of the search command.
+
 Version 10.29
 
  - Supports IPv6 clients.

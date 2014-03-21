@@ -1,3 +1,13 @@
+#
+# QS_ClientIpFromHeader        Y-Forwarded-For
+# 
+# QS_ClientEntries             100
+# QS_ClientEventLimitCount     10 5        QS_Limit
+# SetEnvIfPlus Request_Query   id=([0-9]+) QS_Limit=$1
+#
+# => adds ~90 and ~100 clients and verifies they are availabe
+#    within the client store
+
 INCLUDE scripts/ports
 
 CLIENT
@@ -24,16 +34,84 @@ _EXPECT . "this is the root index.html"
 _WAIT
 _CLOSE
 
+_SET counter=7
+_LOOP 90
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.${counter}
+__User-Agent: Mozilla 127.0.0.${counter}
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+_OP $counter ADD 1 counter
+_END LOOP
+
 _REQ localhost $QS_PORT_BASE
 __GET /console?action=search&address=* HTTP/1.1
 __Host: localhost
-__Y-Forwarded-For: 127.0.0.2
+__Y-Forwarded-For: 127.0.0.1
 __User-Agent: Mozilla
 __
 _EXPECT . "200 OK"
-_EXPECT . "127.0.0.2"
-_EXPECT . "127.0.0.3"
-_EXPECT . "fc00::112"
+_EXPECT . "127.0.0.1 "
+_EXPECT . "127.0.0.3 "
+_EXPECT . "127.0.0.7 "
+_EXPECT . "127.0.0.8 "
+_EXPECT . "127.0.0.9 "
+_EXPECT . "127.0.0.10 "
+_EXPECT . "127.0.0.11 "
+_EXPECT . "127.0.0.94 "
+_EXPECT . "127.0.0.95 "
+_EXPECT . "127.0.0.96 "
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=1/5"
+_WAIT
+_CLOSE
+
+# we store only 100 entries
+# let the old entries expire...
+_SLEEP 2000
+# and add new 100 new entries
+_SET counter=90
+_LOOP 100
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.2.${counter}
+__User-Agent: Mozilla 127.0.2.${counter}
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+_OP $counter ADD 1 counter
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=* HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "!127.0.0.3 "
+_EXPECT . "!127.0.0.7 "
+_EXPECT . "!127.0.0.8 "
+_EXPECT . "!127.0.0.9 "
+_EXPECT . "!127.0.0.10 "
+_EXPECT . "!127.0.0.11 "
+_EXPECT . "127.0.2.90 "
+_EXPECT . "127.0.2.91 "
+_EXPECT . "127.0.2.96 "
+_EXPECT . "127.0.2.180 "
+_EXPECT . "127.0.2.181 "
+_EXPECT . "127.0.2.182 "
+_EXPECT . "127.0.2.185 "
+_EXPECT . "127.0.2.186 "
+_EXPECT . "127.0.2.188 "
+_EXPECT . "127.0.2.189 "
 _WAIT
 _CLOSE
 

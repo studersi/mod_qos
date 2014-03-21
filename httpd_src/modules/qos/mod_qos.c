@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.484 2014-03-20 21:10:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.485 2014-03-21 21:21:37 pbuchbinder Exp $";
 static const char g_revision[] = "10.30";
 
 /************************************************************************
@@ -9021,7 +9021,7 @@ static int qos_console_dump(request_rec * r) {
           }
         }
         k = apr_psprintf(r->pool,
-                         "%010d %s: vip=%s lowprio=%s block=%d/%ld limit=%d/%ld",
+                         "%010d %s vip=%s lowprio=%s block=%d/%ld limit=%d/%ld",
                          i,
                          qos_ip_long2str(r->pool, e[i]->ip6),
                          e[i]->vip ? "yes" : "no",
@@ -9151,7 +9151,7 @@ static int qos_handler_console(request_rec * r) {
         limit_time = (eventLimitConf->limit_time >= (time(NULL) - (*e)->limit[limitTableIndex].limit_time)) ? 
           (eventLimitConf->limit_time - (time(NULL) - (*e)->limit[limitTableIndex].limit_time)) : 0;
       }
-      msg = apr_psprintf(r->pool, "%s: vip=%s lowprio=%s block=%d/%ld limit=%d/%ld", ip,
+      msg = apr_psprintf(r->pool, "%s vip=%s lowprio=%s block=%d/%ld limit=%d/%ld", ip,
                          (*e)->vip ? "yes" : "no",
                          (*e)->lowrate ? "yes" : "no",
                          (*e)->block,
