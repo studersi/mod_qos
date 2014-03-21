@@ -1,5 +1,5 @@
 #
-# $Id: console.htt,v 1.5 2011-02-10 20:12:35 pbuchbinder Exp $
+# $Id: console.htt,v 1.6 2014-03-21 21:21:38 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -13,7 +13,7 @@ __Host: localhost
 __Connection: close
 __User-Agent: htt01
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
+_EXPECT . "127.0.0.1 vip=no lowprio=no block=0/0"
 _WAIT
 _CLOSE
 
@@ -24,7 +24,7 @@ __Host: localhost
 __Connection: close
 __User-Agent: htt02
 __
-_EXPECT . "127.0.0.1: vip=yes lowprio=no block=0/0"
+_EXPECT . "127.0.0.1 vip=yes lowprio=no block=0/0"
 _WAIT
 _CLOSE
 
@@ -35,7 +35,7 @@ __Host: localhost
 __Connection: close
 __User-Agent: htt03
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
+_EXPECT . "127.0.0.1 vip=no lowprio=no block=0/0"
 _WAIT
 _CLOSE
 
@@ -46,7 +46,7 @@ __Host: localhost
 __Connection: close
 __User-Agent: htt04
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no block=1003/10"
+_EXPECT . "127.0.0.1 vip=no lowprio=no block=1003/10"
 _WAIT
 _CLOSE
 
@@ -59,7 +59,7 @@ __Host: localhost
 __Connection: close
 __User-Agent: htt05
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0"
+_EXPECT . "127.0.0.1 vip=no lowprio=no block=0/0"
 _WAIT
 _CLOSE
 
@@ -82,7 +82,7 @@ __Host: localhost
 __Connection: close
 __User-Agent: htt07
 __
-_EXPECT . "127.0.0.3: vip=yes lowprio=no block=0/0"
+_EXPECT . "127.0.0.3 vip=yes lowprio=no block=0/0"
 _WAIT
 _CLOSE
 

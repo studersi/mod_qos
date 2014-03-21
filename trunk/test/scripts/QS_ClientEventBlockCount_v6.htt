@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventBlockCount_v6.htt,v 1.5 2014-02-04 20:58:13 pbuchbinder Exp $
+# $Id: QS_ClientEventBlockCount_v6.htt,v 1.6 2014-03-21 21:21:37 pbuchbinder Exp $
 #
 #   QS_ClientEventBlockCount 3 10
 #   SetEnvIf Referer  /block    QS_Block=yes
@@ -76,9 +76,9 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=search&address=* HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0 limit=0/0"
-_EXPECT . "fc00::111: vip=no lowprio=yes block=3/[456] limit=0/0"
-_EXPECT . "fc00::112: vip=no lowprio=no block=1/[456] limit=0/0"
+_EXPECT . "127.0.0.1 vip=no lowprio=no block=0/0 limit=0/0"
+_EXPECT . "fc00::111 vip=no lowprio=yes block=3/[456] limit=0/0"
+_EXPECT . "fc00::112 vip=no lowprio=no block=1/[456] limit=0/0"
 _WAIT
 _CLOSE
 
@@ -98,8 +98,8 @@ _REQ localhost $QS_PORT_BASE
 __GET /console?action=search&address=* HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "127.0.0.1: vip=no lowprio=no block=0/0 limit=0/0"
-_EXPECT . "fc00::111: vip=no lowprio=yes block=0/0 limit=0/0"
+_EXPECT . "127.0.0.1 vip=no lowprio=no block=0/0 limit=0/0"
+_EXPECT . "fc00::111 vip=no lowprio=yes block=0/0 limit=0/0"
 _WAIT
 
 END

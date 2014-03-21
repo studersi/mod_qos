@@ -1,5 +1,5 @@
 #
-# $Id: stack.htt,v 1.6 2014-01-31 13:34:58 pbuchbinder Exp $
+# $Id: stack.htt,v 1.7 2014-03-21 21:21:38 pbuchbinder Exp $
 #
 # inserts  50'000 client entries and verifies that they are available
 #
@@ -59,7 +59,7 @@ __User-Agent: Mozilla/5.0
 __Connection: keep-alive
 __
 _EXPECT . "200 OK"
-_EXPECT . "$H.$G.$F.$E: vip=yes lowprio=no block=0/0 limit=0/0"
+_EXPECT . "$H.$G.$F.$E vip=yes lowprio=no block=0/0 limit=0/0"
 _WAIT
 
 _OP $E ADD 1 E
@@ -83,7 +83,7 @@ __User-Agent: Mozilla/5.0
 __Connection: keep-alive
 __
 _EXPECT . "200 OK"
-_EXPECT . "!192.33.87.12: vip=.* lowprio=.* block=.* limit=.*"
+_EXPECT . "!192.33.87.12 vip=.* lowprio=.* block=.* limit=.*"
 _EXPECT . "not available"
 _WAIT
 

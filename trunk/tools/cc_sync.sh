@@ -15,7 +15,7 @@ rm -f export.txt
 wget "${URLIN}?action=search&address=*" -O export.txt -o /dev/null
 
 for E in `sed < export.txt -e "s: :#:g"`; do
-  IP=`echo $E | awk -F':' '{print $1}'`
+  IP=`echo $E | awk -F'#' '{print $2}'`
   if [ `echo $E | grep -c "vip=yes"` -eq 1 ]; then
     wget "${URLOUT}?action=setvip&address=$IP" -O /dev/null -o /dev/null
     echo "$IP\tsetvip"
