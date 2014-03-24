@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.28 2014-03-24 19:42:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.29 2014-03-24 21:03:24 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -87,7 +87,9 @@ AddOutputFilter         INCLUDES .shtml
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i #%P"
 
 LogLevel                warn
+<IfDefine !ucnr>
 ErrorLog                ##ROOT##/logs/error_log
+</IfDefine>
 TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 14400 -f"
 CustomLog               "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
 
@@ -216,7 +218,8 @@ QS_ClientEventLimitCount     10 5        QS_Limit
 SetEnvIfPlus Request_Query   product=([0-9]+) QS_LimitSP=$1
 QS_ClientEventLimitCount     10 4        QS_LimitSP
 
-#ErrorLog                     "|##ROOT##/../util/src/qsexec -e 'mod_qos.067.: access denied, QS_ClientEventLimitCount rule: event=(.*), max=[0-9]+, current=[0-9]+, c=(.*), id=' -p '##ROOT##/qsevent.sh $1 $2' |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
+ErrorLog                     "|##ROOT##/../util/src/qsexec -e \'mod_qos.067.: access denied, QS_ClientEventLimitCount rule: event=(.*), max=[0-9]+, current=[0-9]+, c=(.*), id=\' -p \'##ROOT##/sync.sh $1 $2\' |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
+
 </IfDefine>
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
