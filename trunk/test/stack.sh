@@ -22,7 +22,7 @@ for E in $LIST; do
     echo "ERROR, missing entry $E"
     exit 1
   fi
-  if [ `grep -c "${E}: " stack.txt` -eq 0 ]; then
+  if [ `grep -c "${E} " stack.txt` -eq 0 ]; then
     echo "ERROR, missing entry $E"
     exit 1
   fi
@@ -35,7 +35,7 @@ if [ `grep -c "not available" stack.txt` -eq 0 ]; then
   echo "ERROR, entry $E"
   exit 1
 fi
-if [ `grep -c "${E}: " stack.txt` -ne 0 ]; then
+if [ `grep -c "${E} " stack.txt` -ne 0 ]; then
   echo "ERROR, entry $E available"
   exit 1
 fi

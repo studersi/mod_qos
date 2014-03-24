@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.27 2014-03-20 21:10:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.28 2014-03-24 19:42:38 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -197,7 +197,6 @@ QS_ClientIpFromHeader        Y-Forwarded-For
 
 SetEnvIfPlus Request_Query   id=([0-9]+) ClientLimit1=$1
 QS_ClientEventLimitCount     10 5        ClientLimit1
-QS_ClientEventLimitCount     10 5        ClientLimit1
 QS_SetReqHeader              X-ClientLimit1 ClientLimit1
 QS_SetReqHeader              Y-ClientLimit1_Counter ClientLimit1_Counter late
 
@@ -212,8 +211,12 @@ QS_SetReqHeader              X-QS_SrvConn QS_SrvConn
 QS_ClientIpFromHeader        Y-Forwarded-For
 
 QS_ClientEntries             100
-QS_ClientEventLimitCount     10 5        QS_Limit
 SetEnvIfPlus Request_Query   id=([0-9]+) QS_Limit=$1
+QS_ClientEventLimitCount     10 5        QS_Limit
+SetEnvIfPlus Request_Query   product=([0-9]+) QS_LimitSP=$1
+QS_ClientEventLimitCount     10 4        QS_LimitSP
+
+#ErrorLog                     "|##ROOT##/../util/src/qsexec -e 'mod_qos.067.: access denied, QS_ClientEventLimitCount rule: event=(.*), max=[0-9]+, current=[0-9]+, c=(.*), id=' -p '##ROOT##/qsevent.sh $1 $2' |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
 </IfDefine>
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
