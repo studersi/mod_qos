@@ -2,7 +2,11 @@ Version 10.30
 
  - QS_SetReqHeader features the option 'late'.
 
- - New console output of the search command.
+ - New console output (without ':' suffix for the IP address).
+
+ - Console 'search', 'limit', and 'unlimit' command support now
+   the 'event' parameter specifying which QS_ClientEventLimitCount
+   event variable to show/set/clear.
 
 Version 10.29
 

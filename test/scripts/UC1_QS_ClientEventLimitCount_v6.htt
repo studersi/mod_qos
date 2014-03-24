@@ -73,7 +73,7 @@ _REQ [fc00::111] $QS_PORT_BASE10
 __GET /console?address=${ENCIP}&action=unlimit HTTP/1.1
 __Host: [fc00::111]:$QS_PORT_BASE10
 __
-_EXPECT . "fc00::111: vip=no lowprio=yes block=0/0 limit=0/0"
+_EXPECT . "fc00::111 vip=no lowprio=yes block=0/0 limit=0/0"
 _WAIT
 _CLOSE
 

@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.485 2014-03-21 21:21:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.486 2014-03-24 19:42:38 pbuchbinder Exp $";
 static const char g_revision[] = "10.30";
 
 /************************************************************************
@@ -5298,12 +5298,13 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
   return req_rate;
 }
 
-qos_s_entry_limit_conf_t *qos_getDefaultQSLimitEvent(qos_user_t *u, int *limitTableIndex) {
+qos_s_entry_limit_conf_t *qos_getQSLimitEvent(qos_user_t *u, const char *event,
+                                              int *limitTableIndex) {
   int i = 0;
   apr_table_entry_t *limitTableEntry = (apr_table_entry_t *)apr_table_elts(u->qos_cc->limitTable)->elts;
   for(i = 0; i < apr_table_elts(u->qos_cc->limitTable)->nelts; i++) {
     const char *eventName = limitTableEntry[i].key;
-    if(strcasecmp(eventName, QS_LIMIT_DEFAULT) == 0) {
+    if(strcasecmp(eventName, event) == 0) {
       *limitTableIndex = i;
       return (qos_s_entry_limit_conf_t *)limitTableEntry[i].val;
     }
@@ -5644,7 +5645,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             
             if(u->qos_cc->limitTable) {
               int limitTableIndex;
-              qos_s_entry_limit_conf_t *eventLimitConf = qos_getDefaultQSLimitEvent(u, &limitTableIndex);
+              qos_s_entry_limit_conf_t *eventLimitConf = qos_getQSLimitEvent(u, QS_LIMIT_DEFAULT, &limitTableIndex);
               if(eventLimitConf) {
                 if(eventLimitConf->limit_time > (time(NULL) - searchE.limit[limitTableIndex].limit_time)) {
                   ap_rprintf(r, "<td colspan=\"1\">%d, %ld&nbsp;sec</td>",
@@ -8992,7 +8993,7 @@ static int qos_favicon(request_rec *r) {
   return OK;
 }
 
-static int qos_console_dump(request_rec * r) {
+static int qos_console_dump(request_rec * r, const char *event) {
   qos_srv_config *sconf = sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                         &qos_module);
   if(sconf && sconf->has_qos_cc) {
@@ -9013,7 +9014,7 @@ static int qos_console_dump(request_rec * r) {
         time_t limit_time = 0;
         if(u->qos_cc->limitTable) {
           int limitTableIndex;
-          qos_s_entry_limit_conf_t *eventLimitConf = qos_getDefaultQSLimitEvent(u, &limitTableIndex);
+          qos_s_entry_limit_conf_t *eventLimitConf = qos_getQSLimitEvent(u, event, &limitTableIndex);
           if(eventLimitConf) {
             limit = e[i]->limit[limitTableIndex].limit;
             limit_time = (eventLimitConf->limit_time >= (time(NULL) - e[i]->limit[limitTableIndex].limit_time)) ? 
@@ -9050,6 +9051,7 @@ static int qos_handler_console(request_rec * r) {
   apr_table_t *qt;
   const char *ip;
   const char *cmd;
+  const char *event;
   apr_uint64_t addr[2];
   qos_srv_config *sconf;
   int status = HTTP_NOT_ACCEPTABLE;;
@@ -9066,9 +9068,14 @@ static int qos_handler_console(request_rec * r) {
   qt = qos_get_query_table(r);
   ip = apr_table_get(qt, "address");
   cmd = apr_table_get(qt, "action");
+  event = apr_table_get(qt, "event");
+  if(event == NULL) {
+    event = apr_pstrdup(r->pool, QS_LIMIT_DEFAULT);
+  }
   if(!cmd || !ip) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(070)"console, not acceptable, missing request query (action/address)");
+                  QOS_LOG_PFX(070)"console, not acceptable,"
+                  " missing request query (action/address)");
     return HTTP_NOT_ACCEPTABLE;
   }
   if(ip) {
@@ -9079,15 +9086,17 @@ static int qos_handler_console(request_rec * r) {
   }
   if(!sconf->has_qos_cc) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(070)"console, client data store has not been enabled");
+                  QOS_LOG_PFX(070)"console, not acceptable,"
+                  " client data store has not been enabled");
     return HTTP_NOT_ACCEPTABLE;
   }
   if((strcasecmp(cmd, "search") == 0) && (strcmp(ip, "*") == 0)) {
-    return qos_console_dump(r);
+    return qos_console_dump(r, event);
   }
   if(qos_ip_str2long(ip, &addr) == 0) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(070)"console, not acceptable, invalid ip/wrong format");
+                  QOS_LOG_PFX(070)"console, not acceptable,"
+                  " invalid ip/wrong format");
     return HTTP_NOT_ACCEPTABLE;
   }
   if(sconf->has_qos_cc) {
@@ -9112,7 +9121,7 @@ static int qos_handler_console(request_rec * r) {
     }
     status = OK;
     if(u->qos_cc->limitTable) {
-      eventLimitConf = qos_getDefaultQSLimitEvent(u, &limitTableIndex);
+      eventLimitConf = qos_getQSLimitEvent(u, event, &limitTableIndex);
     }
     if(strcasecmp(cmd, "setvip") == 0) {
       (*e)->vip = 1;

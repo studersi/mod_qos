@@ -1472,8 +1472,7 @@ suffixed by <code>_Clear</code>, e.g. <code>QS_Limit_Clear</code>.
 <li>Adding/removing events require a server restart (graceful restart is 
 not supported).</li>
 <li>Only the default rule (<code>QS_Limit</code>) is accessibly by the 
-<a href="#statusviewer">status viewer</a> and the 
-<a href="#webconsole">console</a>.</li>
+<a href="#statusviewer">status viewer</a>.</li>
 <li>See also <a href="#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></a> 
 if you want to enforce a rule under certain conditions only.
 </ul>
@@ -1752,6 +1751,10 @@ has been enabled).
 <li><code>search</code>: verifies the availability of a client IP address. <br/>Set '*' for the address 
 parameter in order to get a list of all available clients.</li>
 </ul>
+</li>
+<li><code>event=&lt;name&gt;</code><br>Specifies the event name of the 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+directive which shall be shown or modified. Default is <code>QS_Limit</code>.
 </li>
 </ul>
 Example: <code>http://your.server.name/qos/console?action=setvip&amp;address=194.31.217.21</code>
