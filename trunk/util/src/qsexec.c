@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.19 2014-01-09 08:13:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.20 2014-03-24 21:06:18 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -136,7 +136,7 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "the client causing a mod_qos(031) messages whenever the log message\n");
   qs_man_print(man, "appears 10 times within at most one minute:\n");
   if(man) printf("\n");
-  qs_man_println(man, "  ErrorLog \"|%s -e 'mod_qos\\(031\\).*, c=([0-9.]*)' -t 10:60 '/bin/deny.sh $1'\"\n", cmd);
+  qs_man_println(man, "  ErrorLog \"|%s -e \\'mod_qos\\(031\\).*, c=([0-9.]*)\\' -t 10:60 \\'/bin/deny.sh $1\\'\"\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
