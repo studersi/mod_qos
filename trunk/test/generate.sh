@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.34 2014-01-27 07:08:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.35 2014-03-24 21:03:24 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -65,7 +65,9 @@ echo "export QS_PORT_BASE"          >> ports
 echo "QS_PORT_BASE1=$QS_PORT_BASE1" >> ports
 echo "export QS_PORT_BASE1"         >> ports
 echo "QS_PORT_BASE2=$QS_PORT_BASE2" >> ports
-echo "export QS_PORT_BASE1"         >> ports
+echo "export QS_PORT_BASE2"         >> ports
+echo "QS_PORT_BASE6=$QS_PORT_BASE6" >> ports
+echo "export QS_PORT_BASE6"         >> ports
 
 if [ ! -f htdocs/image.iso ]; then
     for E in `seq 12500`; do
