@@ -1,0 +1,30 @@
+#
+# $Id: 111_QS_LocKBytesPerSecLimitMatch.htt,v 1.1 2012-03-09 20:41:01 pbuchbinder Exp $
+#
+#   QS_LocKBytesPerSecLimitMatch  ^/limitbs/.*   500
+#
+
+INCLUDE scripts/ports
+
+# ~ 1000 kbytes/sec
+CLIENT 2
+
+_AUTO_CLOSE on
+
+_RPS 200 120
+_REQ localhost $QS_PORT_BASE
+__GET /limitbs/image.iso HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+_SLEEP 500
+_END RPS
+
+_EXPECT EXEC "b/s;[0-9]{6};"
+_EXEC tail -1 logs/qs_log
+
+_EXPECT EXEC "mod_qos\(052\): byte rate limit, rule: \^/limitbs/\.\*\(500\)"
+END
+
