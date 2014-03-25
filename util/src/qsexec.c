@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.20 2014-03-24 21:06:18 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.21 2014-03-25 11:57:09 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -132,11 +132,11 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Example:\n");
   }
-  qs_man_print(man, "Executes the deny.sh script providing the IP address of\n");
-  qs_man_print(man, "the client causing a mod_qos(031) messages whenever the log message\n");
+  qs_man_print(man, "Executes the deny.sh script providing the IP address of the\n");
+  qs_man_print(man, "client causing a mod_qos(031) messages whenever the log message\n");
   qs_man_print(man, "appears 10 times within at most one minute:\n");
   if(man) printf("\n");
-  qs_man_println(man, "  ErrorLog \"|%s -e \\'mod_qos\\(031\\).*, c=([0-9.]*)\\' -t 10:60 \\'/bin/deny.sh $1\\'\"\n", cmd);
+  qs_man_println(man, "  ErrorLog \"|%s -e \\'mod_qos\\(031\\).*, c=([0-9a-zA-Z:.]*)\\' -t 10:60 \\'/bin/deny.sh $1\\'\"\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
@@ -391,7 +391,8 @@ int main(int argc, const char * const argv[]) {
       if(clearcommand && executed) {
 	char *replaced = qs_pregsub(pool, clearcommand, line, MAX_REG_MATCH, regm);
 	if(!replaced) {
-	  fprintf(stderr, "[%s]: ERROR, failed to substitute submatches '%s' in (%s)\n", cmd, clearcommand, line);
+	  fprintf(stderr, "[%s]: ERROR, failed to substitute"
+                  " submatches '%s' in (%s)\n", cmd, clearcommand, line);
 	} else {
 	  int rc = system(replaced);
 	}
@@ -400,7 +401,8 @@ int main(int argc, const char * const argv[]) {
     } else if(qs_regexec(preg, line, MAX_REG_MATCH, regm) == 0) {
       char *replaced = qs_pregsub(pool, command, line, MAX_REG_MATCH, regm);
       if(!replaced) {
-	fprintf(stderr, "[%s]: ERROR, failed to substitute submatches '%s' in (%s)\n", cmd, command, line);
+	fprintf(stderr, "[%s]: ERROR, failed to substitute"
+                " submatches '%s' in (%s)\n", cmd, command, line);
       } else {
 	counter++;
 	if(counter == 1) {

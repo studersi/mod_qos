@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.15 2014-01-09 08:13:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.16 2014-03-25 11:57:09 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -118,7 +118,7 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Example (shows the IP addresses of clients causing mod_qos(031) messages):\n");
   }
-  qs_man_println(man, "  %s -e 'mod_qos\\(031\\).*, c=([0-9.]*)' -o 'ip=$1' error_log\n", cmd);
+  qs_man_println(man, "  %s -e 'mod_qos\\(031\\).*, c=([a-zA-Z0-9:.]*)' -o 'ip=$1' error_log\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
