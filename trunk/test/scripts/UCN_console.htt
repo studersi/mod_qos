@@ -71,6 +71,16 @@ _EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=0/0"
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
+__GET /console?action=limit&address=fc00::112&event=gugus HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=0/0"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
 __GET /console?action=search&address=fc00::112&event=QS_Limit HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: 127.0.0.1
