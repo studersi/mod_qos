@@ -1,5 +1,5 @@
 #
-# $Id: QS_UserTrackingCookieNameForce.htt,v 1.4 2011-08-16 19:57:34 pbuchbinder Exp $
+# $Id: QS_UserTrackingCookieNameForce.htt,v 1.5 2014-04-02 20:32:33 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -55,6 +55,7 @@ __GET $LOC HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
 __
+_EXPECT . "Cache-Control: no-cache, no-store"
 _EXPECT . "Cookie Check Page"
 _EXPECT . "!302"
 _WAIT
