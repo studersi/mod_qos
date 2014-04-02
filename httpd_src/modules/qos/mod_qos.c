@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.486 2014-03-24 19:42:38 pbuchbinder Exp $";
-static const char g_revision[] = "10.30";
+static const char revision[] = "$Id: mod_qos.c,v 5.487 2014-04-02 20:32:33 pbuchbinder Exp $";
+static const char g_revision[] = "10.31";
 
 /************************************************************************
  * Includes
@@ -848,7 +848,7 @@ static qs_ip_type_e m_ip_type = QS_IP_V6_DEFAULT;
 APR_DECLARE_OPTIONAL_FN(apr_table_t *, parp_hp_table, (request_rec *));
 APR_DECLARE_OPTIONAL_FN(char *, parp_body_data, (request_rec *, apr_size_t *));
 static APR_OPTIONAL_FN_TYPE(parp_hp_table) *qos_parp_hp_table_fn = NULL;
-static APR_OPTIONAL_FN_TYPE(parp_body_data) *parp_appl_body_data_fn = NULL;
+static APR_OPTIONAL_FN_TYPE(parp_body_data) *qos_parp_body_data_fn = NULL;
 static int m_requires_parp = 0;
 static int m_enable_audit = 0;
 /* mod_ssl, forward and optional function */
@@ -1966,7 +1966,28 @@ static char *qos_get_remove_cookie(request_rec *r, const char *cookie_name) {
   const char *cookie_h = apr_table_get(r->headers_in, "cookie");
   if(cookie_h) {
     char *cn = apr_pstrcat(r->pool, cookie_name, "=", NULL);
-    char *p = ap_strcasestr(cookie_h, cn);
+    char *pt = ap_strcasestr(cookie_h, cn);
+    char *p = NULL;
+    while(pt && !p) {
+      // ensure we found the real cookie (and not an ending b64 str)
+      if(pt == cookie_h) {
+        // @beginning of the header
+        p = pt;
+        pt = NULL;
+      } else {
+        char pre = pt[-1];
+        if(pre == ' ' ||
+           pre == ';') {
+          // @beginnin of a cookie
+          p = pt;
+          pt = NULL;
+        } else {
+          // found patter somewhere else
+          pt++;
+          pt = ap_strcasestr(pt, cn);
+        }
+      }
+    }
     if(p) {
       char *sp = p;
       char *value = NULL;
@@ -3055,8 +3076,8 @@ static int qos_json(request_rec *r, qos_dir_config *dconf, const char **query, c
     const char *data = NULL;
     /* check if parp has body data to process (requires "PARP_BodyData application/json")
        or if the json message is stored within the query */
-    if(parp_appl_body_data_fn) {
-      data = parp_appl_body_data_fn(r, &len);
+    if(qos_parp_body_data_fn) {
+      data = qos_parp_body_data_fn(r, &len);
     }
     if(data == NULL) {
       data = *query;
@@ -3730,9 +3751,9 @@ static void qos_setenvif_ex(request_rec *r, const char *query, apr_table_t *tabl
  */
 static void qos_parp_hp_body(request_rec *r, qos_srv_config *sconf) {
   if(apr_table_elts(sconf->setenvifparpbody_t)->nelts > 0) {
-    if(parp_appl_body_data_fn) {
+    if(qos_parp_body_data_fn) {
       apr_size_t len;
-      const char *data = parp_appl_body_data_fn(r, &len);
+      const char *data = qos_parp_body_data_fn(r, &len);
       if(data && (len > 0)) {
         int ovector[3];
         int i;
@@ -7091,6 +7112,9 @@ static int qos_post_read_request_later(request_rec *r) {
                 }
               }
             } /* else, "grant access" to the error page */
+            /* but prevent page caching (the browser shall always acces the
+               server when redireced to this url */
+            apr_table_add(r->headers_out, "Cache-Control", "no-cache, no-store");
           } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
             if(r->method_number == M_GET) {
               /* no valid cookie in request, redirect to check page */
@@ -8750,7 +8774,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                    " (required by some directives)");
     } else {
       qos_parp_hp_table_fn = APR_RETRIEVE_OPTIONAL_FN(parp_hp_table);
-      parp_appl_body_data_fn = APR_RETRIEVE_OPTIONAL_FN(parp_body_data);
+      qos_parp_body_data_fn = APR_RETRIEVE_OPTIONAL_FN(parp_body_data);
     }
   }
   if(u->server_start == 2) {
