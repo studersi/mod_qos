@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.83 2014-01-09 08:13:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.84 2014-04-30 13:19:41 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -861,18 +861,20 @@ static void updateUrl(apr_pool_t *pool, char *R, char *S, long tmems) {
     apr_table_setn(m_url_entries, apr_pstrdup(pool, R), (char *)url_rec);
   }
   url_rec->request_count++;
-  if(S[0] == '1') {
-    url_rec->status_1++;
-  } else if(S[0] == '1') {
-    url_rec->status_1++;
-  } else if(S[0] == '2') {
-    url_rec->status_2++;
-  } else if(S[0] == '3') {
-    url_rec->status_3++;
-  } else if(S[0] == '4') {
-    url_rec->status_4++;
-  } else if(S[0] == '5') {
-    url_rec->status_5++;
+  if(S) {
+    if(S[0] == '1') {
+      url_rec->status_1++;
+    } else if(S[0] == '1') {
+      url_rec->status_1++;
+    } else if(S[0] == '2') {
+      url_rec->status_2++;
+    } else if(S[0] == '3') {
+      url_rec->status_3++;
+    } else if(S[0] == '4') {
+      url_rec->status_4++;
+    } else if(S[0] == '5') {
+      url_rec->status_5++;
+    }
   }
   url_rec->duration_count_ms += tmems;
 }
@@ -1387,8 +1389,10 @@ static time_t getMinutes(char *line) {
       }
       return minutes;
     } else {
-      // unknown format
-      fprintf(stdout, "F(%ld)", m_lines);
+      // unknown format (not relevant for -pu/-puc
+      if(m_offline_url == 0) {
+        fprintf(stdout, "F(%ld)", m_lines);
+      }
       return 0;
     }
   } else {
