@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.35 2014-03-24 21:03:24 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.36 2014-04-30 18:23:43 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -69,15 +69,33 @@ echo "export QS_PORT_BASE2"         >> ports
 echo "QS_PORT_BASE6=$QS_PORT_BASE6" >> ports
 echo "export QS_PORT_BASE6"         >> ports
 
+# image.iso   ~1MB
+# dvd.iso    ~10MB
+# dvd2.iso  ~100MB
+# dvd3.iso  ~500MB
+# guide.pdf  ~20MB
 if [ ! -f htdocs/image.iso ]; then
-    for E in `seq 12500`; do
-	echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso
-    done
-    cp htdocs/image.iso htdocs/demo/c/image.iso
-    cp htdocs/image.iso htdocs/bbb/image.iso
-    for E in `seq 10`; do
-      cat htdocs/image.iso >> htdocs/dvd.iso
-    done
+  for E in `seq 12500`; do
+    echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso
+  done
+  cp htdocs/image.iso htdocs/demo/c/image.iso
+  cp htdocs/image.iso htdocs/bbb/image.iso
+  rm -f htdocs/dvd.iso
+  for E in `seq 10`; do
+    cat htdocs/image.iso >> htdocs/dvd.iso
+  done
+  rm -f htdocs/dvd2.iso
+  for E in `seq 10`; do
+    cat htdocs/dvd.iso >> htdocs/dvd2.iso
+  done
+  rm -f htdocs/dvd3.iso
+  for E in `seq 5`; do
+    cat htdocs/dvd2.iso >> htdocs/dvd3.iso
+  done
+  cp htdocs/dvd.iso htdocs/guide01.pdf
+  cat htdocs/dvd.iso >> htdocs/guide01.pdf
+  mkdir -p htdocs/images
+  cp htdocs/demo/a/_*.jpg htdocs/images/
 fi
 
 CONFFILES="conf/httpd.conf conf/demo.conf conf/simple.conf conf/dos.conf conf/qos_viewer.conf appl_conf/httpd.conf conf/uc1.conf conf/ucn.conf"

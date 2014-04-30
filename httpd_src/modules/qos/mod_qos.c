@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.487 2014-04-02 20:32:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.488 2014-04-30 18:23:42 pbuchbinder Exp $";
 static const char g_revision[] = "10.31";
 
 /************************************************************************
@@ -3440,6 +3440,9 @@ static void qos_cal_bytes_sec(request_rec *r, qs_acentry_t *e) {
     /* start slowly */
     if(e->kbytes_per_sec_block_rate == 0) {
       factor = factor / 2;
+      if(factor > 100) {
+        factor = 100;
+      }
     }
     e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate + factor;
     /* limit max delay */
@@ -3453,8 +3456,8 @@ static void qos_cal_bytes_sec(request_rec *r, qs_acentry_t *e) {
                   e->kbytes_per_sec, e->kbytes_per_sec_block_rate,
                   e->kbytes_per_sec_block_rate == QS_MAX_DELAY ? " (max)" : "");
   } else if(e->kbytes_per_sec_block_rate > 0) {
-    if(e->kbytes_per_sec_block_rate < 20) {
-      e->kbytes_per_sec_block_rate = 0;
+    if(e->kbytes_per_sec_block_rate < 2) {
+      e->kbytes_per_sec_block_rate = 1;
     } else {
       int factor = e->kbytes_per_sec_block_rate / 4;
       e->kbytes_per_sec_block_rate = e->kbytes_per_sec_block_rate - factor;
