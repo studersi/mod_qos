@@ -5,6 +5,8 @@ Version
 
  - QS_UserTrackingCookieName: improved cookie header processing.
 
+ - Fixed: 'qslog -pc' does no longer require 'S' and date.
+
 Version 10.30
 
  - QS_SetReqHeader features the option 'late'.
