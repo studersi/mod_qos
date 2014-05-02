@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.67 2014-01-27 07:08:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.68 2014-05-02 13:25:52 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -93,7 +93,7 @@ if [ $? -ne 0 ]; then
 fi
 
 #if [ `echo $APACHE_VER | awk '{print substr($0, 1, 3)}'` = "2.2" ]; then
-  ./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-cache=shared --enable-mem_cache=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate --enable-reqtimeout=shared --enable-rewrite=shared $ADDMOD
+  ./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-cache=shared --enable-mem_cache=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-logio=shared --enable-deflate --enable-reqtimeout=shared --enable-rewrite=shared $ADDMOD
   RC=$?
 #else
 #  ./configure --with-mpm=${MPM} --enable-so --enable-qos=shared --enable-qtest=shared --enable-proxy=shared --enable-ssl --enable-status=shared --enable-info=shared --enable-static-support --enable-unique-id=shared --enable-logio=shared --enable-dumpio=shared --enable-deflate $ADDMOD

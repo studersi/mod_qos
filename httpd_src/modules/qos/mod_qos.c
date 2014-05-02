@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.490 2014-05-01 20:28:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.491 2014-05-02 13:25:52 pbuchbinder Exp $";
 static const char g_revision[] = "10.31";
 
 /************************************************************************
@@ -8164,7 +8164,8 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
             // lower than the defined kbytes/sec rate
             if(kbytes_per_sec_block > 0) {
               apr_off_t newtime = kbytes_per_sec_block * APR_USEC_PER_SEC / duration;
-              kbytes_per_sec_block = (kbytes_per_sec_block + kbytes_per_sec_block + newtime) / 3;
+              kbytes_per_sec_block = (kbytes_per_sec_block + newtime) / 2;
+              //kbytes_per_sec_block = (kbytes_per_sec_block + kbytes_per_sec_block + newtime) / 3;
             }
           } else {
             // higher than the defined kbytes/sec rate
@@ -8172,7 +8173,8 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
               kbytes_per_sec_block = 1000; // start with 1 ms
             } else {
               apr_off_t newtime = kbytes_per_sec_block * APR_USEC_PER_SEC / duration;
-              kbytes_per_sec_block = newtime;
+              kbytes_per_sec_block = (kbytes_per_sec_block + newtime) / 2;
+              //kbytes_per_sec_block = newtime;
             }
           }
           if(kbytes_per_sec_block > QS_MAX_DELAY) {
@@ -12386,7 +12388,8 @@ static void qos_register_hooks(apr_pool_t * p) {
   /* AP_FTYPE_RESOURCE+1 ensures the filter are executed after mod_setenvifplus */
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE+1);
   ap_register_output_filter("qos-out-filter-min", qos_out_filter_min, NULL, AP_FTYPE_RESOURCE+1);
-  ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE+1);
+  //$$$ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_RESOURCE+1);
+  ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_PROTOCOL+3);
   ap_register_output_filter("qos-out-filter-body", qos_out_filter_body, NULL, AP_FTYPE_RESOURCE+1);
   ap_register_output_filter("qos-out-err-filter", qos_out_err_filter, NULL, AP_FTYPE_RESOURCE+1);
   ap_register_output_filter("qos-out-filter-bandwidth", qos_out_filter_bandwidth, NULL, AP_FTYPE_PROTOCOL+3);
