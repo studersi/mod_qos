@@ -1,4 +1,7 @@
 #!/bin/sh
+#
+# export UC=uc1l2; ./KBytesPerSecLimit.sh ; sleep 600; export UC=uc1l3; ./KBytesPerSecLimit.sh
+#
 
 UC=${UC-uc1l2}
 ./ctl.sh stop
@@ -13,7 +16,19 @@ sleep 90
 sleep 120
 ./run.sh -s scripts/UC1_QS_LocKBytesPerSecLimitMatch3.htt &
 
+# V10.30
+# -------------------
+# uc1l2
+# b/s;1676701;
+# b/s;3112831;
+# b/s;58453;
+# b/s;4023081;
+# b/s;72207;
+# b/s;374134;
+#     1552901 52%
+#
 # 02.05.2014 13:30:00
+# -------------------
 # uc1l2
 # b/s;2976924;
 # b/s;2961476;
