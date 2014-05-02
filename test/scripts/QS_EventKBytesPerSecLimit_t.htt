@@ -1,5 +1,5 @@
 #
-# $Id: QS_EventKBytesPerSecLimit_t.htt,v 1.3 2010-12-21 21:48:55 pbuchbinder Exp $
+# $Id: QS_EventKBytesPerSecLimit_t.htt,v 1.4 2014-05-02 19:44:24 pbuchbinder Exp $
 #
 
 
@@ -13,7 +13,6 @@ __Host: localhost
 __Connection: keep-alive
 __
 _EXPECT . "200"
-_EXPECT . "mod_qos.052.: byte rate limit, rule: var={eventkbytespersec}.202."
 _WAIT
 _CLOSE
 

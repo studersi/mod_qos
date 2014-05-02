@@ -7,6 +7,15 @@ Version
 
  - Fixed: 'qslog -pc' does no longer require 'S' and date.
 
+ - Highly improves bytes/sec limitation (response throttling) based
+   on the input I got from Jeff Trawick - many thanks!
+   * Calculates delay within filter (immediately when reaching the
+     defined amount of bytes).
+   * Uses nanoseconds delay (instead of milliseconds).
+   * Splits large bucket brigades to 8k blocks (better support for 
+     lokal files, not using mod_proxy).
+   * Inserts filter late (after mod_deflate).
+
 Version 10.30
 
  - QS_SetReqHeader features the option 'late'.

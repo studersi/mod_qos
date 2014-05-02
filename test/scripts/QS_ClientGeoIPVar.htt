@@ -16,6 +16,8 @@ EXEC ./ctl.sh restart -D geovar 2>/dev/null 1>/dev/null
 CLIENT
 
 # 1) DACH, no limitation
+_SET bytes=0
+_DATE:GET_TIME start
 _SET IP=89.202.132.12
 _RPS 1000 15
 # ~1012500 bytes per req => 500kb/sec
@@ -26,11 +28,21 @@ __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713
 __Connection: keep-alive
 __Y-Forwarded-For: ${IP}
 __
+_MATCH headers "Content-Length: ([0-9]*)" ct
 _EXPECT . "200 OK"
 _WAIT
 _CLOSE
-_SLEEP 2000
+_MATH:OP $bytes ADD $ct bytes
+_SLEEP 1000
 _END RPS
+
+_DATE:GET_TIME end
+_MATH:OP $end SUB $start duration
+_MATH:OP $bytes DIV $duration bms
+_DEBUG "kbytes/sec (unlimitted) $bms"
+_IF $bms LT 800
+_EXIT FAILED
+_END IF
 
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1
@@ -42,10 +54,10 @@ __
 _EXPECT . ";${QS_PORT_BASE};QS_EventKBytesPerSecLimit;200\[var={QS_CountryLimit}\]: 0"
 _WAIT
 _CLOSE
-_EXPECT EXEC "!mod_qos\(052\): byte rate limit, rule: var={QS_CountryLimit}\(200\)"
-_EXEC tail -1 logs/error_log
 
 # 2) US, limitation
+_SET bytes=0
+_DATE:GET_TIME start
 _SET IP=130.114.0.0
 _RPS 1000 15
 # ~1012500 bytes per req => 500kb/sec
@@ -56,12 +68,24 @@ __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713
 __Connection: keep-alive
 __Y-Forwarded-For: ${IP}
 __
+_MATCH headers "Content-Length: ([0-9]*)" ct
 _EXPECT . "200 OK"
 _WAIT
 _CLOSE
-_SLEEP 2000
+_MATH:OP $bytes ADD $ct bytes
+_SLEEP 1000
 _END RPS
 
+_DATE:GET_TIME end
+_MATH:OP $end SUB $start duration
+_MATH:OP $bytes DIV $duration bms
+_DEBUG "kbytes/sec (limitted) $bms"
+_IF $bms GT 250
+_EXIT FAILED
+_END IF
+_IF $bms LT 150
+_EXIT FAILED
+_END IF
 
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1
@@ -73,7 +97,5 @@ __
 _EXPECT . ";${QS_PORT_BASE};QS_EventKBytesPerSecLimit;200\[var={QS_CountryLimit}\]: [1-9]{1}[0-9]*"
 _WAIT
 _CLOSE
-_EXPECT EXEC "mod_qos\(052\): byte rate limit, rule: var={QS_CountryLimit}\(200\)"
-_EXEC tail -1 logs/error_log
 
 END
