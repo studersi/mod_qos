@@ -348,9 +348,8 @@ and <code>QS_LocRequestLimitMatch</code> directive).
 <code>QS_LocKBytesPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
 Defines the allowed download bandwidth to the location matching the 
 defined URL (path and query) pattern.  Responses are slowed down by 
-adding a delay to each response (non-linear, bigger files get longer 
-delay than smaller ones because bandwidth calculation is based on an 
-average response body size using a sampling rate of 10 seconds). 
+adding a delay to each response (every 8kbytes). Bandwidth calculation 
+is based on measuring the transferred data.
 By default, no limitation is active. This directive should be used 
 in conjunction with <code>QS_LocRequestLimitMatch</code> only (you 
 must use the very same regex pattern with the 
@@ -850,9 +849,8 @@ event.
 <code>QS_EventKBytesPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
 Throttles the download bandwidth of all requests having the defined 
 variable set to the defined kbytes per second. Responses are slowed 
-by adding a delay to each response (non-linear, bigger files get 
-longer delay than smaller ones). The delay calculation is based on 
-an average request rate measurement using a sampling rate of 10 seconds.
+by adding a delay to each response (every 8kbytes). The delay calculation 
+is based on an average request rate measurement.
 By default, no limitation is active. 
 This directive should be used in conjunction with <code>QS_EventRequestLimit</code> 
 only (you must use the same variable name for both directives).

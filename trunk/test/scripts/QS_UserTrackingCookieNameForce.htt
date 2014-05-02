@@ -1,5 +1,5 @@
 #
-# $Id: QS_UserTrackingCookieNameForce.htt,v 1.5 2014-04-02 20:32:33 pbuchbinder Exp $
+# $Id: QS_UserTrackingCookieNameForce.htt,v 1.6 2014-05-02 19:44:24 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -10,6 +10,7 @@ _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /htt/index.html?id=1 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
+__Req: 01
 __
 _MATCH headers "Set-Cookie: stat=(.*); Path=/; Max-Age=2" UTC
 _MATCH headers "Location: .*:[0-9]+(.*)" LOC
@@ -21,6 +22,7 @@ _REQ 127.0.0.1 $QS_PORT_BASE
 __GET $LOC HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
+__Req: 02
 __Cookie: stat=$UTC
 __
 _MATCH headers "Location: .*:[0-9]+(.*)" LOC
@@ -31,6 +33,7 @@ _CLOSE
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET $LOC HTTP/1.1
 __Host: 127.0.0.1
+__Req: 03
 __Connection: keep-alive
 __Cookie: stat=$UTC
 __
@@ -43,6 +46,7 @@ _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /htt/index.html?id=1 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
+__Req: 04
 __
 _MATCH headers "Set-Cookie: stat=(.*); Path=/; Max-Age=2" UTC
 _MATCH headers "Location: .*:[0-9]+(.*)" LOC
@@ -54,6 +58,7 @@ _REQ 127.0.0.1 $QS_PORT_BASE
 __GET $LOC HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
+__Req: 05
 __
 _EXPECT . "Cache-Control: no-cache, no-store"
 _EXPECT . "Cookie Check Page"
@@ -67,6 +72,7 @@ __GET /error-docs/cookie.html?r=8haaJtlnxqyfHG4tUAcrD2YY/LLO HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
 __Cookie: stat=$UTC
+__Req: 06
 __
 _EXPECT . "Cookie Check Page"
 _EXPECT . "!302"
@@ -78,6 +84,7 @@ __GET /htt/index.html?id=1 HTTP/1.1
 __Host: 127.0.0.1
 __User-Agent: googlebot
 __Connection: keep-alive
+__Req: 07
 __
 _EXPECT . "!302"
 _EXPECT . "==AS1=="
@@ -90,6 +97,7 @@ __Host: 127.0.0.1
 __X-Do-Not-Track: 1
 __User-Agent: Mozilla
 __Connection: keep-alive
+__Req: 08
 __
 _EXPECT . "!302"
 _EXPECT . "==AS1=="

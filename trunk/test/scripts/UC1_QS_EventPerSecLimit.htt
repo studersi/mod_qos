@@ -24,6 +24,6 @@ _END LOOP
 _EXPECT EXEC "mod_qos\(050\): request rate limit, rule: var=\[limit\]\(10\), req/sec=[0-9]+, delay=[0-9]+ms"
 _EXEC tail -1 logs/error_log
 _EXPECT EXEC ";r/s;1[0-2];"
-_EXEC tail -1 logs/qs_log
+_EXEC tail -1 logs/qs_log_v0
 
 END
