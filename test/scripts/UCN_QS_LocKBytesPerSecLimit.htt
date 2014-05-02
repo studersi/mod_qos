@@ -26,7 +26,7 @@ _END RPS
 _CLOSE
 _END LOOP
 
-_EXPECT EXEC ";b/s;3[0-9]{6,6};"
+_EXPECT EXEC ";b/s;[23][0-9]{6,6};"
 _EXEC tail -1 logs/qs_log
 
 END
