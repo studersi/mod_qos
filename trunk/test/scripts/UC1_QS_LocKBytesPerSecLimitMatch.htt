@@ -29,10 +29,10 @@ _DATE:GET_TIME end
 _MATH:OP $end SUB $start duration
 _MATH:OP $bytes DIV $duration bms
 _DEBUG "kbytes/sec (netto) $bms"
-_IF $bms GT 4500
+_IF $bms GT 3500
 _EXIT FAILED
 _END IF
-_IF $bms LT 2700
+_IF $bms LT 2500
 _EXIT FAILED
 _END IF
 
