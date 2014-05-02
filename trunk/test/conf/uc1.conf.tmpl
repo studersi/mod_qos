@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.29 2014-04-30 18:23:43 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.30 2014-05-02 13:25:53 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -68,7 +68,8 @@ LogFormat               "%h %{QS_Country}e %u %t \"%r\" %>s %b \"%{User-Agent}i\
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
-TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 14400 -f"
+#TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 14400 -f"
+TransferLog             ##ROOT##/logs/access_log
 CustomLog               "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
 
 PidFile                 ##ROOT##/logs/apache.pid
@@ -79,7 +80,7 @@ LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_p
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 LoadModule              parp_module libexec/mod_parp.so
-
+LoadModule              logio_module ##ROOT##/../httpd/modules/loggers/.libs/mod_logio.so
 <IfDefine uc1b>
 QS_ClientEventLimitCount 3 3
 QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
@@ -159,6 +160,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
    ServerName                 127.0.0.1
 
+   TransferLog ##ROOT##/logs/access_log
+   CustomLog "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log_v0 -f ISBiDUQ" "%h %>s %O %I %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
+
    ProxyRequests              Off
    <Proxy *>
       Order deny,allow
@@ -175,8 +179,8 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
 
-   ProxyPass                  /myimages/ http://localhost:##QS_PORT_BASE##/ retry=0
-   ProxyPassReverse           /myimages/ http://localhost:##QS_PORT_BASE##/
+   ProxyPass                  /myimages/ http://localhost:##QS_PORT_BASE10##/ retry=0
+   ProxyPassReverse           /myimages/ http://localhost:##QS_PORT_BASE10##/
 
    ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
    ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/
@@ -246,6 +250,9 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
 <IfDefine uc1l>
    QS_LocKBytesPerSecLimitMatch ^/image.iso$ 3000
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
 </IfDefine>
 
 <IfDefine uc1l2>
@@ -254,6 +261,16 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        SetHandler qos-viewer
    </Location>
 </IfDefine>
+
+<IfDefine uc1l3>
+   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus Request_URI ^/myimages/ myimages
+   QS_EventNewKbytesPerSecLimit myimages 3000
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
 
 <IfDefine uc1o>
    SetEnvIf Request_URI  /index.html limit=a
@@ -266,6 +283,12 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        Allow from all
    </Location>
 
+</VirtualHost>
+
+Listen       127.0.0.1:##QS_PORT_BASE10##
+<VirtualHost 127.0.0.1:##QS_PORT_BASE10##>
+   ServerName                 127.0.0.1
+   TransferLog ##ROOT##/logs/access_app_log
 </VirtualHost>
 
 <IfDefine uc1v6c>
