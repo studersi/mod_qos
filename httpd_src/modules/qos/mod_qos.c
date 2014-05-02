@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.492 2014-05-02 19:44:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.493 2014-05-02 20:59:10 pbuchbinder Exp $";
 static const char g_revision[] = "10.31";
 
 /************************************************************************
@@ -8075,6 +8075,7 @@ static apr_status_t qos_out_filter_bandwidth(ap_filter_t *f, apr_bucket_brigade 
 static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb) {
   qs_acentry_t *entry = f->ctx;
   apr_off_t length;
+  //  request_rec *r = f->r;
   if(entry) {
     if(apr_brigade_length(bb, 1, &length) == APR_SUCCESS) {
       if(length > 0) {
@@ -8086,25 +8087,29 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
              => check within which time we did */
           apr_time_t now = apr_time_now();
           apr_time_t duration = now - entry->kbytes_interval_us;
+          apr_off_t kbs;
           if(duration == 0) {
             duration = 1;
           }
-          entry->kbytes_per_sec = (entry->kbytes_per_sec + (entry->bytes * 1000 / duration)) / 2;
+          kbs = entry->bytes * 1000 / duration;
+          entry->kbytes_per_sec = (entry->kbytes_per_sec + kbs) / 2;
+//          ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+//                        QOS_LOGD_PFX"duration %ld kbytes/sec %ld bytes %ld sleep %ld",
+//                        duration, entry->kbytes_per_sec,
+//                        entry->bytes, kbytes_per_sec_block);
           if(duration > APR_USEC_PER_SEC) {
             // lower than the defined kbytes/sec rate
             if(kbytes_per_sec_block > 0) {
-              apr_off_t newtime = kbytes_per_sec_block * APR_USEC_PER_SEC / duration;
+              apr_off_t newtime = kbytes_per_sec_block * kbs / entry->kbytes_per_sec_limit;
               kbytes_per_sec_block = (kbytes_per_sec_block + newtime) / 2;
-              //kbytes_per_sec_block = (kbytes_per_sec_block + kbytes_per_sec_block + newtime) / 3;
             }
           } else {
             // higher than the defined kbytes/sec rate
             if(kbytes_per_sec_block == 0) {
               kbytes_per_sec_block = 1000; // start with 1 ms
             } else {
-              apr_off_t newtime = kbytes_per_sec_block * APR_USEC_PER_SEC / duration;
+              apr_off_t newtime = kbytes_per_sec_block * kbs / entry->kbytes_per_sec_limit;
               kbytes_per_sec_block = (kbytes_per_sec_block + newtime) / 2;
-              //kbytes_per_sec_block = newtime;
             }
           }
           if(kbytes_per_sec_block > QS_MAX_DELAY) {
