@@ -26,7 +26,14 @@ _END RPS
 _CLOSE
 _END LOOP
 
-_EXPECT EXEC ";b/s;[23][0-9]{6,6};"
+_MATCH EXEC ";b/s;([0-9]*);" BS
 _EXEC tail -1 logs/qs_log
+
+_IF "${BS}" LT 2800000
+_EXIT FAILED
+_END IF
+_IF "${BS}" GT 3200000
+_EXIT FAILED
+_END IF
 
 END
