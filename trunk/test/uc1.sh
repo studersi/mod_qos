@@ -103,6 +103,18 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1l2 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_LocKBytesPerSecLimitMatch4.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1l5 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_LocKBytesPerSecLimitMatch5.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1m 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UC1_QS_SrvMaxConn.htt

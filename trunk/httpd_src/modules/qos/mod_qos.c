@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.493 2014-05-02 20:59:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.494 2014-05-03 16:11:28 pbuchbinder Exp $";
 static const char g_revision[] = "10.31";
 
 /************************************************************************
@@ -5987,8 +5987,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rprintf(r, "<td>-</td>");
           ap_rprintf(r, "<td>-</td>");
           } else {
-          ap_rprintf(r, "<td %s>%d&nbsp;ms</td>",
-                     e->req_per_sec_block_rate ? red : "",
+          ap_rprintf(r, "<td>%d&nbsp;ms</td>",
                      e->req_per_sec_block_rate);
           ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
@@ -6000,8 +5999,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
         } else {
-          ap_rprintf(r, "<td %s>%ld&nbsp;ms</td>",
-                     e->kbytes_per_sec_block_rate ? red : "",
+          ap_rprintf(r, "<td>%ld&nbsp;ms</td>",
                      e->kbytes_per_sec_block_rate / 1000);
           ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
@@ -8066,6 +8064,61 @@ static apr_status_t qos_out_filter_bandwidth(ap_filter_t *f, apr_bucket_brigade 
 // byjeff <
 
 /**
+ * Helper used by qos_out_filter_delay() to calculate/update
+ * the delay rate. Shall be called for every bucket we are 
+ * sending to the client.
+ * @param entry Rule entry to update / measure
+ * @param length Bytes we are going to transfer
+ * @return Wait time in nanoseconds
+ */
+static apr_off_t qos_calc_kbytes_per_sec_block(qs_acentry_t *entry, apr_off_t length) {
+  apr_off_t kbytes_per_sec_block;
+  apr_global_mutex_lock(entry->lock);    /* @CRT43 */
+  kbytes_per_sec_block = entry->kbytes_per_sec_block_rate;
+  if((entry->bytes / 1024) > entry->kbytes_per_sec_limit) {
+    /* transferred more than the limit/sec 
+       => check within which time we did */
+    apr_time_t now = apr_time_now();
+    apr_time_t duration = now - entry->kbytes_interval_us;
+    apr_off_t kbs;
+    if(duration == 0) {
+      duration = 1;
+    }
+    kbs = entry->bytes * 1000 / duration;
+    entry->kbytes_per_sec = (entry->kbytes_per_sec + kbs) / 2;
+//          ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+//                        QOS_LOGD_PFX"duration %ld kbytes/sec %ld bytes %ld sleep %ld",
+//                        duration, entry->kbytes_per_sec,
+//                        entry->bytes, kbytes_per_sec_block);
+    
+    if(duration > APR_USEC_PER_SEC) {
+      // lower than the defined kbytes/sec rate
+      if(kbytes_per_sec_block > 0) {
+        apr_off_t newtime = kbytes_per_sec_block * kbs / entry->kbytes_per_sec_limit;
+        kbytes_per_sec_block = (kbytes_per_sec_block + newtime) / 2;
+      }
+    } else {
+      // higher than the defined kbytes/sec rate
+      if(kbytes_per_sec_block == 0) {
+        kbytes_per_sec_block = 1000; // start with 1 ms
+      } else {
+        apr_off_t newtime = kbytes_per_sec_block * kbs / entry->kbytes_per_sec_limit;
+        kbytes_per_sec_block = (kbytes_per_sec_block + newtime) / 2;
+      }
+    }
+    if(kbytes_per_sec_block > QS_MAX_DELAY) {
+      kbytes_per_sec_block = QS_MAX_DELAY;
+    }
+    entry->kbytes_interval_us = now;
+    entry->bytes = 0;
+  }
+  entry->bytes = entry->bytes + length;
+  entry->kbytes_per_sec_block_rate = kbytes_per_sec_block;
+  apr_global_mutex_unlock(entry->lock); /* @CRT43 */
+  return kbytes_per_sec_block;
+}
+
+/**
  * Output filter adds response delay.
  *
  * @param f
@@ -8074,89 +8127,46 @@ static apr_status_t qos_out_filter_bandwidth(ap_filter_t *f, apr_bucket_brigade 
  */
 static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb) {
   qs_acentry_t *entry = f->ctx;
-  apr_off_t length;
   //  request_rec *r = f->r;
   if(entry) {
+    apr_off_t length;
     if(apr_brigade_length(bb, 1, &length) == APR_SUCCESS) {
       if(length > 0) {
-        apr_off_t kbytes_per_sec_block;
-        apr_global_mutex_lock(entry->lock);    /* @CRT43 */
-        kbytes_per_sec_block = entry->kbytes_per_sec_block_rate;
-        if((entry->bytes / 1024) > entry->kbytes_per_sec_limit) {
-          /* transferred more than the limit/sec 
-             => check within which time we did */
-          apr_time_t now = apr_time_now();
-          apr_time_t duration = now - entry->kbytes_interval_us;
-          apr_off_t kbs;
-          if(duration == 0) {
-            duration = 1;
-          }
-          kbs = entry->bytes * 1000 / duration;
-          entry->kbytes_per_sec = (entry->kbytes_per_sec + kbs) / 2;
-//          ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-//                        QOS_LOGD_PFX"duration %ld kbytes/sec %ld bytes %ld sleep %ld",
-//                        duration, entry->kbytes_per_sec,
-//                        entry->bytes, kbytes_per_sec_block);
-          if(duration > APR_USEC_PER_SEC) {
-            // lower than the defined kbytes/sec rate
-            if(kbytes_per_sec_block > 0) {
-              apr_off_t newtime = kbytes_per_sec_block * kbs / entry->kbytes_per_sec_limit;
-              kbytes_per_sec_block = (kbytes_per_sec_block + newtime) / 2;
+        if(length > APR_BUCKET_BUFF_SIZE) {
+          // split (no proxy)
+          while(!APR_BRIGADE_EMPTY(bb)) {
+            apr_bucket *b, *first, *next;
+            apr_bucket_brigade *tmp_bb;
+            apr_status_t rv;
+            apr_off_t kbytes_per_sec_block;
+            rv = apr_brigade_partition(bb, APR_BUCKET_BUFF_SIZE, &next);
+            if(rv != APR_SUCCESS && rv != APR_INCOMPLETE) {
+              return rv;
             }
-          } else {
-            // higher than the defined kbytes/sec rate
-            if(kbytes_per_sec_block == 0) {
-              kbytes_per_sec_block = 1000; // start with 1 ms
-            } else {
-              apr_off_t newtime = kbytes_per_sec_block * kbs / entry->kbytes_per_sec_limit;
-              kbytes_per_sec_block = (kbytes_per_sec_block + newtime) / 2;
+            if(rv == APR_INCOMPLETE) { /* no split needed */
+              break;
             }
-          }
-          if(kbytes_per_sec_block > QS_MAX_DELAY) {
-            kbytes_per_sec_block = QS_MAX_DELAY;
-          }
-          entry->kbytes_interval_us = now;
-          entry->bytes = 0;
-        }
-        entry->bytes = entry->bytes + length;
-        entry->kbytes_per_sec_block_rate = kbytes_per_sec_block;
-        apr_global_mutex_unlock(entry->lock); /* @CRT43 */
-
-        if(kbytes_per_sec_block) {
-          if(length > APR_BUCKET_BUFF_SIZE) {
-            // split (no proxy)
-            while (!APR_BRIGADE_EMPTY(bb)) {
-              apr_bucket *b, *first, *next;
-              apr_bucket_brigade *tmp_bb;
-              apr_status_t rv;
-              apr_sleep(kbytes_per_sec_block);
-              rv = apr_brigade_partition(bb, APR_BUCKET_BUFF_SIZE, &next);
-              if(rv != APR_SUCCESS && rv != APR_INCOMPLETE) {
-                return rv;
-              }
-              if(rv == APR_INCOMPLETE) { /* no split needed */
-                break;
-              }
-              first = APR_BRIGADE_FIRST(bb);
-              APR_BUCKET_REMOVE(first);
-              tmp_bb = apr_brigade_create(f->r->pool, f->c->bucket_alloc);
-              APR_BRIGADE_INSERT_TAIL(tmp_bb, first);
-              b = apr_bucket_flush_create(f->c->bucket_alloc);
-              APR_BRIGADE_INSERT_TAIL(tmp_bb, b);
-              rv = ap_pass_brigade(f->next, tmp_bb);
-              if(rv != APR_SUCCESS) {
-                return rv;
-              }
-            }
-          } else {
-            // sleep once every 8k
+            first = APR_BRIGADE_FIRST(bb);
+            APR_BUCKET_REMOVE(first);
+            kbytes_per_sec_block = qos_calc_kbytes_per_sec_block(entry, first->length);
             apr_sleep(kbytes_per_sec_block);
+            tmp_bb = apr_brigade_create(f->r->pool, f->c->bucket_alloc);
+            APR_BRIGADE_INSERT_TAIL(tmp_bb, first);
+            b = apr_bucket_flush_create(f->c->bucket_alloc);
+            APR_BRIGADE_INSERT_TAIL(tmp_bb, b);
+            rv = ap_pass_brigade(f->next, tmp_bb);
+            if(rv != APR_SUCCESS) {
+              return rv;
+            }
           }
+        } else {
+          // sleep once every 8k
+          apr_off_t kbytes_per_sec_block = qos_calc_kbytes_per_sec_block(entry, length);
+          apr_sleep(kbytes_per_sec_block);
         }
       }
     }
   }
-
   return ap_pass_brigade(f->next, bb); 
 }
 

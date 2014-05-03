@@ -1,5 +1,5 @@
 #
-# $Id: UC1_QS_LocKBytesPerSecLimitMatch2.htt,v 1.2 2014-05-03 11:41:31 pbuchbinder Exp $
+# $Id: UC1_QS_LocKBytesPerSecLimitMatch2.htt,v 1.3 2014-05-03 16:11:28 pbuchbinder Exp $
 #
 # <IfDefine uc1l2>
 #    QS_LocKBytesPerSecLimitMatch ^/myimages/  3000
@@ -8,6 +8,8 @@
 #    </Location>
 # </IfDefine>
 # 
+# => multiple different/parallel clients downloading data
+#
 # 03.05.2014 13:30:00
 # -------------------
 # uc1l2:
