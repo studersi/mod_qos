@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.30 2014-05-02 13:25:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.31 2014-05-03 16:11:28 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -271,6 +271,25 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    </Location>
 </IfDefine>
 
+<IfDefine uc1l5>
+   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus Request_URI ^/dvd[0-9]?.iso myimages
+   QS_EventKbytesPerSecLimit myimages 5000
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine uc1l6>
+   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus Request_URI ^/dvd[0-9]?.iso dvd
+   QS_EventKbytesPerSecLimit dvd 5000
+   SetEnvIfPlus Request_URI ^/image.iso img
+   QS_EventKbytesPerSecLimit img 500
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
 
 <IfDefine uc1o>
    SetEnvIf Request_URI  /index.html limit=a
