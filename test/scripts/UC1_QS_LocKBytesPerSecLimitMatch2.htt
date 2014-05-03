@@ -1,0 +1,116 @@
+#
+# $Id: UC1_QS_LocKBytesPerSecLimitMatch2.htt,v 1.1 2014-05-03 11:30:33 pbuchbinder Exp $
+#
+# <IfDefine uc1l2>
+#    QS_LocKBytesPerSecLimitMatch ^/myimages/  3000
+#    <Location /qos >
+#        SetHandler qos-viewer
+#    </Location>
+# </IfDefine>
+# 
+INCLUDE scripts/ports
+
+EXEC ./sleep.sh
+
+CLIENT 2
+
+_RPS 1000 80
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/dvd.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_END RPS
+
+END
+
+CLIENT
+
+_RPS 1000 80
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 2000
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_END RPS
+
+END
+
+CLIENT
+
+_RPS 1000 80
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 5000
+
+_END RPS
+
+END
+
+CLIENT
+_SLEEP 70000
+_MATCH EXEC "b/s;([0-9]+);" BS
+_EXEC tail -1 logs/qs_log_v0
+_DEBUG "bytes/sec: $BS"
+# max. +/- 15%
+_IF "${BS}" LT 2550000
+_EXIT FAILED
+_END IF
+_IF "${BS}" GT 3450000
+_EXIT FAILED
+_END IF
+
+END
