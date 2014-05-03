@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.494 2014-05-03 16:11:28 pbuchbinder Exp $";
-static const char g_revision[] = "10.31";
+static const char revision[] = "$Id: mod_qos.c,v 5.495 2014-05-03 18:36:02 pbuchbinder Exp $";
+static const char g_revision[] = "11.0";
 
 /************************************************************************
  * Includes
@@ -5987,7 +5987,8 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           ap_rprintf(r, "<td>-</td>");
           ap_rprintf(r, "<td>-</td>");
           } else {
-          ap_rprintf(r, "<td>%d&nbsp;ms</td>",
+          ap_rprintf(r, "<td %s>%d&nbsp;ms</td>",
+                     e->req_per_sec_block_rate ? red : "",
                      e->req_per_sec_block_rate);
           ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
@@ -5999,7 +6000,8 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
         } else {
-          ap_rprintf(r, "<td>%ld&nbsp;ms</td>",
+          ap_rprintf(r, "<td %s>%ld&nbsp;ms</td>",
+                     e->kbytes_per_sec_block_rate >= 1000 ? red : "",
                      e->kbytes_per_sec_block_rate / 1000);
           ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
