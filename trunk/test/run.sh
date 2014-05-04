@@ -1,6 +1,16 @@
 #!/bin/sh
 
 HTTEST=${ENV_HTTEST-/usr/local/bin/httest}
+if [ -n "$2" ]; then
+    HTS=`grep "#HTTEST=" $2 | awk -F'=' '{print $2}'`
+    if [ -n "$HTS" ]; then
+	if [ -x $HTS ]; then
+	    HTTEST=$HTS
+	else
+	    echo "WARNING $HTS does not exist, fallback to $HTTEST"
+	fi
+    fi
+fi
 RC=0
 START=`date '+%s'`
 if [ "$1" = "-s" -o "$1" = "-se" ]; then

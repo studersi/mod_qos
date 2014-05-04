@@ -1,10 +1,11 @@
 #
-# $Id: QS_LocKBytesPerSecLimit_var.htt,v 1.3 2011-11-28 21:37:47 pbuchbinder Exp $
+# $Id: QS_LocKBytesPerSecLimit_var.htt,v 1.4 2014-05-04 11:40:58 pbuchbinder Exp $
 #
 #
 # creates more than 1000000 bytes/sec
 # - different clients (not the same content length)
 #
+#HTTEST=/usr/local/bin/httest-2.4.9
 
 INCLUDE scripts/ports
 
