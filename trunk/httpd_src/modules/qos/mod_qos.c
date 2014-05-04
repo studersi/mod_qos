@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.496 2014-05-03 18:48:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.497 2014-05-04 08:35:18 pbuchbinder Exp $";
 static const char g_revision[] = "11.0";
 
 /************************************************************************
@@ -8033,6 +8033,10 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
         } else {
           // sleep once every 8k
           apr_off_t kbytes_per_sec_block = qos_calc_kbytes_per_sec_block(entry, length);
+          if(length < APR_BUCKET_BUFF_SIZE) {
+            // be fair with very small responses
+            kbytes_per_sec_block = kbytes_per_sec_block * length / APR_BUCKET_BUFF_SIZE;
+          }
           apr_sleep(kbytes_per_sec_block);
         }
       }

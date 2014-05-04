@@ -1,5 +1,5 @@
 #
-# $Id: UC1_QS_LocKBytesPerSecLimitMatch2.htt,v 1.3 2014-05-03 16:11:28 pbuchbinder Exp $
+# $Id: UC1_QS_LocKBytesPerSecLimitMatch2.htt,v 1.4 2014-05-04 08:35:18 pbuchbinder Exp $
 #
 # <IfDefine uc1l2>
 #    QS_LocKBytesPerSecLimitMatch ^/myimages/  3000
@@ -125,7 +125,7 @@ _MATCH EXEC "b/s;([0-9]+);" BS
 _EXEC tail -1 logs/qs_log_v0
 _DEBUG "bytes/sec: $BS"
 # max. +/- 20%
-_IF "${BS}" LT 2400000
+_IF "${BS}" LT 2300000
 _EXIT FAILED
 _END IF
 _IF "${BS}" GT 3600000
