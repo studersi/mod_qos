@@ -1,5 +1,5 @@
 #
-# $Id: UC1_QS_LocKBytesPerSecLimitMatch7.htt,v 1.1 2014-05-04 08:35:18 pbuchbinder Exp $
+# $Id: UC1_QS_LocKBytesPerSecLimitMatch7.htt,v 1.2 2014-05-04 08:38:02 pbuchbinder Exp $
 #
 #<IfDefine uc1l6>
 #   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
@@ -37,10 +37,10 @@ _END RPS
 _MATCH EXEC ";b/s;([0-9]*);" BS
 _EXEC tail -1 logs/qs_log_v0
 
-_IF "${BS}" LT 100000
+_IF "${BS}" LT 170000
 _EXIT FAILED
 _END IF
-_IF "${BS}" GT 300000
+_IF "${BS}" GT 230000
 _EXIT FAILED
 _END IF
 
@@ -59,10 +59,10 @@ _END RPS
 _MATCH EXEC ";b/s;([0-9]*);" BS
 _EXEC tail -1 logs/qs_log_v0
 
-_IF "${BS}" LT 100000
+_IF "${BS}" LT 170000
 _EXIT FAILED
 _END IF
-_IF "${BS}" GT 300000
+_IF "${BS}" GT 230000
 _EXIT FAILED
 _END IF
 
