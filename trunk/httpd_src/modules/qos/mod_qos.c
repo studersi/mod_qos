@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.498 2014-05-04 15:39:01 pbuchbinder Exp $";
-static const char g_revision[] = "11.0";
+static const char revision[] = "$Id: mod_qos.c,v 5.499 2014-05-06 18:57:08 pbuchbinder Exp $";
+static const char g_revision[] = "11.1";
 
 /************************************************************************
  * Includes
@@ -760,7 +760,17 @@ typedef struct {
   int cc_event_req_set;
   int cc_serialize_set;
   char *body_window;
+  int response_delayed; // indicates, if the response has been delayed (T)
 } qs_req_ctx;
+
+
+/**
+ * Delay filter context
+ */
+typedef struct {
+  qs_acentry_t *entry;
+  qs_req_ctx *rctx;
+} qos_delay_ctx_t;
 
 /**
  * rule set
@@ -2110,6 +2120,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->cc_event_req_set = 0;
     rctx->cc_serialize_set = 0;
     rctx->body_window = NULL;
+    rctx->response_delayed = 0;
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
@@ -7601,8 +7612,10 @@ static int qos_header_parser(request_rec * r) {
       if(rctx->is_vip) {
         rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
       } else {
-        rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
-        ap_add_output_filter("qos-out-filter-delay", event_kbytes_per_sec, r, r->connection);
+        qos_delay_ctx_t *dctx = apr_pcalloc(r->pool, sizeof(qos_delay_ctx_t));
+        dctx->rctx = rctx;
+        dctx->entry = event_kbytes_per_sec;
+        ap_add_output_filter("qos-out-filter-delay", dctx, r, r->connection);
       }
     }
     
@@ -7938,17 +7951,21 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
  * Helper used by qos_out_filter_delay() to calculate/update
  * the delay rate. Shall be called for every bucket we are 
  * sending to the client.
+ * @param request_time Time this request has started
  * @param entry Rule entry to update / measure
  * @param length Bytes we are going to transfer
  * @return Wait time in nanoseconds
  */
-static apr_off_t qos_calc_kbytes_per_sec_wait_time(qs_acentry_t *entry,
+static apr_off_t qos_calc_kbytes_per_sec_wait_time(apr_time_t request_time,
+                                                   qs_acentry_t *entry,
                                                    apr_off_t length) {
   apr_off_t kbps_wait_time;
   apr_global_mutex_lock(entry->lock);    /* @CRT43 */
   kbps_wait_time = entry->kbytes_per_sec_block_rate;
-  if((entry->bytes / 1024) > entry->kbytes_per_sec_limit) {
-    /* transferred more than the limit/sec 
+  if(((entry->bytes / 1024) > entry->kbytes_per_sec_limit) ||
+     (request_time > (entry->kbytes_interval_us + APR_USEC_PER_SEC))) {
+    /* transferred more than the limit/sec OR
+       it's long time ago since we last updated the rate
        => check within which time we did */
     apr_time_t now = apr_time_now();
     apr_time_t duration = now - entry->kbytes_interval_us;
@@ -7997,8 +8014,9 @@ static apr_off_t qos_calc_kbytes_per_sec_wait_time(qs_acentry_t *entry,
  * @return
  */
 static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb) {
-  qs_acentry_t *entry = f->ctx;
-  //  request_rec *r = f->r;
+  qos_delay_ctx_t *dctx = f->ctx;
+  qs_acentry_t *entry = dctx->entry;
+  request_rec *r = f->r;
   if(entry) {
     apr_off_t length;
     if(apr_brigade_length(bb, 1, &length) == APR_SUCCESS) {
@@ -8019,8 +8037,12 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
             }
             first = APR_BRIGADE_FIRST(bb);
             APR_BUCKET_REMOVE(first);
-            kbps_wait_time = qos_calc_kbytes_per_sec_wait_time(entry, first->length);
-            apr_sleep(kbps_wait_time);
+            kbps_wait_time = qos_calc_kbytes_per_sec_wait_time(r->request_time, 
+                                                               entry, first->length);
+            if(kbps_wait_time > 0) {
+              dctx->rctx->response_delayed = kbps_wait_time;
+              apr_sleep(kbps_wait_time);
+            }
             tmp_bb = apr_brigade_create(f->r->pool, f->c->bucket_alloc);
             APR_BRIGADE_INSERT_TAIL(tmp_bb, first);
             b = apr_bucket_flush_create(f->c->bucket_alloc);
@@ -8032,12 +8054,16 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
           }
         } else {
           // sleep once every 8k
-          apr_off_t kbps_wait_time = qos_calc_kbytes_per_sec_wait_time(entry, length);
+          apr_off_t kbps_wait_time = qos_calc_kbytes_per_sec_wait_time(r->request_time,
+                                                                       entry, length);
           if(length < APR_BUCKET_BUFF_SIZE) {
             // be fair with very small responses
             kbps_wait_time = kbps_wait_time * length / APR_BUCKET_BUFF_SIZE;
           }
-          apr_sleep(kbps_wait_time);
+          if(kbps_wait_time > 0) {
+            dctx->rctx->response_delayed = kbps_wait_time;
+            apr_sleep(kbps_wait_time);
+          }
         }
       }
     }
@@ -8472,6 +8498,9 @@ static int qos_logger(request_rec *r) {
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
   if(ex == NULL) {
     ex = e_cond;
+  }
+  if(rctx->response_delayed) {
+    rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
   }
   qos_propagate_notes(r);
   qos_propagate_events(r);
@@ -12132,7 +12161,8 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_input_filter("qos-in-filter", qos_in_filter, NULL, AP_FTYPE_CONNECTION);
   ap_register_input_filter("qos-in-filter2", qos_in_filter2, NULL, AP_FTYPE_RESOURCE);
   ap_register_input_filter("qos-in-filter3", qos_in_filter3, NULL, AP_FTYPE_CONTENT_SET);
-  /* AP_FTYPE_RESOURCE+1 ensures the filter are executed after mod_setenvifplus */
+  /* AP_FTYPE_RESOURCE+1 ensures the filter is executed after mod_setenvifplus
+   * AP_FTYPE_PROTOCOL+3 ensures the filter is executed after mod_deflate */
   ap_register_output_filter("qos-out-filter", qos_out_filter, NULL, AP_FTYPE_RESOURCE+1);
   ap_register_output_filter("qos-out-filter-min", qos_out_filter_min, NULL, AP_FTYPE_RESOURCE+1);
   ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_PROTOCOL+3);

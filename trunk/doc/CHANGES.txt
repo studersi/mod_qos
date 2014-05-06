@@ -1,11 +1,18 @@
-Version 11.0
+Version 11.1
 
+ - Fixed: Shows "T" log marker only for requests which has really
+   been delayed by mod_qos.
+
+ - Further improved bytes/sec limitation implementation.
+
+Version 11.0
+1
  - Highly improves bytes/sec limitation (response throttling) based
    on the input I got from Jeff Trawick - many thanks!
    * Calculates delay within filter (immediately(!) when reaching the
      defined amount of bytes).
    * Uses nanoseconds delay (instead of milliseconds).
-   * Splits large bucket brigades to 8k blocks (support for lokal
+   * Splits large bucket brigades to 8k blocks (support for local
      files, not using mod_proxy).
    * Inserts filter late (after mod_deflate).
 
