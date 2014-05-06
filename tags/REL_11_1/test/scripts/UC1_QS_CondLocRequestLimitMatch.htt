@@ -1,0 +1,67 @@
+#
+#   QS_SetEnvIfQuery           Limit QS_Cond=1
+#   QS_CondLocRequestLimitMatch "^(/a/|/b/|/c/).*$" 2 [0-9]+
+#
+
+INCLUDE scripts/ports
+
+CLIENT 2
+_REQ localhost $QS_PORT_BASE
+__GET /x/sleep.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: A1
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: A1
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 1
+_SLEEP 500
+_REQ localhost $QS_PORT_BASE
+__GET /x/sleep.cgi?name=Limit HTTP/1.1
+__Host: localhost
+__User-Agent: A2
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?name=Limit HTTP/1.1
+__Host: localhost
+__User-Agent: A2
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos.011.: access denied, QS_CondLocRequestLimitMatch rule: .*, concurrent requests=3"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?name=Limit HTTP/1.1
+__Host: localhost
+__User-Agent: A2
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos.011.: access denied, QS_CondLocRequestLimitMatch rule: .*, concurrent requests=3"
+_EXEC tail -1 logs/error_log
+
+END
