@@ -19,12 +19,15 @@ if [ "$1" = "-s" -o "$1" = "-se" ]; then
     if [ `expr length $2` -lt 38 ]; then
 	echo "\t\c"
     fi
-    $HTTEST $2 2>&1 > .${LOG}.log
+    $HTTEST -se $2 2> .${LOG}.log > .${LOG}.log
     RC=$?
     if [ $RC -ne 0 ]; then
 	echo "FAILED"
-	tail -30 .${LOG}.log
-	echo "\nsee `pwd`/.${LOG}.log for more details"
+	cat .${LOG}.log
+	echo ""
+	rm .${LOG}.log
+#	tail -30 .${LOG}.log
+#	echo "\nsee `pwd`/.${LOG}.log for more details"
     else
 	END=`date '+%s'`
 	DIFF=`expr $END - $START`
