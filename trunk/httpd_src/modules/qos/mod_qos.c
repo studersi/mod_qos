@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.499 2014-05-06 18:57:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.500 2014-05-07 20:18:18 pbuchbinder Exp $";
 static const char g_revision[] = "11.1";
 
 /************************************************************************
@@ -126,6 +126,7 @@ static const char g_revision[] = "11.1";
 #define QS_PARP_PATH      "qos-path"
 #define QS_PARP_LOC       "qos-loc"
 
+#define QS_RESDELYATIME   "QS_ResponseDelayTime"
 #define QS_CONNID         "QS_ConnectionId"
 #define QS_COUNTRY        "QS_Country"
 #define QS_SERIALIZE      "QS_Serialize"
@@ -760,7 +761,7 @@ typedef struct {
   int cc_event_req_set;
   int cc_serialize_set;
   char *body_window;
-  int response_delayed; // indicates, if the response has been delayed (T)
+  apr_off_t response_delayed; // indicates, if the response has been delayed (T)
 } qs_req_ctx;
 
 
@@ -8501,6 +8502,8 @@ static int qos_logger(request_rec *r) {
   }
   if(rctx->response_delayed) {
     rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+    apr_table_set(r->subprocess_env, QS_RESDELYATIME,
+                  apr_psprintf(r->pool, "%"APR_SIZE_T_FMT, rctx->response_delayed));
   }
   qos_propagate_notes(r);
   qos_propagate_events(r);
