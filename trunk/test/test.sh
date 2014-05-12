@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.240 2014-02-04 20:58:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.241 2014-05-12 19:25:53 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -569,6 +569,13 @@ fi
 sleep 1
 
 ./ctl.sh restart > /dev/null
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_Timeout.htt" >>  logs/error_log
+./run.sh -se ./scripts/QS_Timeout.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_Timeout.htt"
+fi
+
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_ClientEventPerSecLimit.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_ClientEventPerSecLimit.htt
 if [ $? -ne 0 ]; then
