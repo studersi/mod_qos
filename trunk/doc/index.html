@@ -619,11 +619,13 @@ request. <br>The variable is set by mod_qos when receiving a valid
 VIP <a href="#QS_SessionCookieName">session cookie</a>.
 </li>
 <li>
+<a name="QS_KeepAliveTimeout"></a>
 <code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
 Applies dynamic connection keep-alive settings overriding the Apache 
 <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#keepalivetimeout" target="_blank">KeepAliveTimeout</a></code> directive settings.
 </li>
 <li>
+<a name="QS_Timeout"></a>
 <code>QS_Timeout=&lt;seconds&gt;</code><br>
 Alters the I/O timeout (while reading the request body / writing the response) 
 of the current request overriding the Apache 
@@ -631,44 +633,53 @@ of the current request overriding the Apache
 directive settings.
 </li>
 <li>
+<a name="QS_ErrorPage_Var"></a>
 <code>QS_ErrorPage=&lt;URL&gt;</code><br>
 Defines the error page overriding the setting made by the 
 <code><a href="#QS_ErrorPage">QS_ErrorPage</a></code> directive.
 </li>
 <li>
+<a name="QS_Delay"></a>
 <code>QS_Delay=&lt;milliseconds&gt;</code><br>
 Defines a number of milliseconds to delay the request processing.
 </li>
 <li>
+<a name="QS_Event"></a>
 <code>QS_Event</code><br>
 The variable processed by the <code><a href="#QS_ClientEventPerSecLimit">QS_ClientEventPerSecLimit</a></code> directive.
 </li>
 <li>
+<a name="QS_Block"></a>
 <code>QS_Block</code><br>
 Variable processed by the <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> 
 directive.
 </li>
 <li>
+<a name="QS_Limit"></a>
 <code>QS_Limit</code><br>
 (Default) variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
 directive.
 </li>
 <li>
+<a name="_Clear"></a>
 <code>*_Clear</code><br>
 The counter of the variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> directive  
 are reset if you set the same variable suffixed by <code>_Clear</code>, 
 e.g. <code>QS_Limit_Clear</code>.
 </li>
 <li>
+<a name="QS_Serialize"></a>
 <code>QS_Serialize</code><br>
 Variable processed by the <code><a href="#QS_ClientSerialize">QS_ClientSerialize</a></code> 
 directive.
 </li>
 <li>
+<a name="QS_Cond"></a>
 <code>QS_Cond</code><br>
 Variable processed by the <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLocRequestLimitMatch</a></code> directive.
 </li>
 <li>
+<a name="QS_EventRequest"></a>"
 <code>QS_EventRequest</code><br>
 Variable processed by the <code><a href="#QS_ClientEventRequestLimit">QS_ClientEventRequestLimit</a></code> directive.
 </li>
