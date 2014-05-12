@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.500 2014-05-07 20:18:18 pbuchbinder Exp $";
-static const char g_revision[] = "11.1";
+static const char revision[] = "$Id: mod_qos.c,v 5.501 2014-05-12 19:25:53 pbuchbinder Exp $";
+static const char g_revision[] = "11.2";
 
 /************************************************************************
  * Includes
@@ -142,6 +142,7 @@ static const char g_revision[] = "11.1";
 #define QS_ISVIPREQ       "QS_IsVipRequest"
 #define QS_VipRequest     "QS_VipRequest"
 #define QS_KEEPALIVE      "QS_KeepAliveTimeout"
+#define QS_TIMEOUT        "QS_Timeout"
 #define QS_CLOSE          "QS_SrvMinDataRate"
 #define QS_EMPTY_CON      "NullConnection"
 #define QS_RuleId         "QS_RuleId"
@@ -746,6 +747,7 @@ typedef struct {
   conn_rec *c;
   qos_srv_config *sconf;
   int requests; // number of requests processed (received) by this connection  
+  apr_socket_t *client_socket;
 } qs_conn_base_ctx;
 
 /**
@@ -4188,6 +4190,7 @@ static qs_conn_base_ctx *qos_create_conn_base_ctx(conn_rec *c, qos_srv_config *s
   base->requests = 0;
   base->c = c;
   base->sconf = sconf;
+  base->client_socket = NULL;
   ap_set_module_config(c->conn_config, &qos_module, base);
   apr_pool_cleanup_register(c->pool, base, qos_base_cleanup_conn, apr_pool_cleanup_null);
   return base;
@@ -6982,6 +6985,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   base = qos_get_conn_base_ctx(c);
   if(base == NULL) {
     base = qos_create_conn_base_ctx(c, sconf);
+    base->client_socket = skt;
   }
 
   if(sconf && (sconf->req_rate != -1)) {
@@ -7366,6 +7370,7 @@ static int qos_header_parser(request_rec * r) {
     apr_off_t kbytes_per_sec_limit = 0;
     qs_acentry_t *event_kbytes_per_sec;
     int status;
+    const char *tmostr = NULL;
     qs_acentry_t *e = NULL;
     qs_acentry_t *e_cond = NULL;
     qs_acentry_t *ex = NULL; // either e or e_cond (used for locking)
@@ -7425,6 +7430,19 @@ static int qos_header_parser(request_rec * r) {
     qos_setenvif(r, sconf);
     qos_setenv(r, sconf);
     qos_setreqheader(r, sconf->setreqheader_t);
+
+    tmostr = apr_table_get(r->subprocess_env, QS_TIMEOUT);
+    if(tmostr) {
+      apr_interval_time_t timeout = apr_time_from_sec(atoi(tmostr));
+      if(timeout > 0) {
+        qs_conn_base_ctx *bctx = qos_get_conn_base_ctx(r->connection);
+        if(bctx && bctx->client_socket) {
+          ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                        QOS_LOGD_PFX"set connection timeout to %s seconds", tmostr);
+          apr_socket_timeout_set(bctx->client_socket, timeout);
+        }
+      }
+    }
 
     /*
      * QS_DenyEvent
@@ -8041,7 +8059,7 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
             kbps_wait_time = qos_calc_kbytes_per_sec_wait_time(r->request_time, 
                                                                entry, first->length);
             if(kbps_wait_time > 0) {
-              dctx->rctx->response_delayed = kbps_wait_time;
+              dctx->rctx->response_delayed = (1 + dctx->rctx->response_delayed + kbps_wait_time) / 2;
               apr_sleep(kbps_wait_time);
             }
             tmp_bb = apr_brigade_create(f->r->pool, f->c->bucket_alloc);
@@ -8062,7 +8080,7 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
             kbps_wait_time = kbps_wait_time * length / APR_BUCKET_BUFF_SIZE;
           }
           if(kbps_wait_time > 0) {
-            dctx->rctx->response_delayed = kbps_wait_time;
+            dctx->rctx->response_delayed = (1 + dctx->rctx->response_delayed + kbps_wait_time) / 2;
             apr_sleep(kbps_wait_time);
           }
         }

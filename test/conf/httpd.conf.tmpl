@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.250 2014-02-04 20:58:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.251 2014-05-12 19:25:53 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -245,6 +245,8 @@ ErrorDocument 404 /error-docs/error404.html
    QS_SetEnvIfQuery other;value=(.*)match VALUE=$1
    QS_SetEnvIfQuery ok                    EMPTY
    QS_SetEnvIfQuery serializeme=([a-z]*)  QS_Serialize=true
+
+   QS_SetEnvIfQuery shortConnTimeOut=([0-9]*) QS_Timeout=$1
 
    PARP_BodyData              text/html
    PARP_BodyData              application/json

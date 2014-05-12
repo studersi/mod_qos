@@ -1,3 +1,9 @@
+#
+# $Id: UC1_QS_LocKBytesPerSecLimitMatch3.htt,v 1.2 2014-05-12 19:25:53 pbuchbinder Exp $
+#
+# QS_LocKBytesPerSecLimitMatch ^/myimages/  3000
+#
+#HTTEST=/usr/local/bin/httest-2.4.9
 
 INCLUDE scripts/ports
 

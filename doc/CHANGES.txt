@@ -1,3 +1,10 @@
+Version
+
+ - Adds variable QS_ResponseDelayTime showing the delay time (us)
+   calcualted for reponse throttling.
+
+ - New variable QS_Timeout.
+
 Version 11.1
 
  - Fixed: Shows "T" log marker only for requests which has really
@@ -6,7 +13,7 @@ Version 11.1
  - Further improved bytes/sec limitation implementation.
 
 Version 11.0
-1
+
  - Highly improves bytes/sec limitation (response throttling) based
    on the input I got from Jeff Trawick - many thanks!
    * Calculates delay within filter (immediately(!) when reaching the
