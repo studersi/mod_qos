@@ -621,7 +621,14 @@ VIP <a href="#QS_SessionCookieName">session cookie</a>.
 <li>
 <code>QS_KeepAliveTimeout=&lt;seconds&gt;</code><br>
 Applies dynamic connection keep-alive settings overriding the Apache 
-<code>KeepAliveTimeout</code> directive settings.
+<code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#keepalivetimeout" target="_blank">KeepAliveTimeout</a></code> directive settings.
+</li>
+<li>
+<code>QS_Timeout=&lt;seconds&gt;</code><br>
+Alters the I/O timeout (while reading the request body / writing the response) 
+of the current request overriding the Apache 
+<code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#timeout" target="_blank">TimeOut</a></code> 
+directive settings.
 </li>
 <li>
 <code>QS_ErrorPage=&lt;URL&gt;</code><br>
