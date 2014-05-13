@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.501 2014-05-12 19:25:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.502 2014-05-13 19:13:44 pbuchbinder Exp $";
 static const char g_revision[] = "11.2";
 
 /************************************************************************
@@ -4000,6 +4000,11 @@ static void qos_keepalive(request_rec *r, qos_srv_config *sconf) {
       if(ka >= 0) {
         qs_req_ctx *rctx = qos_rctx_config_get(r);
         apr_interval_time_t kat = apr_time_from_sec(ka);
+        if(QS_ISDEBUG(r->server)) {
+          ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                        QOS_LOGD_PFX"set keepalive timeout to %s seconds, id=%s",
+                        v, qos_unique_id(r, NULL));
+        }
         /* copy the server record (I konw, but least this works ...) */
         if(!rctx->evmsg || !strstr(rctx->evmsg, "T;")) {
           /* copy it only once (@hp or @out-filter) */
@@ -6978,7 +6983,8 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
     // proxy connections do NOT have any relation to the score board, don't handle them
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, c->base_server, 
                  QOS_LOGD_PFX"skip processing of outgoing connection %s<->%s",
-                 QS_CONN_REMOTEIP(c) ? QS_CONN_REMOTEIP(c) : "UNKNOWN", c->local_ip ? c->local_ip : "UNKNOWN");
+                 QS_CONN_REMOTEIP(c) ? QS_CONN_REMOTEIP(c) : "UNKNOWN",
+                 c->local_ip ? c->local_ip : "UNKNOWN");
     return ret;
   }
   sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config, &qos_module);
@@ -7437,8 +7443,11 @@ static int qos_header_parser(request_rec * r) {
       if(timeout > 0) {
         qs_conn_base_ctx *bctx = qos_get_conn_base_ctx(r->connection);
         if(bctx && bctx->client_socket) {
-          ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                        QOS_LOGD_PFX"set connection timeout to %s seconds", tmostr);
+          if(QS_ISDEBUG(r->server)) {
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                          QOS_LOGD_PFX"set connection timeout to %s seconds, id=%s",
+                          tmostr, qos_unique_id(r, NULL));
+          }
           apr_socket_timeout_set(bctx->client_socket, timeout);
         }
       }

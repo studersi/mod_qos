@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.251 2014-05-12 19:25:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.252 2014-05-13 19:13:44 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -67,7 +67,12 @@ ServerSignature         off
 HostnameLookups         off
 UseCanonicalName        on
 LockFile                ##ROOT##/logs/accept.lock
+<IfDefine !shorttimeout>
 Timeout                 30
+</IfDefine>
+<IfDefine shorttimeout>
+Timeout                 3
+</IfDefine>
 KeepAlive               on
 MaxKeepAliveRequests    100
 KeepAliveTimeout        5

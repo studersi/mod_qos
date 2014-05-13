@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.241 2014-05-12 19:25:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.242 2014-05-13 19:13:44 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -568,6 +568,13 @@ if [ $? -ne 0 ]; then
 fi
 sleep 1
 
+./ctl.sh restart -D shorttimeout > /dev/null
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_TimeoutS.htt" >>  logs/error_log
+./run.sh -se ./scripts/QS_TimeoutS.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_TimeoutS.htt"
+fi
 ./ctl.sh restart > /dev/null
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_Timeout.htt" >>  logs/error_log
 ./run.sh -se ./scripts/QS_Timeout.htt
