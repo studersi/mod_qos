@@ -1,7 +1,7 @@
 
 + study pcre and set match_limit
 - re-implement (again) the per connection/ip list (supporting thousands of
-  connections per server)
+  connections per server) (QS_SrvMaxConnPerIP)
 - limit number of parameters (better to be implemented in mod_parp)
 - improved anomaly detection, collecting additional client/connection
   attributes such as
@@ -15,6 +15,7 @@
   - request/response duration
   - other
   - log event
+  - per user-agent (categories)
   + multiple "per client" event counter
     + combine these counters (if c1>n AND c2>m then c3++)
 + geo location
@@ -36,6 +37,7 @@
     + QS_ClientEventLimitCount value
     + counter used by QS_ClientEventLimitCount
     + counter used by QS_EventLimitCount
+    + QS_ResponseDelayTime (logger only)
     - more variables
 - dynamic rule adjustment for the generic request filter
   - "in module" learing (instead of qsfilter2)
@@ -82,18 +84,18 @@
   - utilities (ha/lb/...)
   + log data signing (using pipe: "|sig |qsrotate <file>")
   - nms plugin (OpenNMS? Nagios?)
+    - see https://github.com/dimovelev/metrics-sampler
 - support IPv6
-  + workaround (checksum only)
-  - "real" IPv6 support
+  + "real" IPv6 support
   - net vs host address rules
 - propagate client information via request header (set additional variables)
   + using mod_setenvifplus
+  + QS_SetReqHeader late
 - decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
   - enhance qos_unescaping() (partial done)
   - document path_decode_hook()/query_decode_hook()
-+ new implementation of the QS_SrvMaxConnPerIP functionality (linear, no tree anymore)
-  - improved search alg.
 x initial socket timeout for new connections (tcp open only and no initial request)
+  + QS_Timeout for reading the req body
 + QS_SrvMaxConnClose to support "percentage" of the MaxClient settings instead of abs. value
   - set variable mod_qos_con_ip (see mod_qos_con)
 + user tracking cookie (for statistics)

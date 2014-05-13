@@ -1,5 +1,7 @@
 #
-# $Id: QS_Timeout.htt,v 1.1 2014-05-12 19:25:53 pbuchbinder Exp $
+# $Id: QS_Timeout.htt,v 1.2 2014-05-13 19:13:44 pbuchbinder Exp $
+#
+# increase timeout for some requests
 #
 # Timeout 30
 # QS_SetEnvIfQuery shortConnTimeOut=([0-9]*) QS_Timeout=$1

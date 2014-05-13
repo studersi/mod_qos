@@ -1,4 +1,4 @@
-Version
+Version 11.2
 
  - Adds variable QS_ResponseDelayTime showing the delay time (us)
    calcualted for reponse throttling.
