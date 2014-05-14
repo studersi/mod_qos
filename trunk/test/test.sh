@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.242 2014-05-13 19:13:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.243 2014-05-14 19:08:48 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -114,6 +114,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestLimitMatch_3.htt"
 fi
+sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- conditional rule QS_CondLocRequestLimitMatch.htt" >>  logs/error_log
@@ -135,7 +136,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipHeaderName2.htt"
 fi
-sleep 1
+sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- vip request, QS_VipRequest.htt" >>  logs/error_log
@@ -144,7 +145,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipRequest.htt"
 fi
-sleep 1
+sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- vip request and graceful restart, QS_VipHeaderName_Graceful.htt" >>  logs/error_log
@@ -169,7 +170,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_Graceful2.htt"
 fi
-sleep 1
+sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 50 connections, QS_SrvMaxConn 40" >> logs/error_log
@@ -180,6 +181,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvMaxConn_50.htt"
 fi
+sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- connection timeout, QS_SrvConnTimeout_body.htt" >>  logs/error_log
@@ -189,7 +191,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED QS_SrvConnTimeout_body.htt"
 fi
 
-sleep 2
+sleep 10
 # -----------------------------------------------------------------
 CLT="QS_SrvMaxConnClosePercent.htt QS_SrvMaxConnClose_20.htt"
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- disable keep alive, QS_SrvMaxConnClose*" >>  logs/error_log
@@ -247,6 +249,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestPerSecLimit_5t.htt"
 fi
+sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- kbytes/sec limit, QS_LocKBytesPerSecLimit.htt" >>  logs/error_log
@@ -317,6 +320,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventLimitCount.htt"
 fi
+sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_LocRequestPerSecLimitMatch.htt" >>  logs/error_log
@@ -330,7 +334,8 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestPerSecLimitMatch_t.htt"
 fi
-sleep 1
+sleep 10
+
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- multiple requests in parallel, MultiRequest.htt" >>  logs/error_log
 ./run.sh -se ./scripts/MultiRequest.htt
@@ -388,7 +393,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED Graceful.htt"
     sleep 2
 fi
-sleep 2
+sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- kbytes/sec limit, QS_EventKBytesPerSecLimit.htt" >>  logs/error_log
@@ -397,6 +402,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_EventKBytesPerSecLimit.htt"
 fi
+sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- permit filter QS_PermitUri.htt" >>  logs/error_log
@@ -566,7 +572,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ClientEventBlockCount_StatusAllow.htt"
 fi
-sleep 1
+sleep 10
 
 ./ctl.sh restart -D shorttimeout > /dev/null
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_TimeoutS.htt" >>  logs/error_log
@@ -812,6 +818,7 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_SrvRequestRate.htt"
 fi
+sleep 10
 
 ./ctl.sh restart -D BlockOnClose -D real_ip > /dev/null
 ./run.sh -s ./scripts/QS_SrvRequestRate_block.htt
@@ -1014,19 +1021,7 @@ fi
 sleep 1
 IPCS2=`ipcs | wc -l`
 
-# some simple configurations
-usscripts="dos.sh uc1.sh ucn.sh"
-for E in $usscripts; do
-  echo "> $E"
-  ./$E
-  URC=$?
-  if [ $URC -ne 0 ]; then
-    ERRORS=`expr $ERRORS + $URC`
-    echo "FAILED $E"
-  fi
-  echo "< $E"
-done
-
+# logs ------------------------------------------------------------
 ./qssign.sh
 if [ $? -ne 0 ]; then
   ERRORS=`expr $ERRORS + 1`
@@ -1038,6 +1033,21 @@ if [ $? -ne 0 ]; then
   ERRORS=`expr $ERRORS + 1`
 fi
 
+# some simple configurations --------------------------------------
+usscripts="dos.sh uc1.sh ucn.sh"
+for E in $usscripts; do
+  sleep 10
+  echo "> $E"
+  ./$E
+  URC=$?
+  if [ $URC -ne 0 ]; then
+    ERRORS=`expr $ERRORS + $URC`
+    echo "FAILED $E"
+  fi
+  echo "< $E"
+done
+
+# tools -----------------------------------------------------------
 echo "- qsgrep"
 LOCH=`../util/src/qsgrep -e 'mod_qos\(031\).*, c=([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})' -o 'ip=$1' logs/error_log | egrep -c "^ip=127.0.0.1$"`
 if [ $LOCH -lt 1 ]; then
@@ -1065,6 +1075,19 @@ if [ "$PAT" != "event 127.0.0.2event 127.0.0.2clear 127.0.0.2" ]; then
   echo "FAILED qsexec test 2 failed ($PAT)"
 fi
 
+../tools/filter/filter2.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qsfilter2 test failed"
+fi
+
+../tools/stat.sh
+if [ $? -ne 0 ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED qspng test failed"
+fi
+
+# code / open issues and tasks ------------------------------------
 for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "mod_qos()" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(036" | grep -v "(035" | grep -v "(062" | grep -v "(066" | grep -v "(071"`; do
   C=`grep -c $E logs/error_log`
   C1=`grep -c $E logs/error1_log`
@@ -1073,12 +1096,6 @@ for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk 
     echo "WARNING: missing message $E $C $C1"
   fi
 done
-
-../tools/filter/filter2.sh
-if [ $? -ne 0 ]; then
-  ERRORS=`expr $ERRORS + 1`
-  echo "FAILED qsfilter2 test failed"
-fi
 
 grep \\$\\$\\$ ../httpd_src/modules/qos/*.c
 if [ $? -ne 1 ]; then
@@ -1106,12 +1123,6 @@ echo "ipcs: $IPCS $IPCS2"
 if [ $IPCS -ne $IPCS2 ]; then
     echo "WARNING: ipcs count changed"
     WARNINGS=`expr $WARNINGS + 1`
-fi
-
-../tools/stat.sh
-if [ $? -ne 0 ]; then
-  ERRORS=`expr $ERRORS + 1`
-  echo "FAILED qspng test failed"
 fi
 
 CFS=`find . -name "*core*"`
