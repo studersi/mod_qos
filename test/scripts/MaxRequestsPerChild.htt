@@ -1,8 +1,9 @@
 #
-# $Id: MaxRequestsPerChild.htt,v 1.8 2012-02-07 20:06:00 pbuchbinder Exp $
+# $Id: MaxRequestsPerChild.htt,v 1.9 2014-05-14 19:08:48 pbuchbinder Exp $
 #
 # reaches MaxRequestsPerChild (terminating supervisor thread)
 #
+#HTTEST=/usr/local/bin/httest-2.4.9
 
 INCLUDE scripts/ports
 
