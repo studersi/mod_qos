@@ -1,0 +1,142 @@
+
+ServerRoot     ##ROOT##
+User           ##USR##
+Group          users
+ServerName     127.0.0.1
+
+ServerAdmin    ##USR##@example.com
+DocumentRoot   ##ROOT##/htdocs
+ErrorLog       logs/error_log
+LogLevel       warn
+
+#LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\""
+LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e %k %{QS_Country}e %{QS_SrvConn}e a=%{QS_AllConn}e #%P"
+TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
+CustomLog      "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o"
+
+TypesConfig    conf/mime.types
+
+PidFile        logs/apache.pid
+StartServers             1
+MinSpareThreads         25
+MaxSpareThreads         75 
+ThreadsPerChild         25
+MaxRequestWorkers      150
+MaxConnectionsPerChild   0
+
+Options        FollowSymLinks Indexes Includes
+
+Timeout                 30
+KeepAlive               on
+MaxKeepAliveRequests   100
+KeepAliveTimeout         5
+
+<IfDefine real_ip>
+QS_EnableInternalIPSimulation off
+</IfDefine>
+
+# disabled for Apache 2.4
+#QS_SrvMinDataRate      120 3000 10
+
+QS_ErrorResponseCode   503
+
+QS_ClientEventBlockCount 20 30
+QS_SetEnvIfStatus  400 QS_Block
+
+QS_ClientEventLimitCount  3 10
+
+Listen         ##QS_PORT_BASE##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE##>
+  ServerName   127.0.0.1
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /qos !
+   ProxyPass                  /status !
+   ProxyPass                  /info !
+   ProxyPass                  /error-pages !
+   ProxyPass                  /limitrs !
+
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
+
+   ProxyPass                  /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi retry=0
+   ProxyPassReverse           /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi
+   ProxyPass                  /limitbs http://127.0.0.1:##QS_PORT_BASE1##/limitbs retry=0
+   ProxyPassReverse           /limitbs http://127.0.0.1:##QS_PORT_BASE1##/limitbs
+
+   AddType                    text/html .shtml
+   AddOutputFilter            INCLUDES .shtml
+
+   QS_ErrorPage               /error-docs/error.shtml
+
+   QS_SrvMaxConnClose         40
+   QS_SrvMaxConnPerIP         30
+   QS_SrvMaxConn              45
+
+   SetEnvIf User-Agent        limitme ALIMIT   
+   QS_EventLimitCount         ALIMIT 3 2
+
+   SetEnvIf User-Agent        limipersec limit=a
+   QS_EventPerSecLimit        limit 10
+
+   QS_VipHeaderName              X-Login        drop
+
+   QS_LocRequestLimitMatch       ^/htt/limit2/.*   2
+   QS_LocRequestPerSecLimitMatch ^/limitrs/.*     10
+   QS_LocKBytesPerSecLimitMatch  ^/limitbs/.*    500
+
+   QS_MileStone                 deny "^GET /htt/milestone/index.html"
+   QS_MileStone                 deny "^POST /htt/milestone/register*"
+   QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
+
+   <Location /htt/limit>
+      QS_SetEnvIfResBody "Login Failed" QS_Limit
+   </Location>
+
+   <Location /htt/filter>
+     QS_DenyRequestLine +printable deny [\x00-\x1f\xf7-\xff]
+   </Location>
+   <Location /qos>
+      SetHandler qos-viewer
+   </Location>
+   <Location /status>
+      SetHandler server-status
+   </Location>
+   <Location /info>
+      SetHandler server-info
+   </Location>
+
+</VirtualHost>
+
+Listen         ##QS_PORT_BASE1##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE1##>
+  ServerName   127.0.0.1
+
+  TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 21600 -f"
+
+  ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
+  <Location /cgi>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
+
+</VirtualHost>
+
+Listen                  [::1]:##QS_PORT_BASE10##
+<VirtualHost [::1]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
+
+
+   QS_LocRequestLimit         /htt/limit2      2
+
+</VirtualHost>
+
