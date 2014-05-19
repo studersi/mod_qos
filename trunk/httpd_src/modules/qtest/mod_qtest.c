@@ -10,19 +10,11 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qtest.c,v 1.6 2014-01-20 20:23:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qtest.c,v 1.7 2014-05-19 19:14:35 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
  ***********************************************************************/
-/* openssl */
-#include <openssl/ssl.h>
-#include <openssl/crypto.h>
-#include <openssl/dh.h>
-#include <openssl/bn.h>
-#include <openssl/rand.h>
-#include <openssl/evp.h>
-#include <openssl/hmac.h>
 
 /* apache */
 #include <httpd.h>
@@ -70,13 +62,44 @@ module AP_MODULE_DECLARE_DATA qtest_module;
  * handlers
  ***********************************************************************/
 static int qtest_fixup(request_rec * r) {
+
+  /*
+   * set NEWSESSION variable to simulate a session creation
+   */
+#ifdef QOS_TEST_MOD
   if(strstr(r->parsed_uri.path, "/loginme/")) {
     apr_table_set(r->subprocess_env, "NEWSESSION", "1");
+  }
+#endif
+
+  /*
+   * delay for the number of microseconds as definied within the request
+   * query parameter "delayus"
+   */
+  if(r->args) {
+    const char *param = strstr(r->args, "delayus=");
+    if(param) {
+      char *value = apr_pstrdup(r->pool, &param[strlen("delayus=")]);
+      char *end = value;
+      apr_off_t delay = 0;
+      while(end[0]) {
+        end++;
+        if(end[0] < '0' || end[0] > '9') {
+          end[0] = '\0';
+        }
+      }
+      delay = atol(value);
+      apr_sleep(delay);
+    } 
   }
   return DECLINED;
 }
   
 static int qtest_handler(request_rec * r) {
+
+  /*
+   * causes a segmentation fault (accessing a null pointer)
+   */
   if(strcmp(r->parsed_uri.path, "/killme/") == 0) {
     char *from = NULL;
     char *to = NULL;
@@ -84,6 +107,10 @@ static int qtest_handler(request_rec * r) {
                   QTEST_LOG_PFX(001)"SEGFAULT %d", getpid());
     memcpy(to, from, 1);
   }
+
+  /*
+   * endless loop
+   */
   if(strcmp(r->parsed_uri.path, "/loopme/") == 0) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QTEST_LOG_PFX(001)"LOOP %d", getpid());
@@ -91,6 +118,10 @@ static int qtest_handler(request_rec * r) {
       sleep(1);
     }
   }
+
+  /*
+   * internal redirect to the sepcifed path (defined within the query)
+   */
   if(strcmp(r->parsed_uri.path, "/internalredirectme/") == 0) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QTEST_LOG_PFX(001)"INTERNAL REDIRECT %d", getpid());
@@ -100,18 +131,30 @@ static int qtest_handler(request_rec * r) {
     ap_internal_redirect(r->args, r);
     return OK;
   }
+
+  /*
+   * internal redirect to the error document
+   */
   if(strcmp(r->parsed_uri.path, "/qstredirectme/") == 0) {
     r->method = apr_pstrdup(r->pool, "GET");
     r->method_number = M_GET;
     ap_internal_redirect("/error-docs/error_c.html", r);
     return OK;
   }
+
+  /*
+   * internal redirect to doc which does not exist
+   */
   if(strcmp(r->parsed_uri.path, "/qstredirectme404/") == 0) {
     r->method = apr_pstrdup(r->pool, "GET");
     r->method_number = M_GET;
     ap_internal_redirect("/error-docs/error_c_404.html", r);
     return HTTP_INTERNAL_SERVER_ERROR;
   }
+
+  /*
+   * writes the variables to the response
+   */
   if(strcmp(r->parsed_uri.path, "/dumpvar/") == 0) {
     int i;
     apr_table_entry_t *e = (apr_table_entry_t *) apr_table_elts(r->subprocess_env)->elts;
@@ -123,6 +166,10 @@ static int qtest_handler(request_rec * r) {
     }
     return OK;
   }
+
+  /*
+   * returns 403
+   */
   if(strncmp(r->parsed_uri.path, "/qsforbidden/", 13) == 0) {
     apr_table_set(r->subprocess_env, "qsforbidden", "true");
     return HTTP_FORBIDDEN;
@@ -134,6 +181,10 @@ static int qtest_handler(request_rec * r) {
 static int qtest_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp,
                             server_rec *bs) {
   fprintf(stdout, "\033[1mmod_qtest - TEST MODULE, NOT FOR PRODUCTIVE USE\033[0m\n");
+#ifndef QOS_TEST_MOD
+  fprintf(stdout, "            %s\n", revision);
+  fprintf(stdout, "            see https://sourceforge.net/projects/mod-qos/\n");
+#endif
   fflush(stdout);
   return DECLINED;
 }
@@ -147,7 +198,9 @@ static int qtest_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pt
  ***********************************************************************/
 static void qtest_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_qos.c", NULL };
+#ifdef QOS_TEST_MOD
   ap_hook_handler(qtest_handler, pre, NULL, APR_HOOK_FIRST);
+#endif
   ap_hook_fixups(qtest_fixup, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_config(qtest_post_config, pre, NULL, APR_HOOK_MIDDLE);
 }
