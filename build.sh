@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.68 2014-05-02 13:25:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.69 2014-05-19 19:14:35 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -73,7 +73,7 @@ if [ "$1" = "release" ]; then
   export CFLAGS 
   ADDMOD="--prefix=/var/tmp/apache"
 else
-  CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g -Wall -DI_INSIST_ON_EXTRA_CYCLES_FOR_CLF_COMPLIANCE"
+  CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g -Wall -DI_INSIST_ON_EXTRA_CYCLES_FOR_CLF_COMPLIANCE -DQOS_TEST_MOD"
   export CFLAGS 
   ADDMOD="--prefix=/var/tmp/apache"
 fi
