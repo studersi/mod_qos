@@ -10,7 +10,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qtest.c,v 1.7 2014-05-19 19:14:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qtest.c,v 1.8 2014-05-19 19:34:06 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -28,10 +28,6 @@ static const char revision[] = "$Id: mod_qtest.c,v 1.7 2014-05-19 19:14:35 pbuch
 #include <http_log.h>
 #include <util_filter.h>
 #include <ap_regex.h>
-
-#include <mod_ssl.h>
-#include <ssl_private.h>
-#include <mod_core.h>
 
 /* apr */
 #include <apr_hooks.h>
