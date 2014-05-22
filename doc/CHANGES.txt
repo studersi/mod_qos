@@ -1,3 +1,7 @@
+Version
+
+ - Minor changes to the status viewer.
+
 Version 11.2
 
  - Adds variable QS_ResponseDelayTime showing the delay time (us)
