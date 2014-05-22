@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.502 2014-05-13 19:13:44 pbuchbinder Exp $";
-static const char g_revision[] = "11.2";
+static const char revision[] = "$Id: mod_qos.c,v 5.503 2014-05-22 20:41:26 pbuchbinder Exp $";
+static const char g_revision[] = "11.3";
 
 /************************************************************************
  * Includes
@@ -5337,6 +5337,10 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
   const char *option = apr_table_get(qt, "option");
   const char *all_connections = apr_table_get(r->subprocess_env, "QS_AllConn");
   apr_time_t now = apr_time_sec(r->request_time);
+  double av[1];
+
+  getloadavg(av, 1);
+  ap_rprintf(r, "b"QOS_DELIM"system.load: %.2f\n", av[0]);
 
   while(s) {
     char *sn = apr_psprintf(r->pool, "%s"QOS_DELIM"%s"QOS_DELIM"%d",
@@ -5526,6 +5530,14 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
   }
   if(sconf->has_qos_cc || max_conn_per_ip) {
     const char *option = apr_table_get(qt, "option");
+    const char *refresh = apr_table_get(qt, "refresh");
+    const char *address = apr_table_get(qt, "address");
+    if(address) {
+      int escerr = 0;
+      char *ta = apr_pstrdup(r->pool, address);
+      qos_unescaping(ta, QOS_DEC_MODE_FLAGS_URL, &escerr);
+      address = ta;
+    }
     if(strcmp(r->handler, "qos-viewer") == 0) {
       ap_rputs("<table class=\"btable\"><tbody>\n", r);
       ap_rputs(" <tr class=\"row\"><td>\n", r);
@@ -5543,6 +5555,28 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
     ap_rputs("    <tr class=\"rowe\">\n", r);
     ap_rputs("      <td colspan=\"9\">viewer settings</td>\n", r);
     ap_rputs("    </tr>\n", r);
+    /* auto refresh */
+    ap_rputs("    <tr class=\"rows\">\n"
+             "      <td colspan=\"1\">auto refresh</td>\n", r);
+    ap_rputs("      <td colspan=\"8\">\n", r);
+    ap_rprintf(r, "        <form action=\"%s\" method=\"get\">\n",
+               ap_escape_html(r->pool, r->parsed_uri.path ? r->parsed_uri.path : ""));
+    if(option && strstr(option, "ip")) {
+      ap_rprintf(r, "          <input name=\"option\" value=\"ip\" type=\"hidden\">\n");
+    }
+    if(address) {
+      ap_rprintf(r, "          <input name=\"address\" value=\"%s\" type=\"hidden\">\n",
+                 ap_escape_html(r->pool, address));
+    }
+    if(refresh) {
+      ap_rprintf(r, "          <input name=\"action\" value=\"disable\" type=\"submit\">\n");
+    } else {
+      ap_rprintf(r, "          <input name=\"action\" value=\"enable\" type=\"submit\">\n");
+      ap_rprintf(r, "          <input name=\"refresh\" value=\"\" type=\"hidden\">\n");
+    }
+    ap_rputs("        </form>\n", r);
+    ap_rputs("      </td>\n", r);
+    ap_rputs("    </tr>\n", r);
     /* show ip addresses and their connections */
     ap_rputs("    <tr class=\"rows\">\n"
              "      <td colspan=\"1\">client ip connections</td>\n", r);
@@ -5556,18 +5590,18 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
       ap_rprintf(r, "          <input name=\"option\" value=\"no\" type=\"hidden\">\n");
       ap_rprintf(r, "          <input name=\"action\" value=\"disable\" type=\"submit\">\n");
     }
+    if(address) {
+      ap_rprintf(r, "          <input name=\"address\" value=\"%s\" type=\"hidden\">\n",
+                 ap_escape_html(r->pool, address));
+    }
+    if(refresh) {
+      ap_rprintf(r, "          <input name=\"refresh\" value=\"\" type=\"hidden\">\n");
+    }
     ap_rputs("        </form>\n", r);
     ap_rputs("      </td>\n", r);
     ap_rputs("    </tr>\n", r);
   
     if(sconf->has_qos_cc) {
-      const char *address = apr_table_get(qt, "address");
-      if(address) {
-        int escerr = 0;
-        char *ta = apr_pstrdup(r->pool, address);
-        qos_unescaping(ta, QOS_DEC_MODE_FLAGS_URL, &escerr);
-        address = ta;
-      }
       ap_rputs("    <tr class=\"rows\">\n"
                "      <td colspan=\"1\">search a client ip entry</td>\n", r); 
       ap_rputs("      <td colspan=\"8\">\n", r);
@@ -5575,6 +5609,9 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                  ap_escape_html(r->pool, r->parsed_uri.path ? r->parsed_uri.path : ""));
       if(option && strstr(option, "ip")) {
         ap_rprintf(r, "          <input name=\"option\" value=\"ip\" type=\"hidden\">\n");
+      }
+      if(refresh) {
+        ap_rprintf(r, "          <input name=\"refresh\" value=\"\" type=\"hidden\">\n");
       }
       ap_rprintf(r, "          <input name=\"address\" value=\"%s\" type=\"text\">\n",
                  address ? ap_escape_html(r->pool, address) : "0.0.0.0");
@@ -6004,13 +6041,14 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
         } else {
+          int hasActualData = now > (apr_time_sec(e->kbytes_interval_us) + QS_BW_SAMPLING_RATE) ? 0 : 1;
           ap_rprintf(r, "<td %s>%ld&nbsp;ms</td>",
-                     e->kbytes_per_sec_block_rate >= 1000 ? red : "",
+                     hasActualData && (e->kbytes_per_sec_block_rate >= 1000) ? red : "",
                      e->kbytes_per_sec_block_rate / 1000);
           ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
-                     ((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 90 ? red : "",
-                     now > (apr_time_sec(e->kbytes_interval_us) + QS_BW_SAMPLING_RATE) ? 0 : e->kbytes_per_sec);
+                     hasActualData && (((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 90) ? red : "",
+                     hasActualData ? e->kbytes_per_sec : 0);
         }
         ap_rputs("</tr>\n", r);
         e = e->next;
