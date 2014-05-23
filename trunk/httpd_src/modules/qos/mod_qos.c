@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.503 2014-05-22 20:41:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.504 2014-05-23 20:17:30 pbuchbinder Exp $";
 static const char g_revision[] = "11.3";
 
 /************************************************************************
@@ -5801,6 +5801,11 @@ static void qos_bars(request_rec *r, server_rec *bs) {
     int load;
     getloadavg(av, 1);
     load = av[0];
+    if(load > 20) {
+      load = 100;
+    } else {
+      load = 100 * load / 20;
+    }
 
     ap_rputs("<table class=\"btable\"><tbody>\n", r);
     ap_rputs(" <tr class=\"row\"><td>\n", r);
@@ -5833,9 +5838,12 @@ static void qos_bars(request_rec *r, server_rec *bs) {
     ap_rprintf(r, "<tr class=\"rows\">");
     ap_rprintf(r, "<td>");
     if(connections != -1) {
+      int percentage = 100 * connections / bsconf->max_clients;
+      
       ap_rprintf(r, "<div class=\"prog-border\">"
-                 "<div class=\"prog-bar\" style=\"width: %d%%;\"></div></div>",
-                 100 * connections / bsconf->max_clients);
+                 "<div class=\"%s\" style=\"width: %d%%;\"></div></div>",
+                 percentage < 90 ? "prog-bar" : "prog-bar-limit",
+                 percentage);
       ap_rprintf(r, "</td>");
     } else {
       ap_rprintf(r, "&nbsp;");
@@ -5843,7 +5851,7 @@ static void qos_bars(request_rec *r, server_rec *bs) {
     ap_rprintf(r, "<td>");
     ap_rprintf(r, "<div class=\"prog-border\">"
                "<div class=\"prog-bar\" style=\"width: %d%%;\"></div></div>",
-               load > 20 ? 100 : 100 * load / 20);
+               load);
     ap_rprintf(r, "</td>");
     ap_rprintf(r, "</tr>\n");
 
@@ -9450,6 +9458,12 @@ static int qos_handler_view(request_rec * r) {
           height: 10px;\n\
           padding: 0;\n\
           background: #339900;\n\
+          font-family: arial, helvetica, verdana, sans-serif; font-size: 10px; color: #000;\n\
+  }\n\
+          .prog-bar-limit {\n\
+          height: 10px;\n\
+          padding: 0;\n\
+          background: #993300;\n\
           font-family: arial, helvetica, verdana, sans-serif; font-size: 10px; color: #000;\n\
   }\n\
   form      { display: inline; }\n", r);
