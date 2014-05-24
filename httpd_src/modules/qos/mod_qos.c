@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.504 2014-05-23 20:17:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.505 2014-05-24 08:55:43 pbuchbinder Exp $";
 static const char g_revision[] = "11.3";
 
 /************************************************************************
@@ -5801,10 +5801,8 @@ static void qos_bars(request_rec *r, server_rec *bs) {
     int load;
     getloadavg(av, 1);
     load = av[0];
-    if(load > 20) {
-      load = 100;
-    } else {
-      load = 100 * load / 20;
+    if(load > 0) {
+      load = 100*load/(10+load);
     }
 
     ap_rputs("<table class=\"btable\"><tbody>\n", r);
