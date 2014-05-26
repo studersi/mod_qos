@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.505 2014-05-24 08:55:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.506 2014-05-26 19:32:23 pbuchbinder Exp $";
 static const char g_revision[] = "11.3";
 
 /************************************************************************
@@ -5710,66 +5710,66 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", searchE.lowrate > 0 ? "yes" : "no");
 
             ap_rputs("</tr>\n", r);
-            ap_rprintf(r, "<tr class=\"rows\">"
+            ap_rprintf(r, "   <tr class=\"rows\">"
                        "<td colspan=\"6\">&nbsp;</td>"
                        "<td>"
                        "<div title=\"QS_ClientEventRequestLimit\">events:</div></td>"
                        "<td style=\"width:9%%\">%s</td>"
                        "<td colspan=\"1\"></td>"
-                       "</tr>", (sconf->qos_cc_event_req == -1 ? "off" : apr_psprintf(r->pool, "%d", searchE.event_req)));
+                       "</tr>\n", (sconf->qos_cc_event_req == -1 ? "off" : apr_psprintf(r->pool, "%d", searchE.event_req)));
           }
-          ap_rprintf(r, "<tr class=\"rowt\">"
+          ap_rprintf(r, "   <tr class=\"rowt\">"
                      "<td colspan=\"4\"></td>"
                      "<td style=\"width:9%%\">html</td>"
                      "<td style=\"width:9%%\">css/js</td>"
                      "<td style=\"width:9%%\">images</td>"
                      "<td style=\"width:9%%\">other</td>"
                      "<td style=\"width:9%%\">304</td>"
-                     "</tr>");
+                     "</tr>\n");
           if(found) {
-            ap_rprintf(r, "<tr class=\"rows\">"
+            ap_rprintf(r, "   <tr class=\"rows\">"
                        "<td colspan=\"4\"></td>"
                        "<td style=\"width:9%%\">%u</td>"
                        "<td style=\"width:9%%\">%u</td>"
                        "<td style=\"width:9%%\">%u</td>"
                        "<td style=\"width:9%%\">%u</td>"
                        "<td style=\"width:9%%\">%u</td>"
-                       "</tr>", searchE.html,
+                       "</tr>\n", searchE.html,
                        searchE.cssjs,
                        searchE.img,
                        searchE.other,
                        searchE.notmodified);
           }
-          ap_rprintf(r, "<tr class=\"rows\">"
+          ap_rprintf(r, "   <tr class=\"rows\">"
                      "<td colspan=\"3\"></td>"
-                     "<td style=\"width:9%%\">all clients</td>"
+                     "<td style=\"width:9%%\"><div title=\"QS_ClientContentTypes\">all clients</div></td>"
                      "<td style=\"width:9%%\">%lu</td>"
                      "<td style=\"width:9%%\">%lu</td>"
                      "<td style=\"width:9%%\">%lu</td>"
                      "<td style=\"width:9%%\">%lu</td>"
                      "<td style=\"width:9%%\">%lu</td>"
-                     "</tr>", html, cssjs, img, other, notmodified);
+                     "</tr>\n", html, cssjs, img, other, notmodified);
           if(sconf->static_on == 1) {
             unsigned long shtml = sconf->static_html;
             unsigned long scssjs = sconf->static_cssjs;
             unsigned long simg = sconf->static_img;
             unsigned long sother = sconf->static_other;
             unsigned long snotmodified = sconf->static_notmodified;
-            ap_rprintf(r, "<tr class=\"rows\">"
+            ap_rprintf(r, "   <tr class=\"rows\">"
                        "<td colspan=\"3\"></td>"
-                       "<td style=\"width:9%%\">configured (global)</td>"
+                       "<td style=\"width:9%%\"><div title=\"QS_ClientContentTypes\">configured (global)</div></td>"
                        "<td style=\"width:9%%\">%lu</td>"
                        "<td style=\"width:9%%\">%lu</td>"
                        "<td style=\"width:9%%\">%lu</td>"
                        "<td style=\"width:9%%\">%lu</td>"
                        "<td style=\"width:9%%\">%lu</td>"
-                       "</tr>", shtml, scssjs,
+                       "</tr>\n", shtml, scssjs,
                        simg, sother, snotmodified);
           }
         }
       }
     }
-    ap_rprintf(r, "<tr class=\"row\">"
+    ap_rprintf(r, "   <tr class=\"row\">"
                "<td style=\"width:28%%\"></td>"
                "<td style=\"width:9%%\"></td>"
                "<td style=\"width:9%%\"></td>"
@@ -5779,7 +5779,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                "<td style=\"width:9%%\"></td>"
                "<td style=\"width:9%%\"></td>"
                "<td style=\"width:9%%\"></td>"
-               "</tr>");
+               "</tr>\n");
     ap_rputs(" </tbody></table>\n", r);
     ap_rputs(" </tr></td>\n", r);
     ap_rputs("</tbody></table>\n", r);
@@ -5988,7 +5988,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       /* request level */
       e = sconf->act->entry;
       if(e) {
-        ap_rputs("<tr class=\"rowt\">"
+        ap_rputs("    <tr class=\"rowt\">"
                  "<td colspan=\"1\">rule</td>"
                  "<td colspan=\"2\">"
                  "<div title=\"QS_LocRequestLimitMatch|QS_LocRequestLimit"
@@ -6002,7 +6002,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                  "<div title=\"QS_LocKBytesPerSecLimitMatch|QS_LocKBytesPerSecLimit\">"
                  "kbytes/second</div></td>", r);
         ap_rputs("</tr>\n", r);
-        ap_rputs("<tr class=\"rowt\">"
+        ap_rputs("    <tr class=\"rowt\">"
                  "<td >&nbsp;</td>"
                  "<td >limit</td>"
                  "<td >current</td>"
@@ -6016,7 +6016,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       }
       while(e) {
         char *red = "style=\"background-color: rgb(240,153,155);\"";
-        ap_rputs("<tr class=\"rows\">", r);
+        ap_rputs("    <tr class=\"rows\">", r);
         ap_rprintf(r, "<!--%d--><td>%s%s</a></td>", i,
                    ap_escape_html(r->pool, qos_crline(r, e->url)),
                    e->condition == NULL ? "" : " <small>(conditional)</small>");
@@ -6064,7 +6064,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         char *red = "style=\"background-color: rgb(240,153,155);\"";
         int ie = 0;
         qos_event_limit_entry_t *event_limit = sconf->act->event_entry;
-        ap_rputs("<tr class=\"rowt\">"
+        ap_rputs("    <tr class=\"rowt\">"
                  "<td colspan=\"5\"><div title=\"QS_EventLimitCount\">events</div></td>"
                  "<td colspan=\"1\">limit</td>"
                  "<td colspan=\"1\">seconds</td>"
@@ -6078,7 +6078,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
             edelta = 0;
           }
           if(event_limit->action == QS_EVENT_ACTION_DENY) {
-            ap_rprintf(r, "<tr class=\"rows\">"
+            ap_rprintf(r, "    <tr class=\"rows\">"
                        "<td colspan=\"5\">%s</td>"
                        "<td>%d</td><td>%ds</td><td %s>%d</td><td>%ds</td>"
                        "</tr>\n",
@@ -6096,14 +6096,14 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
       if(sconf) {
         char *red = "style=\"background-color: rgb(240,153,155);\"";
         int c = qos_count_free_ip(sconf);
-        ap_rputs("<tr class=\"rowt\">"
+        ap_rputs("    <tr class=\"rowt\">"
                  "<td colspan=\"9\">connections</td>", r);
         ap_rputs("</tr>\n", r);
-        ap_rprintf(r, "<tr class=\"rows\">"
+        ap_rprintf(r, "    <tr class=\"rows\">"
                    "<!--%d--><td colspan=\"6\">"
                    "<div title=\"QS_SrvMaxConnPerIP\">free ip entries</div></td>"
                    "<td colspan=\"3\">%d</td></tr>\n", i, c);
-        ap_rprintf(r, "<tr class=\"rows\">"
+        ap_rprintf(r, "    <tr class=\"rows\">"
                    "<!--%d--><td colspan=\"6\">"
                    "<div title=\"QS_SrvMaxConn|QS_SrvMaxConnClose\">current connections</div></td>"
                    "<td %s colspan=\"3\">%d</td></tr>\n", i,
@@ -6114,7 +6114,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                    sconf->act->conn->connections);
 
         if(!s->is_virtual) {
-          ap_rprintf(r, "<tr class=\"rows\">"
+          ap_rprintf(r, "    <tr class=\"rows\">"
                      "<!--base--><td colspan=\"6\">"
                      "<div>total connections</div></td>"
                      "<td colspan=\"3\">%d</td></tr>\n",
@@ -6125,7 +6125,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           apr_table_t *entries = apr_table_make(r->pool, 100);
           int j;
           apr_table_entry_t *entry;
-          ap_rputs("<tr class=\"rowt\">"
+          ap_rputs("    <tr class=\"rowt\">"
                    "<td colspan=\"6\">"
                    "<div title=\"QS_SrvMaxConnPerIP\">client ip connections</div></td>"
                    "<td colspan=\"3\">current&nbsp;</td>", r);
@@ -6133,16 +6133,16 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           qos_collect_ip(r, sconf, entries, sconf->max_conn_per_ip, 1);
           entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
           for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
-            ap_rputs("<tr class=\"rows\">", r);
+            ap_rputs("     <tr class=\"rows\">", r);
             ap_rputs("<td colspan=\"6\">", r);
             ap_rprintf(r, "%s</td></tr>\n", entry[j].key);
           }
         }
 
-        ap_rputs("<tr class=\"rowt\">"
+        ap_rputs("    <tr class=\"rowt\">"
                  "<td colspan=\"9\">connection settings</td>", r);
         ap_rputs("</tr>\n", r);
-        ap_rprintf(r, "<tr class=\"rows\">"
+        ap_rprintf(r, "    <tr class=\"rows\">"
                    "<td colspan=\"6\">"
                    "<div title=\"QS_SrvMaxConn\">max connections</div></td>");
         if(sconf->max_conn == -1) {
@@ -6150,7 +6150,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         } else {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn);
         }
-        ap_rprintf(r, "<tr class=\"rows\">"
+        ap_rprintf(r, "    <tr class=\"rows\">"
                    "<td colspan=\"6\">"
                    "<div title=\"QS_SrvMaxConnClose\">max connections with keep-alive</div></td>");
         if(sconf->max_conn_close == -1) {
@@ -6158,7 +6158,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         } else {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn_close);
         }
-        ap_rprintf(r, "<tr class=\"rows\">"
+        ap_rprintf(r, "    <tr class=\"rows\">"
                    "<td colspan=\"6\">"
                    "<div title=\"QS_SrvMaxConnPerIP\">max connections per client ip</div></td>");
         if(sconf->max_conn_per_ip == -1) {
@@ -6166,7 +6166,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         } else {
           ap_rprintf(r, "<td colspan=\"3\">%d</td></tr>\n", sconf->max_conn_per_ip);
         }
-        ap_rprintf(r, "<tr class=\"rows\">"
+        ap_rprintf(r, "    <tr class=\"rows\">"
                    "<td colspan=\"6\">"
                    "<div title=\"QS_SrvMinDataRate|QS_SrvRequestRate\">"
                    "min. data rate (bytes/sec) (min/max/current)</div></td>");
@@ -6182,7 +6182,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         }
       }
     }
-    ap_rprintf(r, "<tr class=\"row\">"
+    ap_rprintf(r, "    <tr class=\"row\">"
                "<td style=\"width:28%%\"></td>"
                "<td style=\"width:9%%\"></td>"
                "<td style=\"width:9%%\"></td>"
@@ -9474,7 +9474,6 @@ static int qos_handler_view(request_rec * r) {
       ap_rvputs(r, "<div class=\"small\">",
                 ap_ht_time(r->pool, nowtime, QS_ERR_TIME_FORMAT, 0), NULL);
       ap_rprintf(r, ", mod_qos %s\n", ap_escape_html(r->pool, qos_revision(r->pool)));
-
     }
     ap_rputs("</body></html>", r);
   }
