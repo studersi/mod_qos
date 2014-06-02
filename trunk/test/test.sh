@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.243 2014-05-14 19:08:48 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.244 2014-06-02 18:51:08 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -269,6 +269,11 @@ sleep 60 # lets the server close sockets
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocKBytesPerSecLimit_var.htt"
+fi
+./run.sh -se ./scripts/QS_LocKBytesPerSecLimitMatch.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_LocKBytesPerSecLimitMatch.htt"
 fi
 
 # -----------------------------------------------------------------

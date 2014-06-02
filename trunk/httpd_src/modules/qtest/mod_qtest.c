@@ -10,7 +10,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qtest.c,v 1.8 2014-05-19 19:34:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qtest.c,v 1.9 2014-06-02 18:51:08 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -59,12 +59,27 @@ module AP_MODULE_DECLARE_DATA qtest_module;
  ***********************************************************************/
 static int qtest_fixup(request_rec * r) {
 
+#ifdef QOS_TEST_MOD
   /*
    * set NEWSESSION variable to simulate a session creation
    */
-#ifdef QOS_TEST_MOD
   if(strstr(r->parsed_uri.path, "/loginme/")) {
     apr_table_set(r->subprocess_env, "NEWSESSION", "1");
+  }
+
+
+  /*
+   * stores all request headers in mod_qos_ev to be logged within 
+   * the access log file
+   */
+  if(r->args && strstr(r->args, "dumpheaders")) {
+    const char *var = apr_table_get(r->subprocess_env, "mod_qos_ev");
+    int i;
+    apr_table_entry_t *e = (apr_table_entry_t *) apr_table_elts(r->headers_in)->elts;
+    for(i = 0; i < apr_table_elts(r->headers_in)->nelts; ++i) {
+      var = apr_pstrcat(r->pool, e[i].key, "=", e[i].val, ";", var, NULL);
+    }
+    apr_table_set(r->subprocess_env, "mod_qos_ev", var);
   }
 #endif
 

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.252 2014-05-13 19:13:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.253 2014-06-02 18:51:08 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -406,6 +406,8 @@ ErrorDocument 404 /error-docs/error404.html
    QS_SetEnvIfQuery           QS_LimitVar3      QS_LimitVar3=yes
    QS_SetEnvIfQuery           QS_LimitVar4      QS_LimitVar4=yes
    QS_SetEnvIfQuery           QS_LimitVar3_Reset QS_LimitVar3_Clear=yes
+
+   QS_LocKBytesPerSecLimitMatch ".*\.mpeg$" 1000
 
    # concurrent requests with certain event
    QS_SetEnvIfQuery           QS_EventRequestLimit query
