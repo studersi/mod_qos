@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.36 2014-04-30 18:23:43 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.37 2014-06-02 18:51:08 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -84,6 +84,7 @@ if [ ! -f htdocs/image.iso ]; then
   for E in `seq 10`; do
     cat htdocs/image.iso >> htdocs/dvd.iso
   done
+  cp htdocs/dvd.iso htdocs/movie.mpeg
   rm -f htdocs/dvd2.iso
   for E in `seq 10`; do
     cat htdocs/dvd.iso >> htdocs/dvd2.iso

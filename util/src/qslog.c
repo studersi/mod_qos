@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.84 2014-04-30 13:19:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.85 2014-06-02 18:51:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1694,7 +1694,7 @@ static void usage(const char *cmd, int man) {
     printf("Example configuration using pipped logging:\n");
   }
   qs_man_println(man, "  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
-  qs_man_println(man, "  TransferLog \"|/bin/%s -f ..IRSB.T -x -o /var/logs/stat_log\"\n", cmd);
+  qs_man_println(man, "  TransferLog \"|/bin/%s -f ..IRSB.T -x -o /var/logs/stat.csv\"\n", cmd);
   printf("\n");
   if(man) {
     printf("Configuration using the CustomLog directive:\n");
@@ -1702,7 +1702,7 @@ static void usage(const char *cmd, int man) {
   } else {
    printf("Example configuration using the CustomLog directive:\n");
   }
-  qs_man_println(man, "  CustomLog \"|/bin/%s -f ISBTQ -x -o /var/logs/stat_log\" \"%%h %%>s %%b %%T %%{mod_qos_ev}e\"\n", cmd);
+  qs_man_println(man, "  CustomLog \"|/bin/%s -f ISBTQ -x -o /var/logs/stat.csv\" \"%%h %%>s %%b %%T %%{mod_qos_ev}e\"\n", cmd);
   printf("\n");
   if(man) {
     printf("Post processing:\n");
@@ -1710,7 +1710,7 @@ static void usage(const char *cmd, int man) {
   } else {
     printf("Example for post processing:\n");
   }
-  qs_man_println(man, "  cat access_log | /bin/%s -f ..IRSB.T -o /var/logs/stat_log -p\n", cmd);
+  qs_man_println(man, "  cat access_log | /bin/%s -f ..IRSB.T -o /var/logs/stat.csv -p\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");

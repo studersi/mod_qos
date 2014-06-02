@@ -17,10 +17,10 @@ Many clients downloads an iso image. We have to limit the bandwith for
 this resource.
 
 disabled:
- run 02download.htt and show used bandwith in logs/qs_log ~20mbit/sec (>3000000bytes/s)
+ run 02download.htt and show used bandwith in logs/stat.csv ~20mbit/sec (>3000000bytes/s)
 enabled:
  run 02download.htt again and show how mod_qos manages the bandwith /qos?refresh
- result: logs/qs_log shows limited bandwith (~1300000bytes/s => 10mbit/s)
+ result: logs/stat.csv shows limited bandwith (~1300000bytes/s => 10mbit/s)
 
 03loic
 ===================
