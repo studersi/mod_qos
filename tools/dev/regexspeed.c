@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regexspeed.c,v 1.5 2014-06-03 13:08:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: regexspeed.c,v 1.6 2014-06-03 13:27:24 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -126,9 +126,12 @@ int main(int argc, const char *const argv[]) {
       if(strlen(readline) > 0) {
 	p = readline;
 	if(strncmp(p, "ch.nev", 6) == 0) {
-	  char *px = strchr(p, ':');
-	  if(px) {
-	    p = &px[1];
+	  int itr = 4;
+	  for(; itr > 0; itr--) {
+	    char *px = strchr(p, ':');
+	    if(px) {
+	      p = &px[1];
+	    }
 	  }
 	}
 	//p++;
