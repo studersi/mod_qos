@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regexspeed.c,v 1.6 2014-06-03 13:27:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: regexspeed.c,v 1.7 2014-06-03 13:34:35 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -139,7 +139,7 @@ int main(int argc, const char *const argv[]) {
 	//p[len-1] = '\0';
 	rule->pc = pcre_compile(p, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
 	if(rule->pc == NULL) {
-	  printf("faild to compile pattern %s\n", p);
+	  printf("faild to compile pattern [%s], reason: %s\n", p, errptr);
 	  exit(1);
 	}
 	rule->extra = pcre_study(rule->pc, 0, &errptr);
