@@ -2,7 +2,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2012 Pascal Buchbinder
+ * Copyright (C) 2007-2014 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regexspeed.c,v 1.4 2012-04-19 15:13:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: regexspeed.c,v 1.5 2014-06-03 13:08:43 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -125,6 +125,12 @@ int main(int argc, const char *const argv[]) {
       }
       if(strlen(readline) > 0) {
 	p = readline;
+	if(strncmp(p, "ch.nev", 6) == 0) {
+	  char *px = strchr(p, ':');
+	  if(px) {
+	    p = &px[1];
+	  }
+	}
 	//p++;
 	//len = strlen(p);
 	//p[len-1] = '\0';
