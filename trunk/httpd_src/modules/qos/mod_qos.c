@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.506 2014-05-26 19:32:23 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.507 2014-06-04 20:17:21 pbuchbinder Exp $";
 static const char g_revision[] = "11.3";
 
 /************************************************************************
@@ -5378,7 +5378,7 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
                      e->req_per_sec);
         }
         if((e->kbytes_per_sec_limit > 0) && !e->event) {
-          ap_rprintf(r, "%s"QOS_DELIM"QS_LocKBytesPerSecLimit%s"QOS_DELIM"%ld[%s]: %ld\n", sn,
+          ap_rprintf(r, "%s"QOS_DELIM"QS_LocKBytesPerSecLimit%s"QOS_DELIM"%"APR_OFF_T_FMT"[%s]: %"APR_OFF_T_FMT"\n", sn,
                      e->regex == NULL ? "" : "Match",
                      e->kbytes_per_sec_limit,
                      e->url, 
@@ -5397,7 +5397,7 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
                      e->counter);
         }
         if(e->event && (e->kbytes_per_sec_limit != 0)) {
-          ap_rprintf(r, "%s"QOS_DELIM"QS_EventKBytesPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
+          ap_rprintf(r, "%s"QOS_DELIM"QS_EventKBytesPerSecLimit"QOS_DELIM"%"APR_OFF_T_FMT"[%s]: %"APR_OFF_T_FMT"\n", sn,
                      e->kbytes_per_sec_limit,
                      e->url, 
                      now > (apr_time_sec(e->kbytes_interval_us) + (QS_BW_SAMPLING_RATE*10)) ? 0 : e->kbytes_per_sec);
@@ -6048,11 +6048,11 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
             ap_rprintf(r, "<td>-</td>");
         } else {
           int hasActualData = now > (apr_time_sec(e->kbytes_interval_us) + QS_BW_SAMPLING_RATE) ? 0 : 1;
-          ap_rprintf(r, "<td %s>%ld&nbsp;ms</td>",
+          ap_rprintf(r, "<td %s>%"APR_OFF_T_FMT"&nbsp;ms</td>",
                      hasActualData && (e->kbytes_per_sec_block_rate >= 1000) ? red : "",
                      e->kbytes_per_sec_block_rate / 1000);
-          ap_rprintf(r, "<td>%ld</td>", e->kbytes_per_sec_limit);
-          ap_rprintf(r, "<td %s>%ld</td>",
+          ap_rprintf(r, "<td>%"APR_OFF_T_FMT"</td>", e->kbytes_per_sec_limit);
+          ap_rprintf(r, "<td %s>%"APR_OFF_T_FMT"</td>",
                      hasActualData && (((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 90) ? red : "",
                      hasActualData ? e->kbytes_per_sec : 0);
         }
@@ -7418,7 +7418,7 @@ static int qos_header_parser(request_rec * r) {
     char *uid = NULL;
     int req_per_sec_block = 0;
     apr_off_t kbytes_per_sec_limit = 0;
-    qs_acentry_t *event_kbytes_per_sec;
+    qs_acentry_t *event_kbytes_per_sec = NULL;
     int status;
     const char *tmostr = NULL;
     qs_acentry_t *e = NULL;
@@ -8574,7 +8574,7 @@ static int qos_logger(request_rec *r) {
   if(rctx->response_delayed) {
     rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
     apr_table_set(r->subprocess_env, QS_RESDELYATIME,
-                  apr_psprintf(r->pool, "%"APR_SIZE_T_FMT, rctx->response_delayed));
+                  apr_psprintf(r->pool, "%"APR_OFF_T_FMT, rctx->response_delayed));
   }
   qos_propagate_notes(r);
   qos_propagate_events(r);
