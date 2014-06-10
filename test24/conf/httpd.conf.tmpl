@@ -95,6 +95,11 @@ Listen         ##QS_PORT_BASE##
    QS_MileStone                 deny "^POST /htt/milestone/register*"
    QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
 
+   <Location /ratelimit>
+      SetOutputFilter RATE_LIMIT
+      SetEnv rate-limit 500
+   </Location>
+
    <Location /htt/limit>
       QS_SetEnvIfResBody "Login Failed" QS_Limit
    </Location>
