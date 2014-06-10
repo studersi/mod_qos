@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.29 2014-03-24 21:03:24 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.30 2014-06-10 19:18:22 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -250,6 +250,13 @@ ErrorLog                     "|##ROOT##/../util/src/qsexec -e \'mod_qos.067.: ac
    ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /images/       ##ROOT##/htdocs/cgi-local/
+
+<IfDefine ucns>
+   SetEnvIf Host server[0-9] ValidHostHeader
+   <Location />
+     QS_DenyEvent +requiresValidHostHeader deny !ValidHostHeader
+   </Location>
+</IfDefine>
 
 <IfDefine ucna>
    # Documentation's sample configuration:
