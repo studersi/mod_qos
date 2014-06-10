@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.507 2014-06-04 20:17:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.508 2014-06-10 19:04:57 pbuchbinder Exp $";
 static const char g_revision[] = "11.3";
 
 /************************************************************************
@@ -356,6 +356,13 @@ typedef enum  {
   QS_IP_V6,
   QS_IP_V4
 } qs_ip_type_e;
+
+typedef enum  {
+  QS_HOST_HEADER_OFF_DEFAULT = 0,
+  QS_HOST_HEADER_OFF,
+  QS_HOST_HEADER_VERIFY,
+  QS_HOST_HEADER_REQUIRE,
+} qs_host_header_e;
 
 typedef enum  {
   QS_CONN_STATE_NEW = 0,
@@ -692,6 +699,7 @@ typedef struct {
   int geo_limit;              /* GLOBAL ONLY */
   apr_table_t *geo_priv;      /* GLOBAL ONLY */
   qs_ip_type_e ip_type;       /* GLOBAL ONLY */
+  qs_host_header_e hostheader;
   int server_limit;
   int thread_limit;
   apr_table_t *milestones;
@@ -3877,6 +3885,90 @@ static void qos_setenv(request_rec *r, qos_srv_config *sconf) {
       apr_table_set(r->subprocess_env, variable, value);
     }
   }
+}
+
+
+/**
+ * QS_HostHeaderCheck
+ * @param r 
+ * @param sconf
+ * @return DECLINED if the request header is valid
+ */
+static int qs_hostheader(request_rec *r, qos_srv_config *sconf) {
+  int rc = DECLINED;
+  const char *hostheader = apr_table_get(r->headers_in, "Host");
+  if(hostheader == NULL) {
+    if(sconf->hostheader == QS_HOST_HEADER_REQUIRE) {
+      rc = HTTP_FORBIDDEN;
+    }
+  } else {
+    char *port = strchr(hostheader, ':');
+    int len = 0;
+    rc = HTTP_FORBIDDEN;
+    if(port) {
+      hostheader = apr_pstrndup(r->pool, hostheader, port - hostheader);
+    }
+    fprintf(stderr, "$$$ [%s]\n", hostheader); fflush(stderr);
+    if(r->server->server_hostname) {
+      port = strchr(r->server->server_hostname, ':');
+      if(port) {
+        len = port - r->server->server_hostname;
+      } else {
+        len = strlen(r->server->server_hostname);
+      }
+      if(strncasecmp(hostheader, r->server->server_hostname, len) == 0) {
+        rc = DECLINED;
+      }
+    }
+    if(rc != DECLINED && r->server->names) {
+      int i;
+      apr_array_header_t *names = r->server->names;
+      char **name = (char **)names->elts;
+      for(i = 0; i < names->nelts; ++i) {
+        if(!name[i]) continue;
+        port = strchr(name[i], ':');
+        if(port) {
+          len = port - name[i];
+        } else {
+          len = strlen(name[i]);
+        }
+        if(strncasecmp(hostheader, name[i], len) == 0) {
+          rc = DECLINED;
+          break;
+        }
+      }
+    }
+    if(rc == DECLINED && r->server->wild_names) {
+      int i;
+      apr_array_header_t *names = r->server->wild_names;
+      char **name = (char **)names->elts;
+      for(i = 0; i < names->nelts; ++i) {
+        if(!name[i]) continue;
+        if(!ap_strcasecmp_match(hostheader, name[i]))
+          /* match ServerAlias using wildcards */
+          rc = DECLINED;
+          break;
+      }
+    }
+  }
+  if(rc != DECLINED) {
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(140)"access denied, QS_HostHeaderCheck:"
+                  " missing or unknwon host header (%s), c=%s, id=%s",
+                  hostheader ? hostheader : "-",
+                  QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                  qos_unique_id(r, "140"));
+    if(!sconf->log_only) {
+      const char *error_page = sconf->error_page;
+      rc = qos_error_response(r, error_page);
+      if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+        return rc;
+      }
+    } else {
+      rc = DECLINED;
+    }
+  }
+  return rc;
 }
 
 /**
@@ -7481,6 +7573,13 @@ static int qos_header_parser(request_rec * r) {
     qos_setenv(r, sconf);
     qos_setreqheader(r, sconf->setreqheader_t);
 
+    if(sconf->hostheader > QS_HOST_HEADER_OFF) {
+      status = qs_hostheader(r, sconf);
+      if(status != DECLINED) {
+        return status;
+      }
+    }
+
     tmostr = apr_table_get(r->subprocess_env, QS_TIMEOUT);
     if(tmostr) {
       apr_interval_time_t timeout = apr_time_from_sec(atoi(tmostr));
@@ -9687,6 +9786,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->maxpost = -1;
   sconf->milestones = NULL;
   sconf->milestone_timeout = QOS_MILESTONE_TIMEOUT;
+  sconf->hostheader = QS_HOST_HEADER_OFF_DEFAULT;
   sconf->static_on = -1;
   sconf->static_html = 0;
   sconf->static_cssjs = 0;
@@ -9869,6 +9969,10 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
     o->static_other = b->static_other;
     o->static_notmodified = b->static_notmodified;
   }
+  if(o->hostheader == QS_HOST_HEADER_OFF_DEFAULT) {
+    o->hostheader = b->hostheader;
+  }
+
   return o;
 }
 
@@ -11059,6 +11163,23 @@ const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
   return NULL;
 }
 
+
+const char *qos_hostheader_cmd(cmd_parms *cmd, void *dcfg, const char *option) {
+  qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
+  
+  if(strcasecmp(option, "off") == 0) {
+    sconf->hostheader = QS_HOST_HEADER_OFF;
+  } else if(strcasecmp(option, "verify") == 0) {
+    sconf->hostheader = QS_HOST_HEADER_VERIFY;
+  } else if(strcasecmp(option, "require") == 0) {
+    sconf->hostheader = QS_HOST_HEADER_REQUIRE;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: unknown option '%s'",
+                        cmd->directive->directive, option);
+  }
+  return NULL;
+}
+
 const char *qos_maxpost_cmd(cmd_parms *cmd, void *dcfg, const char *bytes) {
   apr_off_t s;
   char *errp = NULL;
@@ -12050,6 +12171,11 @@ static const command_rec qos_config_cmds[] = {
                   ACCESS_CONF,
                   "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"
                   " directives to a location."),
+  AP_INIT_TAKE1("QS_HostHeaderCheck", qos_hostheader_cmd, NULL,
+                RSRC_CONF,
+                "QS_HostHeaderCheck 'off'|'verify'|'require', ensures that the "
+                " client sends a HTTP host header known by the server."
+                " Default is 'off'."),
   AP_INIT_TAKE1("QS_RequestHeaderFilter", qos_headerfilter_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_RequestHeaderFilter 'on'|'off'|'size', filters request headers by allowing"
