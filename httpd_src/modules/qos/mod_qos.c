@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.509 2014-06-10 19:05:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.510 2014-06-12 05:49:08 pbuchbinder Exp $";
 static const char g_revision[] = "11.3";
 
 /************************************************************************
@@ -674,6 +674,7 @@ typedef struct {
   int has_qos_cc;             /* GLOBAL ONLY */
   int qos_cc_size;            /* GLOBAL ONLY */
   int qos_cc_prefer;          /* GLOBAL ONLY */
+  apr_table_t *cc_exclude_ip; /* GLOBAL ONLY */
   int qos_cc_prefer_limit;
   int qos_cc_event;           /* GLOBAL ONLY */
   int qos_cc_event_req;       /* GLOBAL ONLY */
@@ -1283,6 +1284,33 @@ static char *qos_strnstr(const char *s1, const char *s2, int len) {
     s1++;
   }
   return((char *)s1);
+}
+
+/**
+ * Determines, if the client IP shall be excluded from rule enforcement
+ *
+ * @param c Connection to get the IP
+ * @param exclude_ip Table containing the rules
+ * @return 1 on match otherwise 0
+ */
+static int qos_is_excluded_ip(conn_rec *c, apr_table_t *exclude_ip) {
+  if(apr_table_elts(exclude_ip)->nelts > 0) {
+    int i;
+    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(exclude_ip)->elts;
+    for(i = 0; i < apr_table_elts(exclude_ip)->nelts; i++) {
+      if(entry[i].val[0] == 'r') {
+        if(strncmp(entry[i].key, QS_CONN_REMOTEIP(c), strlen(entry[i].key)) == 0) {
+          // todo: ipv6 support
+          return 1;
+        }
+      } else {
+        if(strcmp(entry[i].key, QS_CONN_REMOTEIP(c)) == 0) {
+          return 1;
+        }
+      }
+    }
+  }
+  return 0;
 }
 
 /**
@@ -4879,6 +4907,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     const char *forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
+    int excludeFromBlock = qos_is_excluded_ip(r->connection, sconf->cc_exclude_ip);
     searchE.ip6[0] = cconf->ip6[0];
     searchE.ip6[1] = cconf->ip6[1];
     searchEFromHeader.ip6[0] = 0;
@@ -4975,7 +5004,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
       }
     }
-    if(sconf->qos_cc_block) {
+    if(sconf->qos_cc_block && !excludeFromBlock) {
       apr_time_t now = apr_time_sec(r->request_time);
       const char *block_event_str = apr_table_get(r->subprocess_env, QS_BLOCK);
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
@@ -5012,7 +5041,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       if((*e)->block >= sconf->qos_cc_block) {
         *uid = apr_pstrdup(cconf->c->pool, "060");
         *msg = apr_psprintf(cconf->c->pool, 
-                            QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
+                            QOS_LOG_PFX(060)"access denied, "
+                            "QS_ClientEventBlockCount rule: "
                             "max=%d, current=%d, c=%s",
                             cconf->sconf->qos_cc_block,
                             (*e)->block,
@@ -5097,7 +5127,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
               /* log only one error (either block or limit) */
               *uid = apr_pstrdup(cconf->c->pool, "067");
               *msg = apr_psprintf(cconf->c->pool, 
-                                  QOS_LOG_PFX(067)"access denied, QS_%sClientEventLimitCount rule: "
+                                  QOS_LOG_PFX(067)"access denied, "
+                                  "QS_%sClientEventLimitCount rule: "
                                   "event=%s, "
                                   "max=%d, current=%d, c=%s",
                                   conditional,
@@ -6880,29 +6911,12 @@ static int qos_process_connection(conn_rec *c) {
       apr_table_set(c->notes, "QS_IPConn", apr_psprintf(c->pool, "%d", current));
     }
     /* Check for vip (by ip) */
-    if(apr_table_elts(sconf->exclude_ip)->nelts > 0) {
-      int i;
-      apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->exclude_ip)->elts;
-      for(i = 0; i < apr_table_elts(sconf->exclude_ip)->nelts; i++) {
-        if(entry[i].val[0] == 'r') {
-          if(strncmp(entry[i].key, QS_CONN_REMOTEIP(cconf->c), strlen(entry[i].key)) == 0) {
-            vip = 1;
-            /* propagate vip to connection */
-            cconf->is_vip = vip;
-            if(!cconf->evmsg || !strstr(cconf->evmsg, "S;")) {
-              cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
-            }
-          }
-        } else {
-          if(strcmp(entry[i].key, QS_CONN_REMOTEIP(cconf->c)) == 0) {
-            vip = 1;
-            /* propagate vip to connection */
-            cconf->is_vip = vip;
-            if(!cconf->evmsg || !strstr(cconf->evmsg, "S;")) {
-              cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
-            }
-          }
-        }
+    vip = qos_is_excluded_ip(cconf->c, sconf->exclude_ip);
+    if(vip) {
+      /* propagate vip to connection */
+      cconf->is_vip = vip;
+      if(!cconf->evmsg || !strstr(cconf->evmsg, "S;")) {
+        cconf->evmsg = apr_pstrcat(c->pool, "S;", cconf->evmsg, NULL);
       }
     }
 
@@ -7023,6 +7037,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   int ret = DECLINED;
   qos_srv_config *sconf;
   qs_conn_base_ctx *base;
+  int excludeFromBlock;
   if(c->sbh == NULL) {
     // proxy connections do NOT have any relation to the score board, don't handle them
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, c->base_server, 
@@ -7032,6 +7047,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
     return ret;
   }
   sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config, &qos_module);
+  excludeFromBlock = qos_is_excluded_ip(c, sconf->cc_exclude_ip);
   base = qos_get_conn_base_ctx(c);
   if(base == NULL) {
     base = qos_create_conn_base_ctx(c, sconf);
@@ -7045,7 +7061,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
   }
 
   /* blocked by event (block only, no limit) - very aggressive */
-  if(sconf->qos_cc_block) {
+  if(sconf->qos_cc_block && !excludeFromBlock) {
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     qos_s_entry_t **e = NULL;
     qos_s_entry_t searchE;
@@ -9666,6 +9682,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->disable_reqrate_events = apr_table_make(p, 1);
   sconf->log_only = 0;
   sconf->has_qos_cc = 0;
+  sconf->cc_exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->qos_cc_size = 50000;
   sconf->qos_cc_prefer = 0;
   sconf->qos_cc_prefer_limit = 0;
@@ -9744,6 +9761,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->reshfilter_table = b->reshfilter_table;
   o->log_only = b->log_only;
   o->has_qos_cc = b->has_qos_cc;
+  o->cc_exclude_ip = b->cc_exclude_ip;
   o->qos_cc_size = b->qos_cc_size;
   o->qos_cc_prefer = b->qos_cc_prefer;
   o->qos_cc_prefer_limit = b->qos_cc_prefer_limit;
@@ -10804,12 +10822,16 @@ const char *qos_max_conn_ex_cmd(cmd_parms *cmd, void *dcfg, const char *addr) {
   if(addr[strlen(addr)-1] == '.') {
     /* address range */
     apr_table_add(sconf->exclude_ip, addr, "r");
+  } else if(addr[strlen(addr)-1] == ':') {
+    /* address range */
+    apr_table_add(sconf->exclude_ip, addr, "r");
   } else {
     /* single ip */
     apr_table_add(sconf->exclude_ip, addr, "s");
   }
   return NULL;
 }
+
 const char *qos_req_rate_off_cmd(cmd_parms *cmd, void *dcfg) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -11340,6 +11362,26 @@ const char *qos_enable_ipv6_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   return NULL;
 }
 
+const char *qos_client_ex_cmd(cmd_parms *cmd, void *dcfg, const char *addr) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  if(addr[strlen(addr)-1] == '.') {
+    /* address range */
+    apr_table_add(sconf->cc_exclude_ip, addr, "r");
+  } else if(addr[strlen(addr)-1] == ':') {
+    /* address range */
+    apr_table_add(sconf->cc_exclude_ip, addr, "r");
+  } else {
+    /* single ip */
+    apr_table_add(sconf->cc_exclude_ip, addr, "s");
+  }
+  return NULL;
+}
+
 const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -11778,7 +11820,7 @@ static const command_rec qos_config_cmds[] = {
                  " (all virtual hosts) to enable this limitation, default is 0."),
   AP_INIT_TAKE1("QS_SrvMaxConnExcludeIP", qos_max_conn_ex_cmd, NULL,
                 RSRC_CONF,
-                "QS_SrvMaxConnExcludeIP <addr>, excludes an ip address or"
+                "QS_SrvMaxConnExcludeIP <addr>, excludes an IP address or"
                 " address range from beeing limited."),
 #if QS_APACHE_22
 #if APR_HAS_THREADS
@@ -12153,6 +12195,10 @@ static const command_rec qos_config_cmds[] = {
                  "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"
                  " of "QS_BLOCK" allowed within the defined time (default are 10 minutes)."
                  " Directive is allowed in global server context only."),
+  AP_INIT_TAKE1("QS_ClientEventBlockExcludeIP", qos_client_ex_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_ClientEventBlockExcludeIP <addr>, excludes an IP address or"
+                " address range from beeing limited by QS_ClientEventBlockCount."),
   AP_INIT_TAKE123("QS_ClientEventLimitCount", qos_client_limit_cmd, NULL,
                   RSRC_CONF,
                   "QS_ClientEventLimitCount <number> [<seconds> [<variable>]],"

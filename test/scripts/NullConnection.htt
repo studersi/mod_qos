@@ -1,5 +1,5 @@
 #
-# $Id: NullConnection.htt,v 1.1 2011-10-25 20:47:17 pbuchbinder Exp $
+# $Id: NullConnection.htt,v 1.2 2014-06-12 05:49:08 pbuchbinder Exp $
 #
 # <IfDefine BlockNullConn>
 # QS_ClientEventBlockCount 3 40
@@ -23,6 +23,7 @@ _LOOP 3
 _REQ localhost $QS_PORT_BASE
 _CLOSE
 _END LOOP
+_SLEEP 10
 
 _EXPECT ERROR "Connection reset by peer"
 _REQ localhost $QS_PORT_BASE

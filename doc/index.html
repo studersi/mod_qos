@@ -1463,7 +1463,10 @@ directive.
 Defines the maximum number of <code>QS_Block</code> events allowed 
 within the defined time (default is 600 seconds). Client IP is blocked 
 when reaching this counter for the specified time (blocked at connection 
-level: user might not always get a user friendly error response).
+level: user might not always get a user friendly error response).<br/>
+You may use <code>QS_ClientEventBlockExcludeIP &lt;addr&gt;</code> 
+to exclude an IP address from being processed by this limitation 
+(e.g. for trusted clients connecting via a proxy server).
 </li>
 <li>
 <a name="QS_ClientEventLimitCount"></a>
