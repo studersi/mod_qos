@@ -1,5 +1,7 @@
 Version
 
+ - New directive QS_ClientEventBlockExcludeIP.
+
  - Minor changes to the status viewer.
 
 Version 11.2
