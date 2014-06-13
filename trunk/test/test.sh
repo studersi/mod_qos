@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.244 2014-06-02 18:51:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.245 2014-06-13 19:19:17 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -329,6 +329,7 @@ sleep 10
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- req/sec limit, QS_LocRequestPerSecLimitMatch.htt" >>  logs/error_log
+#./ctl.sh restart > /dev/null
 ./run.sh -se ./scripts/QS_LocRequestPerSecLimitMatch.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
