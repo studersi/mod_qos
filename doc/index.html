@@ -779,7 +779,7 @@ BrowserMatch             "(MSIE 5\.)"             QS_KeepAliveTimeout=65
 # dynamic error page URL (per host error page):
 SetEnvIf     Host        (.*)                     QS_ErrorPage=/error-docs/$1.html
 # external redirect to a sever hosting the error page:
-SetEnvIf     Request_URI /app                     QS_ErrorPage=http://server/error.html
+SetEnvIf     Request_URI /app                     QS_ErrorPage=http://your.server.name/error.html
 </pre>
 </td></tr>
 </table>
@@ -1819,6 +1819,7 @@ from stdin (pipe) and writes the signed data to stdout.</li>
 <h2>Use Cases</h2>
 <p>
 The following use cases may give you an idea about how to use mod_qos.
+<a name="Slow_Application"></a>
 <h3>Slow Application</h3>
 <p>
 In case of a very slow application (e.g., at location /ccc), requests wait 
@@ -1849,6 +1850,7 @@ to analyze your log files in order to idenitify "slow" resources by
 using the <code>-pu</code> or <code>-puc</code> option.
 </p>
 
+<a name="HTTP_Keep-Alive"></a>
 <h3>HTTP Keep-Alive</h3>
 <p>
 The keep-alive extension of HTTP 1.1 allows persistent TCP connections for 
@@ -1873,6 +1875,7 @@ QS_SrvMaxConnClose      70%
 </table>
 </p>
 
+<a name="Client_Opens_Many_Concurrent_Connections"></a>
 <h3>Client Opens Many Concurrent Connections</h3>
 <p>
 A single client may open many TCP connections simultaneously in order to 
@@ -1897,6 +1900,7 @@ QS_SrvMaxConnPerIP      50 700
 </table>
 </p>
 
+<a name="Many_Requests_to_a_Single_URL"></a>
 <h3>Many Requests to a Single URL</h3>
 <p>
 If you have to limit the number of requests to an URL, mod_qos can help 
@@ -1917,6 +1921,7 @@ QS_LocRequestLimit       /download/mod_qos.so.gz 600
 </p>
 
 <a name="ddos"></a>
+<a name="Too_Many_Client_Connections"></a>
 <h3>Too Many Client Connections</h3>
 <p>
 mod_qos may prefer "known" client IP addresses in the case that too 
