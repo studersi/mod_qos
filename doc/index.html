@@ -1920,6 +1920,32 @@ QS_LocRequestLimit       /download/mod_qos.so.gz 600
 </table>
 </p>
 
+<a name="bandwidth_restriction"></a>
+<h3>Bandwidth Restriction</h3>
+<p>
+It's sometimes necessary to restrict the bandwidth consumed by 
+clients downloading certain type of data in order to avoid 
+that the entire bandwidth of your Internet connection is 
+exploited by less important data traffic, e.g. if your web server 
+hosts large files to be downloaded.<br/>
+Using mod_qos allows you to defined the bandwidth which may be 
+used when accessing a defined URL or when the server returns a 
+certain content-type. This allows you to keep a reserve to 
+exchange other data as well.
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E0EBE0">
+<pre>
+# Limits the download bandwidth when accessing ISO images to 1 megabyte/sec
+# and does not allow more then 300 clients to download such file type in
+# parallel:
+QS_LocKBytesPerSecLimitMatch .*iso$ 1024
+QS_LocRequestLimitMatch      .*iso$  300
+</pre>
+</td></tr>
+</table>
+</p>
+
 <a name="ddos"></a>
 <a name="Too_Many_Client_Connections"></a>
 <h3>Too Many Client Connections</h3>
