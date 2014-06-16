@@ -241,6 +241,8 @@ _EXPECT . "!127.0.0.8 "
 _EXPECT . "!127.0.0.9 "
 _EXPECT . "!127.0.0.10 "
 _EXPECT . "!127.0.0.11 "
+_EXPECT . "!127.0.0.95 "
+_EXPECT . "!127.0.0.96 "
 _EXPECT . "127.0.2.90 "
 _EXPECT . "127.0.2.91 "
 _EXPECT . "127.0.2.96 "
@@ -277,10 +279,12 @@ _WAIT
 
 END
 
+# call by qsexec resp. sync.sh shows how to propagte events
+# to other apache instances:
 SERVER $QS_PORT_BASE6
-
 _RES
 _EXPECT . "GET /console\?action=limit&address=182.12.33.2&event=QS_Limit HTTP/1.1"
+_EXPECT . "User-Agent: Wget"
 _WAIT
 __HTTP/1.1 200 OK
 __Content-Type: text/plain
