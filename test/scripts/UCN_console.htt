@@ -1,5 +1,5 @@
 #
-# $Id: UCN_console.htt,v 1.7 2014-06-16 19:46:48 pbuchbinder Exp $
+# $Id: UCN_console.htt,v 1.8 2014-06-17 20:08:43 pbuchbinder Exp $
 #
 # QS_ClientIpFromHeader        Y-Forwarded-For
 # 
@@ -10,7 +10,7 @@
 # SetEnvIfPlus Request_Query   product=([0-9]+) QS_LimitSP=$1
 # QS_ClientEventLimitCount     10 4        QS_LimitSP
 # 
-# ErrorLog                     "|##ROOT##/../util/src/qsexec -e \'mod_qos.067.: access denied, QS_ClientEventLimitCount rule: event=(.*), max=[0-9]+, current=[0-9]+, c=(.*), id=\' -p \'##ROOT##/sync.sh $1 $2\' |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
+# ErrorLog                     "|##ROOT##/../util/src/qsexec -e \'mod_qos.067.: access denied, QS_ClientEventLimitCount rule: event=(.*), max=[0-9]+, current=([0-9]+), c=(.*), id=\' -p \'##ROOT##/sync.sh $1 $2 $3\' |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
 #
 # => adds ~90 and ~100 clients and verifies they are availabe
 #    within the client store
@@ -152,7 +152,7 @@ __Y-Forwarded-For: 127.0.0.1
 __User-Agent: Mozilla
 __
 _EXPECT . "200 OK"
-_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=1010/."
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=1012/."
 _WAIT
 _CLOSE
 
@@ -188,7 +188,7 @@ _EXPECT . "127.0.0.11 "
 _EXPECT . "127.0.0.94 "
 _EXPECT . "127.0.0.95 "
 _EXPECT . "127.0.0.96 "
-_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=1010/."
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=1012/."
 _WAIT
 _CLOSE
 
@@ -271,6 +271,8 @@ _EXPECT . "200 OK"
 _EXPECT . "this is the root index.html"
 _WAIT
 _END LOOP
+
+# this request triggers the sync to the second Apache instance:
 _REQ localhost $QS_PORT_BASE
 __GET /index.html?id=22 HTTP/1.1
 __Host: localhost
@@ -283,6 +285,21 @@ _WAIT
 _CLOSE
 _SLEEP 100
 _EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=10, c=182.12.33.2"
+_EXEC tail -1 logs/error_log
+
+# counter is now greater than the limit => don't sync again
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=22 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 182.12.33.2
+__User-Agent: Mozilla
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "!this is the root index.html"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=11, c=182.12.33.2"
 _EXEC tail -1 logs/error_log
 
 _REQ localhost $QS_PORT_BASE
@@ -321,6 +338,19 @@ _SLEEP 100
 _EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=1010, c=127.0.3.3"
 _EXEC tail -1 logs/error_log
 
+#_LOOP 20
+#_REQ localhost $QS_PORT_BASE
+#__GET /index.html?id=12 HTTP/1.1
+#__Host: localhost
+#__Y-Forwarded-For: 127.0.3.99
+#__User-Agent: Mozilla
+#__
+##_EXPECT . "500 Internal Server Error"
+##_EXPECT . "!this is the root index.html"
+#_WAIT
+#_CLOSE
+#_END LOOP
+
 _REQ localhost $QS_PORT_BASE
 __GET /console?action=unlimit&address=127.0.3.3 HTTP/1.1
 __Host: localhost
@@ -343,10 +373,16 @@ _EXPECT . "this is the root index.html"
 _WAIT
 _CLOSE
 
+_REQ localhost $QS_PORT_BASE6
+__GET /test HTTP/1.1
+__Host: httest
+__
+_EXPECT . "AS1-OK"
+_WAIT
 END
 
 # call by qsexec resp. sync.sh shows how to propagte events
-# to other apache instances:
+# to other Apache instances:
 SERVER $QS_PORT_BASE6
 _RES
 _EXPECT . "GET /console\?action=limit&address=182.12.33.2&event=QS_Limit HTTP/1.1"
@@ -357,5 +393,16 @@ __Content-Type: text/plain
 __Content-Length: AUTO
 __
 __182.12.33.2 vip=no lowprio=no block=0/0 limit=1010/5
+_CLOSE
+
+# ensure we got only one sync call
+_RES
+_EXPECT . "GET /test HTTP/1.1"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__AS1-OK
 
 END
