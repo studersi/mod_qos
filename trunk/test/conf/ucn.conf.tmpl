@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.31 2014-06-12 05:49:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.32 2014-06-17 20:08:40 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -216,9 +216,9 @@ QS_ClientEntries             100
 SetEnvIfPlus Request_Query   id=([0-9]+) QS_Limit=$1
 QS_ClientEventLimitCount     10 5        QS_Limit
 SetEnvIfPlus Request_Query   product=([0-9]+) QS_LimitSP=$1
-QS_ClientEventLimitCount     10 4        QS_LimitSP
+QS_ClientEventLimitCount     12 4        QS_LimitSP
 
-ErrorLog                     "|##ROOT##/../util/src/qsexec -e \'mod_qos.067.: access denied, QS_ClientEventLimitCount rule: event=(.*), max=[0-9]+, current=[0-9]+, c=(.*), id=\' -p \'##ROOT##/sync.sh $1 $2\' |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
+ErrorLog                     "|##ROOT##/../util/src/qsexec -e \'mod_qos.067.: access denied, QS_ClientEventLimitCount rule: event=(.*), max=[0-9]+, current=([0-9]+), c=(.*), id=\' -p \'##ROOT##/sync.sh $1 $2 $3\' |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
 
 </IfDefine>
 
