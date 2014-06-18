@@ -1,5 +1,5 @@
 #
-# $Id: UC1_QS_ClientEventLimitCount_v6.htt,v 1.5 2014-05-04 09:05:23 pbuchbinder Exp $
+# $Id: UC1_QS_ClientEventLimitCount_v6.htt,v 1.6 2014-06-18 19:05:54 pbuchbinder Exp $
 # 
 # QS_ClientEventLimitCount 3 3
 # QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
@@ -34,7 +34,7 @@ _EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC " mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=3, c=fc00::111"
+_EXPECT EXEC " mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=3, age=[0-9]+, c=fc00::111"
 _EXEC tail -1 logs/error_log
 
 _SLEEP 4000
@@ -121,7 +121,7 @@ _EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC " mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=3, c=fc00::112"
+_EXPECT EXEC " mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=3, age=[0-9]+, c=fc00::112"
 _EXEC tail -1 logs/error_log
 
 _SLEEP 1200
@@ -133,7 +133,7 @@ _EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC " mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=4, c=fc00::112"
+_EXPECT EXEC " mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=4, age=[0-9]+, c=fc00::112"
 _EXEC tail -1 logs/error_log
 
 END

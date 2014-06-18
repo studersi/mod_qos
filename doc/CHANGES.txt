@@ -1,8 +1,14 @@
-Version
+Version 11.3
 
  - New directive QS_ClientEventBlockExcludeIP.
 
  - Minor changes to the status viewer.
+
+ - Modified error messages 060 and 067 (adding the "age" parameter
+   which indicates the seconds since the event occured the first
+   time).
+
+ - Fixed: Message 065 contained wrong directive name.
 
 Version 11.2
 

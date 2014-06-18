@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventLimitCount.htt,v 1.10 2013-08-30 19:35:57 pbuchbinder Exp $
+# $Id: QS_ClientEventLimitCount.htt,v 1.11 2014-06-18 19:05:54 pbuchbinder Exp $
 #
 #  QS_ClientEventLimitCount 3 10
 #  QS_ClientIpFromHeader      Y-Forwarded-For
@@ -433,7 +433,7 @@ _EXPECT . "code=067"
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_LimitVar5, max=1, current=1, c=127.0.0.1"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_LimitVar5, max=1, current=1, age=[0-9]+, c=127.0.0.1"
 _EXEC tail -1 logs/error_log
 
 END

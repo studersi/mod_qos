@@ -1,4 +1,6 @@
 #
+# $Id: UCN_QS_CondClientEventLimitCount_adm.htt,v 1.2 2014-06-18 19:05:54 pbuchbinder Exp $
+#
 #   QS_CondClientEventLimitCount 2 3 CL01 _CL01_URI_
 #   QS_ClientIpFromHeader        Y-Forwarded-For
 #
@@ -76,7 +78,7 @@ _EXPECT . "!aaa index.html"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=CL01, max=2, current=3, c=127.0.0.4"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=CL01, max=2, current=3, age=[0-9], c=127.0.0.4"
 _EXEC tail -1 logs/error_log
 
 _SLEEP 4000

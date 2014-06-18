@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.510 2014-06-12 05:49:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.511 2014-06-18 19:05:54 pbuchbinder Exp $";
 static const char g_revision[] = "11.3";
 
 /************************************************************************
@@ -4396,7 +4396,7 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
         int rc;
         const char *error_page = sconf->error_page;
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(065)"access denied, QS_ClientEventBlockCount rule: "
+                      QOS_LOG_PFX(065)"access denied, QS_ClientEventRequestLimit rule: "
                       "max=%d, current=%d, c=%s, id=%s",
                       sconf->qos_cc_event_req,
                       count,
@@ -5043,9 +5043,10 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         *msg = apr_psprintf(cconf->c->pool, 
                             QOS_LOG_PFX(060)"access denied, "
                             "QS_ClientEventBlockCount rule: "
-                            "max=%d, current=%d, c=%s",
+                            "max=%d, current=%d, age=%"APR_TIME_T_FMT", c=%s",
                             cconf->sconf->qos_cc_block,
                             (*e)->block,
+                            now - (*e)->block_time,
                             QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
                             QS_CONN_REMOTEIP(cconf->c));
         ret = m_retcode;
@@ -5130,11 +5131,12 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                                   QOS_LOG_PFX(067)"access denied, "
                                   "QS_%sClientEventLimitCount rule: "
                                   "event=%s, "
-                                  "max=%d, current=%d, c=%s",
+                                  "max=%d, current=%d, age=%"APR_TIME_T_FMT", c=%s",
                                   conditional,
                                   eventName,
                                   eventLimitConf->limit,
                                   (*ef)->limit[limitTableIndex].limit,
+                                  now - (*ef)->limit[limitTableIndex].limit_time,
                                   forwardedForLogIP == NULL ? "-" : forwardedForLogIP);
               ret = m_retcode;
             }
@@ -7091,9 +7093,10 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
         } else {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                        QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
-                       "max=%d, current=%d, c=%s",
+                       "max=%d, current=%d, age=%"APR_TIME_T_FMT", c=%s",
                        sconf->qos_cc_block,
                        (*e)->block,
+                       now - (*e)->block_time,
                        QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         }
         if(!sconf->log_only) {
