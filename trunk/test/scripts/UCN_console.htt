@@ -1,5 +1,5 @@
 #
-# $Id: UCN_console.htt,v 1.8 2014-06-17 20:08:43 pbuchbinder Exp $
+# $Id: UCN_console.htt,v 1.9 2014-06-18 19:05:54 pbuchbinder Exp $
 #
 # QS_ClientIpFromHeader        Y-Forwarded-For
 # 
@@ -284,12 +284,13 @@ _EXPECT . "!this is the root index.html"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=10, c=182.12.33.2"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=10, age=0|1, c=182.12.33.2"
 _EXEC tail -1 logs/error_log
 
-# counter is now greater than the limit => don't sync again
+_SLEEP 1100
+# => don't sync again
 _REQ localhost $QS_PORT_BASE
-__GET /index.html?id=22 HTTP/1.1
+__GET /index.html HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: 182.12.33.2
 __User-Agent: Mozilla
@@ -299,7 +300,7 @@ _EXPECT . "!this is the root index.html"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=11, c=182.12.33.2"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=10, age=1|2, c=182.12.33.2"
 _EXEC tail -1 logs/error_log
 
 _REQ localhost $QS_PORT_BASE
@@ -335,7 +336,7 @@ _EXPECT . "!this is the root index.html"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=1010, c=127.0.3.3"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=1010, age=0|1, c=127.0.3.3"
 _EXEC tail -1 logs/error_log
 
 #_LOOP 20

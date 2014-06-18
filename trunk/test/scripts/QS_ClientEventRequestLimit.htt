@@ -1,3 +1,7 @@
+#
+# $Id: QS_ClientEventRequestLimit.htt,v 1.2 2014-06-18 19:05:54 pbuchbinder Exp $
+#
+
 INCLUDE scripts/ports
 
 CLIENT
@@ -69,7 +73,7 @@ __GET /htt/index1.html HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
-_EXPECT . "mod_qos.065.: access denied, QS_ClientEventBlockCount rule: max=2, current=3"
+_EXPECT . "mod_qos.065.: access denied, QS_ClientEventRequestLimit rule: max=2, current=3"
 _WAIT
 
 

@@ -40,7 +40,7 @@ _EXPECT . "!root index"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=ClientLimit1, max=2, current=2, c=127.0.0.2"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=ClientLimit1, max=2, current=2, age=[0-9]+, c=127.0.0.2"
 _EXEC tail -1 logs/error_log
 
 _REQ localhost $QS_PORT_BASE
@@ -77,7 +77,7 @@ _EXPECT . "!root index"
 _WAIT
 _CLOSE
 _SLEEP 1100
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=ClientLimit2, max=2, current=2, c=127.0.0.2"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=ClientLimit2, max=2, current=2, age=[0-9]+, c=127.0.0.2"
 _EXEC tail -1 logs/error_log
 
 _REQ localhost $QS_PORT_BASE
