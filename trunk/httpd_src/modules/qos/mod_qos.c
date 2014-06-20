@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.511 2014-06-18 19:05:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.512 2014-06-20 20:06:26 pbuchbinder Exp $";
 static const char g_revision[] = "11.3";
 
 /************************************************************************
@@ -2366,7 +2366,8 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
       if(e->limit == 0 ) {
         if((e->condition == NULL) && (e->event == NULL)) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s,
-                       QOS_LOG_PFX(003)"request level rule %s has no concurrent request limitations",
+                       QOS_LOG_PFX(003)"request level rule %s has no "
+                       "concurrent request limitations",
                        e->url);
         }
       }
@@ -4812,7 +4813,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
                        (*e)->block,
                        (*e)->blockMsg % QS_LOG_REPEAT,
                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
-                       QS_CONN_REMOTEIP(r->connection));
+                       QS_CONN_REMOTEIP(r->connection)/*no id here, this r is okay*/);
           (*e)->blockMsg = 0;
         }
         (*e)->block = 0;
@@ -5021,7 +5022,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                        (*e)->block,
                        (*e)->blockMsg % QS_LOG_REPEAT,
                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
-                       QS_CONN_REMOTEIP(r->connection));
+                       QS_CONN_REMOTEIP(r->connection)/*no id here, this r is okay*/);
           (*e)->blockMsg = 0;
         }
         (*e)->block = 0;
@@ -6245,7 +6246,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
 static void qos_disable_req_rate(server_rec *bs, const char *msg) {
   server_rec *s = bs->next;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
-  ap_log_error(APLOG_MARK, APLOG_ERR, 0, bs,
+  ap_log_error(APLOG_MARK, APLOG_CRIT, 0, bs,
                QOS_LOG_PFX(008)"could not create supervisor thread (%s),"
                " disable request rate enforcement", msg);
   sconf->req_rate = -1;
@@ -9221,7 +9222,9 @@ static int qos_console_dump(request_rec * r, const char *event) {
     return OK;
   }
   ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                QOS_LOG_PFX(070)"console, not acceptable, qos client control has not been activated");
+                QOS_LOG_PFX(070)"console, not acceptable, "
+                "qos client control has not been activated, id=%s",
+                qos_unique_id(r, "070"));
   return HTTP_NOT_ACCEPTABLE;
 }
 
@@ -9239,7 +9242,8 @@ static int qos_handler_console(request_rec * r) {
   sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   if(sconf->disable_handler == 1) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(072)"handler has been disabled for this host");
+                  QOS_LOG_PFX(072)"handler has been disabled for this host, id=%s",
+                  qos_unique_id(r, "072"));
     return DECLINED;
   }
   apr_table_add(r->err_headers_out, "Cache-Control", "no-cache");
@@ -9253,7 +9257,8 @@ static int qos_handler_console(request_rec * r) {
   if(!cmd || !ip) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(070)"console, not acceptable,"
-                  " missing request query (action/address)");
+                  " missing request query (action/address), id=%s",
+                  qos_unique_id(r, "070"));
     return HTTP_NOT_ACCEPTABLE;
   }
   if(ip) {
@@ -9265,7 +9270,8 @@ static int qos_handler_console(request_rec * r) {
   if(!sconf->has_qos_cc) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(070)"console, not acceptable,"
-                  " client data store has not been enabled");
+                  " client data store has not been enabled, id=%s",
+                  qos_unique_id(r, "070"));
     return HTTP_NOT_ACCEPTABLE;
   }
   if((strcasecmp(cmd, "search") == 0) && (strcmp(ip, "*") == 0)) {
@@ -9274,7 +9280,8 @@ static int qos_handler_console(request_rec * r) {
   if(qos_ip_str2long(ip, &addr) == 0) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(070)"console, not acceptable,"
-                  " invalid ip/wrong format");
+                  " invalid ip/wrong format, id=%s",
+                  qos_unique_id(r, "070"));
     return HTTP_NOT_ACCEPTABLE;
   }
   if(sconf->has_qos_cc) {
@@ -9294,7 +9301,8 @@ static int qos_handler_console(request_rec * r) {
       if(strcasecmp(cmd, "search") != 0) {
         e = qos_cc_set(u->qos_cc, &new, time(NULL));
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                      QOS_LOG_PFX(071)"console, add new client ip entry '%s'", ip);
+                      QOS_LOG_PFX(071)"console, add new client ip entry '%s', is=%s",
+                      ip, qos_unique_id(r, "071"));
       }
     }
     status = OK;
@@ -9329,7 +9337,8 @@ static int qos_handler_console(request_rec * r) {
       /* nothing to do here */
     } else {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                    QOS_LOG_PFX(070)"console, not acceptable, unknown action '%s'", cmd);
+                    QOS_LOG_PFX(070)"console, not acceptable, unknown action '%s', id=%s",
+                    cmd, qos_unique_id(r, "070"));
       status = HTTP_NOT_ACCEPTABLE;
     }
     if(e) {
@@ -9352,13 +9361,14 @@ static int qos_handler_console(request_rec * r) {
       ap_set_content_type(r, "text/plain");
       ap_rprintf(r, "%s\n", msg);
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                    QOS_LOG_PFX(071)"console, action '%s' applied to client ip entry '%s'",
-                    cmd, ip);
+                    QOS_LOG_PFX(071)"console, action '%s' applied to client ip entry '%s', id=%s",
+                    cmd, ip, qos_unique_id(r, "071"));
     }
   } else {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(070)"console, not acceptable,"
-                  " qos client control has not been activated");
+                  " qos client control has not been activated, id=%s",
+                  qos_unique_id(r, "070"));
     status = HTTP_NOT_ACCEPTABLE;
   }
   return status;
@@ -9376,7 +9386,8 @@ static int qos_handler_view(request_rec * r) {
   sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   if(sconf->disable_handler == 1) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(072)"handler has been disabled for this host");
+                  QOS_LOG_PFX(072)"handler has been disabled for this host, id=%s",
+                  qos_unique_id(r, "072"));
     return DECLINED;
   }
   if(r->parsed_uri.path && (strstr(r->parsed_uri.path, "favicon.ico") != NULL)) {
