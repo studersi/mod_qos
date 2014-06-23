@@ -2,6 +2,8 @@ Version
 
  - Adds request ID to console log messages (07*).
 
+ - qslog supports writing to stdout (if "-o <out_file>" is omitted).
+
 Version 11.3
 
  - New directive QS_ClientEventBlockExcludeIP.

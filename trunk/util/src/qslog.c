@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.85 2014-06-02 18:51:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.86 2014-06-23 20:22:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1534,7 +1534,7 @@ static void *loggerThread(void *argv) {
     strftime(buf, sizeof(buf), "%d.%m.%Y %H:%M:%S", ptr);
 
     printAndResetStat(buf);
-    if(m_rotate) {
+    if(m_rotate && m_file_name[0]) {
       strftime(buf, sizeof(buf), "%H:%M", ptr);
       if(strcmp(buf, "23:59") == 0) {
         char arch[MAX_LINE];
@@ -1903,6 +1903,7 @@ int main(int argc, const char *const argv[]) {
     long long duration_count_ms_min = -1;
     long long duration_count_ms_max = 0;
     m_url_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES + 1);
+    if(config == NULL) usage(cmd, 0);
     readStdinOffline(pool, config);
     fprintf(stderr, ".\n");
 
@@ -1945,7 +1946,7 @@ int main(int argc, const char *const argv[]) {
               url_rec->status_3,
               url_rec->status_4,
               url_rec->status_5,
-              url_rec->duration_count_ms / url_rec->request_count,
+              url_rec->request_count ? (url_rec->duration_count_ms / url_rec->request_count) : 0,
               entry[i].key);
       
     }
@@ -1962,8 +1963,8 @@ int main(int argc, const char *const argv[]) {
     fprintf(m_f, "req;%ld;"
             ";;;;;;;;;;"
             NAVMS";%lld;average;\n",
-            request_count / apr_table_elts(m_url_entries)->nelts,
-            duration_count_ms / request_count);
+            apr_table_elts(m_url_entries)->nelts ? (request_count / apr_table_elts(m_url_entries)->nelts) : 0,
+            request_count ? (duration_count_ms / request_count) : 0);
     if(file && m_f != stdout) {
       fclose(m_f);
     }
@@ -1998,8 +1999,8 @@ int main(int argc, const char *const argv[]) {
       /* ci (coverage index): low value indicates that we have seen the client
                               at the end or beginning of the file (maybe not all
                               requests due to log rotation) */
-      long coverage = (client_rec->firstLine * 100 / m_lines);
-      long coverageend = 100 - ((client_rec->lastLine * 100) / m_lines);
+      long coverage = m_lines ? (client_rec->firstLine * 100 / m_lines) : 0;
+      long coverageend = m_lines ? (100 - ((client_rec->lastLine * 100) / m_lines)) : 0;
       if(coverageend < coverage) {
         coverage = coverageend;
       }
@@ -2037,8 +2038,8 @@ int main(int argc, const char *const argv[]) {
               client_rec->status_4,
               client_rec->status_5,
               client_rec->status_304,
-              client_rec->duration / client_rec->request_count,
-              client_rec->duration_count_ms / client_rec->request_count,
+              client_rec->request_count ? (client_rec->duration / client_rec->request_count) : 0,
+              client_rec->request_count ? (client_rec->duration_count_ms / client_rec->request_count) : 0,
               client_rec->duration_0,
               client_rec->duration_1,
               client_rec->duration_2,
@@ -2068,14 +2069,14 @@ int main(int argc, const char *const argv[]) {
       }
       fprintf(m_f, "\n");
     }
-    if(file && m_f != stdout) {
+    if(file && (m_f != stdout)) {
       fclose(m_f);
     }
     return 0;
   }
 
-  /* requires at least an output file and a format string */
-  if(file == NULL || config == NULL) usage(cmd, 0);
+  /* requires at least a format string */
+  if(config == NULL) usage(cmd, 0);
 
   if(username && getuid() == 0) {
     struct passwd *pwd = getpwnam(username);
@@ -2098,18 +2099,27 @@ int main(int argc, const char *const argv[]) {
     }
   }
 
-  m_f = fopen(file, "a+"); 
-  if(m_f == NULL) {
-    qerror("could not open file for writing '%s': %s", file, strerror(errno));
-    exit(1);
+  if(file) {
+    m_f = fopen(file, "a+"); 
+    if(m_f == NULL) {
+      qerror("could not open file for writing '%s': %s", file, strerror(errno));
+      exit(1);
+    }
+    if(strlen(file) > (sizeof(m_file_name) - strlen(".yyyymmddHHMMSS  ") - strlen(LOG_DET))) {
+      qerror("file name too long '%s'", file);
+      exit(1);
+    }
+    strcpy(m_file_name, file);
+  } else {
+    m_file_name[0] = '\0';
+    m_f = stdout;
   }
-  if(strlen(file) > (sizeof(m_file_name) - strlen(".yyyymmddHHMMSS  ") - strlen(LOG_DET))) {
-    qerror("file name too long '%s'", file);
-    exit(1);
-  }
-  strcpy(m_file_name, file);
 
   if(confFile) {
+    if(file == NULL) {
+      qerror("option '-c' can only be used in conjunction with option '-o'");
+      exit(1);
+    }
     snprintf(m_file_name2, sizeof(m_file_name2), "%s"LOG_DET, m_file_name);
     if(strchr(config, 'C') == NULL) {
       qerror("you need to add 'C' to the format string when enabling the pattern list (-c)");
@@ -2124,12 +2134,12 @@ int main(int argc, const char *const argv[]) {
   }
 
   /*
-   * Offline mode reads an existing file
+   * Offline mode reads an existing log file
    * adjusting a virtual clock based on
    * the date string match of the log
    * enties. */
   if(m_offline) {
-    fprintf(stderr, "[%s]: offline mode (writes to %s)\n", cmd, file);
+    fprintf(stderr, "[%s]: offline mode\n", cmd);
     m_date_str[0] = '\0';
     readStdinOffline(pool, config);
     if(!m_verbose) {
@@ -2143,6 +2153,8 @@ int main(int argc, const char *const argv[]) {
     pthread_create(&tid, tha, loggerThread, NULL);
     readStdin(pool, config);
   }
-  fclose(m_f);
+  if(file && (m_f != stdout)) {
+    fclose(m_f);
+  }
   return 0;
 }
