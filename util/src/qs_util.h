@@ -47,6 +47,7 @@ typedef struct qs_event_st {
   char       *id;    /**< id, e.g. ip address or client correlator string */
   time_t     time;   /**< last update, used for expiration */
   int        count;  /**< event count/updates */
+  int        num;    /**< number of entries */
   struct qs_event_st *next;
 } qs_event_t;
 
@@ -76,8 +77,6 @@ void qs_csUnLock();
 void qs_setExpiration(time_t sec);
 int  qs_insertEvent(qs_event_t **l_qs_event, char *id);
 long qs_countEvent(qs_event_t **l_qs_event);
-void qs_deleteEvent(qs_event_t **l_qs_event, char *id);
-void qs_GCEvent(qs_event_t **l_qs_event);
 
 /* log */
 void qs_deleteOldFiles(const char *file_name, int generations);
