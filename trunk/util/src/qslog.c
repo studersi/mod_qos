@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.86 2014-06-23 20:22:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.87 2014-06-24 21:21:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1646,7 +1646,8 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -o <out_file>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Specifies the file to store the output to.\n");
+  qs_man_print(man, "     Specifies the file to store the output to. stdout is used if this option\n");
+  qs_man_print(man, "     is not defined.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -p\n");
   if(man) printf("\n");

@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.13 2014-01-09 08:13:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.14 2014-06-24 21:21:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -33,6 +33,7 @@ static const char revision[] = "$Id: qs_util.c,v 1.13 2014-01-09 08:13:07 pbuchb
 #include <stdarg.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <unistd.h>
 
 #include "qs_util.h"
 
@@ -260,6 +261,7 @@ qs_event_t *qs_newEvent(char *id) {
   strcpy(ev->id, id);
   qs_time(&ev->time);
   ev->count = 1;
+  ev->num = 0;
   return ev;
 }
 
@@ -271,15 +273,7 @@ void qs_freeEvent(qs_event_t *ev) {
   free(ev);
 }
 
-/**
- * Inserts an event entry
- *
- * @param l_qs_event Pointer to the event list.
- * @param id Identifer, e.g. IP address or user tracking cookie
- *
- * @return event counter (number of updates) for the provided id
- */
-int qs_insertEvent(qs_event_t **l_qs_event, char *id) {
+int qs_insertEventOld(qs_event_t **l_qs_event, char *id) {
   qs_event_t *lp = *l_qs_event;  /** current entry to process */
   qs_event_t *lpl = lp;
   time_t gmt_time;
@@ -326,76 +320,86 @@ int qs_insertEvent(qs_event_t **l_qs_event, char *id) {
 }
 
 /**
- * Deletes the specified event.
+ * Inserts an event entry
  *
  * @param l_qs_event Pointer to the event list.
  * @param id Identifer, e.g. IP address or user tracking cookie
- */
-void qs_deleteEvent(qs_event_t **l_qs_event, char *id) {
-  qs_event_t *lp = *l_qs_event;
-  qs_event_t *lpl = lp;
-  if(*l_qs_event == NULL) {
-    return;
-  }
-  while(lp) {
-    if(strcmp(lp->id, id) == 0) {
-      qs_event_t *tmp = lp;
-      if(lpl == lp) {
-	/* first element */
-	lpl = lp->next;
-	lp = lp->next;
-	*l_qs_event = lpl;
-      } else {
-	lpl->next = lp->next;
-	lp = lp->next;
-      }
-      qs_freeEvent(tmp);
-      return;
-    }
-    if(lp != NULL) {
-      lpl = lp;
-      lp = lp->next;
-    }
-  }
-}
-
-/**
- * Runs garbage collection (deletes expired events)
  *
- * @param l_qs_event Pointer to the event list.
+ * @return event counter (number of updates) for the provided id
  */
-void qs_GCEvent(qs_event_t **l_qs_event) {
-  qs_event_t *lp = *l_qs_event;
-  qs_event_t *lpl = lp;
-  time_t gmt_time;
-  qs_time(&gmt_time);
+int qs_insertEvent(qs_event_t **l_qs_event, char *id) {
+  qs_event_t *lp = NULL;
+  qs_event_t *lps = NULL;
+  int num = 0;
+  int min = 0;
+  int mid = 0;
+  int max = 0;
   if(*l_qs_event == NULL) {
-    return;
+    // first entry
+    *l_qs_event = qs_newEvent(id);
+    (*l_qs_event)->num++;
+    return 1;
   }
-  while(lp) {
-    /* delete expired event */
-    if(lp->time < (gmt_time - m_qs_expiration)) {
-      qs_event_t *tmp = lp;
-      if(lpl == lp) {
-	/* first element */
-	lpl = lp->next;
-	lp = lp->next;
-	*l_qs_event = lpl;
-      } else {
-	lpl->next = lp->next;
-	lp = lp->next;
-      }
-      qs_freeEvent(tmp);
+  num = (*l_qs_event)->num;
+  min = 0;
+  max = num;
+  lps = *l_qs_event;
+  while(1) {
+    int i = 0;
+    int next;
+    qs_event_t *lpmid = lps;
+    qs_event_t *lpmin = lps;
+    if((max - min) % 2 == 0) {
+      mid = min + ((max - min) / 2);
+    } else {
+      mid = min + (((max - 1) - min) / 2);
     }
-    if(lp != NULL) {
-      lpl = lp;
-      lp = lp->next;
+    for(i = min; i < mid; i++) {
+      lpmin = lpmid;
+      lpmid = lpmid->next;
+    }
+    next = strcmp(lpmid->id, id);
+    if(next == 0) {
+      // existing event
+      lp = lpmid;
+      qs_time(&lp->time);
+      lp->count++;
+      return lp->count;
+    }
+    if(next > 0) {
+      if(mid == max || mid == min) {
+	// insert before
+	lp = qs_newEvent(id);
+	lp->next = lpmid;
+	if(mid == 0) {
+	  // new first
+	  lp->num = (*l_qs_event)->num;
+	  *l_qs_event = lp;
+	} else {
+	  lpmin->next = lp;
+	}
+	(*l_qs_event)->num++;
+	return lp->count;
+      }
+      max = mid;
+    }
+    if(next < 0) {
+      if(mid == max || mid == min) {
+	// insert after
+	lp = qs_newEvent(id);
+	lp->next = lpmid->next;
+	lpmid->next = lp;
+	(*l_qs_event)->num++;
+	return lp->count;
+      }
+      min = mid;
+      lps = lpmid;
     }
   }
 }
 
 /**
- * Returns the number of events in the list
+ * Returns the number of events in the list deletes expired events.
  *
  * @param id Identifer, e.g. IP address or user tracking cookie
  * @return Number of entries
@@ -419,6 +423,7 @@ long qs_countEvent(qs_event_t **l_qs_event) {
 	lpl->next = lp->next;
 	lp = lp->next;
       }
+      (*l_qs_event)->num--;
       qs_freeEvent(tmp);
     }
     if(lp != NULL) {
