@@ -4,6 +4,8 @@ Version
 
  - qslog supports writing to stdout (if "-o <out_file>" is omitted).
 
+ - qslog: improved performance.
+
 Version 11.3
 
  - New directive QS_ClientEventBlockExcludeIP.

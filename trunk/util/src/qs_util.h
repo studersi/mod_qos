@@ -29,13 +29,8 @@
 /* ----------------------------------
  * version info
  * ---------------------------------- */
-static const char man_version[] = "11.3";
+static const char man_version[] = "11.4";
 static const char man_date[] = "June 2014";
-
-/* ----------------------------------
- * global stat counter
- * ---------------------------------- */
-static time_t m_qs_expiration = 60 * 10;
 
 /* ----------------------------------
  * definitions
@@ -44,18 +39,6 @@ static time_t m_qs_expiration = 60 * 10;
 #define QS_HUGE_STR 2048
 #define CR 13
 #define LF 10
-
-/* ----------------------------------
- * structures
- * ---------------------------------- */
-typedef struct qs_event_st {
-  char       *id;    /**< id, e.g. ip address or client correlator string */
-  time_t     time;   /**< last update, used for expiration */
-  int        count;  /**< event count/updates */
-  int        num;    /**< number of entries */
-  struct qs_event_st *next;
-} qs_event_t;
-
 
 /* ----------------------------------
  * functions
@@ -77,13 +60,6 @@ void qs_setTime(time_t tme);
 void qs_csInitLock();
 void qs_csLock();
 void qs_csUnLock();
-
-/* events */
-void qs_setExpiration(time_t sec);
-int  qs_insertEvent(qs_event_t **l_qs_event, char *id);
-long qs_countEvent(qs_event_t **l_qs_event);
-qs_event_t *qs_newEvent(char *id);
-void qs_freeEvent(qs_event_t *ev);
 
 /* log */
 void qs_deleteOldFiles(const char *file_name, int generations);
