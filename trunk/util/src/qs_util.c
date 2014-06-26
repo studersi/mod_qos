@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.14 2014-06-24 21:21:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.15 2014-06-26 18:47:54 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -36,11 +36,6 @@ static const char revision[] = "$Id: qs_util.c,v 1.14 2014-06-24 21:21:17 pbuchb
 #include <unistd.h>
 
 #include "qs_util.h"
-
-/* ----------------------------------
- * global stat counter
- * ---------------------------------- */
-static time_t m_qs_expiration = 60 * 10;
 
 /* mutex for counter access */
 static pthread_mutex_t m_qs_lock_cs;
@@ -262,6 +257,7 @@ qs_event_t *qs_newEvent(char *id) {
   qs_time(&ev->time);
   ev->count = 1;
   ev->num = 0;
+  ev->next = NULL;
   return ev;
 }
 
@@ -273,7 +269,15 @@ void qs_freeEvent(qs_event_t *ev) {
   free(ev);
 }
 
-int qs_insertEventOld(qs_event_t **l_qs_event, char *id) {
+/**
+ * Inserts an event entry and delets expired.
+ *
+ * @param l_qs_event Pointer to the event list.
+ * @param id Identifer, e.g. IP address or user tracking cookie
+ *
+ * @return event counter (number of updates) for the provided id
+ */
+int qs_insertEventLinear(qs_event_t **l_qs_event, char *id) {
   qs_event_t *lp = *l_qs_event;  /** current entry to process */
   qs_event_t *lpl = lp;
   time_t gmt_time;
@@ -327,13 +331,14 @@ int qs_insertEventOld(qs_event_t **l_qs_event, char *id) {
  *
  * @return event counter (number of updates) for the provided id
  */
-int qs_insertEvent(qs_event_t **l_qs_event, char *id) {
-  qs_event_t *lp = NULL;
-  qs_event_t *lps = NULL;
-  int num = 0;
+int qs_insertEventSorted(qs_event_t **l_qs_event, char *id) {
+  int count = 0;
+  int num;
   int min = 0;
   int mid = 0;
   int max = 0;
+  qs_event_t *lpfirst = *l_qs_event;
+  qs_event_t *lppre = lpfirst;
   if(*l_qs_event == NULL) {
     // first entry
     *l_qs_event = qs_newEvent(id);
@@ -341,61 +346,70 @@ int qs_insertEvent(qs_event_t **l_qs_event, char *id) {
     return 1;
   }
   num = (*l_qs_event)->num;
-  min = 0;
   max = num;
-  lps = *l_qs_event;
   while(1) {
-    int i = 0;
-    int next;
-    qs_event_t *lpmid = lps;
-    qs_event_t *lpmin = lps;
-    if((max - min) % 2 == 0) {
-      mid = min + ((max - min) / 2);
-    } else {
-      mid = min + (((max - 1) - min) / 2);
+    int cmp;
+    int i;
+    qs_event_t *lpcmp = lpfirst;
+    mid = ((max - 1) - min) / 2;
+    for(i = 0; i < mid; i++) {
+      if(i == mid-1) {
+	lppre = lpcmp;
+      }
+      lpcmp = lpcmp->next;
     }
-    for(i = min; i < mid; i++) {
-      lpmin = lpmid;
-      lpmid = lpmid->next;
+    cmp = strcmp(id, lpcmp->id);
+    if(cmp == 0) {
+      // found existing event
+      qs_time(&lpcmp->time);
+      lpcmp->count++;
+      count = lpcmp->count;
+      goto found;
     }
-    next = strcmp(lpmid->id, id);
-    if(next == 0) {
-      // existing event
-      lp = lpmid;
-      qs_time(&lp->time);
-      lp->count++;
-      return lp->count;
-    }
-    if(next > 0) {
-      if(mid == max || mid == min) {
-	// insert before
-	lp = qs_newEvent(id);
-	lp->next = lpmid;
-	if(mid == 0) {
+    if(cmp < 0) {
+      // insert before
+      //if(mid == min || mid == max) {
+      if(mid == min) {
+	qs_event_t *lp = qs_newEvent(id);
+	lp->next = lpcmp;
+	if(lpcmp == *l_qs_event) {
 	  // new first
 	  lp->num = (*l_qs_event)->num;
 	  *l_qs_event = lp;
 	} else {
-	  lpmin->next = lp;
+	  lppre->next = lp;
 	}
 	(*l_qs_event)->num++;
-	return lp->count;
+	count = lp->count;
+	goto found;
       }
       max = mid;
-    }
-    if(next < 0) {
-      if(mid == max || mid == min) {
-	// insert after
-	lp = qs_newEvent(id);
-	lp->next = lpmid->next;
-	lpmid->next = lp;
+    } else {
+      // insert after
+      if(mid == max || max == 1) {
+	qs_event_t *lp = qs_newEvent(id);
+	lp->next = lpcmp->next;
+	lpcmp->next = lp;
 	(*l_qs_event)->num++;
-	return lp->count;
+	count = lp->count;
+	goto found;
       }
-      min = mid;
-      lps = lpmid;
+      if(max == 2) {
+	// reached the upper end
+	lpfirst = lpcmp->next;
+	lppre = lpcmp;
+	max = 1;
+	min = 0;
+      } else {
+	lpfirst = lpcmp;
+	lppre = lppre;
+	max = max - mid;
+	min = 0;
+      }
     }
   }
+ found:
+  return count;
 }
 
 /**
@@ -406,33 +420,40 @@ int qs_insertEvent(qs_event_t **l_qs_event, char *id) {
  */
 long qs_countEvent(qs_event_t **l_qs_event) {
   qs_event_t *lp = *l_qs_event;
-  qs_event_t *lpl = lp;
-  long count = 0;
+  qs_event_t *lpprev = lp;
   time_t gmt_time;
   qs_time(&gmt_time);
+  // first: run gc
   while(lp) {
     /* delete expired entries */
     if(lp->time < (gmt_time - m_qs_expiration)) {
-      qs_event_t *tmp = lp;
-      if(lpl == lp) {
-	/* first element */
-	lpl = lp->next;
-	lp = lp->next;
-	*l_qs_event = lpl;
+      qs_event_t *todelete = lp;
+      if(todelete == *l_qs_event) {
+	/* this was the first element */
+	qs_event_t *next = todelete->next;
+	if(next) {
+	  next->count = todelete->count;
+	}
+	*l_qs_event = next;
+	lp = next;
       } else {
-	lpl->next = lp->next;
-	lp = lp->next;
+	lp = todelete->next;
+	lpprev->next = lp;
       }
-      (*l_qs_event)->num--;
-      qs_freeEvent(tmp);
+      if(*l_qs_event) {
+	(*l_qs_event)->num--;
+      }
+      qs_freeEvent(todelete);
     }
     if(lp != NULL) {
-      lpl = lp;
+      lpprev = lp;
       lp = lp->next;
-      count++;
     }
   }
-  return count;
+  if(*l_qs_event) {
+    return (*l_qs_event)->num;
+  }
+  return 0;
 }
 
 /* logs ------------------------------------------------------- */
