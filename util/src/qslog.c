@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.88 2014-06-26 18:47:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.89 2014-06-26 19:12:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -158,14 +158,20 @@ typedef struct stat_rec_st {
   apr_pool_t *pool;
 } stat_rec_t;
 
+typedef struct qs_event_st {
+  char       *id;    /**< id, e.g. ip address or client correlator string */
+  time_t     time;   /**< last update, used for expiration */
+  long       count;  /**< event count/updates */
+} qs_event_t;
+
 /* ----------------------------------
  * global stat counter
  * ---------------------------------- */
 static stat_rec_t* m_stat_rec;
 static stat_rec_t* m_stat_sub = NULL;
 
-//static qs_event_t *m_ip_list = NULL;
-//static qs_event_t *m_user_list = NULL;
+static time_t m_qs_expiration = 60 * 10;
+
 static apr_table_t *m_ip_list = NULL;
 static apr_table_t *m_user_list = NULL;
 
@@ -199,18 +205,61 @@ static int   m_methods = 0;
 static long  m_lines = 0;
 static int   m_verbose = 0;
 
-static void qs_insertEventT(apr_table_t *list, const char *id) {
-  qs_event_t *entry = (qs_event_t *)apr_table_get(list, id);
-  if(entry) {
-    // exists
-    entry->count++;
-    return;
-  }
-  entry = qs_newEvent(id);
-  apr_table_setn(list, entry->id, entry);
-  return;
+/* events ----------------------------------------------------- */
+/*
+ * sets the expiration for events
+ */
+void qs_setExpiration(time_t sec) {
+  m_qs_expiration = sec;
 }
 
+/*
+ * creates a new event entry
+ */
+static qs_event_t *qs_newEvent(const char *id) {
+  qs_event_t *ev = calloc(sizeof(qs_event_t), 1);
+  ev->id = calloc(strlen(id) + 1, 1);
+  strcpy(ev->id, id);
+  qs_time(&ev->time);
+  ev->count = 1;
+  return ev;
+}
+
+/*
+ * deletes an event
+ */
+void qs_freeEvent(qs_event_t *ev) {
+  free(ev->id);
+  free(ev);
+}
+
+/**
+ * Inserts an event entry and delets expired.
+ *
+ * @param l_qs_event Pointer to the event list.
+ * @param id Identifer, e.g. IP address or user tracking cookie
+ *
+ * @return event counter (number of updates) for the provided id
+ */
+static long qs_insertEventT(apr_table_t *list, const char *id) {
+  qs_event_t *lp = (qs_event_t *)apr_table_get(list, id);
+  if(lp) {
+    // exists
+    qs_time(&lp->time);
+    lp->count++;
+    return lp->count;
+  }
+  lp = qs_newEvent(id);
+  apr_table_setn(list, lp->id, (char *)lp);
+  return lp->count;
+}
+
+/**
+ * Returns the number of events in the list deletes expired events.
+ *
+ * @param id Identifer, e.g. IP address or user tracking cookie
+ * @return Number of entries
+ */
 static long qs_countEventT(apr_table_t *list) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *) apr_table_elts(list)->elts;
@@ -220,13 +269,15 @@ static long qs_countEventT(apr_table_t *list) {
   qs_time(&gmt_time);
   apr_pool_create(&pool, NULL);
   tmp = apr_table_make(pool, 200);
+  // collrect expired events...
   for(i = 0; i < apr_table_elts(list)->nelts; i++) {
     qs_event_t *lp = (qs_event_t *)entry[i].val;    
     if(lp->time < (gmt_time - m_qs_expiration)) {
       const char *id = entry[i].key;
-      apr_table_setn(tmp, id, lp);
+      apr_table_setn(tmp, id, (char *)lp);
     }
   }
+  // ...and delete them
   entry = (apr_table_entry_t *) apr_table_elts(tmp)->elts;
   for(i = 0; i < apr_table_elts(tmp)->nelts; i++) {
     apr_table_unset(list, entry[i].key);
@@ -235,6 +286,8 @@ static long qs_countEventT(apr_table_t *list) {
   apr_pool_destroy(pool);
   return apr_table_elts(list)->nelts;
 }
+
+/* ------------------------------------------------------------ */
 
 /**
  * Helper to print an error message when terminating
@@ -530,8 +583,6 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
             stat_rec->averAge / (stat_rec->averAge_count == 0 ? 1 : stat_rec->averAge_count));
   }
   if(main) {
-    //sprintf(ip, "ip;%ld;", qs_countEvent(&m_ip_list));
-    //sprintf(usr, "usr;%ld;", qs_countEvent(&m_user_list));
     sprintf(ip, "ip;%ld;", qs_countEventT(m_ip_list));
     sprintf(usr, "usr;%ld;", qs_countEventT(m_user_list));
   } else {
@@ -1094,12 +1145,10 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
   }
   if(I != NULL) {
     /* update/store client IP */
-    //qs_insertEvent(&m_ip_list, I);
     qs_insertEventT(m_ip_list, I);
   }
   if(U != NULL) {
     /* update/store user */
-    //qs_insertEvent(&m_user_list, U);
     qs_insertEventT(m_user_list, U);
   }
   if(B != NULL) {
@@ -1829,8 +1878,8 @@ int main(int argc, const char *const argv[]) {
   apr_pool_create(&pool, NULL);
   m_stat_rec = createRec(pool, "", "");
 
-  m_ip_list = apr_table_make(pool, 10000);
-  m_user_list = apr_table_make(pool, 10000);
+  m_ip_list = apr_table_make(pool, 15000);
+  m_user_list = apr_table_make(pool, 15000);
 
   qs_csInitLock();
   qs_setExpiration(ACTIVE_TIME);
