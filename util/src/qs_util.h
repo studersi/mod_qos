@@ -33,6 +33,11 @@ static const char man_version[] = "11.3";
 static const char man_date[] = "June 2014";
 
 /* ----------------------------------
+ * global stat counter
+ * ---------------------------------- */
+static time_t m_qs_expiration = 60 * 10;
+
+/* ----------------------------------
  * definitions
  * ---------------------------------- */
 #define MAX_LINE 32768
@@ -77,6 +82,8 @@ void qs_csUnLock();
 void qs_setExpiration(time_t sec);
 int  qs_insertEvent(qs_event_t **l_qs_event, char *id);
 long qs_countEvent(qs_event_t **l_qs_event);
+qs_event_t *qs_newEvent(char *id);
+void qs_freeEvent(qs_event_t *ev);
 
 /* log */
 void qs_deleteOldFiles(const char *file_name, int generations);

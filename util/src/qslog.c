@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.87 2014-06-24 21:21:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.88 2014-06-26 18:47:54 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -164,8 +164,10 @@ typedef struct stat_rec_st {
 static stat_rec_t* m_stat_rec;
 static stat_rec_t* m_stat_sub = NULL;
 
-static qs_event_t *m_ip_list = NULL;
-static qs_event_t *m_user_list = NULL;
+//static qs_event_t *m_ip_list = NULL;
+//static qs_event_t *m_user_list = NULL;
+static apr_table_t *m_ip_list = NULL;
+static apr_table_t *m_user_list = NULL;
 
 /* output file */
 static FILE *m_f = NULL;
@@ -196,6 +198,43 @@ static int   m_methods = 0;
 /* debug/offline */
 static long  m_lines = 0;
 static int   m_verbose = 0;
+
+static void qs_insertEventT(apr_table_t *list, const char *id) {
+  qs_event_t *entry = (qs_event_t *)apr_table_get(list, id);
+  if(entry) {
+    // exists
+    entry->count++;
+    return;
+  }
+  entry = qs_newEvent(id);
+  apr_table_setn(list, entry->id, entry);
+  return;
+}
+
+static long qs_countEventT(apr_table_t *list) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *) apr_table_elts(list)->elts;
+  apr_pool_t *pool;
+  apr_table_t *tmp;
+  time_t gmt_time;
+  qs_time(&gmt_time);
+  apr_pool_create(&pool, NULL);
+  tmp = apr_table_make(pool, 200);
+  for(i = 0; i < apr_table_elts(list)->nelts; i++) {
+    qs_event_t *lp = (qs_event_t *)entry[i].val;    
+    if(lp->time < (gmt_time - m_qs_expiration)) {
+      const char *id = entry[i].key;
+      apr_table_setn(tmp, id, lp);
+    }
+  }
+  entry = (apr_table_entry_t *) apr_table_elts(tmp)->elts;
+  for(i = 0; i < apr_table_elts(tmp)->nelts; i++) {
+    apr_table_unset(list, entry[i].key);
+    qs_freeEvent((qs_event_t *)entry[i].val);
+  }
+  apr_pool_destroy(pool);
+  return apr_table_elts(list)->nelts;
+}
 
 /**
  * Helper to print an error message when terminating
@@ -491,8 +530,10 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
             stat_rec->averAge / (stat_rec->averAge_count == 0 ? 1 : stat_rec->averAge_count));
   }
   if(main) {
-    sprintf(ip, "ip;%ld;", qs_countEvent(&m_ip_list));
-    sprintf(usr, "usr;%ld;", qs_countEvent(&m_user_list));
+    //sprintf(ip, "ip;%ld;", qs_countEvent(&m_ip_list));
+    //sprintf(usr, "usr;%ld;", qs_countEvent(&m_user_list));
+    sprintf(ip, "ip;%ld;", qs_countEventT(m_ip_list));
+    sprintf(usr, "usr;%ld;", qs_countEventT(m_user_list));
   } else {
     ip[0] = '\0';
     usr[0] = '\0';
@@ -1053,11 +1094,13 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
   }
   if(I != NULL) {
     /* update/store client IP */
-    qs_insertEvent(&m_ip_list, I);
+    //qs_insertEvent(&m_ip_list, I);
+    qs_insertEventT(m_ip_list, I);
   }
   if(U != NULL) {
     /* update/store user */
-    qs_insertEvent(&m_user_list, U);
+    //qs_insertEvent(&m_user_list, U);
+    qs_insertEventT(m_user_list, U);
   }
   if(B != NULL) {
     /* transferred bytes */
@@ -1785,6 +1828,9 @@ int main(int argc, const char *const argv[]) {
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
   m_stat_rec = createRec(pool, "", "");
+
+  m_ip_list = apr_table_make(pool, 10000);
+  m_user_list = apr_table_make(pool, 10000);
 
   qs_csInitLock();
   qs_setExpiration(ACTIVE_TIME);
