@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.89 2014-06-26 19:12:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.90 2014-06-28 15:42:13 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -58,9 +58,11 @@ static const char revision[] = "$Id: qslog.c,v 1.89 2014-06-26 19:12:08 pbuchbin
  * ---------------------------------- */
 #define ACTIVE_TIME 600 /* how long is a client "active" (ip addresses seen in the log) */
 #define LOG_INTERVAL 60 /* log interval ist 60 sec, don't change this value */
+#define QS_GC_INTERVAL 10
 #define LOG_DET ".detailed"
 #define RULE_DELIM ':'
 #define MAX_CLIENT_ENTRIES 25000
+#define MAX_EVENT_ENTRIES  50000
 #define QS_GENERATIONS 14
 #define EVENT_DELIM ','
 #define QSEVENTPATH "QSEVENTPATH" /* varibale name to find event definitions */
@@ -174,6 +176,8 @@ static time_t m_qs_expiration = 60 * 10;
 
 static apr_table_t *m_ip_list = NULL;
 static apr_table_t *m_user_list = NULL;
+static int m_log_max = 0;
+static int m_hasGC = 0;
 
 /* output file */
 static FILE *m_f = NULL;
@@ -249,26 +253,40 @@ static long qs_insertEventT(apr_table_t *list, const char *id) {
     lp->count++;
     return lp->count;
   }
+  if(apr_table_elts(list)->nelts >= MAX_EVENT_ENTRIES) {
+    if(m_log_max == 0) {
+      char time_string[1024];
+      time_t tm = time(NULL);
+      struct tm *ptr = localtime(&tm);
+      strftime(time_string, sizeof(time_string), "%a %b %d %H:%M:%S %Y", ptr);
+      fprintf(stderr, "[%s] [notice] qslog: reached event count limit of %d entries\n",
+              time_string, MAX_EVENT_ENTRIES);
+      m_log_max = 1;
+    }
+    return 0;
+  }
   lp = qs_newEvent(id);
   apr_table_setn(list, lp->id, (char *)lp);
   return lp->count;
 }
 
 /**
- * Returns the number of events in the list deletes expired events.
- *
- * @param id Identifer, e.g. IP address or user tracking cookie
- * @return Number of entries
+ * deletes expired events
  */
-static long qs_countEventT(apr_table_t *list) {
+static void gcTable(apr_table_t *list) {
   int i;
-  apr_table_entry_t *entry = (apr_table_entry_t *) apr_table_elts(list)->elts;
   apr_pool_t *pool;
   apr_table_t *tmp;
+  apr_table_entry_t *entry;
   time_t gmt_time;
   qs_time(&gmt_time);
   apr_pool_create(&pool, NULL);
-  tmp = apr_table_make(pool, 200);
+  tmp = apr_table_make(pool, 5000);
+  
+  if(m_hasGC) {
+    qs_csLock();
+  }
+  entry = (apr_table_entry_t *) apr_table_elts(list)->elts;
   // collrect expired events...
   for(i = 0; i < apr_table_elts(list)->nelts; i++) {
     qs_event_t *lp = (qs_event_t *)entry[i].val;    
@@ -283,8 +301,38 @@ static long qs_countEventT(apr_table_t *list) {
     apr_table_unset(list, entry[i].key);
     qs_freeEvent((qs_event_t *)entry[i].val);
   }
+  if(m_hasGC) {
+    qs_csUnLock();
+  }
   apr_pool_destroy(pool);
-  return apr_table_elts(list)->nelts;
+}
+
+/**
+ * Returns the number of events
+ *
+ * @param event table
+ * @return Number of entries
+ */
+static long qs_countEventT(apr_table_t *list) {
+  int count;
+  if(!m_hasGC) {
+    gcTable(list);
+  }
+  count = apr_table_elts(list)->nelts;
+  return count;
+}
+
+/**
+ * Calls the event table GC
+ */
+static void *gcThread(void *argv) {
+  m_hasGC = 1;
+  while(1) {
+    sleep(QS_GC_INTERVAL);
+    gcTable(m_ip_list);
+    gcTable(m_user_list);
+  }
+  return NULL;
 }
 
 /* ------------------------------------------------------------ */
@@ -1873,6 +1921,8 @@ int main(int argc, const char *const argv[]) {
   const char *username = NULL;
   pthread_attr_t *tha = NULL;
   pthread_t tid;
+  pthread_attr_t *thagc = NULL;
+  pthread_t tidgc;
   apr_pool_t *pool;
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
@@ -2247,6 +2297,7 @@ int main(int argc, const char *const argv[]) {
      * to write the data every minute. 
      */
     pthread_create(&tid, tha, loggerThread, NULL);
+    pthread_create(&tidgc, thagc, gcThread, NULL);
     readStdin(pool, config);
   }
   if(file && (m_f != stdout)) {
