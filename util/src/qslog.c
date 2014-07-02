@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.90 2014-06-28 15:42:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.91 2014-07-02 20:34:05 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -295,14 +295,17 @@ static void gcTable(apr_table_t *list) {
       apr_table_setn(tmp, id, (char *)lp);
     }
   }
-  // ...and delete them
+  // ...remove...
   entry = (apr_table_entry_t *) apr_table_elts(tmp)->elts;
   for(i = 0; i < apr_table_elts(tmp)->nelts; i++) {
     apr_table_unset(list, entry[i].key);
-    qs_freeEvent((qs_event_t *)entry[i].val);
   }
   if(m_hasGC) {
     qs_csUnLock();
+  }
+  // ...and delete them
+  for(i = 0; i < apr_table_elts(tmp)->nelts; i++) {
+    qs_freeEvent((qs_event_t *)entry[i].val);
   }
   apr_pool_destroy(pool);
 }
