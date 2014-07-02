@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.31 2013-12-04 20:05:49 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.32 2014-07-02 19:29:41 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -299,6 +299,53 @@ case "$1" in
 	fi
 	echo "$PFX < OK"
 	;;
+	gc)
+	echo "$PFX > gc"
+	rm -f gc.csv
+	echo "[28/Jun/2014:09:17:35 +0200] 200 5\n[28/Jun/2014:09:17:35 +0200] 200 3\n[28/Jun/2014:09:17:35 +0200] 200 0\n[28/Jun/2014:09:17:35 +0200] 200 7\n[28/Jun/2014:09:17:35 +0200] 200 5\n[28/Jun/2014:09:17:35 +0200] 200 20\n[28/Jun/2014:09:17:35 +0200] 200 30\n[28/Jun/2014:09:17:35 +0200] 200 40\n[28/Jun/2014:09:17:35 +0200] 200 30\n[28/Jun/2014:09:17:35 +0200] 200 30\n[28/Jun/2014:09:17:35 +0200] 200 31\n[28/Jun/2014:09:17:35 +0200] 200 32\n[28/Jun/2014:09:17:35 +0200] 200 33\n[28/Jun/2014:09:17:35 +0200] 200 34\n[28/Jun/2014:09:17:35 +0200] 200 35\n[28/Jun/2014:09:17:35 +0200] 200 36\n[28/Jun/2014:09:17:35 +0200] 200 37\n[28/Jun/2014:09:17:35 +0200] 200 38\n[28/Jun/2014:09:17:35 +0200] 200 39\n[28/Jun/2014:09:18:35 +0200] 200 35\n[28/Jun/2014:09:19:35 +0200] 200 35\n[28/Jun/2014:09:20:12 +0200] 200 35\n[28/Jun/2014:09:20:35 +0200] 200 28\n[28/Jun/2014:09:21:35 +0200] 200 19\n[28/Jun/2014:09:22:35 +0200] 200 32\n[28/Jun/2014:09:23:35 +0200] 200 35\n[28/Jun/2014:09:24:35 +0200] 200 32\n[28/Jun/2014:09:25:35 +0200] 200 35\n[28/Jun/2014:09:26:35 +0200] 200 32\n[28/Jun/2014:09:27:35 +0200] 200 32\n[28/Jun/2014:09:28:35 +0200] 200 32\n[28/Jun/2014:09:29:35 +0200] 200 32\n[28/Jun/2014:09:30:35 +0200] 200 32\n[28/Jun/2014:09:31:35 +0200] 200 32\n[28/Jun/2014:09:32:35 +0200] 200 32\n[28/Jun/2014:09:33:35 +0200] 200 32\n[28/Jun/2014:09:34:35 +0200] 200 32\n[28/Jun/2014:09:35:35 +0200] 200 32\n[28/Jun/2014:09:36:35 +0200] 200 32\n[28/Jun/2014:09:37:35 +0200] 200 32" | ../util/src/qslog -f ..SU -p 2>/dev/null > gc.csv
+	if [ `grep "2014 09:17" gc.csv | grep -c "req;19;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 17 - gc number of requests"
+	  exit 1
+	fi
+	if [ `grep "2014 09:17" gc.csv | grep -c "usr;16;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 17 - gc number of users"
+	  exit 1
+	fi
+	if [ `grep "2014 09:18" gc.csv | grep -c "req;1;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 18 - gc number of requests"
+	  exit 1
+	fi
+	if [ `grep "2014 09:18" gc.csv | grep -c "usr;16;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 18 - gc number of users"
+	  exit 1
+	fi
+	if [ `grep "2014 09:20" gc.csv | grep -c "usr;17;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 20 - gc number of users"
+	  exit 1
+	fi
+	if [ `grep "2014 09:21" gc.csv | grep -c "usr;18;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 21 - gc number of users"
+	  exit 1
+	fi
+	if [ `grep "2014 09:27" gc.csv | grep -c "usr;18;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 27 - gc number of users"
+	  exit 1
+	fi
+	if [ `grep "2014 09:28" gc.csv | grep -c "usr;4;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 28 - gc number of users"
+	  exit 1
+	fi
+	if [ `grep "2014 09:34" gc.csv | grep -c "usr;2;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 34 - gc number of users"
+	  exit 1
+	fi
+	if [ `grep "2014 09:36" gc.csv | grep -c "usr;1;"` -ne 1 ]; then
+	  echo "$PFX FAILED: 36 - gc number of users"
+	  exit 1
+	fi
+	rm -f gc.csv
+	echo "$PFX < OK"
+	;;
         all)
 	     ERRORS=0
 	     ./run.sh -s ./scripts/qslog.htt
@@ -345,6 +392,11 @@ case "$1" in
 	     if [ $? -ne 0 ]; then
 	       ERRORS=`expr $ERRORS + 1`
 	       echo "FAILED qslog.sh test avms"
+	     fi
+	     ./qslog.sh test gc
+	     if [ $? -ne 0 ]; then
+	       ERRORS=`expr $ERRORS + 1`
+	       echo "FAILED qslog.sh test gc"
 	     fi
 	     if [ $ERRORS -eq 0 ]; then
 	       echo "normal end"
