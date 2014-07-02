@@ -1,25 +1,10 @@
-
-# < mod_qos 11.4
-# A
-# 24.06.2014 09:08:00;r/s;2048;req;122927;b/s;471220;1xx;0;2xx;122927;3xx;0;4xx;0;5xx;0;avms;0;av;0;<1s;122927;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ip;1;usr;1;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;sl;1.16;
-# 23119 pbu       20   0 86776  800  640 S    4  0.0   0:05.44 qslog              
-# B
-# 24.06.2014 09:09:00;r/s;1905;req;114332;b/s;438272;1xx;0;2xx;114332;3xx;0;4xx;0;5xx;0;avms;0;av;0;<1s;114332;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ip;1;usr;5493;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;sl;1.50;
-# 23119 pbu       20   0 87304 1588  808 R   65  0.0   0:21.07 qslog              
-# C
-# 24.06.2014 09:10:00;r/s;1817;req;109057;b/s;418051;1xx;0;2xx;109057;3xx;0;4xx;0;5xx;0;avms;0;av;0;<1s;109057;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ip;1;usr;10002;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;sl;2.05;
-# 23119 pbu       20   0 87700 1852  808 S   59  0.0   0:58.98 qslog              
-# E
-
-# = mod_qos 11.4
-# A
-# 26.06.2014 21:06:00;r/s;2077;req;124623;b/s;477721;1xx;0;2xx;124623;3xx;0;4xx;0;5xx;0;avms;0;av;0;<1s;124623;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ip;1;usr;1;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;sl;1.72;
-# 22623 pbu       20   0 87488  800  640 R    4  0.0   0:05.70 qslog              
-# B
-# C
-# 22623 pbu       20   0 88148 1852  816 S    4  0.0   0:12.41 qslog              
-# 26.06.2014 21:09:00;r/s;2051;req;123069;b/s;471764;1xx;0;2xx;123069;3xx;0;4xx;0;5xx;0;avms;0;av;0;<1s;123069;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ip;1;usr;10002;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;sl;1.76;
-
+#
+# $Id: ucnu.htt,v 1.2 2014-07-02 19:29:41 pbuchbinder Exp $
+#
+# ensures that the cpu usage of qslog does not significant
+# increase if we have thousends of client events
+# => a slow qslog may slow down the web server
+#
 
 INCLUDE scripts/ports
 
@@ -31,8 +16,7 @@ _EXEC ./ctl.sh stop
 _SLEEP 1000
 _EXEC ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnu
 
-_EXEC echo "A" >> logs/qs_log
-# pre
+# pre => get a refernce value
 _RPS 1000 140
 _LOOP 10
 _SET STDID=${RND}AAABBCCDDEEFFGGHH${ID}
@@ -45,9 +29,12 @@ _WAIT
 _END LOOP
 _CLOSE
 _END RPS
+_MATCH EXEC "r/s;([0-9]+);" REFE
+_EXEC tail -1 logs/qs_log
+# tolerance: 100
+_MATH:OP $REFE SUB 100 REF
 
-_EXEC echo "B" >> logs/qs_log
-# inc
+# inc => adds 10000 user
 _LOOP 1000
 _MATH:RAND 1000000 9000000 RND
 _LOOP 10
@@ -63,8 +50,7 @@ _END LOOP
 _CLOSE
 _END LOOP
 
-_EXEC echo "C" >> logs/qs_log
-# post
+# post => compare the reference
 _RPS 1000 140
 _LOOP 10
 _REQ localhost $QS_PORT_BASE $counter
@@ -77,14 +63,57 @@ _WAIT
 _END LOOP
 _CLOSE
 _END RPS
+_MATCH EXEC "r/s;([0-9]+);" NEWV
+_EXPECT EXEC "usr;10002;"
+_EXEC tail -1 logs/qs_log
 
-_EXEC echo "E" >> logs/qs_log
+# inc => adds another 10000 user
+_LOOP 1000
+_MATH:RAND 1000000 9000000 RND
+_LOOP 10
+_SET STDID=${RND}AAABBCCDDEEFFGGHH${ID}
+_REQ localhost $QS_PORT_BASE $counter
+__GET /index.html?B${STDID} HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_MATH:OP $ID ADD 1 ID
+_END LOOP
+_CLOSE
+_END LOOP
+
+# post => compare the reference
+_RPS 1000 140
+_LOOP 10
+_REQ localhost $QS_PORT_BASE $counter
+_SET STDID=${RND}AAABBCCDDEEFFGGHH${ID}
+__GET /index.html?C${STDID} HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_END LOOP
+_CLOSE
+_END RPS
+_MATCH EXEC "r/s;([0-9]+);" NEWV
+_EXPECT EXEC "usr;20003;"
+_EXEC tail -1 logs/qs_log
 
 END
 
 CLIENT
-_LOOP 5
+
 _SLEEP 60000
-_EXEC top -b -n 1 | grep qslog >> logs/qs_log
-_END LOOP
+_EXPECT EXEC ".* [12]?[0-9]  0.0   0:[0-9]+\.[0-9]+ qslog"
+_EXEC top -b -n 1 | grep qslog
+
+_SLEEP 120000
+_EXPECT EXEC ".* [12]?[0-9]  0.0   0:[0-9]+\.[0-9]+ qslog"
+_EXEC top -b -n 1 | grep qslog
+
+_SLEEP 120000
+_EXPECT EXEC ".* [12]?[0-9]  0.0   0:[0-9]+\.[0-9]+ qslog"
+_EXEC top -b -n 1 | grep qslog
+
 END

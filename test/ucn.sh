@@ -165,6 +165,11 @@ ERRORS=`expr $ERRORS + $?`
 sleep 2
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+./run.sh -s scripts/ucnu.htt
+ERRORS=`expr $ERRORS + $?`
+sleep 2
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 if [ $ERRORS -ne 0 ]; then
   echo "$PFX test failed with $ERRORS errors"
   exit $ERRORS
