@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.92 2014-07-07 18:49:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.93 2014-07-08 18:40:34 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -178,6 +178,7 @@ static apr_table_t *m_ip_list = NULL;
 static apr_table_t *m_user_list = NULL;
 static int m_log_max = 0;
 static int m_hasGC = 0;
+static qs_event_t **m_gc_event_list = NULL;
 
 /* output file */
 static FILE *m_f = NULL;
@@ -274,40 +275,35 @@ static long qs_insertEventT(apr_table_t *list, const char *id) {
  * deletes expired events
  */
 static void gcTable(apr_table_t *list) {
+  int max = 0;
   int i;
-  apr_pool_t *pool;
-  apr_table_t *tmp;
   apr_table_entry_t *entry;
   time_t gmt_time;
   qs_time(&gmt_time);
-  apr_pool_create(&pool, NULL);
-  tmp = apr_table_make(pool, 5000);
-  
+
   if(m_hasGC) {
     qs_csLock();
   }
-  entry = (apr_table_entry_t *) apr_table_elts(list)->elts;
   // collrect expired events...
+  entry = (apr_table_entry_t *) apr_table_elts(list)->elts;
   for(i = 0; i < apr_table_elts(list)->nelts; i++) {
     qs_event_t *lp = (qs_event_t *)entry[i].val;    
     if(lp->time < (gmt_time - m_qs_expiration)) {
-      const char *id = entry[i].key;
-      apr_table_setn(tmp, id, (char *)lp);
+      m_gc_event_list[max] = lp;
+      max++;
     }
   }
   // ...remove...
-  entry = (apr_table_entry_t *) apr_table_elts(tmp)->elts;
-  for(i = 0; i < apr_table_elts(tmp)->nelts; i++) {
-    apr_table_unset(list, entry[i].key);
+  for(i = 0; i < max; i++) {
+    apr_table_unset(list, m_gc_event_list[i]->id);
   }
   if(m_hasGC) {
     qs_csUnLock();
   }
   // ...and delete them
-  for(i = 0; i < apr_table_elts(tmp)->nelts; i++) {
-    qs_freeEvent((qs_event_t *)entry[i].val);
+  for(i = 0; i < max; i++) {
+    qs_freeEvent(m_gc_event_list[i]);
   }
-  apr_pool_destroy(pool);
 }
 
 /**
@@ -1925,6 +1921,7 @@ int main(int argc, const char *const argv[]) {
 
   m_ip_list = apr_table_make(pool, 15000);
   m_user_list = apr_table_make(pool, 15000);
+  m_gc_event_list = calloc(MAX_EVENT_ENTRIES, sizeof(qs_event_t *));
 
   qs_csInitLock();
   qs_setExpiration(ACTIVE_TIME);
