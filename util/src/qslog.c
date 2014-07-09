@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.94 2014-07-09 18:39:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.95 2014-07-09 20:02:05 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -249,6 +249,13 @@ void qs_freeEvent(qs_event_t *ev) {
 static int qs_tableSelector(const char *str) {
   int num = 0;
   int len = strlen(str);
+  if(len > 3) {
+    if(str[len-1] == '=' ||
+       str[len-1] == '\'' ||
+       str[len-1] == '"') {
+      len--;
+    }
+  }
   if(str[0] % 2 == 1) {
     num += 1;
   }
