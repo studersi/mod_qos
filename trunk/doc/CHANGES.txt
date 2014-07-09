@@ -1,3 +1,7 @@
+Version
+
+ - qslog: improved performance.
+ 
 Version 11.4
 
  - Adds request ID to console log messages (07*).

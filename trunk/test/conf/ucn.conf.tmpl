@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.35 2014-06-26 19:12:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.36 2014-07-09 19:19:35 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -85,6 +85,10 @@ AddType                 text/html .shtml
 AddOutputFilter         INCLUDES .shtml
 
 LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i #%P"
+
+<IfDefine ucnu>
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %D %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i #%P"
+</IfDefine>
 
 LogLevel                warn
 <IfDefine !ucnr>
