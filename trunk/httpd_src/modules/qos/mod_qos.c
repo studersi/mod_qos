@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.513 2014-06-26 21:07:55 pbuchbinder Exp $";
-static const char g_revision[] = "11.4";
+static const char revision[] = "$Id: mod_qos.c,v 5.514 2014-07-15 14:37:45 pbuchbinder Exp $";
+static const char g_revision[] = "11.5";
 
 /************************************************************************
  * Includes
@@ -695,7 +695,7 @@ typedef struct {
   qs_ip_type_e ip_type;       /* GLOBAL ONLY */
   int server_limit;
   int thread_limit;
-  apr_table_t *milestones;
+  apr_array_header_t *milestones;
   time_t milestone_timeout;
   /* predefined client behavior */
   int static_on;
@@ -816,6 +816,7 @@ typedef struct {
 } qos_pregval_t;
 
 typedef struct {
+  int num;
   const char* pattern;
   pcre *preg;
   pcre_extra *extra;
@@ -1945,7 +1946,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
   int the_request_len;
   int escerr = 0;
   qos_milestone_t *milestone = NULL;
-  apr_table_entry_t *entry;
+  qos_milestone_t *entries;
   int i;
   int ms = -1; // milestone the user has reached
   int required = -1; // required for this request
@@ -1964,11 +1965,11 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
   }
   the_request = apr_pstrdup(r->pool, r->the_request);
   the_request_len = qos_unescaping(the_request, QOS_DEC_MODE_FLAGS_URL, &escerr);
-  entry = (apr_table_entry_t *)apr_table_elts(sconf->milestones)->elts;
-  for(i = 0; i < apr_table_elts(sconf->milestones)->nelts; i++) {
-    milestone = (qos_milestone_t *)entry[i].val;
+  entries = (qos_milestone_t *)sconf->milestones->elts;
+  for(i = 0; i < sconf->milestones->nelts; ++i) {
+    milestone = &entries[i];
     if(pcre_exec(milestone->preg, milestone->extra, the_request, the_request_len, 0, 0, NULL, 0) == 0) {
-      required = atoi(entry[i].key);
+      required = milestone->num;
       break;
     }
   }
@@ -11066,10 +11067,12 @@ const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
   qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
   const char *errptr = NULL;
   int erroffset;
-  qos_milestone_t *ms = apr_pcalloc(cmd->pool, sizeof(qos_milestone_t));
+  qos_milestone_t *ms;
   if(sconf->milestones == NULL) {
-    sconf->milestones = apr_table_make(cmd->pool, 100);
+    sconf->milestones = apr_array_make(cmd->pool, 100, sizeof(qos_milestone_t));
   }
+  ms = apr_array_push(sconf->milestones);
+  ms->num = sconf->milestones->nelts - 1;
   ms->preg = pcre_compile(pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(ms->preg == NULL) {
     return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
@@ -11089,9 +11092,6 @@ const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
     return apr_psprintf(cmd->pool, "%s: invalid action %s",
                         cmd->directive->directive, action);
   }
-  apr_table_setn(sconf->milestones,
-                 apr_psprintf(cmd->pool, "%d", apr_table_elts(sconf->milestones)->nelts),
-                 (char *)ms);
   return NULL;
 }
 
