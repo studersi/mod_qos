@@ -1,6 +1,8 @@
 Version
 
  - qslog: improved performance.
+
+ - Minor code refactoring.
  
 Version 11.4
 

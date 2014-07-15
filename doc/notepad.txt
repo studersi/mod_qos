@@ -49,12 +49,15 @@
 - request filter:
   + json in request query (not body)
   - gwt parser (req id to build parameter names?)
+  - xml parser
   - qsfilter2 improvements
     - avoid certain pattern
     - different output formats
     - built-in (preferred) pattern ("expert mode")
 - response filter (e.g. detecting "bad" js code)
   - try to enforce content security header settings
+- support milestones on a per Location basis
+- Set IP differentiated services code points (DSCP)
 - more user friendly error handling for QS_ClientEventBlockCount directive
   - show the error page for more than only the first occurence
     - e.g. answer the next 5 (or more) requests with an error page too
@@ -79,6 +82,7 @@
     + mark clients as vip
 - management tool (sep. application)
   - configuration guidance
+    - documentation, mobile app?
   - log data management
   - rule generation
   - utilities (ha/lb/...)
@@ -107,7 +111,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
   + disable for certain user-agent headers (or X-Do-Not-Track header)
 + OpenSSL 1.0 support for qsfilter2 (safestack).
 - make mod_qos more portable
-  - use apr types and functions
+  - use apr types and functions everywhere
   - e.g. use apr_time_t instead of time_t
 + qsrotate: daylight saving time support
 x headerfilter: no duplicate req headers -> merged by Apache
