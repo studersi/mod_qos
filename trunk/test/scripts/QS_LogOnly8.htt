@@ -1,0 +1,19 @@
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_LOOP 12
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?TicketEvent1 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: htt
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_END LOOP
+_EXPECT EXEC "mod_qos\(013\): access denied \(log only\), QS_EventLimitCount rule: TicketEvent1, max=10, current=12"
+_EXEC tail -1 logs/error_log
+
+END

@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.245 2014-06-13 19:19:17 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.246 2014-07-16 20:13:13 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -984,7 +984,7 @@ fi
 
 sleep 10
 ./ctl.sh restart -D logonly -D real_ip >/dev/null
-TEST="QS_LogOnly.htt QS_LogOnly1.htt QS_LogOnly1a.htt QS_LogOnly1b.htt QS_LogOnly2.htt QS_LogOnly3.htt QS_LogOnly4.htt QS_LogOnly5.htt QS_LogOnly6.htt QS_LogOnly7.htt"
+TEST="QS_LogOnly.htt QS_LogOnly1.htt QS_LogOnly1a.htt QS_LogOnly1b.htt QS_LogOnly2.htt QS_LogOnly3.htt QS_LogOnly4.htt QS_LogOnly5.htt QS_LogOnly6.htt QS_LogOnly7.htt QS_LogOnly8.htt QS_LogOnly9.htt"
 for E in $TEST; do 
     ./run.sh -s ./scripts/$E
     if [ $? -ne 0 ]; then

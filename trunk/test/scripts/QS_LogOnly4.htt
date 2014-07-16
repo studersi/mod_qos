@@ -27,7 +27,7 @@ _EXPECT . "done"
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(012\): access denied, QS_EventRequestLimit rule"
+_EXPECT EXEC "mod_qos\(012\): access denied \(log only\), QS_EventRequestLimit rule"
 _EXEC tail -2 logs/error_log
 
 _REQ localhost $QS_PORT_BASE
