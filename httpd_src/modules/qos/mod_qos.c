@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.514 2014-07-15 14:37:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.515 2014-07-16 20:13:13 pbuchbinder Exp $";
 static const char g_revision[] = "11.5";
 
 /************************************************************************
@@ -4124,9 +4124,10 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
           if(entry->limit > entry->max) {
             rv = m_retcode;
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOS_LOG_PFX(013)"access denied, QS_EventLimitCount rule: %s,"
+                          QOS_LOG_PFX(013)"access denied%s, QS_EventLimitCount rule: %s,"
                           " max=%d, current=%d,"
                           " c=%s, id=%s",
+                          sconf->log_only ? " (log only)" : "",
                           entry->env_var, entry->max, entry->limit,
                           QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "013"));
@@ -4186,9 +4187,10 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
               if(e->counter > e->limit) {
                 rv = m_retcode;
                 ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                              QOS_LOG_PFX(012)"access denied, QS_EventRequestLimit rule: %s(%d),"
+                              QOS_LOG_PFX(012)"access denied%s, QS_EventRequestLimit rule: %s(%d),"
                               " concurrent requests=%d,"
                               " c=%s, id=%s",
+                              sconf->log_only ? " (log only)" : "",
                               e->url, e->limit, e->counter,
                               QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                               qos_unique_id(r, "012"));
@@ -4398,8 +4400,9 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
         int rc;
         const char *error_page = sconf->error_page;
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(065)"access denied, QS_ClientEventRequestLimit rule: "
+                      QOS_LOG_PFX(065)"access denied%s, QS_ClientEventRequestLimit rule: "
                       "max=%d, current=%d, c=%s, id=%s",
+                      sconf->log_only ? " (log only)" : "",
                       sconf->qos_cc_event_req,
                       count,
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
@@ -5043,9 +5046,10 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       if((*e)->block >= sconf->qos_cc_block) {
         *uid = apr_pstrdup(cconf->c->pool, "060");
         *msg = apr_psprintf(cconf->c->pool, 
-                            QOS_LOG_PFX(060)"access denied, "
+                            QOS_LOG_PFX(060)"access denied%s, "
                             "QS_ClientEventBlockCount rule: "
                             "max=%d, current=%d, age=%"APR_TIME_T_FMT", c=%s",
+                            sconf->log_only ? " (log only)" : "",
                             cconf->sconf->qos_cc_block,
                             (*e)->block,
                             now - (*e)->block_time,
@@ -5130,10 +5134,11 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
               /* log only one error (either block or limit) */
               *uid = apr_pstrdup(cconf->c->pool, "067");
               *msg = apr_psprintf(cconf->c->pool, 
-                                  QOS_LOG_PFX(067)"access denied, "
+                                  QOS_LOG_PFX(067)"access denied%s, "
                                   "QS_%sClientEventLimitCount rule: "
                                   "event=%s, "
                                   "max=%d, current=%d, age=%"APR_TIME_T_FMT", c=%s",
+                                  sconf->log_only ? " (log only)" : "",
                                   conditional,
                                   eventName,
                                   eventLimitConf->limit,
@@ -6336,7 +6341,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
                        QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
                        " c=%s",
-                       level == APLOG_DEBUG ? 
+                       (level == APLOG_DEBUG) || sconf->log_only ? 
                        "log only (allowed)" 
                        : "access denied",
                        QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
@@ -6378,7 +6383,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                            QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
                            " this connection=%d,"
                            " c=%s",
-                           level == APLOG_DEBUG ? 
+                           (level == APLOG_DEBUG) || sconf->log_only ? 
                            "log only (allowed)" 
                            : "access denied",
                            inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
@@ -7339,16 +7344,18 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
 #endif
         {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
+                      QOS_LOG_PFX(044)"access denied%s, QS_LimitRequestBody:"
                       " invalid content-length header, c=%s, id=%s",
+                      sconf->log_only ? " (log only)" : "",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));
         return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
       if(s > maxpost) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
+                      QOS_LOG_PFX(044)"access denied%s, QS_LimitRequestBody:"
                       " max=%"APR_OFF_T_FMT" this=%"APR_OFF_T_FMT", c=%s, id=%s",
+                      sconf->log_only ? " (log only)" : "",
                       maxpost, s,
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));
@@ -7642,9 +7649,10 @@ static int qos_header_parser(request_rec * r) {
           /* std user */
           int rc;
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX(010)"access denied, QS_LocRequestLimit* rule: %s(%d),"
+                        QOS_LOG_PFX(010)"access denied%s, QS_LocRequestLimit* rule: %s(%d),"
                         " concurrent requests=%d,"
                         " c=%s, id=%s",
+                        sconf->log_only ? " (log only)" : "",
                         e->url, e->limit, e->counter,
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "010"));
@@ -7813,8 +7821,9 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
         const char *error_page = sconf->error_page;
         qs_req_ctx *rctx = qos_rctx_config_get(r);
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(044)"access denied, QS_LimitRequestBody:"
+                      QOS_LOG_PFX(044)"access denied%s, QS_LimitRequestBody:"
                       " max=%"APR_OFF_T_FMT" this=%"APR_OFF_T_FMT", c=%s, id=%s",
+                      sconf->log_only ? " (log only)" : "",
                       maxpost, rctx->maxpostcount,
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));

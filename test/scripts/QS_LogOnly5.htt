@@ -16,7 +16,7 @@ _EXPECT . "!custom error page"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(044\): access denied, QS_LimitRequestBody: invalid content-length header"
+_EXPECT EXEC "mod_qos\(044\): access denied \(log only\), QS_LimitRequestBody: invalid content-length header"
 _EXEC tail -4 logs/error_log
 
 END

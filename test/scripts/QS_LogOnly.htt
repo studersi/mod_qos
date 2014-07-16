@@ -1,5 +1,5 @@
 #
-# $Id: QS_LogOnly.htt,v 1.1 2011-06-30 12:34:38 pbuchbinder Exp $
+# $Id: QS_LogOnly.htt,v 1.2 2014-07-16 20:13:13 pbuchbinder Exp $
 #
 # see QS_LocRequestLimit_5.htt
 #
@@ -26,7 +26,7 @@ _EXPECT . "200 OK"
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(010\): access denied, QS_LocRequestLimit\* rule: /cgi\(5\)"
+_EXPECT EXEC "mod_qos\(010\): access denied \(log only\), QS_LocRequestLimit\* rule: /cgi\(5\)"
 _EXEC tail -1 logs/error_log
 
 

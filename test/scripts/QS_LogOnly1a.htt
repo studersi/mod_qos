@@ -20,7 +20,7 @@ _WAIT
 _END LOOP
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3"
+_EXPECT EXEC "mod_qos\(060\): access denied \(log only\), QS_ClientEventBlockCount rule: max=3"
 _EXEC tail -1 logs/error_log
 
 _LOOP 5

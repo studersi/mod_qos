@@ -1,5 +1,5 @@
 #
-# $Id: QS_LogOnly2.htt,v 1.1 2011-06-30 12:34:38 pbuchbinder Exp $
+# $Id: QS_LogOnly2.htt,v 1.2 2014-07-16 20:13:13 pbuchbinder Exp $
 #
 # see QS_SrvRequestRate_1.htt
 #
@@ -51,7 +51,7 @@ _EXPECT . "this is the root index.html"
 _WAIT
 _CLOSE
 
-_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in\): min=123"
+_EXPECT EXEC "mod_qos\(034\): log only \(allowed\), QS_SrvMinDataRate rule \(in\): min=123"
 _EXEC tail -1 logs/error_log
 
 END

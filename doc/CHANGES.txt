@@ -3,7 +3,10 @@ Version
  - qslog: improved performance.
 
  - Minor code refactoring.
- 
+
+ - Some log messages (010, 012, 013, 034, 044, 060, 065, 067)
+   indicate if log only mode is active.
+
 Version 11.4
 
  - Adds request ID to console log messages (07*).

@@ -18,6 +18,9 @@
   - per user-agent (categories)
   + multiple "per client" event counter
     + combine these counters (if c1>n AND c2>m then c3++)
+- new machine-readable status viewer (json,xml,...)
+  - add statistics, e.g. how often a limit had been reached
+  - implement plugins to read the status viewer (e.g. for nagios)
 + geo location
   + country
   - region, city. latitude/longitude

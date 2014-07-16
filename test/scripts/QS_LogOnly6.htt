@@ -31,7 +31,7 @@ _EXPECT . "done"
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(012\): access denied, QS_EventRequestLimit rule: var=\(YODA\)\(4\)"
+_EXPECT EXEC "mod_qos\(012\): access denied \(log only\), QS_EventRequestLimit rule: var=\(YODA\)\(4\)"
 _EXEC tail -1 logs/error_log
 
 END
