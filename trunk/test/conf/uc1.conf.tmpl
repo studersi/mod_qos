@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.33 2014-05-07 20:18:19 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.34 2014-07-18 19:07:29 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -58,6 +58,10 @@ KeepAliveTimeout        5
 
 LimitRequestFields      30
 QS_EnableInternalIPSimulation off
+
+<IfDefine logonly>
+QS_LogOnly              on
+</IfDefine>
 
 Options                 FollowSymLinks Indexes Includes
 DefaultType             text/plain
@@ -295,6 +299,13 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 <IfDefine uc1o>
    SetEnvIf Request_URI  /index.html limit=a
    QS_EventPerSecLimit   limit 10
+</IfDefine>
+
+<IfDefine uc1y>
+   <Location />
+       QS_PermitUri +01 deny ^/index.html$
+       QS_PermitUri +02 deny ^/large.html$
+   </Location>
 </IfDefine>
 
    <Location /cgi-local>

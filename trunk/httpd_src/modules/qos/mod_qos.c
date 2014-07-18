@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.515 2014-07-16 20:13:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.516 2014-07-18 19:07:28 pbuchbinder Exp $";
 static const char g_revision[] = "11.5";
 
 /************************************************************************
@@ -1978,9 +1978,10 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
       /* not allowed */
       int severity = milestone->action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
-                    QOS_LOG_PFX(047)"access denied, reached milestone '%d' (%s),"
+                    QOS_LOG_PFX(047)"access denied%s, reached milestone '%d' (%s),"
                     " user has already passed '%s',"
                     " action=%s, c=%s, id=%s",
+                    sconf->log_only || (milestone->action != QS_DENY) ? " (log only)" : "",
                     required, milestone->pattern,
                     ms == -1 ? "none" : apr_psprintf(r->pool, "%d", ms),
                     milestone->action == QS_DENY ? "deny" : "log only (pass milestone)",
@@ -2843,7 +2844,8 @@ static const char *qos_parp_query(request_rec *r, apr_table_t *tl, const char *a
 }
 
 /* filter events */
-static int qos_per_dir_event_rules(request_rec *r, qos_dir_config *dconf) {
+static int qos_per_dir_event_rules(request_rec *r, qos_srv_config *sconf,
+                                   qos_dir_config *dconf) {
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(dconf->rfilter_table)->elts;
   int i;
   for(i = 0; i < apr_table_elts(dconf->rfilter_table)->nelts; i++) {
@@ -2870,7 +2872,8 @@ static int qos_per_dir_event_rules(request_rec *r, qos_dir_config *dconf) {
                       " action=%s, c=%s, id=%s",
                       qos_rfilter_type2text(r->pool, rfilter->type),
                       rfilter->id,
-                      rfilter->text, rfilter->action == QS_DENY ? "deny" : "log only",
+                      rfilter->text,
+                      (!sconf->log_only) && (rfilter->action == QS_DENY) ? "deny" : "log only",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "040"));
         if(rfilter->action == QS_DENY) {
@@ -3180,7 +3183,8 @@ static int qos_json(request_rec *r, qos_dir_config *dconf, const char **query, c
 /**
  * processes the per location rules QS_Permit* and QS_Deny*
  */
-static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
+static int qos_per_dir_rules(request_rec *r, qos_srv_config *sconf,
+                             qos_dir_config *dconf) {
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(dconf->rfilter_table)->elts;
   int i;
   char *path = apr_pstrdup(r->pool, r->parsed_uri.path ? r->parsed_uri.path : "");
@@ -3226,8 +3230,9 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
         /* parser error */
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX(048)"access denied, invalid JSON syntax (%s),"
-                      " action=deny, c=%s, id=%s",
+                      " action=%s, c=%s, id=%s",
                       msg ? msg : "-",
+                      sconf->log_only ? "log only" : "deny",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "048"));
         return HTTP_FORBIDDEN;
@@ -3307,7 +3312,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
     int severity = dconf->urldecoding == QS_DENY ? APLOG_ERR : APLOG_WARNING;
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
                   QOS_LOG_PFX(046)"access denied, invalid url encoding, action=%s, c=%s, id=%s",
-                  dconf->urldecoding == QS_DENY ? "deny" : "log only",
+                  (!sconf->log_only) && (dconf->urldecoding == QS_DENY) ? "deny" : "log only",
                   QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                   qos_unique_id(r, "046"));
     if(dconf->urldecoding == QS_DENY) {
@@ -3347,7 +3352,8 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
                       " action=%s, c=%s, id=%s",
                       qos_rfilter_type2text(r->pool, rfilter->type),
                       rfilter->id,
-                      rfilter->text, rfilter->action == QS_DENY ? "deny" : "log only",
+                      rfilter->text,
+                      (!sconf->log_only) && (rfilter->action == QS_DENY) ? "deny" : "log only",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "040"));
         if(rfilter->action == QS_DENY) {
@@ -3360,7 +3366,7 @@ static int qos_per_dir_rules(request_rec *r, qos_dir_config *dconf) {
     int severity = permit_rule_action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
                   QOS_LOG_PFX(041)"access denied, no permit rule match, action=%s, c=%s, id=%s",
-                  permit_rule_action == QS_DENY ? "deny" : "log only",
+                  (!sconf->log_only) && (permit_rule_action == QS_DENY) ? "deny" : "log only",
                   QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                   qos_unique_id(r, "041"));
     if(permit_rule_action == QS_DENY) {
@@ -3398,7 +3404,8 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
                                      he->text, he->size);
         if(he->action == QS_FLT_ACTION_DENY) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX(043)"access denied, %s header: \'%s: %s\', %s, c=%s, id=%s",
+                        QOS_LOG_PFX(043)"access denied%s, %s header: \'%s: %s\', %s, c=%s, id=%s",
+                        sconf->log_only ? " (log only)" : "",
                         type,
                         entry[i].key, entry[i].val,
                         pattern,
@@ -3424,14 +3431,17 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
   for(i = 0; i < apr_table_elts(delete)->nelts; i++) {
     if(mode != QS_HEADERFILTER_SILENT) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                    QOS_LOG_PFX(042)"drop %s header: \'%s: %s\', %s, c=%s, id=%s",
+                    QOS_LOG_PFX(042)"drop %s header%s: \'%s: %s\', %s, c=%s, id=%s",
                     type,
-                    entry[i].key, entry[i].val,
+                    sconf->log_only ? " (log only)" : "",
+                     entry[i].key, entry[i].val,
                     apr_table_get(reason, entry[i].key),
                     QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                     qos_unique_id(r, "042"));
     }
-    apr_table_unset(headers, entry[i].key);
+    if(!sconf->log_only) {
+      apr_table_unset(headers, entry[i].key);
+    }
   }
   return APR_SUCCESS;
 }
@@ -3518,7 +3528,7 @@ static void qos_cal_req_sec(request_rec *r, qs_acentry_t *e) {
  */
 static int qos_hp_event_deny_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   if(apr_table_elts(dconf->rfilter_table)->nelts > 0) {
-    apr_status_t rv = qos_per_dir_event_rules(r, dconf);
+    apr_status_t rv = qos_per_dir_event_rules(r, sconf, dconf);
     if(rv != APR_SUCCESS) {
       int rc;
       const char *error_page = sconf->error_page;
@@ -3551,7 +3561,7 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
   }
 
   if((rv == APR_SUCCESS) && (apr_table_elts(dconf->rfilter_table)->nelts > 0)) {
-    rv = qos_per_dir_rules(r, dconf);
+    rv = qos_per_dir_rules(r, sconf, dconf);
   }
 
   if(rv != APR_SUCCESS) {
@@ -4032,8 +4042,10 @@ static void qos_keepalive(request_rec *r, qos_srv_config *sconf) {
         apr_interval_time_t kat = apr_time_from_sec(ka);
         if(QS_ISDEBUG(r->server)) {
           ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                        QOS_LOGD_PFX"set keepalive timeout to %s seconds, id=%s",
-                        v, qos_unique_id(r, NULL));
+                        QOS_LOGD_PFX"set keepalive timeout to %s seconds%s, id=%s",
+                        v, 
+                        sconf->log_only ? " (log only)" : "",
+                        qos_unique_id(r, NULL));
         }
         /* copy the server record (I konw, but least this works ...) */
         if(!rctx->evmsg || !strstr(rctx->evmsg, "T;")) {
@@ -6934,6 +6946,7 @@ static int qos_process_connection(conn_rec *c) {
      */
     /* client control */
     if((client_control != DECLINED) && !vip) {
+      // TODO $$$ check msg for "log only" notice
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                    "%s",
                    msg == NULL ? "-" : msg);
@@ -6957,10 +6970,11 @@ static int qos_process_connection(conn_rec *c) {
         if(all_connections >= sconf->geo_limit) {
           if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                         QOS_LOG_PFX(101)"access denied, QS_ClientGeoCountryPriv rule: max=%d,"
+                         QOS_LOG_PFX(101)"access denied%s, QS_ClientGeoCountryPriv rule: max=%d,"
                          " concurrent connections=%d,"
                          " c=%s"
                          " country=%s",
+                         sconf->log_only ? " (log only)" : "",
                          sconf->geo_limit,
                          all_connections,
                          QS_CONN_REMOTEIP(c),
@@ -6977,9 +6991,10 @@ static int qos_process_connection(conn_rec *c) {
     if((sconf->max_conn != -1) && !vip) {
       if(connections > sconf->max_conn) {
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                     QOS_LOG_PFX(030)"access denied, QS_SrvMaxConn rule: max=%d,"
+                     QOS_LOG_PFX(030)"access denied%s, QS_SrvMaxConn rule: max=%d,"
                      " concurrent connections=%d,"
                      " c=%s",
+                     sconf->log_only ? " (log only)" : "",
                      sconf->max_conn, connections,
                      QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         if(!sconf->log_only) {
@@ -6996,18 +7011,20 @@ static int qos_process_connection(conn_rec *c) {
         /* only print the first 20 messages for this client */
         if(e->error <= QS_LOG_REPEAT) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                       QOS_LOG_PFX(031)"access denied, QS_SrvMaxConnPerIP rule: max=%d,"
+                       QOS_LOG_PFX(031)"access denied%s, QS_SrvMaxConnPerIP rule: max=%d,"
                        " concurrent connections=%d,"
                        " c=%s",
+                       sconf->log_only ? " (log only)" : "",
                        sconf->max_conn_per_ip, current,
                        QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         } else {
           if((e->error % QS_LOG_REPEAT) == 0) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                         QOS_LOG_PFX(031)"access denied, QS_SrvMaxConnPerIP rule: max=%d,"
+                         QOS_LOG_PFX(031)"access denied%s, QS_SrvMaxConnPerIP rule: max=%d,"
                          " concurrent connections=%d,"
                          " message repeated %d times,"
-                           " c=%s",
+                         " c=%s",
+                         sconf->log_only ? " (log only)" : "",
                          sconf->max_conn_per_ip, current,
                          QS_LOG_REPEAT,
                          QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));

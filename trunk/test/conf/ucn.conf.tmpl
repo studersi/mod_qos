@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.36 2014-07-09 19:19:35 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.37 2014-07-18 19:07:29 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -78,6 +78,10 @@ KeepAliveTimeout        5
 
 LimitRequestFields      30
 QS_EnableInternalIPSimulation off
+
+<IfDefine logonly>
+QS_LogOnly              on
+</IfDefine>
 
 Options                 FollowSymLinks Indexes Includes
 DefaultType             text/plain
