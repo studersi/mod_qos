@@ -151,6 +151,12 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 sleep 2
 ./ctl.sh stop 2>/dev/null 1>/dev/null
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucns -D logonly 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UCN_QS_DenyEvent2.htt
+ERRORS=`expr $ERRORS + $?`
+sleep 2
+./ctl.sh stop 2>/dev/null 1>/dev/null
 
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnt 2>/dev/null 1>/dev/null
 waitApache

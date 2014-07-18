@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.15 2013-09-17 19:47:00 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.16 2014-07-18 19:07:29 pbuchbinder Exp $
 #
 
 
@@ -116,6 +116,9 @@ _EXPECT . "custom error page"
 _EXPECT . "code=043"
 _WAIT
 _CLOSE
+_SLEEP 100
+_EXPECT EXEC " mod_qos\(043\): access denied, request header: 'myheader: deny'"
+_EXEC tail -1 logs/error_log
 
 _REQ localhost $QS_PORT_BASE
 __POST /cgi-local/index.cgi HTTP/1.1
