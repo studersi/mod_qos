@@ -91,6 +91,12 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1k -D logonly 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_Milestone2.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1l 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UC1_QS_LocKBytesPerSecLimitMatch.htt

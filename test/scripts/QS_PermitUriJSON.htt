@@ -1,5 +1,5 @@
 #
-# $Id: QS_PermitUriJSON.htt,v 1.6 2012-03-27 20:42:36 pbuchbinder Exp $
+# $Id: QS_PermitUriJSON.htt,v 1.7 2014-07-18 20:51:33 pbuchbinder Exp $
 #
 
 
@@ -29,6 +29,9 @@ _EXPECT . "500 Internal Server Error"
 _EXPECT . "code=048"
 _WAIT
 _CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(048\): access denied, invalid JSON syntax"
+_EXEC tail -1 logs/error_log
 
 # rule violation (json)
 _REQ localhost $QS_PORT_BASE
