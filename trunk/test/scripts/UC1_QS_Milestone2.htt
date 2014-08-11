@@ -1,4 +1,6 @@
 #
+# $Id: UC1_QS_Milestone2.htt,v 1.2 2014-08-11 20:22:22 pbuchbinder Exp $
+#
 #   QS_MileStone deny "^GET /index.html "
 #   QS_MileStone deny "^GET /a/sleep.cgi "
 #
@@ -16,7 +18,7 @@ _EXPECT . "done"
 _WAIT
 
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(047\): access denied \(log only\), reached milestone '1' \(\^GET /a/sleep.cgi \), user has already passed 'none', action=deny"
+_EXPECT EXEC "mod_qos\(047\): access denied, reached milestone '1' \(\^GET /a/sleep.cgi \), user has already passed 'none', action=log only"
 _EXEC tail -1 logs/error_log
 
 _REQ localhost $QS_PORT_BASE

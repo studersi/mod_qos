@@ -5,8 +5,8 @@ Version
  - Minor code refactoring.
 
  - Some log messages (010, 012, 013, 030, 031, 034, 040,
-   041, 042, 043, 044, 046, 048*, 047*, 060, 065, 067, 101*)
-   indicate if QS_LogOnly mode is active.
+   041, 042, 043, 044, 046, 047, 048, 060, 063, 064, 065,
+   067, 101) indicate if QS_LogOnly mode is active.
 
  - Apply QS_LogOnly to header filter (action drop).
 

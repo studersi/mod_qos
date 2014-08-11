@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.516 2014-07-18 19:07:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.517 2014-08-11 20:22:21 pbuchbinder Exp $";
 static const char g_revision[] = "11.5";
 
 /************************************************************************
@@ -1978,13 +1978,13 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
       /* not allowed */
       int severity = milestone->action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
-                    QOS_LOG_PFX(047)"access denied%s, reached milestone '%d' (%s),"
+                    QOS_LOG_PFX(047)"access denied, reached milestone '%d' (%s),"
                     " user has already passed '%s',"
                     " action=%s, c=%s, id=%s",
-                    sconf->log_only || (milestone->action != QS_DENY) ? " (log only)" : "",
                     required, milestone->pattern,
                     ms == -1 ? "none" : apr_psprintf(r->pool, "%d", ms),
-                    milestone->action == QS_DENY ? "deny" : "log only (pass milestone)",
+                    !sconf->log_only && milestone->action == QS_DENY ? 
+                    "deny" : "log only (pass milestone)",
                     QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                     qos_unique_id(r, "047"));
       if(milestone->action == QS_DENY) {
@@ -5269,9 +5269,10 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
             }
             if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
               *msg = apr_psprintf(cconf->c->pool, 
-                                  QOS_LOG_PFX(064)"access denied, "
+                                  QOS_LOG_PFX(064)"access denied%s, "
                                   "QS_ClientPrefer rule (low prio): "
                                   "max=%d, concurrent connections=%d, c=%s",
+                                  cconf->sconf->log_only ? " (log only)" : "",
                                   cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
                                   QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
                                   QS_CONN_REMOTEIP(cconf->c));
@@ -5282,9 +5283,10 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
             int more = (cconf->sconf->max_clients - cconf->sconf->qos_cc_prefer_limit) / 2;
             if(u->qos_cc->connections > (cconf->sconf->qos_cc_prefer_limit + more)) {
               *msg = apr_psprintf(cconf->c->pool, 
-                                  QOS_LOG_PFX(063)"access denied, "
+                                  QOS_LOG_PFX(063)"access denied%s, "
                                   "QS_ClientPrefer rule (not vip): "
                                   "max=%d(+%d), concurrent connections=%d, c=%s",
+                                  cconf->sconf->log_only ? " (log only)" : "",
                                   cconf->sconf->qos_cc_prefer_limit, more, 
                                   u->qos_cc->connections,
                                   QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
@@ -6946,7 +6948,6 @@ static int qos_process_connection(conn_rec *c) {
      */
     /* client control */
     if((client_control != DECLINED) && !vip) {
-      // TODO $$$ check msg for "log only" notice
       ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                    "%s",
                    msg == NULL ? "-" : msg);
