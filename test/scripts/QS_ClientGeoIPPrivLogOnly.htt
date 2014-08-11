@@ -1,13 +1,13 @@
 #
-# $Id: QS_ClientGeoIPPriv2.htt,v 1.4 2014-08-11 20:22:21 pbuchbinder Exp $
+# $Id: QS_ClientGeoIPPrivLogOnly.htt,v 1.1 2014-08-11 20:22:21 pbuchbinder Exp $
 #
 # deny access to clients (clients from "LO" are NOT priviliged)
+# - log only mode -
 #
-
 
 INCLUDE scripts/ports
 
-EXEC ./ctl.sh restart -D geoprivdeny 2>/dev/null 1>/dev/null
+EXEC ./ctl.sh restart -D geoprivdeny -D logonly 2>/dev/null 1>/dev/null
 
 CLIENT 9
 
@@ -43,12 +43,12 @@ __Host: localhost.host.ch
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
-_EXPECT . "!done"
-_EXPECT . "500 Internal Server Error"
+_EXPECT . "done"
+_EXPECT . "!500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoCountryPriv rule: max=10, concurrent connections=.., c=127.0.0.1 country=LO"
+_EXPECT EXEC "mod_qos\(101\): access denied \(log only\), QS_ClientGeoCountryPriv rule: max=10, concurrent connections=.., c=127.0.0.1 country=LO"
 _EXEC tail -1 logs/error_log
 
 END
