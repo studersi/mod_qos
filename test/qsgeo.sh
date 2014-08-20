@@ -61,6 +61,23 @@ if [ `grep -c "kkkkkkkkkkkkkkkkkkkkkkkk222222139.152.12.123;req;1" geo.log.c` -n
   exit 1
 fi
 
+../util/src/qsgeo -d conf/GeoIPCountryWhois.csv -l > geo.log.c
+if [ `grep -c '"192.168.0.0","192.168.255.255","3232235520","3232301055","PV","private network"' geo.log.c` -ne 1 ]; then
+  echo "FAILED - missing private network, qslog -l"
+  exit 1
+fi
+
+../util/src/qsgeo -d conf/DB1.csv -l > geo.log.c
+if [ `grep -c '"192.168.0.0","192.168.255.255","3232235520","3232301055","PV","private network"' geo.log.c` -ne 1 ]; then
+  echo "FAILED - missing private network, qslog -l, DB1"
+  exit 1
+fi
+
+if [ `grep -c '"217.244.61.160","217.244.61.191","3656662432","3656662463","AT","Austria"' geo.log.c` -ne 1 ]; then
+  echo "FAILED - missing enriched entry, qslog -l, DB1"
+  exit 1
+fi
+
 
 # cleanup
 rm geo.log
