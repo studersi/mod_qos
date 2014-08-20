@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.16 2014-08-20 09:05:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.17 2014-08-20 19:29:39 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,7 +56,7 @@ static const char revision[] = "$Id: qsgeo.c,v 1.16 2014-08-20 09:05:43 pbuchbin
 // "3758096128","3758096383","AU","Australia"
 #define QS_GEO_PATTERN_D "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
 // "192.83.198.0","192.83.198.255","3226715648","3226715903","AU","Australia"
-#define QS_GEO_PATTERN_EXT  "\"[0-9]+.[0-9]+.[0-9]+.[0-9]+\",\"[0-9]+.[0-9]+.[0-9]+.[0-9]+\",\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
+#define QS_GEO_PATTERN_EXT  "\"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\",\"[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+\",\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
 // 182.12.34.23
 #define IPPATTERN "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"'\x0d\x0a, ]+"
 #define IPPATTERN2 "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"'\x0d\x0a,; ]+"
@@ -330,6 +330,10 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 	plus = 1;
       }
       if(plus || regexec(&preg, line, MAX_REG_MATCH, ma, 0) == 0) {
+        int missingAddr = 0;
+        if(regexec(&pregext, line, 0, NULL, 0) != 0) {
+          missingAddr = 1;
+        }
 	line[ma[1].rm_eo] = '\0';
 	line[ma[2].rm_eo] = '\0';
 	line[ma[3].rm_eo] = '\0';
@@ -340,10 +344,8 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
           if(inj->start && (g->start > inj->start)) {
             printf("%s\n", inj->c);
             inj++;
-          } else {
-            if(regexec(&pregext, line, 0, NULL, 0) == 0) {
-              printf("%s", buf);
-            } else {
+          } else if(g->start != inj->start) {
+            if(missingAddr) {
               /* some databases do not include IP address 
                  representation (but number only) */
               char bs[128];
@@ -351,6 +353,8 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
               qos_geo_long2str(bs, g->start);
               qos_geo_long2str(be, g->end);
               printf("\"%s\",\"%s\",%s", bs, be, buf);
+            } else {
+              printf("%s", buf);
             }
           }
         }
