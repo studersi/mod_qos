@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.15 2014-01-22 13:23:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.16 2014-08-20 09:05:43 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +55,8 @@ static const char revision[] = "$Id: qsgeo.c,v 1.15 2014-01-22 13:23:06 pbuchbin
 #define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\""
 // "3758096128","3758096383","AU","Australia"
 #define QS_GEO_PATTERN_D "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
+// "192.83.198.0","192.83.198.255","3226715648","3226715903","AU","Australia"
+#define QS_GEO_PATTERN_EXT  "\"[0-9]+.[0-9]+.[0-9]+.[0-9]+\",\"[0-9]+.[0-9]+.[0-9]+.[0-9]+\",\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
 // 182.12.34.23
 #define IPPATTERN "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"'\x0d\x0a, ]+"
 #define IPPATTERN2 "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"'\x0d\x0a,; ]+"
@@ -140,8 +142,7 @@ static unsigned long qos_geo_str2long(apr_pool_t *pool, const char *ip) {
   return addr;
 }
 
-/*
-static char *qos_geo_long2str(apr_pool_t *pool, unsigned long ip) {
+static void qos_geo_long2str(char *buf, unsigned long ip) {
   int a,b,c,d;
   a = ip % 256;
   ip = ip / 256;
@@ -150,9 +151,8 @@ static char *qos_geo_long2str(apr_pool_t *pool, unsigned long ip) {
   c = ip % 256;
   ip = ip / 256;
   d = ip % 256;
-  return apr_psprintf(pool, "%d.%d.%d.%d", d, c, b, a);
+  sprintf(buf, "%d.%d.%d.%d", d, c, b, a);
 }
-*/
 
 /**
  * Usage message (text or manpage format).
@@ -276,6 +276,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
   regmatch_t ma[MAX_REG_MATCH];
   regex_t preg;
   regex_t pregd;
+  regex_t pregext;
   qos_geo_t *geo = NULL;
   qos_geo_t *g = NULL;
   qos_geo_t *last = NULL;
@@ -293,6 +294,11 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
   if(regcomp(&pregd, QS_GEO_PATTERN_D, REG_EXTENDED)) {
     // internal error
     *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN_D);
+    return NULL;
+  }
+  if(regcomp(&pregext, QS_GEO_PATTERN_EXT, REG_EXTENDED)) {
+    // internal error
+    *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN_EXT);
     return NULL;
   }
   file = fopen(db, "r");
@@ -335,7 +341,17 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
             printf("%s\n", inj->c);
             inj++;
           } else {
-            printf("%s", buf);
+            if(regexec(&pregext, line, 0, NULL, 0) == 0) {
+              printf("%s", buf);
+            } else {
+              /* some databases do not include IP address 
+                 representation (but number only) */
+              char bs[128];
+              char be[128];
+              qos_geo_long2str(bs, g->start);
+              qos_geo_long2str(be, g->end);
+              printf("\"%s\",\"%s\",%s", bs, be, buf);
+            }
           }
         }
 	strncpy(g->country, &line[ma[3].rm_so], 2);
