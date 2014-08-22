@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.18 2014-08-22 05:50:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.19 2014-08-22 20:06:34 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,6 +62,7 @@ static const char revision[] = "$Id: qsgeo.c,v 1.18 2014-08-22 05:50:41 pbuchbin
 #define IPPATTERN2 "([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})[\"'\x0d\x0a,; ]+"
 
 static int m_inject = 0;
+static int m_verbose = 0;
 
 typedef struct {
   unsigned long start;
@@ -272,7 +273,7 @@ static int qos_geo_comp(const void *_pA, const void *_pB) {
  * @param msg Error message if something got wrong
  * @return Array with all entries from the CSV file (or NULL on error)
  */
-static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char **msg) {
+static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char **msg, int *errors) {
   regmatch_t ma[MAX_REG_MATCH];
   regex_t preg;
   regex_t pregd;
@@ -289,20 +290,24 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
   if(regcomp(&preg, QS_GEO_PATTERN, REG_EXTENDED)) {
     // internal error
     *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN);
+    (*errors)++;
     return NULL;
   }
   if(regcomp(&pregd, QS_GEO_PATTERN_D, REG_EXTENDED)) {
     // internal error
     *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN_D);
+    (*errors)++;
     return NULL;
   }
   if(regcomp(&pregext, QS_GEO_PATTERN_EXT, REG_EXTENDED)) {
     // internal error
     *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN_EXT);
+    (*errors)++;
     return NULL;
   }
   file = fopen(db, "r");
   if(!file) {
+    (*errors)++;
     return NULL;
   }
   while(fgets(line, sizeof(line), file) != NULL) {
@@ -311,6 +316,17 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 	lines++;
       } else {
 	*msg = apr_psprintf(pool, "invalid entry in database: '%s'", line);
+        (*errors)++;
+        if(m_verbose) {
+          char *p = *msg;
+          while(p[0]) {
+            if(p[0] < 32) {
+              p[0] = '.';
+            }
+            p++;
+          }
+          fprintf(stderr, "line %d: %s\n", lines, *msg);
+        }
       }
     }
   }
@@ -363,6 +379,10 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 	if(last) {
 	  if(g->start < last->start) {
 	    *msg = apr_psprintf(pool, "wrong order/lines not sorted (line %d)", lines);
+            (*errors)++;
+            if(m_verbose) {
+              fprintf(stderr, "line %d: wrong order/lines not sorted\n", lines);
+            }
 	  }
 	}
 	if(plus) {
@@ -379,6 +399,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 }
 
 int main(int argc, const char * const argv[]) {
+  int errors = 0;
   int rc;
   int stat = 0;
   const char *ip = NULL;
@@ -414,6 +435,8 @@ int main(int argc, const char * const argv[]) {
       stat = 1;
     } else if(strcmp(*argv, "-l") == 0) {
       m_inject = 1;
+    } else if(strcmp(*argv, "-v") == 0) {
+      m_verbose = 1;
     } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd, 0);
     } else if(strcmp(*argv,"--help") == 0) {
@@ -438,9 +461,19 @@ int main(int argc, const char * const argv[]) {
     fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
   }
 
-  geo = qos_loadgeo(pool, db, &size, &msg);
+  geo = qos_loadgeo(pool, db, &size, &msg, &errors);
   if(geo == NULL || msg != NULL) {
-    fprintf(stderr, "failed to load database: %s\n", msg ? msg : "-");
+    if(msg) {
+      char *p = msg;
+      while(p[0]) {
+        if(p[0] < 32) {
+          p[0] = '.';
+        }
+        p++;
+      }
+    }
+    fprintf(stderr, "failed to load database: %s (total %d errors)\n",
+            msg ? msg : "-", errors);
     exit(1);
   }
   if(m_inject) {
