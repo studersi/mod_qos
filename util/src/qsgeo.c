@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.17 2014-08-20 19:29:39 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.18 2014-08-22 05:50:41 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,7 +69,7 @@ typedef struct {
 } qos_inj_t;
 
 static const qos_inj_t m_inj[] = {
-  { 167772160, "\"10.0.0.0\",\"10.255.255.255.255\",\"167772160\",\"184549375\",\"PV\",\"private network\"" },
+  { 167772160, "\"10.0.0.0\",\"10.255.255.255\",\"167772160\",\"184549375\",\"PV\",\"private network\"" },
   { 2130706432, "\"127.0.0.0\",\"127.255.255.255\",\"2130706432\",\"2147483647\",\"LO\",\"local loopback\"" },
   { 2886729728, "\"172.16.0.0\",\"172.31.255.255\",\"2886729728\",\"2887778303\",\"PV\",\"private network\"" },
   { 3232235520, "\"192.168.0.0\",\"192.168.255.255\",\"3232235520\",\"3232301055\",\"PV\",\"private network\"" },
@@ -353,9 +353,10 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
               qos_geo_long2str(bs, g->start);
               qos_geo_long2str(be, g->end);
               printf("\"%s\",\"%s\",%s", bs, be, buf);
-            } else {
-              printf("%s", buf);
             }
+          }
+          if(!missingAddr) {
+            printf("%s", buf);
           }
         }
 	strncpy(g->country, &line[ma[3].rm_so], 2);
