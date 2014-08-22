@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.517 2014-08-11 20:22:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.518 2014-08-22 20:06:34 pbuchbinder Exp $";
 static const char g_revision[] = "11.5";
 
 /************************************************************************
@@ -2424,9 +2424,10 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
  * @param db Path to the database file (CSV)
  * @param size Number of entries in the db (size of the returned array)
  * @param msg Error message if something went wrong while loading the db
+ * @param errors Number of errors
  * @param Array with all enties
  */
-static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char **msg) {
+static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char **msg, int *errors) {
 #ifdef AP_REGEX_H
   ap_regmatch_t ma[AP_MAX_REG_MATCH];
   ap_regex_t *preg;
@@ -2448,12 +2449,16 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 #endif
   if(preg == NULL) {
     // internal error
-    *msg = apr_pstrdup(pool, "failed to compile regular expression "QS_GEO_PATTERN);
+    *msg = apr_pstrdup(pool, "failed to compile regular"
+                       " expression "QS_GEO_PATTERN);
+    (*errors)++;
     return NULL;
   }
   file = fopen(db, "r");
   if(!file) {
-    *msg = apr_psprintf(pool, "could not open file %s (%s)", db, strerror(errno));
+    *msg = apr_psprintf(pool, "could not open file %s (%s)",
+                        db, strerror(errno));
+    (*errors)++;
     return NULL;
   }
   while(fgets(line, sizeof(line), file) != NULL) {
@@ -2462,6 +2467,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
         lines++;
       } else {
         *msg = apr_psprintf(pool, "invalid entry in database: '%s'", line);
+        (*errors)++;
       }
     }
   }
@@ -2482,7 +2488,9 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
         strncpy(g->country, &line[ma[3].rm_so], 2);
         if(last) {
           if(g->start < last->start) {
-            *msg = apr_psprintf(pool, "wrong order/lines not sorted (line %d)", lines);
+            *msg = apr_psprintf(pool, "wrong order/lines"
+                                " not sorted (line %d)", lines);
+            (*errors)++;
           }
         }
         last = g;
@@ -11343,15 +11351,21 @@ const char *qos_geodb_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *msg = NULL;
+  char *path = NULL;
+  int errors = 0;
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
     return err;
   }
-  sconf->geodb = qos_loadgeo(cmd->pool, ap_server_root_relative(cmd->pool, arg1), &sconf->geodb_size, &msg);
+  path = ap_server_root_relative(cmd->pool, arg1);
+  sconf->geodb = qos_loadgeo(cmd->pool, path, &sconf->geodb_size,
+                             &msg, &errors);
   if(sconf->geodb == NULL || msg != NULL) {
-    return apr_psprintf(cmd->pool, "%s: failed to load the database: %s",
+    return apr_psprintf(cmd->pool, "%s: failed to load the database: %s"
+                        " (total %d errors)",
                         cmd->directive->directive,
-                        msg ? msg : "-");
+                        msg ? msg : "-",
+                        errors);
   }
   return NULL;
 }
