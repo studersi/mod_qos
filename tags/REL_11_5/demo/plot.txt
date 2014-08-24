@@ -1,0 +1,68 @@
+
+01slow
+===================
+Application /b/index.cgi is "slow" (show how long it takes to load the 
+whole page in the browser) while application /a runs normal.
+
+disbaled:
+ run 01slow.htt, many clients request application /b
+ result: applications /a is no longer available
+enabled:
+ same, but mod_qos limits the max. number of concurrent requests to /b
+ result: application /a is available
+
+02download
+===================
+Many clients downloads an iso image. We have to limit the bandwith for
+this resource.
+
+disabled:
+ run 02download.htt and show used bandwith in logs/stat.csv ~20mbit/sec (>3000000bytes/s)
+enabled:
+ run 02download.htt again and show how mod_qos manages the bandwith /qos?refresh
+ result: logs/stat.csv shows limited bandwith (~1300000bytes/s => 10mbit/s)
+
+03loic
+===================
+Server is no longer available to our clients du a TCP DoS attack.
+
+disabled:
+ Many clients open TCP connections and send data very slow just fast enough
+ to prevent socket timeout. No application is available.
+enabled:
+ min. data rate/max connections per client/deny clients causing erros
+ result: application is available
+
+04session
+===================
+Client opens new sessions (get Cookie) but don't use them. This fills up
+the memory of our session store. Users don't get new sessions anymore.
+Show that the server opens a new session when posting the login form (even
+authentication was not successful) using "Live HTTP headers".
+
+disabled:
+ Client may open as many connections as he wants.
+enabled:
+ mod_qos limits the number of cookies within a specified time (200 within 5 minutes)
+ result: client can't access the application and therefore can't open new sessions
+
+05bruteforce
+===================
+Login attemps with different username/password combinations.
+
+disabled:
+ Client my try as many combination as he wants.
+enabled:
+ mod_qos detects login attempts and blocks the client (max 100 per 5 minutes).
+ result: client can't try other password combinations
+
+05bruteforce_url
+===================
+Client searchs for vulnerable URLs or hidden features.
+
+disabled:
+ client may access invlid resources (404, 500, 403) as often he wants.
+enabled:
+ mod_qos limits the number of error responses, e.g. 404, disallowing
+ crawling for "hidden" resources
+
