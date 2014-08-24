@@ -1,4 +1,4 @@
-Version
+Version 11.5
 
  - qslog: improved performance.
 
@@ -12,8 +12,8 @@ Version
 
  - qsgeo option "-l":
    * adds the IP address if missing
-   * fixed: dropping valid lines
-   * may be used to "normalize" "ip2location lite" DB1 files
+   * fixed: unintentional dropping of valid lines
+   * may be used to normalize "ip2location lite" DB1 files
    * option "-v" to print all error messages
 
 Version 11.4
