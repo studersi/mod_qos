@@ -720,6 +720,7 @@ available when using the <code>QS_SrvMaxConnPerIP</code> directive.
 and remains the same for all HTTP requests performed on this connection.
 </li>
 <li>
+<a name="QS_ClientLowPrio"></a>
 <code>QS_ClientLowPrio</code><br>
 The variable is set for requests by clients which have been marked to be 
 processed with low priority, see <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code>.
@@ -731,6 +732,7 @@ Variable is set when detecting a VIP request (either by cookie, IP address
 status, valid user, etc.). May be used by various event based directives.
 </li>
 <li>
+<a name="_Counter"></a>
 <code>*_Counter</code><br>
 The counter values of the variables used by the 
 <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
@@ -740,11 +742,13 @@ directive are stored within the variable whose name is suffixed by
 <code>QS_Limit</code> events.
 </li>
 <li>
+<a name="QS_ErrorNotes"></a>
 <code>QS_ErrorNotes</code><br>
 The error code (number only) of a mod_qos <a href="#errorlog">log message</a> 
 that has occured during a request.
 </li>
 <li>
+<a name="QS_Country"></a>
 <code>QS_Country</code><br>
 ISO 3166 country code of client IPv4 address. Only available if the <a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.<br>
 Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
@@ -1564,6 +1568,13 @@ Double quoted ending <i><id title="where w.x.y.z results in 16777216*w + 65536*x
 Double quoted ISO 3166 country code, e.g. "FR" for France.
 </li>
 </ul>
+The <a href="#QS_Country"><code>QS_Country</code></a> variable contains 
+the country code for the client's IP address. <br>
+Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+override the client's IP address based on the value within the defined HTTP request 
+header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
+the TCP connection.
+
 </li>
 <li>
 <code>QS_ClientGeoCountryPriv &lt;list&gt; &lt;connections&gt;</code><br>
