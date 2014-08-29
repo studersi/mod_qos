@@ -1,3 +1,8 @@
+Version
+
+ - Adds "Public-Key-Pins" to the pre-defined list of allowed
+   HTTP response header fields.
+
 Version 11.5
 
  - qslog: improved performance.

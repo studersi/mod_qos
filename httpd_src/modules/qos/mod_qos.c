@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.518 2014-08-22 20:06:34 pbuchbinder Exp $";
-static const char g_revision[] = "11.5";
+static const char revision[] = "$Id: mod_qos.c,v 5.519 2014-08-29 21:17:05 pbuchbinder Exp $";
+static const char g_revision[] = "11.6";
 
 /************************************************************************
  * Includes
@@ -967,6 +967,7 @@ static const qos_her_t qs_res_header_rules[] = {
   { "Last-Modified", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Location", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Proxy-Authenticate", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Public-Key-Pins", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Retry-After", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Pragma", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Server", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
