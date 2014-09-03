@@ -1,7 +1,11 @@
 Version
 
- - Adds "Public-Key-Pins" to the pre-defined list of allowed
-   HTTP response header fields.
+ - Adds "Public-Key-Pins" and "Public-Key-Pins-Report-Only"
+   to the pre-defined list of allowed HTTP response header
+   fields.
+
+ - Adds "Origin" to the pre-defined list of allowed HTTO
+   response header fields.
 
 Version 11.5
 
