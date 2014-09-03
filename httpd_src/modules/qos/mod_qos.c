@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.519 2014-08-29 21:17:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.520 2014-09-03 19:33:29 pbuchbinder Exp $";
 static const char g_revision[] = "11.6";
 
 /************************************************************************
@@ -925,6 +925,7 @@ static const qos_her_t qs_header_rules[] = {
   { "If-Valid", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 500 },
   { "Keep-Alive", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { "Max-Forwards", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
+  { "Origin", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
   { "Proxy-Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 400 },
   { "Pragma", "^"QS_H_PRAGMA"+$", QS_FLT_ACTION_DROP, 200 },
   { "Range", "^[a-zA-Z0-9=_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 200 },
@@ -968,6 +969,7 @@ static const qos_her_t qs_res_header_rules[] = {
   { "Location", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Proxy-Authenticate", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Public-Key-Pins", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Public-Key-Pins-Report-Only", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Retry-After", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Pragma", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Server", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
