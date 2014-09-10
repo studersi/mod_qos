@@ -7,6 +7,9 @@ Version
  - Adds "Origin" to the pre-defined list of allowed HTTO
    response header fields.
 
+ - Fixed: qsrotate reads the size of an existing logfile
+   at startup (required by the "-b" option).
+
 Version 11.5
 
  - qslog: improved performance.

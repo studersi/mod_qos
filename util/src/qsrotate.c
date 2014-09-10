@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.23 2014-01-09 08:13:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.24 2014-09-10 05:46:13 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -323,6 +323,7 @@ int main(int argc, char **argv) {
   char buf[BUFSIZE];
   int nRead, nWrite;
   time_t now;
+  struct stat st;
 
   pthread_attr_t *tha = NULL;
   pthread_t tid;
@@ -384,6 +385,10 @@ int main(int argc, char **argv) {
 
   if(m_file_name == NULL) usage(m_cmd, 0);
   if(m_limit < (1024 * 1024)) usage(m_cmd, 0);
+
+  if(stat(m_file_name, &st) == 0) {
+    m_counter = st.st_size;
+  }
 
   if(username && getuid() == 0) {
     struct passwd *pwd = getpwnam(username);
