@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: qsrotate.sh,v 2.4 2013-09-19 15:25:54 pbuchbinder Exp $
+# $Id: qsrotate.sh,v 2.5 2014-09-11 06:12:09 pbuchbinder Exp $
 
 cd `dirname $0`
 PFX=[`basename $0`]
@@ -39,6 +39,28 @@ if [ "`ls -l ${LOGFILE}* | wc -l`" -ne 4 ]; then
     echo "$PFX FAILED, rotate -g, files"
     ERROR=1
 fi
+#   1920000 Sep 11 07:24 qsrotate.log
+#   2098176 Sep 11 07:24 qsrotate.log.20140911072447
+#   2098176 Sep 11 07:24 qsrotate.log.20140911072448
+#   2098176 Sep 11 07:24 qsrotate.log.20140911072449
+sleep 1
+for LINE in `seq 3`; do
+    LSIZE=`ls -l qsrotate.log.20* | tail -$LINE | head -1 | awk '{print $5}'`
+    if [ $LSIZE -gt 2199999 ]; then
+	echo "$PFX FAILED, rotate -b, $LINE => $LSIZE"
+	ERROR=1
+    fi
+done
+# write again data (server restart)
+for E in `seq 2099`; do echo "$d1k"; done | ../util/src/qsrotate -b 2097152 -g 3 -o ${LOGFILE}
+sleep 1
+for LINE in `seq 3`; do
+    LSIZE=`ls -l qsrotate.log.20* | tail -$LINE | head -1 | awk '{print $5}'`
+    if [ $LSIZE -gt 2199999 ]; then
+	echo "$PFX FAILED, rotate -b, $LINE => $LSIZE (2)"
+	ERROR=1
+    fi
+done
 
 if [ $ERROR -ne 0 ]; then
     exit 1
