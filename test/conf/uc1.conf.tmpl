@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.34 2014-07-18 19:07:29 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.35 2014-09-22 19:10:17 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -158,6 +158,12 @@ SetEnvIfPlus              User-Agent serializeme QS_Serialize=yes
 QS_ClientSerialize
 </IfDefine>
 
+<IfDefine uc1z>
+QS_ClientPrefer           80
+QS_ClientContentTypes     10 1 100 1 1
+</IfDefine>
+
+
 NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
 Listen                  127.0.0.1:##QS_PORT_BASE##
 
@@ -239,6 +245,20 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    QS_LocRequestPerSecLimit   / 10
    <Location /qos >
        SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine uc1z>
+   <Location /htt/priv>
+     QS_RedirectIf             QS_ClientLowPrio 1 http://localhost/error
+   </Location>
+
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+
+   <Location /console>
+       SetHandler qos-console
    </Location>
 </IfDefine>
 
