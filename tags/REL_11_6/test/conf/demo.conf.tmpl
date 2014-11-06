@@ -1,0 +1,32 @@
+
+ScriptAlias /demo/a/1.jpg ##ROOT##/htdocs/demo/a/1.jpg
+ScriptAlias /demo/a/2.jpg ##ROOT##/htdocs/demo/a/1.jpg
+ScriptAlias /demo/a/3.jpg ##ROOT##/htdocs/demo/a/1.jpg
+ScriptAlias /demo/a/4.jpg ##ROOT##/htdocs/demo/a/1.jpg
+ScriptAlias /demo/a/5.jpg ##ROOT##/htdocs/demo/a/1.jpg
+ScriptAlias /demo/a/6.jpg ##ROOT##/htdocs/demo/a/1.jpg
+ScriptAlias /demo/a/7.jpg ##ROOT##/htdocs/demo/a/1.jpg
+ScriptAlias /demo/a/8.jpg ##ROOT##/htdocs/demo/a/1.jpg
+ScriptAlias /demo/a/9.jpg ##ROOT##/htdocs/demo/a/1.jpg
+<Location /demo/a>
+     Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+     Order allow,deny
+     Allow from all
+</Location>
+
+ScriptAlias /demo/b ##ROOT##/htdocs/demo/b
+<Location /demo/b>
+     Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+     Order allow,deny
+     Allow from all
+</Location>
+
+ScriptAlias /demo/c/1.jpg ##ROOT##/htdocs/demo/c/1.jpg
+ScriptAlias /demo/c/2.jpg ##ROOT##/htdocs/demo/c/1.jpg
+ScriptAlias /demo/c/3.jpg ##ROOT##/htdocs/demo/c/1.jpg
+ScriptAlias /demo/c/login.cgi ##ROOT##/htdocs/demo/c/login.cgi
+<Location /demo/c>
+     Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+     Order allow,deny
+     Allow from all
+</Location>
