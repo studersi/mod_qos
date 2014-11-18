@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.253 2014-06-02 18:51:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.254 2014-11-18 19:56:26 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -285,6 +285,7 @@ ErrorDocument 404 /error-docs/error404.html
    ProxyPass                  /qos !
    ProxyPass                  /localpages !
    ProxyPass                  /console !
+   ProxyPass                  /man1 !
    ProxyPass                  /qos_control !
    ProxyPass                  /cgi-local !
    ProxyPass                  /cgi-local_s !
@@ -508,6 +509,10 @@ ErrorDocument 404 /error-docs/error404.html
    Include 	  conf/qos_viewer.conf
    <Location /console>
        SetHandler qos-console
+   </Location>
+
+   <Location /man1>
+       SetHandler qos-man1
    </Location>
 
    <Location /qos/merged>

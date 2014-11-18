@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.47 2014-01-09 08:13:06 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.48 2014-11-18 19:56:23 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -130,6 +130,12 @@ cp util/depcomp ${DES}/
 cp util/src/*.c ${DES}/src/
 cp util/src/*.h ${DES}/src/
 cp util/man1/*.1 ${DES}/man1/
+if [ -f test/mod_qos.1 ]; then
+  cp test/mod_qos.1 ${DES}/man1/
+else
+  echo "FAILED, module's man page is missing"
+  exit 1
+fi
 
 ## standard distribution
 #echo "std package: mod_qos-${VERSION}-src.tar.gz"

@@ -590,10 +590,10 @@ The following table shows if a rules may be deactivated for VIPs:
 <tr><td>QS_SrvMinDataRate</td><td>yes</td></tr>
 <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
 </table>
-Note: Event based rules (e.g., <a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>) may evaluate the 
+<small>Note: Event based rules (e.g., <a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>) may evaluate the 
 <a href="#QS_VipRequest">QS_VipRequest</a> and 
 <a href="#QS_IsVipRequest">QS_IsVipRequest</a> variables to decide 
-if the rule should be applied.
+if the rule should be applied.</small>
 
 <a name="variables"></a>
 <h3>Variables</h3>
@@ -696,9 +696,9 @@ Number of concurrent connections for this server/virtual host. Value is set
 when using either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, 
 <code>QS_SrvMinDataRate</code>, <code>QS_SrvMaxConnClose</code>, or 
 <code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> 
-directive.
-<br>Note: value is calulcated when the client establishes the connection 
-and remains the same for all HTTP requests performed on this connection.
+directive. <br>
+<small>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.</small>
 </li>
 <li>
 <a name="QS_AllConn"></a>
@@ -707,17 +707,17 @@ Number of all concurrent connections for this Apache instance. Value is set
 when using either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, 
 <code>QS_SrvMinDataRate</code>, <code>QS_SrvMaxConnClose</code>, or 
 <code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> 
-directive.
-<br>Note: value is calulcated when the client establishes the connection 
-and remains the same for all HTTP requests performed on this connection.
+directive. <br>
+<small>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.</small>
 </li>
 <li>
 <a name="QS_IPConn"></a>
 <code>QS_IPConn</code><br>
 Number of IP connections open from the current IP address. Variable is 
-available when using the <code>QS_SrvMaxConnPerIP</code> directive.
-<br>Note: value is calulcated when the client establishes the connection 
-and remains the same for all HTTP requests performed on this connection.
+available when using the <code>QS_SrvMaxConnPerIP</code> directive. <br>
+<small>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.</small>
 </li>
 <li>
 <a name="QS_ClientLowPrio"></a>
@@ -751,10 +751,10 @@ that has occured during a request.
 <a name="QS_Country"></a>
 <code>QS_Country</code><br>
 ISO 3166 country code of client IPv4 address. Only available if the <a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.<br>
-Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+<small>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 override the client's IP address based on the value within the defined HTTP request 
 header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
-the TCP connection.
+the TCP connection.</small>
 </li>
 <!--<li>
 <code>QS_RuleId</code><br>
@@ -882,8 +882,8 @@ only (you must use the same variable name for both directives).
 <code>QS_EventLimitCount &lt;env-variable&gt; &lt;number&gt; &lt;seconds&gt;</code><br>
 Defines the maximum number of events allowed within the defined time. Requests are 
 denied when reaching this limitation for the specified time (blocked at request level).<br>
-Note: The current counter value is propagated to the process environment within the variable 
-<code>&lt;env-variable&gt;_Counter</code>.
+<small>Note: The current counter value is propagated to the process environment within the variable 
+<code>&lt;env-variable&gt;_Counter</code>.</small>
 </li>
 <li>
 <a name="QS_SetEnvIf"></a>
@@ -956,7 +956,9 @@ The special code <code>QS_SrvMinDataRate</code> may be used to set
 <code>QS_Block</code> events in order to limit the allowed number of 
 <a href="#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> rule violations and 
 the special code <code>NullConnection</code> detects connections which are 
-closed even no HTTP request has been received.
+closed even no HTTP request has been received. <br>
+<small>Note: The <code>NullConnection</code> event may happen silently (no log 
+message) expect when using <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#loglevel" target="_blank">LogLevel</a> debug</code>.</small>
 </li>
 <li>
 <a name="QS_SetEnvIfResBody"></a>
@@ -1149,7 +1151,7 @@ to avoid bypassing of <code>SetEnvIf</code> directive settings.
 Used to add custom request header filter rules, e.g., to override the internal 
 rules (different pcre or size) or to add additional headers which should be allowed. 
 Definitions are made globally (outside VirtualHost). A list of all rules 
-is shown at server startup when using <code>LogLevel debug</code>. pcre is 
+is shown at server startup when using <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#loglevel" target="_blank">LogLevel</a> debug</code>. pcre is 
 case sensitive. The size parameter defines the maximum length of a header value. 
 The action 'drop' removes a header not matching the pcre, the action 'deny' 
 rejects a request including such a header not matching the pcre.
@@ -1168,7 +1170,7 @@ is activated ('on') or deactivated ('off' or 'silent').
 Used to add custom response header filter rules, e.g., to override the internal 
 rules (different pcre or size) or to add additional headers which should be allowed. 
 Definitions are made globally (outside VirtualHost). A list of all rules 
-is shown at server startup when using <code>LogLevel debug</code>. pcre is 
+is shown at server startup when using <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#loglevel" target="_blank">LogLevel</a> debug</code>. pcre is 
 case sensitive. The size parameter defines the maximum length of a header value. 
 </li>
 </ul>
@@ -1479,7 +1481,7 @@ Defines the maximum number of the defined environment variables
 (<code>QS_Limit</code> by default) allowed within the defined time (default 
 is 600 seconds). Requests from client IP's reaching this limitation are 
 denied for the specified time (blocked at request level). <br/>
-Notes:
+<small>Notes:
 <ul>
 <li><a name="QS_ClientIpFromHeader"></a>
 You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
@@ -1498,14 +1500,14 @@ not supported).</li>
 <a href="#statusviewer">status viewer</a>.</li>
 <li>See also <a href="#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></a> 
 if you want to enforce a rule under certain conditions only.
-</ul>
+</ul></small>
 </li>
 <li>
 <a name="QS_ClientSerialize"></a>
 <code>QS_ClientSerialize</code><br>
 Serializes requests having the <code>QS_Serialize</code> variable set if they are comming 
 from the same IP address.<br>
-Notes:
+<small>Notes:
 <ul>
 <li>You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 override the client's IP address based on the value within the defined HTTP request 
@@ -1514,7 +1516,7 @@ the TCP connection.
 </li>
 <li>Maximum wait time for a request is 5 minutes.
 </li>
-</ul>
+</ul></small>
 </li>
 <li>
 <a name="QS_ClientPrefer"></a>
@@ -1570,10 +1572,10 @@ Double quoted ISO 3166 country code, e.g. "FR" for France.
 </ul>
 The <a href="#QS_Country"><code>QS_Country</code></a> variable contains 
 the country code for the client's IP address. <br>
-Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+<small>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 override the client's IP address based on the value within the defined HTTP request 
 header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
-the TCP connection.
+the TCP connection.</small>
 
 </li>
 <li>
