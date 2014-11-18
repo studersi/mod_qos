@@ -1,3 +1,7 @@
+Version
+
+ - Man page for the module itself.
+
 Version 11.6
 
  - Adds "Public-Key-Pins" and "Public-Key-Pins-Report-Only"

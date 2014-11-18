@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.520 2014-09-03 19:33:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.521 2014-11-18 19:56:25 pbuchbinder Exp $";
 static const char g_revision[] = "11.6";
 
 /************************************************************************
@@ -9267,6 +9267,45 @@ static int qos_console_dump(request_rec * r, const char *event) {
   return HTTP_NOT_ACCEPTABLE;
 }
 
+#ifdef QS_INTERNAL_TEST
+static int qos_handler_man1(request_rec * r) {
+  module *modp = NULL;
+  if (strcmp(r->handler, "qos-man1") != 0) {
+    return DECLINED;
+  }
+  ap_set_content_type(r, "text/plain");
+  for(modp = ap_top_module; modp; modp = modp->next) {
+    if(strcmp(modp->name, "mod_qos.c") == 0) {
+      const command_rec *cmd = modp->cmds;
+      char time_string[64];
+      time_t tm = time(NULL);
+      struct tm *ptr = localtime(&tm);
+      strftime(time_string, sizeof(time_string), "%B %Y", ptr);
+      ap_rprintf(r, ".TH MOD_QOS 1 \"%s\" \"mod_qos Apache Module\" \"mod_qos\"\n", time_string);
+      ap_rprintf(r, ".SH NAME\n");
+      ap_rprintf(r, "mod_qos - quality of service module for the Apache Web server\n");
+      ap_rprintf(r, ".SH DESCRIPTION\n");
+      ap_rprintf(r, "mod_qos is a quality of service module for the Apache web server implementing control mechanisms that can provide different levels of priority to different HTTP requests.\n");
+      ap_rprintf(r, ".SH OPTIONS\n");
+      while(cmd) {
+        if(cmd->name) {
+          if(cmd->errmsg && cmd->errmsg[0]) {
+            ap_rprintf(r, ".TP\n");
+            ap_rprintf(r, "%s\n", cmd->errmsg);
+          }
+          cmd++;
+        } else {
+          break;
+        }
+      }
+      ap_rprintf(r, ".SH AUTHOR\n");
+      ap_rprintf(r, "Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+    }
+  }
+  return OK;
+}
+#endif
+
 static int qos_handler_console(request_rec * r) {
   apr_table_t *qt;
   const char *ip;
@@ -9558,6 +9597,12 @@ static int qos_handler(request_rec * r) {
   if(status != DECLINED) {
     return status;
   }
+#ifdef QS_INTERNAL_TEST
+  status = qos_handler_man1(r);
+  if(status != DECLINED) {
+    return status;
+  }
+#endif
   return DECLINED;
 }
 
@@ -11736,32 +11781,25 @@ const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
 #endif
 
 static const command_rec qos_config_cmds[] = {
-  AP_INIT_FLAG("QS_LogOnly", qos_logonly_cmd, NULL,
-               RSRC_CONF,
-               "QS_LogOnly 'on'|'off', enabled log only mode where no limitations are"
-               " enforced. Default is off."),
-  AP_INIT_TAKE1("QS_SemMemFile", qos_mfile_cmd, NULL,
-                RSRC_CONF,
-                "QS_SemMemFile <path>, optional path to a directory or file"
-                " which shall be used for file based samaphores/shared memory"
-                " usage."
-                " Default is "QS_MFILE"."),
   /* request limitation per location */
+  AP_INIT_TAKE1("QS_LocRequestLimitDefault", qos_loc_con_def_cmd, NULL,
+                RSRC_CONF,
+                "QS_LocRequestLimitDefault <number>, defines the default for the"
+                " QS_LocRequestLimit and QS_LocRequestLimitMatch directive."),
+
   AP_INIT_TAKE2("QS_LocRequestLimit", qos_loc_con_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestLimit <location> <number>, defines the maximum number of"
                 " concurrent requests allowed to access the specified location. Default is defined by the"
                 " QS_LocRequestLimitDefault directive."),
-  AP_INIT_TAKE1("QS_LocRequestLimitDefault", qos_loc_con_def_cmd, NULL,
-                RSRC_CONF,
-                "QS_LocRequestLimitDefault <number>, defines the default for the"
-                " QS_LocRequestLimit and QS_LocRequestLimitMatch directive."),
+
   AP_INIT_TAKE2("QS_LocRequestPerSecLimit", qos_loc_rs_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestPerSecLimit <location> <number>, defines the allowed"
                 " number of requests per second to a location. Requests are limited"
                 " by adding a delay to each requests. This directive should be used"
                 " in conjunction with QS_LocRequestLimit only."),
+
   AP_INIT_TAKE2("QS_LocKBytesPerSecLimit", qos_loc_bs_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocKBytesPerSecLimit <location> <kbytes>, defines the allowed"
@@ -11769,18 +11807,13 @@ static const command_rec qos_config_cmds[] = {
                 "slowed by adding a delay to each response (non-linear, bigger files"
                 " get longer delay than smaller ones). This directive should be used"
                 " in conjunction with QS_LocRequestLimit only."),
+
   AP_INIT_TAKE2("QS_LocRequestLimitMatch", qos_match_con_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestLimitMatch <regex> <number>, defines the number of"
                 " concurrent requests to the uri (path and query) pattern."
                 " Default is defined by the QS_LocRequestLimitDefault directive."),
 
-  AP_INIT_TAKE3("QS_CondLocRequestLimitMatch", qos_cond_match_con_cmd, NULL,
-                RSRC_CONF,
-                "QS_CondLocRequestLimitMatch <regex> <number> <pattern>, defines the number of"
-                " concurrent requests to the uri (path and query) regex."
-                " Rule is only enforced of the "QS_COND" variable matches the specified"
-                " pattern (regex)."),
   AP_INIT_TAKE2("QS_LocRequestPerSecLimitMatch", qos_match_rs_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocRequestPerSecLimitMatch <regex> <number>, defines the allowed"
@@ -11788,6 +11821,7 @@ static const command_rec qos_config_cmds[] = {
                 " Requests are limited by adding a delay to each requests."
                 " This directive should be used in conjunction with"
                 " QS_LocRequestLimitMatch only."),
+
   AP_INIT_TAKE2("QS_LocKBytesPerSecLimitMatch", qos_match_bs_cmd, NULL,
                 RSRC_CONF,
                 "QS_LocKBytesPerSecLimitMatch <regex> <kbytes>, defines the allowed"
@@ -11796,72 +11830,58 @@ static const command_rec qos_config_cmds[] = {
                 " by adding a delay to each response (non-linear, bigger files"
                 " get longer delay than smaller ones). This directive should be used"
                 " in conjunction with QS_LocRequestLimitMatch only."),
-  /* error document */
-  AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
+
+  /* conditional per location */
+  AP_INIT_TAKE3("QS_CondLocRequestLimitMatch", qos_cond_match_con_cmd, NULL,
                 RSRC_CONF,
-                "QS_ErrorPage <url>, defines a custom error page."),
-  AP_INIT_TAKE1("QS_Chroot", qos_chroot_cmd, NULL,
+                "QS_CondLocRequestLimitMatch <regex> <number> <pattern>, defines the number of"
+                " concurrent requests to the uri (path and query) regex."
+                " Rule is only enforced if the "QS_COND" variable matches the specified"
+                " pattern (regex)."),
+
+  /* event based rules */
+  AP_INIT_TAKE2("QS_EventRequestLimit", qos_event_req_cmd, NULL,
                 RSRC_CONF,
-                "QS_Chroot <path>, change root directory."),
-  AP_INIT_TAKE1("QS_ErrorResponseCode", qos_error_code_cmd, NULL,
+                "QS_EventRequestLimit <variable>[=<regex>] <number>, defines the"
+                " number of concurrent events. Directive works similar to"
+                " QS_LocRequestLimit, but counts the requests having the same"
+                " environment variable (and optionally matching its value, too)"
+                " rather than those that have the same URL pattern."),
+
+  AP_INIT_TAKE2("QS_EventPerSecLimit", qos_event_rs_cmd, NULL,
                 RSRC_CONF,
-                "QS_ErrorResponseCode <code>, defines the HTTP response code which"
-                " is used when a request is denied, default is 500."),
-  AP_INIT_TAKE12("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
-                 RSRC_CONF,
-                 "QS_UserTrackingCookieName <name> [<path>], enables the user tracking cookie by"
-                 " defining a cookie name. User tracking requires mod_unique_id."
-                 " This feature is disabled by default. Ignores QS_LogOnly."),
-  /* vip session */
-  AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
+                "QS_EventPerSecLimit [!]<variable> <number>, defines how"
+                " often requests may have the defined environment variable"
+                " (literal string) set. It measures the occurrences of the defined"
+                " environment variable on a request per seconds level and tries to"
+                " limit this occurrence to the defined number. It works similar to"
+                " as QS_LocRequestPerSecLimit, but counts only the requests with the"
+                " specified variable (or without it if the variable name is"
+                " prefixed by a '!'). If a request matches multiple events, the"
+                " rule with the lowest bandwidth is applied. Events are limited"
+                " by adding a delay to each request causing an  event."),
+  AP_INIT_TAKE2("QS_EventKBytesPerSecLimit", qos_event_bps_cmd, NULL,
                 RSRC_CONF,
-                "QS_SessionCookieName <name>, defines a custom session cookie name,"
-                " default is "QOS_COOKIE_NAME"."),
-  AP_INIT_TAKE1("QS_SessionCookiePath", qos_cookie_path_cmd, NULL,
+                "QS_EventKBytesPerSecLimit [!]<variable> <kbytes>, throttles the"
+                " download bandwidth of all requests having the defined"
+                " variable set to the defined kbytes per second. Responses are slowed"
+                " by adding a delay to each response (non-linear, bigger files get"
+                " longer delay than smaller ones). By default, no limitation is active."
+                " This directive should be used in conjunction with QS_EventRequestLimit"
+                " only (you must use the same variable name for both directives)."),
+  AP_INIT_TAKE3("QS_EventLimitCount", qos_event_limit_cmd, NULL,
                 RSRC_CONF,
-                "QS_SessionCookiePath <path>, defines the cookie path, default is \"/\"."),
-  AP_INIT_TAKE1("QS_SessionTimeout", qos_timeout_cmd, NULL,
-                RSRC_CONF,
-                "QS_SessionTimeout <seconds>, defines the session life time for a VIP."
-                " It is only used for session based (cookie) VIP identification (not"
-                " for IP based). Default is "QOS_MAX_AGE" seconds."),
-  AP_INIT_TAKE1("QS_SessionKey", qos_key_cmd, NULL,
-                RSRC_CONF,
-                "QS_SessionKey <string>, secret key used for cookie encryption."
-                " Used when using the same session cookie for multiple web servers"
-                " (load balancing) or sessions should survive a server restart."
-                " By default, a random key is used which changes every server restart."),
-  AP_INIT_TAKE12("QS_VipHeaderName", qos_header_name_cmd, NULL,
-                 RSRC_CONF,
-                 "QS_VipHeaderName <name>[=<regex>] [drop], defines an HTTP response"
-                 " header which marks a user as a VIP. mod_qos creates"
-                 " a session for this user by setting a cookie, e.g., after successful"
-                 " user authentication. Tests optionally its value against the provided"
-                 " regular expression. Specify the action 'drop' if you want mod_qos"
-                 " to remove this control header from the HTTP response."),
-  AP_INIT_TAKE12("QS_VipIPHeaderName", qos_ip_header_name_cmd, NULL,
-                 RSRC_CONF,
-                 "QS_VipIPHeaderName <name>[=<regex>] [drop], defines an HTTP"
-                 " response header which marks a client source IP address as a VIP."
-                 " Tests optionally its value against the provided regular expression."
-                 " Specify the action 'drop' if you want mod_qos to remove this"
-                 " control header from the HTTP response."),
-  AP_INIT_NO_ARGS("QS_VipUser", qos_vip_u_cmd, NULL,
-                  RSRC_CONF,
-                  "QS_VipUser, creates a VIP session for users which have been"
-                  " authenticated by the Apache server, e.g., by the standard"
-                  " mod_auth* modules. It works similar to the QS_VipHeaderName"
-                  " directive."),
-  AP_INIT_NO_ARGS("QS_VipIpUser", qos_vip_ip_u_cmd, NULL,
-                  RSRC_CONF,
-                  "QS_VipIpUser, marks a source IP address as a VIP if the"
-                  " user has been authenticated by the Apache server, e.g."
-                  " by the standard mod_auth* modules. It works similar to"
-                  " the QS_VipIPHeaderName directive."),
+                "QS_EventLimitCount <env-variable> <number> <seconds>,"
+                " defines the maximum number of events allowed within the defined"
+                " time. Requests are denied when reaching this limitation for the"
+                " specified time (blocked at request level)."),
+
+  /* server / connection limitation */
   AP_INIT_TAKE1("QS_SrvMaxConn", qos_max_conn_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConn <number>, defines the maximum number of concurrent"
                 " TCP connections for this server (virtual host)."),
+
   AP_INIT_TAKE1("QS_SrvMaxConnClose", qos_max_conn_close_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnClose <number>, defines the maximum number of"
@@ -11870,16 +11890,19 @@ static const command_rec qos_config_cmds[] = {
                 " each requests. You may specify the number of connections"
                 " as a percentage of MaxClients if adding the suffix '%'"
                 " to the specified value."),
+
   AP_INIT_TAKE12("QS_SrvMaxConnPerIP", qos_max_conn_ip_cmd, NULL,
                  RSRC_CONF,
                  "QS_SrvMaxConnPerIP <number> [<connections>], defines the maximum number"
                  " of connections per source IP address for this server (virtual host)."
                  " 'connections' defines the number of busy connections of the server"
                  " (all virtual hosts) to enable this limitation, default is 0."),
+
   AP_INIT_TAKE1("QS_SrvMaxConnExcludeIP", qos_max_conn_ex_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an IP address or"
                 " address range from beeing limited."),
+
 #if QS_APACHE_22
 #if APR_HAS_THREADS
   AP_INIT_NO_ARGS("QS_SrvDataRateOff", qos_req_rate_off_cmd, NULL,
@@ -11888,14 +11911,13 @@ static const command_rec qos_config_cmds[] = {
                   " disables the QS_SrvRequestRate and QS_SrvMinDataRate enforcement for"
                   " a virtual host (only port/address based but not for name based"
                   " virtual hosts)."),
-  AP_INIT_TAKE1("QS_SrvSampleRate", qos_req_rate_tm_cmd, NULL,
-                RSRC_CONF,
-                "QS_SrvSampleRate <seconds>"),
+
   AP_INIT_TAKE12("QS_SrvRequestRate", qos_req_rate_cmd, NULL,
                  RSRC_CONF,
                  "QS_SrvRequestRate <bytes per seconds> [<max bytes per second>],"
                  " defines the minumum upload"
                  " throughput a client must generate. See also QS_SrvMinDataRate."),
+
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_SrvMinDataRate", qos_min_rate_cmd, NULL,
                     RSRC_CONF,
@@ -11948,41 +11970,198 @@ static const command_rec qos_config_cmds[] = {
                 " to remove a variable."),
 #endif // has threads
 #endif // QS_APACHE_22
-  /* event */
-  AP_INIT_TAKE2("QS_EventRequestLimit", qos_event_req_cmd, NULL,
+
+  /* generic request filter */
+  AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
+                ACCESS_CONF,
+                "QS_DenyRequestLine '+'|'-'<id> 'log'|'deny' <pcre>, generic"
+                " request line (method, path, query and protocol) filter used"
+                " to deny access for requests matching the defined expression (pcre)."
+                " '+' adds a new rule while '-' removes a rule for a location."
+                " The action is either 'log' (access is granted but rule"
+                " match is logged) or 'deny' (access is denied)."),
+
+  AP_INIT_TAKE3("QS_DenyPath", qos_deny_path_cmd, NULL,
+                ACCESS_CONF,
+                "QS_DenyPath, same as QS_DenyRequestLine but applied to the"
+                " path only."),
+
+  AP_INIT_TAKE3("QS_DenyQuery", qos_deny_query_cmd, NULL,
+                ACCESS_CONF,
+                "QS_DenyQuery, same as QS_DenyRequestLine but applied to the"
+                " query only."),
+
+  AP_INIT_TAKE3("QS_DenyEvent", qos_deny_event_cmd, NULL,
+                ACCESS_CONF,
+                "QS_DenyEvent '+'|'-'<id> 'log'|'deny' [!]<variable>, matches"
+                " requests having the defined process"
+                " environment variable set (or NOT set if prefixed by a '!')."
+                " The action taken for matching rules"
+                " is either 'log' (access is granted but the rule match is"
+                " logged) or 'deny' (access is denied)."),
+
+  AP_INIT_TAKE3("QS_PermitUri", qos_permit_uri_cmd, NULL,
+                ACCESS_CONF,
+                "QS_PermitUri, '+'|'-'<id> 'log'|'deny' <pcre>, generic"
+                " request filter applied to the request uri (path and query)."
+                " Only requests matching at least one QS_PermitUri pattern are"
+                " allowed. If a QS_PermitUri pattern has been defined an the"
+                " request does not match any rule, the request is denied albeit of"
+                " any server resource availability (white list). All rules"
+                " must define the same action. pcre is case sensitve."),
+
+  AP_INIT_FLAG("QS_DenyBody", qos_denybody_cmd, NULL,
+               ACCESS_CONF,
+               "QS_DenyBody 'on'|'off', enabled body data filter (obsolete)."),
+
+  AP_INIT_FLAG("QS_DenyQueryBody", qos_denybody_d_cmd, NULL,
+               ACCESS_CONF,
+               "QS_DenyQueryBody 'on'|'off', enabled body data filter for QS_DenyQuery."),
+
+  AP_INIT_FLAG("QS_PermitUriBody", qos_denybody_p_cmd, NULL,
+               ACCESS_CONF,
+               "QS_PermitUriBody 'on'|'off', enabled body data filter for QS_PermitUriBody."),
+
+  AP_INIT_TAKE1("QS_InvalidUrlEncoding", qos_deny_urlenc_cmd, NULL,
+                ACCESS_CONF,
+                "QS_InvalidUrlEncoding 'log'|'deny'|'off',"
+                " enforces correct URL decoding in conjunction with the"
+                " QS_DenyRequestLine, QS_DenyPath, and QS_DenyQuery"
+                " directives. Default is \"off\"."),
+
+  AP_INIT_TAKE1("QS_LimitRequestBody", qos_maxpost_cmd, NULL,
+                ACCESS_CONF|RSRC_CONF,
+                "QS_LimitRequestBody <bytes>, limits the allowed size"
+                " of an HTTP request message body."),
+
+  AP_INIT_ITERATE("QS_Decoding", qos_dec_cmd, NULL,
+                  ACCESS_CONF,
+                  "QS_DenyDecoding 'uni', enabled additional string decoding"
+                  " functions which are applied before"
+                  " matching QS_Deny* and QS_Permit* directives."
+                  " Default is URL decoding (%xx, \\xHH, '+')."),
+
+  AP_INIT_NO_ARGS("QS_DenyInheritanceOff", qos_denyinheritoff_cmd, NULL,
+                  ACCESS_CONF,
+                  "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"
+                  " directives to a location."),
+
+  AP_INIT_TAKE1("QS_RequestHeaderFilter", qos_headerfilter_cmd, NULL,
+                RSRC_CONF|ACCESS_CONF,
+                "QS_RequestHeaderFilter 'on'|'off'|'size', filters request headers by allowing"
+                " only these headers which match the request header rules defined by"
+                " mod_qos. Request headers which do not conform these definitions"
+                " are either dropped or the whole request is denied. Custom"
+                " request headers may be added by the QS_RequestHeaderFilterRule"
+                " directive. Using the 'size' option, the header field max. size"
+                " is verified only (similar to LimitRequestFieldsize but using"
+                " individual values for each header type) while the pattern is ignored."),
+
+  AP_INIT_TAKE1("QS_ResponseHeaderFilter", qos_resheaderfilter_cmd, NULL,
+                ACCESS_CONF,
+                "QS_ResponseHeaderFilter 'on'|'off', filters response headers by allowing"
+                " only these headers which match the request header rules defined by"
+                " mod_qos. Request headers which do not conform these definitions"
+                " are dropped."),
+
+#ifdef AP_TAKE_ARGV
+  AP_INIT_TAKE_ARGV("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
+                    RSRC_CONF,
+                    "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>  <size>, used"
+                    " to add custom request header filter rules which override the internal"
+                    " filter rules of mod_qos."
+                    " Directive is allowed in global server context only."),
+#else
+  AP_INIT_TAKE3("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
+                    RSRC_CONF,
+                    "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>, used"
+                    " to add custom request header filter rules which override the internal"
+                    " filter rules of mod_qos."
+                    " Directive is allowed in global server context only."),
+#endif
+
+  AP_INIT_TAKE3("QS_ResponseHeaderFilterRule", qos_resheaderfilter_rule_cmd, NULL,
                 RSRC_CONF,
-                "QS_EventRequestLimit <variable>[=<regex>] <number>, defines the"
-                " number of concurrent events. Directive works similar to"
-                " QS_LocRequestLimit, but counts the requests having the same"
-                " environment variable (and optionally matching its value, too)"
-                " rather than those that have the same URL pattern."),
-  AP_INIT_TAKE2("QS_EventPerSecLimit", qos_event_rs_cmd, NULL,
+                "QS_ResponseHeaderFilterRule <header name> <pcre> <size>, used"
+                " to add custom response header filter rules which override the internal"
+                " filter rules of mod_qos."
+                " Directive is allowed in global server context only."),
+
+  /* milestones */
+  AP_INIT_TAKE2("QS_MileStone", qos_milestone_cmd, NULL,
                 RSRC_CONF,
-                "QS_EventPerSecLimit [!]<variable> <number>, defines how"
-                " often requests may have the defined environment variable"
-                " (literal string) set. It measures the occurrences of the defined"
-                " environment variable on a request per seconds level and tries to"
-                " limit this occurrence to the defined number. It works similar to"
-                " as QS_LocRequestPerSecLimit, but counts only the requests with the"
-                " specified variable (or without it if the variable name is"
-                " prefixed by a '!'). If a request matches multiple events, the"
-                " rule with the lowest bandwidth is applied. Events are limited"
-                " by adding a delay to each request causing an  event."),
-  AP_INIT_TAKE2("QS_EventKBytesPerSecLimit", qos_event_bps_cmd, NULL,
+                "QS_MileStone 'log'|'deny' <pattern>, defines request line patterns"
+                " a client must access in the defined order as they are defined in the"
+                " configuration file."),
+
+  AP_INIT_TAKE1("QS_MileStoneTimeout", qos_milestone_tmo_cmd, NULL,
                 RSRC_CONF,
-                "QS_EventKBytesPerSecLimit [!]<variable> <kbytes>, throttles the"
-                " download bandwidth of all requests having the defined"
-                " variable set to the defined kbytes per second. Responses are slowed"
-                " by adding a delay to each response (non-linear, bigger files get"
-                " longer delay than smaller ones). By default, no limitation is active."
-                " This directive should be used in conjunction with QS_EventRequestLimit"
-                " only (you must use the same variable name for both directives)."),
-  AP_INIT_TAKE3("QS_EventLimitCount", qos_event_limit_cmd, NULL,
+                "QS_MileStoneTimeout <seconds>, defines the time in seconds"
+                " within a client must reach the next milestone."
+                " Default are 3600 seconds."),
+
+  /* session / vip */
+  AP_INIT_TAKE1("QS_SessionCookieName", qos_cookie_name_cmd, NULL,
                 RSRC_CONF,
-                "QS_EventLimitCount <env-variable> <number> <seconds>,"
-                " defines the maximum number of events allowed within the defined"
-                " time. Requests are denied when reaching this limitation for the"
-                " specified time (blocked at request level)."),
+                "QS_SessionCookieName <name>, defines a custom session cookie name,"
+                " default is "QOS_COOKIE_NAME"."),
+
+  AP_INIT_TAKE1("QS_SessionCookiePath", qos_cookie_path_cmd, NULL,
+                RSRC_CONF,
+                "QS_SessionCookiePath <path>, defines the cookie path, default is \"/\"."),
+
+  AP_INIT_TAKE1("QS_SessionTimeout", qos_timeout_cmd, NULL,
+                RSRC_CONF,
+                "QS_SessionTimeout <seconds>, defines the session life time for a VIP."
+                " It is only used for session based (cookie) VIP identification (not"
+                " for IP based). Default is "QOS_MAX_AGE" seconds."),
+
+  AP_INIT_TAKE1("QS_SessionKey", qos_key_cmd, NULL,
+                RSRC_CONF,
+                "QS_SessionKey <string>, secret key used for cookie encryption."
+                " Used when using the same session cookie for multiple web servers"
+                " (load balancing) or sessions should survive a server restart."
+                " By default, a random key is used which changes every server restart."),
+
+  AP_INIT_TAKE12("QS_VipHeaderName", qos_header_name_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_VipHeaderName <name>[=<regex>] [drop], defines an HTTP response"
+                 " header which marks a user as a VIP. mod_qos creates"
+                 " a session for this user by setting a cookie, e.g., after successful"
+                 " user authentication. Tests optionally its value against the provided"
+                 " regular expression. Specify the action 'drop' if you want mod_qos"
+                 " to remove this control header from the HTTP response."),
+
+  AP_INIT_TAKE12("QS_VipIPHeaderName", qos_ip_header_name_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_VipIPHeaderName <name>[=<regex>] [drop], defines an HTTP"
+                 " response header which marks a client source IP address as a VIP."
+                 " Tests optionally its value against the provided regular expression."
+                 " Specify the action 'drop' if you want mod_qos to remove this"
+                 " control header from the HTTP response."),
+
+  AP_INIT_NO_ARGS("QS_VipUser", qos_vip_u_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_VipUser, creates a VIP session for users which have been"
+                  " authenticated by the Apache server, e.g., by the standard"
+                  " mod_auth* modules. It works similar to the QS_VipHeaderName"
+                  " directive."),
+
+  AP_INIT_NO_ARGS("QS_VipIpUser", qos_vip_ip_u_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_VipIpUser, marks a source IP address as a VIP if the"
+                  " user has been authenticated by the Apache server, e.g."
+                  " by the standard mod_auth* modules. It works similar to"
+                  " the QS_VipIPHeaderName directive."),
+
+  /* user tracking */
+  AP_INIT_TAKE12("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_UserTrackingCookieName <name> [<path>], enables the user tracking cookie by"
+                 " defining a cookie name. User tracking requires mod_unique_id."
+                 " This feature is disabled by default. Ignores QS_LogOnly."),
+
+  /* env vars */
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIf [!]<variable1> [!]<variable1> [!]<variable=value>,"
@@ -11990,6 +12169,7 @@ static const command_rec qos_config_cmds[] = {
                 " (literal string) AND variable2 (literal string) are set in the"
                 " request environment variable list (not case sensitive)."
                 " This is used to combine multiple variables to a new event type."),
+
   AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIfQuery <regex> [!]<variable>[=value],"
@@ -11999,6 +12179,7 @@ static const command_rec qos_config_cmds[] = {
                 " The directive recognizes the occurrences of $1..$9 within"
                 " value and replaces them by the sub-expressions of the defined"
                 " regex pattern."),
+
   AP_INIT_TAKE2("QS_SetEnvIfParp", qos_event_setenvifparp_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIfParp <regex> [!]<variable>[=value],"
@@ -12017,6 +12198,7 @@ static const command_rec qos_config_cmds[] = {
                 " of the message). You should limit the allowed size of the HTTP"
                 " request message body using the QS_LimitRequestBody directive"
                 " when using QS_SetEnvIfParp!"),
+
   AP_INIT_TAKE2("QS_SetEnvIfBody", qos_event_setenvifparpbody_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIfBody <regex> [!]<variable>[=value],"
@@ -12029,9 +12211,11 @@ static const command_rec qos_config_cmds[] = {
                 " The directive recognizes the occurrence of $1 within the variable"
                 " value and replaces it by the sub-expressions of the defined regex"
                 " pattern."),
+
   AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvStatus (deprecated, use QS_SetEnvIfStatus)"),
+
   AP_INIT_TAKE2("QS_SetEnvIfStatus", qos_event_setenvstatus_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvIfStatus <status code> <variable>, adds the defined"
@@ -12041,15 +12225,18 @@ static const command_rec qos_config_cmds[] = {
                 " connection close events caused by "QS_CLOSE" rules while"
                 " the status '"QS_EMPTY_CON"' may be used to mark connections"
                 " which are closed before any HTTP request has ever been received."),
+
   AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,
                 "QS_SetEnvResBody (deprecated, use QS_SetEnvIfResBody)"),
+
   AP_INIT_TAKE2("QS_SetEnvIfResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,
                 "QS_SetEnvIfResBody <string> <variable>, adds the defined"
                 " request environment variable (e.g. "QS_BLOCK") if the HTTP"
                 " response body contains the defined literal string."
                 " Supports only one pattern per location."),
+
   AP_INIT_TAKE2("QS_SetEnv", qos_setenv_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnv <variable> <value>, sets the defined variable"
@@ -12057,164 +12244,49 @@ static const command_rec qos_config_cmds[] = {
                 " other environment variables surrounded by \"${\" and \"}\"."
                 " The variable is only set if all defined variables within"
                 " the value can be resolved."),
+
   AP_INIT_TAKE23("QS_SetReqHeader", qos_setreqheader_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetReqHeader <header name> <variable> ['late'], sets the defined"
                 " HTTP request header to the request if the specified"
                 " environment variable is set."),
+
   AP_INIT_TAKE1("QS_UnsetResHeader", qos_unsetresheader_cmd, NULL,
                 RSRC_CONF,
                 "QS_UnsetResHeader <header name>, Removes the specified response header."),
+
   AP_INIT_TAKE12("QS_SetEnvResHeader", qos_event_setenvresheader_cmd, NULL,
                  RSRC_CONF,
                  "QS_SetEnvResHeader <header name> [drop], sets the defined"
                  " HTTP response header to the request environment variables."
                  " Deletes the header if the action 'drop' has been specified."),
+
   AP_INIT_TAKE2("QS_SetEnvResHeaderMatch", qos_event_setenvresheadermatch_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvResHeaderMatch <header name> <regex>, sets the defined"
                 " HTTP response header to the request environment variables"
                 " if the specified regular expression (pcre) matches the header value."),
+
   AP_INIT_TAKE3("QS_SetEnvRes", qos_setenvres_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvRes <variable> <regex> <variable2>[=<value>], sets the environmet"
                 " variable2 if the regular expression matches against the value of"
                 " the environment variable. Occurrences of $1..$9 within the value"
                 " and replace them by parenthesized subexpressions of the regular expression."),
+
   AP_INIT_TAKE3("QS_RedirectIf", qos_redirectif_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_RedirectIf <variable> <regex> <url>, redirects the client to the"
                 " configured url if the regular expression matches the value of the"
                 " the environment variable."),
-  /* generic request filter */
-  AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
-                ACCESS_CONF,
-                "QS_DenyRequestLine '+'|'-'<id> 'log'|'deny' <pcre>, generic"
-                " request line (method, path, query and protocol) filter used"
-                " to deny access for requests matching the defined expression (pcre)."
-                " '+' adds a new rule while '-' removes a rule for a location."
-                " The action is either 'log' (access is granted but rule"
-                " match is logged) or 'deny' (access is denied)."),
-  AP_INIT_TAKE3("QS_DenyPath", qos_deny_path_cmd, NULL,
-                ACCESS_CONF,
-                "QS_DenyPath, same as QS_DenyRequestLine but applied to the"
-                " path only."),
-  AP_INIT_TAKE3("QS_DenyQuery", qos_deny_query_cmd, NULL,
-                ACCESS_CONF,
-                "QS_DenyQuery, same as QS_DenyRequestLine but applied to the"
-                " query only."),
-  AP_INIT_TAKE1("QS_InvalidUrlEncoding", qos_deny_urlenc_cmd, NULL,
-                ACCESS_CONF,
-                "QS_InvalidUrlEncoding 'log'|'deny'|'off',"
-                " enforces correct URL decoding in conjunction with the"
-                " QS_DenyRequestLine, QS_DenyPath, and QS_DenyQuery"
-                " directives. Default is \"off\"."),
-  AP_INIT_TAKE3("QS_DenyEvent", qos_deny_event_cmd, NULL,
-                ACCESS_CONF,
-                "QS_DenyEvent '+'|'-'<id> 'log'|'deny' [!]<variable>, matches"
-                " requests having the defined process"
-                " environment variable set (or NOT set if prefixed by a '!')."
-                " The action taken for matching rules"
-                " is either 'log' (access is granted but the rule match is"
-                " logged) or 'deny' (access is denied)."),
-  AP_INIT_TAKE3("QS_PermitUri", qos_permit_uri_cmd, NULL,
-                ACCESS_CONF,
-                "QS_PermitUri, '+'|'-'<id> 'log'|'deny' <pcre>, generic"
-                " request filter applied to the request uri (path and query)."
-                " Only requests matching at least one QS_PermitUri pattern are"
-                " allowed. If a QS_PermitUri pattern has been defined an the"
-                " request does not match any rule, the request is denied albeit of"
-                " any server resource availability (white list). All rules"
-                " must define the same action. pcre is case sensitve."),
-  AP_INIT_TAKE1("QS_LimitRequestBody", qos_maxpost_cmd, NULL,
-                ACCESS_CONF|RSRC_CONF,
-                "QS_LimitRequestBody <bytes>, limits the allowed size"
-                " of an HTTP request message body."),
-  AP_INIT_TAKE2("QS_MileStone", qos_milestone_cmd, NULL,
-                RSRC_CONF,
-                "QS_MileStone 'log'|'deny' <pattern>, defines request line patterns"
-                " a client must access in the defined order as they are defined in the"
-                " configuration file."),
-  AP_INIT_TAKE1("QS_MileStoneTimeout", qos_milestone_tmo_cmd, NULL,
-                RSRC_CONF,
-                "QS_MileStoneTimeout <seconds>, defines the time in seconds"
-                " within a client must reach the next milestone."
-                " Default are 3600 seconds."),
-  AP_INIT_ITERATE("QS_Decoding", qos_dec_cmd, NULL,
-                  ACCESS_CONF,
-                  "QS_DenyDecoding 'uni', enabled additional string decoding"
-                  " functions which are applied before"
-                  " matching QS_Deny* and QS_Permit* directives."
-                  " Default is URL decoding (%xx, \\xHH, '+')."),
-  AP_INIT_NO_ARGS("QS_DenyInheritanceOff", qos_denyinheritoff_cmd, NULL,
-                  ACCESS_CONF,
-                  "QS_DenyInheritanceOff, disable inheritance of QS_Deny* and QS_Permit*"
-                  " directives to a location."),
-  AP_INIT_TAKE1("QS_RequestHeaderFilter", qos_headerfilter_cmd, NULL,
-                RSRC_CONF|ACCESS_CONF,
-                "QS_RequestHeaderFilter 'on'|'off'|'size', filters request headers by allowing"
-                " only these headers which match the request header rules defined by"
-                " mod_qos. Request headers which do not conform these definitions"
-                " are either dropped or the whole request is denied. Custom"
-                " request headers may be added by the QS_RequestHeaderFilterRule"
-                " directive. Using the 'size' option, the header field max. size"
-                " is verified only (similar to LimitRequestFieldsize but using"
-                " individual values for each header type) while the pattern is ignored."),
-  AP_INIT_TAKE1("QS_ResponseHeaderFilter", qos_resheaderfilter_cmd, NULL,
-                ACCESS_CONF,
-                "QS_ResponseHeaderFilter 'on'|'off', filters response headers by allowing"
-                " only these headers which match the request header rules defined by"
-                " mod_qos. Request headers which do not conform these definitions"
-                " are dropped."),
-#ifdef AP_TAKE_ARGV
-  AP_INIT_TAKE_ARGV("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
-                    RSRC_CONF,
-                    "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>  <size>, used"
-                    " to add custom request header filter rules which override the internal"
-                    " filter rules of mod_qos."
-                    " Directive is allowed in global server context only."),
-#else
-  AP_INIT_TAKE3("QS_RequestHeaderFilterRule", qos_headerfilter_rule_cmd, NULL,
-                    RSRC_CONF,
-                    "QS_RequestHeaderFilterRule <header name> 'drop'|'deny' <pcre>, used"
-                    " to add custom request header filter rules which override the internal"
-                    " filter rules of mod_qos."
-                    " Directive is allowed in global server context only."),
-#endif
-  AP_INIT_TAKE3("QS_ResponseHeaderFilterRule", qos_resheaderfilter_rule_cmd, NULL,
-                RSRC_CONF,
-                "QS_ResponseHeaderFilterRule <header name> <pcre> <size>, used"
-                " to add custom response header filter rules which override the internal"
-                " filter rules of mod_qos."
-                " Directive is allowed in global server context only."),
-  AP_INIT_FLAG("QS_DenyBody", qos_denybody_cmd, NULL,
-               ACCESS_CONF,
-               "QS_DenyBody 'on'|'off', enabled body data filter (obsolete)."),
-  AP_INIT_FLAG("QS_DenyQueryBody", qos_denybody_d_cmd, NULL,
-               ACCESS_CONF,
-               "QS_DenyQueryBody 'on'|'off', enabled body data filter for QS_DenyQuery."),
-  AP_INIT_FLAG("QS_PermitUriBody", qos_denybody_p_cmd, NULL,
-               ACCESS_CONF,
-               "QS_PermitUriBody 'on'|'off', enabled body data filter for QS_PermitUriBody."),
+
   /* client control */
-  AP_INIT_TAKE1("QS_ClientGeoCountryDB", qos_geodb_cmd, NULL,
-                RSRC_CONF,
-                "QS_ClientGeoCountryDB <path>, path to the geograpical database file."),
-  AP_INIT_TAKE2("QS_ClientGeoCountryPriv", qos_geopriv_cmd, NULL,
-                RSRC_CONF,
-                "QS_ClientGeoCountryPriv <list> <connections>, defines a comma separated list of"
-                " country codes for origin client IP address which are allowed to"
-                " access the server if the number of busy TCP connections reaches"
-                " the defined number of connections."),
   AP_INIT_TAKE1("QS_ClientEntries", qos_client_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientEntries <number>, defines the number of individual"
                 " clients managed by mod_qos. Default is 50000."
                 " Directive is allowed in global server context only."),
-  AP_INIT_FLAG("QS_SupportIPv6", qos_enable_ipv6_cmd, NULL,
-               RSRC_CONF,
-               "QS_SupportIPv6 'on'|'off', enables IPv6 address support."
-               " Default is on."),
+
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_ClientPrefer", qos_client_pref_cmd, NULL,
                     RSRC_CONF,
@@ -12234,11 +12306,14 @@ static const command_rec qos_config_cmds[] = {
                   " Directive is allowed in global server context only."
                   ""),
 #endif
+
   AP_INIT_TAKE1("QS_ClientTolerance", qos_client_tolerance_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientTolerance <number>, defines the allowed tolerance (variation)"
-                " from a \"normal\" client (average) in percent. Default is "QOS_CC_BEHAVIOR_TOLERANCE_STR"%."
+                " from a \"normal\" client (average) in percent."
+                " Default is "QOS_CC_BEHAVIOR_TOLERANCE_STR"%."
                 " Directive is allowed in global server context only."),
+
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_ClientContentTypes", qos_client_contenttype, NULL,
                     RSRC_CONF,
@@ -12248,15 +12323,18 @@ static const command_rec qos_config_cmds[] = {
                     " behavior automatically by default but you may specify a static configuration"
                     " in order to avoid influences by a high number of abnormal clients."),
 #endif
+
   AP_INIT_TAKE12("QS_ClientEventBlockCount", qos_client_block_cmd, NULL,
                  RSRC_CONF,
                  "QS_ClientEventBlockCount <number> [<seconds>], defines the maximum number"
                  " of "QS_BLOCK" allowed within the defined time (default are 10 minutes)."
                  " Directive is allowed in global server context only."),
+
   AP_INIT_TAKE1("QS_ClientEventBlockExcludeIP", qos_client_ex_cmd, NULL,
                  RSRC_CONF,
                  "QS_ClientEventBlockExcludeIP <addr>, excludes an IP address or"
                 " address range from beeing limited by QS_ClientEventBlockCount."),
+
   AP_INIT_TAKE123("QS_ClientEventLimitCount", qos_client_limit_cmd, NULL,
                   RSRC_CONF,
                   "QS_ClientEventLimitCount <number> [<seconds> [<variable>]],"
@@ -12264,6 +12342,7 @@ static const command_rec qos_config_cmds[] = {
                   " of the specified environment variable ("QS_LIMIT_DEFAULT" by default)"
                   " allowed within the defined time (default are 10 minutes)."
                   " Directive is allowed in global server context only."),
+
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_CondClientEventLimitCount", qos_cond_client_limit_cmd, NULL,
                     RSRC_CONF,
@@ -12276,16 +12355,7 @@ static const command_rec qos_config_cmds[] = {
                     " the defined pattern (regex)."
                     " Directive is allowed in global server context only."),
 #endif
-  AP_INIT_TAKE1("QS_ClientIpFromHeader", qos_client_forwardedfor_cmd, NULL,
-                RSRC_CONF,
-                "QS_ClientIpFromHeader <header>, defines a HTTP request header to read"
-                " the client's source IP address from (instead of taking the IP address"
-                " of the client opening the TCP connection). This may be used for the"
-                " QS_ClientEventLimitCount directive and QS_Country variable."),
-  AP_INIT_NO_ARGS("QS_ClientSerialize", qos_client_serial_cmd, NULL,
-                  RSRC_CONF,
-                  "QS_ClientSerialize, serializes requests having the "QS_SERIALIZE" variable"
-                  " set if they are comming from the same IP address."),
+
   AP_INIT_TAKE1("QS_ClientEventPerSecLimit", qos_client_event_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientEventPerSecLimit <number>, defines the number"
@@ -12293,6 +12363,7 @@ static const command_rec qos_config_cmds[] = {
                 " Events are identified by requests having the"
                 " "QS_EVENT" variable set."
                 " Directive is allowed in global server context only."),
+
   AP_INIT_TAKE1("QS_ClientEventRequestLimit", qos_client_event_req_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientEventRequestLimit <number>, defines the allowed"
@@ -12300,14 +12371,81 @@ static const command_rec qos_config_cmds[] = {
                 " source IP address"
                 " having the QS_EventRequest variable set."
                 " Directive is allowed in global server context only."),
+
+  AP_INIT_NO_ARGS("QS_ClientSerialize", qos_client_serial_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_ClientSerialize, serializes requests having the "QS_SERIALIZE" variable"
+                  " set if they are comming from the same IP address."),
+
+  AP_INIT_TAKE1("QS_ClientIpFromHeader", qos_client_forwardedfor_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientIpFromHeader <header>, defines a HTTP request header to read"
+                " the client's source IP address from (instead of taking the IP address"
+                " of the client opening the TCP connection). This may be used for the"
+                " QS_ClientEventLimitCount directive and QS_Country variable."),
+
+  /* geo ip */
+  AP_INIT_TAKE1("QS_ClientGeoCountryDB", qos_geodb_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientGeoCountryDB <path>, path to the geograpical database file."),
+
+  AP_INIT_TAKE2("QS_ClientGeoCountryPriv", qos_geopriv_cmd, NULL,
+                RSRC_CONF,
+                "QS_ClientGeoCountryPriv <list> <connections>, defines a comma separated list of"
+                " country codes for origin client IP address which are allowed to"
+                " access the server if the number of busy TCP connections reaches"
+                " the defined number of connections."),
+
+  /* error documents */
+  AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,
+                RSRC_CONF,
+                "QS_ErrorPage <url>, defines a custom error page."),
+
+  AP_INIT_TAKE1("QS_ErrorResponseCode", qos_error_code_cmd, NULL,
+                RSRC_CONF,
+                "QS_ErrorResponseCode <code>, defines the HTTP response code which"
+                " is used when a request is denied, default is 500."),
+
+  /* module settings / various stuff */
+  AP_INIT_FLAG("QS_LogOnly", qos_logonly_cmd, NULL,
+               RSRC_CONF,
+               "QS_LogOnly 'on'|'off', enables the log only mode of the module"
+               " where no limitations are enforced. Default is off."
+               " Directive is allowed in global server context only."),
+
+  AP_INIT_FLAG("QS_SupportIPv6", qos_enable_ipv6_cmd, NULL,
+               RSRC_CONF,
+               "QS_SupportIPv6 'on'|'off', enables IPv6 address support."
+               " Default is on."),
+
+  AP_INIT_TAKE1("QS_SemMemFile", qos_mfile_cmd, NULL,
+                RSRC_CONF,
+                "QS_SemMemFile <path>, optional path to a directory or file"
+                " which shall be used for file based samaphores/shared memory"
+                " usage."
+                " Default is "QS_MFILE"."),
+
+  AP_INIT_TAKE1("QS_SrvSampleRate", qos_req_rate_tm_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvSampleRate <seconds>"),
+
   AP_INIT_FLAG("QS_DisableHandler", qos_disable_handler_cmd, NULL,
                RSRC_CONF,
-               ""),
+               "QS_DisableHandler 'on'|'off', disables the qos-viewer"
+               " and qos-console for a virtual host"),
+
+#ifndef QS_HAS_APACHE_PATH
+  AP_INIT_TAKE1("QS_Chroot", qos_chroot_cmd, NULL,
+                RSRC_CONF,
+                "QS_Chroot <path>, change root directory."),
+#endif
+
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
                RSRC_CONF,
                ""),
 #endif
+
   { NULL }
 };
 

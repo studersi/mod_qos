@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.248 2014-08-11 20:22:21 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.249 2014-11-18 19:56:26 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -1100,6 +1100,11 @@ if [ $? -ne 0 ]; then
   ERRORS=`expr $ERRORS + 1`
   echo "FAILED qspng test failed"
 fi
+
+./man.sh
+if [ $? -ne 0 ]; then
+  WARNINGS=`expr $WARNINGS + 1`
+fi  
 
 # code / open issues and tasks ------------------------------------
 for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "mod_qos()" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(036" | grep -v "(035" | grep -v "(062" | grep -v "(066" | grep -v "(071"`; do
