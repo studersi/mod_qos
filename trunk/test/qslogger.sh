@@ -17,6 +17,7 @@ TOT1=`wc -l /var/log/local5.* | tail -1 | awk '{print $1}'`
 TMST=`date '+%a %b %d %H:%M:%S %Y'`
 echo "[$TMST] [error] mod_qos(000): qslogger test message emerg" | ../util/src/qslogger -t mod-qos-logger -f local5
 sleep 2
+echo "$PFX $TMST"
 if [ `grep -c "mod-qos-logger: \[$TMST\] \[error\] mod_qos(000): qslogger test message emerg" /var/log/local5.error` -ne 1 ]; then
   echo "FAILED 0"
   tail -2 /var/log/local5.error

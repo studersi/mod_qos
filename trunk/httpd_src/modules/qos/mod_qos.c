@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.521 2014-11-18 19:56:25 pbuchbinder Exp $";
-static const char g_revision[] = "11.6";
+static const char revision[] = "$Id: mod_qos.c,v 5.522 2014-11-24 19:25:39 pbuchbinder Exp $";
+static const char g_revision[] = "11.7";
 
 /************************************************************************
  * Includes
@@ -624,6 +624,7 @@ typedef struct {
   char *cookie_path;
   char *user_tracking_cookie;
   char *user_tracking_cookie_force;
+  int user_tracking_cookie_session;
   int max_age;
   unsigned char key[EVP_MAX_KEY_LENGTH];
   int keyset;
@@ -1849,8 +1850,9 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
     /* valid for 300 days */
-    sc = apr_psprintf(r->pool, "%s=%s; Path=/; Max-Age=25920000",
-                      sconf->user_tracking_cookie, c);
+    sc = apr_psprintf(r->pool, "%s=%s; Path=/;%s",
+                      sconf->user_tracking_cookie, c,
+                      sconf->user_tracking_cookie_session < 1 ? " Max-Age=25920000" : "");
     if(status != HTTP_MOVED_TEMPORARILY) {
       apr_table_add(r->headers_out, "Set-Cookie", sc);
     } else {
@@ -9761,6 +9763,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->cookie_name = apr_pstrdup(sconf->pool, QOS_COOKIE_NAME);
   sconf->cookie_path = apr_pstrdup(sconf->pool, "/");
   sconf->user_tracking_cookie = NULL;
+  sconf->user_tracking_cookie_force = NULL;
+  sconf->user_tracking_cookie_session = -1;
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
   sconf->header_name_drop = 0;
@@ -9930,6 +9934,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   if(o->user_tracking_cookie == NULL) {
     o->user_tracking_cookie = b->user_tracking_cookie;
     o->user_tracking_cookie_force = b->user_tracking_cookie_force;
+    o->user_tracking_cookie_session = b->user_tracking_cookie_session;
   }
   if(o->keyset == 0) {
     memcpy(o->key, b->key, sizeof(o->key));
@@ -10719,12 +10724,31 @@ const char *qos_error_code_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
 }
 
 /** QS_UserTrackingCookieName */
-const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg, const char *name,
-                                         const char *force) {
+const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg,
+                                         const char *name,
+                                         const char *option1,
+                                         const char *option2) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
+  const char *force = NULL;
   sconf->user_tracking_cookie = apr_pstrdup(cmd->pool, name);
   sconf->user_tracking_cookie_force = NULL;
+  if(option1) {
+    if(strcasecmp(option1, "session") == 0) {
+      sconf->user_tracking_cookie_session = 1;
+    } else {
+      force = option1;
+    }
+  }
+  if(option2) {
+    if(strcasecmp(option2, "session") == 0) {
+      sconf->user_tracking_cookie_session = 1;
+    } else {
+      if(force == NULL) {
+        force = option2;
+      }
+    }
+  }
   if(force) {
     if(force[0] != '/') {
       return apr_psprintf(cmd->pool, "%s: invalid path '%s'", 
@@ -12125,27 +12149,29 @@ static const command_rec qos_config_cmds[] = {
 
   AP_INIT_TAKE12("QS_VipHeaderName", qos_header_name_cmd, NULL,
                  RSRC_CONF,
-                 "QS_VipHeaderName <name>[=<regex>] [drop], defines an HTTP response"
-                 " header which marks a user as a VIP. mod_qos creates"
-                 " a session for this user by setting a cookie, e.g., after successful"
-                 " user authentication. Tests optionally its value against the provided"
-                 " regular expression. Specify the action 'drop' if you want mod_qos"
+                 "QS_VipHeaderName <name>[=<regex>] [drop], defines an HTTP"
+                 " response header which marks a user as a VIP. mod_qos"
+                 " creates a session for this user by setting a cookie,"
+                 " e.g., after successful user authentication. Tests"
+                 " optionally its value against the provided regular"
+                 " expression. Specify the action 'drop' if you want mod_qos"
                  " to remove this control header from the HTTP response."),
 
   AP_INIT_TAKE12("QS_VipIPHeaderName", qos_ip_header_name_cmd, NULL,
                  RSRC_CONF,
                  "QS_VipIPHeaderName <name>[=<regex>] [drop], defines an HTTP"
-                 " response header which marks a client source IP address as a VIP."
-                 " Tests optionally its value against the provided regular expression."
-                 " Specify the action 'drop' if you want mod_qos to remove this"
-                 " control header from the HTTP response."),
+                 " response header which marks a client source IP address as"
+                 " a VIP. Tests optionally its value against the provided"
+                 " regular expression."
+                 " Specify the action 'drop' if you want mod_qos to remove"
+                 " this control header from the HTTP response."),
 
   AP_INIT_NO_ARGS("QS_VipUser", qos_vip_u_cmd, NULL,
                   RSRC_CONF,
                   "QS_VipUser, creates a VIP session for users which have been"
                   " authenticated by the Apache server, e.g., by the standard"
-                  " mod_auth* modules. It works similar to the QS_VipHeaderName"
-                  " directive."),
+                  " mod_auth* modules. It works similar to the"
+                  " QS_VipHeaderName directive."),
 
   AP_INIT_NO_ARGS("QS_VipIpUser", qos_vip_ip_u_cmd, NULL,
                   RSRC_CONF,
@@ -12155,30 +12181,38 @@ static const command_rec qos_config_cmds[] = {
                   " the QS_VipIPHeaderName directive."),
 
   /* user tracking */
-  AP_INIT_TAKE12("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
-                 RSRC_CONF,
-                 "QS_UserTrackingCookieName <name> [<path>], enables the user tracking cookie by"
-                 " defining a cookie name. User tracking requires mod_unique_id."
-                 " This feature is disabled by default. Ignores QS_LogOnly."),
+  AP_INIT_TAKE123("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
+                  RSRC_CONF,
+                  "QS_UserTrackingCookieName <name> [<path>] ['session'],"
+                  " enables the user tracking cookie by defining a cookie"
+                  " name. The \"path\" parameter is an option cookie"
+                  " check page which is used to ensure the client accepts"
+                  " cookies. The option \"session\" indicates that the"
+                  " cookie shall be a session cookie expiring when the"
+                  " user closes it's browser."
+                  " User tracking requires mod_unique_id."
+                  " This feature is disabled by default."
+                  " Ignores QS_LogOnly."),
 
   /* env vars */
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIf [!]<variable1> [!]<variable1> [!]<variable=value>,"
-                " sets (or unsets) the 'variable=value' (literal string) if variable1"
-                " (literal string) AND variable2 (literal string) are set in the"
-                " request environment variable list (not case sensitive)."
-                " This is used to combine multiple variables to a new event type."),
+                " sets (or unsets) the 'variable=value' (literal string) if"
+                " variable1 (literal string) AND variable2 (literal string)"
+                " are set in the request environment variable list (not case"
+                " sensitive). This is used to combine multiple variables"
+                " to a new event type."),
 
   AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
                 RSRC_CONF,
                 "QS_SetEnvIfQuery <regex> [!]<variable>[=value],"
                 " directive works quite similar to the SetEnvIf directive"
-                " of the Apache module mod_setenvif, but the specified regex is"
-                " applied against the query string portion of the request line."
-                " The directive recognizes the occurrences of $1..$9 within"
-                " value and replaces them by the sub-expressions of the defined"
-                " regex pattern."),
+                " of the Apache module mod_setenvif, but the specified regex"
+                " is applied against the query string portion of the request"
+                " line. The directive recognizes the occurrences of $1..$9"
+                " within value and replaces them by the sub-expressions of"
+                " the defined regex pattern."),
 
   AP_INIT_TAKE2("QS_SetEnvIfParp", qos_event_setenvifparp_cmd, NULL,
                 RSRC_CONF,

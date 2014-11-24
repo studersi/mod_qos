@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.35 2014-09-22 19:10:17 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.36 2014-11-24 19:25:39 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -144,6 +144,11 @@ QS_UserTrackingCookieName utc /error-docs/cookie.html
 # note: redirects GET requests only
 # SetEnvIf                Request_Method POST DISABLE_UTC_ENFORCEMENT
 SetEnvIf                  DNT 1 DISABLE_UTC_ENFORCEMENT
+</IfDefine>
+
+<IfDefine uc1ss>
+QS_SessionKey             1234567890
+QS_UserTrackingCookieName utc /error-docs/cookie.html session
 </IfDefine>
 
 <IfDefine uc1t>
