@@ -1,5 +1,5 @@
 #
-# $Id: QS_UserTrackingCookieName.htt,v 1.7 2012-11-26 15:36:26 pbuchbinder Exp $
+# $Id: QS_UserTrackingCookieName.htt,v 1.8 2014-11-24 19:25:39 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -11,7 +11,7 @@ __GET /htt/index.html?id=1 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
 __
-_MATCH headers "Set-Cookie: stat=(.*); Path=/; Max-Age=2" UTC
+_MATCH headers "Set-Cookie: stat=(.*); Path=/; Max-Age=25920000" UTC
 _EXPECT . "AS1"
 _WAIT
 

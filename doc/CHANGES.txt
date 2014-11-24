@@ -1,6 +1,8 @@
-Version
+Version 11.7
 
  - Man page for the module itself.
+
+ - Adds option "session" to QS_UserTrackingCookieName.
 
 Version 11.6
 
