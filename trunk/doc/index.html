@@ -1780,12 +1780,15 @@ has been enabled).
 <code>address=&lt;IP address&gt;</code><br>Specifies the IP address of the client to modify.
 </li>
 <li>
-<code>action='block'|'unblock'|'limit'|'unlimit'|'setvip'|'unsetvip'|'setlowprio'|'unsetlowprio'|'search'</code><br>Defines the command to be executed, or the attribute to be changed.
+<code>action='block'|'unblock'|'limit'|'unlimit'|'inclimit'|'setvip'|'unsetvip'|'setlowprio'|'unsetlowprio'|'search'</code><br>Defines the command to be executed, or the attribute to be changed.
 <ul>
-<li><code>block</code>: blocks the client for the configured period of time, see also <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>.</li>
+<li><code>block</code>: blocks the client for the configured period of time, 
+see also <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>.</li>
 <li><code>unblock</code>: clears the block attribute of the client.</li>
-<li><code>limit</code>: blocks (friendly) the client for the configured period of time, see also <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>.</li>
+<li><code>limit</code>: blocks (friendly) the client for the configured period 
+of time, see also <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>.</li>
 <li><code>unlimit</code>: clears the limit attribute of the client.</li>
+<li><code>inclimit</code>: increments the client's limit counter.</li>
 <li><code>setvip</code>: sets the client status to <a href="#privilegedusers">VIP</a>.</li>
 <li><code>unsetvip</code>: clears the VIP status for a client.</li>
 <li><code>setlowprio</code>: sets the client's priority to 'low'.</li>

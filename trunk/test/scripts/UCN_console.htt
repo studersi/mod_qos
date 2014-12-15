@@ -1,5 +1,5 @@
 #
-# $Id: UCN_console.htt,v 1.10 2014-06-19 16:50:25 pbuchbinder Exp $
+# $Id: UCN_console.htt,v 1.11 2014-12-15 12:17:42 pbuchbinder Exp $
 #
 # QS_ClientIpFromHeader        Y-Forwarded-For
 # 
@@ -380,6 +380,56 @@ __Host: httest
 __
 _EXPECT . "AS1-OK"
 _WAIT
+_CLOSE
+
+# inclimit
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=inclimit&address=194.31.217.21&event=QS_Limit HTTP/1.1
+__Host: httest limit 1
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=1/5"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?address=194.31.217.21&action=inclimit&event=QS_Limit HTTP/1.1
+__Host: httest limit 2
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=2/5"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?address=194.31.217.21&action=inclimit&event=QS_Limit HTTP/1.1
+__Host: httest limit 3
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=3/5"
+_WAIT
+_CLOSE
+
+_SLEEP 1200
+_REQ localhost $QS_PORT_BASE
+__GET /console?address=194.31.217.21&action=inclimit&event=QS_Limit HTTP/1.1
+__Host: httest limit 4
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=4/[34]"
+_WAIT
+_CLOSE
+
+_SLEEP 6000
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=inclimit&address=194.31.217.21&event=QS_Limit HTTP/1.1
+__Host: httest limit 0
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=1/5"
+_WAIT
+_CLOSE
+
 END
 
 # call by qsexec resp. sync.sh shows how to propagte events

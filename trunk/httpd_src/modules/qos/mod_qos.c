@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.522 2014-11-24 19:25:39 pbuchbinder Exp $";
-static const char g_revision[] = "11.7";
+static const char revision[] = "$Id: mod_qos.c,v 5.523 2014-12-15 12:17:42 pbuchbinder Exp $";
+static const char g_revision[] = "11.8";
 
 /************************************************************************
  * Includes
@@ -9412,6 +9412,21 @@ static int qos_handler_console(request_rec * r) {
       if(eventLimitConf) {
         (*e)->limit[limitTableIndex].limit_time = time(NULL);
         (*e)->limit[limitTableIndex].limit = eventLimitConf->limit + 1000;
+      }
+    } else if(strcasecmp(cmd, "inclimit") == 0) {
+      if(eventLimitConf) {
+        apr_time_t now = apr_time_sec(r->request_time);
+        if(((*e)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now) {
+          // expired
+          (*e)->limit[limitTableIndex].limit = 0;
+          (*e)->limit[limitTableIndex].limit_time = 0;
+        }
+        // increment limit event
+        (*e)->limit[limitTableIndex].limit++;
+        if((*e)->limit[limitTableIndex].limit == 1) {
+          // first, start timer
+          (*e)->limit[limitTableIndex].limit_time = now;
+        }
       }
     } else if(strcasecmp(cmd, "search") == 0) {
       /* nothing to do here */
