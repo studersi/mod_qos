@@ -1,3 +1,8 @@
+Version
+
+ - New console command 'inclimit' increments the
+   QS_ClientEventLimitCount rule counter.
+
 Version 11.7
 
  - Man page for the module itself.
