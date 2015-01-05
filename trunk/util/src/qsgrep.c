@@ -5,7 +5,7 @@
  *
  * See http://opensource.adnovum.ch/mod_qos/ for further details.
  *
- * Copyright (C) 2011-2014 Pascal Buchbinder
+ * Copyright (C) 2011-2015 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.16 2014-03-25 11:57:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.17 2015-01-05 17:35:59 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>

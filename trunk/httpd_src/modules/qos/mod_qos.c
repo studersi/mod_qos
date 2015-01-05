@@ -15,7 +15,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2014 Pascal Buchbinder
+ * Copyright (C) 2007-2015 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.523 2014-12-15 12:17:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.524 2015-01-05 17:35:58 pbuchbinder Exp $";
 static const char g_revision[] = "11.8";
 
 /************************************************************************

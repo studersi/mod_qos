@@ -5,7 +5,7 @@
  *
  * See http://opensource.adnovum.ch/mod_qos/ for further details.
  *
- * Copyright (C) 2011-2014 Pascal Buchbinder
+ * Copyright (C) 2011-2015 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.21 2014-03-25 11:57:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.22 2015-01-05 17:35:58 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
