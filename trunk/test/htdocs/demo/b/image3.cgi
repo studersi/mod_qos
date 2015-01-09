@@ -4,7 +4,7 @@ use strict;
 use CGI;
 
 print "Content-type: image/jpg\r\n";
-print "Cache-Control: no-cache\r\n";
+print "Cache-Control: no-cache, no-store\r\n";
 print "\r\n";
 my $n = rand(1) * 10 % 10;
 my $src = "$n.jpg";
