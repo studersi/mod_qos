@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.524 2015-01-05 17:35:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.525 2015-01-15 18:45:50 pbuchbinder Exp $";
 static const char g_revision[] = "11.8";
 
 /************************************************************************
@@ -625,6 +625,7 @@ typedef struct {
   char *user_tracking_cookie;
   char *user_tracking_cookie_force;
   int user_tracking_cookie_session;
+  char *user_tracking_cookie_domain;
   int max_age;
   unsigned char key[EVP_MAX_KEY_LENGTH];
   int keyset;
@@ -1841,6 +1842,7 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
     int len = QOS_RAN + QOS_MAGIC_LEN + 2 + strlen(new_user);
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
+    char *domain = NULL;
     apr_time_exp_gmt(&n, r->request_time);
     apr_strftime(tstr, &retcode, sizeof(tstr), "%m", &n);
     RAND_bytes(value, QOS_RAN);
@@ -1849,10 +1851,14 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
     memcpy(&value[QOS_RAN+QOS_MAGIC_LEN+2], new_user, strlen(new_user));
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
-    /* valid for 300 days */
-    sc = apr_psprintf(r->pool, "%s=%s; Path=/;%s",
+    if(sconf->user_tracking_cookie_domain != NULL) {
+      domain = apr_pstrcat(r->pool, "; Domain=", sconf->user_tracking_cookie_domain, NULL);
+    }
+    /* set cookie valid for 300 days or for this session only */
+    sc = apr_psprintf(r->pool, "%s=%s; Path=/%s%s",
                       sconf->user_tracking_cookie, c,
-                      sconf->user_tracking_cookie_session < 1 ? " Max-Age=25920000" : "");
+                      sconf->user_tracking_cookie_session < 1 ? "; Max-Age=25920000" : "",
+                      domain != NULL ? domain : "");
     if(status != HTTP_MOVED_TEMPORARILY) {
       apr_table_add(r->headers_out, "Set-Cookie", sc);
     } else {
@@ -9780,6 +9786,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->user_tracking_cookie = NULL;
   sconf->user_tracking_cookie_force = NULL;
   sconf->user_tracking_cookie_session = -1;
+  sconf->user_tracking_cookie_domain = NULL;
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
   sconf->header_name_drop = 0;
@@ -9950,6 +9957,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
     o->user_tracking_cookie = b->user_tracking_cookie;
     o->user_tracking_cookie_force = b->user_tracking_cookie_force;
     o->user_tracking_cookie_session = b->user_tracking_cookie_session;
+    o->user_tracking_cookie_domain = b->user_tracking_cookie_domain;
   }
   if(o->keyset == 0) {
     memcpy(o->key, b->key, sizeof(o->key));
@@ -10739,6 +10747,37 @@ const char *qos_error_code_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
 }
 
 /** QS_UserTrackingCookieName */
+
+#ifdef AP_TAKE_ARGV
+const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg,
+                                         int argc, char *const argv[]) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                  &qos_module);
+  int pos = 1;
+  if(argc == 0) {
+    return apr_psprintf(cmd->pool, "%s: takes 1 to 4 arguments",
+                        cmd->directive->directive);
+  }
+  sconf->user_tracking_cookie = apr_pstrdup(cmd->pool, argv[0]);
+  while(pos < argc) {
+    const char *value = argv[pos];
+    if(value[0] == '/') {
+      sconf->user_tracking_cookie_force = apr_pstrdup(cmd->pool, value);
+    } else if(strcasecmp(value, "session") == 0) {
+      sconf->user_tracking_cookie_session = 1;
+    } else {
+      if(sconf->user_tracking_cookie_domain != NULL) {
+        return apr_psprintf(cmd->pool, "%s: invalid attribute"
+                            " (expects <name>, <path>, 'session', or <domain>",
+                            cmd->directive->directive);
+      }
+      sconf->user_tracking_cookie_domain = apr_pstrdup(cmd->pool, value);      
+    }
+    pos++;
+  }
+  return NULL;
+}
+#else
 const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg,
                                          const char *name,
                                          const char *option1,
@@ -10747,7 +10786,6 @@ const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg,
                                                                 &qos_module);
   const char *force = NULL;
   sconf->user_tracking_cookie = apr_pstrdup(cmd->pool, name);
-  sconf->user_tracking_cookie_force = NULL;
   if(option1) {
     if(strcasecmp(option1, "session") == 0) {
       sconf->user_tracking_cookie_session = 1;
@@ -10773,6 +10811,7 @@ const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg,
   }
   return NULL;
 }
+#endif
 
 /**
  * session definitions: cookie name and path, expiration/max-age
@@ -12196,6 +12235,21 @@ static const command_rec qos_config_cmds[] = {
                   " the QS_VipIPHeaderName directive."),
 
   /* user tracking */
+#ifdef AP_TAKE_ARGV
+  AP_INIT_TAKE_ARGV("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
+                    RSRC_CONF,
+                    "QS_UserTrackingCookieName <name> [<path>] [<domain>] ['session'],"
+                    " enables the user tracking cookie by defining a cookie"
+                    " name. The \"path\" parameter is an option cookie"
+                    " check page which is used to ensure the client accepts"
+                    " cookies. The \"domain\" option defines the Domain attriibute"
+                    " for the Set-Cookie header. The option \"session\" indicates"
+                    " that the cookie shall be a session cookie expiring when the"
+                    " user closes it's browser."
+                    " User tracking requires mod_unique_id."
+                    " This feature is disabled by default."
+                    " Ignores QS_LogOnly."),
+#else
   AP_INIT_TAKE123("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
                   RSRC_CONF,
                   "QS_UserTrackingCookieName <name> [<path>] ['session'],"
@@ -12208,6 +12262,7 @@ static const command_rec qos_config_cmds[] = {
                   " User tracking requires mod_unique_id."
                   " This feature is disabled by default."
                   " Ignores QS_LogOnly."),
+#endif
 
   /* env vars */
   AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
