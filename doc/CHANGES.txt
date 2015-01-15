@@ -3,6 +3,9 @@ Version
  - New console command 'inclimit' increments the
    QS_ClientEventLimitCount rule counter.
 
+ - Adds the option "<domain>" to the QS_UserTrackingCookieName
+   directive.
+
 Version 11.7
 
  - Man page for the module itself.
