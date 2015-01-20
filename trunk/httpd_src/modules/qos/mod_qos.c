@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.526 2015-01-20 19:15:28 pbuchbinder Exp $";
-static const char g_revision[] = "11.8";
+static const char revision[] = "$Id: mod_qos.c,v 5.527 2015-01-20 21:20:35 pbuchbinder Exp $";
+static const char g_revision[] = "11.9";
 
 /************************************************************************
  * Includes
@@ -6988,6 +6988,10 @@ static int qos_process_connection(conn_rec *c) {
     }
     /* Check for vip (by ip) */
     vip = qos_is_excluded_ip(cconf->c, sconf->exclude_ip);
+    if(vip == 0) {
+      // check if qos_cc_pc_filter() got vip status form the cc store
+      vip = cconf->is_vip;
+    }
     if(vip) {
       /* propagate vip to connection */
       cconf->is_vip = vip;
@@ -10941,6 +10945,7 @@ const char *qos_ip_header_name_cmd(cmd_parms *cmd, void *dcfg, const char *n, co
   } else {
     sconf->ip_header_name_drop = 0;
   }
+  sconf->has_qos_cc = 1;
   sconf->ip_header_name = name;
   return NULL;
 }
