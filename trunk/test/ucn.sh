@@ -176,6 +176,12 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 sleep 2
 ./ctl.sh stop 2>/dev/null 1>/dev/null
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnt -D ucnt3 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UCN_QS_ClientEventBlock3.htt
+ERRORS=`expr $ERRORS + $?`
+sleep 2
+./ctl.sh stop 2>/dev/null 1>/dev/null
 
 ./run.sh -s scripts/ucnu.htt
 ERRORS=`expr $ERRORS + $?`

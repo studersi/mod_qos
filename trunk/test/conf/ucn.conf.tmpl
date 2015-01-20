@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.39 2014-12-09 20:33:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.40 2015-01-20 19:15:28 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -246,6 +246,12 @@ QS_SetEnvIfStatus            NullConnection    QS_Block
 <IfDefine ucnt2>
 QS_ClientEventBlockExcludeIP 127.0.0.1
 </IfDefine>
+<IfDefine ucnt3>
+QS_ClientEventBlockCount     10 2
+QS_SetEnvIfStatus            404               QS_Block
+QS_SetEnvIfStatus            403               QS_Block=5
+QS_SetEnvIfStatus            NullConnection    QS_Block
+</IfDefine>
 
 <IfDefine ucnu>
 SetEnvIfPlus Request_Query (.*) mod_qos_user_id=$1
@@ -308,6 +314,12 @@ SetEnvIfPlus Request_Query (.*) mod_qos_user_id=$1
       SetEnvIfPlus               QS_Limit02_Counter [1-9][0-9]* !QS_Redirect   late
    </Location>
    QS_RedirectIf                 QS_Redirect (.+) http://127.0.0.1/redirect.html?c=$1
+</IfDefine>
+
+<IfDefine ucnt3>
+   <Location />
+      QS_DenyQuery +id1 deny .*blockme.*
+   </Location>
 </IfDefine>
 
 <IfDefine ucnq>
