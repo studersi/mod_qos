@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.37 2015-01-15 18:45:50 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.38 2015-01-20 21:20:35 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -359,6 +359,11 @@ Listen       127.0.0.1:##QS_PORT_BASE10##
 
 <IfDefine uc1v6c>
 QS_SrvMaxConnPerIP      2
+</IfDefine>
+
+<IfDefine uc1ex>
+QS_SrvMaxConnPerIP            2
+QS_VipIPHeaderName            mod-qos-vip-ip drop
 </IfDefine>
 
 <IfDefine v6>
