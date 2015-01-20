@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.525 2015-01-15 18:45:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.526 2015-01-20 19:15:28 pbuchbinder Exp $";
 static const char g_revision[] = "11.8";
 
 /************************************************************************
@@ -101,6 +101,7 @@ static const char g_revision[] = "11.8";
 #define QOS_COOKIE_NAME "MODQOS"
 #define QOS_USER_TRACKING "mod_qos_user_id"
 #define QOS_USER_TRACKING_NEW "QOS_USER_ID_NEW"
+#define QOS_DISABLE_UTC_ENFORCEMENT "DISABLE_UTC_ENFORCEMENT"
 #define QOS_MILESTONE "mod_qos_milestone"
 #define QOS_MILESTONE_TIMEOUT 3600
 #define QOS_MILESTONE_COOKIE "QSSCD"
@@ -2578,6 +2579,28 @@ static int qos_count_free_ip(qos_srv_config *sconf) {
 }
 
 /**
+ * Checks the subprocess_env table for the QS_BLOCK
+ * event and returns its numeric value.
+ *
+ * @param r
+ * @return Number within the variable or 0 if not set
+ */
+static int get_qs_block_event(request_rec *r) {
+  const char *block = apr_table_get(r->subprocess_env, QS_BLOCK);
+  if(block == NULL) {
+    return 0;
+  }
+  if(qos_is_num(block) && (strlen(block) > 0)) {
+    int num = atoi(block);
+    if(num <= 0) {
+      num = 1;
+    }
+    return num;
+  }
+  return 1;
+}
+
+/**
  * adds an ip entry (insert or increment)
  *
  * @param sconf
@@ -3682,10 +3705,17 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf, qos_dir_conf
       char *var = apr_pstrdup(r->pool, entry[i].val);
       char *value = strchr(var, '=');
       if(value) {
+        // a value has been defined
         value[0] = '\0';
         value++;
       } else {
-        value = code;
+        if(strcmp(var, QS_BLOCK) == 0) {
+          // QS_Block optionally defines the weight for error codes
+          value = apr_pstrdup(r->pool, "1");
+        } else {
+          // by default, the value becomes the status code
+          value = code;
+        }
       }
       apr_table_set(r->subprocess_env, var, value);
     }
@@ -4738,8 +4768,8 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   if(sconf->has_qos_cc) {
     int lowrate = 0;
     int unusual_bahavior = 0;
-    int block_event = !apr_table_get(r->subprocess_env, QS_BLOCK_SEEN) &&
-      apr_table_get(r->subprocess_env, QS_BLOCK);
+    int block_event = get_qs_block_event(r);
+    const char *block_seen = apr_table_get(r->subprocess_env, QS_BLOCK_SEEN);
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     apr_time_t now = apr_time_sec(r->request_time);
@@ -4749,6 +4779,10 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     qos_s_entry_t searchEFromHeader;
     searchEFromHeader.ip6[0] = 0;
     searchEFromHeader.ip6[1] = 0;
+
+    if(block_seen != NULL) {
+      block_event = 0;
+    }
 
     if(sconf->qos_cc_prefer_limit || (sconf->req_rate != -1)) {
       qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
@@ -4861,12 +4895,12 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         rctx->evmsg = apr_pstrcat(r->pool, "r;", rctx->evmsg, NULL);
       }
       if(block_event) {
-        /* increment block event */
-        (*e)->block++;
-        if((*e)->block == 1) {
-          /* ... and start timer */
+        if((*e)->block == 0) {
+          /* start timer */
           (*e)->block_time = now;
         }
+        /* ...and increment/increase block event counter */
+        (*e)->block += block_event;
       }
     } else if((*e)->lowrate) {
       /* reset low prio client after 24h */
@@ -5042,7 +5076,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     }
     if(sconf->qos_cc_block && !excludeFromBlock) {
       apr_time_t now = apr_time_sec(r->request_time);
-      const char *block_event_str = apr_table_get(r->subprocess_env, QS_BLOCK);
+      int block_event = get_qs_block_event(r);
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
         if((*e)->blockMsg > QS_LOG_REPEAT) {
@@ -5063,13 +5097,13 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         (*e)->block = 0;
         (*e)->block_time = 0;
       }
-      if(block_event_str) {
-        /* increment block event */
-        (*e)->block++;
-        if((*e)->block == 1) {
-          /* ... and start timer */
+      if(block_event) {
+        if((*e)->block == 0) {
+          /* start timer */
           (*e)->block_time = now;
         }
+        /* ... and increment block event */
+        (*e)->block += block_event;
         /* only once per request */
         apr_table_set(r->subprocess_env, QS_BLOCK_SEEN, "");
         apr_table_set(r->connection->notes, QS_BLOCK_SEEN, "");
@@ -7188,7 +7222,7 @@ static int qos_post_read_request_later(request_rec *r) {
       char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
       qos_get_create_user_tracking(r, sconf, value);
       if(sconf->user_tracking_cookie_force) {
-        const char *ignore = apr_table_get(r->subprocess_env, "DISABLE_UTC_ENFORCEMENT");
+        const char *ignore = apr_table_get(r->subprocess_env, QOS_DISABLE_UTC_ENFORCEMENT);
         if(!ignore) {
           if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
             /* access to check url */
