@@ -1,10 +1,12 @@
 Version 11.9
 
- - QS_Block event may specify a weighting by defining how
-   to increase the counters.
+ - QS_Block event may specify a weighting of events 
+   defining by how many penalty points the counter shall
+   be increased.
 
- - Fixed: enables per client data store when usin the 
-   QS_VipIPHeaderName directive.
+ - Fixed: enables per client data store when using the 
+   QS_VipIPHeaderName together with the QS_SrvMaxConn[PerIP]
+   directive.
 
 Version 11.8
 

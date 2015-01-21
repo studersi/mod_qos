@@ -33,6 +33,7 @@ waitApache
 ./run.sh -s scripts/dos_keepalive.htt
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+cp /dev/null logs/access_dos_qos_log
 # performance with loaded mod_qos (mod_proxy)
 ../httpd/httpd -d `pwd` -f conf/dos.conf 2>/dev/null 1>/dev/null
 waitApache
@@ -41,6 +42,7 @@ t1=`date '+%s'`
 t2=`date '+%s'`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+cp /dev/null logs/access_dos_log
 # performance WITHOUT mod_qos
 ../httpd/httpd -d `pwd` -f conf/dos.conf -D no_qos 2>/dev/null 1>/dev/null
 waitApache
@@ -50,12 +52,22 @@ t4=`date '+%s'`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
 set +e
+
+totalQos=`cat logs/access_dos_qos_log | awk '{print $(NF-7)}' | awk '{total+=$NF} END{print total}'`
+total=`cat logs/access_dos_log | awk '{print $(NF-7)}' | awk '{total+=$NF} END{print total}'`
+countQos=`wc -l logs/access_dos_qos_log | awk '{print $1}'`
+count=`wc -l logs/access_dos_log | awk '{print $1}'`
+averageQos=`expr $totalQos / $countQos`
+average=`expr $total / $count`
+
 tw=`expr $t2 - $t1`
 to=`expr $t4 - $t3`
-echo " with: $tw, without: $to"
+echo " duration with: $tw, without: $to"
+echo " average per req (microseconds) with: $averageQos, without $average"
 dif=`expr $tw - $to`
 # up to 1% slower (incl rounding) is still okay (since the server
-# has not really anything else to do)
+# has not really anything else to do and our measurement resolution
+# is based on seconds only)
 if [ $dif -gt 2 ]; then
   echo " dos.sh test was too slow"
   exit 1

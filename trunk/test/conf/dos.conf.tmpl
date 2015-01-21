@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/dos.conf.tmpl,v 2.8 2015-01-05 17:35:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/dos.conf.tmpl,v 2.9 2015-01-21 19:42:03 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -77,11 +77,16 @@ DefaultType             text/plain
 AddType                 text/html .shtml
 AddOutputFilter         INCLUDES .shtml
 
-LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i #%P"
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %D %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i #%P"
 
 LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
-TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
+<IfDefine !no_qos>
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_dos_qos_log -z -g 4 -s 3600 -f"
+</IfDefine>
+<IfDefine no_qos>
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_dos_log -z -g 4 -s 3600 -f"
+</IfDefine>
 TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
 PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/

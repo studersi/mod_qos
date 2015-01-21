@@ -652,7 +652,9 @@ The variable processed by the <code><a href="#QS_ClientEventPerSecLimit">QS_Clie
 <a name="QS_Block"></a>
 <code>QS_Block[=&lt;number&gt;]</code><br>
 Variable processed by the <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> 
-directive.
+directive.<br>
+The optional <code>number</code> value defines the penalty points to 
+increase the counter (default is 1).
 </li>
 <li>
 <a name="QS_Limit"></a>
@@ -1591,14 +1593,16 @@ connections reaches the defined number of connections.
 <tr><td bgcolor="#E0EBE0">
 Sample configuration:<br>
 <pre>
+# allows not more than 20 events/penalty points per 10 minutes:
+QS_ClientEventBlockCount                          20
+
 # don't allow a client to access /app/start.html more than
 # 20 times within 10 minutes:
 SetEnvIf     Request_URI /app/start.html          QS_Block=1
-QS_ClientEventBlockCount                          20
 
-# don't allow more than 20 "403" status code responses
+# don't allow more than 4 "403" status code responses
 # (forbidden) for a client within 10 minutes:
-QS_SetEnvIfStatus        403                      QS_Block
+QS_SetEnvIfStatus        403                      QS_Block=5
 </pre>
 </td></tr>
 </table>
