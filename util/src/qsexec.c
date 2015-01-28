@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.22 2015-01-05 17:35:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.23 2015-01-28 21:03:28 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -324,13 +324,15 @@ int main(int argc, const char * const argv[]) {
       }
     } else if(argc >= 1 && strcmp(*argv,"-p") == 0) {
       pass = 1;
-    } else if(argc >= 1 && strcmp(*argv,"-h") == 0) {
+    } else if(strcmp(*argv,"-h") == 0) {
       usage(cmd, 0);
-    } else if(argc >= 1 && strcmp(*argv,"-?") == 0) {
+    } else if(strcmp(*argv,"-?") == 0) {
       usage(cmd, 0);
-    } else if(argc >= 1 && strcmp(*argv,"-help") == 0) {
+    } else if(strcmp(*argv,"-help") == 0) {
       usage(cmd, 0);
-    } else if(argc >= 1 && strcmp(*argv,"--man") == 0) {
+    } else if(strcmp(*argv,"--help") == 0) {
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
       usage(cmd, 1);
     } else {
       command = *argv;

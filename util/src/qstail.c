@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.16 2015-01-05 17:36:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.17 2015-01-28 21:03:28 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -213,6 +213,8 @@ int main(int argc, const char * const argv[]) {
     } else if(strcmp(*argv,"-?") == 0) {
       usage(cmd, 0);
     } else if(strcmp(*argv,"-help") == 0) {
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--help") == 0) {
       usage(cmd, 0);
     } else if(strcmp(*argv,"--man") == 0) {
       usage(cmd, 1);
