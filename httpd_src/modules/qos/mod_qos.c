@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.527 2015-01-20 21:20:35 pbuchbinder Exp $";
-static const char g_revision[] = "11.9";
+static const char revision[] = "$Id: mod_qos.c,v 5.528 2015-01-29 12:20:50 pbuchbinder Exp $";
+static const char g_revision[] = "11.10";
 
 /************************************************************************
  * Includes
@@ -55,6 +55,7 @@ static const char g_revision[] = "11.9";
 
 /* apache */
 #include <httpd.h>
+#include <http_core.h>
 #include <http_main.h>
 #include <http_protocol.h>
 #include <http_request.h>
@@ -116,6 +117,16 @@ static const char g_revision[] = "11.9";
 // split linear QS_SrvMaxConnPerIP* entry (conn->conn_ip) search:
 #define QS_MEM_SEG 1
 
+#ifndef QSLOG_CLID
+#define QSLOG_CLID "mod_qos_user_id"
+#endif
+#ifndef QSLOG_EVENT
+#define QSLOG_EVENT "Event"
+#endif
+#ifndef QSLOG_AVERAGE
+#define QSLOG_AVERAGE "QS_AllConn"
+#endif
+
 #ifndef QS_LOG_REPEAT
 #define QS_LOG_REPEAT     20
 #endif
@@ -126,6 +137,8 @@ static const char g_revision[] = "11.9";
 #define QS_PARP_QUERY     "qos-query"
 #define QS_PARP_PATH      "qos-path"
 #define QS_PARP_LOC       "qos-loc"
+
+#define QSLOGFORMAT       "ISBiDUkEQaC"
 
 #define QS_RESDELYATIME   "QS_ResponseDelayTime"
 #define QS_CONNID         "QS_ConnectionId"
@@ -707,6 +720,8 @@ typedef struct {
   unsigned long long static_img;
   unsigned long long static_other;
   unsigned long long static_notmodified;
+  apr_file_t *qslog_p;        /* GLOBAL ONLY */
+  const char *qslog_str;      /* GLOBAL ONLY */
 } qos_srv_config;
 
 /**
@@ -8754,6 +8769,34 @@ static int qos_logger(request_rec *r) {
 #if APR_HAS_THREADS
   qos_disable_rate(r, sconf, dconf);
 #endif
+
+  if(sconf->qslog_p) {
+    // ISBiDUkEQaC equiv %h %>s %B %{Content-Lenght}i %D %{mod_qos_user_id}e %k %{Event}e %{mod_qos_ev}e %{QS_AllConn}e '%v:%U'
+    apr_size_t nbytes;
+    const char *clID = apr_table_get(r->subprocess_env, QSLOG_CLID); // client identifier (individual users)
+    const char *event = apr_table_get(r->subprocess_env, QSLOG_EVENT); // generic event variable
+    const char *mod_qos_ev = apr_table_get(r->subprocess_env, "mod_qos_ev"); // qos events
+    const char *averageConn = apr_table_get(r->subprocess_env, QSLOG_AVERAGE); // average counter, e.g. connections
+    // TODO: measure the real traffic instead of using the (optional) content-length header
+    const char *contentLength = apr_table_get(r->headers_in, "Content-Length");
+    char *qslogstr = apr_psprintf(r->pool, "%s %s %s %s %s %s %d %s %s %s '%s:%s'\n",
+                                  QS_CONN_REMOTEIP(r->connection),                          /* %h */
+                                  (r->status <= 0) ? "-" : apr_itoa(r->pool, r->status),    /* %s */
+                                  (!r->sent_bodyct || !r->bytes_sent) ? "0" : apr_off_t_toa(r->pool, r->bytes_sent), /* %B */
+                                  contentLength == NULL ? "-" : contentLength,              /* %{content-length} */ 
+                                  apr_psprintf(r->pool, "%" APR_TIME_T_FMT, (apr_time_now() - r->request_time)), /* %D */
+                                  clID == NULL ? "-" : clID,                                /* %{mod_qos_user_id}e */
+                                  r->connection->keepalives ? r->connection->keepalives - 1 : 0, /* %k */
+                                  event == NULL ? "-" : event,                              /* %{Event}e */
+                                  mod_qos_ev == NULL ? "-" : mod_qos_ev,                    /* %{mod_qos_ev}e */
+                                  averageConn == NULL ? "- " : averageConn,                 /* %{QS_AllConn}e */
+                                  ap_escape_logitem(r->pool, ap_get_server_name(r)),        /* %v */
+                                  ap_escape_logitem(r->pool, r->uri)                        /* %U */
+                                  );
+    nbytes = strlen(qslogstr);
+    apr_file_write(sconf->qslog_p, qslogstr, &nbytes);
+  }
+
   return DECLINED;
 }
 
@@ -9097,6 +9140,17 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                  bs->server_hostname == NULL ? "-" : bs->server_hostname,
                  bs->addrs->host_port);
   }
+
+  if(sconf->qslog_str) {
+    char *qslogarg = apr_psprintf(pconf, "%s -f %s", sconf->qslog_str, QSLOGFORMAT);
+    piped_log *pl = ap_open_piped_log(pconf, qslogarg);
+    if(pl == NULL) {
+      ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
+                   QOS_LOG_PFX(009)"failed to initialize the qslog facility '%s'", qslogarg);
+    }
+    sconf->qslog_p = ap_piped_log_write_fd(pl);
+  }
+
   {
     server_rec *s = bs->next;
     while(s) {
@@ -9118,6 +9172,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       if(ssconf->act->timeout == 0) {
         ssconf->act->timeout = 300;
       }
+      ssconf->qslog_p = sconf->qslog_p;
       if(ssconf->is_virtual) {
         if(qos_init_shm(s, ssconf, ssconf->act, ssconf->location_t, net_prefer) != APR_SUCCESS) {
           return !OK;
@@ -9335,7 +9390,7 @@ static int qos_handler_man1(request_rec * r) {
       ap_rprintf(r, ".SH OPTIONS\n");
       while(cmd) {
         if(cmd->name) {
-          if(cmd->errmsg && cmd->errmsg[0]) {
+          if(cmd->errmsg && cmd->errmsg[0] && (strstr(cmd->errmsg, "QS_") != NULL)) {
             ap_rprintf(r, ".TP\n");
             ap_rprintf(r, "%s\n", cmd->errmsg);
           }
@@ -9858,6 +9913,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->geodb_size = 0;
   sconf->geo_limit = -1;
   sconf->geo_priv = apr_table_make(p, 20);
+  sconf->qslog_p = NULL;
+  sconf->qslog_str = NULL;
   sconf->ip_type = QS_IP_V6_DEFAULT;
   sconf->qos_cc_block_time = 600;
   sconf->qos_cc_limitTable = apr_table_make(p, 5);
@@ -9940,6 +9997,8 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->geodb_size = b->geodb_size;
   o->geo_limit = b->geo_limit;
   o->geo_priv = b->geo_priv;
+  o->qslog_p = b->qslog_p;
+  o->qslog_str = b->qslog_str;
   o->ip_type = b->ip_type;
   o->req_rate = b->req_rate;
   o->req_rate_start = b->req_rate_start;
@@ -10730,6 +10789,19 @@ const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
     return apr_psprintf(cmd->pool, "%s: requires absolute path (%s)", 
                         cmd->directive->directive, sconf->error_page);
   }
+  return NULL;
+}
+
+/**
+ * pipe to global qslog tool (per Apache instance stat)
+ */
+const char *qos_qlog_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
+  qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->qslog_str = apr_pstrdup(cmd->pool, arg);
   return NULL;
 }
 
@@ -12582,6 +12654,11 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_Chroot <path>, change root directory."),
 #endif
+
+  AP_INIT_TAKE1("qslog", qos_qlog_cmd, NULL,
+                RSRC_CONF,
+                "qslog <arg>, used to configure a global per Apache"
+                " instance 'qslog' logger."),
 
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
