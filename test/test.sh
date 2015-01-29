@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.251 2015-01-05 17:35:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.252 2015-01-29 19:29:07 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -114,7 +114,11 @@ if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_LocRequestLimitMatch_3.htt"
 fi
-sleep 10
+./run.sh -se ./scripts/qslogdirective.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED qslogdirective.htt"
+fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- conditional rule QS_CondLocRequestLimitMatch.htt" >>  logs/error_log
