@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.40 2015-02-18 19:59:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.41 2015-02-18 21:28:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -146,6 +146,12 @@ SetEnvIf Request_URI     ^/error-docs/(.*) QS_ErrorPage=/error-docs/$1
 QS_CondClientEventLimitCount 3  2        QS_CondLimit /htt/a
 SetEnvIf                     Request_URI ^/htt/a      QS_Cond=/htt/a
 QS_SetEnvIfQuery             QS_Limit    QS_CondLimit=yes
+</IfDefine>
+
+<IfDefine uc1pp>
+QS_CondClientEventLimitCount 6  2        QS_CondLimit /htt/a
+SetEnvIf                     Request_URI ^/htt/a      QS_Cond=/htt/a
+QS_SetEnvIfQuery             QS_Limit    QS_CondLimit=2
 </IfDefine>
 
 <IfDefine uc1q>
