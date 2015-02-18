@@ -35,6 +35,18 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1bb 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_ClientEventLimitCountbb.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1bbb 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_ClientEventLimitCountbbb.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1c 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UC1_QS_CondLocRequestLimitMatch.htt
