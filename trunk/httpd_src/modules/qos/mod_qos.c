@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.528 2015-01-29 12:20:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.529 2015-02-18 19:59:54 pbuchbinder Exp $";
 static const char g_revision[] = "11.10";
 
 /************************************************************************
@@ -2594,14 +2594,15 @@ static int qos_count_free_ip(qos_srv_config *sconf) {
 }
 
 /**
- * Checks the subprocess_env table for the QS_BLOCK
- * event and returns its numeric value.
+ * Checks the subprocess_env table for
+ * event variable and returns its numeric value.
  *
  * @param r
+ * @param variable Name of the variable to lookup
  * @return Number within the variable or 0 if not set
  */
-static int get_qs_block_event(request_rec *r) {
-  const char *block = apr_table_get(r->subprocess_env, QS_BLOCK);
+static int get_qs_event(request_rec *r, const char *variable) {
+  const char *block = apr_table_get(r->subprocess_env, variable);
   if(block == NULL) {
     return 0;
   }
@@ -4783,7 +4784,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   if(sconf->has_qos_cc) {
     int lowrate = 0;
     int unusual_bahavior = 0;
-    int block_event = get_qs_block_event(r);
+    int block_event = get_qs_event(r, QS_BLOCK);
     const char *block_seen = apr_table_get(r->subprocess_env, QS_BLOCK_SEEN);
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
@@ -4931,7 +4932,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       for(limitTableIndex = 0; 
           limitTableIndex < apr_table_elts(u->qos_cc->limitTable)->nelts;
           limitTableIndex++) {
-        const char *eventSet = NULL;
+        int eventSet = 0;
         const char *eventName = limitTableEntry[limitTableIndex].key;
         qos_s_entry_limit_conf_t *eventLimitConf = (qos_s_entry_limit_conf_t *)limitTableEntry[limitTableIndex].val;
         const char *clearEvent = apr_table_get(r->subprocess_env, eventLimitConf->eventClearStr);
@@ -4947,7 +4948,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         /*
          * check for new events
          */
-        eventSet = apr_table_get(r->subprocess_env, eventName);
+        eventSet = get_qs_event(r, eventName);
         if(eventSet) {
           char *seenEvent;
           if(strcasecmp(eventName, QS_LIMIT_DEFAULT) == 0) {
@@ -4959,12 +4960,12 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
           if(apr_table_get(r->subprocess_env, seenEvent) == NULL) {
             /* only once per request */
             apr_table_set(r->subprocess_env, seenEvent, "");
-            /* increment limit event */
-            (*ef)->limit[limitTableIndex].limit++;
-            if((*ef)->limit[limitTableIndex].limit == 1) {
-              /* ... and start timer */
+            if((*ef)->limit[limitTableIndex].limit == 0) {
+              /* start timer... */
               (*ef)->limit[limitTableIndex].limit_time = now;
             }
+            /* ... and increase limit event */
+            (*ef)->limit[limitTableIndex].limit += eventSet;
           }
         }
       }
@@ -5091,7 +5092,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     }
     if(sconf->qos_cc_block && !excludeFromBlock) {
       apr_time_t now = apr_time_sec(r->request_time);
-      int block_event = get_qs_block_event(r);
+      int block_event = get_qs_event(r, QS_BLOCK);
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
         if((*e)->blockMsg > QS_LOG_REPEAT) {
@@ -5146,7 +5147,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       for(limitTableIndex = 0; 
           limitTableIndex < apr_table_elts(u->qos_cc->limitTable)->nelts;
           limitTableIndex++) {
-        const char *eventSet = NULL;
+        int eventSet = 0;
         const char *eventName = limitTableEntry[limitTableIndex].key;
         qos_s_entry_limit_conf_t *eventLimitConf = (qos_s_entry_limit_conf_t *)limitTableEntry[limitTableIndex].val;
         const char *clearEvent = apr_table_get(r->subprocess_env, eventLimitConf->eventClearStr);
@@ -5163,7 +5164,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         /*
          * check for new events
          */
-        eventSet = apr_table_get(r->subprocess_env, eventName);
+        eventSet = get_qs_event(r, eventName);
         if(eventSet) {
           char *seenEvent;
           if(strcasecmp(eventName, QS_LIMIT_DEFAULT) == 0) {
@@ -5175,12 +5176,12 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
           if(apr_table_get(r->subprocess_env, seenEvent) == NULL) {
             // first occurance
             apr_table_set(r->subprocess_env, seenEvent, "");
-            /* increment limit event */
-            (*ef)->limit[limitTableIndex].limit++;
-            if((*ef)->limit[limitTableIndex].limit == 1) {
-              /* ... and start timer */
+            if((*ef)->limit[limitTableIndex].limit == 0) {
+              /* .start timer */
               (*ef)->limit[limitTableIndex].limit_time = now;
             }
+            /* increment limit event */
+            (*ef)->limit[limitTableIndex].limit += eventSet;
           }
         }
 

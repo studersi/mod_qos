@@ -658,9 +658,11 @@ increase the counter (default is 1).
 </li>
 <li>
 <a name="QS_Limit"></a>
-<code>QS_Limit</code><br>
+<code>QS_Limit[=&lt;number&gt;]</code><br>
 (Default) variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
-directive.
+directive.<br>
+The optional <code>number</code> value defines the penalty points to 
+increase the counter (default is 1).
 </li>
 <li>
 <a name="_Clear"></a>
@@ -806,7 +808,7 @@ matching the specified condition. <br>
 Only one <code>QS_CondLocRequestLimitMatch</code> rule is evaluated per request.
 </li>
 <li>
-<a name="QS_CondClientEventLimitCount"</a>
+<a name="QS_CondClientEventLimitCount"></a>
 <code>QS_CondClientEventLimitCount &lt;number&gt; &lt;seconds&gt; &lt;variable&gt; &lt;pattern&gt</code><br>
 Defines the maximum number of the specified environment variable
 allowed within the defined time. Directive works similar as 
@@ -1500,7 +1502,8 @@ suffixed by <code>_Clear</code>, e.g. <code>QS_Limit_Clear</code>.
 <li>Adding/removing events require a server restart (graceful restart is 
 not supported).</li>
 <li>Only the default rule (<code>QS_Limit</code>) is accessibly by the 
-<a href="#statusviewer">status viewer</a>.</li>
+<a href="#statusviewer">status viewer</a> (you may use the 
+<a href="#webconsole">console</a> to view other variables alternatively).</li>
 <li>See also <a href="#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></a> 
 if you want to enforce a rule under certain conditions only.
 </ul></small>

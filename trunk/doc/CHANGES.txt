@@ -1,3 +1,16 @@
+Version 11.11
+
+ - QS_Limit (resp. the event variable processed by the
+   QS_ClientEventLimitCount/QS_CondClientEventLimitCount
+   directives)  event may specify a weighting of events 
+   defining by how many penalty points the counter shall
+   be increased. Default is 1.
+
+Version 11.10
+
+ - Adds qslog command to the module (dedicated statisic
+   log facility on a per Apache server instance basis).
+
 Version 11.9
 
  - QS_Block event may specify a weighting of events 

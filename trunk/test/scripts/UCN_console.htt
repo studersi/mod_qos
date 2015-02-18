@@ -1,5 +1,5 @@
 #
-# $Id: UCN_console.htt,v 1.11 2014-12-15 12:17:42 pbuchbinder Exp $
+# $Id: UCN_console.htt,v 1.12 2015-02-18 19:59:55 pbuchbinder Exp $
 #
 # QS_ClientIpFromHeader        Y-Forwarded-For
 # 
@@ -34,7 +34,7 @@ _CLOSE
 
 _LOOP 2
 _REQ localhost $QS_PORT_BASE
-__GET /index.html?id=22 HTTP/1.1
+__GET /index.html?id=1 HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: fc00::112
 __User-Agent: Mozilla
@@ -44,7 +44,7 @@ _EXPECT . "this is the root index.html"
 _WAIT
 _END LOOP
 _REQ localhost $QS_PORT_BASE
-__GET /index.html?product=22 HTTP/1.1
+__GET /index.html?product=1 HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: fc00::112
 __User-Agent: Mozilla
@@ -262,7 +262,7 @@ _CLOSE
 
 _LOOP 9
 _REQ localhost $QS_PORT_BASE
-__GET /index.html?id=22 HTTP/1.1
+__GET /index.html?id=1 HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: 182.12.33.2
 __User-Agent: Mozilla
@@ -274,7 +274,7 @@ _END LOOP
 
 # this request triggers the sync to the second Apache instance:
 _REQ localhost $QS_PORT_BASE
-__GET /index.html?id=22 HTTP/1.1
+__GET /index.html?id=1 HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: 182.12.33.2
 __User-Agent: Mozilla
@@ -341,7 +341,7 @@ _EXEC tail -1 logs/error_log
 
 #_LOOP 20
 #_REQ localhost $QS_PORT_BASE
-#__GET /index.html?id=12 HTTP/1.1
+#__GET /index.html?id=1 HTTP/1.1
 #__Host: localhost
 #__Y-Forwarded-For: 127.0.3.99
 #__User-Agent: Mozilla
