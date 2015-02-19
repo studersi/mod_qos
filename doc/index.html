@@ -1482,12 +1482,14 @@ to exclude an IP address from being processed by this limitation
 <li>
 <a name="QS_ClientEventLimitCount"></a>
 <code>QS_ClientEventLimitCount &lt;number&gt; [&lt;seconds&gt; [&lt;variable&gt;]]</code><br>
-Defines the maximum number of the defined environment variables 
-(<code>QS_Limit</code> by default) allowed within the defined time (default 
+Defines the maximum number of requests having the defined environment variables 
+(<code>QS_Limit</code> by default) set allowed within the defined time (default 
 is 600 seconds). Requests from client IP's reaching this limitation are 
 denied for the specified time (blocked at request level). <br/>
 <small>Notes:
 <ul>
+<li>The value of the variable defines the penalty points by which the counters 
+are increased. Default (empty or non-numeric value) is 1 (increment per request).</li>
 <li><a name="QS_ClientIpFromHeader"></a>
 You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
 directive to determine the client's IP address based on the defined HTTP 
