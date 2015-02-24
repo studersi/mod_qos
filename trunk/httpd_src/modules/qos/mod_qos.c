@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.531 2015-02-24 06:32:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.532 2015-02-24 19:05:35 pbuchbinder Exp $";
 static const char g_revision[] = "11.12";
 
 /************************************************************************
@@ -180,6 +180,8 @@ static const char *m_env_variables[] = {
   QS_SERIALIZE,
   QS_BLOCK,
   QS_BLOCK_SEEN,
+  QS_LIMIT_DEFAULT,
+  QS_LIMIT_SEEN,
   QS_EVENT,
   QS_COND,
   QS_ISVIPREQ,

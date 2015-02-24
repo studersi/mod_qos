@@ -43,9 +43,25 @@ custom error page
     _D<!--#echo var="QS_Limit_Remaining" -->
 </pre>
 </p>
+<p>Remaining time: <span id="remaining"><!--#echo var="QS_Limit_Remaining" --></span> seconds</p>
 <hr>
 <pre>
-$Revision: 1.6 $
+$Revision: 1.7 $
 </pre>
+<script type="text/javascript">
+<!--
+setInterval(function () {
+  var msg = document.getElementById('remaining');
+  var value = msg.innerHTML;
+  var remainTime = value - 1;
+  if(remainTime < 0) {
+    window.location = window.location.pathname;
+  } else {
+    msg.innerHTML = remainTime;
+  }
+}, 1000);
+//-->
+</script>
+
 </body>
 </html>
