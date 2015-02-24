@@ -1499,6 +1499,9 @@ contain a single IP address.</li>
 <li>The current value of this counter is stored within the variable suffixed 
 by <code>_Counter</code>, e.g. <code>QS_Limit_Counter</code> for further 
 processing by other rules. </li>
+<li>The remaining time (in seconds) is stored within the variabled suffixed 
+by <code>_Remaining</code>, e.g. <code>QS_Limit_Remaining</code> to be 
+used within SSI error pages.</li>
 <li>The counter can be reset by setting the environment variable which name is 
 suffixed by <code>_Clear</code>, e.g. <code>QS_Limit_Clear</code>.
 <li>Adding/removing events require a server restart (graceful restart is 

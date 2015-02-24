@@ -40,8 +40,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.530 2015-02-19 20:08:17 pbuchbinder Exp $";
-static const char g_revision[] = "11.11";
+static const char revision[] = "$Id: mod_qos.c,v 5.531 2015-02-24 06:32:29 pbuchbinder Exp $";
+static const char g_revision[] = "11.12";
 
 /************************************************************************
  * Includes
@@ -147,10 +147,12 @@ static const char g_revision[] = "11.11";
 #define QS_ErrorNotes     "QS_ErrorNotes"
 #define QS_BLOCK          "QS_Block"
 #define QS_BLOCK_SEEN     "QS_Block_seen"
+#define QS_LIMIT_NAME_PFX "QS_Limit_VAR_NAME_IDX"
 #define QS_LIMIT_DEFAULT  "QS_Limit"
 #define QS_LIMIT_SEEN     "QS_Limit_seen"
 #define QS_COUNTER_SUFFIX "_Counter"
 #define QS_LIMIT_CLEAR    "_Clear"
+#define QS_LIMIT_REMAINING "_Remaining"
 #define QS_EVENT          "QS_Event"
 #define QS_COND           "QS_Cond"
 #define QS_ISVIPREQ       "QS_IsVipRequest"
@@ -178,8 +180,6 @@ static const char *m_env_variables[] = {
   QS_SERIALIZE,
   QS_BLOCK,
   QS_BLOCK_SEEN,
-  QS_LIMIT_DEFAULT,
-  QS_LIMIT_SEEN,
   QS_EVENT,
   QS_COND,
   QS_ISVIPREQ,
@@ -5147,6 +5147,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       for(limitTableIndex = 0; 
           limitTableIndex < apr_table_elts(u->qos_cc->limitTable)->nelts;
           limitTableIndex++) {
+        time_t remaining = 0;
         int eventSet = 0;
         const char *eventName = limitTableEntry[limitTableIndex].key;
         qos_s_entry_limit_conf_t *eventLimitConf = (qos_s_entry_limit_conf_t *)limitTableEntry[limitTableIndex].val;
@@ -5189,8 +5190,16 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
          * propagate to env
          */
         apr_table_set(r->subprocess_env,
+                      apr_pstrcat(r->pool, QS_LIMIT_NAME_PFX, eventName, NULL),
+                      eventName);
+        apr_table_set(r->subprocess_env,
                       apr_pstrcat(r->pool, eventName, QS_COUNTER_SUFFIX, NULL),
                       apr_psprintf(r->pool, "%d", (*ef)->limit[limitTableIndex].limit));
+        
+        remaining = ((*ef)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) - now;
+        apr_table_set(r->subprocess_env,
+                      apr_pstrcat(r->pool, eventName, QS_LIMIT_REMAINING, NULL),
+                      apr_psprintf(r->pool, "%"APR_TIME_T_FMT, remaining > 0 ? remaining : 0));
 
         /*
          * enforce limit
@@ -5235,6 +5244,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     }
 
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT17 */
+
     if(!sconf->log_only) {
       if(req_per_sec_block_rate) {
         qs_req_ctx *rctx = qos_rctx_config_get(r);
@@ -6837,6 +6847,106 @@ static void qos_init_unique_id(apr_pool_t *p, server_rec *bs) {
   m_unique_id.unique_id_counter = time(NULL);
 }
 
+/**
+ * propagates environment variables to sub-requests (for logging)
+ */
+static void qos_propagate_events(request_rec *r) {
+  request_rec *mr = NULL;
+  const char **var;
+  if(r->prev) {
+    mr = r->prev;
+  } else if(r->main) {
+    mr = r->main;
+  } else if(r->next) {
+    mr = r->next;
+  }
+  var = m_env_variables;
+  while(*var) {
+    int propagated = 0;
+    if(mr) {
+      const char *p = apr_table_get(mr->subprocess_env, *var);
+      if(p) {
+        propagated = 1;
+        apr_table_set(r->subprocess_env, *var, p);
+      }
+      if(!propagated) {
+        p = apr_table_get(r->subprocess_env, *var);
+        if(p) {
+          propagated = 1;
+          apr_table_set(mr->subprocess_env, *var, p);
+        }
+      }
+    }
+    var++;
+  }
+  if(r->prev) {
+    // internal redirect (e.g. error page)
+    int i;
+    int len = strlen(QS_LIMIT_NAME_PFX);
+    request_rec *mp = r->prev;
+    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(mp->subprocess_env)->elts;
+    for(i = 0; i < apr_table_elts(mp->subprocess_env)->nelts; ++i) {
+      if(strncmp(entry[i].key, QS_LIMIT_NAME_PFX, len) == 0) {
+        const char *eventName = entry[i].val;
+        const char *name = apr_pstrcat(r->pool, eventName, QS_COUNTER_SUFFIX, NULL);
+        const char *value = apr_table_get(mp->subprocess_env, name);
+        if(value) {
+          apr_table_set(r->subprocess_env, name, value);
+        }
+        name = eventName;
+        value = apr_table_get(mp->subprocess_env, name);
+        if(value) {
+          apr_table_set(r->subprocess_env, name, value);
+        }
+        name = apr_pstrcat(r->pool, eventName, QS_LIMIT_REMAINING, NULL);
+        value = apr_table_get(mp->subprocess_env, name);
+        if(value) {
+          apr_table_set(r->subprocess_env, name, value);
+        }
+        name = apr_pstrcat(r->pool, eventName, QS_LIMIT_SEEN, NULL);
+        value = apr_table_get(mp->subprocess_env, name);
+        if(value) {
+          apr_table_set(r->subprocess_env, name, value);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * ensure that every request record has the error notes to log
+ */
+static void qos_propagate_notes(request_rec *r) {
+  request_rec *mr = NULL;
+  const char **var;
+  if(r->prev) {
+    mr = r->prev;
+  } else if(r->main) {
+    mr = r->main;
+  } else if(r->next) {
+    mr = r->next;
+  }
+  var = m_note_variables;
+  while(*var) {
+    int propagated = 0;
+    if(mr) {
+      const char *p = apr_table_get(mr->notes, *var);
+      if(p) {
+        propagated = 1;
+        apr_table_setn(r->notes, *var, p);
+      }
+      if(!propagated) {
+        p = apr_table_get(r->notes, *var);
+        if(p) {
+          propagated = 1;
+          apr_table_setn(mr->notes, *var, p);
+        }
+      }
+    }
+    var++;
+  }
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -7363,6 +7473,11 @@ static int qos_post_read_request(request_rec *r) {
   }
   apr_table_set(r->subprocess_env, QS_CONNID, connectionid);
 
+  if(!ap_is_initial_req(r)) {
+    // sub-request
+    qos_propagate_events(r);
+  }
+
   /* QS_ClientPrefer: propagate connection env vars to req*/
   if(apr_table_get(r->connection->notes, "QS_ClientLowPrio")) {
     apr_table_set(r->subprocess_env, "QS_ClientLowPrio", "1");
@@ -7370,6 +7485,12 @@ static int qos_post_read_request(request_rec *r) {
   if(qos_request_check(r, sconf) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;
   }
+
+  if(!ap_is_initial_req(r)) {
+    // we are done for this request (e.g. error page)
+    return DECLINED;
+  }
+
   qos_parp_prr(r, sconf);
   if(sconf && (sconf->req_rate != -1)) {
     inctx = qos_get_ifctx(r->connection->input_filters);
@@ -8379,69 +8500,6 @@ static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
       ap_add_output_filter("qos-out-filter-min", NULL, r, r->connection);
 #endif
     }
-  }
-}
-
-static void qos_propagate_events(request_rec *r) {
-  request_rec *mr = NULL;
-  const char **var;
-  if(r->prev) {
-    mr = r->prev;
-  } else if(r->main) {
-    mr = r->main;
-  } else if(r->next) {
-    mr = r->next;
-  }
-  var = m_env_variables;
-  while(*var) {
-    int propagated = 0;
-    if(mr) {
-      const char *p = apr_table_get(mr->subprocess_env, *var);
-      if(p) {
-        propagated = 1;
-        apr_table_set(r->subprocess_env, *var, p);
-      }
-      if(!propagated) {
-        p = apr_table_get(r->subprocess_env, *var);
-        if(p) {
-          propagated = 1;
-          apr_table_set(mr->subprocess_env, *var, p);
-        }
-      }
-    }
-    var++;
-  }
-}
-
-/** ensure that every request record has the error notes to log */
-static void qos_propagate_notes(request_rec *r) {
-  request_rec *mr = NULL;
-  const char **var;
-  if(r->prev) {
-    mr = r->prev;
-  } else if(r->main) {
-    mr = r->main;
-  } else if(r->next) {
-    mr = r->next;
-  }
-  var = m_note_variables;
-  while(*var) {
-    int propagated = 0;
-    if(mr) {
-      const char *p = apr_table_get(mr->notes, *var);
-      if(p) {
-        propagated = 1;
-        apr_table_setn(r->notes, *var, p);
-      }
-      if(!propagated) {
-        p = apr_table_get(r->notes, *var);
-        if(p) {
-          propagated = 1;
-          apr_table_setn(mr->notes, *var, p);
-        }
-      }
-    }
-    var++;
   }
 }
 

@@ -26,12 +26,28 @@ __GET /htt/a/?name=QS_Limit HTTP/1.1
 __Host: localhost
 __
 _EXPECT . "custom error page"
+_EXPECT . "_Byes"
+_EXPECT . "_C3"
+_EXPECT . "_D3"
 _WAIT
 _CLOSE
 _SLEEP 100
 _EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3"
 _EXEC tail -1 logs/error_log
-_SLEEP 4000
+_SLEEP 950
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/ HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "custom error page"
+_EXPECT . "_B\(none\)"
+_EXPECT . "_C3"
+_EXPECT . "_D2"
+_WAIT
+_CLOSE
+
+_SLEEP 3000
 
 _REQ localhost $QS_PORT_BASE
 __GET /htt/a/?name=QS_Limit HTTP/1.1
