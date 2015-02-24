@@ -38,11 +38,14 @@ custom error page
     _8<!--#echo var="QS_ClientLowPrio" -->
     _9<!--#echo var="QS_IsVipRequest" -->
     _A<!--#echo var="QS_Country" -->
+    _B<!--#echo var="QS_Limit" -->
+    _C<!--#echo var="QS_Limit_Counter" -->
+    _D<!--#echo var="QS_Limit_Remaining" -->
 </pre>
 </p>
 <hr>
 <pre>
-$Revision: 1.5 $
+$Revision: 1.6 $
 </pre>
 </body>
 </html>

@@ -1,3 +1,14 @@
+Version
+
+ - Propagates the variables used by QS_ClientEventLimitCount
+   to sub-requests making them available within SSI pages.
+
+ - New QS_ClientEventLimitCount variable suffixed by
+   "_Remaining" containing the remaining time in seconds
+   a client is still blocked (to be used within error
+   pages to show a client how long he has to wait until
+   he might proceed).
+
 Version 11.11
 
  - QS_Limit (resp. the event variable processed by the
