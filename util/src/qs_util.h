@@ -35,6 +35,10 @@ static const char man_date[] = "February 2015";
 /* ----------------------------------
  * definitions
  * ---------------------------------- */
+/* huge (128kb) buffer supporting very long lines (twice as
+   much as Apache's rotatelogs uses */
+#define MAX_LINE_BUFFER 131072
+/* smaller buffer, e.g. for qslog */
 #define MAX_LINE 32768
 #define QS_HUGE_STR 2048
 #define CR 13

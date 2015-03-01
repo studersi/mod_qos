@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.20 2015-01-05 17:35:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.21 2015-03-01 21:11:42 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -502,7 +502,7 @@ int main(int argc, const char * const argv[]) {
     char prev;
     qos_geo_t *pB;
     apr_pool_t *tmp;
-    char line[HUGE_STRING_LEN];
+    char line[MAX_LINE_BUFFER];
     regex_t preg;
     regex_t preg2;
     regmatch_t ma[MAX_REG_MATCH];

@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.25 2015-01-05 17:35:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.26 2015-03-01 21:11:42 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -51,7 +51,6 @@ static const char revision[] = "$Id: qsrotate.c,v 1.25 2015-01-05 17:35:59 pbuch
 
 #include "qs_util.h"
 
-#define BUFSIZE        65536
 #define HUGE_STR       1024
 
 /* global variables used by main and support thread */
@@ -320,7 +319,7 @@ static void *forcedRotationThread(void *argv) {
 int main(int argc, char **argv) {
   char *username = NULL;
   int rc;
-  char buf[BUFSIZE];
+  char buf[MAX_LINE_BUFFER];
   int nRead, nWrite;
   time_t now;
   struct stat st;

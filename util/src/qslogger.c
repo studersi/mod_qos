@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.16 2015-01-05 17:35:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.17 2015-03-01 21:11:42 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,8 +45,6 @@ static const char revision[] = "$Id: qslogger.c,v 1.16 2015-01-05 17:35:59 pbuch
 // [Wed Mar 28 22:40:41 2012] [warn] 
 #define QS_DEFAULTPATTERN "^\\[[0-9a-zA-Z :]+\\] \\[([a-z]+)\\] "
 
-// huge (2mb) buffer supporting very long long lines
-#define MAX_LINE_BUFFER 2097152
 #define QS_MAX_PATTERN_MA 2
 
 static int m_default_severity = LOG_NOTICE;
@@ -392,5 +390,6 @@ int main(int argc, const char * const argv[]) {
       fflush(stdout);
     }
   }
+  free(line);
   return 0;
 }

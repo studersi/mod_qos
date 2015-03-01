@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.32 2015-01-28 21:03:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.33 2015-03-01 21:11:42 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -53,7 +53,6 @@ static const char revision[] = "$Id: qssign.c,v 1.32 2015-01-28 21:03:28 pbuchbi
 #include "qs_util.h"
 
 #define SEQDIG "12"
-#define MAX_STRING_LEN 32768
 
 #define QS_END "qssign---end-of-data"
 
@@ -367,7 +366,7 @@ static void qs_set_format(char *s) {
  */
 static void qs_sign(const char *sec) {
   int sec_len = strlen(sec);
-  char line[MAX_LINE];
+  char line[MAX_LINE_BUFFER];
   int dig = atoi(SEQDIG);
   /* <data> ' ' <sequence number> '#' <hmac>*/
   int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
@@ -394,7 +393,7 @@ static long qs_verify(const char *sec) {
   int sec_len = strlen(sec);
   long err = 0; // errors
   long lnr = 0; // line number
-  char line[MAX_LINE];
+  char line[MAX_LINE_BUFFER];
   int line_size = sizeof(line);
   int line_len;
   m_nr = -1; // sequence number
@@ -491,7 +490,7 @@ static long qs_verify(const char *sec) {
 }
 
 static void qs_failedexec(const char *msg, const char *cmd, apr_status_t status) {
-  char buf[MAX_STRING_LEN];
+  char buf[MAX_LINE];
   apr_strerror(status, buf, sizeof(buf));
   fprintf(stderr, "ERROR %s '%s': '%s'\n", msg, cmd, buf);
   exit(1);
@@ -518,7 +517,7 @@ static char *qs_readpwd(apr_pool_t *pool, const char *prg) {
   apr_table_t *a = qs_args(pool, prg);
   int i;
   apr_procattr_t *attr;
-  apr_size_t len = MAX_STRING_LEN;
+  apr_size_t len = MAX_LINE;
   char *buf = apr_pcalloc(pool, len);
 
   args = apr_pcalloc(pool, (apr_table_elts(a)->nelts + 1) * sizeof(const char *));
