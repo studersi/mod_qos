@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.33 2015-03-01 21:11:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.34 2015-03-03 21:13:19 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -366,12 +366,12 @@ static void qs_set_format(char *s) {
  */
 static void qs_sign(const char *sec) {
   int sec_len = strlen(sec);
-  char line[MAX_LINE_BUFFER];
+  char *line = calloc(1, MAX_LINE_BUFFER+1);
   int dig = atoi(SEQDIG);
   /* <data> ' ' <sequence number> '#' <hmac>*/
-  int line_size = sizeof(line) - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
+  int line_size = MAX_LINE_BUFFER - 1 - dig - 1 - (2*HMAC_MAX_MD_CBLOCK) - 1;
   int line_len;
-  while(fgets(line, sizeof(line), stdin) != NULL) {
+  while(fgets(line, MAX_LINE_BUFFER, stdin) != NULL) {
     line_len = strlen(line) - 1;
     while(line_len > 0) { // cut tailing CR/LF
       if(line[line_len] >= ' ') {
@@ -393,8 +393,8 @@ static long qs_verify(const char *sec) {
   int sec_len = strlen(sec);
   long err = 0; // errors
   long lnr = 0; // line number
-  char line[MAX_LINE_BUFFER];
-  int line_size = sizeof(line);
+  char *line = calloc(1, MAX_LINE_BUFFER+1);
+  int line_size = MAX_LINE_BUFFER;
   int line_len;
   m_nr = -1; // sequence number
   while(fgets(line, line_size, stdin) != NULL) {

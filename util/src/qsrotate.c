@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.26 2015-03-01 21:11:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.27 2015-03-03 21:13:19 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -319,7 +319,7 @@ static void *forcedRotationThread(void *argv) {
 int main(int argc, char **argv) {
   char *username = NULL;
   int rc;
-  char buf[MAX_LINE_BUFFER];
+  char *buf;
   int nRead, nWrite;
   time_t now;
   struct stat st;
@@ -425,8 +425,9 @@ int main(int argc, char **argv) {
     pthread_create(&tid, tha, forcedRotationThread, NULL);
   }
 
+  buf = calloc(1, MAX_LINE_BUFFER+1);
   for(;;) {
-    nRead = read(0, buf, sizeof buf);
+    nRead = read(0, buf, MAX_LINE_BUFFER);
     if(nRead == 0) exit(3);
     if(nRead < 0) if(errno != EINTR) exit(4);
     if(m_force_rotation) {
@@ -464,5 +465,7 @@ int main(int argc, char **argv) {
       qs_csUnLock();
     }
   }
+  memset(buf, 0, MAX_LINE_BUFFER);
+  free(buf);
   return 0;
 }
