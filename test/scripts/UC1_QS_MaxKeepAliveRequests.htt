@@ -1,0 +1,98 @@
+#
+#   SetEnvIfPlus Request_Query MaxKeepAliveRequests=([0-9]+) QS_MaxKeepAliveRequests=$1
+#   SetEnvIfPlus Request_Query KeepAliveTimeout=([0-9]+) QS_KeepAliveTimeout=$1
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=100"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=7"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=6"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=5"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=4"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=3"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=2"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=1"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Connection: close"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT ERROR "End of file"
+_WAIT
+
+END

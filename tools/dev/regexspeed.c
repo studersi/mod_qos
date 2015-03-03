@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regexspeed.c,v 1.7 2014-06-03 13:34:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: regexspeed.c,v 1.8 2015-03-03 21:13:38 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -72,6 +72,27 @@ typedef struct {
   int len;
 } qs_r_t;
 
+void memtest() {
+  long long start;
+  long long end;
+  struct timeval tv;
+  int i = 0;
+
+  //char buf[32000];
+  char *buf = malloc(32000);
+
+  gettimeofday(&tv, NULL);
+  start = tv.tv_sec * 1000000 + tv.tv_usec;
+  for(i = 0; i< 9000000; i++) {
+    memset(buf, 0, 10000);
+  }
+
+  gettimeofday(&tv, NULL);
+  end = tv.tv_sec * 1000000 + tv.tv_usec;
+  printf("%lld usec\n", end - start);
+  exit(1);
+}
+
 int main(int argc, const char *const argv[]) {
   qs_r_t data[] = {
     { "Emma", 0 },
@@ -96,6 +117,8 @@ int main(int argc, const char *const argv[]) {
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
   rules = apr_table_make(pool, 100);
+
+  memtest();
 
   if(argc != 2) {
     usage2();
