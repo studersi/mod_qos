@@ -40,7 +40,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.532 2015-02-24 19:05:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.533 2015-03-03 21:13:37 pbuchbinder Exp $";
 static const char g_revision[] = "11.12";
 
 /************************************************************************
@@ -158,6 +158,7 @@ static const char g_revision[] = "11.12";
 #define QS_ISVIPREQ       "QS_IsVipRequest"
 #define QS_VipRequest     "QS_VipRequest"
 #define QS_KEEPALIVE      "QS_KeepAliveTimeout"
+#define QS_MAXKEEPALIVEREQ "QS_MaxKeepAliveRequests"
 #define QS_TIMEOUT        "QS_Timeout"
 #define QS_CLOSE          "QS_SrvMinDataRate"
 #define QS_EMPTY_CON      "NullConnection"
@@ -187,6 +188,7 @@ static const char *m_env_variables[] = {
   QS_ISVIPREQ,
   QS_VipRequest,
   QS_KEEPALIVE,
+  QS_MAXKEEPALIVEREQ,
   QS_CLOSE,
   QS_EMPTY_CON,
   QS_RuleId,
@@ -4098,38 +4100,56 @@ static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_c
  */
 static void qos_keepalive(request_rec *r, qos_srv_config *sconf) {
   if(r->subprocess_env) {
-    const char *v = apr_table_get(r->subprocess_env, QS_KEEPALIVE);
-    if(v) {
-      int ka = atoi(v);
-      if(ka == 0 && v[0] != '0') {
+    const char *vtmo = apr_table_get(r->subprocess_env, QS_KEEPALIVE);
+    const char *vmax = apr_table_get(r->subprocess_env, QS_MAXKEEPALIVEREQ);
+    int ka = -1; // keep alive timeout
+    int km = -1; // max keep alive requests
+    if(vtmo) {
+      ka = atoi(vtmo);
+      if(ka == 0 && vtmo[0] != '0') {
         ka = -1;
       }
-      if(ka >= 0) {
-        qs_req_ctx *rctx = qos_rctx_config_get(r);
-        apr_interval_time_t kat = apr_time_from_sec(ka);
-        if(QS_ISDEBUG(r->server)) {
-          ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                        QOS_LOGD_PFX"set keepalive timeout to %s seconds%s, id=%s",
-                        v, 
-                        sconf->log_only ? " (log only)" : "",
-                        qos_unique_id(r, NULL));
-        }
-        /* copy the server record (I konw, but least this works ...) */
-        if(!rctx->evmsg || !strstr(rctx->evmsg, "T;")) {
-          /* copy it only once (@hp or @out-filter) */
-          if(!sconf->log_only) {
-            server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
-            server_rec *sc = apr_pcalloc(r->connection->pool, sizeof(server_rec));
-            memcpy(sr, r->server, sizeof(server_rec));
-            memcpy(sc, r->connection->base_server, sizeof(server_rec));
-            r->server = sr;
-            r->connection->base_server = sc;
-          }
-          rctx->evmsg = apr_pstrcat(r->pool, "T;", rctx->evmsg, NULL);
-        }
+    }
+    if(vmax) {
+      km = atoi(vmax);
+      if(km == 0 && vmax[0] != '0') {
+        km = -1;
+      }
+    }
+    if(ka >= 0 || km >= 0) {
+      qs_req_ctx *rctx = qos_rctx_config_get(r);
+      if(QS_ISDEBUG(r->server)) {
+        int kaorig = apr_time_sec(r->server->keep_alive_timeout);
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                      QOS_LOGD_PFX"set keepalive timeout to %d seconds and max"
+                      " keepalive requests to %d%s, id=%s",
+                      ka >= 0 ? ka :  kaorig,
+                      km >= 0 ? km : r->server->keep_alive_max,
+                      sconf->log_only ? " (log only)" : "",
+                      qos_unique_id(r, NULL));
+      }
+      /* copy the server record (I konw, but least this works ...) */
+      if(!rctx->evmsg || !strstr(rctx->evmsg, "T;")) {
+        /* copy it only once (@hp or @out-filter) */
         if(!sconf->log_only) {
+          server_rec *sr = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+          server_rec *sc = apr_pcalloc(r->connection->pool, sizeof(server_rec));
+          memcpy(sr, r->server, sizeof(server_rec));
+          memcpy(sc, r->connection->base_server, sizeof(server_rec));
+          r->server = sr;
+          r->connection->base_server = sc;
+        }
+        rctx->evmsg = apr_pstrcat(r->pool, "T;", rctx->evmsg, NULL);
+      }
+      if(!sconf->log_only) {
+        if(ka >= 0) {
+          apr_interval_time_t kat = apr_time_from_sec(ka);
           r->server->keep_alive_timeout = kat;
           r->connection->base_server->keep_alive_timeout = kat;
+        }
+        if(km >= 0) {
+          r->server->keep_alive_max = km;
+          r->connection->base_server->keep_alive_max = km;
         }
       }
     }

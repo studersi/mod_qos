@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.42 2015-02-24 06:32:29 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.43 2015-03-03 21:13:38 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -232,6 +232,12 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /b/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
+
+<IfDefine uc1KK>
+   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus Request_Query MaxKeepAliveRequests=([0-9]+) QS_MaxKeepAliveRequests=$1
+   SetEnvIfPlus Request_Query KeepAliveTimeout=([0-9]+) QS_KeepAliveTimeout=$1
+</IfDefine>
 
 <IfDefine uc1r>
    QS_SessionKey             1234567890

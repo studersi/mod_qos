@@ -9,6 +9,8 @@ Version
    pages to show a client how long he has to wait until
    he might proceed).
 
+ - New variable QS_MaxKeepAliveRequests.
+
 Version 11.11
 
  - QS_Limit (resp. the event variable processed by the
