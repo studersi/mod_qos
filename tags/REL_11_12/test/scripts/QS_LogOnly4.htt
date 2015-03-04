@@ -1,0 +1,42 @@
+#
+# QS_EventRequestLimit
+#
+
+INCLUDE scripts/ports
+
+CLIENT 3
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=2&QS_EventRequestLimit=ok HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+
+END
+
+# not allowd (max 3 concurrent)
+CLIENT 1
+_SLEEP 500
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?QS_EventRequestLimit=ok HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(012\): access denied \(log only\), QS_EventRequestLimit rule"
+_EXEC tail -2 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?QS_EventRequestLimit=ok HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
