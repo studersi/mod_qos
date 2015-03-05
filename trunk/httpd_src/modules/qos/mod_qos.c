@@ -12,8 +12,12 @@
  * This module implements control mechanisms that can provide
  * different priority to different requests.
  *
+ * mod_qos requires OpenSSL, PCRE, threading and shared memory
+ * support. It supports Apache version 2.2 MPM worker binaries
+ * and is optimized to be used in a reverse proxy.
+ *
  * See http://opensource.adnovum.ch/mod_qos/ for further
- * details.
+ * details and to optain the latest version of this module.
  *
  * Copyright (C) 2007-2015 Pascal Buchbinder
  *
@@ -23,7 +27,8 @@
  * of the License, or (at your option) any later version.
  *
  * This program is released under the GPL with the additional
- * exemption that compiling, linking, and/or using OpenSSL is allowed.
+ * exemption that compiling, linking, and/or using OpenSSL is
+ * allowed.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -40,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.533 2015-03-03 21:13:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.534 2015-03-05 19:15:19 pbuchbinder Exp $";
 static const char g_revision[] = "11.12";
 
 /************************************************************************
