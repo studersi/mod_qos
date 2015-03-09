@@ -9,6 +9,7 @@ if [ `uname -s` = "Linux" ]; then
   #echo "0"          > /proc/sys/net/ipv4/tcp_sack
   #echo "1280"       > /proc/sys/net/ipv4/tcp_max_syn_backlog
   #echo "1800"       > /proc/sys/net/ipv4/tcp_keepalive_time
+  echo "0"          > /proc/sys/net/ipv4/tcp_slow_start_after_idle
 fi
 
 if [ `uname -s` = "SunOS" ]; then
