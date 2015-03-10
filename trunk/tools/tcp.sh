@@ -10,6 +10,13 @@ if [ `uname -s` = "Linux" ]; then
   #echo "1280"       > /proc/sys/net/ipv4/tcp_max_syn_backlog
   #echo "1800"       > /proc/sys/net/ipv4/tcp_keepalive_time
   echo "0"          > /proc/sys/net/ipv4/tcp_slow_start_after_idle
+  ## or add the parameters to /etc/sysctl.conf
+  #net.core.somaxconn = 32000
+  #net.core.netdev_max_backlog = 32000
+  #net.ipv4.ip_local_port_range = 4096 61000
+  #net.ipv4.tcp_fin_timeout = 30
+  #net.ipv4.tcp_window_scaling = 1
+  #net.ipv4.tcp_slow_start_after_idle = 0
 fi
 
 if [ `uname -s` = "SunOS" ]; then
