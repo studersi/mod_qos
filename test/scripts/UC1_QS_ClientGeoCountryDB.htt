@@ -12,6 +12,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /index.html HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: 62.184.102.66
+__Connection: keep-alive
 __
 _EXPECT . "this is the root index.html"
 _EXPECT . "200 OK"
@@ -25,6 +26,7 @@ _REQ localhost $QS_PORT_BASE
 __GET /index.html HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: 89.202.132.12
+__Connection: keep-alive
 __
 _EXPECT . "!this is the root index.html"
 _EXPECT . "302 Found"
@@ -36,3 +38,4 @@ _EXPECT EXEC "127.0.0.1 DE -"
 _EXEC tail -1 logs/access_log
 
 END
+
