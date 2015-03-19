@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.43 2015-03-03 21:13:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.44 2015-03-19 21:16:12 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -300,6 +300,13 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 
    <Location /console>
        SetHandler qos-console
+   </Location>
+</IfDefine>
+
+<IfDefine uc1KK>
+   <Location /qos >
+       SetHandler qos-viewer
+       SetEnvIfPlus Request_Query MKAR=([0-9]+) QS_MaxKeepAliveRequests=$1
    </Location>
 </IfDefine>
 

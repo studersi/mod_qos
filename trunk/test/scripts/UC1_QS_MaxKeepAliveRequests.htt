@@ -128,5 +128,27 @@ __
 _EXPECT . "Keep-Alive: timeout=5, max=699"
 _EXPECT . "root index"
 _WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: localhost
+__User-Agent: htt-12
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=100"
+_EXPECT . "<title>mod_qos</title>"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?MKAR=200 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-13
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=199"
+_EXPECT . "<title>mod_qos</title>"
+_WAIT
+
 
 END
