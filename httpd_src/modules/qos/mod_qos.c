@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.534 2015-03-05 19:15:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.535 2015-03-24 20:57:46 pbuchbinder Exp $";
 static const char g_revision[] = "11.12";
 
 /************************************************************************
@@ -8424,12 +8424,14 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
   if(APR_BUCKET_IS_EOS(APR_BRIGADE_LAST(bb))) {
+#if APR_HAS_THREADS
     if(!sconf->inctx_t->exit) {
       apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
       apr_table_unset(sconf->inctx_t->table,
                       QS_INCTX_ID);
       apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
     }
+#endif
     inctx->status = QS_CONN_STATE_END;
     ap_remove_output_filter(f);
   } else {
@@ -8549,21 +8551,31 @@ static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
       inctx->nbytes = 0;
       if(r->connection->keepalive == AP_CONN_CLOSE) {
         if(!sconf->inctx_t->exit) {
+#if APR_HAS_THREADS
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
+#endif
           inctx->status = QS_CONN_STATE_END;
+#if APR_HAS_THREADS
           apr_table_unset(sconf->inctx_t->table,
                          QS_INCTX_ID);
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+#endif
         }
       } else {
         if(!sconf->inctx_t->exit) {
+#if APR_HAS_THREADS
           apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT30 */
+#endif
           if(inctx->status != QS_CONN_STATE_DESTROY) {
             inctx->status = QS_CONN_STATE_KEEP;
+#if APR_HAS_THREADS
             apr_table_setn(sconf->inctx_t->table,
                            QS_INCTX_ID, (char *)inctx);
+#endif
           }
+#if APR_HAS_THREADS
           apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT30 */
+#endif
         }
       }
     }
