@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.535 2015-03-24 20:57:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.536 2015-03-25 20:00:20 pbuchbinder Exp $";
 static const char g_revision[] = "11.12";
 
 /************************************************************************
@@ -1753,7 +1753,11 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
     id.request_time = r->request_time;
     id.in_addr = m_unique_id.in_addr;
     id.pid = m_unique_id.pid;
+#if APR_HAS_THREADS
     id.tid = apr_os_thread_current();
+#else
+    id.tid = 0;
+#endif
     id.conn = r->connection->id;
     id.unique_id_counter = m_unique_id.unique_id_counter;
     uidstr = (char *)apr_pcalloc(r->pool, apr_base64_encode_len(sizeof(qos_unique_id_t)));
@@ -5499,8 +5503,10 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
   apr_time_t now = apr_time_sec(r->request_time);
   double av[1];
 
+#if (!defined(WIN32) && !defined(__MINGW32__) && !defined(_WIN64))
   getloadavg(av, 1);
   ap_rprintf(r, "b"QOS_DELIM"system.load: %.2f\n", av[0]);
+#endif
 
   while(s) {
     char *sn = apr_psprintf(r->pool, "%s"QOS_DELIM"%s"QOS_DELIM"%d",
@@ -5958,12 +5964,14 @@ static void qos_bars(request_rec *r, server_rec *bs) {
   if(bsconf->act && bsconf->act->conn) {
     int connections = -1;
     double av[1];
-    int load;
+    int load = 0;
+#if (!defined(WIN32) && !defined(__MINGW32__) && !defined(_WIN64))
     getloadavg(av, 1);
     load = av[0];
     if(load > 0) {
       load = 100*load/(10+load);
     }
+#endif
 
     ap_rputs("<table class=\"btable\"><tbody>\n", r);
     ap_rputs(" <tr class=\"row\"><td>\n", r);
@@ -5983,15 +5991,29 @@ static void qos_bars(request_rec *r, server_rec *bs) {
       connections = qos_server_connections(bsconf);
     }
     if(connections != -1) {
+#if (!defined(WIN32) && !defined(__MINGW32__) && !defined(_WIN64))
       ap_rprintf(r, "<tr class=\"rowt\">"
                  "<td colspan=\"1\">connections: %d</td>"
                  "<td colspan=\"1\">load: %.2f</td>"
                  "</tr>\n", connections, av[0]);
+#else
+      ap_rprintf(r, "<tr class=\"rowt\">"
+                 "<td colspan=\"1\">connections: %d</td>"
+                 "<td colspan=\"1\">load: n/a</td>"
+                 "</tr>\n", connections);
+#endif
     } else {
+#if (!defined(WIN32) && !defined(__MINGW32__) && !defined(_WIN64))
       ap_rprintf(r, "<tr class=\"rowt\">"
                  "<td colspan=\"1\">connections: n/a</td>"
                  "<td colspan=\"1\">load: %.2f</td>"
                  "</tr>\n", av[0]);
+#else
+      ap_rprintf(r, "<tr class=\"rowt\">"
+                 "<td colspan=\"1\">connections: n/a</td>"
+                 "<td colspan=\"1\">load: n/a</td>"
+                 "</tr>\n");
+#endif
     }
     ap_rprintf(r, "<tr class=\"rows\">");
     ap_rprintf(r, "<td>");
@@ -8958,7 +8980,10 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   qos_ifctx_list_t *inctx_t = NULL;
 #ifdef QS_INTERNAL_TEST
 #ifdef PREFORK_MPM
-  int seed = getpid() + time(NULL) + apr_os_thread_current();
+  int seed = getpid() + time(NULL);
+#if APR_HAS_THREADS
+  seed += apr_os_thread_current();
+#endif
   srand(seed);
 #endif
 #endif
