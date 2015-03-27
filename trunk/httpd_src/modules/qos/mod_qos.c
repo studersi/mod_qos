@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.536 2015-03-25 20:00:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.537 2015-03-27 20:28:54 pbuchbinder Exp $";
 static const char g_revision[] = "11.12";
 
 /************************************************************************
@@ -5503,7 +5503,7 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
   apr_time_t now = apr_time_sec(r->request_time);
   double av[1];
 
-#if (!defined(WIN32) && !defined(__MINGW32__) && !defined(_WIN64))
+#if (!defined(WIN32) && !defined(__MINGW32__) && !defined(_WIN64) && !defined(CYGWIN))
   getloadavg(av, 1);
   ap_rprintf(r, "b"QOS_DELIM"system.load: %.2f\n", av[0]);
 #endif
@@ -5965,7 +5965,7 @@ static void qos_bars(request_rec *r, server_rec *bs) {
     int connections = -1;
     double av[1];
     int load = 0;
-#if (!defined(WIN32) && !defined(__MINGW32__) && !defined(_WIN64))
+#if (!defined(WIN32) && !defined(__MINGW32__) && !defined(_WIN64) && !defined(CYGWIN))
     getloadavg(av, 1);
     load = av[0];
     if(load > 0) {
