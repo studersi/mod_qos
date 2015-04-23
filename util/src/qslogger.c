@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.17 2015-03-01 21:11:42 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.18 2015-04-23 15:22:26 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,6 +36,7 @@ static const char revision[] = "$Id: qslogger.c,v 1.17 2015-03-01 21:11:42 pbuch
 #include <errno.h>
 #include <regex.h>
 #include <syslog.h>
+#include <pwd.h>
 
 #include <apr.h>
 #include <apr_lib.h>
@@ -229,7 +230,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s [-r <expression>] [-t <tag>] [-f <facility>] [-l <level>] [-d <level>] [-p]\n",  man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s [-r <expression>] [-t <tag>] [-f <facility>] [-l <level>] [-d <level>] [-u <name>] [-p]\n",  man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -265,6 +266,10 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "  -f <facility>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Defines the syslog facility. Default is 'daemon'.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -u <name>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Becomes another user, e.g. www-data.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -l <level>\n");
   if(man) printf("\n");
@@ -313,6 +318,7 @@ int main(int argc, const char * const argv[]) {
   int severity = LOG_DEBUG;
   int level = LOG_INFO;
   const char *regexpattern = QS_DEFAULTPATTERN;
+  const char *username = NULL;
   regex_t preg;
   if(cmd == NULL) {
     cmd = (char *)argv[0];
@@ -334,6 +340,10 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	const char *severityname = *(++argv);
         severity = qsgetprio(severityname, strlen(severityname));
+      }
+    } else if(strcmp(*argv,"-u") == 0) { /* switch user id */
+      if (--argc >= 1) {
+        username = *(++argv);
       }
     } else if(strcmp(*argv, "-d") == 0) {
       if (--argc >= 1) {
@@ -368,7 +378,29 @@ int main(int argc, const char * const argv[]) {
     exit(1);
   }
 
+  if(username && getuid() == 0) {
+    struct passwd *pwd = getpwnam(username);
+    uid_t uid, gid;
+    if(pwd == NULL) {
+      fprintf(stderr, "[%s] unknown user id '%s': %s", cmd, username, strerror(errno));
+      exit(1);
+    }
+    uid = pwd->pw_uid;
+    gid = pwd->pw_gid;
+    setgid(gid);
+    setuid(uid);
+    if(getuid() != uid) {
+      fprintf(stderr, "[%s] setuid failed (%s,%d)", cmd, username, uid);
+      exit(1);
+    }
+    if(getgid() != gid) {
+      fprintf(stderr, "[%s] setgid failed (%d)", cmd, gid);
+      exit(1);
+    }
+  }
+
   openlog(tag ? tag : getlogin(), 0, facility);
+
   // start reading from stdin
   while(fgets(line, MAX_LINE_BUFFER, stdin) != NULL) {
     line_len = strlen(line) - 1;
