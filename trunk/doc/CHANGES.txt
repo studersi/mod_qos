@@ -1,3 +1,7 @@
+Version
+
+ - qslogger features option "-u".
+
 Version 11.12
 
  - Propagates the variables used by QS_ClientEventLimitCount
