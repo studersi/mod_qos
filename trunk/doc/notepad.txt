@@ -61,6 +61,9 @@
   - try to enforce content security header settings
 - support milestones on a per Location basis
 - Set IP differentiated services code points (DSCP)
+- Change log message severity of errors caused by QS_SrvMinDataRate
+  (mod_qos(034) events) if we did not receive any byte to avoid too 
+  many event messages caused by browser's speculative preconnect requests
 - more user friendly error handling for QS_ClientEventBlockCount directive
   - show the error page for more than only the first occurence
     - e.g. answer the next 5 (or more) requests with an error page too
