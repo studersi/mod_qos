@@ -966,16 +966,28 @@ pattern.
 <a name="QS_SetEnvIfStatus"></a>
 <code>QS_SetEnvIfStatus &lt;code&gt; &lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Sets the defined variable in the request environment if the HTTP 
-response status code matches the defined code. This may be used 
-in conjunction with the <code>QS_ClientEventBlockCount</code> 
-directive. Directive may be used on a per server or per location basis.<br>
-The special code <code>QS_SrvMinDataRate</code> may be used to set 
-<code>QS_Block</code> events in order to limit the allowed number of 
-<a href="#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> rule violations and 
-the special code <code>NullConnection</code> detects connections which are 
-closed even no HTTP request has been received. <br>
+response status code matches the defined code. Directive may be used 
+on a per server or per location basis. <br>
+A possible use case for this directive is the prevention of 
+repetitive occurrence of unwanted response status codes in 
+conjunction with the 
+<code>QS_ClientEventBlockCount</code> or <code>QS_ClientEventLimitCount</code> 
+directive. <br>
+There are two "special codes" available to set the <code>QS_Block</code> 
+event:
+<ul>
+<li><code>QS_SrvMinDataRate</code> may be used to set <code>QS_Block</code> 
+events in order to limit the allowed number of 
+<a href="#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> rule 
+violations.</li>
+<li>The "special code" <code>NullConnection</code> detects connections 
+which are closed even no HTTP request has been received. <br>
 <small>Note: The <code>NullConnection</code> event may happen silently (no log 
-message) expect when using <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#loglevel" target="_blank">LogLevel</a> debug</code>.</small>
+message) expect when using <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#loglevel" target="_blank">LogLevel</a> debug</code>. 
+The parameter may be used to defend against SSL DoS attacks. 
+Please pay attention to the fact that unused <i>speculative TCP pre-connections</i> of 
+browsers may unintentionally cause this event as well.</small></li>
+</ul>
 </li>
 <li>
 <a name="QS_SetEnvIfResBody"></a>
