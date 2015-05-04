@@ -45,8 +45,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.537 2015-03-27 20:28:54 pbuchbinder Exp $";
-static const char g_revision[] = "11.12";
+static const char revision[] = "$Id: mod_qos.c,v 5.538 2015-05-04 20:24:59 pbuchbinder Exp $";
+static const char g_revision[] = "11.13";
 
 /************************************************************************
  * Includes
@@ -12765,7 +12765,9 @@ static const command_rec qos_config_cmds[] = {
 
   AP_INIT_TAKE1("QS_SrvSampleRate", qos_req_rate_tm_cmd, NULL,
                 RSRC_CONF,
-                "QS_SrvSampleRate <seconds>"),
+                "QS_SrvSampleRate <seconds>, defines the sampling rate used"
+                " by the QS_SrvMinDataRate directive to measure the"
+                " throughput of a connection."),
 
   AP_INIT_FLAG("QS_DisableHandler", qos_disable_handler_cmd, NULL,
                RSRC_CONF,

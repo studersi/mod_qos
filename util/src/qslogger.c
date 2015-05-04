@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.18 2015-04-23 15:22:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.19 2015-05-04 20:24:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -36,7 +36,6 @@ static const char revision[] = "$Id: qslogger.c,v 1.18 2015-04-23 15:22:26 pbuch
 #include <errno.h>
 #include <regex.h>
 #include <syslog.h>
-#include <pwd.h>
 
 #include <apr.h>
 #include <apr_lib.h>
@@ -378,26 +377,7 @@ int main(int argc, const char * const argv[]) {
     exit(1);
   }
 
-  if(username && getuid() == 0) {
-    struct passwd *pwd = getpwnam(username);
-    uid_t uid, gid;
-    if(pwd == NULL) {
-      fprintf(stderr, "[%s] unknown user id '%s': %s", cmd, username, strerror(errno));
-      exit(1);
-    }
-    uid = pwd->pw_uid;
-    gid = pwd->pw_gid;
-    setgid(gid);
-    setuid(uid);
-    if(getuid() != uid) {
-      fprintf(stderr, "[%s] setuid failed (%s,%d)", cmd, username, uid);
-      exit(1);
-    }
-    if(getgid() != gid) {
-      fprintf(stderr, "[%s] setgid failed (%d)", cmd, gid);
-      exit(1);
-    }
-  }
+  qs_setuid(username, cmd);
 
   openlog(tag ? tag : getlogin(), 0, facility);
 

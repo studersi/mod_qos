@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsexec.c,v 1.25 2015-03-03 21:13:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsexec.c,v 1.26 2015-05-04 20:24:59 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -36,8 +36,6 @@ static const char revision[] = "$Id: qsexec.c,v 1.25 2015-03-03 21:13:19 pbuchbi
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
-
-#include <pwd.h>
 
 /* apr */
 #include <pcre.h>
@@ -345,26 +343,7 @@ int main(int argc, const char * const argv[]) {
     usage(cmd, 0);
   }
 
-  if(username && getuid() == 0) {
-    struct passwd *pwd = getpwnam(username);
-    uid_t uid, gid;
-    if(pwd == NULL) {
-      fprintf(stderr,"[%s]: ERROR, unknown user id %s\n", cmd, username);
-      exit(1);
-    }
-    uid = pwd->pw_uid;
-    gid = pwd->pw_gid;
-    setgid(gid);
-    setuid(uid);
-    if(getuid() != uid) {
-      fprintf(stderr,"[%s]: ERROR, setuid failed (%s,%d)\n", cmd, username, uid);
-      exit(1);
-    }
-    if(getgid() != gid) {
-      fprintf(stderr,"[%s]: ERROR, setgid failed (%d)\n", cmd, gid);
-      exit(1);
-    }
-  }
+  qs_setuid(username, cmd);
 
   preg = pcre_compile(pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(!preg) {

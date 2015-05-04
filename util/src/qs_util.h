@@ -29,8 +29,8 @@
 /* ----------------------------------
  * version info
  * ---------------------------------- */
-static const char man_version[] = "11.12";
-static const char man_date[] = "March 2015";
+static const char man_version[] = "11.13";
+static const char man_date[] = "May 2015";
 
 /* ----------------------------------
  * definitions
@@ -67,5 +67,8 @@ void qs_csUnLock();
 
 /* log */
 void qs_deleteOldFiles(const char *file_name, int generations);
+
+/* user */
+void qs_setuid(const char *username, const char *cmd);
 
 #endif
