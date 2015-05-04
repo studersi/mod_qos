@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.34 2015-03-03 21:13:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.35 2015-05-04 20:24:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -581,7 +581,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -s|S <secret> [-e] [-v]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -s|S <secret> [-e] [-v] [-u <name>]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -612,6 +612,10 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "  -v\n");
   if(man) printf("\n");
   qs_man_print(man, "     Verification mode checking the integrity of signed data.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -u <name>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Becomes another user, e.g. www-data.\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
@@ -650,6 +654,7 @@ int main(int argc, const char * const argv[]) {
   apr_pool_t *pool;
   int verify = 0;
   char *cmd = strrchr(argv[0], '/');
+  const char *username = NULL;
   if(cmd == NULL) {
     cmd = (char *)argv[0];
   } else {
@@ -673,6 +678,10 @@ int main(int argc, const char * const argv[]) {
       verify = 1;
     } else if(strcmp(*argv,"-e") == 0) {
       m_logend = 1;
+    } else if(strcmp(*argv,"-u") == 0) { /* switch user id */
+      if (--argc >= 1) {
+        username = *(++argv);
+      }
     } else if(strcmp(*argv,"-?") == 0) {
       usage(cmd, 0);
     } else if(strcmp(*argv,"-help") == 0) {
@@ -689,6 +698,9 @@ int main(int argc, const char * const argv[]) {
   if(m_sec == NULL) {
     usage(cmd, 0);
   }
+
+  qs_setuid(username, cmd);
+
   if(verify) {
     long err = qs_verify(m_sec);
     if(err != 0) {

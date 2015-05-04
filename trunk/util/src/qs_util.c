@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.17 2015-01-05 17:35:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.18 2015-05-04 20:24:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -34,6 +34,8 @@ static const char revision[] = "$Id: qs_util.c,v 1.17 2015-01-05 17:35:58 pbuchb
 #include <fcntl.h>
 #include <dirent.h>
 #include <unistd.h>
+#include <errno.h>
+#include <pwd.h>
 
 #include "qs_util.h"
 
@@ -295,6 +297,30 @@ void qs_deleteOldFiles(const char *file_name, int generations) {
 	num--;
       }
       closedir(dir);
+    }
+  }
+}
+
+/* user ------------------------------------------------------- */
+void qs_setuid(const char *username, const char *cmd) {
+  if(username && getuid() == 0) {
+    struct passwd *pwd = getpwnam(username);
+    uid_t uid, gid;
+    if(pwd == NULL) {
+      fprintf(stderr, "[%s] unknown user id '%s': %s", cmd, username, strerror(errno));
+      exit(1);
+    }
+    uid = pwd->pw_uid;
+    gid = pwd->pw_gid;
+    setgid(gid);
+    setuid(uid);
+    if(getuid() != uid) {
+      fprintf(stderr, "[%s] setuid failed (%s,%d)", cmd, username, uid);
+      exit(1);
+    }
+    if(getgid() != gid) {
+      fprintf(stderr, "[%s] setgid failed (%d)", cmd, gid);
+      exit(1);
     }
   }
 }

@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.27 2015-03-03 21:13:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.28 2015-05-04 20:24:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -37,7 +37,6 @@ static const char revision[] = "$Id: qsrotate.c,v 1.27 2015-03-03 21:13:19 pbuch
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <pwd.h>
 
 #include <pthread.h>
 
@@ -389,26 +388,7 @@ int main(int argc, char **argv) {
     m_counter = st.st_size;
   }
 
-  if(username && getuid() == 0) {
-    struct passwd *pwd = getpwnam(username);
-    uid_t uid, gid;
-    if(pwd == NULL) {
-      fprintf(stderr,"[%s]: ERROR, unknown user id %s\n", m_cmd, username);
-      exit(1);
-    }
-    uid = pwd->pw_uid;
-    gid = pwd->pw_gid;
-    setgid(gid);
-    setuid(uid);
-    if(getuid() != uid) {
-      fprintf(stderr,"[%s]: ERROR, setuid failed (%s,%d)\n", m_cmd, username, uid);
-      exit(1);
-    }
-    if(getgid() != gid) {
-      fprintf(stderr,"[%s]: ERROR, setgid failed (%d)\n", m_cmd, gid);
-      exit(1);
-    }
-  }
+  qs_setuid(username, m_cmd);
   
   /* set next rotation time */
   now = get_now();

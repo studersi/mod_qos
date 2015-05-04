@@ -1,6 +1,6 @@
 Version
 
- - qslogger features option "-u".
+ - Adds option "-u" to the qslogger and qssign utilities.
 
 Version 11.12
 
