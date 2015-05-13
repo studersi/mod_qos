@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.44 2015-03-19 21:16:12 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.45 2015-05-13 05:37:27 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -95,6 +95,11 @@ QS_ErrorPage             /error-docs/error.shtml
 QS_ClientEventLimitCount 6 3
 QS_SetEnvIfQuery         QS_Limit QS_Limit=3
 QS_ErrorPage             /error-docs/error.html
+</IfDefine>
+
+<IfDefine uc1bbE>
+LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus              Request_URI / QS_ErrorPage=/error-docs/error.json
 </IfDefine>
 
 <IfDefine uc1bbb>
