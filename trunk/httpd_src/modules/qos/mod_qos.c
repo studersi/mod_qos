@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.538 2015-05-04 20:24:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.539 2015-05-21 19:16:44 pbuchbinder Exp $";
 static const char g_revision[] = "11.13";
 
 /************************************************************************
@@ -11784,6 +11784,10 @@ const char *qos_client_ex_cmd(cmd_parms *cmd, void *dcfg, const char *addr) {
   if (err != NULL) {
     return err;
   }
+  if(strlen(addr) == 0) {
+    return apr_psprintf(cmd->pool, "%s: invalid address", 
+                        cmd->directive->directive);
+  }
   if(addr[strlen(addr)-1] == '.') {
     /* address range */
     apr_table_add(sconf->cc_exclude_ip, addr, "r");
@@ -12283,6 +12287,12 @@ static const command_rec qos_config_cmds[] = {
 #endif // has threads
 #endif // QS_APACHE_22
 
+  AP_INIT_TAKE1("QS_SrvSampleRate", qos_req_rate_tm_cmd, NULL,
+                RSRC_CONF,
+                "QS_SrvSampleRate <seconds>, defines the sampling rate used"
+                " by the QS_SrvMinDataRate directive to measure the"
+                " throughput of a connection."),
+
   /* generic request filter */
   AP_INIT_TAKE3("QS_DenyRequestLine", qos_deny_rql_cmd, NULL,
                 ACCESS_CONF,
@@ -12762,12 +12772,6 @@ static const command_rec qos_config_cmds[] = {
                 " which shall be used for file based samaphores/shared memory"
                 " usage."
                 " Default is "QS_MFILE"."),
-
-  AP_INIT_TAKE1("QS_SrvSampleRate", qos_req_rate_tm_cmd, NULL,
-                RSRC_CONF,
-                "QS_SrvSampleRate <seconds>, defines the sampling rate used"
-                " by the QS_SrvMinDataRate directive to measure the"
-                " throughput of a connection."),
 
   AP_INIT_FLAG("QS_DisableHandler", qos_disable_handler_cmd, NULL,
                RSRC_CONF,
