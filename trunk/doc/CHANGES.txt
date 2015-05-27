@@ -2,6 +2,10 @@ Version
 
  - Adds option "-u" to the qslogger and qssign utilities.
 
+ - QS_MileStone features a "think time" attribute which
+   defines how long a client must wait between two
+   milestones.
+
 Version 11.12
 
  - Propagates the variables used by QS_ClientEventLimitCount
