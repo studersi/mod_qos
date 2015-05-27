@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.45 2015-05-13 05:37:27 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.46 2015-05-27 06:42:15 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -323,6 +323,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
 <IfDefine uc1k>
    QS_MileStone deny "^GET /index.html "
    QS_MileStone deny "^GET /a/sleep.cgi "
+</IfDefine>
+
+<IfDefine uc1ktime>
+   QS_MileStone deny "^GET /index.html "
+   QS_MileStone deny "^GET /a/sleep.cgi " 3
 </IfDefine>
 
 <IfDefine uc1l>

@@ -1334,9 +1334,10 @@ the server configuration. A client is not allowed to skip these milestones (but 
 any other resource not covered by a milestone in between requests to milestones).
 <ul>
 <li>
-<code>QS_MileStone 'log'|'deny' &lt;pattern&gt;</code><br>
+<code>QS_MileStone 'log'|'deny' &lt;pattern&gt; [&lt;thinktime&gt;]</code><br>
 Defines request line patterns a client must access in the defined order as they are defined in the 
-configuration file. Milestones are defined on a per server basis, outside 
+configuration file. The optional 'thinktime' parameter defines the minimal 
+elapse time (in seconds) between two milestones. Milestones are defined on a per server basis, outside 
 <a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a>. 
 Access to milestones is tracked by a dedicated <a href="#QS_SessionKey">session cookie</a>.
 </li>

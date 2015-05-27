@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.539 2015-05-21 19:16:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.540 2015-05-27 06:42:14 pbuchbinder Exp $";
 static const char g_revision[] = "11.13";
 
 /************************************************************************
@@ -844,6 +844,7 @@ typedef struct {
 
 typedef struct {
   int num;
+  int thinktime;
   const char* pattern;
   pcre *preg;
   pcre_extra *extra;
@@ -1990,6 +1991,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
   int i;
   int ms = -1; // milestone the user has reached
   int required = -1; // required for this request
+  apr_time_t age = 0; // milestone's age
   if(value != NULL) {
     int buf_len = 0;
     unsigned char *buf;
@@ -1998,6 +2000,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
        (strncmp((char *)&buf[QOS_RAN], qs_magic, QOS_MAGIC_LEN) == 0)) {
       apr_time_t *t = (apr_time_t *)&buf[QOS_RAN+QOS_MAGIC_LEN];
       apr_time_t now = apr_time_sec(r->request_time);
+      age = now - *t;
       if(now <= (*t + sconf->milestone_timeout)) {
         ms = atoi((char *)&buf[QOS_RAN+QOS_MAGIC_LEN+sizeof(apr_time_t)]);
       }
@@ -2014,9 +2017,9 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
     }
   }
   if(milestone && (required >= 0)) {
+    int severity = milestone->action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
     if(ms < (required - 1)) {
       /* not allowed */
-      int severity = milestone->action == QS_DENY ? APLOG_ERR : APLOG_WARNING;
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
                     QOS_LOG_PFX(047)"access denied, reached milestone '%d' (%s),"
                     " user has already passed '%s',"
@@ -2031,6 +2034,23 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
         return HTTP_FORBIDDEN;
       }
     }
+    if(milestone->thinktime > 0) {
+      if(age < milestone->thinktime) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|severity, 0, r,
+                      QOS_LOG_PFX(147)"access denied, reached milestone '%d' (%s),"
+                      " earlier than expected (right after %"APR_TIME_T_FMT" instead of %d seconds),"
+                      " action=%s, c=%s, id=%s",
+                      required, milestone->pattern,
+                      age, milestone->thinktime,
+                      !sconf->log_only && milestone->action == QS_DENY ? 
+                      "deny" : "log only (pass milestone)",
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                      qos_unique_id(r, "147"));
+        if(milestone->action == QS_DENY) {
+          return HTTP_FORBIDDEN;
+        }
+      }
+    }
     if(required > ms) {
       /* update milestone */
       apr_table_set(r->subprocess_env, QOS_MILESTONE_COOKIE, apr_psprintf(r->pool, "%d", required));
@@ -2038,6 +2058,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
   }
   return APR_SUCCESS;
 }
+
 
 /**
  * Extracts the cookie from the request.
@@ -11458,7 +11479,7 @@ const char *qos_milestone_tmo_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
 }
 
 const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
-                              const char *pattern) {
+                              const char *pattern, const char *thinktimestr) {
   qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
   const char *errptr = NULL;
   int erroffset;
@@ -11468,6 +11489,15 @@ const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
   }
   ms = apr_array_push(sconf->milestones);
   ms->num = sconf->milestones->nelts - 1;
+  if(thinktimestr != NULL) {
+    ms->thinktime = atoi(thinktimestr);
+    if(ms->thinktime <= 0) {
+      return apr_psprintf(cmd->pool, "%s: invalid 'think time' (must be numeric value >0)",
+                          cmd->directive->directive);
+    }
+  } else {
+    ms->thinktime = 0;
+  }
   ms->preg = pcre_compile(pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(ms->preg == NULL) {
     return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
@@ -12410,9 +12440,9 @@ static const command_rec qos_config_cmds[] = {
                 " Directive is allowed in global server context only."),
 
   /* milestones */
-  AP_INIT_TAKE2("QS_MileStone", qos_milestone_cmd, NULL,
+  AP_INIT_TAKE23("QS_MileStone", qos_milestone_cmd, NULL,
                 RSRC_CONF,
-                "QS_MileStone 'log'|'deny' <pattern>, defines request line patterns"
+                "QS_MileStone 'log'|'deny' <pattern> [<thinktime>], defines request line patterns"
                 " a client must access in the defined order as they are defined in the"
                 " configuration file."),
 
