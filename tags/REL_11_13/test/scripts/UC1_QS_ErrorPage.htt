@@ -1,0 +1,72 @@
+# 
+# QS_ClientEventLimitCount 3 2
+# QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
+# QS_ErrorPage             /error-docs/error_c.html
+# SetEnvIf Request_URI     ^/error-docs/(.*) QS_ErrorPage=/error-docs/$1
+#
+ 
+INCLUDE scripts/ports
+
+CLIENT
+_LOOP 2
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "root index"
+_WAIT
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "<body background=\"/error-docs/red.png\">"
+_EXPECT . "custom error page"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=3"
+_EXEC tail -1 logs/error_log
+
+#
+# requests to content within the /error-docs/ location are allowed 
+# by mapping the error page setting to the requested resource
+#
+_REQ localhost $QS_PORT_BASE
+__GET /error-docs/red.png HTTP/1.1
+__Host: localhost
+__
+_EXPECT headers "Content-Type: image/png"
+_EXPECT headers "Content-Length: 308"
+_WAIT
+_CLOSE
+
+# "normal" request are rejected, server answer by the error page
+_REQ localhost $QS_PORT_BASE
+__GET /gugus/red.png HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "<body background=\"/error-docs/red.png\">"
+_EXPECT . "custom error page"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /error-docs/notfound.png HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+
+_SLEEP 3000
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "root index"
+_WAIT
+
+END
