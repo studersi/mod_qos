@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.40 2015-01-20 19:15:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.41 2015-05-27 14:21:58 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -174,6 +174,7 @@ QS_ClientSerialize
 </IfDefine>
 
 <IfDefine ucnj>
+Timeout                       320
 QS_ClientIpFromHeader         Y-Forwarded-For
 SetEnvIfPlus                  User-Agent serializeme QS_Serialize=yes
 QS_ClientSerialize
