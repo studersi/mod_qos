@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.46 2015-05-27 06:42:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.47 2015-06-08 19:52:25 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -196,6 +196,12 @@ LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
 QS_ClientIpFromHeader     Y-Forwarded-For
 SetEnvIfPlus              User-Agent serializeme QS_Serialize=yes
 QS_ClientSerialize
+</IfDefine>
+
+<IfDefine uc1WW>
+LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus              User-Agent serializeme QS_SrvSerialize=yes
+QS_SrvSerialize           on
 </IfDefine>
 
 <IfDefine uc1z>
