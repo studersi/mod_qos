@@ -1,3 +1,7 @@
+Version 11.14
+
+ - New directive QS_SrvSerialize.
+
 Version 11.13
 
  - Adds option "-u" to the qslogger and qssign utilities.

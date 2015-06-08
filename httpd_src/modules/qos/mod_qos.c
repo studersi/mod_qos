@@ -45,8 +45,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.540 2015-05-27 06:42:14 pbuchbinder Exp $";
-static const char g_revision[] = "11.13";
+static const char revision[] = "$Id: mod_qos.c,v 5.541 2015-06-08 19:52:24 pbuchbinder Exp $";
+static const char g_revision[] = "11.14";
 
 /************************************************************************
  * Includes
@@ -149,6 +149,7 @@ static const char g_revision[] = "11.13";
 #define QS_CONNID         "QS_ConnectionId"
 #define QS_COUNTRY        "QS_Country"
 #define QS_SERIALIZE      "QS_Serialize"
+#define QS_SRVSERIALIZE   "QS_SrvSerialize"
 #define QS_ErrorNotes     "QS_ErrorNotes"
 #define QS_BLOCK          "QS_Block"
 #define QS_BLOCK_SEEN     "QS_Block_seen"
@@ -184,6 +185,7 @@ static const char g_revision[] = "11.13";
 static const char *m_env_variables[] = {
   QS_ErrorNotes,
   QS_SERIALIZE,
+  QS_SRVSERIALIZE,
   QS_BLOCK,
   QS_BLOCK_SEEN,
   QS_LIMIT_DEFAULT,
@@ -491,6 +493,12 @@ typedef struct {
   int connections;
 } qs_conn_t;
 
+typedef struct {
+  apr_time_t q1; // first request in queue
+  apr_time_t q2; // second request in queue
+  int locked;
+} qs_serial_t;
+
 /**
  * session cookie
  */
@@ -571,6 +579,8 @@ typedef struct qs_actable_st {
   /* settings */
   int child_init;
   int generation;
+  /* serialize */
+  qs_serial_t *serialize; /* shm pointer */
 } qs_actable_t;
 
 /**
@@ -674,6 +684,7 @@ typedef struct {
   int max_conn_close_percent;
   int max_conn_per_ip;
   int max_conn_per_ip_connections;
+  int serialize;
   apr_table_t *exclude_ip;
   qos_ifctx_list_t *inctx_t;
   apr_table_t *hfilter_table; /* GLOBAL ONLY */
@@ -790,6 +801,7 @@ typedef struct {
   apr_off_t maxpostcount;
   int cc_event_req_set;
   int cc_serialize_set;
+  int srv_serialize_set;
   char *body_window;
   apr_off_t response_delayed; // indicates, if the response has been delayed (T)
 } qs_req_ctx;
@@ -2213,6 +2225,7 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->maxpostcount = 0;
     rctx->cc_event_req_set = 0;
     rctx->cc_serialize_set = 0;
+    rctx->srv_serialize_set = 0;
     rctx->body_window = NULL;
     rctx->response_delayed = 0;
     ap_set_module_config(r->request_config, &qos_module, rctx);
@@ -2335,8 +2348,9 @@ static apr_status_t qos_cleanup_shm(void *p) {
 
 /**
  * init the shared memory of the act
- *  act->conn          <- start
- *  act->conn->conn_ip <- start + sizeof(conn) * QS_MEM_SEG
+ *  acr->serialize     <- start
+ *  act->conn          <- start + sizeof(serialize)
+ *  act->conn->conn_ip <- start + sizeof(serialize) + sizeof(conn) * QS_MEM_SEG
  *                      + [max_ip]
  *  act->entry         <- 
  *                      + [rule_entries]
@@ -2362,6 +2376,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (event_limit_entries * APR_ALIGN_DEFAULT(sizeof(qos_event_limit_entry_t))) +
     APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
+    APR_ALIGN_DEFAULT(sizeof(qs_serial_t)) +
     2048;
   /* use anonymous shm by default */
   res = apr_shm_create(&act->m, act->size, NULL, act->pool);
@@ -2391,10 +2406,15 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
                  file, buf, act->size);
     return res;
   } else {
-    qs_conn_t *c = apr_shm_baseaddr_get(act->m);
-    qs_ip_entry_t *ce = (qs_ip_entry_t *)&c[1];
+    qs_serial_t *sp = apr_shm_baseaddr_get(act->m); 
+    qs_conn_t *cp = (qs_conn_t *)&sp[1];
+    qs_ip_entry_t *ce = (qs_ip_entry_t *)&cp[1];
     apr_time_t now = apr_time_now();
-    act->conn = c;
+    act->serialize = sp;
+    act->serialize->q1 = 0;
+    act->serialize->q2 = 0;
+    act->serialize->locked = 0;
+    act->conn = cp;
     act->conn->conn_ip_len = max_ip * QS_MEM_SEG;
     act->conn->conn_ip = ce;
     act->conn->connections = 0;
@@ -4394,6 +4414,85 @@ static qs_conn_ctx *qos_create_cconf(conn_rec *c, qos_srv_config *sconf) {
 }
 
 /*
+ * QS_SrvSerialize
+ */
+static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ctx * rctx) {
+  int loops = 0;
+  int locked = 0; // we got the lock for this request
+  if(!rctx) {
+    rctx = qos_rctx_config_get(r);
+  }
+  while(!locked) {
+    apr_global_mutex_lock(sconf->act->lock);   /* @CRT44 */
+    if(sconf->act->serialize->locked == 0) {
+      // free!! check if we might get the lock for this request
+      if(sconf->act->serialize->q1 == 0) {
+        // yes: no other request waiting
+        locked = 1;
+      } else if(sconf->act->serialize->q1 == r->request_time) {
+        // yes: waiting for this request (we are the next in the queue)
+        locked = 1;
+        sconf->act->serialize->q1 = sconf->act->serialize->q2;
+        sconf->act->serialize->q2 = 0;
+      } else if(sconf->act->serialize->q1 > r->request_time) {
+        // yes: not yet in the queue but this request is waiting for a longer time
+        //      keep the others in the queue
+        locked = 1;
+      } else if(sconf->act->serialize->q2 == 0 || sconf->act->serialize->q2 > r->request_time) {
+        // no: it's not yet our time... but take the second place in the queue
+        sconf->act->serialize->q2 = r->request_time;
+      }
+    } else {
+      // put this request into one of the queues if possible
+      if(sconf->act->serialize->q1 == 0) {
+        // no other request waiting
+        sconf->act->serialize->q1 = r->request_time;
+      } else if(sconf->act->serialize->q1 == r->request_time) {
+        // already next in the queue
+      } else if(sconf->act->serialize->q1 > r->request_time) {
+        // older request is waiting, take over
+        sconf->act->serialize->q2 = sconf->act->serialize->q1;
+        sconf->act->serialize->q1 = r->request_time;
+      } else if(sconf->act->serialize->q2 == 0) {
+        // no one in on the second place
+        sconf->act->serialize->q2 = r->request_time;
+      } else if(sconf->act->serialize->q2 == r->request_time) {
+        // already next in the queue
+      } else if(sconf->act->serialize->q2 > r->request_time) {
+        // older request is waiting in the second position, take over
+        sconf->act->serialize->q2 = r->request_time;
+      }
+    }
+    if(locked) {
+        sconf->act->serialize->locked = 1;
+        rctx->srv_serialize_set = 1;
+    }   
+    apr_global_mutex_unlock(sconf->act->lock);   /* @CRT44 */
+    if(!locked) {
+      /* sleep 100ms */
+      struct timespec delay;
+      delay.tv_sec  = 0;
+      delay.tv_nsec = 100 * 1000000;
+      if(!rctx->evmsg || !strstr(rctx->evmsg, "s;")) {
+        rctx->evmsg = apr_pstrcat(r->pool, "s;", rctx->evmsg, NULL);
+      }
+      if(sconf->log_only) {
+        return;
+      }
+      nanosleep(&delay, NULL);
+    }
+    if(loops >= 3000) {
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                    QOS_LOG_PFX(068)"QS_SrvSerialize exceeds limit of 5 minutes, "
+                    "id=%s",
+                    qos_unique_id(r, "037"));
+      break;
+    }
+    loops++;
+  }
+}
+
+/*
  * QS_ClientSerialize
  */
 static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ctx * rctx) {
@@ -4406,7 +4505,6 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
     const char *forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
     int loops = 0;
     int locked = 0;
-    rctx->cc_serialize_set = 1;
     /* wait until we get a lock */
     while(!locked) {
       qos_s_entry_t **e = NULL;
@@ -4460,6 +4558,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
          the same amount of time (100ms) before re-trying it again. */
       if((*e)->serialize == 0) {
         (*e)->serialize = 1;
+        rctx->cc_serialize_set = 1;
         locked = 1;
       }
       apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT36 */   
@@ -7858,6 +7957,13 @@ static int qos_header_parser(request_rec * r) {
     }
 
     /*
+     * QS_SrvSerialize
+     */
+    if((sconf->serialize == 1) && apr_table_get(r->subprocess_env, QS_SRVSERIALIZE)) {
+      qos_hp_srv_serialize(r, sconf, rctx);
+    }
+
+    /*
      * client control
      */
     if(qos_hp_cc(r, sconf, &msg, &uid) != DECLINED) {
@@ -8765,6 +8871,17 @@ static apr_status_t qos_out_err_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
 }
 
 /**
+ * QS_SrvSerialize
+ */
+static void qos_logger_serialize(qos_srv_config *sconf, qs_req_ctx *rctx) {
+  if(rctx->srv_serialize_set) {
+    apr_global_mutex_lock(sconf->act->lock);     /* @CRT45 */
+    sconf->act->serialize->locked = 0;
+    apr_global_mutex_unlock(sconf->act->lock);   /* @CRT45 */
+  }
+}
+
+/**
  * QS_EventRequestLimit
  * reset event counter
  */
@@ -8853,6 +8970,9 @@ static int qos_logger(request_rec *r) {
   }
   if(sconf->has_event_filter) {
     qos_event_reset(sconf, rctx);
+  }
+  if(sconf->serialize == 1) {
+    qos_logger_serialize(sconf, rctx);
   }
   if(sconf->has_event_limit) {
     qos_lg_event_update(r, &now);
@@ -10037,6 +10157,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
   sconf->max_conn_per_ip_connections = -1;
+  sconf->serialize = -1;
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->hfilter_table = apr_table_make(p, 5);
   sconf->reshfilter_table = apr_table_make(p, 5);
@@ -10231,6 +10352,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->max_conn_per_ip_connections == -1) {
     o->max_conn_per_ip_connections = b->max_conn_per_ip_connections;
+  }
+  if(o->serialize == -1) {
+    o->serialize = b->serialize;
   }
   if(o->has_event_filter == 0) {
     o->has_event_filter = b->has_event_filter;
@@ -11245,6 +11369,16 @@ const char *qos_max_conn_ip_cmd(cmd_parms *cmd, void *dcfg, const char *number,
 }
 
 /**
+ * QS_SrvSerialize
+ */
+const char *qos_serialize_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->serialize = flag;
+  return NULL;
+}
+
+/**
  * ip address without any limitation
  */
 const char *qos_max_conn_ex_cmd(cmd_parms *cmd, void *dcfg, const char *addr) {
@@ -12249,6 +12383,12 @@ static const command_rec qos_config_cmds[] = {
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an IP address or"
                 " address range from beeing limited."),
 
+  AP_INIT_FLAG("QS_SrvSerialize", qos_serialize_cmd, NULL,
+               RSRC_CONF,
+               "QS_SrvSerialize 'on'|'off', ensures that not more than one request"
+               " having the "QS_SRVSERIALIZE" variable set is processed"
+               " at the same time by serializing them (process one after"
+               " each other)."),
 #if QS_APACHE_22
 #if APR_HAS_THREADS
   AP_INIT_NO_ARGS("QS_SrvDataRateOff", qos_req_rate_off_cmd, NULL,
