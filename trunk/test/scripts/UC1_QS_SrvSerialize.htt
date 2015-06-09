@@ -1,7 +1,6 @@
 INCLUDE scripts/ports
 
 CLIENT
-
 _REQ localhost $QS_PORT_BASE
 __GET /cgi-local/sleep.cgi?s=1&id=1 HTTP/1.1
 __Host: localhost
@@ -10,7 +9,7 @@ __
 _EXPECT . "200 OK"
 _EXPECT . "done"
 _WAIT
-
+_CLOSE
 END
 
 CLIENT
@@ -23,11 +22,9 @@ __
 _EXPECT . "200 OK"
 _EXPECT . "done"
 _WAIT
-
 END
 
 CLIENT
-
 _DATE:TIMER GET DSTART
 _SLEEP 200
 _REQ localhost $QS_PORT_BASE
@@ -38,22 +35,57 @@ __
 _EXPECT . "200 OK"
 _EXPECT . "done"
 _WAIT
+_CLOSE
 _DATE:TIMER GET DEND
 _OP $DEND SUB $DSTART DELTA
 _IF "$DELTA" LT "3000"
 _EXIT FAILED
 _END IF
-
 END
 
 CLIENT
-
+_SLEEP 200
 _DATE:TIMER GET DSTART
-_SLEEP 250
 _REQ localhost $QS_PORT_BASE
 __GET /cgi-local/sleep.cgi?s=1&id=4 HTTP/1.1
 __Host: localhost
-__User-Agent: serializeme 4
+__User-Agent: 4
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_DATE:TIMER GET DEND
+_OP $DEND SUB $DSTART DELTA
+_IF "$DELTA" GT "1200"
+_EXIT FAILED
+_END
+END
+
+CLIENT
+_SLEEP 200
+_DATE:TIMER GET DSTART
+_REQ localhost $QS_PORT_BASE1
+__GET /cgi-local/sleep.cgi?s=1&id=4 HTTP/1.1
+__Host: localhost
+__User-Agent: serializeme 4 vhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_DATE:TIMER GET DEND
+_OP $DEND SUB $DSTART DELTA
+_IF "$DELTA" GT "1200"
+_EXIT FAILED
+_END
+END
+
+CLIENT
+_DATE:TIMER GET DSTART
+_SLEEP 250
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1&id=5 HTTP/1.1
+__Host: localhost
+__User-Agent: serializeme 5
 __
 _EXPECT . "200 OK"
 _EXPECT . "done"
@@ -63,5 +95,4 @@ _OP $DEND SUB $DSTART DELTA
 _IF "$DELTA" LT "4000"
 _EXIT FAILED
 _END IF
-
 END

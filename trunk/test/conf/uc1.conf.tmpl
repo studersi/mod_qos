@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.47 2015-06-08 19:52:25 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.48 2015-06-09 19:26:35 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -204,6 +204,11 @@ SetEnvIfPlus              User-Agent serializeme QS_SrvSerialize=yes
 QS_SrvSerialize           on
 </IfDefine>
 
+<IfDefine uc1WWV>
+LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus              User-Agent serializeme QS_SrvSerialize=yes
+</IfDefine>
+
 <IfDefine uc1z>
 QS_ClientPrefer           80
 QS_ClientContentTypes     10 1 100 1 1
@@ -243,6 +248,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /b/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
+
+<IfDefine uc1WWV>
+QS_SrvSerialize           on
+</IfDefine>
 
 <IfDefine uc1KK>
    LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
@@ -390,6 +399,27 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        QS_PermitUri +01 deny ^/index.html$
        QS_PermitUri +02 deny ^/large.html$
    </Location>
+</IfDefine>
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
+</VirtualHost>
+
+Listen                  127.0.0.1:##QS_PORT_BASE1##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE1##>
+   ServerName                 127.0.0.1
+
+   TransferLog ##ROOT##/logs/access_log
+
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+
+<IfDefine uc1WW>
+QS_SrvSerialize           off
 </IfDefine>
 
    <Location /cgi-local>
