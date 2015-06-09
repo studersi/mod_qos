@@ -595,6 +595,7 @@ The following table shows if a rules may be deactivated for VIPs:
 <tr><td>QS_SrvMaxConnClose</td><td>no</td></tr>
 <tr><td>QS_SrvMaxConnPerIP</td><td>yes</td></tr>
 <tr><td>QS_SrvMinDataRate</td><td>yes</td></tr>
+<tr><td>QS_SrvSerialize</td><td>no</td></tr>
 <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
 </table>
 <small>Note: Event based rules (e.g., <a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>) may evaluate the 
@@ -688,6 +689,12 @@ e.g. <code>QS_Limit_Clear</code>.
 <a name="QS_Serialize"></a>
 <code>QS_Serialize</code><br>
 Variable processed by the <code><a href="#QS_ClientSerialize">QS_ClientSerialize</a></code> 
+directive.
+</li>
+<li>
+<a name="QS_SrvSerialize_var"></a>
+<code>QS_SrvSerialize</code><br>
+Variable processed by the <code><a href="#QS_SrvSerialize">QS_SrvSerialize</a></code> 
 directive.
 </li>
 <li>
@@ -1436,6 +1443,14 @@ for a connection when the defined process environment variable is set.
 The '+' prefix is used to add a variable to the configuration while the '-' prefix 
 is used to remove a variable. Directive may be used on a per-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a> basis.
 </li>
+<li>
+<a name="QS_SrvSerialize"></a>
+<code>QS_SrvSerialize 'on'|'off'</code><br>
+Ensures that not more than one request having the 
+<a href="#QS_SrvSerialize_var"><code>QS_SrvSerialize</code></a> 
+variable set is processed at the same time by serializing them 
+(process one after each other). Default is "off".
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -1543,8 +1558,8 @@ if you want to enforce a rule under certain conditions only.
 <li>
 <a name="QS_ClientSerialize"></a>
 <code>QS_ClientSerialize</code><br>
-Serializes requests having the <code>QS_Serialize</code> variable set if they are comming 
-from the same IP address.<br>
+Serializes requests having the <a href="#QS_Serialize"><code>QS_Serialize</code></a> 
+variable set if they are comming from the same IP address.<br>
 <small>Notes:
 <ul>
 <li>You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
