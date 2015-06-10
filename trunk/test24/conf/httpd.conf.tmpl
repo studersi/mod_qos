@@ -44,7 +44,6 @@ QS_ClientEventBlockCount 20 30
 QS_SetEnvIfStatus  400 QS_Block
 
 QS_ClientEventLimitCount  3 10
-
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
   ServerName   127.0.0.1
@@ -74,6 +73,9 @@ Listen         ##QS_PORT_BASE##
    AddOutputFilter            INCLUDES .shtml
 
    QS_ErrorPage               /error-docs/error.shtml
+
+   QS_SrvSerialize            on
+   SetEnvIf                   User-Agent serializeme QS_SrvSerialize=1
 
    QS_SrvMaxConnClose         40
    QS_SrvMaxConnPerIP         30
