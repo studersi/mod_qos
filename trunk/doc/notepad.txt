@@ -10,6 +10,7 @@
   + respone content types (html/css/js/image/...)
     - store/configure "normal" behavoir (stop learning after a while)
   - elapse time between requests
+    + milestoes with min. time between req (think time of the user)
   - request/response length (body)
   - request/response headers (types, length)
   - request/response duration
@@ -24,6 +25,7 @@
 + geo location
   + country
   - region, city. latitude/longitude
+  - IPv6
 + doc: document VIP behavior (exact: which directive are affected)
 - more "dynamic" rules:
   - enforce rules on certain conditions only (e.g. overall server usage)
@@ -64,6 +66,8 @@
 - Change log message severity of errors caused by QS_SrvMinDataRate
   (mod_qos(034) events) if we did not receive any byte to avoid too 
   many event messages caused by browser's speculative preconnect requests
++ serialize requets per client
++ serialize requets per server
 - more user friendly error handling for QS_ClientEventBlockCount directive
   - show the error page for more than only the first occurence
     - e.g. answer the next 5 (or more) requests with an error page too
@@ -111,6 +115,9 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 + user tracking cookie (for statistics)
   + timeout/renew
 + gnu autotools to build tools
+- full Apache 2.4 support
+  - all features/directives
+  - MPM "worker" and "event"
 + create request id if mod_uniqueid is not available
 + enforce cookie support (redirect until client sends cookie), option for
   user tracking cookie or seperate cookie?
