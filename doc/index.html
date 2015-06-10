@@ -1449,7 +1449,8 @@ is used to remove a variable. Directive may be used on a per-<a href="http://htt
 Ensures that not more than one request having the 
 <a href="#QS_SrvSerialize_var"><code>QS_SrvSerialize</code></a> 
 variable set is processed at the same time by serializing them 
-(process one after each other). Default is "off".
+(process one request after each other). Default is "off".<br>
+<small>Note: Maximum wait time for a request is 5 minutes.</small>
 </li>
 </ul>
 
