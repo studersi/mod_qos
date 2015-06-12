@@ -1,0 +1,27 @@
+#
+#   SetEnvIf Request_URI       /a limit=a
+#   SetEnvIf Request_URI       /b limit=b
+#   QS_RedirectIf              limit a  http://localhost/error
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "302 Found"
+_EXPECT . "Location: http://localhost/error"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /b/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "!Location: http://localhost/error"
+_WAIT
+_CLOSE
+
+END
