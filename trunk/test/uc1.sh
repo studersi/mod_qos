@@ -331,6 +331,7 @@ ERRORS=`expr $ERRORS + $?`
 waitApache
 ./run.sh -s scripts/UC1_QS_MaxKeepAliveRequests.htt
 ERRORS=`expr $ERRORS + $?`
+sleep 1
 ./run.sh -s scripts/UC1_QS_KeepAliveTimeout.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
