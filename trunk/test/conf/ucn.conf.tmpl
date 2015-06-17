@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.41 2015-05-27 14:21:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.42 2015-06-17 19:58:36 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -171,6 +171,14 @@ SetEnvIf                      Content-Length [0-9]{2,} SerialPostSize
 SetEnvIf                      Request_URI ^/a SerialPostURL
 QS_SetEnvIf                   SerialPostSize SerialPostURL   QS_Serialize=yes
 QS_ClientSerialize
+</IfDefine>
+
+<IfDefine ucnip>
+# max 4 req/sec
+SetEnvIf                      User-Agent max4persec QS_SrvSerialize=1
+SetEnvIf                      User-Agent max4persec QS_Delay=250
+QS_EventRequestLimit                                QS_SrvSerialize 4
+QS_SrvSerialize                                     on
 </IfDefine>
 
 <IfDefine ucnj>
