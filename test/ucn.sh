@@ -94,6 +94,14 @@ ERRORS=`expr $ERRORS + $?`
 waitApache
 ./run.sh -s scripts/UCN_QS_ClientSerialize.htt
 ERRORS=`expr $ERRORS + $?`
+./run.sh -s scripts/UCN_QS_ClientSerialize2.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnip 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UCN_QS_SrvSerialize.htt
+ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnj 2>/dev/null 1>/dev/null
