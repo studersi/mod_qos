@@ -1933,8 +1933,8 @@ assure the availability of other resources.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
 <pre>
-# maximum number of active TCP connections is limited to 256:
-# (limited by the available memory, adjust the settings according to the
+# maximum number of active TCP connections is limited to 256 (limited
+# by the available memory, adjust the settings according to the
 # used hardware):
 MaxClients              256
 
@@ -1964,8 +1964,8 @@ support when it reaches a defined connection threshold.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
 <pre>
-# maximum number of active TCP connections is limited to 256:
-# (limited by the available memory, adjust the settings according to the
+# maximum number of active TCP connections is limited to 256 (limited
+# by the available memory, adjust the settings according to the
 # used hardware):
 MaxClients              256
 
@@ -2006,7 +2006,9 @@ QS_SrvMaxConnPerIP      50 700
 <p>
 If you have to limit the number of requests to an URL, mod_qos can help 
 with that, too. You may limit the number of requests per second to 
-an URL by adding a delay to requests accessing this resource. 
+an URL. mod_qos will then calculate the necessary delay time to be added 
+to each requests accessing this resource in order to achive the defined 
+limitation. 
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E0EBE0">
@@ -2016,6 +2018,29 @@ QS_LocRequestPerSecLimit /download/mod_qos.so.gz 150
 
 # but do not allow more than 600 concurrent requests:
 QS_LocRequestLimit       /download/mod_qos.so.gz 600
+</pre>
+</td></tr>
+</table>
+</p>
+<a name="Many_Requests_to_a_Single_URL_SLOW"></a>
+<p>
+Alernatively, if you need to reduce the number of processed requests 
+per time to a very low value, you might add a constant delay to 
+each request and process only one of them at the same time. However, 
+this will delay ever request to the defined URI, even the server 
+is idle.
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E0EBE0">
+<pre>
+# does not allow more than 4 requests/sec by adding a wait time of 250ms
+# to each request and process only one request at once:
+SetEnvIf                 Request_URI ^/download/mod_qos.so.gz QS_SrvSerialize=1
+SetEnvIf                 Request_URI ^/download/mod_qos.so.gz QS_Delay=250
+QS_SrvSerialize          on
+
+# but do not allow more than 600 concurrent requests:
+QS_EventRequestLimit     QS_SrvSerialize 600
 </pre>
 </td></tr>
 </table>
