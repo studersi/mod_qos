@@ -198,7 +198,7 @@ More information about mod_qos:
 <li><a href="#webconsole">Web Console</a></li>
 <li><a href="#utilities">Utilities</a></li>
 </ul>
-<li><a href="#usecases">Use Cases</a></li>
+<li><a href="#usecases">Sample Use Cases</a></li>
 </ul>
 </p>
 
@@ -1449,6 +1449,15 @@ The '+' prefix is used to add a variable to the configuration while the '-' pref
 is used to remove a variable. Directive may be used on a per-<a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location" target="_blank">Location</a> basis.
 </li>
 <li>
+<a name="QS_SrvSampleRate"></a>
+<code>QS_SrvSampleRate &lt;seconds&gt;</code><br>
+Defines the sampling rate used to measure the data throughput. 
+Default is 5 seconds or the value you have used for 
+<code>QS_REQ_RATE_TM</code> while compiling the module. 
+Increase this value if you want to compensate bandwidth 
+variations.
+</li>
+<li>
 <a name="QS_SrvSerialize"></a>
 <code>QS_SrvSerialize 'on'|'off'</code><br>
 Ensures that not more than one request having the 
@@ -1917,7 +1926,7 @@ from stdin (pipe) and writes the signed data to stdout.</li>
 
 
 <a name="usecases"></a>
-<h2>Use Cases</h2>
+<h2>Sample Use Cases</h2>
 <p>
 The following use cases may give you an idea about how to use mod_qos.
 <a name="Slow_Application"></a>
@@ -2090,9 +2099,11 @@ order to close the connections coming from idle clients. The
 <code>QS_SrvMinDataRate</code> does this. You may want to combine this with 
 the <code>QS_SrvMaxConnPerIP</code> directive as shown above in the 
 "Client Opens Many Concurrent Connections" example. 
-This could even be extened by the Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_reqtimeout.html" target="_blank">mod_reqtimeout</a> 
-which may be used to set various timeouts for receiving the request headers 
-and the request body from the client. The <code>QS_ClientEventBlockCount</code> 
+This could even be extened by the Apache module 
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_reqtimeout.html" target="_blank">mod_reqtimeout</a> 
+(available since Apache 2.2.15) which may be used to set various 
+timeouts for receiving the request headers and the request 
+body from the client. The <code>QS_ClientEventBlockCount</code> 
 directive is used in this example to block clients for a certain amount 
 of time if they cause errrors because they send invalid HTTP requests.
 <br><br>Example:<br>
