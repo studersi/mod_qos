@@ -45,8 +45,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.541 2015-06-08 19:52:24 pbuchbinder Exp $";
-static const char g_revision[] = "11.14";
+static const char revision[] = "$Id: mod_qos.c,v 5.542 2015-06-22 20:49:44 pbuchbinder Exp $";
+static const char g_revision[] = "11.15";
 
 /************************************************************************
  * Includes
@@ -210,8 +210,11 @@ static const char *m_note_variables[] = {
 
 #define QS_INCTX_ID inctx->id
 
-/* this is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
-   be increased to 10 or 30 seconds in order to compensate bandwidth variations */
+/* This is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
+   be increased to 10 or 30 seconds in order to compensate bandwidth variations.
+   You may also use the QS_SrvSampleRate directive to override this default.
+   Set it greater than the Apache Timeout directive to prevent from closing
+   unused speculative TCP pre-connections. */
 #ifndef QS_REQ_RATE_TM
 #define QS_REQ_RATE_TM    5
 #endif
@@ -755,13 +758,10 @@ typedef struct {
   request_rec *r;
   /* upload bandwidth (received bytes and start time) */
   time_t time;
-  apr_size_t nbytes;
+  apr_size_t nbytes;    // measuring the bytes/sec
   int shutdown;
   int errors;
   int disabled;
-  /* packet recv size rate: */
-  apr_size_t bytes;
-  int count;
   int lowrate;
   char *id;
   qos_srv_config *sconf;
@@ -6607,13 +6607,11 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                        "log only (allowed)" 
                        : "access denied",
                        QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
-          if(level == APLOG_DEBUG) {
-            inctx->time = now;
-            inctx->nbytes = 0;
-          } else {
-            if(!sconf->log_only) {
-              apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
-            }
+          inctx->time = now;
+          inctx->nbytes = 0;
+          if((level == APLOG_ERR) &&
+             !sconf->log_only) {
+            apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
           }
           /* mark slow clients (QS_ClientPrefer) even they are VIP */
           inctx->shutdown = 1;
@@ -6652,18 +6650,16 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                            req_rate,
                            rate,
                            QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
-              if(level == APLOG_DEBUG) {
-                inctx->time = interval + sconf->qs_req_rate_tm;
-                inctx->nbytes = 0;
-              } else {
-                if(!sconf->log_only) {
-                  if(inctx->status == QS_CONN_STATE_RESPONSE) {
-                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
-                    /* close out socket (the hard way) */
-                    apr_socket_close(inctx->client_socket);
-                  } else {
-                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
-                  }
+              inctx->time = interval + sconf->qs_req_rate_tm;
+              inctx->nbytes = 0;
+              if((level == APLOG_ERR) &&
+                 !sconf->log_only) {
+                if(inctx->status == QS_CONN_STATE_RESPONSE) {
+                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
+                  /* close out socket (the hard way) */
+                  apr_socket_close(inctx->client_socket);
+                } else {
+                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
                 }
               }
               /* mark slow clients (QS_ClientPrefer) even they are VIP */
