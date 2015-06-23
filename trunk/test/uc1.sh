@@ -231,6 +231,10 @@ ERRORS=`expr $ERRORS + $?`
 waitApache
 ./run.sh -s scripts/UC1_QS_SrvMinDataRate.htt
 ERRORS=`expr $ERRORS + $?`
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1uu 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_SrvMinDataRateS.htt
+ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1v 2>/dev/null 1>/dev/null
 waitApache
