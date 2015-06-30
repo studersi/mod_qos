@@ -1,5 +1,9 @@
 Version
 
+ - Increased severity of message 035 and 036 from
+   critical to alert.
+ - Lowered severity of messages 100, 009, and 007 from
+   emergency to critical.
 
 Version 11.14
 
