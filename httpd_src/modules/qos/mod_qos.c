@@ -45,8 +45,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.542 2015-06-22 20:49:44 pbuchbinder Exp $";
-static const char g_revision[] = "11.15";
+static const char revision[] = "$Id: mod_qos.c,v 5.543 2015-06-30 11:46:59 pbuchbinder Exp $";
+static const char g_revision[] = "11.16";
 
 /************************************************************************
  * Includes
@@ -2719,7 +2719,7 @@ static int qos_inc_ip(qos_srv_config *sconf,
       num = free->counter;
       *e = free;
     } else {
-      ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
+      ap_log_error(APLOG_MARK, APLOG_ALERT, 0, sconf->base_server, 
                    QOS_LOG_PFX(035)"QS_SrvMaxConn: no free IP slot available!"
                    " Check log for unclean child exit and consider"
                    " to do a graceful server restart.");
@@ -5575,7 +5575,7 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
       req_rate = req_rate + ((sconf->min_rate_max / sconf->max_clients) * connections);
       if(connections > sconf->max_clients) {
         // limit the max rate if we have more connections then expected
-        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
+        ap_log_error(APLOG_MARK, APLOG_ALERT, 0, sconf->base_server, 
                      QOS_LOG_PFX(036)"QS_SrvMinDataRate: unexpected connection status!"
                      " connections=%d,"
                      " cal. request rate=%d,"
@@ -9245,11 +9245,11 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                  QOS_LOG_PFX(009)"running in 'log only' mode - rules are NOT enforced!");
   }
   if(sconf->geo_limit != -1 && !sconf->geodb) {
-    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
+    ap_log_error(APLOG_MARK, APLOG_CRIT, 0, bs, 
                  QOS_LOG_PFX(100)"QS_ClientGeoCountryDB has not been configured");
   }
   if(net_prefer <= 1) {
-    ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
+    ap_log_error(APLOG_MARK, APLOG_CRIT, 0, bs, 
                  QOS_LOG_PFX(007)"could not determine MaxClients/MaxRequestWorkers!"
                  " You MUST set this directive within the Apache configuration file.");
   }
@@ -9312,7 +9312,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   if(m_requires_parp) {
     if(qos_module_check("mod_parp.c") != APR_SUCCESS) {
       qos_parp_hp_table_fn = NULL;
-      ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
+      ap_log_error(APLOG_MARK, APLOG_CRIT, 0, bs, 
                    QOS_LOG_PFX(009)"mod_parp not available"
                    " (required by some directives)");
     } else {
