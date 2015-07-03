@@ -1043,12 +1043,13 @@ Removes the specified response header.
 </li>
 <li>
 <a name="QS_RedirectIf"></a>
-<code>QS_RedirectIf &lt;variable&gt; &lt;regex&gt; &lt;url&gt;</code><br>
+<code>QS_RedirectIf &lt;variable&gt; &lt;regex&gt; [307:]&lt;url&gt;</code><br>
 Redirects the client to the configured url if the regular expression 
 matches the value of the the environment variable. Occurrences of $1..$9 
 within the url are replaced by parenthesized subexpressions of the 
-regular expression. Directive may be used on a per server or per 
-location basis.
+regular expression. The default status code used by this directive is 302
+but you may prefix the url parameter by <i>307:</i> to change it to a 307 
+response. Directive may be used on a per server or per location basis.
 </li>
 </ul>
 
