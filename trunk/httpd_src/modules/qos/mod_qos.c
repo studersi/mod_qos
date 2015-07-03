@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.543 2015-06-30 11:46:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.544 2015-07-03 20:42:13 pbuchbinder Exp $";
 static const char g_revision[] = "11.16";
 
 /************************************************************************
@@ -287,6 +287,7 @@ typedef struct {
   regex_t *preg;
 #endif
   const char *url;              /* redirect url */
+  int code;
 } qos_redirectif_entry_t;
 
 typedef struct {
@@ -6958,7 +6959,7 @@ static void qos_version_check(server_rec *bs) {
  * @param r
  * @param sconf
  * @param rules Rules array
- * @retrun HTTP_MOVED_TEMPORARILY or DECLINED
+ * @retrun HTTP_MOVED_TEMPORARILY/HTTP_TEMPORARY_REDIRECT or DECLINED
  */
 static int qos_redirectif(request_rec *r, qos_srv_config *sconf, apr_array_header_t *rules) {
 #ifdef AP_REGEX_H
@@ -6987,7 +6988,7 @@ static int qos_redirectif(request_rec *r, qos_srv_config *sconf, apr_array_heade
                       qos_unique_id(r, "049"));
         if(!sconf->log_only) {
           apr_table_set(r->headers_out, "Location", replaced);
-          return HTTP_MOVED_TEMPORARILY;
+          return entry->code;
         }
       }
     }
@@ -8918,12 +8919,12 @@ static int qos_fixup(request_rec * r) {
   qos_setreqheader(r, sconf->setreqheaderlate_t);
 
   rc = qos_redirectif(r, sconf, sconf->redirectif);
-  if(rc == HTTP_MOVED_TEMPORARILY) {
-    return HTTP_MOVED_TEMPORARILY;
+  if(rc != DECLINED) {
+    return rc;
   }
   rc = qos_redirectif(r, sconf, dconf->redirectif);
-  if(rc == HTTP_MOVED_TEMPORARILY) {
-    return HTTP_MOVED_TEMPORARILY;
+  if(rc != DECLINED) {
+    return rc;
   }
 
   return DECLINED;
@@ -10886,7 +10887,13 @@ const char *qos_redirectif_cmd(cmd_parms *cmd, void *dcfg, const char *var,
     return apr_psprintf(cmd->pool, "%s: could not compile regex %s",
                         cmd->directive->directive, pattern);
   }
-  new->url = apr_pstrdup(cmd->pool, url);
+  if(strncasecmp(url, "307:", 4) == 0) {
+    new->code = HTTP_TEMPORARY_REDIRECT;
+    new->url = apr_pstrdup(cmd->pool, &url[4]);
+  } else {
+    new->code = HTTP_MOVED_TEMPORARILY;
+    new->url = apr_pstrdup(cmd->pool, url);
+  }
   return NULL;
 }
 

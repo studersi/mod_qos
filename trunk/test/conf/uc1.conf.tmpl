@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.49 2015-06-23 18:02:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.50 2015-07-03 20:42:14 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -305,6 +305,12 @@ QS_SrvSerialize           on
    SetEnvIf Request_URI       /a limit=a
    SetEnvIf Request_URI       /b limit=b
    QS_RedirectIf              limit a  http://localhost/error
+</IfDefine>
+
+<IfDefine uc1g307>
+   SetEnvIf Request_URI       /a limit=a
+   SetEnvIf Request_URI       /b limit=b
+   QS_RedirectIf              limit a  307:http://localhost/error
 </IfDefine>
 
 <IfDefine uc1i>
