@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.50 2015-07-03 20:42:14 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.51 2015-07-09 20:26:29 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -403,6 +403,15 @@ QS_SrvSerialize           on
 <IfDefine uc1o>
    SetEnvIf Request_URI  /index.html limit=a
    QS_EventPerSecLimit   limit 10
+</IfDefine>
+
+<IfDefine uc1count>
+   LoadModule             setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus           Request_Query id=a limita=1
+   SetEnvIfPlus           Request_URI / limitb=3
+   QS_EventLimitCount     limita 100 5
+   SetEnvIfCmpPlus        limita_Counter gt limitb limitc
+   QS_EventLimitCount     limitc 1 3
 </IfDefine>
 
 <IfDefine uc1y>
