@@ -184,6 +184,12 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1count 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_c_EventLimitCount.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1p 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UC1_QS_CondClientEventLimitCount.htt

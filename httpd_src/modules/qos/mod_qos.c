@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.544 2015-07-03 20:42:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.545 2015-07-09 20:26:29 pbuchbinder Exp $";
 static const char g_revision[] = "11.16";
 
 /************************************************************************
@@ -4244,12 +4244,38 @@ static void qos_lg_event_update(request_rec *r, apr_time_t *t) {
 }
 
 /**
+ * QS_EventLimitCount, propagte variable
+ */
+static void qos_pr_event_limit(request_rec *r, qos_srv_config *sconf) {
+  qs_actable_t *act = sconf->act;
+  if(act->event_entry && (sconf->event_limit_a->nelts > 0)) {
+    int i;
+    qos_event_limit_entry_t *entry = act->event_entry;
+    apr_time_t now = apr_time_sec(r->request_time);
+    apr_global_mutex_lock(act->lock);     /* @CRT46 */
+    for(i = 0; i < sconf->event_limit_a->nelts; i++) {
+      if(entry->action == QS_EVENT_ACTION_DENY) {
+        // propagte to environment (previous value)
+        if(entry->limit_time + entry->seconds >= now) {
+          apr_table_set(r->subprocess_env,
+                        apr_pstrcat(r->pool, entry->env_var, QS_COUNTER_SUFFIX, NULL),
+                        apr_psprintf(r->pool, "%d", entry->limit));
+        }
+      }
+      // next rule
+      entry++;
+    }
+    apr_global_mutex_unlock(act->lock);   /* @CRT46 */
+  }
+}
+
+/**
  * QS_EventLimitCount, detect and enforce
  */
 static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
   apr_status_t rv = DECLINED;
   qs_actable_t *act = sconf->act;
-  if(act->event_entry) {
+  if(act->event_entry && (sconf->event_limit_a->nelts > 0)) {
     apr_time_t now = apr_time_sec(r->request_time);
     int i;
     qos_event_limit_entry_t *entry = act->event_entry;
@@ -4283,7 +4309,7 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
                           qos_unique_id(r, "013"));
           }
         }
-        // propagte to environment
+        // propagte to environment (current)
         apr_table_set(r->subprocess_env,
                       apr_pstrcat(r->pool, entry->env_var, QS_COUNTER_SUFFIX, NULL),
                       apr_psprintf(r->pool, "%d", entry->limit));
@@ -7642,6 +7668,8 @@ static int qos_post_read_request(request_rec *r) {
   if(!ap_is_initial_req(r)) {
     // sub-request
     qos_propagate_events(r);
+  } else {
+    qos_pr_event_limit(r, sconf);
   }
 
   /* QS_ClientPrefer: propagate connection env vars to req*/

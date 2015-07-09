@@ -8,6 +8,9 @@ Version
 
  - QS_RedirectIf directive supports 307 response code.
 
+ - Set *_Counter variable of QS_EventLimitCount within
+   post read request handler.
+
 Version 11.14
 
  - New directive QS_SrvSerialize.
