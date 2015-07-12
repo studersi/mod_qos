@@ -89,7 +89,8 @@ waitApache
 ./run.sh -s scripts/UCN_QS_IPConn.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
-sleep 1
+sleep 2
+
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnh 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UCN_QS_EventRequestLimit.htt
@@ -100,6 +101,7 @@ ERRORS=`expr $ERRORS + $?`
 waitApache
 ./run.sh -s scripts/UCN_QS_ClientSerialize.htt
 ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
 
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnip 2>/dev/null 1>/dev/null
 waitApache
@@ -183,12 +185,14 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 sleep 2
 ./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnt -D ucnt2 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UCN_QS_ClientEventBlockExcludeIP2.htt
 ERRORS=`expr $ERRORS + $?`
 sleep 2
 ./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnt -D ucnt3 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UCN_QS_ClientEventBlock3.htt
