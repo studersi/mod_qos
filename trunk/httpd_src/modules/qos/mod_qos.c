@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.545 2015-07-09 20:26:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.546 2015-07-12 20:36:23 pbuchbinder Exp $";
 static const char g_revision[] = "11.16";
 
 /************************************************************************
@@ -4923,7 +4923,7 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
  */
 static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
   qs_actable_t *act = sconf->act;
-  if(act->event_entry) {
+  if(act->event_entry && (sconf->event_limit_a->nelts > 0)) {
     apr_time_t now = apr_time_sec(r->request_time);
     int i;
     qos_event_limit_entry_t *entry = act->event_entry;
@@ -7292,11 +7292,11 @@ static int qos_process_connection(conn_rec *c) {
       if(cconf->sconf->act->conn) {
         cconf->sconf->act->conn->connections++;
         all_connections = qos_server_connections(sconf);
-        connections = cconf->sconf->act->conn->connections; /* @CRT4 */
+        connections = cconf->sconf->act->conn->connections;
         apr_table_set(c->notes, "QS_SrvConn", apr_psprintf(c->pool, "%d", connections));
         apr_table_set(c->notes, "QS_AllConn", apr_psprintf(c->pool, "%d", all_connections));
       }
-      apr_global_mutex_unlock(cconf->sconf->act->lock);
+      apr_global_mutex_unlock(cconf->sconf->act->lock);  /* @CRT4 */
     }
 
     /* single source ip */
