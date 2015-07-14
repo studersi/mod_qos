@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.51 2015-07-09 20:26:29 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.52 2015-07-14 18:43:26 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -212,6 +212,18 @@ QS_SrvSerialize           on
 <IfDefine uc1WWV>
 LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
 SetEnvIfPlus              User-Agent serializeme QS_SrvSerialize=yes
+</IfDefine>
+
+<IfDefine clientSerial>
+LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
+SetEnvIf                Request_URI / QS_Serialize=yes
+QS_ClientSerialize
+</IfDefine>
+
+<IfDefine srvSerial>
+LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
+SetEnvIf                Request_URI / QS_SrvSerialize=yes
+QS_SrvSerialize         on
 </IfDefine>
 
 <IfDefine uc1z>
