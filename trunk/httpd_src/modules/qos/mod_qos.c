@@ -45,8 +45,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.546 2015-07-12 20:36:23 pbuchbinder Exp $";
-static const char g_revision[] = "11.16";
+static const char revision[] = "$Id: mod_qos.c,v 5.547 2015-07-14 19:25:46 pbuchbinder Exp $";
+static const char g_revision[] = "11.15";
 
 /************************************************************************
  * Includes
@@ -337,8 +337,10 @@ typedef struct {
   unsigned int img;
   unsigned int other;
   unsigned int notmodified;
-  unsigned int serialize;
   unsigned int events;
+  /* serialization flag */
+  unsigned int serialize;
+  apr_time_t serialize_queue;
   /* prefer */
   short int vip;
   /* ev block */
@@ -1615,6 +1617,7 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->req_per_sec_block_rate = 0;
   (*pB)->event_req = 0;
   (*pB)->serialize = 0;
+  (*pB)->serialize_queue = 0;
   (*pB)->html = 1;
   (*pB)->cssjs = 1;
   (*pB)->img = 1;
@@ -4584,9 +4587,24 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
          requests are waiting at the same time and every request waits
          the same amount of time (100ms) before re-trying it again. */
       if((*e)->serialize == 0) {
-        (*e)->serialize = 1;
-        rctx->cc_serialize_set = 1;
-        locked = 1;
+        // free! check if this request is the next in the queue */
+        if(((*e)->serialize_queue == 0) || (r->request_time <= (*e)->serialize_queue)) {
+          (*e)->serialize = 1;
+          (*e)->serialize_queue = 0;
+          rctx->cc_serialize_set = 1;
+          locked = 1;
+        }
+      } else {
+        // put the request into the queue
+        if((*e)->serialize_queue == 0) {
+          // the only waiting req
+          (*e)->serialize_queue = r->request_time;
+        } else {
+          if((*e)->serialize_queue > r->request_time) {
+            // this request is waiting for a longer time
+            (*e)->serialize_queue = r->request_time;
+          }
+        }
       }
       apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT36 */   
       if(!locked) {

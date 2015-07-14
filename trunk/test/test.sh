@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.253 2015-07-12 20:36:23 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.254 2015-07-14 19:25:46 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -1059,7 +1059,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # some simple configurations --------------------------------------
-usscripts="dos.sh uc1.sh ucn.sh"
+usscripts="dos.sh uc1.sh QS_Serialize.sh ucn.sh"
 for E in $usscripts; do
   sleep 10
   echo "> $E"
