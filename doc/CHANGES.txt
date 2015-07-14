@@ -1,4 +1,4 @@
-Version
+Version 11.15
 
  - Increased severity of message 035 and 036 from
    critical to alert.
@@ -10,6 +10,10 @@ Version
 
  - Set *_Counter variable of QS_EventLimitCount within
    post read request handler.
+
+ - QS_ClientSerialize honors the sequence of receiving
+   requests (fifo) in order to support requests from
+   different clients accessing the server via a proxy.
 
 Version 11.14
 
