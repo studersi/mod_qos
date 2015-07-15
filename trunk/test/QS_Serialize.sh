@@ -15,6 +15,12 @@ if [ `echo $last | grep -c "cl=100&delayus"` -eq 0 ]; then
     echo "FAILED QS_ClientSerialize"
     exit 1
 fi
+secondlast=`tail -2 logs/access_log | head -1`
+if [ `echo $secondlast | grep -c "cl=99&delayus"` -eq 0 ]; then
+    echo "$secondlast"
+    echo "FAILED QS_SrvSerialize"
+    exit 1
+fi
 
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D srvSerial 2>/dev/null 1>/dev/null
@@ -25,6 +31,12 @@ sleep 30
 last=`tail -1 logs/access_log`
 if [ `echo $last | grep -c "srv=100&delayus"` -eq 0 ]; then
     echo "$last"
+    echo "FAILED QS_SrvSerialize"
+    exit 1
+fi
+secondlast=`tail -2 logs/access_log | head -1`
+if [ `echo $secondlast | grep -c "srv=99&delayus"` -eq 0 ]; then
+    echo "$secondlast"
     echo "FAILED QS_SrvSerialize"
     exit 1
 fi
