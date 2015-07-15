@@ -1,5 +1,6 @@
 #
-# check we don't get a deadlock when exceeding the timeout
+# check we don't get a deadlock when exceeding the timeout (bug in mod_qos 11.14)
+# (run this test before executing UC1_QS_SrvSerialize.htt)
 #
 
 INCLUDE scripts/ports
