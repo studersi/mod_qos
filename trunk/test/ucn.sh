@@ -89,7 +89,7 @@ waitApache
 ./run.sh -s scripts/UCN_QS_IPConn.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
-sleep 2
+sleep 5
 
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnh 2>/dev/null 1>/dev/null
 waitApache
