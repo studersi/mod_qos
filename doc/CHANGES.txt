@@ -15,6 +15,9 @@ Version 11.15
    requests (fifo) in order to support requests from
    different clients accessing the server via a proxy.
 
+ - Fixed: potential deadlock (when reaching the 5min
+   timeout) when using the QS_SrvSerialize directive.
+
 Version 11.14
 
  - New directive QS_SrvSerialize.

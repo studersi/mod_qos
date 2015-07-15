@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.547 2015-07-14 19:25:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.548 2015-07-15 06:29:51 pbuchbinder Exp $";
 static const char g_revision[] = "11.15";
 
 /************************************************************************
@@ -4516,6 +4516,12 @@ static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf, qs_req_c
                     QOS_LOG_PFX(068)"QS_SrvSerialize exceeds limit of 5 minutes, "
                     "id=%s",
                     qos_unique_id(r, "037"));
+      /* remove this request from the queue resp. clear the queue
+         to avaoid a deadlock */
+      apr_global_mutex_lock(sconf->act->lock);     /* @CRT44.1 */
+      sconf->act->serialize->q2 = 0;
+      sconf->act->serialize->q1 = 0;
+      apr_global_mutex_unlock(sconf->act->lock);   /* @CRT44.1 */
       break;
     }
     loops++;
@@ -4535,48 +4541,50 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
     const char *forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
     int loops = 0;
     int locked = 0;
-    /* wait until we get a lock */
-    while(!locked) {
-      qos_s_entry_t **e = NULL;
-      qos_s_entry_t searchE;
-      searchE.ip6[0] = 0;
-      searchE.ip6[1] = 0;
-      if(sconf->qos_cc_forwardedfor) {
-        const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
-        if(forwardedfor) {
-          if(qos_ip_str2long(forwardedfor, &searchE.ip6) == 0) {
-            if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
-              ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                            QOS_LOG_PFX(069)"no valid IP header found (@hp):"
-                            " invalid header value '%s', fallback to connection's IP %s, id=%s",
-                            forwardedfor,
-                            QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
-                            QS_CONN_REMOTEIP(r->connection),
-                            qos_unique_id(r, "069"));
-              apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
-            }
-          } else {
-            forwardedForLogIP = forwardedfor;
-          }
-        } else {
+    
+    qos_s_entry_t searchE;
+    searchE.ip6[0] = 0;
+    searchE.ip6[1] = 0;
+    if(sconf->qos_cc_forwardedfor) {
+      const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
+      if(forwardedfor) {
+        if(qos_ip_str2long(forwardedfor, &searchE.ip6) == 0) {
           if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                           QOS_LOG_PFX(069)"no valid IP header found (@hp):"
-                          " header '%s' not available, fallback to connection's IP %s, id=%s",
-                          sconf->qos_cc_forwardedfor,
+                          " invalid header value '%s', fallback to connection's IP %s, id=%s",
+                          forwardedfor,
                           QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
                           QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "069"));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
           }
+        } else {
+          forwardedForLogIP = forwardedfor;
+        }
+      } else {
+        if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                        QOS_LOG_PFX(069)"no valid IP header found (@hp):"
+                        " header '%s' not available, fallback to connection's IP %s, id=%s",
+                        sconf->qos_cc_forwardedfor,
+                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
+                        QS_CONN_REMOTEIP(r->connection),
+                        qos_unique_id(r, "069"));
+          apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
         }
       }
-      if((searchE.ip6[0] == 0) &&
-         (searchE.ip6[1] == 0)) {
-        // use real ip from the connection
-        searchE.ip6[0] = cconf->ip6[0];
-        searchE.ip6[1] = cconf->ip6[1];
-      }
+    }
+    if((searchE.ip6[0] == 0) &&
+       (searchE.ip6[1] == 0)) {
+      // use real ip from the connection
+      searchE.ip6[0] = cconf->ip6[0];
+      searchE.ip6[1] = cconf->ip6[1];
+    }
+
+    /* wait until we get a lock */
+    while(!locked) {
+      qos_s_entry_t **e = NULL;
       apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36 */
       e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
       if(!e) {
@@ -4627,6 +4635,15 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
                       "c=%s, id=%s",
                       forwardedForLogIP == NULL ? "-" : forwardedForLogIP,
                       qos_unique_id(r, "068"));
+        /* remove this request from the queue resp. clear the queue
+           to avaoid a deadlock */
+        apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36.1 */
+        e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+        if(!e) {
+          e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+        }
+        (*e)->serialize_queue = 0;
+        apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT36.1 */      
         break;
       }
       loops++;

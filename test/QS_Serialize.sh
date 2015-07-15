@@ -12,7 +12,7 @@ sleep 30
 last=`tail -1 logs/access_log`
 if [ `echo $last | grep -c "cl=100&delayus"` -eq 0 ]; then
     echo "$last"
-    echo "FAILED QS_SrvSerialize"
+    echo "FAILED QS_ClientSerialize"
     exit 1
 fi
 
