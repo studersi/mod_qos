@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.548 2015-07-15 06:29:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.549 2015-07-15 20:58:22 pbuchbinder Exp $";
 static const char g_revision[] = "11.15";
 
 /************************************************************************
@@ -4590,10 +4590,6 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
       if(!e) {
         e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
       }
-      /* Which request is getting the lock? We assume all requests comming
-         from the same client (no proxy), so it's up to the client how many
-         requests are waiting at the same time and every request waits
-         the same amount of time (100ms) before re-trying it again. */
       if((*e)->serialize == 0) {
         // free! check if this request is the next in the queue */
         if(((*e)->serialize_queue == 0) || (r->request_time <= (*e)->serialize_queue)) {
