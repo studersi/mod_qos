@@ -224,6 +224,9 @@ _EXPECT . "200 OK"
 _EXPECT . "done"
 _WAIT
 _CLOSE
+
+_EXPECT EXEC "mod_qos\(068\): QS_SrvSerialize exceeds limit of 300 seconds"
+_EXEC tail -3 logs/error_log
 END
 
 

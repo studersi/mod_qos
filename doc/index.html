@@ -1460,12 +1460,14 @@ variations.
 </li>
 <li>
 <a name="QS_SrvSerialize"></a>
-<code>QS_SrvSerialize 'on'|'off'</code><br>
+<code>QS_SrvSerialize 'on'|'off' [&lt;timeout&gt;]</code><br>
 Ensures that not more than one request having the 
 <a href="#QS_SrvSerialize_var"><code>QS_SrvSerialize</code></a> 
 variable set is processed at the same time by serializing them 
 (process one request after each other). Default is "off".<br>
-<small>Note: Maximum wait time for a request is 5 minutes.</small>
+<small>Note: Maximum wait time for a request is defined by the 
+optional timeout parameter (in seconds). The default is 300 
+seconds.</small>
 </li>
 </ul>
 
