@@ -45,8 +45,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.549 2015-07-15 20:58:22 pbuchbinder Exp $";
-static const char g_revision[] = "11.15";
+static const char revision[] = "$Id: mod_qos.c,v 5.550 2015-08-01 14:10:59 pbuchbinder Exp $";
+static const char g_revision[] = "11.16";
 
 /************************************************************************
  * Includes
@@ -691,6 +691,7 @@ typedef struct {
   int max_conn_per_ip;
   int max_conn_per_ip_connections;
   int serialize;
+  int serializeTMO;
   apr_table_t *exclude_ip;
   qos_ifctx_list_t *inctx_t;
   apr_table_t *hfilter_table; /* GLOBAL ONLY */
@@ -4511,10 +4512,11 @@ static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf, qs_req_c
       }
       nanosleep(&delay, NULL);
     }
-    if(loops >= 3000) {
+    if(loops >= sconf->serializeTMO) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                    QOS_LOG_PFX(068)"QS_SrvSerialize exceeds limit of 5 minutes, "
+                    QOS_LOG_PFX(068)"QS_SrvSerialize exceeds limit of %d seconds, "
                     "id=%s",
+                    sconf->serializeTMO / 10,
                     qos_unique_id(r, "037"));
       /* remove this request from the queue resp. clear the queue
          to avaoid a deadlock */
@@ -10228,6 +10230,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_event_req = -1;
   sconf->qos_cc_block = 0;
   sconf->qos_cc_serialize = 0;
+  sconf->serializeTMO = 3000;
   sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
   sconf->qs_req_rate_tm = QS_REQ_RATE_TM;
   sconf->geodb = NULL;
@@ -10411,6 +10414,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->serialize == -1) {
     o->serialize = b->serialize;
+    o->serializeTMO = b->serializeTMO;
   }
   if(o->has_event_filter == 0) {
     o->has_event_filter = b->has_event_filter;
@@ -11433,10 +11437,47 @@ const char *qos_max_conn_ip_cmd(cmd_parms *cmd, void *dcfg, const char *number,
 /**
  * QS_SrvSerialize
  */
-const char *qos_serialize_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+const char *qos_serialize_cmd(cmd_parms *cmd, void *dcfg, const char * flag,
+                              const char *seconds) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  sconf->serialize = flag;
+  if(strcasecmp(flag, "on") == 0) {
+    sconf->serialize = 1;
+  } else if(strcasecmp(flag, "off") == 0) {
+    sconf->serialize = 0;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: flag needs to be either 'on' or 'off'",
+                        cmd->directive->directive);
+  }
+  if(seconds) {
+    sconf->serializeTMO = atoi(seconds);
+    if(sconf->serializeTMO <= 0) {
+      return apr_psprintf(cmd->pool, "%s: timeout (seconds) must be a numeric value >0",
+                          cmd->directive->directive);
+    }
+    // n * 100 mseconds
+    sconf->serializeTMO = sconf->serializeTMO * 10;
+  }
+  return NULL;
+}
+
+/**
+ * QS_SrvSerializeTimeout
+ */
+const char *qos_serializetmo_cmd(cmd_parms *cmd, void *dcfg, const char *seconds) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->serializeTMO = atoi(seconds);
+  if(sconf->serializeTMO <= 0) {
+    return apr_psprintf(cmd->pool, "%s: directive must be a numeric value >0",
+                        cmd->directive->directive);
+  }
+  // n * 100 mseconds
+  sconf->serializeTMO = sconf->serializeTMO * 10;
   return NULL;
 }
 
@@ -12445,9 +12486,9 @@ static const command_rec qos_config_cmds[] = {
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an IP address or"
                 " address range from beeing limited."),
 
-  AP_INIT_FLAG("QS_SrvSerialize", qos_serialize_cmd, NULL,
+  AP_INIT_TAKE12("QS_SrvSerialize", qos_serialize_cmd, NULL,
                RSRC_CONF,
-               "QS_SrvSerialize 'on'|'off', ensures that not more than one request"
+               "QS_SrvSerialize 'on'|'off' [<seconds>], ensures that not more than one request"
                " having the "QS_SRVSERIALIZE" variable set is processed"
                " at the same time by serializing them (process one after"
                " each other)."),

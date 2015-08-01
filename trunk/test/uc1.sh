@@ -273,6 +273,13 @@ ERRORS=`expr $ERRORS + $?`
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1WWTMO 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_SrvSerializeShortTMO.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
+
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1WWV 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UC1_QS_SrvSerializeV.htt

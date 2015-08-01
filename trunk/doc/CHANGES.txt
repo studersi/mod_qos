@@ -1,3 +1,7 @@
+Version
+
+ - Adds timeout option to QS_SrvSerialize directive.
+
 Version 11.15
 
  - Increased severity of message 035 and 036 from

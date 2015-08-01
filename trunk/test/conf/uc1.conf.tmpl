@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.53 2015-07-15 06:29:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.54 2015-08-01 14:10:59 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -208,6 +208,11 @@ Timeout                   500
 LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
 SetEnvIfPlus              User-Agent serializeme QS_SrvSerialize=yes
 QS_SrvSerialize           on
+</IfDefine>
+<IfDefine uc1WWTMO>
+LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus              User-Agent serializeme QS_SrvSerialize=yes
+QS_SrvSerialize           on 10
 </IfDefine>
 
 <IfDefine uc1WWV>
