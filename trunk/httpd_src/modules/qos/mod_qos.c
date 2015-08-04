@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.550 2015-08-01 14:10:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.551 2015-08-04 20:09:41 pbuchbinder Exp $";
 static const char g_revision[] = "11.16";
 
 /************************************************************************
@@ -4497,13 +4497,13 @@ static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf, qs_req_c
     if(locked) {
         sconf->act->serialize->locked = 1;
         rctx->srv_serialize_set = 1;
-    }   
+    }
     apr_global_mutex_unlock(sconf->act->lock);   /* @CRT44 */
     if(!locked) {
-      /* sleep 100ms */
+      /* sleep 50ms */
       struct timespec delay;
       delay.tv_sec  = 0;
-      delay.tv_nsec = 100 * 1000000;
+      delay.tv_nsec = 50 * 1000000;
       if(!rctx->evmsg || !strstr(rctx->evmsg, "s;")) {
         rctx->evmsg = apr_pstrcat(r->pool, "s;", rctx->evmsg, NULL);
       }
@@ -4516,7 +4516,7 @@ static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf, qs_req_c
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                     QOS_LOG_PFX(068)"QS_SrvSerialize exceeds limit of %d seconds, "
                     "id=%s",
-                    sconf->serializeTMO / 10,
+                    sconf->serializeTMO / 20,
                     qos_unique_id(r, "037"));
       /* remove this request from the queue resp. clear the queue
          to avaoid a deadlock */
@@ -10230,7 +10230,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qos_cc_event_req = -1;
   sconf->qos_cc_block = 0;
   sconf->qos_cc_serialize = 0;
-  sconf->serializeTMO = 3000;
+  sconf->serializeTMO = 6000; // 6000 * 50ms = 5 minutes
   sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
   sconf->qs_req_rate_tm = QS_REQ_RATE_TM;
   sconf->geodb = NULL;
@@ -11455,29 +11455,9 @@ const char *qos_serialize_cmd(cmd_parms *cmd, void *dcfg, const char * flag,
       return apr_psprintf(cmd->pool, "%s: timeout (seconds) must be a numeric value >0",
                           cmd->directive->directive);
     }
-    // n * 100 mseconds
-    sconf->serializeTMO = sconf->serializeTMO * 10;
+    // n * 50 milliseconds
+    sconf->serializeTMO = sconf->serializeTMO * 20;
   }
-  return NULL;
-}
-
-/**
- * QS_SrvSerializeTimeout
- */
-const char *qos_serializetmo_cmd(cmd_parms *cmd, void *dcfg, const char *seconds) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
-                                                                &qos_module);
-  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
-  if (err != NULL) {
-    return err;
-  }
-  sconf->serializeTMO = atoi(seconds);
-  if(sconf->serializeTMO <= 0) {
-    return apr_psprintf(cmd->pool, "%s: directive must be a numeric value >0",
-                        cmd->directive->directive);
-  }
-  // n * 100 mseconds
-  sconf->serializeTMO = sconf->serializeTMO * 10;
   return NULL;
 }
 
