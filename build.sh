@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.71 2015-05-21 19:16:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.72 2015-08-04 20:09:41 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -29,7 +29,7 @@
 TOP=`pwd`
 
 #APACHE_VER=2.0.59
-APACHE_VER=2.2.29
+APACHE_VER=2.2.31
 MPM=worker
 #MPM=prefork
 #MPM=event
@@ -109,9 +109,9 @@ sed <build/rules.mk > build/rules.mk.2 \
  -e "s;LINK     = \$(LIBTOOL) --mode=link \$(CC) \$(ALL_CFLAGS)  \$(LT_LDFLAGS);LINK     = \$(LIBTOOL) --mode=link \$(CC) \$(ALL_CFLAGS) -static \$(LT_LDFLAGS);g"
 mv build/rules.mk.2 build/rules.mk
 
-cd modules/ssl
-perl ssl_engine_dh.c
-cd ../..
+#cd modules/ssl
+#perl ssl_engine_dh.c
+#cd ../..
 
 make
 if [ $? -ne 0 ]; then
