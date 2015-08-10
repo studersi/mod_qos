@@ -1,5 +1,5 @@
 #
-# $Id: UCN_QS_SrvSerialize.htt,v 1.1 2015-06-17 19:58:36 pbuchbinder Exp $
+# $Id: UCN_QS_SrvSerialize.htt,v 1.2 2015-08-10 20:29:11 pbuchbinder Exp $
 #
 # SetEnvIf                      User-Agent max4persec QS_SrvSerialize=1
 # SetEnvIf                      User-Agent max4persec QS_Delay=250
@@ -27,7 +27,7 @@ _END LOOP
 _DATE:GET_TIME END1
 
 _OP $END1 SUB $START1 DELTA1
-_IF "$DELTA1" LT "4000"
+_IF "$DELTA1" LT "3800"
 _EXIT FAILED
 _END IF
 _IF "$DELTA1" GT "5000"
