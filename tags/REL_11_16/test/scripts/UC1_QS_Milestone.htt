@@ -1,0 +1,40 @@
+#
+#   QS_MileStone deny "^GET /index.html "
+#   QS_MileStone deny "^GET /a/sleep.cgi "
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "403 Forbidden"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path=/;" QSSCD
+_EXPECT . "200 OK"
+_EXPECT . "root index"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(047\): access denied, reached milestone '1' \(\^GET /a/sleep.cgi \), user has already passed 'none', action=deny"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi HTTP/1.1
+__Host: localhost
+__Cookie: QSSCD=$QSSCD
+__
+_EXPECT . "200 OK"
+_EXPECT . "!403 Forbidden"
+_EXPECT . "done"
+_WAIT
+
+END
