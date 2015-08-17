@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.5 2015-06-02 15:34:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.6 2015-08-17 18:41:41 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -101,7 +101,7 @@ case "$COMMAND" in
   restart)
 	$0 stop
         $0 start $ADDARGS
-        sleep 1
+        sleep 2
 esac
 
 exit 0
