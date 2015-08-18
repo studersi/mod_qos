@@ -45,8 +45,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.551 2015-08-04 20:09:41 pbuchbinder Exp $";
-static const char g_revision[] = "11.16";
+static const char revision[] = "$Id: mod_qos.c,v 5.552 2015-08-18 18:58:44 pbuchbinder Exp $";
+static const char g_revision[] = "11.17";
 
 /************************************************************************
  * Includes
@@ -12472,7 +12472,7 @@ static const command_rec qos_config_cmds[] = {
                " having the "QS_SRVSERIALIZE" variable set is processed"
                " at the same time by serializing them (process one after"
                " each other)."),
-#if QS_APACHE_22
+
 #if APR_HAS_THREADS
   AP_INIT_NO_ARGS("QS_SrvDataRateOff", qos_req_rate_off_cmd, NULL,
                   RSRC_CONF,
@@ -12538,7 +12538,6 @@ static const command_rec qos_config_cmds[] = {
                 " to the configuration while the '-' prefix is used"
                 " to remove a variable."),
 #endif // has threads
-#endif // QS_APACHE_22
 
   AP_INIT_TAKE1("QS_SrvSampleRate", qos_req_rate_tm_cmd, NULL,
                 RSRC_CONF,

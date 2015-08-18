@@ -43,6 +43,8 @@ QS_ErrorResponseCode   503
 QS_ClientEventBlockCount 20 30
 QS_SetEnvIfStatus  400 QS_Block
 
+QS_SrvMinDataRate  120 3000 10
+
 QS_ClientEventLimitCount  3 10
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
@@ -126,6 +128,8 @@ Listen         ##QS_PORT_BASE1##
   ServerName   127.0.0.1
 
   TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 21600 -f"
+
+  QS_SrvDataRateOff   off
 
   ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
   <Location /cgi>
