@@ -1,6 +1,12 @@
+Version
+
+ - Enables QS_SrvMinDataRate, QS_SrvDataRateOff, and
+   QS_SrvMinDataRateOffEvent for Apache 2.4 as smoke
+   test against Apache 2.4.12 and 2.4.16 was now successful.
+
 Version 11.16
 
- - Adds timeout option to QS_SrvSerialize directive.
+ - Adds timeout option to the QS_SrvSerialize directive.
 
 Version 11.15
 

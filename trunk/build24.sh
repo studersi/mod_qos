@@ -1,14 +1,14 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.8 2015-06-02 15:25:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.9 2015-08-18 18:58:44 pbuchbinder Exp $
 #
 # Simple Apache 2.4 build script.
 #
 
 TOP=`pwd`
 
-APACHE_VER=2.4.12
+APACHE_VER=2.4.16
 #MPM=event
 MPM=worker
 
