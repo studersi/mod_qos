@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.552 2015-08-18 18:58:44 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.553 2015-08-19 20:10:30 pbuchbinder Exp $";
 static const char g_revision[] = "11.17";
 
 /************************************************************************
@@ -13030,10 +13030,12 @@ static const command_rec qos_config_cmds[] = {
                "QS_DisableHandler 'on'|'off', disables the qos-viewer"
                " and qos-console for a virtual host"),
 
+#if QS_APACHE_22
 #ifndef QS_HAS_APACHE_PATH
   AP_INIT_TAKE1("QS_Chroot", qos_chroot_cmd, NULL,
                 RSRC_CONF,
                 "QS_Chroot <path>, change root directory."),
+#endif
 #endif
 
   AP_INIT_TAKE1("qslog", qos_qlog_cmd, NULL,

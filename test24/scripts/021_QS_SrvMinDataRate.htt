@@ -1,9 +1,14 @@
+#
+# QS_SrvMinDataRate  120 3000 10
+#
+
 INCLUDE scripts/ports
 
 SET TME=1000
 
 CLIENT
 
+# slow request
 _REQ localhost $QS_PORT_BASE
 _-GET /
 _-i
@@ -47,6 +52,7 @@ END
 
 CLIENT
 
+# QS_SrvDataRateOff off
 _REQ localhost $QS_PORT_BASE1
 _-GET /
 _-i
