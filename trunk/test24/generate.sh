@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.6 2015-01-05 17:35:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.7 2015-08-19 20:10:30 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -70,11 +70,22 @@ echo "export QS_PORT_BASE1"         >> ports
 echo "QS_PORT_BASE2=$QS_PORT_BASE2" >> ports
 echo "export QS_PORT_BASE1"         >> ports
 
-if [ ! -f htdocs/image.iso ]; then
-    for E in `seq 12500`; do
-	echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso
-    done
+if [ ! -f htdocs/image.iso -o ]; then
+  for E in `seq 12500`; do
+    echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso
+  done
+  rm -f htdocs/dvd.iso
+  for E in `seq 10`; do
+    cat htdocs/image.iso >> htdocs/dvd.iso
+  done
+  rm -f htdocs/dvd2.iso
+  for E in `seq 10`; do
+    cat htdocs/dvd.iso >> htdocs/dvd2.iso
+  done
+  echo "END OF dvd2.iso" >> htdocs/dvd2.iso
+  echo "END OF dvd.iso" >> htdocs/dvd.iso
 fi
+
 mkdir -p htdocs/limitbs
 mkdir -p htdocs/ratelimit
 cp htdocs/image.iso htdocs/limitbs/image.iso

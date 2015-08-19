@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.9 2015-08-18 18:58:44 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.10 2015-08-19 20:10:30 pbuchbinder Exp $
 #
 # Simple Apache 2.4 build script.
 #
@@ -13,19 +13,22 @@ APACHE_VER=2.4.16
 MPM=worker
 
 echo "build Apache $APACHE_VER"
-if [ ! -d httpd-${APACHE_VER} ]; then
-  gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
+if [ -d httpd-${APACHE_VER} ]; then
+    rm -rf httpd-${APACHE_VER}
 fi
+gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
 rm -f httpd
 ln -s httpd-${APACHE_VER} httpd
 
-#cd ..
-#svn co http://svn.apache.org/repos/asf/apr/apr/trunk apr
-#cd apr
-#./buildconf
-#./configure
-#make
-#cd $TOP
+if [ ! -d ../apr ]; then
+    cd ..
+    svn co http://svn.apache.org/repos/asf/apr/apr/trunk apr
+    cd apr
+    ./buildconf
+    ./configure
+    make
+    cd $TOP
+fi
 
 rm -rf httpd/modules/qos
 mkdir -p httpd/modules/qos
