@@ -35,6 +35,12 @@ done
 ./ctl.sh stop > /dev/null
 echo "end (`date '+%a %b %d %H:%M:%S %Y'`)"
 
+CFS=`find . -name "*core*"`
+if [ -n "$CFS" ]; then
+  ERRORS=`expr $ERRORS + 1`
+  echo "FAILED found core file"
+fi
+
 if [ $WARNINGS -ne 0 ]; then
     echo "ERROR: got $WARNINGS warnings and $ERRORS errors"
     exit 1

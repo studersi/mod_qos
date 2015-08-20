@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.553 2015-08-19 20:10:30 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.554 2015-08-20 19:42:40 pbuchbinder Exp $";
 static const char g_revision[] = "11.17";
 
 /************************************************************************
@@ -6984,9 +6984,9 @@ static char *qos_this_host(request_rec *r) {
  * Apache 2.2 MPM worker binaries is the only configuration which
  * has been tested (as mentioned in the documentation, see index.html).
  *
- * - old MPM Apache prefork versions do not unload the DSO properly
- *   or child exit may cause a segfault (pool cleanup)
- * - Apache 2.4 is experimental only and some directives are not available
+ * - old (2.0.x, 2.2.x) MPM Apache prefork versions do not unload the
+ *   DSO properly or child exit may cause a segfault (pool cleanup)
+ * - Apache 2.4 is experimental only and not yet fully tested
  *   (see CHANGES.txt for more informaton)
  * - Apache 2.0 does not support all directives (e.g. QS_ClientPrefer) and
  *   we do no longer test against this version (the module does probably
@@ -6996,7 +6996,7 @@ static char *qos_this_host(request_rec *r) {
 static void qos_version_check(server_rec *bs) {
   ap_version_t version;
 
-  if(strcasecmp(ap_show_mpm(), "worker") != 0) {
+  if(strcasecmp(ap_show_mpm(), "prefok") == 0) {
     m_worker_mpm = 0; // disable child cleanup
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"loaded MPM is '%s'"
@@ -7005,10 +7005,10 @@ static void qos_version_check(server_rec *bs) {
   }
 
   ap_get_server_revision(&version);
-  if(version.major != 2 || version.minor != 2) {
+  if(version.major != 2 || (version.minor != 2 && version.minor != 4)) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"server version is %d.%d"
-                 " but mod_qos should be used with Apache 2.2 only.",
+                 " but mod_qos should be used with Apache 2.2.",
                  version.major, version.minor);
   }
 }

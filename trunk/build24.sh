@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.10 2015-08-19 20:10:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.11 2015-08-20 19:42:40 pbuchbinder Exp $
 #
 # Simple Apache 2.4 build script.
 #
@@ -9,8 +9,8 @@
 TOP=`pwd`
 
 APACHE_VER=2.4.16
-#MPM=event
-MPM=worker
+MPM=event
+#MPM=worker
 
 echo "build Apache $APACHE_VER"
 if [ -d httpd-${APACHE_VER} ]; then
