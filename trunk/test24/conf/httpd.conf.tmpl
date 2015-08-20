@@ -113,6 +113,8 @@ Listen         ##QS_PORT_BASE##
    </Location>
    <Location /status>
       SetHandler server-status
+      QS_DenyPath +d1 deny /status/deny
+      QS_DenyQuery +q1 deny denyme
    </Location>
    <Location /info>
       SetHandler server-info
