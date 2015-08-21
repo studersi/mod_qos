@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.36 2015-08-21 15:08:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.37 2015-08-21 18:05:02 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -398,6 +398,8 @@ static long qs_verify(const char *sec) {
   int line_size = MAX_LINE_BUFFER;
   int line_len;
   m_nr = -1; // sequence number
+  long nr_alt = -1;
+  long nr_alt_lnr = -1;
   while(fgets(line, line_size, stdin) != NULL) {
     int valid = 0;
     long ns = 0;
@@ -432,6 +434,10 @@ static long qs_verify(const char *sec) {
       if(strcmp(m, sig) != 0) {
 	err++;
 	fprintf(stderr, "ERROR on line %ld: invalid signature\n", lnr);
+	/* message may be modified/currupt or inserted: next line may have
+	   the next sequence number (modified) or the same (inserted) */
+	nr_alt = m_nr + 1;
+	nr_alt_lnr = lnr + 1;
       } else {
 	valid = 1;
       }
@@ -444,6 +450,15 @@ static long qs_verify(const char *sec) {
 	fprintf(stderr, "ERROR on line %ld: invalid sequence\n", lnr);
       } else {
 	if(m_nr != -1) {
+	  if(lnr == nr_alt_lnr) {
+	    // last line was modfied
+	    if(m_nr != ns) {
+	      // and therefore, we also accept the next seqence number
+	      m_nr = nr_alt;
+	    }
+	    nr_alt = -1;
+	    nr_alt_lnr = -1;
+	  }
 	  if(m_nr != ns) {
 	    if(ns == 1) {
 	      if(!end_seen) {
@@ -457,7 +472,7 @@ static long qs_verify(const char *sec) {
 	    }
 	  }
 	} else if(m_logend) {
-	  // log should (if not rotated) with message 0
+	  // log should (if not rotated) start with message 0
 	  if(ns != 1) {
 	    fprintf(stderr, "NOTICE: log starts with sequence %."SEQDIG"ld, log rotation?"
 		    " (expect %."SEQDIG"d)\n", ns, 1);
