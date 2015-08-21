@@ -1415,13 +1415,13 @@ level control restrictions. An address range must end with a ".".
 <code>QS_SrvMinDataRate &lt;bytes per second&gt; [&lt;max bytes per second&gt; [&lt;connections&gt;]]</code><br>
 Defines the minimum upload/download throughput a client must generate (the bytes 
 sent/received by the client per seconds). This bandwidth is measured while 
-receiving request data (request line, header fields, or body), sending response data 
-(header fields, body) and during keep-alive.
+receiving request data (<i>in</i>: request line, header fields, or body), sending response data 
+(<i>out</i>: header fields, body) and during keep-alive (<i>enforce keep-alive</i>).
 The client connection is closed if the client does not fulfill this required minimal 
 data rate and the IP address of the causing client is marked in order to be handled 
 with low priority (see the <code>QS_ClientPrefer</code> directive). 
-The "max bytes per second" activates dynamic minimum throughput control: The required 
-minimal throughput is increased in parallel to the number of concurrent clients 
+The "max bytes per second" activates <a href="SrvMinDataRate.png">dynamic minimum throughput control</a>: 
+The required minimal throughput is increased in parallel to the number of concurrent clients 
 sending/receiving data (starts increasing when reaching the "connections" threshold). 
 The "max bytes per second" setting is reached when the number of 
 sending/receiving clients is equal to the <code>MaxClients</code> setting. 

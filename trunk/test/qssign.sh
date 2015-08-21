@@ -127,10 +127,23 @@ echo "=============================================="
 echo "127.0.0.1 - - [31/Oct/2013:21:41:21 +0100] \"GET /auth/index.html HTTP/1.1\" 401 194 \"-\" \"Mozilla/5.0 1\"" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
 
 echo "=============================================="
-echo "2013/11/07 17:44:07 [error] 4640#0: *55 auth_token_module(014): request not authorized: invalid signature, client: 127.0.0.1, server: localhost, request: \"GET /app/index.html?req=1 HTTP/1.1\", host: \"127.0.0.1:8204\"" | ../util/src/qssign -s 1234567890 -e | tee qssignend.log
+echo "2013/11/07 17:44:07 [error] 4640#0: *55 auth_token_module(014): request not authorized: invalid signature, client: 127.0.0.1, server: localhost, request: \"GET /app/index.html?req=1 HTTP/1.1\", host: \"127.0.0.1:8204\"" | ../util/src/qssign -s 1234567890 -e -a sha256 | tee qssignend.log
 if [ `grep -c "0#0: qssign" qssignend.log` -ne 1 ]; then
   echo "ERROR: invalid format"
   exit 1
+fi
+echo "algorithm... OK:"
+cat qssignend.log | ../util/src/qssign -s 1234567890 -v -a sha256
+if [ $? -ne 0 ]; then
+    echo "ERROR: validation failed (sha256)"
+    exit 1
+fi
+echo "-"
+echo "algorithm... expect error:"
+cat qssignend.log | ../util/src/qssign -s 1234567890 -v -a sha1
+if [ $? -eq 0 ]; then
+    echo "ERROR: validation success (sha256)"
+    exit 1
 fi
 
 echo "- end"

@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.35 2015-05-04 20:24:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.36 2015-08-21 15:08:10 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -62,6 +62,7 @@ static int  m_logend = 0;
 static void (*m_end)(const char *) = NULL;
 static int m_end_pos = 0;
 static const char *m_sec = NULL;
+static const EVP_MD *m_evp;
 
 typedef struct {
   const char* fmt;
@@ -110,7 +111,7 @@ static void qs_write(char *line, int line_size, const char *sec, int sec_len) {
   char *m;
   int data_len;
   sprintf(&line[strlen(line)], " %."SEQDIG"ld", m_nr);
-  HMAC_Init(&ctx, sec, sec_len, EVP_sha1());
+  HMAC_Init(&ctx, sec, sec_len, m_evp);
   HMAC_Update(&ctx, (const unsigned char *)line, strlen(line));
   HMAC_Final(&ctx, data, &len);
   m = calloc(1, apr_base64_encode_len(len) + 1);
@@ -422,7 +423,7 @@ static long qs_verify(const char *sec) {
       sig[0] = '\0';
       sig++;
       /* verify hmac */
-      HMAC_Init(&ctx, sec, sec_len, EVP_sha1());
+      HMAC_Init(&ctx, sec, sec_len, m_evp);
       HMAC_Update(&ctx, (const unsigned char *)line, strlen(line));
       HMAC_Final(&ctx, data, &len);
       m = calloc(1, apr_base64_encode_len(len) + 1);
@@ -581,7 +582,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -s|S <secret> [-e] [-v] [-u <name>]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -s|S <secret> [-e] [-v] [-u <name>] [-a 'sha1'|sha256']\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -616,6 +617,10 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "  -u <name>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Becomes another user, e.g. www-data.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -a 'sha1'|'sha256'\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Specifes the algorithm to use. Default is sha1.\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
@@ -662,7 +667,7 @@ int main(int argc, const char * const argv[]) {
   }
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
-
+  m_evp = EVP_sha1();
   argc--;
   argv++;
   while(argc >= 1) {
@@ -682,6 +687,17 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
         username = *(++argv);
       }
+    } else if(strcmp(*argv,"-a") == 0) { /* switch user id */
+      if (--argc >= 1) {
+        const char *alg = *(++argv);
+	if(strcasecmp(alg, "SHA256") == 0) {
+	  m_evp = EVP_sha256();
+	} else if(strcasecmp(alg, "SHA1") != 0) {
+	  m_evp = NULL;
+	}
+      } else {
+	m_evp = NULL;
+      }
     } else if(strcmp(*argv,"-?") == 0) {
       usage(cmd, 0);
     } else if(strcmp(*argv,"-help") == 0) {
@@ -695,6 +711,10 @@ int main(int argc, const char * const argv[]) {
     argv++;
   }
 
+  if(m_evp == NULL) {
+    usage(cmd, 0);
+  }
+    
   if(m_sec == NULL) {
     usage(cmd, 0);
   }
