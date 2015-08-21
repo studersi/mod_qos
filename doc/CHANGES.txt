@@ -1,5 +1,8 @@
 Version
 
+ - qssign features the option "-a" to define which
+   algorithm to use.
+
  - Enables QS_SrvMinDataRate, QS_SrvDataRateOff, and
    QS_SrvMinDataRateOffEvent for Apache 2.4 as smoke
    test against Apache 2.4.12 and 2.4.16 was now
