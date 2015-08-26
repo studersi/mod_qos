@@ -1,3 +1,4 @@
++ QS_Delay
 QS_LocRequestLimitDefault
 + QS_LocRequestLimit
 QS_LocRequestPerSecLimit
