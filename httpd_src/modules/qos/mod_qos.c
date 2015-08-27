@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.554 2015-08-20 19:42:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.555 2015-08-27 19:27:15 pbuchbinder Exp $";
 static const char g_revision[] = "11.17";
 
 /************************************************************************
@@ -890,7 +890,8 @@ typedef struct {
 
 module AP_MODULE_DECLARE_DATA qos_module;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
-static int m_worker_mpm = 1; // note: mod_qos shall be used for Apache 2.2 worker MPM only
+static int m_worker_mpm = 1; // note: mod_qos is fully tested for Apache 2.2 worker MPM only
+static int m_event_mpm = 0;
 static unsigned int m_hostcode = 0;
 static int m_generation = 0;
 static int m_qos_cc_partition = QSMOD;
@@ -4173,6 +4174,13 @@ static void qos_keepalive(request_rec *r, qos_srv_config *sconf) {
     }
     if(ka >= 0 || km >= 0) {
       qs_req_ctx *rctx = qos_rctx_config_get(r);
+      if(m_event_mpm) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
+                      QOS_LOG_PFX(037)"loaded MPM is 'event'"
+                      " and the QS_KeepAliveTimeout/QS_MaxKeepAliveRequests"
+                      " directives can't be used.");
+        return;
+      }
       if(QS_ISDEBUG(r->server)) {
         int kaorig = apr_time_sec(r->server->keep_alive_timeout);
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
@@ -6996,7 +7004,11 @@ static char *qos_this_host(request_rec *r) {
 static void qos_version_check(server_rec *bs) {
   ap_version_t version;
 
-  if(strcasecmp(ap_show_mpm(), "prefok") == 0) {
+  if(strcasecmp(ap_show_mpm(), "event") == 0) {
+    m_event_mpm = 1; // disable features like keep-alive control
+  }
+  if(strcasecmp(ap_show_mpm(), "prefork") == 0) {
+    // mod_qos is fully tested for MPM worker
     m_worker_mpm = 0; // disable child cleanup
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"loaded MPM is '%s'"
