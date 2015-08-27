@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.11 2015-08-20 19:42:40 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.12 2015-08-27 19:27:18 pbuchbinder Exp $
 #
 # Simple Apache 2.4 build script.
 #
@@ -13,12 +13,13 @@ MPM=event
 #MPM=worker
 
 echo "build Apache $APACHE_VER"
-if [ -d httpd-${APACHE_VER} ]; then
-    rm -rf httpd-${APACHE_VER}
+if [ -d httpd-${APACHE_VER}-${MPM} ]; then
+    rm -rf httpd-${APACHE_VER}-${MPM}
 fi
 gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
 rm -f httpd
-ln -s httpd-${APACHE_VER} httpd
+mv httpd-${APACHE_VER} httpd-${APACHE_VER}-${MPM}
+ln -s httpd-${APACHE_VER}-${MPM} httpd
 
 if [ ! -d ../apr ]; then
     cd ..
