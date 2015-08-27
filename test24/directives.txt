@@ -1,7 +1,7 @@
 variales: + QS_Delay
           QS_VipRequest
-          QS_KeepAliveTimeout
-          QS_MaxKeepAliveRequests
+          + QS_KeepAliveTimeout (worker)
+          + QS_MaxKeepAliveRequests (worker)
           QS_Timeout
           QS_ErrorPage
 QS_LocRequestLimitDefault
