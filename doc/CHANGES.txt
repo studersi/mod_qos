@@ -1,12 +1,12 @@
 Version
 
- - qssign features the option "-a" to define which
-   algorithm to use.
+ - qssign features the option "-a" to define which algorithm to use.
 
  - Enables QS_SrvMinDataRate, QS_SrvDataRateOff, and
-   QS_SrvMinDataRateOffEvent for Apache 2.4 as smoke
-   test against Apache 2.4.12 and 2.4.16 was now
-   successful (MPM worker and event).
+   QS_SrvMinDataRateOffEvent for Apache 2.4 as smoke test against
+   Apache 2.4.12 and 2.4.16 was now successful (MPM worker and event).
+   The QS_KeepAliveTimeout, QS_MaxKeepAliveRequests, and QS_Timeout
+   directives have been disabled for the MPM event.
 
 Version 11.16
 
@@ -14,23 +14,22 @@ Version 11.16
 
 Version 11.15
 
- - Increased severity of message 035 and 036 from
-   critical to alert.
+ - Increased severity of message 035 and 036 from critical to alert.
 
- - Lowered severity of messages 100, 009, and 007 from
-   emergency to critical.
+ - Lowered severity of messages 100, 009, and 007 from emergency to
+   critical.
 
  - QS_RedirectIf directive supports 307 response code.
 
- - Set *_Counter variable of QS_EventLimitCount within
-   post read request handler.
+ - Set *_Counter variable of QS_EventLimitCount within post read
+   request handler.
 
- - QS_ClientSerialize honors the sequence of receiving
-   requests (fifo) in order to support requests from
-   different clients accessing the server via a proxy.
+ - QS_ClientSerialize honors the sequence of receiving requests (fifo)
+   in order to support requests from different clients accessing the
+   server via a proxy.
 
- - Fixed: potential deadlock (when reaching the 5min
-   timeout) when using the QS_SrvSerialize directive.
+ - Fixed: potential deadlock (when reaching the 5min timeout) when
+   using the QS_SrvSerialize directive.
 
 Version 11.14
 
@@ -40,41 +39,37 @@ Version 11.13
 
  - Adds option "-u" to the qslogger and qssign utilities.
 
- - QS_MileStone features a "think time" attribute which
-   defines how long a client must wait between two
-   milestones.
+ - QS_MileStone features a "think time" attribute which defines how 
+   long a client must wait between two milestones.
 
 Version 11.12
 
- - Propagates the variables used by QS_ClientEventLimitCount
-   to sub-requests making them available within SSI pages.
+ - Propagates the variables used by QS_ClientEventLimitCount to 
+   sub-requests making them available within SSI pages.
 
- - New QS_ClientEventLimitCount variable suffixed by
-   "_Remaining" containing the remaining time in seconds
-   a client is still blocked (to be used within error
-   pages to show a client how long he has to wait until
-   he might proceed).
+ - New QS_ClientEventLimitCount variable suffixed by "_Remaining"
+   containing the remaining time in seconds a client is still blocked
+   (to be used within error pages to show a client how long he has to
+   wait until he might proceed).
 
  - New variable QS_MaxKeepAliveRequests.
 
 Version 11.11
 
  - QS_Limit (resp. the event variable processed by the
-   QS_ClientEventLimitCount/QS_CondClientEventLimitCount
-   directives)  event may specify a weighting of events 
-   defining by how many penalty points the counter shall
-   be increased. Default is 1.
+   QS_ClientEventLimitCount/QS_CondClientEventLimitCount directives)
+   event may specify a weighting of events defining by how many 
+   penalty points the counter shall be increased. Default is 1.
 
 Version 11.10
 
- - Adds qslog command to the module (dedicated statisic
-   log facility on a per Apache server instance basis).
+ - Adds qslog command to the module (dedicated statisic log facility
+   on a per Apache server instance basis).
 
 Version 11.9
 
- - QS_Block event may specify a weighting of events 
-   defining by how many penalty points the counter shall
-   be increased.
+ - QS_Block event may specify a weighting of events defining by how
+   many penalty points the counter shall be increased.
 
  - Fixed: enables per client data store when using the 
    QS_VipIPHeaderName together with the QS_SrvMaxConn[PerIP]
@@ -96,15 +91,14 @@ Version 11.7
 
 Version 11.6
 
- - Adds "Public-Key-Pins" and "Public-Key-Pins-Report-Only"
-   to the pre-defined list of allowed HTTP response header
-   fields.
+ - Adds "Public-Key-Pins" and "Public-Key-Pins-Report-Only" to the
+   pre-defined list of allowed HTTP response header fields.
 
- - Adds "Origin" to the pre-defined list of allowed HTTP
-   response header fields.
+ - Adds "Origin" to the pre-defined list of allowed HTTP response
+   header fields.
 
- - Fixed: qsrotate reads the size of an existing logfile
-   at startup (required by the "-b" option).
+ - Fixed: qsrotate reads the size of an existing logfile at startup
+   (required by the "-b" option).
 
 Version 11.5
 
@@ -112,9 +106,9 @@ Version 11.5
 
  - Minor code refactoring.
 
- - Some log messages (010, 012, 013, 030, 031, 034, 040,
-   041, 042, 043, 044, 046, 047, 048, 060, 063, 064, 065,
-   067, 101) indicate if QS_LogOnly mode is active.
+ - Some log messages (010, 012, 013, 030, 031, 034, 040, 041, 042,
+   043, 044, 046, 047, 048, 060, 063, 064, 065, 067, 101) indicate
+   if QS_LogOnly mode is active.
 
  - Apply QS_LogOnly to header filter (action drop).
 
@@ -753,7 +747,8 @@ Version 9.44
 
 Version 9.43
 
- - QS_ClientEventBlockCount rule violation marks client to have low priority.
+ - QS_ClientEventBlockCount rule violation marks client to have low 
+   priority.
 
 Version 9.42
 
@@ -825,7 +820,8 @@ Version 9.31
  - qsfilter2: encode double quotes and backslashes using their hex
    values (no escaping within Apache configuration necessary).
 
- - Featuring JSON parser which may be used in conjunction with QS_PermitUri.
+ - Featuring JSON parser which may be used in conjunction with 
+   QS_PermitUri.
 
 Version 9.30
 
