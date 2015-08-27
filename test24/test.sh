@@ -24,7 +24,26 @@ rm -f logs/*
 echo "start (`date '+%a %b %d %H:%M:%S %Y'`)"
 ./ctl.sh start > /dev/null
 
-for E in `ls scripts/*.htt | sort`; do
+if [ `../httpd/httpd -l | grep -c worker.c` -eq 1 ]; then
+    for E in `ls scripts/*WORKER.htt | sort`; do
+	./run.sh -s $E
+	if [ $? -ne 0 ]; then
+	    ERRORS=`expr $ERRORS + 1`
+	    echo "FAILED $E"
+	fi
+    done
+fi
+if [ `../httpd/httpd -l | grep -c event.c` -eq 1 ]; then
+    for E in `ls scripts/*EVENT.htt | sort`; do
+	./run.sh -s $E
+	if [ $? -ne 0 ]; then
+	    ERRORS=`expr $ERRORS + 1`
+	    echo "FAILED $E"
+	fi
+    done
+fi
+
+for E in `ls scripts/*.htt | grep -v -e "WORKER.htt" -e "EVENT.htt"| sort`; do
   ./run.sh -s $E
   if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
