@@ -95,7 +95,8 @@ Listen         ##QS_PORT_BASE##
    SetEnvIf                     User-Agent delayme QS_Delay=100
    SetEnvIf                     User-Agent delay1000 QS_Delay=1000
    SetEnvIf                     User-Agent delay2100 QS_Delay=2100
-
+   SetEnvIf                     User-Agent keepAliveTimeout10 QS_KeepAliveTimeout=10
+   SetEnvIf                     User-Agent maxKeepAliveReq50  QS_MaxKeepAliveRequests=50
    QS_MileStone                 deny "^GET /htt/milestone/index.html"
    QS_MileStone                 deny "^POST /htt/milestone/register*"
    QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"

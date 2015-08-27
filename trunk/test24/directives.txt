@@ -1,4 +1,9 @@
-+ QS_Delay
+variales: + QS_Delay
+          QS_VipRequest
+          QS_KeepAliveTimeout
+          QS_MaxKeepAliveRequests
+          QS_Timeout
+          QS_ErrorPage
 QS_LocRequestLimitDefault
 + QS_LocRequestLimit
 QS_LocRequestPerSecLimit
