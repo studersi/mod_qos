@@ -5,8 +5,8 @@ Version
  - Enables QS_SrvMinDataRate, QS_SrvDataRateOff, and
    QS_SrvMinDataRateOffEvent for Apache 2.4 as smoke test against
    Apache 2.4.12 and 2.4.16 was now successful (MPM worker and event).
-   The QS_KeepAliveTimeout, QS_MaxKeepAliveRequests, and QS_Timeout
-   directives have been disabled for the MPM event.
+   The QS_KeepAliveTimeout and QS_MaxKeepAliveRequests directives
+   have been disabled for the MPM event.
 
 Version 11.16
 

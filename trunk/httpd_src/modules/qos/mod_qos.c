@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.556 2015-08-27 20:11:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.557 2015-08-31 19:48:46 pbuchbinder Exp $";
 static const char g_revision[] = "11.17";
 
 /************************************************************************
@@ -7003,7 +7003,6 @@ static char *qos_this_host(request_rec *r) {
  */
 static void qos_version_check(server_rec *bs) {
   ap_version_t version;
-
   if(strcasecmp(ap_show_mpm(), "event") == 0) {
     m_event_mpm = 1; // disable features like keep-alive control
   }
@@ -7963,22 +7962,15 @@ static int qos_header_parser(request_rec * r) {
     tmostr = apr_table_get(r->subprocess_env, QS_TIMEOUT);
     if(tmostr) {
       apr_interval_time_t timeout = apr_time_from_sec(atoi(tmostr));
-      if(m_event_mpm) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
-                      QOS_LOG_PFX(037)"loaded MPM is 'event'"
-                      " and the QS_Timeout"
-                      " directive can't be used.");
-      } else {
-        if(timeout > 0) {
-          qs_conn_base_ctx *bctx = qos_get_conn_base_ctx(r->connection);
-          if(bctx && bctx->client_socket) {
-            if(QS_ISDEBUG(r->server)) {
-              ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                            QOS_LOGD_PFX"set connection timeout to %s seconds, id=%s",
-                            tmostr, qos_unique_id(r, NULL));
-            }
-            apr_socket_timeout_set(bctx->client_socket, timeout);
+      if(timeout > 0) {
+        qs_conn_base_ctx *bctx = qos_get_conn_base_ctx(r->connection);
+        if(bctx && bctx->client_socket) {
+          if(QS_ISDEBUG(r->server)) {
+            ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                          QOS_LOGD_PFX"set connection timeout to %s seconds, id=%s",
+                          tmostr, qos_unique_id(r, NULL));
           }
+          apr_socket_timeout_set(bctx->client_socket, timeout);
         }
       }
     }
