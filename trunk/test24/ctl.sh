@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.6 2015-08-17 18:41:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.7 2015-08-31 20:23:05 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -66,16 +66,16 @@ case "$COMMAND" in
 	done
 	for E in $INST; do
 	  COUNTER=0
-	  while [ $COUNTER -lt 20 ]; do
+	  while [ $COUNTER -lt 30 ]; do
 	    if [ ! -f logs/${E}.pid ]; then
-	      COUNTER=20
+	      COUNTER=30
 	    else
 	      ../test/bin/sleep 500
 	    fi
 	    COUNTER=`expr $COUNTER + 1`
 	  done
 	done
-	../test/bin/sleep 500
+	../test/bin/sleep 1500
 	;;
   graceful)
 	if [ -f logs/apache.pid ]; then
