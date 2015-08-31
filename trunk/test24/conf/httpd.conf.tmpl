@@ -30,6 +30,7 @@ Timeout                 30
 KeepAlive               on
 MaxKeepAliveRequests   100
 KeepAliveTimeout         5
+RequestReadTimeout       header=0 body=0
 
 <IfDefine real_ip>
 QS_EnableInternalIPSimulation off
@@ -97,6 +98,7 @@ Listen         ##QS_PORT_BASE##
    SetEnvIf                     User-Agent delay2100 QS_Delay=2100
    SetEnvIf                     User-Agent keepAliveTimeout10 QS_KeepAliveTimeout=10
    SetEnvIf                     User-Agent maxKeepAliveReq150  QS_MaxKeepAliveRequests=150
+   SetEnvIf                     User-Agent QS_Timeout40 QS_Timeout=40
    QS_MileStone                 deny "^GET /htt/milestone/index.html"
    QS_MileStone                 deny "^POST /htt/milestone/register*"
    QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
