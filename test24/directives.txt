@@ -58,7 +58,6 @@ QS_SetEnvIfParp
 QS_SetEnvIfBody
 QS_SetEnvStatus
 + QS_SetEnvIfStatus
-QS_SetEnvResBody
 + QS_SetEnvIfResBody
 QS_SetEnv
 QS_SetReqHeader
