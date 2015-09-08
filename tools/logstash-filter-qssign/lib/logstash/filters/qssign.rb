@@ -43,6 +43,7 @@ class LogStash::Filters::Qssign < LogStash::Filters::Base
   # filter {
   #   grok {
   #     match => [ "message", "%{GREEDYDATA:data} %{INT:sequence}#%{NOTSPACE:hmac}" ]
+  #     tag_on_failure => [ ]
   #   }
   #   if [data] {
   #     qssign {
