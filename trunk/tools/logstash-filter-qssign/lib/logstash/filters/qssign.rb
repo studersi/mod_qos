@@ -2,8 +2,6 @@
 require "logstash/filters/base"
 require "logstash/namespace"
 
-#require 'digest'
-
 #
 # This "qssign" filter validates the signature and sequence number
 # of log messages and sets the "signature" field accordingly.
@@ -73,6 +71,11 @@ class LogStash::Filters::Qssign < LogStash::Filters::Base
   def initialize(params)
     super(params)
     @sources = Hash.new
+    @key = @secret
+    if File.file?(@secret)
+      value = `#{@secret}`
+      @key = value.strip
+    end
   end
   
   public
@@ -94,15 +97,12 @@ class LogStash::Filters::Qssign < LogStash::Filters::Base
     # data:
     data = event[@message]
 
-    # configured shared secret:
-    key = @secret
-
     # raw message:
     raw = data + " " + sequence
 
     # calculate hmac
     digest = OpenSSL::Digest.new('sha1')
-    hmacin = OpenSSL::HMAC.digest(digest, key, raw)
+    hmacin = OpenSSL::HMAC.digest(digest, @key, raw)
     encodedHmacin = Base64.strict_encode64(hmacin)
 
     if (encodedHmacin <=> hmac) == 0
@@ -131,7 +131,7 @@ class LogStash::Filters::Qssign < LogStash::Filters::Base
     else
       event["signature"] = "invalid"
     end
-    
+
     filter_matched(event)
   end # def filter
 end # class LogStash::Filters::Qssign
