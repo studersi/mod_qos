@@ -72,6 +72,7 @@ class LogStash::Filters::Qssign < LogStash::Filters::Base
     super(params)
     @sources = Hash.new
     @key = @secret
+    # optionally: read the shared secret from a file
     if File.file?(@secret)
       value = `#{@secret}`
       @key = value.strip
