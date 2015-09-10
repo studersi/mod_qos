@@ -36,6 +36,18 @@ filter {
 }
 
 filter{
+  if [type] == "access" {
+    grok {
+      match => [ "message", "%{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] \"(?:%{WORD:method} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})\" %{NUMBER:status} (?:%{NUMBER:bytes}|-)" ]
+    }
+    date {
+      match => [ "timestamp" , "dd/MMM/yyyy:HH:mm:ss Z" ]
+    }
+    mutate {
+      remove_field => [ "timestamp" ]
+    }
+  }
+
   if [type] == "json" {
     json{
       source => "message"
@@ -44,13 +56,13 @@ filter{
       match => [ "timestamp", "ISO8601" ]
     }
     mutate {
-      remove_field => [ "timestamp", "message" ]
+      remove_field => [ "timestamp", "message", "hmac" ]
     }
   }
 }
 
 output{
-    elasticsearch {
-        embedded => true
-    }
+  elasticsearch {
+    embedded => true
+  }
 }
