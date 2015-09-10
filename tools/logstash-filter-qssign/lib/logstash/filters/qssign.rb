@@ -128,6 +128,7 @@ class LogStash::Filters::Qssign < LogStash::Filters::Base
       @sources[source] = nextSequence
       if data.end_with?(" qssign---end-of-data")
         @sources[source] = 1
+        event["type"] = "qssign"
       end
     else
       event["signature"] = "invalid"
