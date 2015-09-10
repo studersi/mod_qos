@@ -1,6 +1,7 @@
 #!/bin/sh
 
 ROOT=`pwd`
+TOP=`dirname $ROOT`
 QS_UID=`id`
 QS_UID_STR=`expr "$QS_UID" : 'uid=[0-9]*.\([a-z,A-Z,0-9,_]*\)'`
 QS_UID=`id`
@@ -38,10 +39,11 @@ echo "export QS_PORT_BASE1"         >> ports
 echo "QS_PORT_BASE2=$QS_PORT_BASE2" >> ports
 echo "export QS_PORT_BASE1"         >> ports
 
-CONFFILES="conf/httpd.conf conf/httpd2.conf"
+CONFFILES="conf/httpd.conf conf/httpd2.conf conf/logstash.conf"
 for E in $CONFFILES; do
     sed <$E.tmpl >$E \
 	-e "s;##ROOT##;$ROOT;g" \
+	-e "s;##TOP##;$TOP;g" \
 	-e "s;##USR##;$QS_UID_STR;g" \
 	-e "s;##QS_PORT_BASE##;$QS_PORT_BASE;g" \
 	-e "s;##QS_PORT_BASE1##;$QS_PORT_BASE1;g" \
