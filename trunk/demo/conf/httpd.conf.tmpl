@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.18 2015-01-05 17:35:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.19 2015-09-10 18:08:28 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -74,6 +74,7 @@ LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 LoadModule              parp_module ##ROOT##/../test/libexec/mod_parp.so
 LoadModule              setenvifplus_module ##ROOT##/../test/libexec/mod_setenvifplus.so
+LoadModule              logio_module ##ROOT##/../httpd/modules/loggers/.libs/mod_logio.so
 
 SSLProtocol             all -SSLv2
 SSLCipherSuite          RC4-SHA:RC4-MD5:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!SSLv2:!EXP
@@ -136,6 +137,7 @@ Listen                  server1:##QS_PORT_BASE##
 
    TransferLog            "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -f -b 103833600"
    CustomLog              "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/stat.csv -f ISBDUQC -c ##ROOT##/conf/applications" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
+   CustomLog              "|##ROOT##/../util/src/qssign -e -s password |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log_signed -z -g 2 -f -b 103833600" "{ \"@timestamp\":\"%{%Y-%m-%dT%H:%M:%S%z}t\", \"id\":\"%{UNIQUE_ID}e\", \"clientip\":\"%a\", \"duration\":%D, \"status\":%>s, \"request\":\"%U%q\", \"urlpath\":\"%U\", \"urlquery\":\"%q\", \"bytesout\":%O, \"bytesin\":%I, \"method\":\"%m\", \"site\":\"%v\", \"referer\":\"%{Referer}i\", \"useragent\":\"%{User-Agent}i\", \"contentIn\":\"%{Content-Type}i\", \"contentOut\":\"%{Content-Type}o\" }"
 
    ProxyRequests              Off
    <Proxy *>
