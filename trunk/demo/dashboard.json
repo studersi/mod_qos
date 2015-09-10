@@ -173,7 +173,7 @@
           "pages": 5,
           "offset": 0,
           "sort": [
-            "_score",
+            "@timestamp",
             "desc"
           ],
           "style": {
@@ -181,6 +181,7 @@
           },
           "overflow": "min-height",
           "fields": [
+            "@timestamp",
             "clientip",
             "method",
             "request",
