@@ -4,17 +4,57 @@
     "query": {
       "list": {
         "0": {
-          "query": "*",
+          "query": "status:[200 TO 299]",
           "alias": "",
           "color": "#7EB26D",
           "id": 0,
           "pin": false,
           "type": "lucene",
           "enable": true
+        },
+        "1": {
+          "id": 1,
+          "color": "#6ED0E0",
+          "alias": "",
+          "pin": false,
+          "type": "lucene",
+          "enable": true,
+          "query": "status:[300 TO 399]"
+        },
+        "2": {
+          "id": 2,
+          "color": "#E5AC0E",
+          "alias": "",
+          "pin": false,
+          "type": "lucene",
+          "enable": true,
+          "query": "status:[400 TO 499]"
+        },
+        "3": {
+          "id": 3,
+          "color": "#BF1B00",
+          "alias": "",
+          "pin": false,
+          "type": "lucene",
+          "enable": true,
+          "query": "status:[500 TO 599]"
+        },
+        "4": {
+          "id": 4,
+          "color": "#2F575E",
+          "alias": "",
+          "pin": false,
+          "type": "lucene",
+          "enable": true,
+          "query": "*"
         }
       },
       "ids": [
-        0
+        0,
+        1,
+        2,
+        3,
+        4
       ]
     },
     "filter": {
@@ -45,7 +85,7 @@
       "panels": [
         {
           "error": false,
-          "span": 3,
+          "span": 2,
           "editable": true,
           "group": [
             "default"
@@ -54,7 +94,11 @@
           "queries": {
             "mode": "all",
             "ids": [
-              0
+              0,
+              1,
+              2,
+              3,
+              4
             ]
           },
           "field": "signature.raw",
@@ -79,7 +123,7 @@
           "valuefield": ""
         },
         {
-          "span": 9,
+          "span": 5,
           "editable": true,
           "type": "histogram",
           "loadingEditor": false,
@@ -95,9 +139,12 @@
             "min": 0
           },
           "queries": {
-            "mode": "all",
+            "mode": "selected",
             "ids": [
-              0
+              0,
+              1,
+              2,
+              3
             ]
           },
           "annotate": {
@@ -137,7 +184,7 @@
           "spyable": true,
           "zoomlinks": true,
           "options": true,
-          "legend": true,
+          "legend": false,
           "show_query": true,
           "interactive": true,
           "legend_counts": true,
@@ -149,7 +196,80 @@
             "value_type": "cumulative",
             "query_as_alias": true
           },
-          "title": "Events"
+          "title": "Status Codes"
+        },
+        {
+          "span": 5,
+          "editable": true,
+          "type": "histogram",
+          "loadingEditor": false,
+          "mode": "mean",
+          "time_field": "@timestamp",
+          "value_field": "duration",
+          "x-axis": true,
+          "y-axis": true,
+          "scale": 1,
+          "y_format": "none",
+          "grid": {
+            "max": null,
+            "min": 0
+          },
+          "queries": {
+            "mode": "selected",
+            "ids": [
+              4
+            ]
+          },
+          "annotate": {
+            "enable": false,
+            "query": "*",
+            "size": 20,
+            "field": "_type",
+            "sort": [
+              "_score",
+              "desc"
+            ]
+          },
+          "auto_int": true,
+          "resolution": 100,
+          "interval": "10s",
+          "intervals": [
+            "auto",
+            "1s",
+            "1m",
+            "5m",
+            "10m",
+            "30m",
+            "1h",
+            "3h",
+            "12h",
+            "1d",
+            "1w",
+            "1y"
+          ],
+          "lines": true,
+          "fill": 1,
+          "linewidth": 3,
+          "points": false,
+          "pointradius": 5,
+          "bars": false,
+          "stack": true,
+          "spyable": true,
+          "zoomlinks": true,
+          "options": true,
+          "legend": false,
+          "show_query": true,
+          "interactive": true,
+          "legend_counts": true,
+          "timezone": "browser",
+          "percentage": false,
+          "zerofill": true,
+          "derivative": false,
+          "tooltip": {
+            "value_type": "cumulative",
+            "query_as_alias": true
+          },
+          "title": "Duration [ms]"
         }
       ],
       "notice": false
@@ -200,10 +320,14 @@
           "queries": {
             "mode": "all",
             "ids": [
-              0
+              0,
+              1,
+              2,
+              3,
+              4
             ]
           },
-          "field_list": true,
+          "field_list": false,
           "status": "Stable",
           "trimFactor": 300,
           "normTimes": true,
@@ -248,6 +372,11 @@
       "query": "*",
       "pinned": true,
       "history": [
+        "*",
+        "status:[500 TO 599]",
+        "status:[400 TO 499]",
+        "status:[300 TO 399]",
+        "status:[200 TO 299]",
         "severity:(error crit alert emerg)",
         "NProxyOp AND dTF:[1000 TO *]",
         "NProxyOp AND sCF:[400 TO 599]",

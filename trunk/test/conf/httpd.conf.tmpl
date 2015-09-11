@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.255 2015-01-29 12:20:50 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.256 2015-09-11 18:22:37 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -158,7 +158,7 @@ LogLevel                warn
 #ErrorLog                "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 43200 -f -b 536870912"
 ErrorLog                ##ROOT##/logs/error_log
 TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 43200 -f -b 536870912"
-TransferLog             "|##ROOT##/../util/src/qssign -s password -e |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log_signed -z -g 4 -s 43200 -f -b 536870912"
+CustomLog               "|##ROOT##/../util/src/qssign -s password -e |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log_signed -z -g 4 -s 43200 -f -b 536870912" "%h %l %u %t \"%r\" %>s %b %{ms}T %k %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{QS_Country}e %{QS_SrvConn}e a=%{QS_AllConn}e"
 TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....RSB.T.Q....Uk"
 CustomLog               "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/qsaudit_log -z -g 4 -s 43200 -f -b 536870912" "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
 PidFile                 ##ROOT##/logs/apache.pid
