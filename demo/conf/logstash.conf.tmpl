@@ -38,13 +38,25 @@ filter {
 filter{
   if [type] == "access" {
     grok {
-      match => [ "message", "%{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] \"(?:%{WORD:method} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})\" %{NUMBER:status} (?:%{NUMBER:bytes}|-)" ]
+      match => [ "message", "%{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] \"(?:%{WORD:method} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})\" %{NUMBER:status:int} (?:%{NUMBER:bytes:int}|-) %{NUMBER:duration:int}" ]
     }
     date {
       match => [ "timestamp" , "dd/MMM/yyyy:HH:mm:ss Z" ]
     }
     mutate {
       remove_field => [ "timestamp" ]
+    }
+  }
+
+  if [type] == "qssign" {
+    grok {
+      match => [ "message", "\[%{GREEDYDATA:timestamp}\] \[notice\] qssign---end-of-data%{GREEDYDATA}",
+                 "message", "\[%{GREEDYDATA:timestamp}\] qssign---end-of-data%{GREEDYDATA}",
+                 "message", "%{GREEDYDATA} \[%{GREEDYDATA:timestamp}\] qssign---end-of-data%{GREEDYDATA}" ]
+      break_on_match => true
+    }
+    date {
+      match => [ "timestamp", "EEE MMM dd HH:mm:ss yyyy", "dd/MMM/yyyy:HH:mm:ss Z" ]
     }
   }
 
