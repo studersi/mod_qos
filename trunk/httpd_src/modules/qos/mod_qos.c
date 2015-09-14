@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.557 2015-08-31 19:48:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.558 2015-09-14 19:13:37 pbuchbinder Exp $";
 static const char g_revision[] = "11.17";
 
 /************************************************************************
@@ -167,6 +167,7 @@ static const char g_revision[] = "11.17";
 #define QS_MAXKEEPALIVEREQ "QS_MaxKeepAliveRequests"
 #define QS_TIMEOUT        "QS_Timeout"
 #define QS_CLOSE          "QS_SrvMinDataRate"
+#define QS_MAXIP          "QS_SrvMaxConnPerIP"
 #define QS_EMPTY_CON      "NullConnection"
 #define QS_RuleId         "QS_RuleId"
 #define QS_MFILE          "/var/tmp/"
@@ -7199,14 +7200,17 @@ static void qos_propagate_notes(request_rec *r) {
 static apr_status_t qos_base_cleanup_conn(void *p) {
   qs_conn_base_ctx *base = p;
   if(base->sconf->has_qos_cc || base->sconf->qos_cc_prefer) {
-    int norequests = 0;
+    int connRuleViolation = 0;
     if(base->requests == 0 &&
        apr_table_get(base->sconf->setenvstatus_t, QS_EMPTY_CON) && 
        !apr_table_get(base->c->notes, QS_BLOCK_SEEN)) {
-      norequests = 1;
+      connRuleViolation = 1;
       apr_table_set(base->c->notes, QS_BLOCK_SEEN, "");
     }
-    if(norequests) {
+    if(apr_table_get(base->c->notes, QS_MAXIP)) {
+      connRuleViolation = 1;
+    }
+    if(connRuleViolation) {
       qos_user_t *u = qos_get_user_conf(base->sconf->act->ppool);
       qos_s_entry_t **e = NULL;
       qos_s_entry_t searchE;
@@ -7428,6 +7432,9 @@ static int qos_process_connection(conn_rec *c) {
       if((current > sconf->max_conn_per_ip) &&
          (all_connections >= sconf->max_conn_per_ip_connections)) {
         e->error++;
+        if(apr_table_get(sconf->setenvstatus_t, QS_MAXIP)) {
+          apr_table_set(c->notes, QS_MAXIP, "1");
+      }
         /* only print the first 20 messages for this client */
         if(e->error <= QS_LOG_REPEAT) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
@@ -10827,6 +10834,16 @@ const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *r
       return apr_psprintf(cmd->pool, "%s: "QS_CLOSE" may only be defined for the event "QS_BLOCK,
                           cmd->directive->directive);
     }
+  } else if(strcasecmp(rc, QS_MAXIP) == 0) {
+    const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+    if(err != NULL) {
+      return apr_psprintf(cmd->pool, "%s: "QS_MAXIP" may only be defined globally",
+                          cmd->directive->directive);
+    }
+    if(strcasecmp(var, QS_BLOCK) != 0) {
+      return apr_psprintf(cmd->pool, "%s: "QS_MAXIP" may only be defined for the event "QS_BLOCK,
+                          cmd->directive->directive);
+    }
   } else if(strcasecmp(rc, QS_EMPTY_CON) == 0) {
     const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
     if(err != NULL) {
@@ -12835,7 +12852,9 @@ static const command_rec qos_config_cmds[] = {
                 " status code to set a "QS_BLOCK" event in order to handle"
                 " connection close events caused by "QS_CLOSE" rules while"
                 " the status '"QS_EMPTY_CON"' may be used to mark connections"
-                " which are closed before any HTTP request has ever been received."),
+                " which are closed before any HTTP request has ever been received."
+                " The '"QS_MAXIP"' value may be used to count "QS_BLOCK" events for"
+                " connections closed by the "QS_MAXIP" directive."),
 
   AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,

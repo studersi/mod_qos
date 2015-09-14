@@ -25,3 +25,5 @@ iptables -A INPUT -p tcp --dport ${DPORTS} -m limit --state NEW --limit 60/minut
 # limit the number of established/concurrent connections
 iptables -A INPUT -m state --state RELATED,ESTABLISHED -m limit --limit 50/second --limit-burst 50 -j ACCEPT
 
+# limit the connections from a single source IP to 100
+iptables -A INPUT -p tcp --syn --dport ${DPORTS} -m connlimit --connlimit-above 100 -j REJECT

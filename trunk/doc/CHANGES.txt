@@ -1,5 +1,8 @@
 Version
 
+ - QS_SetEnvIfStatus supports QS_SrvMaxConnPerIP to increment the
+   QS_Block event variable.
+
  - qssign features the option "-a" to define which algorithm to use.
 
  - Enables QS_SrvMinDataRate, QS_SrvDataRateOff, and
