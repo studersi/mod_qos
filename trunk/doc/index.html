@@ -1913,20 +1913,42 @@ Apache instance to another (or to the same, e.g. when restarting an instance).</
 <p>
 mod_qos provides optional tools for log data processing and analysis:
 <ul>
-<li><code><a href="qsexec.1.html">qsexec</a></code><br>Command execution triggered by patterns within log files.</li>
-<li><code><a href="qsfilter2.1.html">qsfilter2</a></code><br>Rule generator. Creates <code>QS_Permit*</code> directives and rule patterns from audit log files.</li>
-<li><code><a href="qsgeo.1.html">qsgeo</a></code><br>Adds the country code for the client IP address within a log file.</li>
-<li><code><a href="qsgrep.1.html">qsgrep</a></code><br>Searches a file for a pattern and prints the data in a new format.</li>
+<a name="qsexec"></a>
+<li><code><a href="qsexec.1.html">qsexec</a></code><br>Command execution 
+triggered by patterns within log files.</li>
+<a name="qsfilter2"></a>
+<li><code><a href="qsfilter2.1.html">qsfilter2</a></code><br>
+Rule generator. Creates <code>QS_Permit*</code> directives and rule patterns 
+from audit log files.</li>
+<a name="qsgeo"></a>
+<li><code><a href="qsgeo.1.html">qsgeo</a></code><br>Adds the country code 
+for the client IP address within a log file.</li>
+<a name="qsgrep"></a>
+<li><code><a href="qsgrep.1.html">qsgrep</a></code><br>Searches a file for a 
+pattern and prints the data in a new format.</li>
+<a name="qslog"></a>
 <li><code><a href="qslog.1.html">qslog</a></code><br>A real time 
 <code><a href="http://httpd.apache.org/docs/2.2/mod/mod_log_config.html" target="_blank">TransferLog/CustomLog</a></code> 
-data analyzer. It reads the per request log data from stdin and generates statistic 
-records every minute.</li>
-<li><code><a href="qslogger.1.html">qslogger</a></code><br>Shell command interface to the syslog(3) system log module.</li>
-<li><code><a href="qspng.1.html">qspng</a></code><br>Creates graphics (png images) from the output of <code>qslog</code>.</li>
-<li><code><a href="qsrotate.1.html">qsrotate</a></code><br>Log rotation tool similar to Apache's <code>rotatelogs</code>.</li>
-<li><code><a href="qssign.1.html">qssign</a></code><br>A log data integrity check tool. It reads log data 
-from stdin (pipe) and writes the signed data to stdout.</li>
-<li><code><a href="qstail.1.html">qstail</a></code><br>Shows the end of a log file beginning at a defined pattern.</li>
+data analyzer. It reads the per request log data from stdin and generates 
+statistic records every minute.</li>
+<a name="qslogger"></a>
+<li><code><a href="qslogger.1.html">qslogger</a></code><br>Shell command 
+interface to the syslog(3) system log module.</li>
+<a name="qspng"></a>
+<li><code><a href="qspng.1.html">qspng</a></code><br>Creates graphics (png 
+images) from the output of <code>qslog</code>.</li>
+<a name="qsrotate"></a>
+<li><code><a href="qsrotate.1.html">qsrotate</a></code><br>Log rotation tool 
+similar to Apache's <code>rotatelogs</code>.</li>
+<a name="qssign"></a>
+<li><code><a href="qssign.1.html">qssign</a></code><br>A log data integrity 
+check tool. It reads log data from stdin (pipe) and writes the signed data 
+to stdout.<br>
+<a href="http://mod-qos.cvs.sourceforge.net/viewvc/mod-qos/src/tools/logstash-filter-qssign/lib/logstash/filters/qssign.rb?content-type=text%2Fplain"><code>qssign.rb</code></a> is a <i>logstash</i> filter 
+plugin which may be used to verify the signatures of log messages in real time.</li>
+<a name="qstail"></a>
+<li><code><a href="qstail.1.html">qstail</a></code><br>Shows the end of a log 
+file beginning at a defined pattern.</li>
 </ul>
 
 </p>
