@@ -1,4 +1,4 @@
-Version
+Version 11.17
 
  - QS_SetEnvIfStatus supports QS_SrvMaxConnPerIP to increment the
    QS_Block event variable.
@@ -10,6 +10,7 @@ Version
    Apache 2.4.12 and 2.4.16 was now successful (MPM worker and event).
    The QS_KeepAliveTimeout and QS_MaxKeepAliveRequests directives
    have been disabled for the MPM event.
+   Apache 2.4 is still not fully tested.
 
 Version 11.16
 
