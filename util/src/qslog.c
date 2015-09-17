@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.96 2015-01-05 17:35:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.97 2015-09-17 19:58:15 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1928,7 +1928,7 @@ static stat_rec_t *loadRule(apr_pool_t *pool, const char *confFile) {
   stat_rec_t *prev = NULL;
   stat_rec_t *next = NULL;
   if(file == NULL) {
-    qerror("could not open file for writing '%s': ", confFile, strerror(errno));
+    qerror("could not read file '%s': ", confFile, strerror(errno));
     exit(1);
   }
   while(!qs_getLinef(line, sizeof(line), file)) {
