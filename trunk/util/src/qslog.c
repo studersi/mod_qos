@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.97 2015-09-17 19:58:15 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.98 2015-09-21 20:47:13 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -2275,26 +2275,7 @@ int main(int argc, const char *const argv[]) {
   /* requires at least a format string */
   if(config == NULL) usage(cmd, 0);
 
-  if(username && getuid() == 0) {
-    struct passwd *pwd = getpwnam(username);
-    uid_t uid, gid;
-    if(pwd == NULL) {
-      qerror("unknown user id '%s': %s", username, strerror(errno));
-      exit(1);
-    }
-    uid = pwd->pw_uid;
-    gid = pwd->pw_gid;
-    setgid(gid);
-    setuid(uid);
-    if(getuid() != uid) {
-      qerror("setuid failed (%s,%d)", username, uid);
-      exit(1);
-    }
-    if(getgid() != gid) {
-      qerror("setgid failed (%d)", gid);
-      exit(1);
-    }
-  }
+  qs_setuid(username, cmd);
 
   if(file) {
     m_f = fopen(file, "a+"); 
