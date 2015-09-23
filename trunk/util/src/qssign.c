@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.37 2015-08-21 18:05:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.38 2015-09-23 20:38:36 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -42,6 +42,7 @@ static const char revision[] = "$Id: qssign.c,v 1.37 2015-08-21 18:05:02 pbuchbi
 #include <openssl/hmac.h>
 
 /* apr/apr-util */
+#define QS_USEAPR 1
 #include <apr.h>
 #include <apr_base64.h>
 #include <apr_pools.h>
@@ -503,83 +504,6 @@ static long qs_verify(const char *sec) {
     fprintf(stderr, "NOTICE: no end marker seen, log rotation? (expect %."SEQDIG"ld)\n", m_nr);
   }
   return err;
-}
-
-static void qs_failedexec(const char *msg, const char *cmd, apr_status_t status) {
-  char buf[MAX_LINE];
-  apr_strerror(status, buf, sizeof(buf));
-  fprintf(stderr, "ERROR %s '%s': '%s'\n", msg, cmd, buf);
-  exit(1);
-}
-
-static apr_table_t *qs_args(apr_pool_t *pool, const char *line) {
-  char *last = apr_pstrdup(pool, line);
-  apr_table_t* table = apr_table_make(pool, 10);
-  char *val;
-  while((val = apr_strtok(NULL, " ", &last))) {
-    apr_table_addn(table, val, "");
-  }
-  return table;
-}
-
-static char *qs_readpwd(apr_pool_t *pool, const char *prg) {
-  apr_status_t status;
-  apr_proc_t proc;
-  const char **args;
-  apr_table_entry_t *entry;
-  char *last;
-  char *copy = apr_pstrdup(pool, prg);
-  char *cmd = apr_strtok(copy, " ", &last);
-  apr_table_t *a = qs_args(pool, prg);
-  int i;
-  apr_procattr_t *attr;
-  apr_size_t len = MAX_LINE;
-  char *buf = apr_pcalloc(pool, len);
-
-  args = apr_pcalloc(pool, (apr_table_elts(a)->nelts + 1) * sizeof(const char *));
-  entry = (apr_table_entry_t *) apr_table_elts(a)->elts;
-  for(i = 0; i < apr_table_elts(a)->nelts; i++) {
-    args[i] = entry[i].key;
-  }
-  args[i] = NULL;
-
-  if(cmd == NULL) {
-    qs_failedexec("can't read password, invalid executable", prg, APR_EGENERAL);
-  }
-  if((status = apr_procattr_create(&attr, pool)) != APR_SUCCESS) {
-    qs_failedexec("while reading password from executable", prg, status);
-  }
-  if((status = apr_procattr_cmdtype_set(attr, APR_PROGRAM_PATH)) != APR_SUCCESS) {
-    qs_failedexec("while reading password from executable", prg, status);
-  }
-  if((status = apr_procattr_detach_set(attr, 0)) != APR_SUCCESS) {
-    qs_failedexec("while reading password from executable", prg, status);
-  }
-  if((status = apr_procattr_io_set(attr, APR_FULL_BLOCK, APR_FULL_BLOCK, APR_NO_PIPE)) != APR_SUCCESS) {
-    qs_failedexec("while reading password from executable", prg, status);
-  }
-  if((status = apr_proc_create(&proc, cmd, args, NULL, attr, pool)) != APR_SUCCESS) {
-    qs_failedexec("could not execute program", prg, status);
-  } else {
-    char *e;
-    status = apr_proc_wait(&proc, NULL, NULL, APR_WAIT);
-    if(status != APR_CHILD_DONE && status != APR_SUCCESS) {
-      qs_failedexec("while reading password from executable", prg, status);
-    }
-    status = apr_file_read(proc.out, buf, &len);
-    if(status != APR_SUCCESS) {
-      qs_failedexec("failed to read password from program", prg, status);
-    }
-    e = buf;
-    while(e && e[0]) {
-      if((e[0] == LF) || (e[0] == CR)) {
-	e[0] = '\0';
-      } else {
-	e++;
-      }
-    }
-  }
-  return buf;
 }
 
 static void usage(char *cmd, int man) {
