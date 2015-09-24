@@ -54,9 +54,6 @@ void qs_man_println(int man, const char *fmt, ...);
 /* io */
 int qs_getLine(char *s, int n);
 int qs_getLinef(char *s, int n, FILE *f);
-#ifdef QS_USEAPR
-char *qs_readpwd(apr_pool_t *pool, const char *prg);
-#endif
 
 /* time */
 void qs_time(time_t *tme);
