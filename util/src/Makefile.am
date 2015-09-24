@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.12 2012-09-19 18:48:51 pbuchbinder Exp $
+# $Id: Makefile.am,v 1.13 2015-09-24 19:31:17 pbuchbinder Exp $
 
 bin_PROGRAMS=qsfilter2 qslog qspng qsrotate qssign qstail qsgrep qsexec qscheck qsgeo qslogger qshead
 
@@ -15,7 +15,7 @@ qsrotate_SOURCES= \
 	qsrotate.c qs_util.c
 
 qssign_SOURCES= \
-	qssign.c qs_util.c
+	qssign.c qs_util.c qs_apo.c
 
 qstail_SOURCES= \
 	qstail.c qs_util.c

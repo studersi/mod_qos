@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.38 2015-09-23 20:38:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.39 2015-09-24 19:31:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -52,6 +52,7 @@ static const char revision[] = "$Id: qssign.c,v 1.38 2015-09-23 20:38:36 pbuchbi
 #include <apr_time.h>
 
 #include "qs_util.h"
+#include "qs_apo.h"
 
 #define SEQDIG "12"
 
