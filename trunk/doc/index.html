@@ -1568,8 +1568,8 @@ by <code>_Remaining</code>, e.g. <code>QS_Limit_Remaining</code> to be
 used within SSI error pages.</li>
 <li>The counter can be reset by setting the environment variable which name is 
 suffixed by <code>_Clear</code>, e.g. <code>QS_Limit_Clear</code>.
-<li>Adding/removing events require a server restart (graceful restart is 
-not supported).</li>
+<li>Adding/removing events (configuration changes) require a server restart 
+(graceful restart is not supported).</li>
 <li>Only the default rule (<code>QS_Limit</code>) is accessibly by the 
 <a href="#statusviewer">status viewer</a> (you may use the 
 <a href="#webconsole">console</a> to view other variables alternatively).</li>
@@ -1685,7 +1685,7 @@ QS_SetEnvIfStatus        403                      QS_Block=5
 <a name="errorlog"></a>
 <h3>Error Log</h3>
 <p>
-mod_qos writes messages to Apache's error log when enforcing a rule. Each 
+mod_qos writes <a href="MESSAGES.txt">messages</a> to Apache's error log when enforcing a rule. Each 
 error messages is prefixed by an id: <code>mod_qos(&lt;number&gt;)</code>. These 
 error codes (number only) are also written to the error notes in order 
 to be processed within error pages using <a href="http://httpd.apache.org/docs/2.2/howto/ssi.html" 
