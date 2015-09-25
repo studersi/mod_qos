@@ -1,4 +1,6 @@
 <html>
+<meta http-equiv="Cache-Control" content="no-cache, no-store"/>
+<meta http-equiv="expires" content="0" />
 <head></head>
 <body>
 custom error page
@@ -46,7 +48,7 @@ custom error page
 <p>Remaining time: <span id="remaining"><!--#echo var="QS_Limit_Remaining" --></span> seconds</p>
 <hr>
 <pre>
-$Revision: 1.7 $
+$Revision: 1.8 $
 </pre>
 <script type="text/javascript">
 <!--
