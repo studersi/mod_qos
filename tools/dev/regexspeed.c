@@ -2,7 +2,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2014 Pascal Buchbinder
+ * Copyright (C) 2007-2015 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regexspeed.c,v 1.9 2015-09-28 05:32:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: regexspeed.c,v 1.10 2015-09-28 15:45:29 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -73,6 +73,7 @@ typedef struct {
 } qs_r_t;
 
 int main(int argc, const char *const argv[]) {
+  int datalen=0;
   qs_r_t data[] = {
     { "Emma", 0 },
     { "Buchschacher", 0 },
@@ -84,6 +85,23 @@ int main(int argc, const char *const argv[]) {
     { "lajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfhdklfhslkdfhlskhdklsjhdflskfhlsh", 0 },
     { "ajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfljsdahsdznvztbasmuiwmereizfrbizvnsdmovosduvnuztbvzucxzvmpmvdzubtfrmeirmrnbewrJHJSBNUAIMSODMAINBSUDTAZSUDIOASMDNBAGZDTSZBUANIMOINSAUBZDGTZUIOIMSKNABJDHT9807765243567283992039209376526368799230827836526789 ç%&/\"(><<<-.,:;)*=)()(&%\"ç", 0 },
     { "    To be, or not to be: that is the question:    Whether 'tis nobler in the mind to suffer The slings and arrows of outrageous fortune, Or to take arms against a sea of troubles, And by opposing end them? To die: to sleep; No more; and by a sleep to say we end The heart-ache and the thousand natural shocks That flesh is heir to, 'tis a consummation Devoutly to be wish'd. To die, to sleep; To sleep: perchance to dream: ay, there's the rub; For in that sleep of death what dreams may come When we have shuffled off this mortal coil, Must give us pause: there's the respect That makes calamity of so long life; For who would bear the whips and scorns of time, The oppressor's wrong, the proud man's contumely, The pangs of despised love, the law's delay, The insolence of office and the spurns That patient merit of the unworthy takes, When he himself might his quietus make With a bare bodkin? who would fardels bear, To grunt and sweat under a weary life, But that the dread of something after death, The undiscover'd country from whose bourn No traveller returns, puzzles the will And makes us rather bear those ills we have Than fly to others that we know not of? Thus conscience does make cowards of us all; And thus the native hue of resolution Is sicklied o'er with the pale cast of thought, And enterprises of great pith and moment With this regard their currents turn awry, And lose the name of action.--Soft you now! The fair Ophelia! Nymph, in thy orisonsBe all my sins remember'd.", 0 },
+    { "{\n" \
+  "    \"_to\": \"1.2.3.4:5678\",\n"		\
+  "    \"_line\": 63546230,\n"						\
+  "    \"profile_image_url\": \"http://a3.twimg.com/profile_images/852841481/Untitled_3_normal.jpg\",\n" \
+  "    \"created_at\": \"Sat, 08 May 2010 21:46:23 +0000\",\n"		\
+  "    \"from_user\": \"pelchiie\",\n"					\
+  "    \"metadata\": {\n"						\
+  "        \"result_type\": \"recent\"\n"				\
+  "    },\n"								\
+  "    \"to_user_id\": null,\n"						\
+  "    \"text\": \"twitter is dead today.\",\n"				\
+  "    \"id\": 13630378882,\n"						\
+  "    \"from_user_id\": 12621761,\n"					\
+  "    \"geo\": null,\n"						\
+  "    \"iso_language_code\": \"en\",\n"				\
+  "    \"source\": \"<a href=\\\"http://twitter.com/\\\">web</a>\"\n"	\
+      "}", 0 },
     { NULL, 0 }
   };
 
@@ -107,6 +125,7 @@ int main(int argc, const char *const argv[]) {
     qs_r_t *d = data;
     while(d->string) {
       d->len = strlen(d->string);
+      datalen += d->len;
       d++;
     }
   }
@@ -189,9 +208,9 @@ int main(int argc, const char *const argv[]) {
   }
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
-  printf("match all rules (%d) against the test variables (%d strings) took: %lld usec\n",
+  printf("match all rules (%d) against the test variables (%d strings, %d characters) took: %lld usec\n",
 	 apr_table_elts(rules)->nelts,
-	 sizeof(data)/sizeof(char *)-1,
+	 sizeof(data)/sizeof(qs_r_t)-1, datalen,
 	 (end - start) / LOOPS);
   return 0;
 
