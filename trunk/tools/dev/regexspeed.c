@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Revision: 1.11 $";
+static const char revision[] = "$Revision: 1.12 $";
 
 /* system */
 #include <stdio.h>
@@ -147,6 +147,9 @@ int main(int argc, const char *const argv[]) {
 	p = readline;
 	if(strncmp(p, "ch.nev", 6) == 0) {
 	  int itr = 4;
+	  if(strstr(p, "DecodingRules") == 0) {
+	    itr = 2;
+	  }
 	  for(; itr > 0; itr--) {
 	    char *px = strchr(p, ':');
 	    if(px) {
