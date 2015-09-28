@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: regexspeed.c,v 1.10 2015-09-28 15:45:29 pbuchbinder Exp $";
+static const char revision[] = "$Revision: 1.11 $";
 
 /* system */
 #include <stdio.h>
@@ -208,10 +208,11 @@ int main(int argc, const char *const argv[]) {
   }
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
-  printf("match all rules (%d) against the test variables (%d strings, %d characters) took: %lld usec\n",
+  printf("match all rules (%d) against the test variables (%d strings, %d characters) took: %lld usec (%s)\n",
 	 apr_table_elts(rules)->nelts,
 	 sizeof(data)/sizeof(qs_r_t)-1, datalen,
-	 (end - start) / LOOPS);
+	 (end - start) / LOOPS,
+	 revision);
   return 0;
 
 }
