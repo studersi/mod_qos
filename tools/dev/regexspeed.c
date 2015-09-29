@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Revision: 1.12 $";
+static const char revision[] = "$Revision: 1.13 $";
 
 /* system */
 #include <stdio.h>
@@ -60,6 +60,7 @@ static const char revision[] = "$Revision: 1.12 $";
 typedef struct {
   pcre *pc;
   pcre_extra *extra;
+  const char *id;
 } rule_t;
 
 static void usage2() {
@@ -139,6 +140,7 @@ int main(int argc, const char *const argv[]) {
       const char *errptr = NULL;
       int erroffset;
       rule_t *rule = apr_pcalloc(pool, sizeof(rule_t));
+      rule->id = NULL;
       while(len > 0 && readline[len] < 32) {
 	readline[len] = '\0';
 	len--;
@@ -154,6 +156,14 @@ int main(int argc, const char *const argv[]) {
 	    char *px = strchr(p, ':');
 	    if(px) {
 	      p = &px[1];
+	      if(rule->id == NULL) {
+		char *end;
+		rule->id = apr_pstrdup(pool, p);
+		end = strchr(rule->id, ':');
+		if(end) {
+		  end[0] = '\0';
+		}
+	      }
 	    }
 	  }
 	}
@@ -190,7 +200,7 @@ int main(int argc, const char *const argv[]) {
 	}
 	gettimeofday(&tv, NULL);
 	end = tv.tv_sec * 1000000 + tv.tv_usec;
-	printf("%lld usec for %s\n", end - start, entry[k].key);	
+	printf("%lld usec for %s\n", end - start, rule->id != NULL ? rule->id : entry[k].key);	
       }
   }
 
@@ -213,7 +223,8 @@ int main(int argc, const char *const argv[]) {
   end = tv.tv_sec * 1000000 + tv.tv_usec;
   printf("match all rules (%d) against the test variables (%d strings, %d characters) took: %lld usec (%s)\n",
 	 apr_table_elts(rules)->nelts,
-	 sizeof(data)/sizeof(qs_r_t)-1, datalen,
+	 sizeof(data)/sizeof(qs_r_t)-1,
+	 datalen,
 	 (end - start) / LOOPS,
 	 revision);
   return 0;
