@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.52 2015-10-13 15:31:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.53 2015-10-13 20:28:16 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -42,12 +42,6 @@ if [ "$VERSION" != "$F_VERSION" ]; then
   echo "FAILED, wrong version!"
   echo " mod_qos: $VERSION"
   exit 1
-fi
-
-A_V=`./httpd/httpd -v | grep "Server version" | awk -F'/' '{print $2}' | awk -F'.' '{print $1 "." $2}'`
-if [ "$A_V" != "2.2" ]; then
-    echo "FAILED, need Apache 2.2 binary to read log messages"
-    exit 1
 fi
 
 TAGV=`echo $VERSION | awk -F'.' '{print "REL_" $1 "_" $2}'`
@@ -98,17 +92,14 @@ mkdir -p mod_qos-${VERSION}/doc
 mkdir -p mod_qos-${VERSION}/apache2
 mkdir -p mod_qos-${VERSION}/tools/src
 mkdir -p mod_qos-${VERSION}/tools/man1
-mkdir -p doc/tmp
 
 echo "install documentation"
+./docs.sh
 cp doc/README.TXT mod_qos-${VERSION}
 cp doc/LICENSE.txt mod_qos-${VERSION}/doc
 cp doc/CHANGES.txt mod_qos-${VERSION}/doc
 sed <doc/index.html >mod_qos-${VERSION}/doc/index.html \
  -e "s/0\.00/${VERSION}/g"
-sed <mod_qos-${VERSION}/doc/index.html >doc/tmp/index.html \
- -e "s:BUILD START -->::g" \
- -e "s:<!-- BUILD END::g"
 cp doc/mod_qos_s.gif mod_qos-${VERSION}/doc/
 cp doc/mod_qos_seq.gif mod_qos-${VERSION}/doc/
 cp doc/SrvMinDataRate.png mod_qos-${VERSION}/doc/
@@ -116,7 +107,6 @@ cp doc/nevis.gif mod_qos-${VERSION}/doc/
 cp doc/favicon.ico mod_qos-${VERSION}/doc/
 cp doc/*.1.html mod_qos-${VERSION}/doc/
 cp doc/qsfilter2_process.gif mod_qos-${VERSION}/doc/
-strings ./httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | sort -u | sort -n | grep -v -e "mod_qos()" -e "mod_qos(000)" > doc/MESSAGES.txt
 cp doc/MESSAGES.txt mod_qos-${VERSION}/doc/
 
 echo "install source"
