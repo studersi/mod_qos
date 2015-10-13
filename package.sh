@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.51 2015-09-25 14:34:11 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.52 2015-10-13 15:31:30 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -42,6 +42,12 @@ if [ "$VERSION" != "$F_VERSION" ]; then
   echo "FAILED, wrong version!"
   echo " mod_qos: $VERSION"
   exit 1
+fi
+
+A_V=`./httpd/httpd -v | grep "Server version" | awk -F'/' '{print $2}' | awk -F'.' '{print $1 "." $2}'`
+if [ "$A_V" != "2.2" ]; then
+    echo "FAILED, need Apache 2.2 binary to read log messages"
+    exit 1
 fi
 
 TAGV=`echo $VERSION | awk -F'.' '{print "REL_" $1 "_" $2}'`
