@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex regexspeed b64 crs mem json pws qssearch vszl stack2
+PROGRAMS = regex regexspeed b64 crs mem json pws qssearch vszl stack2 rand
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -12,12 +12,15 @@ PROGRAM_DEPENDENCIES =
 
 include $(top_builddir)/build/rules.mk
 
-all: stack
-
 regex_OBJECTS = regex.lo
 regex_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 regex: $(regex_OBJECTS)
 	$(LINK) $(regex_LTFLAGS) -static $(regex_OBJECTS) $(regex_LDADD)
+
+rand_OBJECTS = rand.lo
+rand_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+rand: $(rand_OBJECTS)
+	$(LINK) $(rand_LTFLAGS) -static $(rand_OBJECTS) $(rand_LDADD)
 
 stack2_OBJECTS = stack2.lo
 stack2_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
@@ -76,4 +79,4 @@ stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
 clean:
-	rm -f *.o stack regex regexspeed b64 crs mem vszl json pws qssearch
+	rm -f *.o stack regex regexspeed b64 crs mem vszl json pws qssearch rand
