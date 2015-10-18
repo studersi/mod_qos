@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.558 2015-09-14 19:13:37 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.559 2015-10-18 15:13:00 pbuchbinder Exp $";
 static const char g_revision[] = "11.17";
 
 /************************************************************************
@@ -9730,7 +9730,8 @@ static int qos_handler_man1(request_rec * r) {
       ap_rprintf(r, ".SH OPTIONS\n");
       while(cmd) {
         if(cmd->name) {
-          if(cmd->errmsg && cmd->errmsg[0] && (strstr(cmd->errmsg, "QS_") != NULL)) {
+          if(cmd->errmsg && cmd->errmsg[0] && 
+             ((strstr(cmd->errmsg, "QS_") != NULL) || (strstr(cmd->errmsg, "QSLog") != NULL))) {
             ap_rprintf(r, ".TP\n");
             ap_rprintf(r, "%s\n", cmd->errmsg);
           }
@@ -13068,10 +13069,10 @@ static const command_rec qos_config_cmds[] = {
 #endif
 #endif
 
-  AP_INIT_TAKE1("qslog", qos_qlog_cmd, NULL,
+  AP_INIT_TAKE1("QSLog", qos_qlog_cmd, NULL,
                 RSRC_CONF,
-                "qslog <arg>, used to configure a global per Apache"
-                " instance 'qslog' logger."),
+                "QSLog <arg>, used to configure a global (per Apache"
+                " instance) 'qslog' logger."),
 
 #ifdef QS_INTERNAL_TEST
   AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
