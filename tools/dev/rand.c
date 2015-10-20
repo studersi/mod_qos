@@ -41,7 +41,10 @@ static void qrnd(int max) {
   gettimeofday(&tv, NULL);
   start = tv.tv_sec * 1000000 + tv.tv_usec;
   for(i = 0; i < max; i++) {
-    RAND_bytes(buf, RAND_SIZE);
+    if(RAND_bytes(buf, RAND_SIZE) == 0) {
+      fprintf(stderr, "no random data available!");
+      exit(1);
+    }
   }
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
@@ -58,7 +61,10 @@ static void qaprnd(int max) {
   gettimeofday(&tv, NULL);
   start = tv.tv_sec * 1000000 + tv.tv_usec;
   for(i = 0; i < max; i++) {
-    apr_generate_random_bytes(buf, RAND_SIZE);
+    if(apr_generate_random_bytes(buf, RAND_SIZE) != APR_SUCCESS) {
+      fprintf(stderr, "no random data available!");
+      exit(1);
+    }
   }
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
