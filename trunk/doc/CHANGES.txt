@@ -2,6 +2,9 @@ Version
 
  - QS_SrvSampleRate must be greater then one second.
 
+ - Avoids using RAND_bytes() and checks if the generator
+   is seeded with enough entropy (mod_qos(08x) messages).
+
 Version 11.17
 
  - QS_SetEnvIfStatus supports QS_SrvMaxConnPerIP to increment the
