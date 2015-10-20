@@ -1,3 +1,7 @@
+Version
+
+ - QS_SrvSampleRate must be greater then one second.
+
 Version 11.17
 
  - QS_SetEnvIfStatus supports QS_SrvMaxConnPerIP to increment the

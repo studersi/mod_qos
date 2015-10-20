@@ -1431,7 +1431,8 @@ The "max bytes per second" setting is reached when the number of
 sending/receiving clients is equal to the <code>MaxClients</code> setting. 
 The "connections" argument is used to specify the number of busy TCP connections a 
 server must have to enable this feature (0 by default). It is used to disable the 
-<code>QS_SrvMinDataRate</code> rule enforcement on idle servers.
+<code>QS_SrvMinDataRate</code> rule enforcement on idle servers.<br>
+This directives must only be used in the global server context.
 </li>
 <li>
 <a name="QS_SrvRequestRate"></a>
@@ -1460,7 +1461,8 @@ Defines the sampling rate used to measure the data throughput.
 Default is 5 seconds or the value you have used for 
 <code>QS_REQ_RATE_TM</code> while compiling the module. 
 Increase this value if you want to compensate bandwidth 
-variations.
+variations.<br>
+This directives must only be used in the global server context.
 </li>
 <li>
 <a name="QS_SrvSerialize"></a>

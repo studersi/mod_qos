@@ -45,8 +45,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.559 2015-10-18 15:13:00 pbuchbinder Exp $";
-static const char g_revision[] = "11.17";
+static const char revision[] = "$Id: mod_qos.c,v 5.560 2015-10-20 18:21:45 pbuchbinder Exp $";
+static const char g_revision[] = "11.18";
 
 /************************************************************************
  * Includes
@@ -12263,8 +12263,8 @@ const char *qos_req_rate_tm_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
     return err;
   }
   sconf->qs_req_rate_tm= atoi(arg1);
-  if(sconf->qs_req_rate_tm <= 0) {
-    return apr_psprintf(cmd->pool, "%s: must be numeric value between >0",
+  if(sconf->qs_req_rate_tm < 2) {
+    return apr_psprintf(cmd->pool, "%s: must be numeric value between >1",
                         cmd->directive->directive);
   }
   return NULL;
