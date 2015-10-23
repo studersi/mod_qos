@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.562 2015-10-23 19:37:43 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.563 2015-10-23 20:17:10 pbuchbinder Exp $";
 static const char g_revision[] = "11.18";
 
 /************************************************************************
@@ -5557,8 +5557,10 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
     int s_usr1 = 0;
     int s_kill = 0;
     worker_score ws_record;
-    int c, i;
-    for(c = 0; c < 60; c++) {
+    int c, i, e;
+    time_t now = time(NULL);
+    e = 60 - (now % 60);
+    for(c = 0; c < e; c++) {
       sleep(1);
       if(s->exit) {
         break;
