@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.561 2015-10-20 20:38:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.562 2015-10-23 19:37:43 pbuchbinder Exp $";
 static const char g_revision[] = "11.18";
 
 /************************************************************************
@@ -737,6 +737,7 @@ typedef struct {
   int geo_limit;              /* GLOBAL ONLY */
   apr_table_t *geo_priv;      /* GLOBAL ONLY */
   qs_ip_type_e ip_type;       /* GLOBAL ONLY */
+  int qsstatus;               /* GLOBAL ONLY */
   int server_limit;
   int thread_limit;
   apr_array_header_t *milestones;
@@ -751,6 +752,14 @@ typedef struct {
   apr_file_t *qslog_p;        /* GLOBAL ONLY */
   const char *qslog_str;      /* GLOBAL ONLY */
 } qos_srv_config;
+
+#if APR_HAS_THREADS
+typedef struct {
+  apr_thread_t *thread;
+  int exit;
+  apr_pool_t *pool;
+} qsstatus_t;
+#endif
 
 /**
  * in_filter ctx
@@ -5511,6 +5520,123 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
   return ret;
 }
 
+#if APR_HAS_THREADS
+static apr_status_t qos_cleanup_status_thread(void *selfv) {
+  qsstatus_t *s = selfv;
+  s->exit = 1;
+  /* may long up to one second */
+  if(m_worker_mpm || m_event_mpm) {
+    apr_status_t status;
+    apr_thread_join(&status, s->thread);
+    //apr_pool_destroy(s->pool);
+  }
+  return APR_SUCCESS;
+}
+
+/**
+ * Status logger thread
+ *
+ * @param thread
+ * @param selfv Base server_rec
+ */
+static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
+  qsstatus_t *s = selfv;
+  int server_limit, thread_limit;
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
+  while(!s->exit) {
+    int s_open = 0;
+    int s_ready = 0;
+    int s_read = 0;
+    int s_write = 0;
+    int s_keep = 0;
+    int s_start = 0;
+    int s_log = 0;
+    int s_dns = 0;
+    int s_closing = 0;
+    int s_usr1 = 0;
+    int s_kill = 0;
+    worker_score ws_record;
+    int c, i;
+    for(c = 0; c < 60; c++) {
+      sleep(1);
+      if(s->exit) {
+        break;
+      }
+    }
+    for(i = 0; i < server_limit; ++i) {
+      int j;
+      for(j = 0; j < thread_limit; ++j) {
+        int res;
+        ap_copy_scoreboard_worker(&ws_record, i, j);
+        res = ws_record.status;
+        if(res == SERVER_DEAD) {
+          s_open++;
+        } else  if(res == SERVER_READY) {
+          s_ready++;
+        } else if(res == SERVER_BUSY_READ) {
+          s_read++;
+        } else if(res == SERVER_BUSY_WRITE) {
+          s_write++;
+        } else if(res == SERVER_BUSY_KEEPALIVE) {
+          s_keep++;
+        } else if(res == SERVER_STARTING) {
+          s_start++;
+        } else if(res == SERVER_BUSY_LOG) {
+          s_log++;
+        } else if(res == SERVER_BUSY_DNS) {
+          s_dns++;
+        } else if(res == SERVER_CLOSING) {
+          s_closing++;
+        } else if(res == SERVER_GRACEFUL) {
+          s_usr1++;
+        } else if(res == SERVER_IDLE_KILL) {
+          s_kill++;
+        }
+      }
+    }
+    if(!s->exit) {
+      ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
+                   QOS_LOG_PFX(200)"{ \"scoreboard\": { "
+                   "\"open\": %d, \"waiting\": %d, \"read\": %d, "
+                   "\"write\": %d, \"keepalive\": %d, "
+                   "\"start\": %d, \"log\": %d, "
+                   "\"dns\": %d, \"closing\": %d, "
+                   "\"finishing\": %d, \"idle\": %d"
+                   " } }",
+                   s_open, s_ready, s_read, s_write, s_keep, s_start, s_log,
+                   s_dns, s_closing, s_usr1, s_kill);
+    }
+  }
+  if(m_worker_mpm || m_event_mpm) {
+    apr_thread_exit(thread, APR_SUCCESS);
+  }
+  return NULL;
+}
+
+/**
+ * Starts the stats logger thread
+ */
+static void qos_init_status_thread(apr_pool_t *p) {
+  apr_pool_t *pool;
+  apr_threadattr_t *tattr;
+  qsstatus_t *s;
+  apr_pool_create(&pool, NULL);
+  /* this casauses a memory leak at every (graceful) server
+     restart but I assume, that even restarting it once every day,
+     a server could run for years. */
+  s = apr_pcalloc(pool, sizeof(qsstatus_t));
+  s->exit = 0;
+  s->pool = pool;
+  if(apr_threadattr_create(&tattr, pool) == APR_SUCCESS) {
+    if(apr_thread_create(&s->thread, tattr, qos_status_thread, s, pool) == APR_SUCCESS) {
+      apr_pool_cleanup_register(p, s, qos_cleanup_status_thread,
+                                apr_pool_cleanup_null);
+    }
+  }
+}
+#endif
+
 // checks if connection counting is enabled (any host)
 static int qos_count_connections(qos_srv_config *sconf) {
   server_rec *s = sconf->base_server;
@@ -6800,7 +6926,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   // called via apr_pool_cleanup_register():
   // apr_thread_mutex_destroy(sconf->inctx_t->lock);
   free(ips);
-  if(m_worker_mpm) {
+  if(m_worker_mpm || m_event_mpm) {
     apr_thread_exit(thread, APR_SUCCESS);
   }
   return NULL;
@@ -6818,7 +6944,7 @@ static apr_status_t qos_cleanup_req_rate_thread(void *selfv) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   sconf->inctx_t->exit = 1;
   /* may long up to one second */
-  if(m_worker_mpm) {
+  if(m_worker_mpm || m_event_mpm) {
     apr_status_t status;
     apr_thread_join(&status, sconf->inctx_t->thread);
   }
@@ -9335,6 +9461,12 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   const char *error_page = detectErrorPage(ptemp, bs, pdir);
   int auto_error_page = 0;
 
+#if APR_HAS_THREADS
+  if(sconf->qsstatus) {
+    qos_init_status_thread(plog);
+  }
+#endif
+  
   if(sconf->ip_type == QS_IP_V4) {
     m_ip_type = QS_IP_V4;
   } else {
@@ -10287,6 +10419,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->geo_limit = -1;
   sconf->geo_priv = apr_table_make(p, 20);
   sconf->qslog_p = NULL;
+  sconf->qsstatus = 0;
   sconf->qslog_str = NULL;
   sconf->ip_type = QS_IP_V6_DEFAULT;
   sconf->qos_cc_block_time = 600;
@@ -10381,6 +10514,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->geo_limit = b->geo_limit;
   o->geo_priv = b->geo_priv;
   o->qslog_p = b->qslog_p;
+  o->qsstatus = b->qsstatus;
   o->qslog_str = b->qslog_str;
   o->ip_type = b->ip_type;
   o->req_rate = b->req_rate;
@@ -11194,6 +11328,19 @@ const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   }
   return NULL;
 }
+
+#if APR_HAS_THREADS
+const char *qos_qsstatus_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                  &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->qsstatus = flag;
+  return NULL;
+}
+#endif
 
 /**
  * pipe to global qslog tool (per Apache instance stat)
@@ -13107,6 +13254,13 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_Chroot <path>, change root directory."),
 #endif
+#endif
+
+#if APR_HAS_THREADS
+  AP_INIT_FLAG("QS_Status", qos_qsstatus_cmd, NULL,
+               RSRC_CONF,
+               "QS_Status 'on'|'off', writes a log message containing server"
+               " statistics once every minute. Default is off."),
 #endif
 
   AP_INIT_TAKE1("QSLog", qos_qlog_cmd, NULL,
