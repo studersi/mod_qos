@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.563 2015-10-23 20:17:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.564 2015-10-24 13:27:05 pbuchbinder Exp $";
 static const char g_revision[] = "11.18";
 
 /************************************************************************
@@ -757,6 +757,7 @@ typedef struct {
 typedef struct {
   apr_thread_t *thread;
   int exit;
+  int maxclients;
   apr_pool_t *pool;
 } qsstatus_t;
 #endif
@@ -5545,6 +5546,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
   while(!s->exit) {
+    int s_busy = 0;
     int s_open = 0;
     int s_ready = 0;
     int s_read = 0;
@@ -5578,16 +5580,21 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
           s_ready++;
         } else if(res == SERVER_BUSY_READ) {
           s_read++;
+          s_busy++;
         } else if(res == SERVER_BUSY_WRITE) {
           s_write++;
+          s_busy++;
         } else if(res == SERVER_BUSY_KEEPALIVE) {
           s_keep++;
+          s_busy++;
         } else if(res == SERVER_STARTING) {
           s_start++;
         } else if(res == SERVER_BUSY_LOG) {
           s_log++;
+          s_busy++;
         } else if(res == SERVER_BUSY_DNS) {
           s_dns++;
+          s_busy++;
         } else if(res == SERVER_CLOSING) {
           s_closing++;
         } else if(res == SERVER_GRACEFUL) {
@@ -5604,10 +5611,13 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
                    "\"write\": %d, \"keepalive\": %d, "
                    "\"start\": %d, \"log\": %d, "
                    "\"dns\": %d, \"closing\": %d, "
-                   "\"finishing\": %d, \"idle\": %d"
-                   " } }",
+                   "\"finishing\": %d, \"idle\": %d }, "
+                   "\"maxclients\": { "
+                   "\"max\": %d, \"busy\": %d }"
+                   " }",
                    s_open, s_ready, s_read, s_write, s_keep, s_start, s_log,
-                   s_dns, s_closing, s_usr1, s_kill);
+                   s_dns, s_closing, s_usr1, s_kill,
+                   s->maxclients, s_busy);
     }
   }
   if(m_worker_mpm || m_event_mpm) {
@@ -5619,7 +5629,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
 /**
  * Starts the stats logger thread
  */
-static void qos_init_status_thread(apr_pool_t *p) {
+static void qos_init_status_thread(apr_pool_t *p, int maxclients) {
   apr_pool_t *pool;
   apr_threadattr_t *tattr;
   qsstatus_t *s;
@@ -5630,6 +5640,7 @@ static void qos_init_status_thread(apr_pool_t *p) {
   s = apr_pcalloc(pool, sizeof(qsstatus_t));
   s->exit = 0;
   s->pool = pool;
+  s->maxclients = maxclients;
   if(apr_threadattr_create(&tattr, pool) == APR_SUCCESS) {
     if(apr_thread_create(&s->thread, tattr, qos_status_thread, s, pool) == APR_SUCCESS) {
       apr_pool_cleanup_register(p, s, qos_cleanup_status_thread,
@@ -9463,11 +9474,6 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   const char *error_page = detectErrorPage(ptemp, bs, pdir);
   int auto_error_page = 0;
 
-#if APR_HAS_THREADS
-  if(sconf->qsstatus) {
-    qos_init_status_thread(plog);
-  }
-#endif
   
   if(sconf->ip_type == QS_IP_V4) {
     m_ip_type = QS_IP_V4;
@@ -9484,6 +9490,13 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       sconf->max_clients = net_prefer;
     }
   }
+
+#if APR_HAS_THREADS
+  if(sconf->qsstatus) {
+    qos_init_status_thread(plog, sconf->max_clients);
+  }
+#endif
+
   if(sconf->log_only) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"running in 'log only' mode - rules are NOT enforced!");
