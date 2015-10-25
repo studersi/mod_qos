@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.54 2015-08-01 14:10:59 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.55 2015-10-25 19:10:30 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -89,6 +89,10 @@ LoadModule              logio_module ##ROOT##/../httpd/modules/loggers/.libs/mod
 QS_ClientEventLimitCount 3 3
 QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
 QS_ErrorPage             /error-docs/error.shtml
+</IfDefine>
+
+<IfDefine uc1status>
+QS_Status                on
 </IfDefine>
 
 <IfDefine uc1bb>

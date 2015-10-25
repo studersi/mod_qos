@@ -1,0 +1,29 @@
+INCLUDE scripts/ports
+
+CLIENT 2
+_EXEC ./sleep.sh 55 1>/dev/null
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+_SLEEP 6000
+__Host: localhost
+__
+_EXPECT . "root index"
+_WAIT
+END
+
+CLIENT
+_EXEC ./sleep.sh 55 1>/dev/null
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=6 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "done"
+_WAIT
+END
+
+CLIENT
+_EXEC ./sleep.sh 1>/dev/null
+_SLEEP 1200
+_EXPECT EXEC "mod_qos\(200\): { \"scoreboard\": { \"open\": 192, \"waiting\": 61, \"read\": 2, \"write\": 1, .*{ \"max\": 64, \"busy\": 3 }"
+_EXEC tail -1 logs/error_log
+END
