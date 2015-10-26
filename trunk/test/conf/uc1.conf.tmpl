@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.55 2015-10-25 19:10:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.56 2015-10-26 19:52:55 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -89,6 +89,10 @@ LoadModule              logio_module ##ROOT##/../httpd/modules/loggers/.libs/mod
 QS_ClientEventLimitCount 3 3
 QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
 QS_ErrorPage             /error-docs/error.shtml
+</IfDefine>
+
+<IfDefine status>
+LoadModule               status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
 </IfDefine>
 
 <IfDefine uc1status>
@@ -275,6 +279,12 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /b/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
+
+<IfDefine status>
+   <Location /status>
+       SetHandler server-status
+   </Location>
+</IfDefine>
 
 <IfDefine uc1WWV>
 QS_SrvSerialize           on

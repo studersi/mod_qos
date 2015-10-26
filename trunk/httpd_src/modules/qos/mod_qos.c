@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.564 2015-10-24 13:27:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.565 2015-10-26 19:52:54 pbuchbinder Exp $";
 static const char g_revision[] = "11.18";
 
 /************************************************************************
@@ -9473,7 +9473,15 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   ap_directive_t *pdir = ap_conftree;
   const char *error_page = detectErrorPage(ptemp, bs, pdir);
   int auto_error_page = 0;
+  int maxThreads, maxDaemons;
 
+  ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &maxDaemons);
+  ap_mpm_query(AP_MPMQ_MAX_THREADS, &maxThreads);
+  sconf->max_clients = maxThreads * maxDaemons;
+  net_prefer = sconf->max_clients;
+  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
+               QOS_LOGD_PFX"calculated MaxClients/MaxRequestWorkers: %d",
+               sconf->max_clients);
   
   if(sconf->ip_type == QS_IP_V4) {
     m_ip_type = QS_IP_V4;
@@ -9483,13 +9491,13 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
 
   qos_hostcode(ptemp, bs);
   QOS_MY_GENERATION(sconf->act->generation);
-  for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
-    if(strcasecmp(pdir->directive, "MaxClients") == 0 ||
-       strcasecmp(pdir->directive, "MaxRequestWorkers") == 0) {
-      net_prefer = atoi(pdir->args);
-      sconf->max_clients = net_prefer;
-    }
-  }
+//  for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
+//    if(strcasecmp(pdir->directive, "MaxClients") == 0 ||
+//       strcasecmp(pdir->directive, "MaxRequestWorkers") == 0) {
+//      net_prefer = atoi(pdir->args);
+//      sconf->max_clients = net_prefer;
+//    }
+//  }
 
 #if APR_HAS_THREADS
   if(sconf->qsstatus) {
@@ -9504,11 +9512,6 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   if(sconf->geo_limit != -1 && !sconf->geodb) {
     ap_log_error(APLOG_MARK, APLOG_CRIT, 0, bs, 
                  QOS_LOG_PFX(100)"QS_ClientGeoCountryDB has not been configured");
-  }
-  if(net_prefer <= 1) {
-    ap_log_error(APLOG_MARK, APLOG_CRIT, 0, bs, 
-                 QOS_LOG_PFX(007)"could not determine MaxClients/MaxRequestWorkers!"
-                 " You MUST set this directive within the Apache configuration file.");
   }
 
   // verify if this Apache version is supported/mod_qos has been tested for
