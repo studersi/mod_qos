@@ -1,5 +1,7 @@
 Version
 
+ - New directive QS_Status (experimental).
+
  - QS_SrvSampleRate must be greater then one second.
 
  - Avoids using RAND_bytes() and checks if the generator
