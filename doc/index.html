@@ -1475,6 +1475,14 @@ variable set is processed at the same time by serializing them
 optional timeout parameter (in seconds). The default is 300 
 seconds.</small>
 </li>
+<li>
+Throttling the download bandwidth: 
+mod_qos does not support bandwith limitation on a per connection 
+basis but you might use the <code>RATE_LIMIT</code> filter 
+provided by the Apache module 
+<a href="https://httpd.apache.org/docs/2.4/mod/mod_ratelimit.html">mod_ratelimit</a> 
+to implement a bandwidth rate limitation for connections.
+</li>
 </ul>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
