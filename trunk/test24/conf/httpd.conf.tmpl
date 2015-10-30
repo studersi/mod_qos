@@ -36,6 +36,10 @@ RequestReadTimeout       header=0 body=0
 QS_EnableInternalIPSimulation off
 </IfDefine>
 
+<IfDefine status>
+QS_Status on
+</IfDefine>
+
 QS_ErrorResponseCode   503
 
 QS_ClientEventBlockCount 20 30
@@ -60,6 +64,7 @@ Listen         ##QS_PORT_BASE##
    ProxyPass                  /error-pages !
    ProxyPass                  /limitrs !
    ProxyPass                  /limitbs !
+   ProxyPass                  /cgi-local !
 
    ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
@@ -124,6 +129,13 @@ Listen         ##QS_PORT_BASE##
         Order allow,deny
         Allow from all
    </Location>
+
+  ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
+  <Location /cgi-local>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
    
    ScriptAlias /demo/c/1.jpg ##ROOT##/htdocs/demo/c/1.jpg
    ScriptAlias /demo/c/2.jpg ##ROOT##/htdocs/demo/c/1.jpg

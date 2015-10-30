@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.8 2015-10-20 18:21:45 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.9 2015-10-30 19:44:54 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -120,5 +120,6 @@ if [ ! -d bin ]; then
   cd bin
   ln -s ../../test/bin/h* .
   ln -s ../../test/bin/s* .
+  ln -s ../../test/sleep.sh .
   cd ..
 fi
