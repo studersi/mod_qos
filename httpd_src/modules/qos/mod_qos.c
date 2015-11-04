@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.565 2015-10-26 19:52:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.566 2015-11-04 06:27:24 pbuchbinder Exp $";
 static const char g_revision[] = "11.18";
 
 /************************************************************************
@@ -11269,9 +11269,9 @@ const char *qos_event_setenvifparpbody_cmd(cmd_parms *cmd, void *dcfg,
   const char *errptr = NULL;
   int erroffset;
 #ifdef AP_REGEX_H
-  setenvif->pregx = ap_pregcomp(cmd->pool, rx, AP_REG_EXTENDED);
+  setenvif->pregx = ap_pregcomp(cmd->pool, rx, AP_REG_EXTENDED | AP_REG_ICASE);
 #else
-  setenvif->pregx = ap_pregcomp(cmd->pool, rx, REG_EXTENDED);
+  setenvif->pregx = ap_pregcomp(cmd->pool, rx, REG_EXTENDED | REG_ICASE);
 #endif
   setenvif->preg = pcre_compile(rx, PCRE_DOTALL | PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(setenvif->preg == NULL) {
