@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.56 2015-10-26 19:52:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.57 2015-11-04 21:28:14 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -430,6 +430,11 @@ QS_SrvSerialize           on
    <Location /qos >
        SetHandler qos-viewer
    </Location>
+</IfDefine>
+
+<IfDefine uc1l7>
+   QS_LocKBytesPerSecLimitMatch \.iso 1024
+   QS_LocRequestLimitMatch      \.iso  300
 </IfDefine>
 
 <IfDefine uc1o>

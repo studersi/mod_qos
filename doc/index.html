@@ -2136,8 +2136,8 @@ certain content-type.
 # Limits the download bandwidth when accessing ISO images to 1 megabyte/sec
 # and does not allow more then 300 clients to download such file type in
 # parallel:
-QS_LocKBytesPerSecLimitMatch .*iso$ 1024
-QS_LocRequestLimitMatch      .*iso$  300
+QS_LocKBytesPerSecLimitMatch \.iso 1024
+QS_LocRequestLimitMatch      \.iso  300
 </pre>
 </td></tr>
 </table>
