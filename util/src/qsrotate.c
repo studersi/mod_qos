@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.28 2015-05-04 20:24:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.29 2015-11-06 16:41:04 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -326,14 +326,16 @@ int main(int argc, char **argv) {
   pthread_attr_t *tha = NULL;
   pthread_t tid;
 
-  char *m_cmd = strrchr(argv[0], '/');
+  char *cmd = strrchr(argv[0], '/');
 
-  if(m_cmd == NULL) {
-    m_cmd = argv[0];
+  if(cmd == NULL) {
+    cmd = argv[0];
   } else {
-    m_cmd++;
+    cmd++;
   }
-  
+  m_cmd = calloc(1, strlen(cmd)+1);
+  strcpy(m_cmd, cmd); // copy as we wan't to pass it when forking
+
   while(argc >= 1) {
     if(strcmp(*argv,"-o") == 0) {
       if (--argc >= 1) {
