@@ -4,7 +4,7 @@ CLIENT 2
 _EXEC ./sleep.sh 55 1>/dev/null
 _REQ localhost $QS_PORT_BASE
 __GET /index.html HTTP/1.1
-_SLEEP 6000
+_SLEEP 7000
 __Host: localhost
 __
 _EXPECT . "root index"
@@ -14,7 +14,7 @@ END
 CLIENT
 _EXEC ./sleep.sh 55 1>/dev/null
 _REQ localhost $QS_PORT_BASE
-__GET /cgi-local/sleep.cgi?s=6 HTTP/1.1
+__GET /cgi-local/sleep.cgi?s=7 HTTP/1.1
 __Host: localhost
 __
 _EXPECT . "done"
@@ -22,8 +22,10 @@ _WAIT
 END
 
 CLIENT
-_EXEC ./sleep.sh 1>/dev/null
+_EXEC ./sleep.sh 55 1>/dev/null
+_SLEEP 5000
 _SLEEP 1200
 _EXPECT EXEC "mod_qos\(200\): { \"scoreboard\": { \"open\": 896, \"waiting\": 125, \"read\": 2, \"write\": 1, .*{ \"max\": 256, \"busy\": 3 }"
 _EXEC tail -1 logs/error_log
 END
+
