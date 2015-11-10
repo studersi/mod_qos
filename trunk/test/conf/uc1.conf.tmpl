@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.57 2015-11-04 21:28:14 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.58 2015-11-10 20:04:15 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -96,7 +96,11 @@ LoadModule               status_module ##ROOT##/../httpd/modules/generators/.lib
 </IfDefine>
 
 <IfDefine uc1status>
-QS_Status                on
+StartServers            2
+ServerLimit             4
+MaxSpareThreads         128
+MaxClients              256
+QS_Status               on
 </IfDefine>
 
 <IfDefine uc1bb>

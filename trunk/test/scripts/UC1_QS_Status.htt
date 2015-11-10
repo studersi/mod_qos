@@ -24,6 +24,6 @@ END
 CLIENT
 _EXEC ./sleep.sh 1>/dev/null
 _SLEEP 1200
-_EXPECT EXEC "mod_qos\(200\): { \"scoreboard\": { \"open\": 192, \"waiting\": 61, \"read\": 2, \"write\": 1, .*{ \"max\": 64, \"busy\": 3 }"
+_EXPECT EXEC "mod_qos\(200\): { \"scoreboard\": { \"open\": 896, \"waiting\": 125, \"read\": 2, \"write\": 1, .*{ \"max\": 256, \"busy\": 3 }"
 _EXEC tail -1 logs/error_log
 END
