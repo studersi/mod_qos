@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.567 2015-11-09 21:31:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.568 2015-11-10 20:20:24 pbuchbinder Exp $";
 static const char g_revision[] = "11.18";
 
 /************************************************************************
@@ -588,6 +588,7 @@ typedef struct qs_actable_st {
   int generation;
   /* serialize */
   qs_serial_t *serialize; /* shm pointer */
+  time_t *qsstatustimer; /* shm pointer */
 } qs_actable_t;
 
 /**
@@ -608,6 +609,7 @@ typedef struct {
   apr_table_t *act_table;
   /* client control */
   qos_s_t *qos_cc;
+  /* sever status */
   int generation;
 } qos_user_t;
 
@@ -758,6 +760,8 @@ typedef struct {
   apr_thread_t *thread;
   int exit;
   int maxclients;
+  time_t *qsstatustimer;    /* shm in act */
+  apr_global_mutex_t *lock; /* lock of act */
   apr_pool_t *pool;
 } qsstatus_t;
 #endif
@@ -2395,9 +2399,10 @@ static apr_status_t qos_cleanup_shm(void *p) {
 
 /**
  * init the shared memory of the act
- *  acr->serialize     <- start
- *  act->conn          <- start + sizeof(serialize)
- *  act->conn->conn_ip <- start + sizeof(serialize) + sizeof(conn) * QS_MEM_SEG
+ *  act->serialize     <- start
+    act->qsstatustimer <- start + sizeof(serialize)     
+ *  act->conn          <- start + sizeof(serialize) + sizeof(time_t)
+ *  act->conn->conn_ip <- start + sizeof(serialize) + sizeof(time_t) + sizeof(conn) * QS_MEM_SEG
  *                      + [max_ip]
  *  act->entry         <- 
  *                      + [rule_entries]
@@ -2424,6 +2429,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     (event_limit_entries * APR_ALIGN_DEFAULT(sizeof(qos_event_limit_entry_t))) +
     APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
     APR_ALIGN_DEFAULT(sizeof(qs_serial_t)) +
+    APR_ALIGN_DEFAULT(sizeof(time_t)) +
     2048;
   /* use anonymous shm by default */
   res = apr_shm_create(&act->m, act->size, NULL, act->pool);
@@ -2454,13 +2460,16 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     return res;
   } else {
     qs_serial_t *sp = apr_shm_baseaddr_get(act->m); 
-    qs_conn_t *cp = (qs_conn_t *)&sp[1];
+    time_t *qsstatustimer = (time_t *)&sp[1];
+    qs_conn_t *cp = (qs_conn_t *)&qsstatustimer[1];
     qs_ip_entry_t *ce = (qs_ip_entry_t *)&cp[1];
     apr_time_t now = apr_time_now();
     act->serialize = sp;
     act->serialize->q1 = 0;
     act->serialize->q2 = 0;
     act->serialize->locked = 0;
+    act->qsstatustimer = qsstatustimer;
+    *act->qsstatustimer = 0;
     act->conn = cp;
     act->conn->conn_ip_len = max_ip * QS_MEM_SEG;
     act->conn->conn_ip = ce;
@@ -5525,7 +5534,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
 static apr_status_t qos_cleanup_status_thread(void *selfv) {
   qsstatus_t *s = selfv;
   s->exit = 1;
-  /* may long up to one second */
+  /* may long up to 100ms */
   if(m_worker_mpm || m_event_mpm) {
     apr_status_t status;
     apr_thread_join(&status, s->thread);
@@ -5561,51 +5570,65 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
     worker_score ws_record;
     int c, i, e;
     time_t now = time(NULL);
+    int run = 1;
     e = 60 - (now % 60);
     e = e * 10;
     for(c = 0; c < e; c++) {
+      //sleep(1);
       usleep(100000);
       if(s->exit) {
+        run = 0;
         break;
       }
     }
-    for(i = 0; i < server_limit; ++i) {
-      int j;
-      for(j = 0; j < thread_limit; ++j) {
-        int res;
-        ap_copy_scoreboard_worker(&ws_record, i, j);
-        res = ws_record.status;
-        if(res == SERVER_DEAD) {
-          s_open++;
-        } else  if(res == SERVER_READY) {
-          s_ready++;
-        } else if(res == SERVER_BUSY_READ) {
-          s_read++;
-          s_busy++;
-        } else if(res == SERVER_BUSY_WRITE) {
-          s_write++;
-          s_busy++;
-        } else if(res == SERVER_BUSY_KEEPALIVE) {
-          s_keep++;
-          s_busy++;
-        } else if(res == SERVER_STARTING) {
-          s_start++;
-        } else if(res == SERVER_BUSY_LOG) {
-          s_log++;
-          s_busy++;
-        } else if(res == SERVER_BUSY_DNS) {
-          s_dns++;
-          s_busy++;
-        } else if(res == SERVER_CLOSING) {
-          s_closing++;
-        } else if(res == SERVER_GRACEFUL) {
-          s_usr1++;
-        } else if(res == SERVER_IDLE_KILL) {
-          s_kill++;
+    if(!s->exit) {
+      apr_global_mutex_lock(s->lock);          /* @CRT47 */
+      if(*s->qsstatustimer < (now + 62)) {
+        // set next and fetch the data
+        *s->qsstatustimer = (now + 70);
+      } else {
+        // another child already did the job
+        run = 0;
+      }
+      apr_global_mutex_unlock(s->lock);          /* @CRT47 */
+    }
+    if(!s->exit && run) {
+      for(i = 0; i < server_limit; ++i) {
+        int j;
+        for(j = 0; j < thread_limit; ++j) {
+          int res;
+          ap_copy_scoreboard_worker(&ws_record, i, j);
+          res = ws_record.status;
+          if(res == SERVER_DEAD) {
+            s_open++;
+          } else  if(res == SERVER_READY) {
+            s_ready++;
+          } else if(res == SERVER_BUSY_READ) {
+            s_read++;
+            s_busy++;
+          } else if(res == SERVER_BUSY_WRITE) {
+            s_write++;
+            s_busy++;
+          } else if(res == SERVER_BUSY_KEEPALIVE) {
+            s_keep++;
+            s_busy++;
+          } else if(res == SERVER_STARTING) {
+            s_start++;
+          } else if(res == SERVER_BUSY_LOG) {
+            s_log++;
+            s_busy++;
+          } else if(res == SERVER_BUSY_DNS) {
+            s_dns++;
+            s_busy++;
+          } else if(res == SERVER_CLOSING) {
+            s_closing++;
+          } else if(res == SERVER_GRACEFUL) {
+            s_usr1++;
+          } else if(res == SERVER_IDLE_KILL) {
+            s_kill++;
+          }
         }
       }
-    }
-    if(!s->exit) {
       ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
                    QOS_LOG_PFX(200)"{ \"scoreboard\": { "
                    "\"open\": %d, \"waiting\": %d, \"read\": %d, "
@@ -5630,18 +5653,17 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
 /**
  * Starts the stats logger thread
  */
-static void qos_init_status_thread(apr_pool_t *p, int maxclients) {
+static void qos_init_status_thread(apr_pool_t *p, qs_actable_t *act, int maxclients) {
   apr_pool_t *pool;
   apr_threadattr_t *tattr;
   qsstatus_t *s;
   apr_pool_create(&pool, NULL);
-  /* this casauses a memory leak at every (graceful) server
-     restart but I assume, that even restarting it once every day,
-     a server could run for years. */
   s = apr_pcalloc(pool, sizeof(qsstatus_t));
   s->exit = 0;
   s->pool = pool;
   s->maxclients = maxclients;
+  s->qsstatustimer = act->qsstatustimer;
+  s->lock = act->lock;
   if(apr_threadattr_create(&tattr, pool) == APR_SUCCESS) {
     if(apr_thread_create(&s->thread, tattr, qos_status_thread, s, pool) == APR_SUCCESS) {
       apr_pool_cleanup_register(p, s, qos_cleanup_status_thread,
@@ -9413,6 +9435,11 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
     /* propagate mutex to child process (required for certaing platforms) */
     apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, p);
   }
+#if APR_HAS_THREADS
+  if(sconf->qsstatus) {
+    qos_init_status_thread(p, sconf->act, sconf->max_clients);
+  }
+#endif
 }
 
 /*
@@ -9499,12 +9526,6 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
 //      sconf->max_clients = net_prefer;
 //    }
 //  }
-
-#if APR_HAS_THREADS
-  if(sconf->qsstatus) {
-    qos_init_status_thread(plog, sconf->max_clients);
-  }
-#endif
 
   if(sconf->log_only) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
