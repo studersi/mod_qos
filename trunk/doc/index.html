@@ -294,7 +294,7 @@ If you have a different version of <code>aclocal</code> or
 <a name="source"></a>
 <h2>Source Code</h2>
 <p>
-<a href="../apache2">mod_qos</a> is available for Apache version 2.2.
+<a href="../apache2">mod_qos</a> is available for Apache version 2.2 respectively 2.4.
 </p>
 
 <!-- BUILD END -->
@@ -1864,8 +1864,9 @@ query string <code>refresh</code>, e.g., <code>http://your.server.name/qos?refre
 <p>
 The status information is also provided on the server status page of  
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_status.html" target="_blank">mod_status</a>.<br>
-<!--<small><small>Note: compile mod_qos setting <code>-DQS_NO_STATUS_HOOK</code> to disable it within 
-the status page rendered by mod_status.</small></small>-->
+<small><small>Note: compile mod_qos with the preprocessor definition 
+<code>-DQS_NO_STATUS_HOOK</code> to disable its regisration to 
+the status page rendered by mod_status.</small></small>
 </p>
 <p>
 Use the directive <code>QS_DisableHandler on</code> to disable the qos-viewer and qos-console for 
