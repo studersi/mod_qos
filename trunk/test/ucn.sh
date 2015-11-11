@@ -22,6 +22,7 @@ waitApache() {
       ./bin/sleep 200
     fi
   done
+  sleep 1
 }
 
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucna 2>/dev/null 1>/dev/null
