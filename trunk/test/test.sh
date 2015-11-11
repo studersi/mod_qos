@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.256 2015-11-11 14:45:52 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.257 2015-11-11 21:18:09 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -1151,7 +1151,7 @@ fi
 
 echo "ipcs: $IPCS $IPCS2"
 if [ $IPCS -ne $IPCS2 ]; then
-    echo "WARNING: ipcs count changed"
+    echo "WARNING: ipcs count changed ($IPCS -> $IPCS2)"
     WARNINGS=`expr $WARNINGS + 1`
 fi
 
