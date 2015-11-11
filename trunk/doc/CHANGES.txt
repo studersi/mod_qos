@@ -1,6 +1,6 @@
-Version
+Version 11.18
 
- - New directive QS_Status (experimental).
+ - New directive QS_Status.
 
  - QS_SrvSampleRate must be greater then one second.
 
