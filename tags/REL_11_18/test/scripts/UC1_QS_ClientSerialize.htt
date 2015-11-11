@@ -1,0 +1,55 @@
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__User-Agent: serializeme 1
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=2 HTTP/1.1\" 200 5 \"serializeme 1\" 2 - -"
+_EXEC tail -1 logs/access_log
+
+END
+
+CLIENT
+_SLEEP 100
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: serializeme 2
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme 2\" 3 - s;"
+_EXEC tail -1 logs/access_log
+
+END
+
+CLIENT
+_SLEEP 200
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: serializeme 3
+__Y-Forwarded-For: 127.0.0.4
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme 3\" 1 - -"
+_EXEC tail -1 logs/access_log
+
+END
