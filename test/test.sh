@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.255 2015-10-20 20:38:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.256 2015-11-11 14:45:52 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -1010,6 +1010,7 @@ for E in $TEST; do
 	ERRORS=`expr $ERRORS + 1`
 	echo "FAILED $E"
     fi
+    sleep 3
 done
 
 # tools -----------------------------------------------------------
@@ -1113,7 +1114,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # code / open issues and tasks ------------------------------------
-for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "mod_qos()" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(036" | grep -v "(035" | grep -v "(062" | grep -v "(066" | grep -v "(071" | grep -v "(080" | grep -v "(081" | grep -v "(082" | grep -v "(083"`; do
+for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "mod_qos()" | grep -v "(02" | grep -v "(051" | grep -v "(053" | grep -v "(036" | grep -v "(035" | grep -v "(037" | grep -v "(062" | grep -v "(066" | grep -v "(071" | grep -v "(080" | grep -v "(081" | grep -v "(082" | grep -v "(083"`; do
   C=`grep -c $E logs/error_log`
   C1=`grep -c $E logs/error1_log`
   if [ $C -eq 0 -a $C1 -eq 0 ]; then
