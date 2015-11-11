@@ -1863,22 +1863,22 @@ query string <code>refresh</code>, e.g., <code>http://your.server.name/qos?refre
 </p>
 <p>
 The status information is also provided on the server status page of  
-<a href="http://httpd.apache.org/docs/2.2/mod/mod_status.html" target="_blank">mod_status</a>.
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_status.html" target="_blank">mod_status</a>.<br>
+<!--<small><small>Note: compile mod_qos setting <code>-DQS_NO_STATUS_HOOK</code> to disable it within 
+the status page rendered by mod_status.</small></small>-->
 </p>
 <p>
 Use the directive <code>QS_DisableHandler on</code> to disable the qos-viewer and qos-console for 
 a virtual host in order to prevent accidental activation of these functions, includng by configuration 
 settings of per-directory files (e.g., .htaccess).
 </p>
-<!--
 <p>
 <a name="QS_Status"></a>
 The directive <code>QS_Status 'on'|'off'</code> may be used to enable a 
-status log message (<i>mod_qos(200)</i>) written to the <code>ErrorLog</code> 
-of the Apache server containing information about the server's scoreboard. The  
-message is written once every minute.
+status log message (<i>mod_qos(200)</i>) written to the Apache server's 
+<code>ErrorLog</code>. This message contains information about the server's 
+scoreboard. The message is written once every minute.
 </p>
--->
 <a name="webconsole"></a>
 <h3>Web Console</h3>
 <p>
