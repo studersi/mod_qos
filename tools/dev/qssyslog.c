@@ -73,7 +73,7 @@ static int qsgetfacility(const char *facilityname) {
 }
 
 void *usage() {
-  printf("usage: qssyslog [-m <total>] [-n <message/sec>] [-l <length>] [-s <severity>] [-t <tag>]\n");
+  printf("usage: qssyslog [-m <total>] [-n <message/sec>] [-l <length>] [-s <level>] [-f <facility>]\n");
   printf("\n");
   printf("Writes the specified number of log messages to the syslog system log modules.\n");
   printf("\n");
@@ -181,10 +181,10 @@ int main(int argc, char **argv) {
       if (--argc >= 1) {
 	size = atoi(*(++argv));
       }
-    } else if(strcmp(*argv,"-t") == 0) {
+    } else if(strcmp(*argv,"-f") == 0) {
       if (--argc >= 1) {
-	const char *tag = *(++argv);
-	facility = qsgetfacility(tag);
+	const char *f = *(++argv);
+	facility = qsgetfacility(f);
       }
     } else if(strcmp(*argv, "-s") == 0) {
       if (--argc >= 1) {
@@ -199,7 +199,11 @@ int main(int argc, char **argv) {
   }
   data = calloc(size+1, 1);
   memset(data, 'Q', size);
-  printf("start: facility=%d severity=%d lengh=%d number=%d msg/sec=%d\n", facility, severity, size, max, speed);
+  if(speed < 10) {
+    speed = 10;
+  }
+  speed = speed / 10 * 10;
+  printf("start: facility.level=%d.%d lengh=%d number=%d msg/sec=%d\n", facility, severity, size, max, speed);
 
   openlog("qssyslog", 0, facility);
 
