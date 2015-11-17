@@ -166,6 +166,9 @@ int main(int argc, char **argv) {
   int size = 500;
   int severity = LOG_INFO;
   int facility = LOG_LOCAL3;
+  long long duration, start, end, ws, we, sl;
+  struct timeval tv;
+  int total = 0;
   argc--;
   argv++;
   while(argc >= 1) {
@@ -197,17 +200,46 @@ int main(int argc, char **argv) {
     argc--;
     argv++;
   }
-  data = calloc(size+1, 1);
-  memset(data, 'Q', size);
+  if(size < 12) {
+    size = 12;
+  }
   if(speed < 10) {
     speed = 10;
   }
   speed = speed / 10 * 10;
-  printf("start: facility.level=%d.%d lengh=%d number=%d msg/sec=%d\n", facility, severity, size, max, speed);
+  printf("start: facility.level=%d.%d lengh=%d number=%d msg/sec=%d\n", 
+	 facility, severity, size, max, speed);
+  size-=10;
+  data = calloc(size+1, 1);
+  memset(data, 'Q', size);
 
   openlog("qssyslog", 0, facility);
 
-  syslog(severity, "%s", data);
-
+  gettimeofday(&tv, NULL);
+  start = tv.tv_sec * 1000000 + tv.tv_usec;
+  speed = speed / 10; // number of message per 100ms
+  while(max > 0) {
+    int i;
+    gettimeofday(&tv, NULL);
+    ws = tv.tv_sec * 1000000 + tv.tv_usec;
+    for(i = 0; i < speed; i++) {
+      total++;
+      syslog(severity, "%.10d%s", total, data);
+    }
+    max-=speed;
+    gettimeofday(&tv, NULL);
+    we = tv.tv_sec * 1000000 + tv.tv_usec;
+    sl = we - ws;
+    // this took "sl" microseconds, wait until we reach 100ms
+    sl = sl;
+    sl = 100000 - sl;
+    if(sl > 0) {
+      usleep(sl);
+    }
+  }
+  gettimeofday(&tv, NULL);
+  end = tv.tv_sec * 1000000 + tv.tv_usec;
+  duration = (end - start) / 1000000;
+  printf("end: %d messages (%d per second)\n", total, total / duration);
   return 0;
 }
