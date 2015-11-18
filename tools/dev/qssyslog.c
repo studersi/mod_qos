@@ -1,3 +1,25 @@
+/**
+ * See http://opensource.adnovum.ch/mod_qos/ for further
+ * details.
+ *
+ * Copyright (C) 2015 Pascal Buchbinder
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA 02110-1301, USA.
+ *
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -73,9 +95,22 @@ static int qsgetfacility(const char *facilityname) {
 }
 
 void *usage() {
-  printf("usage: qssyslog [-m <total>] [-n <message/sec>] [-l <length>] [-s <level>] [-f <facility>]\n");
+  printf("\n");
+  printf("Usage: qssyslog [-m <total>] [-n <messages/sec>] [-l <length>] [-s <level>] [-f <facility>]\n");
   printf("\n");
   printf("Writes the specified number of log messages to the syslog system log modules.\n");
+  printf("\n");
+  printf("Options:\n");
+  printf(" -m <total>\n");
+  printf("    Number of message to create, default is 10.\n");
+  printf(" -n <messages/sec>\n");
+  printf("    Transmit rate (how many messages per second). Default is 10.\n");
+  printf(" -l <length>\n");
+  printf("    Message length. Default is 500.\n");
+  printf(" -s <level>\n");
+  printf("    Level/severity of the message. Default is 'info'\n");
+  printf(" -f <facility>\n");
+  printf("    Facility to send the message to. Default is 'local3'.\n");
   printf("\n");
   exit(1);
 }
@@ -161,7 +196,7 @@ static int qsgetprio(const char *priorityname, int len) {
 
 int main(int argc, char **argv) {
   char *data;
-  int max = 1;
+  int max = 10;
   int speed = 1;
   int size = 500;
   int severity = LOG_INFO;
