@@ -207,6 +207,10 @@ int main(int argc, char **argv) {
     speed = 10;
   }
   speed = speed / 10 * 10;
+  max = max / speed * speed;
+  if(max == 0) {
+    max = speed;
+  }
   printf("start: facility.level=%d.%d lengh=%d number=%d msg/sec=%d\n", 
 	 facility, severity, size, max, speed);
   size-=10;
@@ -240,6 +244,9 @@ int main(int argc, char **argv) {
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
   duration = (end - start) / 1000000;
+  if(duration == 0) {
+    duration = 1;
+  }
   printf("end: %d messages (%d per second)\n", total, total / duration);
   return 0;
 }
