@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.19 2015-05-04 20:24:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.20 2015-11-20 06:29:29 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -273,7 +273,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "  -l <level>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Defines the minimal severity a message must have in order to\n");
-  qs_man_print(man, "     be forwarded. Default is 'DEBUG'.\n");
+  qs_man_print(man, "     be forwarded. Default is 'DEBUG' (fowarding everything).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -d <level>\n");
   if(man) printf("\n");
