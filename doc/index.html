@@ -156,7 +156,6 @@ keep-alive control.
 Prefers known IP addresses when server runs out of free TCP connections.
 </li>
 </ul>
-
 </p>
 <p>
 mod_qos is an open source software licensed under the 
@@ -317,7 +316,7 @@ into a permissive mode where rule violations are logged only but no
 actions are applied to requests or connections to enforce a rule. 
 This may be used for test purposes.
 </p>
-
+<p>
 <a name="requestlevelcontrol"></a>
 <h3>Request Level Control</h3>
 The module features the following directives to control server access 
@@ -1242,7 +1241,8 @@ QS_RequestHeaderFilter           on
 </pre>
 </td></tr>
 </table>
-
+</p>
+<p>
 Body data filtering requires <a href="http://parp.sourceforge.net" target="_blank">mod_parp</a> 
 which processes the request's message body of the following HTTP request content types: 
 <code>application/x-www-form-urlencoded</code>, 
@@ -1342,7 +1342,7 @@ QS_SetEnvIfBody             &lt;code&gt;delete&lt;/code&gt;               DENYAC
 </pre>
 </td></tr>
 </table>
-
+</p>
 <p>
 <a name="QS_MileStone"></a>
 Milestones: you may define a number of resources (request line patterns) as milestones. A 
@@ -1381,9 +1381,9 @@ QS_MileStone          deny       "^GET /app/.*\.zip HTTP/..."
 </td></tr>
 </table>
 </p>
-
 <a name="connectionlevelcontrol"></a>
 <h3>Connection Level Control</h3>
+<p>
 The module features the following directives to control server access on a per-server 
 (TCP connection) level. These directives must only be used in the global server context 
 and for port based virtual hosts (don't use them for name based virtual hosts).
@@ -1507,9 +1507,10 @@ QS_SrvMaxConnExcludeIP                    192.168.10.
 </pre>
 </td></tr>
 </table>
-
+</p>
 <a name="clientlevelcontrol"></a>
 <h3>Client Level Control</h3>
+<p>
 Client level control rules are applied per client (IP source address). 
 These directives must only be used in the global server context. 
 <ul>
@@ -1692,7 +1693,7 @@ QS_SetEnvIfStatus        403                      QS_Block=5
 </pre>
 </td></tr>
 </table>
-
+</p>
 
 <a name="messages"></a>
 <h2>Log Messages</h2>
@@ -1992,7 +1993,7 @@ file beginning at a defined pattern.</li>
 
 <a name="usecases"></a>
 <h2>Sample Use Cases</h2>
-<p>
+
 The following use cases may give you an idea about how to use mod_qos.
 <a name="Slow_Application"></a>
 <h3>Slow Application</h3>
@@ -2238,7 +2239,6 @@ QS_SetEnvIfStatus        NullConnection     QS_Block
 </table>
 </p>
 
-</p>
 
 </td></tr>
 </tbody>
