@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.14 2015-10-20 18:21:45 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.15 2015-11-23 19:09:17 pbuchbinder Exp $
 #
 # Simple Apache 2.4 build script.
 #
@@ -48,8 +48,9 @@ export CFLAGS
 
 cd httpd
 
-#./configure --with-apr=`pwd`/../../apr --with-mpm=${MPM} --enable-modules=all --enable-mods-static=all --with-module=qos:qos
-./configure --with-apr=`pwd`/../../apr --with-mpm=${MPM} --enable-modules=all --enable-mods-static=all --with-module=qos:qos --enable-http2 --with-nghttp2=$TOP/../nghttp2-1.3.4/
+prefix=$TOP/install
+mkdir -p $prefix
+./configure --prefix=$prefix --with-apr=`pwd`/../../apr --with-mpm=${MPM} --enable-modules=all --enable-mods-static=all --with-module=qos:qos --enable-http2 --with-nghttp2=$TOP/../nghttp2-1.3.4/
 
 if [ $? -ne 0 ]; then
   echo "ERROR"
@@ -61,6 +62,10 @@ if [ $? -ne 0 ]; then
   echo "ERROR"
   exit 1
 fi
+make install
 cd ..
+
+cp ../setenvifplus/httpd_src/modules/metadataplus/mod_setenvifplus.c install/modules
+./install/bin/apxs -c ./install/modules/mod_setenvifplus.c
 
 echo "END"
