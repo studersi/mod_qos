@@ -1,5 +1,5 @@
 #
-# $Id: 040_QS_DenyPath.htt,v 1.1 2015-11-23 19:09:18 pbuchbinder Exp $
+# $Id: 040_QS_DenyPath.htt,v 1.2 2015-11-23 21:46:28 pbuchbinder Exp $
 #
 # filter (whitelist/blacklist combo) path portion of the URI only
 # 
@@ -39,6 +39,7 @@ __Host: localhost
 __User-Agent: Mozilla
 __
 _EXPECT . "!200 OK"
+_EXPECT . "403 Forbidden"
 _WAIT
 _CLOSE
 _SLEEP 100
@@ -51,6 +52,7 @@ __Host: localhost
 __User-Agent: Mozilla
 __
 _EXPECT . "!200 OK"
+_EXPECT . "403 Forbidden"
 _WAIT
 _CLOSE
 _SLEEP 100

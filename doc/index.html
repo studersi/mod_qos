@@ -424,7 +424,7 @@ response code which is used when a request is denied. Requests denied
 at connection level usually get a HTTP 500 response code (ignoring 
 the settings of the <code>QS_ErrorResponseCode</code> and 
 <code>QS_ErrorPage</code> directives).<br>
-Default codes are:<br>
+Default (no custom error code or page defined) codes are:<br>
 &nbsp;400: if a request has no valid URL.<br>
 &nbsp;403: for requests denied by a <code>QS_Deny*</code>, 
 <code>QS_Permit*</code> or <code>QS_RequestHeaderFilter</code> directive.<br>

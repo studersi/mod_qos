@@ -42,7 +42,9 @@ QS_EnableInternalIPSimulation off
 QS_Status on
 </IfDefine>
 
+<IfDefine !pathwhitelist>
 QS_ErrorResponseCode   503
+</IfDefine>
 
 QS_ClientEventBlockCount 20 30
 QS_SetEnvIfStatus  400 QS_Block
@@ -79,7 +81,9 @@ Listen         ##QS_PORT_BASE##
    AddType                    text/html .shtml
    AddOutputFilter            INCLUDES .shtml
 
+<IfDefine !pathwhitelist>
    QS_ErrorPage               /error-docs/error.shtml
+</IfDefine>
 
    QS_SrvSerialize            on
    SetEnvIf                   User-Agent serializeme QS_SrvSerialize=1
