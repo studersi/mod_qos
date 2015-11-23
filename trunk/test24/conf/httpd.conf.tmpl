@@ -24,6 +24,8 @@ ThreadsPerChild         25
 MaxRequestWorkers      150
 MaxConnectionsPerChild   0
 
+LoadModule     setenvifplus_module ##ROOT##/../install/modules/.libs/mod_setenvifplus.so
+
 Options        FollowSymLinks Indexes Includes
 
 Timeout                 30
@@ -117,6 +119,14 @@ Listen         ##QS_PORT_BASE##
    ScriptAlias /demo/a/7.jpg ##ROOT##/htdocs/demo/a/1.jpg
    ScriptAlias /demo/a/8.jpg ##ROOT##/htdocs/demo/a/1.jpg
    ScriptAlias /demo/a/9.jpg ##ROOT##/htdocs/demo/a/1.jpg
+<IfDefine pathwhitelist>
+   <Location /demo/>
+     SetEnvIfPlus Request_URI ^/demo/index\.html$ PATHALLOWED=1
+     SetEnvIfPlus Request_URI ^/demo/a/[0-9]\.jpg$ PATHALLOWED=1
+     QS_DenyPath  +pathDeny01 deny ^/demo/a/2\.jpg$
+     QS_DenyEvent +pathwhitelist deny !PATHALLOWED
+   </Location>
+</IfDefine>
    <Location /demo/a>
         Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
         Order allow,deny
