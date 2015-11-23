@@ -28,7 +28,7 @@ QS_SrvMinDataRateOffEvent
 + QS_DenyRequestLine
 + QS_DenyPath,
 + QS_DenyQuery,
-QS_DenyEvent
++ QS_DenyEvent
 QS_PermitUri,
 QS_DenyBody
 QS_DenyQueryBody
