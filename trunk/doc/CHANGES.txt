@@ -1,7 +1,8 @@
 Version
 
- - Updated User-Agent header field pattern for the default
-   QS_RequestHeaderFilterRule rule set.
+ - Updates User-Agent header field pattern for the default
+   QS_RequestHeaderFilterRule rule set and adds the
+   Upgrade-Insecure-Requests header.
 
 Version 11.18
 

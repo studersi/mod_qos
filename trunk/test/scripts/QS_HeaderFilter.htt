@@ -1,5 +1,5 @@
 #
-# $Id: QS_HeaderFilter.htt,v 1.16 2014-07-18 19:07:29 pbuchbinder Exp $
+# $Id: QS_HeaderFilter.htt,v 1.17 2015-12-09 21:23:12 pbuchbinder Exp $
 #
 
 
@@ -16,6 +16,7 @@ __Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
 __Accept-Encoding: gzip,deflate
 __ACCEPT-LANGUAGE: en-us,en;q=0.5
 __CACHE-CONTROL: max-age=0
+__Upgrade-Insecure-Requests: 1
 __MAX-forwards: 10
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __X-FORWARDED-FOR: 127.0.0.1
@@ -40,6 +41,7 @@ _EXPECT . "HTTP_X_FORWARDED_FOR"
 _EXPECT . "HTTP_X_FORWARDED_HOST"
 _EXPECT . "HTTP_X_FORWARDED_SERVER"
 _EXPECT . "HTTP_MYHEADER"
+_EXPECT . "HTTP_UPGRADE_INSECURE_REQUESTS"
 _WAIT
 _CLOSE
 
