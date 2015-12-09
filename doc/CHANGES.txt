@@ -1,3 +1,8 @@
+Version
+
+ - Updated User-Agent header field pattern for the default
+   QS_RequestHeaderFilterRule rule set.
+
 Version 11.18
 
  - New directive QS_Status.
