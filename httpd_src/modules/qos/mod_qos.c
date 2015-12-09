@@ -45,7 +45,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.569 2015-12-09 21:10:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.570 2015-12-09 21:23:12 pbuchbinder Exp $";
 static const char g_revision[] = "11.18";
 
 /************************************************************************
@@ -994,6 +994,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Transfer-Encoding", "^chunked|Chunked|compress|Compress|deflate|Deflate|gzip|Gzip|identity|Identity$", QS_FLT_ACTION_DENY, 100 },
   { "Unless-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "User-Agent", "^[a-zA-Z0-9]+[a-zA-Z0-9_.:;()\\[\\]@ /+!=,-]+$", QS_FLT_ACTION_DROP, 300 },
+  { "Upgrade-Insecure-Requests", "^1$", QS_FLT_ACTION_DROP, 1 },
   { "Via", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 100 },
   { "X-Forwarded-For", "^[a-zA-Z0-9_\\.:\\-]+(, [a-zA-Z0-9_\\.:\\-]+)*$", QS_FLT_ACTION_DROP, 100 },
   { "X-Forwarded-Host", "^[a-zA-Z0-9_\\.:\\-]+$", QS_FLT_ACTION_DROP, 100 },
