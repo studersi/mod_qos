@@ -2198,7 +2198,7 @@ QS_SrvMaxConnClose       85%
 QS_VipIPHeaderName       mod-qos-login
 
 # enables the known client prefer mode (server allows new TCP connections
-# from known/good clients only when is has more than 716 open TCP connections):
+# from known/good clients only if there are more than 716 open TCP connections):
 QS_ClientPrefer          80
 
 # minimum request/response speed (deny slow clients blocking the server, 
