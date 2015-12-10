@@ -1,11 +1,12 @@
 <html>
+<meta>
 <meta http-equiv="Cache-Control" content="no-cache, no-store"/>
 <meta http-equiv="expires" content="0" />
-<head></head>
+</head>
 <body>
 custom error page
 <p>
-<b><i>failed to server your request</i></b>
+<b><i>failed to serve your request</i></b>
 </p>
 <p>
    code=<!--#echo var="REDIRECT_ERROR_NOTES" --></p>
@@ -48,7 +49,7 @@ custom error page
 <p>Remaining time: <span id="remaining"><!--#echo var="QS_Limit_Remaining" --></span> seconds</p>
 <hr>
 <pre>
-$Revision: 1.8 $
+$Revision: 1.9 $
 </pre>
 <script type="text/javascript">
 <!--
