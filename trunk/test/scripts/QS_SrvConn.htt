@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvConn.htt,v 1.1 2010-07-09 18:54:08 pbuchbinder Exp $
+# $Id: QS_SrvConn.htt,v 1.2 2015-12-10 20:02:12 pbuchbinder Exp $
 #
 #   # conditional based on concurrent connections (more than 9 concurrent connections)
 #   SetEnvIf                   QS_SrvConn   [0-9]{2,10}          QS_Cond=onloadonly
@@ -46,7 +46,7 @@ __GET /cgi100/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
 __User-Agent: main
 __
-_EXPECT . "failed to server your request"
+_EXPECT . "failed to serve your request"
 _EXPECT . "code=011"
 _EXPECT . "!200 OK"
 _WAIT
