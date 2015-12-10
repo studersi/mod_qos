@@ -13,8 +13,9 @@
  * different priority to different requests.
  *
  * mod_qos requires OpenSSL, PCRE, threading and shared memory
- * support. It supports Apache version 2.2 MPM worker binaries
- * and is optimized to be used in a reverse proxy.
+ * support. It has been developed and fully tested for Apache
+ * httpd version 2.2 MPM worker binaries and is optimized to be
+ * used in a reverse proxy.
  *
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details and to optain the latest version of this module.
@@ -45,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.570 2015-12-09 21:23:12 pbuchbinder Exp $";
-static const char g_revision[] = "11.18";
+static const char revision[] = "$Id: mod_qos.c,v 5.571 2015-12-10 21:17:04 pbuchbinder Exp $";
+static const char g_revision[] = "11.19";
 
 /************************************************************************
  * Includes
