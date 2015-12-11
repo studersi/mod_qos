@@ -1,8 +1,15 @@
-Version
+Version 11.19
 
  - Updates User-Agent header field pattern for the default
    QS_RequestHeaderFilterRule rule set and adds the
    Upgrade-Insecure-Requests header.
+
+ - QS_ClientGeoCountryDB is able to read IP2LOCATION csv file
+   without prior transformation (country code '-').
+
+ - Fixed: QS_ClientIpFromHeader used to determine country code
+   (QS_ClientGeoCountryDB) even the country could not be determined
+   for the connection address (incomplete IP list).
 
 Version 11.18
 

@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgeo.c,v 1.22 2015-03-03 21:13:19 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgeo.c,v 1.23 2015-12-11 20:01:15 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -52,7 +52,7 @@ static const char revision[] = "$Id: qsgeo.c,v 1.22 2015-03-03 21:13:19 pbuchbin
 #define MAX_REG_MATCH 10
 
 // "3758096128","3758096383","AU"
-#define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\""
+#define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2}|-)\""
 // "3758096128","3758096383","AU","Australia"
 #define QS_GEO_PATTERN_D "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\",\"(.*)\""
 // "192.83.198.0","192.83.198.255","3226715648","3226715903","AU","Australia"
