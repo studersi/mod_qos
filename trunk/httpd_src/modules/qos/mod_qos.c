@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.571 2015-12-10 21:17:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.572 2015-12-11 20:01:13 pbuchbinder Exp $";
 static const char g_revision[] = "11.19";
 
 /************************************************************************
@@ -182,7 +182,7 @@ static const char g_revision[] = "11.19";
 
 
 // "3758096128","3758096383","AU"
-#define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2})\""
+#define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2}|-)\""
 
 static const char *m_env_variables[] = {
   QS_ErrorNotes,
@@ -7853,8 +7853,9 @@ static int qos_post_read_request(request_rec *r) {
   const char *all_connections = apr_table_get(r->connection->notes, "QS_AllConn");
   const char *fromCurrentIp = apr_table_get(r->connection->notes, "QS_IPConn");
   const char *connectionid = apr_table_get(r->connection->notes, QS_CONNID);
-  if(country) {
+  if(sconf->geodb) {
     if(sconf->qos_cc_forwardedfor) {
+      // override country determined on a per connection basis
       const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
       if(forwardedfor) {
         unsigned long ip = qos_geo_str2long(r->pool, forwardedfor);
@@ -7890,6 +7891,8 @@ static int qos_post_read_request(request_rec *r) {
         }
       }
     }
+  }
+  if(country) {
     apr_table_set(r->subprocess_env, QS_COUNTRY, country);
   }
   if(connections) {

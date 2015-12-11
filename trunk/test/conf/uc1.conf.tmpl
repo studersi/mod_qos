@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.58 2015-11-10 20:04:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.59 2015-12-11 20:01:14 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -139,6 +139,12 @@ QS_SrvMinDataRate        120 1500
 QS_ClientGeoCountryDB    conf/GeoIPCountryWhois.csv
 QS_ClientIpFromHeader    Y-Forwarded-For
 QS_RedirectIf            QS_Country DE http://qos.de/
+</IfDefine>
+
+<IfDefine uc1ip2location>
+QS_ClientGeoCountryDB    conf/LITE-DB1.CSV
+QS_ClientIpFromHeader    Y-Forwarded-For
+QS_RedirectIf            QS_Country CN http://qos.cn/
 </IfDefine>
 
 <IfDefine uc1x1>
