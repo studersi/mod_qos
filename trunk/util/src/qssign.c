@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.39 2015-09-24 19:31:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.40 2015-12-16 07:35:53 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -40,6 +40,9 @@ static const char revision[] = "$Id: qssign.c,v 1.39 2015-09-24 19:31:17 pbuchbi
 /* openssl */
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
+
+/* PCRE */
+#include <pcre.h>
 
 /* apr/apr-util */
 #define QS_USEAPR 1
@@ -65,6 +68,7 @@ static void (*m_end)(const char *) = NULL;
 static int m_end_pos = 0;
 static const char *m_sec = NULL;
 static const EVP_MD *m_evp;
+static const pcre *m_filter = NULL;
 
 typedef struct {
   const char* fmt;
@@ -386,7 +390,12 @@ static void qs_sign(const char *sec) {
     if(m_logend && (m_end == NULL)) {
       qs_set_format(line);
     }
-    qs_write(line, line_size, sec, sec_len);
+    if(pcre_exec(m_filter, NULL, line, line_size, 0, 0, NULL, 0) >= 0) {
+      printf("%s\n", line);
+      fflush(stdout);
+    } else {
+      qs_write(line, line_size, sec, sec_len);
+    }
   }
   return;
 }
@@ -522,7 +531,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -s|S <secret> [-e] [-v] [-u <name>] [-a 'sha1'|sha256']\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -s|S <secret> [-e] [-v] [-u <name>] [-f <regex>] [-a 'sha1'|sha256']\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -557,6 +566,11 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "  -u <name>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Becomes another user, e.g. www-data.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -f <regex>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Filter pattern (case sensitive regular expression) of messages\n");
+  qs_man_print(man, "     do not need to be signed.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -a 'sha1'|'sha256'\n");
   if(man) printf("\n");
@@ -600,6 +614,7 @@ int main(int argc, const char * const argv[]) {
   int verify = 0;
   char *cmd = strrchr(argv[0], '/');
   const char *username = NULL;
+  const char *filter = NULL;
   if(cmd == NULL) {
     cmd = (char *)argv[0];
   } else {
@@ -627,7 +642,11 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
         username = *(++argv);
       }
-    } else if(strcmp(*argv,"-a") == 0) { /* switch user id */
+    } else if(strcmp(*argv,"-f") == 0) { /* filter */
+      if (--argc >= 1) {
+        filter = *(++argv);
+      }
+    } else if(strcmp(*argv,"-a") == 0) { /* set alg */
       if (--argc >= 1) {
         const char *alg = *(++argv);
 	if(strcasecmp(alg, "SHA256") == 0) {
@@ -649,6 +668,17 @@ int main(int argc, const char * const argv[]) {
     }
     argc--;
     argv++;
+  }
+
+  if(filter != NULL) {
+    const char *errptr = NULL;
+    int erroffset;
+    m_filter = pcre_compile(filter, 0, &errptr, &erroffset, NULL);
+    if(m_filter == NULL) {
+      fprintf(stderr, "failed to compile filter pattern <%s> at position %d,"
+            " reason: %s\n", filter, erroffset, errptr);
+      exit(1);
+    }
   }
 
   if(m_evp == NULL) {
