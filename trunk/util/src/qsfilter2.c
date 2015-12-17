@@ -29,7 +29,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.79 2015-03-01 21:11:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.80 2015-12-17 21:21:55 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -40,8 +40,9 @@ static const char revision[] = "$Id: qsfilter2.c,v 1.79 2015-03-01 21:11:41 pbuc
 #include <unistd.h>
 #include <time.h>
 
-/* apr */
 #include <pcre.h>
+
+/* apr */
 #include <apr.h>
 #include <apr_uri.h>
 #include <apr_signal.h>
