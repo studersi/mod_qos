@@ -1,3 +1,7 @@
+Version
+
+ - Adds filter (option -f) to qssign.
+
 Version 11.19
 
  - Updates User-Agent header field pattern for the default

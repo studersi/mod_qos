@@ -2,6 +2,11 @@
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
 
+if [ `echo "INFO 123\nINFO abc\nDEBUG def\nINFO ghi" | ../util/src/qssign -s 123 -f "DEBUG" | grep -c "INFO ghi 000000000003#"` -ne 1 ]; then
+    echo "ERROR: filter failed"
+    exit 1
+fi
+
 echo "- sign"
 cat logs/access_log | ../util/src/qssign -s 1234567890 > logs/signed_access_log
 
