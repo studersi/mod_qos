@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.40 2015-12-16 07:35:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.41 2015-12-18 06:19:17 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -569,8 +569,8 @@ static void usage(char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -f <regex>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Filter pattern (case sensitive regular expression) of messages\n");
-  qs_man_print(man, "     do not need to be signed.\n");
+  qs_man_print(man, "     Filter pattern (case sensitive regular expression) for messages\n");
+  qs_man_print(man, "     which do not need to be signed.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -a 'sha1'|'sha256'\n");
   if(man) printf("\n");
