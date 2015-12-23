@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.53 2015-10-13 20:28:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.54 2015-12-23 20:09:37 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -108,6 +108,7 @@ cp doc/favicon.ico mod_qos-${VERSION}/doc/
 cp doc/*.1.html mod_qos-${VERSION}/doc/
 cp doc/qsfilter2_process.gif mod_qos-${VERSION}/doc/
 cp doc/MESSAGES.txt mod_qos-${VERSION}/doc/
+cp doc/link.png mod_qos-${VERSION}/doc/
 
 echo "install source"
 cp httpd_src/modules/qos/mod_qos.c mod_qos-${VERSION}/apache2
