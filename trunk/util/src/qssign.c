@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.41 2015-12-18 06:19:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.42 2015-12-23 20:09:37 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -539,7 +539,8 @@ static void usage(char *cmd, int man) {
     printf("Summary\n");
   }
   qs_man_print(man, "%s is a log data integrity check tool. It reads log data\n", cmd);
-  qs_man_print(man, "from stdin (pipe) and writes the signed data to stdout.\n");
+  qs_man_print(man, "from stdin (pipe) and writes the data to stdout adding a sequence\n");
+  qs_man_print(man, "number and signatur to ever log line.\n");
   printf("\n");
   if(man) {
     printf(".SH OPTIONS\n");
