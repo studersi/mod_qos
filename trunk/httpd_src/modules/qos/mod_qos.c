@@ -20,7 +20,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details and to optain the latest version of this module.
  *
- * Copyright (C) 2007-2015 Pascal Buchbinder
+ * Copyright (C) 2007-2016 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.572 2015-12-11 20:01:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.573 2016-01-07 20:01:55 pbuchbinder Exp $";
 static const char g_revision[] = "11.19";
 
 /************************************************************************
@@ -232,6 +232,14 @@ static const char *m_note_variables[] = {
 #define QOS_DEC_MODE_FLAGS_UNI        0x02
 #define QOS_DEC_MODE_FLAGS_ANSI       0x04
 
+#define QOS_LOW_FLAG_PKGRATE          0x01
+#define QOS_LOW_FLAG_BEHAVIOR_OK      0x02
+#define QOS_LOW_FLAG_BEHAVIOR_BAD     0x04
+#define QOS_LOW_FLAG_EVENTBLOCK       0x08
+#define QOS_LOW_FLAG_EVENTLIMIT       0x10
+#define QOS_LOW_FLAG_TIMEOUT          0x20
+#define QOS_LOW_TIMEOUT               86400
+
 #define QOS_CC_BEHAVIOR_THR 50000
 #define QOS_CC_BEHAVIOR_THR_SINGLE 50
 #ifdef QS_INTERNAL_TEST
@@ -333,6 +341,7 @@ typedef struct {
 typedef struct {
   apr_uint64_t ip6[2];
   time_t lowrate;
+  unsigned int lowratestatus;
   /* behavior */
   unsigned int html;
   unsigned int cssjs;
@@ -1620,6 +1629,7 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
 
   (*pB)->vip = 0;
   (*pB)->lowrate = 0;
+  (*pB)->lowratestatus = 0;
   (*pB)->block = 0;
   (*pB)->blockMsg = 0;
   (*pB)->block_time = 0;
@@ -2284,6 +2294,20 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     ap_set_module_config(r->request_config, &qos_module, rctx);
   }
   return rctx;
+}
+
+/**
+ * Adds the defined mod_qos_ev id to the request context (creates
+ * the req ctx if necessary).
+ *
+ * @param r
+ * @param id ID to set, e.g. "L;" or "D;"
+ */
+static void qs_set_evmsg(request_rec *r, const char *id) {
+  qs_req_ctx *rctx = qos_rctx_config_get(r);
+  if(rctx->evmsg == NULL || (strstr(rctx->evmsg, id) == NULL)) {
+    rctx->evmsg = apr_pstrcat(r->pool, id, rctx->evmsg, NULL);
+  }
 }
 
 /**
@@ -3702,8 +3726,7 @@ static int qos_hp_event_deny_filter(request_rec *r, qos_srv_config *sconf, qos_d
     if(rv != APR_SUCCESS) {
       int rc;
       const char *error_page = sconf->error_page;
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
-      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+      qs_set_evmsg(r, "D;"); 
       if(!sconf->log_only) {
         rc = qos_error_response(r, error_page);
         if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -3737,8 +3760,7 @@ static int qos_hp_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *
   if(rv != APR_SUCCESS) {
     int rc;
     const char *error_page = sconf->error_page;
-    qs_req_ctx *rctx = qos_rctx_config_get(r);
-    rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+    qs_set_evmsg(r, "D;"); 
     if(!sconf->log_only) {
       rc = qos_error_response(r, error_page);
       if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -4185,8 +4207,7 @@ static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_c
     if(rv != APR_SUCCESS) {
       int rc;
       const char *error_page = sconf->error_page;
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
-      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+      qs_set_evmsg(r, "D;"); 
       if(!sconf->log_only) {
         rc = qos_error_response(r, error_page);
         if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -4254,7 +4275,7 @@ static void qos_keepalive(request_rec *r, qos_srv_config *sconf) {
           r->server = sr;
           r->connection->base_server = sc;
         }
-        rctx->evmsg = apr_pstrcat(r->pool, "T;", rctx->evmsg, NULL);
+        qs_set_evmsg(r, "T;"); 
       }
       if(!sconf->log_only) {
         if(ka >= 0) {
@@ -4386,8 +4407,7 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
   if(rv != DECLINED) {
     int rc;
     const char *error_page = sconf->error_page;
-    qs_req_ctx *rctx = qos_rctx_config_get(r);
-    rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+    qs_set_evmsg(r, "D;"); 
     if(!sconf->log_only) {
       rc = qos_error_response(r, error_page);
       if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -4447,8 +4467,7 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
   if(rv != DECLINED) {
     int rc;
     const char *error_page = sconf->error_page;
-    qs_req_ctx *rctx = qos_rctx_config_get(r);
-    rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+    qs_set_evmsg(r, "D;"); 
     if(!sconf->log_only) {
       rc = qos_error_response(r, error_page);
       if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -4564,9 +4583,7 @@ static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf, qs_req_c
       struct timespec delay;
       delay.tv_sec  = 0;
       delay.tv_nsec = 50 * 1000000;
-      if(!rctx->evmsg || !strstr(rctx->evmsg, "s;")) {
-        rctx->evmsg = apr_pstrcat(r->pool, "s;", rctx->evmsg, NULL);
-      }
+      qs_set_evmsg(r, "s;"); 
       if(sconf->log_only) {
         return;
       }
@@ -4678,9 +4695,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
         struct timespec delay;
         delay.tv_sec  = 0;
         delay.tv_nsec = 100 * 1000000;
-        if(!rctx->evmsg || !strstr(rctx->evmsg, "s;")) {
-          rctx->evmsg = apr_pstrcat(r->pool, "s;", rctx->evmsg, NULL);
-        }
+        qs_set_evmsg(r, "s;"); 
         if(sconf->log_only) {
           return;
         }
@@ -4743,7 +4758,7 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
     }
     if(count > sconf->qos_cc_event_req) {
       if(vip) {
-        rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+        qs_set_evmsg(r, "S;"); 
       } else {
         int rc;
         const char *error_page = sconf->error_page;
@@ -4756,7 +4771,7 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                       QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "065"));
-        rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+        qs_set_evmsg(r, "D;"); 
         if(!sconf->log_only) {
           rc = qos_error_response(r, error_page);
           if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -4919,10 +4934,14 @@ static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
   }
 }
 
-/** determine client behavior */
+/** 
+ * determines client behavior based on accessed content types
+ *
+ * @return 0=normal, -1=unkonwn (not enough data), >=1 abnormal
+ */
 static int qos_content_type(request_rec *r, qos_srv_config *sconf,
                             qos_s_t *s, qos_s_entry_t *e, int limit) {
-  int penalty = 0;
+  int penalty = -1;
   const char *ct = apr_table_get(r->headers_out, "Content-Type");
   e->events++; // events counts requests and connections
   if(r->status == 304) {
@@ -4954,49 +4973,51 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
 
  end:
   /* compare this client with other clients */
-  if(limit &&
-     e->events > QOS_CC_BEHAVIOR_THR_SINGLE &&
-     ((sconf->static_on == 1) ||
-      (s->html > QOS_CC_BEHAVIOR_THR && s->html && s->img && s->cssjs && s->other && s->notmodified))) {
-    int i;
-    unsigned int server[5];
-    unsigned int client[5];
-    // note: all e->* variables are initialized by "1" to avaoid FPE
-    if(sconf->static_on == 1) {
-      /* use predefined value */
-      unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
-      server[0] = sconf->static_html;
-      server[1] = sconf->static_cssjs;
-      server[2] = sconf->static_img;
-      server[3] = sconf->static_other;
-      server[4] = sconf->static_notmodified;
-      client[0] = 100 * e->html / e_all;
-      client[1] = 100 * e->cssjs / e_all;
-      client[2] = 100 * e->img / e_all;
-      client[3] = 100 * e->other / e_all;
-      client[4] = 100 * e->notmodified / e_all;
-    } else {
-      /* learn average */
-      unsigned long long s_all = s->html + s->img + s->cssjs + s->other + s->notmodified;
-      unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
-      server[0] = 100 * s->html / s_all;
-      server[1] = 100 * s->cssjs / s_all;
-      server[2] = 100 * s->img / s_all;
-      server[3] = 100 * s->other / s_all;
-      server[4] = 100 * s->notmodified / s_all;
-      client[0] = 100 * e->html / e_all;
-      client[1] = 100 * e->cssjs / e_all;
-      client[2] = 100 * e->img / e_all;
-      client[3] = 100 * e->other / e_all;
-      client[4] = 100 * e->notmodified / e_all;
-    }
-    for(i = 0; i < 5; i++) {
-      if(client[i] > (server[i] + sconf->cc_tolerance)) {
-        penalty++;        
+  if(e->events > QOS_CC_BEHAVIOR_THR_SINGLE) {
+    penalty = 0;
+    if(limit &&
+       ((sconf->static_on == 1) ||
+        (s->html > QOS_CC_BEHAVIOR_THR && s->html && s->img && s->cssjs && s->other && s->notmodified))) {
+      int i;
+      unsigned int server[5];
+      unsigned int client[5];
+      // note: all e->* variables are initialized by "1" to avaoid FPE
+      if(sconf->static_on == 1) {
+        /* use predefined value */
+        unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
+        server[0] = sconf->static_html;
+        server[1] = sconf->static_cssjs;
+        server[2] = sconf->static_img;
+        server[3] = sconf->static_other;
+        server[4] = sconf->static_notmodified;
+        client[0] = 100 * e->html / e_all;
+        client[1] = 100 * e->cssjs / e_all;
+        client[2] = 100 * e->img / e_all;
+        client[3] = 100 * e->other / e_all;
+        client[4] = 100 * e->notmodified / e_all;
       } else {
-        if((server[i] > sconf->cc_tolerance) &&
-           (client[i] < (server[i] - sconf->cc_tolerance))) {
-          penalty++;
+        /* learn average */
+        unsigned long long s_all = s->html + s->img + s->cssjs + s->other + s->notmodified;
+        unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
+        server[0] = 100 * s->html / s_all;
+        server[1] = 100 * s->cssjs / s_all;
+        server[2] = 100 * s->img / s_all;
+        server[3] = 100 * s->other / s_all;
+        server[4] = 100 * s->notmodified / s_all;
+        client[0] = 100 * e->html / e_all;
+        client[1] = 100 * e->cssjs / e_all;
+        client[2] = 100 * e->img / e_all;
+        client[3] = 100 * e->other / e_all;
+        client[4] = 100 * e->notmodified / e_all;
+      }
+      for(i = 0; i < 5; i++) {
+        if(client[i] > (server[i] + sconf->cc_tolerance)) {
+          penalty++;        
+        } else {
+          if((server[i] > sconf->cc_tolerance) &&
+             (client[i] < (server[i] - sconf->cc_tolerance))) {
+            penalty++;
+          }
         }
       }
     }
@@ -5054,7 +5075,7 @@ static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
 static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rctx) {
   if(sconf->has_qos_cc) {
     int lowrate = 0;
-    int unusual_bahavior = 0;
+    int unusual_behavior = 0;
     int block_event = get_qs_event(r, QS_BLOCK);
     const char *block_seen = apr_table_get(r->subprocess_env, QS_BLOCK_SEEN);
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
@@ -5153,8 +5174,16 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       rctx->cc_serialize_set = 0;
       (*ef)->serialize = 0;
     }
-    unusual_bahavior = qos_content_type(r, sconf, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
-    if(block_event || lowrate || unusual_bahavior) {
+    unusual_behavior = qos_content_type(r, sconf, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
+    if(unusual_behavior == 0) {
+      // normal behavior
+      (*e)->lowratestatus |= QOS_LOW_FLAG_BEHAVIOR_OK;
+      (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_BAD;
+    } else {
+      // unknown or bad behavior
+      (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
+    }
+    if(block_event || lowrate || (unusual_behavior > 0)) {
       if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
         if((*e)->blockMsg > QS_LOG_REPEAT) {
@@ -5176,10 +5205,16 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         (*e)->block_time = 0;
       }
       /* mark lowpkt client */
-      if(lowrate || unusual_bahavior) {
-        qs_req_ctx *rctx = qos_rctx_config_get(r);
+      if(lowrate || (unusual_behavior > 0)) {
         (*e)->lowrate = apr_time_sec(r->request_time);
-        rctx->evmsg = apr_pstrcat(r->pool, "r;", rctx->evmsg, NULL);
+        if(lowrate) {
+          (*e)->lowratestatus |= QOS_LOW_FLAG_PKGRATE;
+        }
+        if(unusual_behavior > 1) {
+          (*e)->lowratestatus |= QOS_LOW_FLAG_BEHAVIOR_BAD;
+          (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
+        }
+        qs_set_evmsg(r, "r;"); 
       }
       if(block_event) {
         if((*e)->block == 0) {
@@ -5190,9 +5225,14 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         (*e)->block += block_event;
       }
     } else if((*e)->lowrate) {
-      /* reset low prio client after 24h */
-      if(((*e)->lowrate + 86400) < now) {
+      /* reset low prio client after 24h (resp. QOS_LOW_TIMEOUT seconds) */
+      if(((*e)->lowrate + QOS_LOW_TIMEOUT) < now) {
         (*e)->lowrate = 0;
+        if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+          (*e)->lowratestatus = QOS_LOW_FLAG_BEHAVIOR_OK;
+        } else {
+          (*e)->lowratestatus = 0;
+        }
       }
     }
 
@@ -5409,6 +5449,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                             QS_CONN_REMOTEIP(cconf->c));
         ret = m_retcode;
         (*e)->lowrate = apr_time_sec(r->request_time);
+        (*e)->lowratestatus |= QOS_LOW_FLAG_EVENTBLOCK;
+        qs_set_evmsg(r, "r;"); 
       }
     }
     if(u->qos_cc->limitTable) {
@@ -5509,20 +5551,35 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
               ret = m_retcode;
             }
           }
-          (*ef)->lowrate = apr_time_sec(r->request_time);
+          if(ef == e) {
+            (*e)->lowrate = apr_time_sec(r->request_time);
+            (*e)->lowratestatus |= QOS_LOW_FLAG_EVENTLIMIT;
+            qs_set_evmsg(r, "r;"); 
+          }
         }
       }
     }
-
+    
+    /* reset low prio client after 24h */
+    if(e && sconf->qos_cc_prefer) { 
+      apr_time_t now = apr_time_sec(r->request_time); 
+      if(((*e)->lowrate + QOS_LOW_TIMEOUT) < now) {
+        (*e)->lowrate = 0;
+        if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+          (*e)->lowratestatus = QOS_LOW_FLAG_BEHAVIOR_OK;
+        } else {
+          (*e)->lowratestatus = 0;
+        }
+      }
+    }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT17 */
 
     if(!sconf->log_only) {
       if(req_per_sec_block_rate) {
-        qs_req_ctx *rctx = qos_rctx_config_get(r);
         int sec = req_per_sec_block_rate / 1000;
         int nsec = req_per_sec_block_rate % 1000;
         struct timespec delay;
-        rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+        qs_set_evmsg(r, "L;"); 
         delay.tv_sec  = sec;
         delay.tv_nsec = nsec * 1000000;
         nanosleep(&delay,NULL);
@@ -5755,33 +5812,44 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
       if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
         /* allow all vip addresses */
         if(!(*e)->vip) {
-          /* step 1 - deny slow clients  */
+          int penalty = 4; // 2 to 12 points
+          int reqSpare = 0;
           if((*e)->lowrate) {
+            if((*e)->lowratestatus & QOS_LOW_FLAG_PKGRATE) {
+              penalty++;
+            }
+            if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_BAD) {
+              penalty+=2;
+            }
+            if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTBLOCK) {
+              penalty+=2;
+            }
+            if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTLIMIT) {
+              penalty+=2;
+            }
+            if((*e)->lowratestatus & QOS_LOW_FLAG_TIMEOUT) {
+              penalty++;
+            }
+          }
+          if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+            // normal behavior
+            penalty-=2;
+          }
+          // calculate the min. required free connections allowing us to serve request by this IP
+          reqSpare = (cconf->sconf->max_clients - cconf->sconf->qos_cc_prefer_limit) * penalty / 12;
+          if((cconf->sconf->max_clients - u->qos_cc->connections) < reqSpare) {
+            /* not enougth free connections */
             if(c->notes) {
               apr_table_set(c->notes, "QS_ClientLowPrio", "1");
             }
             if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
               *msg = apr_psprintf(cconf->c->pool, 
-                                  QOS_LOG_PFX(064)"access denied%s, "
-                                  "QS_ClientPrefer rule (low prio): "
+                                  QOS_LOG_PFX(066)"access denied%s, "
+                                  "QS_ClientPrefer rule (penalty=%d 0x%02x): "
                                   "max=%d, concurrent connections=%d, c=%s",
                                   cconf->sconf->log_only ? " (log only)" : "",
+                                  penalty, (*e)->lowratestatus,
                                   cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
-                                  QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
-                                  QS_CONN_REMOTEIP(cconf->c));
-              ret = m_retcode;
-            }
-          } else {
-            /* step 2 - deny also normal clients (they are not vip) */
-            int more = (cconf->sconf->max_clients - cconf->sconf->qos_cc_prefer_limit) / 2;
-            if(u->qos_cc->connections > (cconf->sconf->qos_cc_prefer_limit + more)) {
-              *msg = apr_psprintf(cconf->c->pool, 
-                                  QOS_LOG_PFX(063)"access denied%s, "
-                                  "QS_ClientPrefer rule (not vip): "
-                                  "max=%d(+%d), concurrent connections=%d, c=%s",
-                                  cconf->sconf->log_only ? " (log only)" : "",
-                                  cconf->sconf->qos_cc_prefer_limit, more, 
-                                  u->qos_cc->connections,
                                   QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
                                   QS_CONN_REMOTEIP(cconf->c));
               ret = m_retcode;
@@ -6068,6 +6136,7 @@ static unsigned long qos_geo_str2long(apr_pool_t *pool, const char *ip) {
 static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) {
   int max_conn_per_ip = 0;
   server_rec *s = sconf->base_server;
+  apr_time_t now = apr_time_sec(r->request_time);
   while(s) {
     // enable per client connection search if any server has enabled QS_SrvMaxConnPerIP
     qos_srv_config *conf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
@@ -6193,6 +6262,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             found = 1;
             searchE.vip = (*e)->vip;
             searchE.lowrate = (*e)->lowrate;
+            searchE.lowratestatus = (*e)->lowratestatus;
             searchE.time = (*e)->time;
             searchE.block = (*e)->block;
             searchE.block_time = (*e)->block_time;
@@ -6256,8 +6326,9 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             }
             ap_rprintf(r, "<td colspan=\"1\">%ld</td>", searchE.req_per_sec);
             ap_rprintf(r, "<td colspan=\"1\">%d&nbsp;ms</td>", searchE.req_per_sec_block_rate);
-            ap_rprintf(r, "<td colspan=\"1\">%s</td>\n", searchE.lowrate > 0 ? "yes" : "no");
-
+            ap_rprintf(r, "<td colspan=\"1\">%s (0x%02x)</td>\n",
+                       (searchE.lowrate + QOS_LOW_TIMEOUT) > now ? "yes" : "no",
+                       searchE.lowratestatus);
             ap_rputs("</tr>\n", r);
             ap_rprintf(r, "   <tr class=\"rows\">"
                        "<td colspan=\"6\">&nbsp;</td>"
@@ -7046,11 +7117,10 @@ static void qos_delay(request_rec *r, qos_srv_config *sconf) {
 #endif
       {
         if(!sconf->log_only) {
-          qs_req_ctx *rctx = qos_rctx_config_get(r);
           int sec = s / 1000;
           int nsec = s % 1000;
           struct timespec delay;
-          rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+          qs_set_evmsg(r, "L;"); 
           delay.tv_sec  = sec;
           delay.tv_nsec = nsec * 1000000;
           nanosleep(&delay,NULL);     
@@ -7463,6 +7533,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
     }
     if(cconf->has_lowrate) {
       (*e)->lowrate = time(NULL);
+      (*e)->lowratestatus |= QOS_LOW_FLAG_PKGRATE;
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT15 */
   }
@@ -8045,8 +8116,7 @@ static int qos_header_parser1(request_rec * r) {
     if(rv != APR_SUCCESS) {
       int rc;
       const char *error_page = sconf->error_page;
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
-      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+      qs_set_evmsg(r, "D;"); 
       if(!sconf->log_only) {
         rc = qos_error_response(r, error_page);
         if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -8244,10 +8314,7 @@ static int qos_header_parser(request_rec * r) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                     "%s, id=%s", msg == NULL ? "-" : msg,
                     qos_unique_id(r, uid));
-      if(!rctx) {
-        rctx = qos_rctx_config_get(r);
-      }
-      rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+      qs_set_evmsg(r, "D;"); 
       if(!sconf->log_only) {
         rc = qos_error_response(r, error_page);
         if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -8305,7 +8372,7 @@ static int qos_header_parser(request_rec * r) {
       if(e->limit && (e->counter > e->limit)) {
         /* vip session has no limitation */
         if(rctx->is_vip) {
-          rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+          qs_set_evmsg(r, "S;"); 
         } else {
           /* std user */
           int rc;
@@ -8317,7 +8384,7 @@ static int qos_header_parser(request_rec * r) {
                         e->url, e->limit, e->counter,
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "010"));
-          rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+          qs_set_evmsg(r, "D;"); 
           // request has already been blocked, don't cont this request for req/sec violations!
           apr_table_set(r->notes, QS_R010_ALREADY_BLOCKED, "");
           if(!sconf->log_only) {
@@ -8334,12 +8401,12 @@ static int qos_header_parser(request_rec * r) {
        */
       if(req_per_sec_block) {
         if(rctx->is_vip) {
-          rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+          qs_set_evmsg(r, "S;"); 
         } else {
           int sec = req_per_sec_block / 1000;
           int nsec = req_per_sec_block % 1000;
           struct timespec delay;
-          rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+          qs_set_evmsg(r, "L;"); 
           delay.tv_sec  = sec;
           delay.tv_nsec = nsec * 1000000;
           if(!sconf->log_only) {
@@ -8372,7 +8439,7 @@ static int qos_header_parser(request_rec * r) {
      */
     if(kbytes_per_sec_limit) {
       if(rctx->is_vip) {
-        rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+        qs_set_evmsg(r, "S;"); 
       } else {
         qos_delay_ctx_t *dctx = apr_pcalloc(r->pool, sizeof(qos_delay_ctx_t));
         dctx->rctx = rctx;
@@ -8392,7 +8459,7 @@ static int qos_header_parser(request_rec * r) {
           if(ap_regexec(e_cond->condition, condition, 0, NULL, 0) == 0) {
             /* vip session has no limitation */
             if(rctx->is_vip) {
-              rctx->evmsg = apr_pstrcat(r->pool, "S;", rctx->evmsg, NULL);
+              qs_set_evmsg(r, "S;"); 
             } else {
               /* std user */
               int rc;
@@ -8404,7 +8471,7 @@ static int qos_header_parser(request_rec * r) {
                             e_cond->url, e_cond->limit, e_cond->counter,
                             QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                             qos_unique_id(r, "011"));
-              rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+              qs_set_evmsg(r, "D;"); 
               if(!sconf->log_only) {
                 rc = qos_error_response(r, error_page);
                 if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -8422,11 +8489,10 @@ static int qos_header_parser(request_rec * r) {
      * QS_EventPerSecLimit
      */
     if(req_per_sec_block) {
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
       int sec = req_per_sec_block / 1000;
       int nsec = req_per_sec_block % 1000;
       struct timespec delay;
-      rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+      qs_set_evmsg(r, "L;"); 
       delay.tv_sec  = sec;
       delay.tv_nsec = nsec * 1000000;
       if(!sconf->log_only) {
@@ -8488,7 +8554,7 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
                       maxpost, rctx->maxpostcount,
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));
-        rctx->evmsg = apr_pstrcat(r->pool, "D;", rctx->evmsg, NULL);
+        qs_set_evmsg(r, "D;"); 
         if(!sconf->log_only) {
           rc = qos_error_response(r, error_page);
           if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
@@ -8629,6 +8695,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
         qos_s_entry_t **e = NULL;
         qos_s_entry_t searchE;
+        request_rec *r = f->r;
         apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
         qos_ip_str2long(QS_CONN_REMOTEIP(inctx->c), &searchE.ip6);
         e = qos_cc_get0(u->qos_cc, &searchE, 0);
@@ -8636,6 +8703,10 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
           e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
         }
         (*e)->lowrate = time(NULL);
+        (*e)->lowratestatus |= QOS_LOW_FLAG_TIMEOUT;
+        if(r) {
+          qs_set_evmsg(r, "r;"); 
+        }
         apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT18 */
       }
       inctx->lowrate = QS_PKT_RATE_TH + 1;
@@ -9061,11 +9132,8 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       }
       if(match) {
         qs_conn_ctx *cconf = qos_get_cconf(r->connection);
-        qs_req_ctx *rctx = qos_rctx_config_get(r);
         qos_set_session(r, sconf);
-        if(!rctx->evmsg || !strstr(rctx->evmsg, "V;")) {
-          rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
-        }
+        qs_set_evmsg(r, "V;"); 
         if(cconf) {
           cconf->is_vip = 1;
           cconf->is_vip_by_header = 1;
@@ -9081,11 +9149,8 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   if(sconf->vip_user && r->user) {
     if(!apr_table_get(r->notes, QS_REC_COOKIE)) {
       qs_conn_ctx *cconf = qos_get_cconf(r->connection);
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
       qos_set_session(r, sconf);
-      if(!rctx->evmsg || !strstr(rctx->evmsg, "V;")) {
-        rctx->evmsg = apr_pstrcat(r->pool, "V;", rctx->evmsg, NULL);
-      }
+      qs_set_evmsg(r, "V;"); 
       if(cconf) {
         cconf->is_vip = 1;
         cconf->is_vip_by_header = 1;
@@ -9116,8 +9181,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   qos_keepalive(r, sconf);
   if(sconf->max_conn_close != -1) {
     if(sconf->act->conn->connections > sconf->max_conn_close) {
-      qs_req_ctx *rctx = qos_rctx_config_get(r);
-      rctx->evmsg = apr_pstrcat(r->pool, "K;", rctx->evmsg, NULL);
+      qs_set_evmsg(r, "K;"); 
       r->connection->keepalive = AP_CONN_CLOSE;
     }
   }
@@ -9223,7 +9287,7 @@ static int qos_logger(request_rec *r) {
     ex = e_cond;
   }
   if(rctx->response_delayed) {
-    rctx->evmsg = apr_pstrcat(r->pool, "L;", rctx->evmsg, NULL);
+    qs_set_evmsg(r, "L;"); 
     apr_table_set(r->subprocess_env, QS_RESDELYATIME,
                   apr_psprintf(r->pool, "%"APR_OFF_T_FMT, rctx->response_delayed));
   }
@@ -9869,6 +9933,7 @@ static int qos_console_dump(request_rec * r, const char *event) {
     /* table requires heap (100'000 ~ 4MB) but we avaoid io with drawn lock */
     apr_table_t *iptable = apr_table_make(r->pool, u->qos_cc->max);
     apr_table_entry_t *entry;
+    apr_time_t now = apr_time_sec(r->request_time);
     ap_set_content_type(r, "text/plain");
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT35 */
     e = u->qos_cc->ipd;
@@ -9892,7 +9957,7 @@ static int qos_console_dump(request_rec * r, const char *event) {
                          i,
                          qos_ip_long2str(r->pool, e[i]->ip6),
                          e[i]->vip ? "yes" : "no",
-                         e[i]->lowrate ? "yes" : "no",
+                         (e[i]->lowrate + QOS_LOW_TIMEOUT) > now ? "yes" : "no",
                          e[i]->block,
                          (sconf->qos_cc_block_time >= (time(NULL) - e[i]->block_time)) ? 
                          (sconf->qos_cc_block_time - (time(NULL) - e[i]->block_time)) : 0,
@@ -10020,6 +10085,7 @@ static int qos_handler_console(request_rec * r) {
     qos_s_entry_limit_conf_t *eventLimitConf = NULL;
     int limit = 0;
     time_t limit_time = 0;
+    apr_time_t now = apr_time_sec(r->request_time);
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT34 */
     new.ip6[0] = addr[0];
     new.ip6[1] = addr[1];
@@ -10042,8 +10108,15 @@ static int qos_handler_console(request_rec * r) {
       (*e)->vip = 0;
     } else if(strcasecmp(cmd, "setlowprio") == 0) {
       (*e)->lowrate = time(NULL);
+      (*e)->lowratestatus = 0xff;
+      (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
     } else if(strcasecmp(cmd, "unsetlowprio") == 0) {
       (*e)->lowrate = 0;
+      if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+        (*e)->lowratestatus = QOS_LOW_FLAG_BEHAVIOR_OK;
+      } else {
+        (*e)->lowratestatus = 0;
+      }
     } else if(strcasecmp(cmd, "unblock") == 0) {
       (*e)->block_time = 0;
       (*e)->block = 0;
@@ -10062,7 +10135,6 @@ static int qos_handler_console(request_rec * r) {
       }
     } else if(strcasecmp(cmd, "inclimit") == 0) {
       if(eventLimitConf) {
-        apr_time_t now = apr_time_sec(r->request_time);
         if(((*e)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now) {
           // expired
           (*e)->limit[limitTableIndex].limit = 0;
@@ -10091,7 +10163,7 @@ static int qos_handler_console(request_rec * r) {
       }
       msg = apr_psprintf(r->pool, "%s vip=%s lowprio=%s block=%d/%ld limit=%d/%ld", ip,
                          (*e)->vip ? "yes" : "no",
-                         (*e)->lowrate ? "yes" : "no",
+                         ((*e)->lowrate + QOS_LOW_TIMEOUT) > now ? "yes" : "no",
                          (*e)->block,
                          (sconf->qos_cc_block_time >= (time(NULL) - (*e)->block_time)) ? 
                          (sconf->qos_cc_block_time - (time(NULL) - (*e)->block_time)) : 0,

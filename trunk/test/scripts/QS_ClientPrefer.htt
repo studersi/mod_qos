@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientPrefer.htt,v 1.2 2014-08-11 20:22:22 pbuchbinder Exp $
+# $Id: QS_ClientPrefer.htt,v 1.3 2016-01-07 20:01:56 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -26,6 +26,6 @@ END
 
 CLIENT
 _SLEEP 2000
-_EXPECT EXEC "mod_qos\(063\): access denied, QS_ClientPrefer rule \(not vip\)"
+_EXPECT EXEC "mod_qos\(066\): access denied, QS_ClientPrefer rule"
 _EXEC tail -10 logs/error_log
 END
