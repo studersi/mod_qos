@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.32 2014-01-28 21:58:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.33 2016-01-07 20:01:56 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,16 +44,19 @@ typedef struct {
 } qos_s_entry_limit_t;
 
 typedef struct {
-  unsigned long ip;
+  apr_uint64_t ip6[2];
   time_t lowrate;
+  unsigned int lowratestatus;
   /* behavior */
   unsigned int html;
   unsigned int cssjs;
   unsigned int img;
   unsigned int other;
   unsigned int notmodified;
-  unsigned int serialize;
   unsigned int events;
+  /* serialization flag */
+  unsigned int serialize;
+  apr_time_t serialize_queue;
   /* prefer */
   short int vip;
   /* ev block */
@@ -69,6 +72,34 @@ typedef struct {
   int req_per_sec_block_rate;
   int event_req;
 } qos_s_entry_t;
+
+//typedef struct {
+//  unsigned long ip;
+//  time_t lowrate;
+//  unsigned int lowratestatus;
+//  /* behavior */
+//  unsigned int html;
+//  unsigned int cssjs;
+//  unsigned int img;
+//  unsigned int other;
+//  unsigned int notmodified;
+//  unsigned int serialize;
+//  unsigned int events;
+//  /* prefer */
+//  short int vip;
+//  /* ev block */
+//  short int block;
+//  short int blockMsg;
+//  time_t time;
+//  time_t block_time;
+//  qos_s_entry_limit_t *limit;
+//  /* ev/sec */
+//  time_t interval;
+//  long req;
+//  long req_per_sec;
+//  int req_per_sec_block_rate;
+//  int event_req;
+//} qos_s_entry_t;
 
 typedef struct {
   time_t t;
