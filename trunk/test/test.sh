@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.257 2015-11-11 21:18:09 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.258 2016-01-08 15:32:56 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -471,6 +471,12 @@ if [ $EXT_ERR -gt 0 ]; then
 fi
 ERRORS=`expr $ERRORS + $EXT_ERR`
 
+# -----------------------------------------------------------------
+./prefer2.sh
+EXT_ERR=$?
+ERRORS=`expr $ERRORS + $EXT_ERR`
+
+# -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SetEnvResHeaders" >> logs/error_log
 ./run.sh -se ./scripts/QS_SetEnvResHeaders.htt
 if [ $? -ne 0 ]; then

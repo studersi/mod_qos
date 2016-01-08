@@ -4,7 +4,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2015 Pascal Buchbinder
+ * Copyright (C) 2007-2016 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.20 2015-09-24 19:31:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.21 2016-01-08 15:32:56 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>

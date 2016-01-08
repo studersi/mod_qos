@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.257 2015-12-22 20:33:40 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.258 2016-01-08 15:32:56 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -734,6 +734,8 @@ Listen                  server1:##QS_PORT_BASE1##
 
    BrowserMatch QS_EventKBytesPerSecLimit  eventkbytespersec
    QS_EventKBytesPerSecLimit  eventkbytespersec 202
+
+   SetEnvIf Referer  /XXblockXX    QS_Block=yes
 
    <Directory /error-docs>
       SetHandler              default
