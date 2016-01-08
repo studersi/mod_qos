@@ -33,7 +33,7 @@ __
 _EXPECT . "Keep-Alive: timeout=1, max=98"
 _EXPECT . "root index"
 _WAIT
-_SLEEP 3000
+_SLEEP 3200
 
 _REQ localhost $QS_PORT_BASE
 __GET /index.html?KeepAliveTimeout=1 HTTP/1.1
