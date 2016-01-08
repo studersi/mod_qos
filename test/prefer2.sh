@@ -4,8 +4,6 @@
 cd `dirname $0`
 PFX=[`basename $0`]
 
-ERRORS=0
-
 #
 # MaxClients      64
 # QS_ClientPrefer 80
@@ -20,33 +18,66 @@ ERRORS=0
 
 ./ctl.sh restart -D max_clients -D cc > /dev/null
 
-
+# ----------------------------------------------------------------------------------
 echo "$PFX dropping normal clients"
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_log
 echo "SET maxclients=61" > scripts/maxclients
 ./run.sh -s scripts/QS_ClientPrefer20.htt
-ERRORS=`expr $ERRORS + $?`
+if [ $? -ne 0 ]; then
+    exit 1
+fi
 messages=`../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep -c "mod_qos(066)" | awk '{print $1}'`
-echo "$PFX $messages clients blocked"
+type=`../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep "penalty=4 0x00" | grep -c "mod_qos(066)" | awk '{print $1}'`
+echo "$PFX $messages connections blocked"
 if [ $messages -eq 0 ]; then
     ../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep "mod_qos(066)"
     echo "$PFX failed: got mod_qos(066) no errors ($messages)"
     exit 1
 fi
+if [ $type -ne $messages ]; then
+    ../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep "mod_qos(066)"
+    echo "PFX failed: wrong message type ($messages vs $type)"
+    exit 1
+fi
 
+# ----------------------------------------------------------------------------------
 echo "$PFX not reaching the limit for normal (no errors)"
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_log
 echo "SET maxclients=58" > scripts/maxclients
 ./run.sh -s scripts/QS_ClientPrefer20.htt
-ERRORS=`expr $ERRORS + $?`
+if [ $? -ne 0 ]; then
+    exit 1
+fi
 messages=`../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep -c "mod_qos(066)"  | awk '{print $1}'`
-echo "$PFX $messages clients blocked"
+echo "$PFX $messages connections blocked"
 if [ $messages -ne 0 ]; then
     ../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep "mod_qos(066)"
     echo "$PFX failed: got mod_qos(066) errors ($messages)"
     exit 1
 fi
 
+# ----------------------------------------------------------------------------------
+./ctl.sh restart -D max_clients -D cc > /dev/null
+for E in `seq 100`; do
+    ./run.sh -s scripts/QS_ClientPrefer20err.htt 2>/dev/null 1>/dev/null
+done
+sleep 12
+echo "$PFX block clients which have violated QS_SrvMinDataRate rule"
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_log
+echo "SET maxclients=58" > scripts/maxclients
+./run.sh -s scripts/QS_ClientPrefer20.htt
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+messages=`../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep -c "mod_qos(066)"  | awk '{print $1}'`
+echo "$PFX $messages connections blocked"
+if [ $messages -eq 0 ]; then
+    ../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep "mod_qos(066)"
+    echo "$PFX failed: got no mod_qos(066) errors ($messages)"
+    exit 1
+fi
 
-exit $ERRORS
+
+echo "$PFX normal end"
+exit 0
 

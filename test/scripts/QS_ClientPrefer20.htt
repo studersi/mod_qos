@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientPrefer20.htt,v 1.1 2016-01-07 20:01:56 pbuchbinder Exp $
+# $Id: QS_ClientPrefer20.htt,v 1.2 2016-01-08 15:32:56 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -17,6 +17,7 @@ _WAIT
 END
 
 CLIENT
+_SLEEP 200
 _LOOP 300
 _REQ server1 $QS_PORT_BASE1
 __GET /index.html HTTP/1.1
