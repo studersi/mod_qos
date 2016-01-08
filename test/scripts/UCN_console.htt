@@ -1,5 +1,5 @@
 #
-# $Id: UCN_console.htt,v 1.12 2015-02-18 19:59:55 pbuchbinder Exp $
+# $Id: UCN_console.htt,v 1.13 2016-01-08 20:11:43 pbuchbinder Exp $
 #
 # QS_ClientIpFromHeader        Y-Forwarded-For
 # 
@@ -321,7 +321,7 @@ __Y-Forwarded-For: 127.0.0.1
 __User-Agent: Mozilla
 __
 _EXPECT . "200 OK"
-_EXPECT . "127.0.3.3 vip=no lowprio=no block=0/0 limit=1010/5"
+_EXPECT . "127.0.3.3 vip=no lowprio=.* block=0/0 limit=1010/5"
 _WAIT
 _CLOSE
 
@@ -359,7 +359,7 @@ __Y-Forwarded-For: 127.0.0.1
 __User-Agent: Mozilla
 __
 _EXPECT . "200 OK"
-_EXPECT . "127.0.3.3 vip=no lowprio=yes block=0/0 limit=0/0"
+_EXPECT . "127.0.3.3 vip=no lowprio=.* block=0/0 limit=0/0"
 _WAIT
 _CLOSE
 
