@@ -380,6 +380,7 @@ sleep 1
 ./run.sh -s scripts/UC1_QS_KeepAliveTimeout.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
+sleep 1
 
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1status 2>/dev/null 1>/dev/null
 waitApache
