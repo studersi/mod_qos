@@ -42,7 +42,7 @@ _EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 
-_SLEEP 1000
+_SLEEP 1050
 _EXPECT EXEC "mod_qos\(03[01]\): access denied, QS_SrvMaxConn(PerIP)? rule: max=2, concurrent connections=3"
 _EXEC tail -1 logs/error_log
 
