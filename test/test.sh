@@ -1,14 +1,14 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.258 2016-01-08 15:32:56 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.259 2016-01-10 13:54:41 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2015 Pascal Buchbinder
+# Copyright (C) 2007-2016 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
