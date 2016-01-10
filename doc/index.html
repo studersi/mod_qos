@@ -978,14 +978,15 @@ pattern. The regular expressions is case insensitive.
 <a name="QS_SetEnvIfStatus"></a>
 <code>QS_SetEnvIfStatus &lt;code&gt; &lt;env-variable&gt;[=&lt;value&gt;]</code><br>
 Sets the defined variable in the request environment if the HTTP 
-response status code matches the defined code. Directive may be used 
-on a per server or per location basis. <br>
+response status code matches the defined code. Default value is the status code. 
+Directive may be used on a per server or per location basis. <br>
 A possible use case for this directive is the prevention of 
 repetitive occurrence of unwanted response status codes in 
 conjunction with the 
 <code>QS_ClientEventBlockCount</code> or <code>QS_ClientEventLimitCount</code> 
 directive. <br>
-There are two "special codes" available to set the <code>QS_Block</code> 
+When using the special variable <code>QS_Block</code>, its value is set to "1" by 
+default. There are also two "special codes" available to set the <code>QS_Block</code> 
 event:
 <ul>
 <li><code>QS_SrvMinDataRate</code> may be used to set <code>QS_Block</code> 
