@@ -983,11 +983,12 @@ Directive may be used on a per server or per location basis. <br>
 A possible use case for this directive is the prevention of 
 repetitive occurrence of unwanted response status codes in 
 conjunction with the 
-<code>QS_ClientEventBlockCount</code> or <code>QS_ClientEventLimitCount</code> 
+<code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> or 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
 directive. <br>
-When using the special variable <code>QS_Block</code>, its value is set to "1" by 
-default. There are also two "special codes" available to set the <code>QS_Block</code> 
-event:
+When using the special variable <code><a href="#QS_Block">QS_Block</a></code>, its 
+value is set to "1" by default. There are also two "special codes" available to 
+set the <code><a href="#QS_Block">QS_Block</a></code> event:
 <ul>
 <li><code>QS_SrvMinDataRate</code> may be used to set <code>QS_Block</code> 
 events in order to limit the allowed number of 
@@ -1863,7 +1864,7 @@ The page updates itself automatically every 10 seconds if you add the request
 query string <code>refresh</code>, e.g., <code>http://your.server.name/qos?refresh</code>.
 </p>
 <p>
-The status information is also provided on the server status page of  
+The status information is also provided on the server status page of 
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_status.html">mod_status <img src="link.png"/></a>.<br>
 <small><small>Note: compile mod_qos with the preprocessor definition 
 <code>-DQS_NO_STATUS_HOOK</code> to disable its regisration to 
