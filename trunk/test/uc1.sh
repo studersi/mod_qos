@@ -380,14 +380,18 @@ sleep 1
 ./run.sh -s scripts/UC1_QS_KeepAliveTimeout.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
-sleep 1
+sleep 2
 
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1status 2>/dev/null 1>/dev/null
 waitApache
 ./sleep.sh
 sleep 3
 ./run.sh -s scripts/UC1_QS_Status.htt
-ERRORS=`expr $ERRORS + $?`
+RC=$?
+if [ $RC -ne 0 ]; then
+    tail -2 logs/error_log
+fi
+ERRORS=`expr $ERRORS + $RC`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 sleep 1
 
