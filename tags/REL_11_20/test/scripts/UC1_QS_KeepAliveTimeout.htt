@@ -1,0 +1,46 @@
+#
+#   SetEnvIfPlus Request_Query MaxKeepAliveRequests=([0-9]+) QS_MaxKeepAliveRequests=$1
+#   SetEnvIfPlus Request_Query KeepAliveTimeout=([0-9]+) QS_KeepAliveTimeout=$1
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=100"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=99"
+_EXPECT . "root index"
+_WAIT
+_SLEEP 3000
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?KeepAliveTimeout=1 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=1, max=98"
+_EXPECT . "root index"
+_WAIT
+_SLEEP 3200
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?KeepAliveTimeout=1 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT ERROR "Broken pipe"
+_WAIT
+
+END

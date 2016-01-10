@@ -1,0 +1,44 @@
+#
+# QS_SrvMaxConnPerIP                      100
+# Browsermatch  (slurp|googlebot|bingbot) Spider
+# SetEnvIf      QS_IPConn                 [3-9][0-9]*  ThreeOrMoreConnections
+# QS_SetEnvIf   ThreeOrMoreConnections    Spider       LimitSpider=yes
+# QS_RedirectIf LimitSpider               .*           http://127.0.0.1/redirect.html
+#
+
+INCLUDE scripts/ports
+
+CLIENT 2
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+
+END
+
+CLIENT
+
+_SLEEP 500
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: slurp
+__
+_EXPECT . "Location: http://127.0.0.1/redirect.html"
+_WAIT
+
+END
