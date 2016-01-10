@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.259 2016-01-10 13:54:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.260 2016-01-10 15:23:53 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -1068,7 +1068,7 @@ fi
 # some simple configurations --------------------------------------
 usscripts="dos.sh uc1.sh QS_Serialize.sh ucn.sh"
 for E in $usscripts; do
-  sleep 10
+  sleep 60
   echo "> $E"
   ./$E
   URC=$?
