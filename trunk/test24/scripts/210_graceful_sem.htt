@@ -1,0 +1,22 @@
+#
+# graceful restart must free semaphore and shared memory
+#
+INCLUDE scripts/ports
+
+CLIENT
+_EXEC ./ctl.sh graceful 2>/dev/null 1>/dev/null
+_SLEEP 1000
+_EXEC ./ctl.sh graceful 2>/dev/null 1>/dev/null
+
+_MATCH EXEC "(.*)" INI
+_EXEC ipcs  | wc -l
+_EXEC ./ctl.sh graceful 2>/dev/null 1>/dev/null
+_SLEEP 1000
+
+_MATCH EXEC "(.*)" AFTER
+_EXEC ipcs  | wc -l
+
+_IF "$INI" NOT MATCH "$AFTER"
+_EXIT FAILED
+_END IF
+END
