@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.7 2015-08-31 20:23:05 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.8 2016-01-15 21:31:27 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -27,6 +27,8 @@
 #
 
 cd `dirname $0`
+
+echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [notice] -- QS ctl.sh $1 --" >>  logs/error_log
 
 COMMAND=$1
 shift
