@@ -1,3 +1,11 @@
+Version 11.21
+
+ - Fixed: Implemented graceful restart detection for Apache 2.4
+   to properly free shared memory and mutexes (prevents from
+   leaking while doing graceful restarts).
+
+ - Disables keep-alive enforcement for MPM event binaries.
+
 Version 11.20
 
  - Adds filter (option -f) to qssign.

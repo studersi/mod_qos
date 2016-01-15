@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.574 2016-01-08 15:32:56 pbuchbinder Exp $";
-static const char g_revision[] = "11.20";
+static const char revision[] = "$Id: mod_qos.c,v 5.575 2016-01-15 21:31:26 pbuchbinder Exp $";
+static const char g_revision[] = "11.21";
 
 /************************************************************************
  * Includes
@@ -391,6 +391,8 @@ typedef struct {
   unsigned long long notmodified;
   /* data */
   int connections;
+  /* remember for which clients this rec has created (shared mem) */
+  int generation_locked;  // indicates the the counters have been cleared for this generation
 } qos_s_t;
 
 typedef enum  {
@@ -595,7 +597,6 @@ typedef struct qs_actable_st {
   unsigned int timeout;
   /* settings */
   int child_init;
-  int generation;
   /* serialize */
   qs_serial_t *serialize; /* shm pointer */
   time_t *qsstatustimer; /* shm pointer */
@@ -619,8 +620,6 @@ typedef struct {
   apr_table_t *act_table;
   /* client control */
   qos_s_t *qos_cc;
-  /* sever status */
-  int generation;
 } qos_user_t;
 
 /**
@@ -918,7 +917,7 @@ static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 static int m_worker_mpm = 1; // note: mod_qos is fully tested for Apache 2.2 worker MPM only
 static int m_event_mpm = 0;
 static unsigned int m_hostcode = 0;
-static int m_generation = 0;
+static int m_generation = 0; // parent process (restart generation)
 static int m_qos_cc_partition = QSMOD;
 static qos_unique_id_t m_unique_id;
 static const char qos_basis_64[] =
@@ -1482,6 +1481,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size, apr_tab
   }
   s = apr_shm_baseaddr_get(m);
   s->m = m;
+  s->generation_locked = -1;
   if(limitTableSize > 0) {
     apr_table_entry_t *te = (apr_table_entry_t *)apr_table_elts(limitTable)->elts;
     limitTableEntry = apr_shm_baseaddr_get(lm);
@@ -2342,21 +2342,35 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
   u = (qos_user_t *)apr_pcalloc(ppool, sizeof(qos_user_t));
   u->server_start = 0;
   u->act_table = apr_table_make(ppool, 2);
-  u->generation = 0;
   apr_pool_userdata_set(u, QS_USR_SPE, apr_pool_cleanup_null, ppool);
   u->qos_cc = NULL;
   return u;
 }
 
+#ifdef QS_APACHE_24
 /**
  * tells if server is terminating immediately or not
  */
-static int qos_is_graceful(qs_actable_t *act) {
-  int mpm_gen;
+static int qos_is_graceful() {
+  if(ap_state_query(AP_SQ_MAIN_STATE) == AP_SQ_MS_EXITING) {
+    return 0;
+  }
+  if(ap_state_query(AP_SQ_CONFIG_GEN) == 0) {
+    return 0;
+  }
+  return 1;
+}
+#else
+/**
+ * tells if server is terminating immediately or not
+ */
+static int qos_is_graceful() {
+  int mpm_gen = 0;
   QOS_MY_GENERATION(mpm_gen);
-  if(mpm_gen != act->generation) return 1;
+  if(mpm_gen != m_generation) return 1;
   return 0;
 }
+#endif
 
 /* clear all counters of the per client data store at graceful restart
    used to prevent counter grow due blocked/crashed client processes*/
@@ -2366,6 +2380,9 @@ static void qos_clear_cc(qos_user_t *u) {
     int i;
     apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT37 */
     u->qos_cc->connections = 0;
+    if(m_generation > 0) {
+      u->qos_cc->generation_locked = m_generation; // this process generation must not dec. anymore
+    }
     entry = u->qos_cc->ipd;
     for(i = 0; i < u->qos_cc->max; i++) {
       (*entry)->event_req = 0;
@@ -2386,21 +2403,15 @@ static void qos_clear_cc(qos_user_t *u) {
 static apr_status_t qos_cleanup_shm(void *p) {
   qs_actable_t *act = p;
   qos_user_t *u = qos_get_user_conf(act->ppool);
-  /* this_generation id is never deleted ... */
-  int mpm_gen;
   char *this_generation;
   char *last_generation;
   int i;
   apr_table_entry_t *entry;
-  QOS_MY_GENERATION(mpm_gen);
-  this_generation = apr_psprintf(act->ppool, "%d", mpm_gen);
-  u->generation = mpm_gen;
+
+  this_generation = apr_psprintf(act->ppool, "%d", m_generation);
+  last_generation = apr_psprintf(act->pool, "%d", m_generation-1);
   qos_clear_cc(u);
-  if(qos_is_graceful(act)) {
-    last_generation = apr_psprintf(act->pool, "%d", mpm_gen-1);
-  } else {
-    last_generation = this_generation;
-  }
+
   /* delete acts from the last graceful restart */
   entry = (apr_table_entry_t *)apr_table_elts(u->act_table)->elts;
   for(i = 0; i < apr_table_elts(u->act_table)->nelts; i++) {
@@ -2410,7 +2421,8 @@ static apr_status_t qos_cleanup_shm(void *p) {
     }
   }
   apr_table_unset(u->act_table, last_generation);
-  if(qos_is_graceful(act)) {
+
+  if(qos_is_graceful()) {
     /* don't delete this act now, but at next server restart ... */
     apr_table_addn(u->act_table, this_generation, (char *)act);
   } else {
@@ -6915,7 +6927,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
         apr_interval_time_t current_timeout = 0;
         apr_socket_timeout_get(inctx->client_socket, &current_timeout);
         /* add 5sec tolerance to receive the request line or let Apache close the connection */
-        if(now > (apr_time_sec(current_timeout) + 5 + inctx->time)) {
+        if(!m_event_mpm && 
+           (now > (apr_time_sec(current_timeout) + 5 + inctx->time))) {
           qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
           int level = APLOG_ERR;
           /* disabled by vip priv */
@@ -7520,7 +7533,8 @@ static apr_status_t qos_cleanup_conn(void *p) {
     searchE.ip6[0] = cconf->ip6[0];
     searchE.ip6[1] = cconf->ip6[1];
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT15 */
-    if(m_generation == u->generation && u->qos_cc->connections > 0) {
+    // generation: check if it has been cleard for this process generation
+    if((m_generation != u->qos_cc->generation_locked) && u->qos_cc->connections > 0) {
       u->qos_cc->connections--;
     }
     e = qos_cc_get0(u->qos_cc, &searchE, 0);
@@ -9466,7 +9480,6 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
 #endif
 #endif
   qos_init_unique_id(p, bs);
-  m_generation = u->generation;
 #if APR_HAS_THREADS
   if(sconf->req_rate != -1) {
     inctx_t = apr_pcalloc(p, sizeof(qos_ifctx_list_t));
@@ -9572,6 +9585,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   int auto_error_page = 0;
   int maxThreads, maxDaemons;
 
+  QOS_MY_GENERATION(m_generation);
+
   ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &maxDaemons);
   ap_mpm_query(AP_MPMQ_MAX_THREADS, &maxThreads);
   sconf->max_clients = maxThreads * maxDaemons;
@@ -9587,7 +9602,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
 
   qos_hostcode(ptemp, bs);
-  QOS_MY_GENERATION(sconf->act->generation);
+
 //  for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
 //    if(strcasecmp(pdir->directive, "MaxClients") == 0 ||
 //       strcasecmp(pdir->directive, "MaxRequestWorkers") == 0) {
@@ -9766,7 +9781,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     server_rec *s = bs->next;
     while(s) {
       qos_srv_config *ssconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-      QOS_MY_GENERATION(ssconf->act->generation);
+
       /* mutex init */
       if(ssconf->act->lock_file == NULL) {
         ssconf->act->lock_file = sconf->act->lock_file;
@@ -10487,8 +10502,6 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act = (qs_actable_t *)apr_pcalloc(act_pool, sizeof(qs_actable_t));
   sconf->act->pool = act_pool;
   sconf->act->ppool = s->process->pool;
-  sconf->act->generation = -1;
-  // QOS_MY_GENERATION(sconf->act->generation);
   sconf->act->child_init = 0;
   sconf->act->timeout = apr_time_sec(s->timeout);
   sconf->act->has_events = 0;
