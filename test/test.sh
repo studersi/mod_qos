@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.260 2016-01-10 15:23:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.261 2016-01-16 12:27:53 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -157,6 +157,12 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- vip request and graceful rest
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_VipHeaderName_Graceful.htt"
+fi
+sleep 1
+./run.sh -se scripts/graceful_sem.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED graceful_sem.htt"
 fi
 sleep 1
 
