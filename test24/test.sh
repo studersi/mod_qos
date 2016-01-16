@@ -31,6 +31,7 @@ if [ `../httpd/httpd -l | grep -c worker.c` -eq 1 ]; then
 	    ERRORS=`expr $ERRORS + 1`
 	    echo "FAILED $E"
 	fi
+	sleep 1
     done
 fi
 if [ `../httpd/httpd -l | grep -c event.c` -eq 1 ]; then
