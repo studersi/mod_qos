@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.575 2016-01-15 21:31:26 pbuchbinder Exp $";
-static const char g_revision[] = "11.21";
+static const char revision[] = "$Id: mod_qos.c,v 5.576 2016-01-18 06:44:14 pbuchbinder Exp $";
+static const char g_revision[] = "11.22";
 
 /************************************************************************
  * Includes
@@ -2417,6 +2417,10 @@ static apr_status_t qos_cleanup_shm(void *p) {
   for(i = 0; i < apr_table_elts(u->act_table)->nelts; i++) {
     if(strcmp(entry[i].key, last_generation) == 0) {
       qs_actable_t *a = (qs_actable_t *)entry[i].val;
+#ifdef QS_INTERNAL_TEST
+      ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
+        QOS_LOGD_PFX"clear ACT generation '%s' at '%d'", last_generation, m_generation);
+#endif
       qos_destroy_act(a);
     }
   }
@@ -2430,6 +2434,10 @@ static apr_status_t qos_cleanup_shm(void *p) {
       qos_cc_free(u->qos_cc);
       u->qos_cc = NULL;
     }
+#ifdef QS_INTERNAL_TEST
+      ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
+        QOS_LOGD_PFX"clear ACT generation 'current' at '%d'", m_generation);
+#endif
     qos_destroy_act(act);
   }
   return APR_SUCCESS;
