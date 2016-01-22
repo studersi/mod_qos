@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.39 2016-01-22 16:40:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.40 2016-01-22 16:41:57 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -77,7 +77,7 @@ if [ ! -r libexec/mod_parp.so ]; then
     if [ -r ../../parp/httpd/modules/parp/.libs/mod_parp.so ]; then
 	echo "$PFX link mod_parp"
 	cd libexec
-	ln -s ${ROOT}/../../../parp/httpd/modules/parp/.libs/mod_parp.so .
+	ln -s ${ROOT}/../../parp/httpd/modules/parp/.libs/mod_parp.so .
 	cd ..
     else
 	echo "$PFX mod_parp is missing"
