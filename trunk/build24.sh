@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.16 2015-12-15 20:19:13 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.17 2016-01-22 21:07:41 pbuchbinder Exp $
 #
 # Simple Apache 2.4 build script.
 #
@@ -18,6 +18,7 @@ if [ -d httpd-${APACHE_VER}-${MPM} ]; then
 fi
 gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
 rm -f httpd
+rm -rf httpd-${APACHE_VER}-${MPM}
 mv httpd-${APACHE_VER} httpd-${APACHE_VER}-${MPM}
 ln -s httpd-${APACHE_VER}-${MPM} httpd
 
