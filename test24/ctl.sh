@@ -1,14 +1,14 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.8 2016-01-15 21:31:27 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.9 2016-01-22 21:27:24 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2015 Pascal Buchbinder
+# Copyright (C) 2007-2016 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -27,6 +27,9 @@
 #
 
 cd `dirname $0`
+
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+export LD_LIBRARY_PATH
 
 echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [notice] -- QS ctl.sh $1 --" >>  logs/error_log
 
