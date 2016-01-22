@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.38 2015-01-05 17:35:58 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.39 2016-01-22 16:40:00 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -25,6 +25,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301, USA.
 #
+
+PFX=[`basename $0`]
+cd `dirname $0`
 
 ROOT=`pwd`
 QS_UID=`id`
@@ -68,6 +71,29 @@ echo "QS_PORT_BASE2=$QS_PORT_BASE2" >> ports
 echo "export QS_PORT_BASE2"         >> ports
 echo "QS_PORT_BASE6=$QS_PORT_BASE6" >> ports
 echo "export QS_PORT_BASE6"         >> ports
+
+if [ ! -r libexec/mod_parp.so ]; then
+    mkdir -p libexec
+    if [ -r ../../parp/httpd/modules/parp/.libs/mod_parp.so ]; then
+	echo "$PFX link mod_parp"
+	cd libexec
+	ln -s ${ROOT}/../../../parp/httpd/modules/parp/.libs/mod_parp.so .
+	cd ..
+    else
+	echo "$PFX mod_parp is missing"
+    fi
+fi
+if [ ! -r libexec/mod_setenvifplus.so ]; then
+    mkdir -p libexec
+    if [ -r ../../setenvifplus/httpd/modules/metadataplus/.libs/mod_setenvifplus.so ]; then
+	echo "$PFX link mod_setenvifplus"
+	cd libexec
+	ln -s ${ROOT}/../../setenvifplus/httpd/modules/metadataplus/.libs/mod_setenvifplus.so
+	cd ..
+    else
+	echo "$PFX mod_setenvifplus is missing"
+    fi
+fi
 
 # image.iso   ~1MB
 # dvd.iso    ~10MB
