@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.43 2016-01-08 15:32:56 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.44 2016-01-26 16:44:08 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -531,7 +531,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -s|S <secret> [-e] [-v] [-u <name>] [-f <regex>] [-a 'sha1'|sha256']\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -s|S <secret> [-e] [-v] [-u <name>] [-f <regex>] [-a 'sha1'|'sha256']\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
