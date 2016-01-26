@@ -1662,16 +1662,22 @@ and high priority clients when the server has less than 80%
 <code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code> or 
 <code><a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a></code> 
 directive in order to identify VIP clients. The distinction between 
-high and low priority clients is made based on the client data transfer 
-behavior (clients sending slow, using small data packets, or accessing 
-"unusual" content types (see <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code>), 
-get marked as low priority clients, look for "r;" events within the 
-<a href="#accesslog">access log</a> or use the 
-<a href="#statusviewer">status viewer</a> to determine which client addresses 
-are identified as low priority clients). A low priority flag 
-is cleared after 24h hours. Clients identified by 
+high and low priority clients is made based on different client attributes:
+<ul>
+<li>The data transfer behavior (clients sending data slowly / their transfer rate).</li>
+<li>Clients accessing "unusual" content types (see <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code>).</li>
+<li>Clients causing events <a href="#QS_ClientEventBlockCount">blocking</a> / 
+<a href="#QS_ClientEventLimitCount">limiting</a> them.</li>
+<li>If their connections get closed due to timeouts.</li>
+</ul>
+HTTP requests causing a client to get marked as "low priority" have the 
+"r;" event within the <a href="#mod_qos_ev">mod_qos_ev</a> variable set.
+You may use the <a href="#statusviewer">status viewer</a> to determine 
+which client addresses are identified as low priority clients. <br>
+A low priority flag is cleared after 24h hours. Clients identified by 
 <code><a href="#QS_SrvMaxConnExcludeIP">QS_SrvMaxConnExcludeIP</a></code> 
-are excluded from connection restrictions. Filter is applied on connection level.
+are excluded from connection restrictions. Filter is applied on connection level 
+blocking clients even before the server starts reading the HTTP request data.
 </li>
 <li>
 <code>QS_ClientTolerance &lt;percent&gt;</code><br>
