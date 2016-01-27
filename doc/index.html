@@ -396,9 +396,9 @@ each request (linear, each request gets the same delay). By default,
 no limitation is active.
 This directive should be used in conjunction with 
 <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code> only (you 
-must use the same location for both directives). Has lower priority than 
-<code><a href="#QS_LocRequestPerSecLimitMatch">QS_LocRequestPerSecLimitMatch</a></code> 
-to avoid too many concurrent requests.
+must use the same location for both directives) to avoid too many 
+concurrent requests.. Has lower priority than 
+<code><a href="#QS_LocRequestPerSecLimitMatch">QS_LocRequestPerSecLimitMatch</a></code>.
 </li>
 <li>
 <a name="QS_LocKBytesPerSecLimit"></a>
@@ -408,9 +408,9 @@ simlar as the <a href="#QS_LocKBytesPerSecLimitMatch"><code>QS_LocKBytesPerSecLi
 directive slowing down HTTP responses by adding a delay to each response. 
 By default, no limitation is active. This directive should be used in 
 conjunction with <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code> only 
-(you must use the same location for both directives). Has lower priority than 
-<code><a href="#QS_LocKBytesPerSecLimitMatch">QS_LocKBytesPerSecLimitMatch</a></code> 
-to avoid too many concurrent requests.
+(you must use the same location for both directives) to avoid too many 
+concurrent requests.. Has lower priority than 
+<code><a href="#QS_LocKBytesPerSecLimitMatch">QS_LocKBytesPerSecLimitMatch</a></code>.
 </li>
 <li>
 <a name="QS_ErrorPage"></a>
