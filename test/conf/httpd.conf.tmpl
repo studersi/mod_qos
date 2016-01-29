@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.258 2016-01-08 15:32:56 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.259 2016-01-29 20:34:03 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -644,6 +644,11 @@ ErrorDocument 404 /error-docs/error404.html
    </Location>
    <Location /htt/resheaderfilter/silent>
        QS_ResponseHeaderFilter silent
+   </Location>
+
+   <Location /htt/hostheaderfilter>
+     QS_RequestHeaderFilter on
+     QS_HostHeaderFilter on
    </Location>
 
    QS_SetEnvIf          MAXVAR3 MAXVAR4 QS_LimitVar5=max3and4
