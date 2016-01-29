@@ -1,3 +1,7 @@
+Version
+
+ - New directive QS_HostHeaderFilter.
+
 Version 11.21
 
  - Fixed: Implemented graceful restart detection for Apache 2.4

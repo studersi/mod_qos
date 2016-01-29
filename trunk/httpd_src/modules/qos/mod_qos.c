@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.576 2016-01-18 06:44:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.577 2016-01-29 20:34:03 pbuchbinder Exp $";
 static const char g_revision[] = "11.22";
 
 /************************************************************************
@@ -421,6 +421,13 @@ typedef enum  {
 } qs_headerfilter_mode_e;
 
 typedef enum  {
+  QS_FLT_HOSTHEADER_OFF_DEFAULT = 0,
+  QS_FLT_HOSTHEADER_OFF,
+  QS_FLT_HOSTHEADER_LOG,
+  QS_FLT_HOSTHEADER_DENY
+} qs_flt_hostHeader_e;
+
+typedef enum  {
   QS_FLT_ACTION_DROP,
   QS_FLT_ACTION_DENY
 } qs_flt_action_e;
@@ -631,6 +638,7 @@ typedef struct {
   int inheritoff;
   qs_headerfilter_mode_e headerfilter;
   qs_headerfilter_mode_e resheaderfilter;
+  qs_flt_hostHeader_e hostHeaderFilter;
   int bodyfilter_d;
   int bodyfilter_p;
   int dec_mode;
@@ -3909,6 +3917,105 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf, qos_dir_conf
 }
 
 /**
+ * Returns the configured server name supporting ServerAlias directive.
+ *
+ * @param r
+ * @param server_hostname
+ * @param match Indicates if the provide name matches the ServerName/ServerAlias
+ * @return hostname
+ */
+static char *qos_server_alias(request_rec *r, const char *server_hostname, int *match) {
+  char *server = apr_pstrdup(r->pool, r->server->server_hostname);
+  char *p;
+  *match = 0;
+  if(server_hostname) {
+    if(strcasecmp(server_hostname, r->server->server_hostname) == 0) {
+      /* match ServerName */
+      server = apr_pstrdup(r->pool, r->server->server_hostname);
+      *match = 1;
+    } else if(r->server->names) {
+      int i;
+      apr_array_header_t *names = r->server->names;
+      char **name = (char **)names->elts;
+      for(i = 0; i < names->nelts; ++i) {
+        if(!name[i]) continue;
+        if(strcasecmp(server_hostname, name[i]) == 0) {
+          /* match ServerAlias */
+          server = apr_pstrdup(r->pool, name[i]);
+          *match = 1;
+        }
+      }
+    } else if(r->server->wild_names) {
+      int i;
+      apr_array_header_t *names = r->server->wild_names;
+      char **name = (char **)names->elts;
+      for(i = 0; i < names->nelts; ++i) {
+        if(!name[i]) continue;
+        if(!ap_strcasecmp_match(server_hostname, name[i])) {
+          /* match ServerAlias using wildcards */
+          server = apr_pstrdup(r->pool, server_hostname);
+          *match = 1;
+        }
+      }
+    }
+  }
+  p = strchr(server, ':');
+  if(p) {
+    p[0] = '\0';
+  }
+  return server;
+}
+
+/** 
+ * Returns the url to this server, e.g. https://server1 or http://server1:8080
+ * used for redirects.
+ *
+ * @param r
+ * @return schema/hostname
+ */
+static char *qos_this_host(request_rec *r) {
+  const char *hostport= apr_table_get(r->headers_in, "Host");
+  int port = 0;
+  int ssl = 0;
+  int default_port;
+  const char *server_hostname = r->server->server_hostname;
+  if(qos_is_https) {
+    ssl = qos_is_https(r->connection);
+  }
+  if(hostport) {
+    char *p;
+    int match;
+    hostport = apr_pstrdup(r->pool, hostport);
+    if((p = strchr(hostport, ':')) != NULL) {
+      server_hostname = qos_server_alias(r, hostport, &match);
+      p[0] = '\0';
+      p++;
+      port = atoi(p);
+    } else {
+      server_hostname = qos_server_alias(r, hostport, &match);
+    }
+  }
+  if(port == 0) {
+    // pref. vhost
+    port = r->server->addrs->host_port;
+  }
+  if(port == 0) {
+    // main srv
+    port = r->server->port;
+  }
+  default_port = ssl ? 443 : 80;
+  if(port == default_port) {
+    return apr_psprintf(r->pool, "%s%s",
+                        ssl ? "https://" : "http://",
+                        server_hostname);
+  }
+  return apr_psprintf(r->pool, "%s%s:%d",
+                      ssl ? "https://" : "http://",
+                      server_hostname,
+                      port);
+}
+
+/**
  * Enables mod_parp if mod_qos requires access to the request body.
  * @param r
  */
@@ -3930,7 +4037,7 @@ static void qos_enable_parp(request_rec *r) {
  * required in your code).
  * @param r
  * @param sconf
- * @retrun HTTP_BAD_REQUEST for requests which may not be processed by mod_qos, otherwise
+ * @return HTTP_BAD_REQUEST for requests which may not be processed by mod_qos, otherwise
  *         APR_SUCCESS
  */
 static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
@@ -4208,7 +4315,56 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
-/*
+/**
+ * QS_HostHeaderFilter enforcement
+ */
+static int qos_hp_host_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config * dconf) {
+  const char *hostHeader;
+  int rc;
+  const char *error_page = sconf->error_page;
+  if(dconf->hostHeaderFilter <= QS_FLT_HOSTHEADER_OFF) {
+    // nothing to do
+    return DECLINED;
+  }
+  hostHeader = apr_table_get(r->headers_in, "Host");
+  if(hostHeader != NULL) {
+    int match = 0;
+    char *port;
+    qos_server_alias(r, hostHeader, &match);
+    if(match) {
+      return DECLINED;
+    }
+    port = strchr(hostHeader, ':');
+    if(port) {
+      // retry without the port
+      hostHeader = apr_pstrndup(r->pool, hostHeader, port - hostHeader);
+      qos_server_alias(r, hostHeader, &match);
+      if(match) {
+        return DECLINED;
+      }
+    }
+  }
+  /* no header (1.0 or dropped by QS_RequestHeaderFilter) 
+     or 
+     wrong header (not matching ServerName / ServerAlias  */
+  ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                QOS_LOG_PFX(143)"access denied%s, HTTP Host header filter, c=%s, id=%s",
+                (sconf->log_only || (dconf->hostHeaderFilter == QS_FLT_HOSTHEADER_LOG)) ? " (log only)" : "",
+                QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                qos_unique_id(r, "143"));
+  qs_set_evmsg(r, "D;"); 
+  if(!sconf->log_only && (dconf->hostHeaderFilter == QS_FLT_HOSTHEADER_DENY)) {
+    rc = qos_error_response(r, error_page);
+    if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+      return rc;
+    }
+    return HTTP_FORBIDDEN;
+  }
+  // log only
+  return DECLINED;
+}
+
+/**
  * QS_RequestHeaderFilter enforcement
  * @param r
  * @param sconf
@@ -7180,98 +7336,6 @@ static void qos_deflate_contentlength(request_rec *r) {
 }
 
 /**
- * Returns the configured server name supporting ServerAlias directive.
- *
- * @param r
- * @param server_hostname
- * @return hostname
- */
-static char *qos_server_alias(request_rec *r, const char *server_hostname) {
-  char *server = apr_pstrdup(r->pool, r->server->server_hostname);
-  char *p;
-  if(server_hostname) {
-    if(strcasecmp(server_hostname, r->server->server_hostname) == 0) {
-      /* match ServerName */
-      server = apr_pstrdup(r->pool, r->server->server_hostname);
-    } else if(r->server->names) {
-      int i;
-      apr_array_header_t *names = r->server->names;
-      char **name = (char **)names->elts;
-      for(i = 0; i < names->nelts; ++i) {
-        if(!name[i]) continue;
-        if(strcasecmp(server_hostname, name[i]) == 0) {
-          /* match ServerAlias */
-          server = apr_pstrdup(r->pool, name[i]);
-        }
-      }
-    } else if(r->server->wild_names) {
-      int i;
-      apr_array_header_t *names = r->server->wild_names;
-      char **name = (char **)names->elts;
-      for(i = 0; i < names->nelts; ++i) {
-        if(!name[i]) continue;
-        if(!ap_strcasecmp_match(server_hostname, name[i]))
-          /* match ServerAlias using wildcards */
-          server = apr_pstrdup(r->pool, server_hostname);
-      }
-    }
-  }
-  p = strchr(server, ':');
-  if(p) {
-    p[0] = '\0';
-  }
-  return server;
-}
-
-/** 
- * Returns the url to this server, e.g. https://server1 or http://server1:8080
- * used for redirects.
- *
- * @param r
- * @return schema/hostname
- */
-static char *qos_this_host(request_rec *r) {
-  const char *hostport= apr_table_get(r->headers_in, "Host");
-  int port = 0;
-  int ssl = 0;
-  int default_port;
-  const char *server_hostname = r->server->server_hostname;
-  if(qos_is_https) {
-    ssl = qos_is_https(r->connection);
-  }
-  if(hostport) {
-    char *p;
-    hostport = apr_pstrdup(r->pool, hostport);
-    if((p = strchr(hostport, ':')) != NULL) {
-      server_hostname = qos_server_alias(r, hostport);
-      p[0] = '\0';
-      p++;
-      port = atoi(p);
-    } else {
-      server_hostname = qos_server_alias(r, hostport);
-    }
-  }
-  if(port == 0) {
-    // pref. vhost
-    port = r->server->addrs->host_port;
-  }
-  if(port == 0) {
-    // main srv
-    port = r->server->port;
-  }
-  default_port = ssl ? 443 : 80;
-  if(port == default_port) {
-    return apr_psprintf(r->pool, "%s%s",
-                        ssl ? "https://" : "http://",
-                        server_hostname);
-  }
-  return apr_psprintf(r->pool, "%s%s:%d",
-                      ssl ? "https://" : "http://",
-                      server_hostname,
-                      port);
-}
-
-/**
  * Verifies Apache and MPM version and writes error message (notice)
  * for incompatibel version/type.
  *
@@ -7315,7 +7379,7 @@ static void qos_version_check(server_rec *bs) {
  * @param r
  * @param sconf
  * @param rules Rules array
- * @retrun HTTP_MOVED_TEMPORARILY/HTTP_TEMPORARY_REDIRECT or DECLINED
+ * @return HTTP_MOVED_TEMPORARILY/HTTP_TEMPORARY_REDIRECT or DECLINED
  */
 static int qos_redirectif(request_rec *r, qos_srv_config *sconf, apr_array_header_t *rules) {
 #ifdef AP_REGEX_H
@@ -8154,27 +8218,42 @@ static int qos_header_parser1(request_rec * r) {
 /**
  * Header parser (executed before mod_setenvif or mod_parp).
  * Enables mod_parp if request body processing (filter) has been enabled
- * and limits the request header filter.
+ * and implements the request header filter.
  *
  * @param r
  * @return
  */
 static int qos_header_parser0(request_rec * r) {
   if(ap_is_initial_req(r)) {
+    int rc = DECLINED;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
 
-    /** QS_DenyBody */
+    /*
+     * QS_DenyBody requires mod_parp
+     */
     if(dconf && (dconf->bodyfilter_p == 1 || dconf->bodyfilter_d == 1)) {
       qos_enable_parp(r);
     }
-
+    
     /*
      * QS_RequestHeaderFilter enforcement
      */
-    return qos_hp_header_filter(r, sconf, dconf);
+    rc = qos_hp_header_filter(r, sconf, dconf);
+    if(rc != DECLINED) {
+      return rc;
+    }
+
+    /* 
+     * QS_HostHeaderFilter
+     */
+    rc = qos_hp_host_header_filter(r, sconf, dconf);
+    if(rc != DECLINED) {
+      return rc;
+    }
+
   }
   return DECLINED;
 }
@@ -10396,6 +10475,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->inheritoff = 0;
   dconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
   dconf->resheaderfilter = QS_HEADERFILTER_OFF_DEFAULT;
+  dconf->hostHeaderFilter = QS_FLT_HOSTHEADER_OFF_DEFAULT;
   dconf->bodyfilter_p = -1;
   dconf->bodyfilter_d = -1;
   dconf->dec_mode = QOS_DEC_MODE_FLAGS_URL;
@@ -10421,6 +10501,11 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
     dconf->headerfilter = o->headerfilter;
   } else {
     dconf->headerfilter = b->headerfilter;
+  }
+  if(o->hostHeaderFilter != QS_FLT_HOSTHEADER_OFF_DEFAULT) {
+    dconf->hostHeaderFilter = o->hostHeaderFilter;
+  } else {
+    dconf->hostHeaderFilter = b->hostHeaderFilter;
   }
   if(o->resheaderfilter != QS_HEADERFILTER_OFF_DEFAULT) {
     dconf->resheaderfilter = o->resheaderfilter;
@@ -12192,6 +12277,22 @@ const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
   return NULL;
 }
 
+/* QS_HostHeaderFilter */
+const char *qos_hostheaderfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
+  qos_dir_config *dconf = (qos_dir_config*)dcfg;
+  if(strcasecmp(flag, "on") == 0) {
+    dconf->hostHeaderFilter = QS_FLT_HOSTHEADER_DENY;
+  } else if(strcasecmp(flag, "off") == 0) {
+    dconf->hostHeaderFilter = QS_FLT_HOSTHEADER_OFF;
+  } else if(strcasecmp(flag, "log") == 0) {
+    dconf->hostHeaderFilter = QS_FLT_HOSTHEADER_LOG;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: invalid argument",
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+
 /* QS_ResponseHeaderFilter */
 const char *qos_resheaderfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
@@ -13014,6 +13115,12 @@ static const command_rec qos_config_cmds[] = {
                 " to add custom response header filter rules which override the internal"
                 " filter rules of mod_qos."
                 " Directive is allowed in global server context only."),
+
+  AP_INIT_TAKE1("QS_HostHeaderFilter", qos_hostheaderfilter_cmd, NULL,
+                ACCESS_CONF,
+                "QS_HostHeaderFilter 'on'|'off'|'log', denies (on) requests"
+                " which do not have a host header matching the server's server name."
+                " Default is 'off'."),
 
   /* milestones */
   AP_INIT_TAKE23("QS_MileStone", qos_milestone_cmd, NULL,
