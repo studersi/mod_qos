@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.578 2016-01-30 09:23:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.579 2016-01-30 14:13:35 pbuchbinder Exp $";
 static const char g_revision[] = "11.22";
 
 /************************************************************************
@@ -3917,7 +3917,9 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf, qos_dir_conf
 }
 
 /**
- * Returns the configured server name supporting ServerAlias directive.
+ * Returns the best matching server name (the configured ServerName,
+ * supporting ServerAlias directive or the value provided by the
+ * caller (usually the Host header)).
  *
  * @param r
  * @param server_hostname Host name the client expects (Host header) <host>[:<port>]
@@ -3925,8 +3927,7 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf, qos_dir_conf
  * @return hostname
  */
 static char *qos_server_alias(request_rec *r, const char *server_hostname, int *match) {
-  char *server = apr_pstrdup(r->pool, r->server->server_hostname);
-  char *p;
+  char *server = apr_pstrdup(r->pool, r->server->server_hostname); // default (hostname, no port)
   *match = 0;
   if(server_hostname) {
     const char *search = server_hostname;
@@ -3937,7 +3938,7 @@ static char *qos_server_alias(request_rec *r, const char *server_hostname, int *
     }
     if(strcasecmp(search, r->server->server_hostname) == 0) {
       /* match ServerName */
-      server = apr_pstrdup(r->pool, r->server->server_hostname);
+      // we already did: server = apr_pstrdup(r->pool, r->server->server_hostname);
       *match = 1;
     } else if(r->server->names) {
       int i;
@@ -3964,10 +3965,6 @@ static char *qos_server_alias(request_rec *r, const char *server_hostname, int *
         }
       }
     }
-  }
-  p = strchr(server, ':');
-  if(p) {
-    p[0] = '\0';
   }
   return server;
 }
