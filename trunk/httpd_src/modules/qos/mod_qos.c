@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.577 2016-01-29 20:34:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.578 2016-01-30 09:23:50 pbuchbinder Exp $";
 static const char g_revision[] = "11.22";
 
 /************************************************************************
@@ -3920,7 +3920,7 @@ static void qos_setenvstatus(request_rec *r, qos_srv_config *sconf, qos_dir_conf
  * Returns the configured server name supporting ServerAlias directive.
  *
  * @param r
- * @param server_hostname
+ * @param server_hostname Host name the client expects (Host header) <host>[:<port>]
  * @param match Indicates if the provide name matches the ServerName/ServerAlias
  * @return hostname
  */
@@ -3929,7 +3929,13 @@ static char *qos_server_alias(request_rec *r, const char *server_hostname, int *
   char *p;
   *match = 0;
   if(server_hostname) {
-    if(strcasecmp(server_hostname, r->server->server_hostname) == 0) {
+    const char *search = server_hostname;
+    char *port = strchr(search, ':');
+    if(port) {
+      // without the port
+      search = apr_pstrndup(r->pool, search, port - search);
+    }
+    if(strcasecmp(search, r->server->server_hostname) == 0) {
       /* match ServerName */
       server = apr_pstrdup(r->pool, r->server->server_hostname);
       *match = 1;
@@ -3939,7 +3945,7 @@ static char *qos_server_alias(request_rec *r, const char *server_hostname, int *
       char **name = (char **)names->elts;
       for(i = 0; i < names->nelts; ++i) {
         if(!name[i]) continue;
-        if(strcasecmp(server_hostname, name[i]) == 0) {
+        if(strcasecmp(search, name[i]) == 0) {
           /* match ServerAlias */
           server = apr_pstrdup(r->pool, name[i]);
           *match = 1;
@@ -3951,9 +3957,9 @@ static char *qos_server_alias(request_rec *r, const char *server_hostname, int *
       char **name = (char **)names->elts;
       for(i = 0; i < names->nelts; ++i) {
         if(!name[i]) continue;
-        if(!ap_strcasecmp_match(server_hostname, name[i])) {
+        if(!ap_strcasecmp_match(search, name[i])) {
           /* match ServerAlias using wildcards */
-          server = apr_pstrdup(r->pool, server_hostname);
+          server = apr_pstrdup(r->pool, search);
           *match = 1;
         }
       }
@@ -3974,7 +3980,7 @@ static char *qos_server_alias(request_rec *r, const char *server_hostname, int *
  * @return schema/hostname
  */
 static char *qos_this_host(request_rec *r) {
-  const char *hostport= apr_table_get(r->headers_in, "Host");
+  const char *hostport = apr_table_get(r->headers_in, "Host");
   int port = 0;
   int ssl = 0;
   int default_port;
@@ -3987,13 +3993,11 @@ static char *qos_this_host(request_rec *r) {
     int match;
     hostport = apr_pstrdup(r->pool, hostport);
     if((p = strchr(hostport, ':')) != NULL) {
-      server_hostname = qos_server_alias(r, hostport, &match);
       p[0] = '\0';
       p++;
       port = atoi(p);
-    } else {
-      server_hostname = qos_server_alias(r, hostport, &match);
     }
+    server_hostname = qos_server_alias(r, hostport, &match);
   }
   if(port == 0) {
     // pref. vhost
@@ -4319,29 +4323,14 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
  * QS_HostHeaderFilter enforcement
  */
 static int qos_hp_host_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config * dconf) {
-  const char *hostHeader;
   int rc;
   const char *error_page = sconf->error_page;
-  if(dconf->hostHeaderFilter <= QS_FLT_HOSTHEADER_OFF) {
-    // nothing to do
-    return DECLINED;
-  }
-  hostHeader = apr_table_get(r->headers_in, "Host");
+  const char *hostHeader = apr_table_get(r->headers_in, "Host");
   if(hostHeader != NULL) {
     int match = 0;
-    char *port;
     qos_server_alias(r, hostHeader, &match);
     if(match) {
       return DECLINED;
-    }
-    port = strchr(hostHeader, ':');
-    if(port) {
-      // retry without the port
-      hostHeader = apr_pstrndup(r->pool, hostHeader, port - hostHeader);
-      qos_server_alias(r, hostHeader, &match);
-      if(match) {
-        return DECLINED;
-      }
     }
   }
   /* no header (1.0 or dropped by QS_RequestHeaderFilter) 
@@ -8249,9 +8238,11 @@ static int qos_header_parser0(request_rec * r) {
     /* 
      * QS_HostHeaderFilter
      */
-    rc = qos_hp_host_header_filter(r, sconf, dconf);
-    if(rc != DECLINED) {
-      return rc;
+    if(dconf->hostHeaderFilter > QS_FLT_HOSTHEADER_OFF) {
+      rc = qos_hp_host_header_filter(r, sconf, dconf);
+      if(rc != DECLINED) {
+        return rc;
+      }
     }
 
   }
