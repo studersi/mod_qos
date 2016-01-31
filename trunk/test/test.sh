@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.262 2016-01-18 06:44:15 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.263 2016-01-31 09:33:25 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -445,6 +445,12 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_PermitUriAudit.htt"
+fi
+
+./run.sh -se ./scripts/QS_HostHeaderFilter.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_HostHeaderFilter.htt"
 fi
 
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- header filter, QS_HeaderFilter.htt" >>  logs/error_log
