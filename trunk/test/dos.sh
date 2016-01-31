@@ -62,13 +62,10 @@ average=`expr $total / $count`
 
 tw=`expr $t2 - $t1`
 to=`expr $t4 - $t3`
-echo " duration with: $tw, without: $to"
-echo " average per req (microseconds) with: $averageQos, without $average"
-dif=`expr $tw - $to`
-# up to 1% slower (incl rounding) is still okay (since the server
-# has not really anything else to do and our measurement resolution
-# is based on seconds only)
-if [ $dif -gt 2 ]; then
+percent=`echo "$averageQos*100/$average" | bc`
+echo " test duration (seconds) with: $tw, without: $to"
+echo " average request duration (microseconds) with: $averageQos (${percent}%), without: $average"
+if [ $percent -gt 101 ]; then
   echo " dos.sh test was too slow"
   exit 1
 fi

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/dos.conf.tmpl,v 2.9 2015-01-21 19:42:03 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/dos.conf.tmpl,v 2.10 2016-01-31 19:11:03 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -95,6 +95,8 @@ CoreDumpDirectory       ##ROOT##/logs/
 TypesConfig             conf/mime.types
 LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
 LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
+LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
+LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
 <IfDefine !no_qos>
 LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
 </IfDefine>
@@ -119,6 +121,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
    ProxyPass                  /aaa http://localhost:##QS_PORT_BASE6##/aaa retry=0
    ProxyPassReverse           /aaa http://localhost:##QS_PORT_BASE6##/aaa
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
 
 </VirtualHost>
 
