@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.580 2016-01-31 15:29:40 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.581 2016-01-31 19:11:03 pbuchbinder Exp $";
 static const char g_revision[] = "11.22";
 
 /************************************************************************
@@ -4215,9 +4215,7 @@ static int qos_reslove_variable(apr_pool_t *p, apr_table_t *vars, char **string)
  * @param sconf
  */
 static void qos_setenvifquery(request_rec *r, qos_srv_config *sconf) {
-  if(r->parsed_uri.query) {
-    qos_setenvif_ex(r, r->parsed_uri.query, sconf->setenvifquery_t);
-  }
+  qos_setenvif_ex(r, r->parsed_uri.query, sconf->setenvifquery_t);
 }
 
 /**
@@ -4514,7 +4512,7 @@ static void qos_pr_event_limit(request_rec *r, qos_srv_config *sconf) {
 static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
   apr_status_t rv = DECLINED;
   qs_actable_t *act = sconf->act;
-  if(act->event_entry && (sconf->event_limit_a->nelts > 0)) {
+  if(act->event_entry) {
     apr_time_t now = apr_time_sec(r->request_time);
     int i;
     qos_event_limit_entry_t *entry = act->event_entry;
@@ -8309,11 +8307,18 @@ static int qos_header_parser(request_rec * r) {
     if((apr_table_elts(sconf->setenvifparpbody_t)->nelts > 0) && qos_parp_body_data_fn) {
       qos_parp_hp_body(r, sconf);
     }
-    qos_setenvifquery(r, sconf);
-    qos_setenvif(r, sconf);
-    qos_setenv(r, sconf);
-    qos_setreqheader(r, sconf->setreqheader_t);
-
+    if(r->parsed_uri.query) {
+      qos_setenvifquery(r, sconf);
+    }
+    if(apr_table_elts(sconf->setenvif_t)->nelts > 0) {
+      qos_setenvif(r, sconf);
+    }
+    if(apr_table_elts(sconf->setenv_t)->nelts > 0) {
+      qos_setenv(r, sconf);
+    }
+    if(apr_table_elts(sconf->setreqheader_t)->nelts > 0) {
+      qos_setreqheader(r, sconf->setreqheader_t);
+    }
     tmostr = apr_table_get(r->subprocess_env, QS_TIMEOUT);
     if(tmostr) {
       apr_interval_time_t timeout = apr_time_from_sec(atoi(tmostr));
@@ -8343,9 +8348,11 @@ static int qos_header_parser(request_rec * r) {
     /*
      * QS_EventLimitCount
      */
-    status = qos_hp_event_limit(r, sconf);
-    if(status != DECLINED) {
-      return status;
+    if(sconf->event_limit_a->nelts > 0) {
+      status = qos_hp_event_limit(r, sconf);
+      if(status != DECLINED) {
+        return status;
+      }
     }
 
     /*
@@ -9120,7 +9127,7 @@ static void qos_unset_header(request_rec *r, qos_srv_config *sconf) {
 }
 
 static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
-  if(sconf && (sconf->req_rate != -1) && (sconf->min_rate != -1)) {
+  if((sconf->req_rate != -1) && (sconf->min_rate != -1)) {
     qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
     if(inctx) {
       inctx->time = time(NULL);
@@ -9339,7 +9346,9 @@ static int qos_fixup(request_rec * r) {
   qos_disable_rate(r, sconf, dconf);
 #endif
 
-  qos_setreqheader(r, sconf->setreqheaderlate_t);
+  if(apr_table_elts(sconf->setreqheaderlate_t)->nelts > 0) {
+    qos_setreqheader(r, sconf->setreqheaderlate_t);
+  }
 
   rc = qos_redirectif(r, sconf, sconf->redirectif);
   if(rc != DECLINED) {
@@ -9377,7 +9386,9 @@ static int qos_logger(request_rec *r) {
   qos_propagate_notes(r);
   qos_propagate_events(r);
   qos_end_res_rate(r, sconf);
-  qos_setenvif(r, sconf);
+  if(apr_table_elts(sconf->setenvif_t)->nelts > 0) {
+    qos_setenvif(r, sconf);
+  }
   if(sconf->has_qos_cc) {
     qos_logger_cc(r, sconf, rctx);
   }
