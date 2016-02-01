@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.581 2016-01-31 19:11:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.582 2016-02-01 06:30:51 pbuchbinder Exp $";
 static const char g_revision[] = "11.22";
 
 /************************************************************************
@@ -421,13 +421,6 @@ typedef enum  {
 } qs_headerfilter_mode_e;
 
 typedef enum  {
-  QS_FLT_HOSTHEADER_OFF_DEFAULT = 0,
-  QS_FLT_HOSTHEADER_OFF,
-  QS_FLT_HOSTHEADER_LOG,
-  QS_FLT_HOSTHEADER_DENY
-} qs_flt_hostHeader_e;
-
-typedef enum  {
   QS_FLT_ACTION_DROP,
   QS_FLT_ACTION_DENY
 } qs_flt_action_e;
@@ -638,7 +631,6 @@ typedef struct {
   int inheritoff;
   qs_headerfilter_mode_e headerfilter;
   qs_headerfilter_mode_e resheaderfilter;
-  qs_flt_hostHeader_e hostHeaderFilter;
   int bodyfilter_d;
   int bodyfilter_p;
   int dec_mode;
@@ -4304,40 +4296,6 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
       }
     }
   }
-}
-
-/**
- * QS_HostHeaderFilter enforcement
- */
-static int qos_hp_host_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config * dconf) {
-  int rc;
-  const char *error_page = sconf->error_page;
-  const char *hostHeader = apr_table_get(r->headers_in, "Host");
-  if(hostHeader != NULL) {
-    int match = 0;
-    qos_server_alias(r, hostHeader, &match);
-    if(match) {
-      return DECLINED;
-    }
-  }
-  /* no header (1.0 or dropped by QS_RequestHeaderFilter) 
-     or 
-     wrong header (not matching ServerName / ServerAlias  */
-  ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                QOS_LOG_PFX(143)"access denied%s, HTTP Host header filter, c=%s, id=%s",
-                (sconf->log_only || (dconf->hostHeaderFilter == QS_FLT_HOSTHEADER_LOG)) ? " (log only)" : "",
-                QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
-                qos_unique_id(r, "143"));
-  qs_set_evmsg(r, "D;"); 
-  if(!sconf->log_only && (dconf->hostHeaderFilter == QS_FLT_HOSTHEADER_DENY)) {
-    rc = qos_error_response(r, error_page);
-    if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-      return rc;
-    }
-    return HTTP_FORBIDDEN;
-  }
-  // log only
-  return DECLINED;
 }
 
 /**
@@ -8218,16 +8176,6 @@ static int qos_header_parser0(request_rec * r) {
       return rc;
     }
 
-    /* 
-     * QS_HostHeaderFilter
-     */
-    if(dconf->hostHeaderFilter > QS_FLT_HOSTHEADER_OFF) {
-      rc = qos_hp_host_header_filter(r, sconf, dconf);
-      if(rc != DECLINED) {
-        return rc;
-      }
-    }
-
   }
   return DECLINED;
 }
@@ -10470,7 +10418,6 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->inheritoff = 0;
   dconf->headerfilter = QS_HEADERFILTER_OFF_DEFAULT;
   dconf->resheaderfilter = QS_HEADERFILTER_OFF_DEFAULT;
-  dconf->hostHeaderFilter = QS_FLT_HOSTHEADER_OFF_DEFAULT;
   dconf->bodyfilter_p = -1;
   dconf->bodyfilter_d = -1;
   dconf->dec_mode = QOS_DEC_MODE_FLAGS_URL;
@@ -10496,11 +10443,6 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
     dconf->headerfilter = o->headerfilter;
   } else {
     dconf->headerfilter = b->headerfilter;
-  }
-  if(o->hostHeaderFilter != QS_FLT_HOSTHEADER_OFF_DEFAULT) {
-    dconf->hostHeaderFilter = o->hostHeaderFilter;
-  } else {
-    dconf->hostHeaderFilter = b->hostHeaderFilter;
   }
   if(o->resheaderfilter != QS_HEADERFILTER_OFF_DEFAULT) {
     dconf->resheaderfilter = o->resheaderfilter;
@@ -12272,22 +12214,6 @@ const char *qos_headerfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
   return NULL;
 }
 
-/* QS_HostHeaderFilter */
-const char *qos_hostheaderfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
-  qos_dir_config *dconf = (qos_dir_config*)dcfg;
-  if(strcasecmp(flag, "on") == 0) {
-    dconf->hostHeaderFilter = QS_FLT_HOSTHEADER_DENY;
-  } else if(strcasecmp(flag, "off") == 0) {
-    dconf->hostHeaderFilter = QS_FLT_HOSTHEADER_OFF;
-  } else if(strcasecmp(flag, "log") == 0) {
-    dconf->hostHeaderFilter = QS_FLT_HOSTHEADER_LOG;
-  } else {
-    return apr_psprintf(cmd->pool, "%s: invalid argument",
-                        cmd->directive->directive);
-  }
-  return NULL;
-}
-
 /* QS_ResponseHeaderFilter */
 const char *qos_resheaderfilter_cmd(cmd_parms *cmd, void *dcfg, const char *flag) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
@@ -13110,12 +13036,6 @@ static const command_rec qos_config_cmds[] = {
                 " to add custom response header filter rules which override the internal"
                 " filter rules of mod_qos."
                 " Directive is allowed in global server context only."),
-
-  AP_INIT_TAKE1("QS_HostHeaderFilter", qos_hostheaderfilter_cmd, NULL,
-                ACCESS_CONF,
-                "QS_HostHeaderFilter 'on'|'off'|'log', denies (on) requests"
-                " which do not have a host header matching the server's server name."
-                " Default is 'off'."),
 
   /* milestones */
   AP_INIT_TAKE23("QS_MileStone", qos_milestone_cmd, NULL,

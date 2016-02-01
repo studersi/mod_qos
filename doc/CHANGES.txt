@@ -1,6 +1,6 @@
 Version
 
- - New directive QS_HostHeaderFilter.
+
 
 Version 11.21
 
