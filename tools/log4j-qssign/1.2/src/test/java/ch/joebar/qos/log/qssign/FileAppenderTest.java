@@ -26,7 +26,7 @@ public class FileAppenderTest extends TestCase {
     }
 
     public void testApp() {
-	for(int i = 0; i < 10; i++) {
+	for(int i = 0; i < 5; i++) {
 	    log.error("run test message " + i);
 	}
     }
