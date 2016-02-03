@@ -2,9 +2,35 @@
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
 
+cd `dirname $0`
+cwd=`pwd`
+
 if [ `echo "INFO 123\nINFO abc\nDEBUG def\nINFO ghi" | ../util/src/qssign -s 123 -f "DEBUG" | grep -c "INFO ghi 000000000003#"` -ne 1 ]; then
     echo "ERROR: filter failed"
     exit 1
+fi
+
+echo "- log4j"
+cd ../tools/log4j-qssign/1.2/
+rm -f signed.log
+mvn test 1>/dev/null
+cd $cwd
+cat ../tools/log4j-qssign/1.2/signed.log | ../util/src/qssign -s 12345 -v
+if [ $? -ne 0 ]; then
+  echo "ERROR: verification failed (0)(valid)"
+  exit 1
+else
+  echo "  OK"
+fi
+# modify second line
+ts=`cat ../tools/log4j-qssign/1.2/signed.log | head -2 | tail -1 | awk '{print $2}'`
+sed -i ../tools/log4j-qssign/1.2/signed.log -e "s/${ts}/xx_xx_xx/g"
+cat ../tools/log4j-qssign/1.2/signed.log | ../util/src/qssign -s 12345 -v 2>/dev/null
+if [ $? -ne 1 ]; then
+  echo "ERROR: verification failed (0)(tempered)"
+  exit 1
+else
+  echo "  OK"
 fi
 
 echo "- sign"
