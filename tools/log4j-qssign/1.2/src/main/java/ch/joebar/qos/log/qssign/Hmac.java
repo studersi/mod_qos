@@ -43,28 +43,34 @@ public class Hmac {
     private String encoding = "UTF-8";
 
     public Hmac(String secret, String enc) {
-	SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(), HMAC_SHA);
-	try {
-	    mac = Mac.getInstance(HMAC_SHA);
-	    mac.init(keySpec);
-	} catch (Exception e) {
-	    LogLog.warn("Unexpected error initializing mac", e);
-	}
+	init(secret);
 	encoding = enc;
     }
 
     public Hmac(String secret) {
-	SecretKeySpec keySpec = new SecretKeySpec(secret.getBytes(), HMAC_SHA);
-	try {
-	    mac = Mac.getInstance(HMAC_SHA);
-	    mac.init(keySpec);
-	} catch (Exception e) {
-	    LogLog.warn("Unexpected error initializing mac", e);
+	init(secret);
+    }
+
+    private void init(String secret) {
+	if(secret != null) {
+	    byte[] b = secret.getBytes();
+	    SecretKeySpec keySpec = new SecretKeySpec(b, HMAC_SHA);
+	    try {
+		mac = Mac.getInstance(HMAC_SHA);
+		mac.init(keySpec);
+	    } catch (Exception e) {
+		LogLog.error("Unexpected error initializing mac", e);
+	    }
+	} else {
+	    LogLog.error("Missing secret. Can't initialize secret key.");
 	}
     }
 
     public String getMac(String value) {
-	String hash = "";
+	String hash = "ERR";
+	if(mac == null) {
+	    return hash;
+	}
 	try {
 	    byte[] b = value.getBytes(encoding);
 	    byte[] result = mac.doFinal(b);

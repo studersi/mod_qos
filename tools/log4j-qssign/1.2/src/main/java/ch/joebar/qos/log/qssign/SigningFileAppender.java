@@ -39,6 +39,14 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 
+/**
+ * Modified version of the RollingFileAppender signing every
+ * log message (sequence number and hmac).
+ *
+ * Property: "secret" species the shared secret used for the
+ * hash creation / verification.
+ *
+ */
 public class SigningFileAppender extends RollingFileAppender {
 
     protected String secret = null;
@@ -47,6 +55,11 @@ public class SigningFileAppender extends RollingFileAppender {
 	return secret;
     }
 
+    /**
+     * Property defining the shared secret.
+     *
+     * @param value Shared secret (string).
+     */
     public void setSecret(String value) {
 	secret = value;
     }
@@ -78,12 +91,5 @@ public class SigningFileAppender extends RollingFileAppender {
 	}
 	return retval;
     }
-
-    //@Override
-    //protected void closeFile() {
-    //	if(this.qw != null) {
-    //	    this.qw.write("END");
-    //	}
-    //}
 
 }
