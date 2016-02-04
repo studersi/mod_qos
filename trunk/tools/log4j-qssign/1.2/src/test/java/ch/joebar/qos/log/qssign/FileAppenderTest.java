@@ -1,6 +1,7 @@
 package ch.joebar.qos.log.qssign;
 
 import java.io.File;
+import java.io.IOException;
 import org.apache.log4j.Logger;
 import junit.framework.Test;
 import junit.framework.TestCase;
@@ -27,7 +28,9 @@ public class FileAppenderTest extends TestCase {
 
     public void testApp() {
 	for(int i = 0; i < 5; i++) {
-	    log.error("run test message " + i);
+	    log.info("run test message " + i);
 	}
+	IOException e = new IOException("IO error");
+	log.error("exception test message incl. stack trace", e);
     }
 }

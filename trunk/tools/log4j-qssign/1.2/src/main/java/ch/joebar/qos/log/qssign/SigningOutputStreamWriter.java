@@ -34,9 +34,12 @@ import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.OutputStream;
 
+/**
+ * Modified OutputStreamWriter signing log messages.
+ */
 public class SigningOutputStreamWriter extends OutputStreamWriter {
 
-    private int sequence = 1;
+    private long sequence = 1;
     private Hmac hmac;
 
     public SigningOutputStreamWriter(OutputStream out, String enc, Hmac h) throws IOException {
@@ -48,7 +51,14 @@ public class SigningOutputStreamWriter extends OutputStreamWriter {
 	super(out);
 	hmac = h;
     }
-    
+
+    /**
+     * Signs every log message by appending a sequence number and then
+     * hashing the line.
+     * Ignores ignoresThrowable() (also signs stack traces).
+     *
+     * @param value Line which shall be signed and written to the log.
+     */
     @Override
     public void write(String value) throws IOException {
 	String numberedLine = String.format("%s %012d", value.trim(), sequence);
@@ -58,7 +68,4 @@ public class SigningOutputStreamWriter extends OutputStreamWriter {
 	super.write(signedLine);
     }
 
-    //public void close() throws IOException {
-    //	super.close();
-    //}
 }
