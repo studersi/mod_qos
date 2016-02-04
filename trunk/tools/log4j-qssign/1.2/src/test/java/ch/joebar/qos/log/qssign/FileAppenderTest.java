@@ -26,8 +26,9 @@ public class FileAppenderTest extends TestCase {
         return new TestSuite(FileAppenderTest.class);
     }
 
-    public void testApp() {
-	for(int i = 0; i < 5; i++) {
+    public void testApp() throws InterruptedException {
+	for(int i = 0; i < 10000; i+=10) {
+	    Thread.sleep(2);
 	    log.info("run test message " + i);
 	}
 	IOException e = new IOException("IO error");
