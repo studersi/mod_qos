@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.582 2016-02-01 06:30:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.583 2016-02-08 19:56:35 pbuchbinder Exp $";
 static const char g_revision[] = "11.22";
 
 /************************************************************************
@@ -6393,7 +6393,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           ap_rputs("      <td colspan=\"2\">"
                    "<div title=\"QS_ClientEventPerSecLimit\">events/sec</div></td>\n", r);
           ap_rputs("      <td colspan=\"1\">"
-                   "<div title=\"QS_ClientPrefer\">low prio</div></td>\n", r);
+                   "<div title=\"QS_ClientPrefer&#013;0x01 bad pkg rate&#013;0x02 normal behavior&#013;0x04 bad behavior&#013;0x08 blocked&#013;0x10 limited&#013;0x20 timeout\">low prio</div></td>\n", r);
           ap_rputs("    </tr>\n", r);
           ap_rprintf(r, "    <tr class=\"rows\">"
                      "<td colspan=\"1\">%s</td>", ap_escape_html(r->pool, address));
@@ -10250,6 +10250,7 @@ static int qos_handler_view(request_rec * r) {
     return DECLINED;
   }
   if(r->parsed_uri.path && (strstr(r->parsed_uri.path, "favicon.ico") != NULL)) {
+    apr_table_add(r->err_headers_out, "Cache-Control", "public, max-age=2592000");
     return qos_favicon(r);
   }
   apr_table_add(r->err_headers_out, "Cache-Control", "no-cache");
@@ -10264,9 +10265,16 @@ static int qos_handler_view(request_rec * r) {
   }
   ap_set_content_type(r, "text/html");
   if(!r->header_only) {
+    int hasSlash = 1;
+    if(strlen(r->parsed_uri.path) > 0) {
+      if(r->parsed_uri.path[strlen(r->parsed_uri.path)-1] != '/') {
+        hasSlash = 0;
+      }
+    }
     ap_rputs("<html><head><title>mod_qos</title>\n", r);
-    ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s/favicon.ico\"/>\n",
-               r->parsed_uri.path ? r->parsed_uri.path : "");
+    ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s%sfavicon.ico\"/>\n", 
+               r->parsed_uri.path,
+               hasSlash ? "" : "/");
     ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
     ap_rputs("<meta name=\"author\" content=\"Pascal Buchbinder\">\n", r);
     ap_rputs("<meta http-equiv=\"Pragma\" content=\"no-cache\">\n", r);
