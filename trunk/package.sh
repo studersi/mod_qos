@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.54 2015-12-23 20:09:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.55 2016-02-09 20:53:55 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -100,15 +100,16 @@ cp doc/LICENSE.txt mod_qos-${VERSION}/doc
 cp doc/CHANGES.txt mod_qos-${VERSION}/doc
 sed <doc/index.html >mod_qos-${VERSION}/doc/index.html \
  -e "s/0\.00/${VERSION}/g"
-cp doc/mod_qos_s.gif mod_qos-${VERSION}/doc/
-cp doc/mod_qos_seq.gif mod_qos-${VERSION}/doc/
-cp doc/SrvMinDataRate.png mod_qos-${VERSION}/doc/
-cp doc/nevis.gif mod_qos-${VERSION}/doc/
+cp doc/images/mod_qos_s.gif mod_qos-${VERSION}/doc/images/
+cp doc/images/mod_qos_seq.gif mod_qos-${VERSION}/doc/images/
+cp doc/images/SrvMinDataRate.png mod_qos-${VERSION}/doc/images/
+cp doc/images/nevis.gif mod_qos-${VERSION}/doc/images/
+cp doc/images/download.jpg mod_qos-${VERSION}/doc/images/
 cp doc/favicon.ico mod_qos-${VERSION}/doc/
 cp doc/*.1.html mod_qos-${VERSION}/doc/
 cp doc/qsfilter2_process.gif mod_qos-${VERSION}/doc/
 cp doc/MESSAGES.txt mod_qos-${VERSION}/doc/
-cp doc/link.png mod_qos-${VERSION}/doc/
+cp doc/images/link.png mod_qos-${VERSION}/doc/images/link.png
 
 echo "install source"
 cp httpd_src/modules/qos/mod_qos.c mod_qos-${VERSION}/apache2
