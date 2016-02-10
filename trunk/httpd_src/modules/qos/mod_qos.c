@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.583 2016-02-08 19:56:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.584 2016-02-10 19:31:03 pbuchbinder Exp $";
 static const char g_revision[] = "11.22";
 
 /************************************************************************
@@ -5118,7 +5118,7 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
       }
       for(i = 0; i < 5; i++) {
         if(client[i] > (server[i] + sconf->cc_tolerance)) {
-          penalty++;        
+          penalty++;
         } else {
           if((server[i] > sconf->cc_tolerance) &&
              (client[i] < (server[i] - sconf->cc_tolerance))) {
@@ -5180,7 +5180,7 @@ static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
  */
 static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rctx) {
   int lowrate = 0;
-  int unusual_behavior = 0;
+  int unusual_behavior = -1;
   int block_event = get_qs_event(r, QS_BLOCK);
   const char *block_seen = apr_table_get(r->subprocess_env, QS_BLOCK_SEEN);
   qs_conn_ctx *cconf = qos_get_cconf(r->connection);
@@ -5279,14 +5279,17 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     rctx->cc_serialize_set = 0;
     (*ef)->serialize = 0;
   }
-  unusual_behavior = qos_content_type(r, sconf, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
-  if(unusual_behavior == 0) {
-    // normal behavior
-    (*e)->lowratestatus |= QOS_LOW_FLAG_BEHAVIOR_OK;
-    (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_BAD;
-  } else {
-    // unknown or bad behavior
-    (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
+  if(sconf->qos_cc_prefer) {
+    // QS_ClientPrefer is not enabled
+    unusual_behavior = qos_content_type(r, sconf, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
+    if(unusual_behavior == 0) {
+      // normal behavior
+      (*e)->lowratestatus |= QOS_LOW_FLAG_BEHAVIOR_OK;
+      (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_BAD;
+    } else {
+      // unknown or bad behavior
+      (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
+    }
   }
   if(block_event || lowrate || (unusual_behavior > 0)) {
     if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
@@ -6442,53 +6445,55 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                        "<td colspan=\"1\"></td>"
                        "</tr>\n", (sconf->qos_cc_event_req == -1 ? "off" : apr_psprintf(r->pool, "%d", searchE.event_req)));
           }
-          ap_rprintf(r, "   <tr class=\"rowt\">"
-                     "<td colspan=\"4\"></td>"
-                     "<td style=\"width:9%%\">html</td>"
-                     "<td style=\"width:9%%\">css/js</td>"
-                     "<td style=\"width:9%%\">images</td>"
-                     "<td style=\"width:9%%\">other</td>"
-                     "<td style=\"width:9%%\">304</td>"
-                     "</tr>\n");
-          if(found) {
-            ap_rprintf(r, "   <tr class=\"rows\">"
+          if(sconf->qos_cc_prefer) {
+            ap_rprintf(r, "   <tr class=\"rowt\">"
                        "<td colspan=\"4\"></td>"
-                       "<td style=\"width:9%%\">%u</td>"
-                       "<td style=\"width:9%%\">%u</td>"
-                       "<td style=\"width:9%%\">%u</td>"
-                       "<td style=\"width:9%%\">%u</td>"
-                       "<td style=\"width:9%%\">%u</td>"
-                       "</tr>\n", searchE.html,
-                       searchE.cssjs,
-                       searchE.img,
-                       searchE.other,
-                       searchE.notmodified);
-          }
-          ap_rprintf(r, "   <tr class=\"rows\">"
-                     "<td colspan=\"3\"></td>"
-                     "<td style=\"width:9%%\"><div title=\"QS_ClientContentTypes\">all clients</div></td>"
-                     "<td style=\"width:9%%\">%lu</td>"
-                     "<td style=\"width:9%%\">%lu</td>"
-                     "<td style=\"width:9%%\">%lu</td>"
-                     "<td style=\"width:9%%\">%lu</td>"
-                     "<td style=\"width:9%%\">%lu</td>"
-                     "</tr>\n", html, cssjs, img, other, notmodified);
-          if(sconf->static_on == 1) {
-            unsigned long shtml = sconf->static_html;
-            unsigned long scssjs = sconf->static_cssjs;
-            unsigned long simg = sconf->static_img;
-            unsigned long sother = sconf->static_other;
-            unsigned long snotmodified = sconf->static_notmodified;
+                       "<td style=\"width:9%%\">html</td>"
+                       "<td style=\"width:9%%\">css/js</td>"
+                       "<td style=\"width:9%%\">images</td>"
+                       "<td style=\"width:9%%\">other</td>"
+                       "<td style=\"width:9%%\">304</td>"
+                       "</tr>\n");
+            if(found) {
+              ap_rprintf(r, "   <tr class=\"rows\">"
+                         "<td colspan=\"4\"></td>"
+                         "<td style=\"width:9%%\">%u</td>"
+                         "<td style=\"width:9%%\">%u</td>"
+                         "<td style=\"width:9%%\">%u</td>"
+                         "<td style=\"width:9%%\">%u</td>"
+                         "<td style=\"width:9%%\">%u</td>"
+                         "</tr>\n", searchE.html,
+                         searchE.cssjs,
+                         searchE.img,
+                         searchE.other,
+                         searchE.notmodified);
+            }
             ap_rprintf(r, "   <tr class=\"rows\">"
                        "<td colspan=\"3\"></td>"
-                       "<td style=\"width:9%%\"><div title=\"QS_ClientContentTypes\">configured (global)</div></td>"
+                       "<td style=\"width:9%%\"><div title=\"QS_ClientContentTypes\">all clients</div></td>"
                        "<td style=\"width:9%%\">%lu</td>"
                        "<td style=\"width:9%%\">%lu</td>"
                        "<td style=\"width:9%%\">%lu</td>"
                        "<td style=\"width:9%%\">%lu</td>"
                        "<td style=\"width:9%%\">%lu</td>"
-                       "</tr>\n", shtml, scssjs,
-                       simg, sother, snotmodified);
+                       "</tr>\n", html, cssjs, img, other, notmodified);
+            if(sconf->static_on == 1) {
+              unsigned long shtml = sconf->static_html;
+              unsigned long scssjs = sconf->static_cssjs;
+              unsigned long simg = sconf->static_img;
+              unsigned long sother = sconf->static_other;
+              unsigned long snotmodified = sconf->static_notmodified;
+              ap_rprintf(r, "   <tr class=\"rows\">"
+                         "<td colspan=\"3\"></td>"
+                         "<td style=\"width:9%%\"><div title=\"QS_ClientContentTypes\">configured (global)</div></td>"
+                         "<td style=\"width:9%%\">%lu</td>"
+                         "<td style=\"width:9%%\">%lu</td>"
+                         "<td style=\"width:9%%\">%lu</td>"
+                         "<td style=\"width:9%%\">%lu</td>"
+                         "<td style=\"width:9%%\">%lu</td>"
+                         "</tr>\n", shtml, scssjs,
+                         simg, sother, snotmodified);
+            }
           }
         }
       }

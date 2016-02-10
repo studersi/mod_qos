@@ -1664,17 +1664,18 @@ and high priority clients when the server has less than 80%
 directive in order to identify VIP clients. The distinction between 
 high and low priority clients is made based on different client attributes:
 <ul>
-<li>Data transfer behavior (clients sending data slowly / their transfer rate).</li>
+<li>Data transfer behavior (clients sending data slowly / their transfer rate) (0x01).</li>
 <li>Accessing "unusual" content types (see <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> 
-and <code><a href="#QS_ClientContentTypes">QS_ClientContentTypes</a></code>).</li>
+and <code><a href="#QS_ClientContentTypes">QS_ClientContentTypes</a></code>) (0x02/0x04).</li>
 <li>Causing events <a href="#QS_ClientEventBlockCount">blocking</a> / 
-<a href="#QS_ClientEventLimitCount">limiting</a> them.</li>
-<li>If their connections get closed due to timeouts.</li>
+<a href="#QS_ClientEventLimitCount">limiting</a> them (0x08/0x10).</li>
+<li>If their connections get closed due to timeouts (0x20).</li>
 </ul>
 HTTP requests causing a client to get marked as "low priority" have the 
 "r;" event within the <a href="#mod_qos_ev">mod_qos_ev</a> variable set.
 You may use the <a href="#statusviewer">status viewer</a> to determine 
-which client addresses are identified as low priority clients. <br>
+which client addresses are identified as low priority clients. Feature is 
+disabled if directive is not set.<br>
 A low priority flag is cleared after 24h hours. Clients identified by 
 <code><a href="#QS_SrvMaxConnExcludeIP">QS_SrvMaxConnExcludeIP</a></code> 
 are excluded from connection restrictions. Filter is applied on connection level 
@@ -1683,14 +1684,15 @@ blocking clients even before the server starts reading the HTTP request data.
 <li>
 <a name="QS_ClientTolerance"></a>
 <code>QS_ClientTolerance &lt;percent&gt;</code><br>
-Defines the allowed variation from a "normal" client (average) behavior. 
-Default is 20%.
+Defines the allowed variation from a "normal" client (average) behavior when enabling 
+the <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code> directive. Default is 20%.
 </li>
 <li>
 <a name="QS_ClientContentTypes"></a>
 <code>QS_ClientContentTypes &lt;html&gt; &lt;css/js&gt; &lt;images&gt; &lt;other&gt; &lt;304&gt;</code><br>
 Defines the distribution of HTTP response content types a client normaly 
-receives when accessing the server. 
+receives when accessing the server. Can only be used in conjunction with the 
+<code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code> directive. 
 <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> defines 
 the allowed deviation from these values. mod_qos normally learns the average 
 behavior automatically by default (you can see the learned values within 

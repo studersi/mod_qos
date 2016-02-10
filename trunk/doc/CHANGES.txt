@@ -1,6 +1,9 @@
 Version
 
+ - Disables client behavior (content type) measurement if
+   QS_ClientPrefer has been disabled.
 
+ - Minor changes to the status viewer.
 
 Version 11.21
 
