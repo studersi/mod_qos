@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.9 2015-10-30 19:44:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.10 2016-02-18 21:41:53 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -70,6 +70,15 @@ echo "export QS_PORT_BASE1"         >> ports
 echo "QS_PORT_BASE2=$QS_PORT_BASE2" >> ports
 echo "export QS_PORT_BASE1"         >> ports
 
+if [ ! -x bin/curl ]; then
+    if [ -x ../../curl-*/src/curl ]; then
+	cd bin
+	ln -s ../../../curl-*/src/curl .
+	cd ..
+    else
+	echo "ERROR, could not find curl binary"
+    fi
+fi
 if [ ! -f htdocs/image.iso -o ]; then
   for E in `seq 12500`; do
     echo "TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT TEXT " >> htdocs/image.iso
@@ -95,7 +104,7 @@ if [ ! -d htdocs/demo ]; then
     ln -s ../../test/htdocs/demo/
     cd ..
 fi
-CONFFILES="conf/httpd.conf"
+CONFFILES="conf/httpd.conf conf/demo.conf"
 for E in $CONFFILES; do
     sed <$E.tmpl >$E \
 	-e "s;##ROOT##;$ROOT;g" \

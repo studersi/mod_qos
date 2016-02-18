@@ -6,7 +6,7 @@
  * See http://opensource.adnovum.ch/mod_qos/ for further
  * details.
  *
- * Copyright (C) 2007-2015 Pascal Buchbinder
+ * Copyright (C) 2007-2016 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.20 2015-11-20 06:29:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.21 2016-02-18 21:41:53 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -403,5 +403,6 @@ int main(int argc, const char * const argv[]) {
     }
   }
   free(line);
+  closelog();
   return 0;
 }
