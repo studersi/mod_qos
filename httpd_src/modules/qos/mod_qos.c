@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.584 2016-02-10 19:31:03 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.585 2016-02-18 21:41:52 pbuchbinder Exp $";
 static const char g_revision[] = "11.22";
 
 /************************************************************************
@@ -2886,6 +2886,7 @@ static int qos_error_response(request_rec *r, const char *error_page) {
       error_page = v;
     }
   }
+
   if(error_page) {
     /* do (almost) the same as ap_die() does */
     const char *error_notes;
@@ -2905,7 +2906,11 @@ static int qos_error_response(request_rec *r, const char *error_page) {
       r->method = apr_pstrdup(r->pool, "GET");
       r->method_number = M_GET;
       ap_internal_redirect(error_page, r);
+#ifdef QS_APACHE_24
+      return OK;
+#else
       return DONE;
+#endif
     }
   }
   return DECLINED;
@@ -5217,8 +5222,17 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     }
   }
 
-  searchE.ip6[0] = cconf->ip6[0];
-  searchE.ip6[1] = cconf->ip6[1];
+  if(cconf) {
+    // works for real connections only (no HTTP/2)
+    searchE.ip6[0] = cconf->ip6[0];
+    searchE.ip6[1] = cconf->ip6[1];
+  } else {
+    // HTTP/2
+    apr_uint64_t ci6[2];
+    qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &ci6);
+    searchE.ip6[0] = ci6[0];
+    searchE.ip6[1] = ci6[1];
+  }
   if(sconf->qos_cc_forwardedfor) {
     const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
     if(forwardedfor == NULL && r->prev) {
@@ -5270,8 +5284,10 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   if(rctx->cc_event_req_set) {
     /* QS_ClientEventRequestLimit */
     rctx->cc_event_req_set = 0;
-    if((*e)->event_req > 0) {
-      (*e)->event_req--;
+    if(e) {
+      if((*e)->event_req > 0) {
+        (*e)->event_req--;
+      }
     }
   }
   if(rctx->cc_serialize_set) {
@@ -5409,11 +5425,19 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     qos_s_entry_t searchE;
     qos_s_entry_t searchEFromHeader;
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
-    const char *forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
+    const char *forwardedForLogIP = QS_CONN_REMOTEIP(r->connection);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     int excludeFromBlock = qos_is_excluded_ip(r->connection, sconf->cc_exclude_ip);
-    searchE.ip6[0] = cconf->ip6[0];
-    searchE.ip6[1] = cconf->ip6[1];
+    if(cconf) {
+      searchE.ip6[0] = cconf->ip6[0];
+      searchE.ip6[1] = cconf->ip6[1];
+    } else {
+      // HTTP/2
+      apr_uint64_t ci6[2];
+      qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &ci6);
+      searchE.ip6[0] = ci6[0];
+      searchE.ip6[1] = ci6[1];
+    }
     searchEFromHeader.ip6[0] = 0;
     searchEFromHeader.ip6[1] = 0;
 
@@ -5543,17 +5567,17 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         apr_table_set(r->connection->notes, QS_BLOCK_SEEN, "");
       }
       if((*e)->block >= sconf->qos_cc_block) {
-        *uid = apr_pstrdup(cconf->c->pool, "060");
-        *msg = apr_psprintf(cconf->c->pool, 
+        *uid = apr_pstrdup(r->connection->pool, "060");
+        *msg = apr_psprintf(r->connection->pool, 
                             QOS_LOG_PFX(060)"access denied%s, "
                             "QS_ClientEventBlockCount rule: "
                             "max=%d, current=%d, age=%"APR_TIME_T_FMT", c=%s",
                             sconf->log_only ? " (log only)" : "",
-                            cconf->sconf->qos_cc_block,
+                            sconf->qos_cc_block,
                             (*e)->block,
                             now - (*e)->block_time,
-                            QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
-                            QS_CONN_REMOTEIP(cconf->c));
+                            QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
+                            QS_CONN_REMOTEIP(r->connection));
         ret = m_retcode;
         (*e)->lowrate = apr_time_sec(r->request_time);
         (*e)->lowratestatus |= QOS_LOW_FLAG_EVENTBLOCK;
@@ -5642,8 +5666,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
           if(block) {
             if(ret == DECLINED || ef != e) {
               /* log only one error (either block or limit) */
-              *uid = apr_pstrdup(cconf->c->pool, "067");
-              *msg = apr_psprintf(cconf->c->pool, 
+              *uid = apr_pstrdup(r->connection->pool, "067");
+              *msg = apr_psprintf(r->connection->pool, 
                                   QOS_LOG_PFX(067)"access denied%s, "
                                   "QS_%sClientEventLimitCount rule: "
                                   "event=%s, "
@@ -5894,7 +5918,7 @@ static int qos_server_connections(qos_srv_config *sconf) {
  */
 static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
   int ret = DECLINED;
-  if(cconf->sconf->has_qos_cc) {
+  if(cconf && cconf->sconf->has_qos_cc) {
     qos_s_entry_t **e = NULL;
     qos_s_entry_t searchE;
     searchE.ip6[0] = cconf->ip6[0];
@@ -6652,6 +6676,12 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     if(cconf) {
       remoteip[0] = cconf->ip6[0];
       remoteip[1] = cconf->ip6[1];
+    } else {
+      // HTTP/2
+      apr_uint64_t ci6[2];
+      qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &ci6);
+      remoteip[0] = ci6[0];
+      remoteip[1] = ci6[1];
     }
     ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE<br>\n", r);
     ap_rprintf(r, "client ip=%s</p>\n", qos_ip_long2str(r->pool, remoteip));
@@ -7028,37 +7058,42 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
            (now > (apr_time_sec(current_timeout) + 5 + inctx->time))) {
           qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
           int level = APLOG_ERR;
-          /* disabled by vip priv */
-          if(cconf && cconf->is_vip) {
-            level = APLOG_DEBUG;
-            cconf->has_lowrate = 1; /* mark connection low rate */
-          }
-          /* disabled for this request/connection */
-          if(inctx->disabled) {
-            level = APLOG_DEBUG;
-            cconf->has_lowrate = 1; /* mark connection low rate */
-          }
-          /* enable only if min. num of connection reached */
-          if(currentcon <= sconf->req_rate_start) {
-            level = APLOG_DEBUG;
-            cconf->has_lowrate = 1; /* mark connection low rate */
-          }
-          ip = qos_inc_block(inctx->c, sconf, cconf, ip);
-          ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                       QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
-                       " c=%s",
-                       (level == APLOG_DEBUG) || sconf->log_only ? 
-                       "log only (allowed)" 
-                       : "access denied",
-                       QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
-          inctx->time = now;
-          inctx->nbytes = 0;
-          if((level == APLOG_ERR) &&
-             !sconf->log_only) {
-            apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
-          }
-          /* mark slow clients (QS_ClientPrefer) even they are VIP */
-          inctx->shutdown = 1;
+          if(cconf) {
+            /* disabled by vip priv */
+            if(cconf->is_vip) {
+              level = APLOG_DEBUG;
+              cconf->has_lowrate = 1; /* mark connection low rate */
+            }
+            /* disabled for this request/connection */
+            if(inctx->disabled) {
+              level = APLOG_DEBUG;
+              cconf->has_lowrate = 1; /* mark connection low rate */
+            }
+            /* enable only if min. num of connection reached */
+            if(currentcon <= sconf->req_rate_start) {
+              level = APLOG_DEBUG;
+              cconf->has_lowrate = 1; /* mark connection low rate */
+            }
+            ip = qos_inc_block(inctx->c, sconf, cconf, ip);
+            ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
+                         QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
+                         " c=%s",
+                         (level == APLOG_DEBUG) || sconf->log_only ? 
+                         "log only (allowed)" 
+                         : "access denied",
+                         QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
+            inctx->time = now;
+            inctx->nbytes = 0;
+            if((level == APLOG_ERR) &&
+               !sconf->log_only) {
+              apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+            }
+            /* mark slow clients (QS_ClientPrefer) even they are VIP */
+            inctx->shutdown = 1;
+          } 
+          //else {
+          //  // HTTP/2
+          //}
         }
       } else {
         if(interval > inctx->time) {
@@ -7067,48 +7102,52 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
             if(inctx->client_socket) {
               qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
               int level = APLOG_ERR;
-              /* disabled by vip priv */
-              if(cconf && cconf->is_vip) {
-                level = APLOG_DEBUG;
-                cconf->has_lowrate = 1; /* mark connection low rate */
-              }
-              /* disabled for this request/connection */
-              if(inctx->disabled) {
-                level = APLOG_DEBUG;
-                cconf->has_lowrate = 1; /* mark connection low rate */
-              }
-              /* enable only if min. num of connection reached */
-              if(currentcon <= sconf->req_rate_start) {
-                level = APLOG_DEBUG;
-                cconf->has_lowrate = 1; /* mark connection low rate */
-              }
-              ip = qos_inc_block(inctx->c, sconf, cconf, ip);
-              ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                           QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
-                           " this connection=%d,"
-                           " c=%s",
-                           (level == APLOG_DEBUG) || sconf->log_only ? 
-                           "log only (allowed)" 
-                           : "access denied",
-                           inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
-                           req_rate,
-                           rate,
-                           QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
-              inctx->time = interval + sconf->qs_req_rate_tm;
-              inctx->nbytes = 0;
-              if((level == APLOG_ERR) &&
-                 !sconf->log_only) {
-                if(inctx->status == QS_CONN_STATE_RESPONSE) {
-                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
-                  /* close out socket (the hard way) */
-                  apr_socket_close(inctx->client_socket);
-                } else {
-                  apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+              if(cconf) {
+                /* disabled by vip priv */
+                if(cconf->is_vip) {
+                  level = APLOG_DEBUG;
+                  cconf->has_lowrate = 1; /* mark connection low rate */
                 }
+                /* disabled for this request/connection */
+                if(inctx->disabled) {
+                  level = APLOG_DEBUG;
+                  cconf->has_lowrate = 1; /* mark connection low rate */
+                }
+                /* enable only if min. num of connection reached */
+                if(currentcon <= sconf->req_rate_start) {
+                  level = APLOG_DEBUG;
+                  cconf->has_lowrate = 1; /* mark connection low rate */
+                }
+                ip = qos_inc_block(inctx->c, sconf, cconf, ip);
+                ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
+                             QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
+                             " this connection=%d,"
+                             " c=%s",
+                             (level == APLOG_DEBUG) || sconf->log_only ? 
+                             "log only (allowed)" 
+                             : "access denied",
+                             inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
+                             req_rate,
+                             rate,
+                             QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
+                inctx->time = interval + sconf->qs_req_rate_tm;
+                inctx->nbytes = 0;
+                if((level == APLOG_ERR) && !sconf->log_only) {
+                  if(inctx->status == QS_CONN_STATE_RESPONSE) {
+                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
+                    /* close out socket (the hard way) */
+                    apr_socket_close(inctx->client_socket);
+                  } else {
+                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+                  }
+                }
+                /* mark slow clients (QS_ClientPrefer) even they are VIP */
+                inctx->shutdown = 1;
               }
-              /* mark slow clients (QS_ClientPrefer) even they are VIP */
-              inctx->shutdown = 1;
             }
+            //else {
+            //  // HTTP/2
+            //}
           } else {
             inctx->time = interval + sconf->qs_req_rate_tm;
             inctx->nbytes = 0;
@@ -8366,7 +8405,7 @@ static int qos_header_parser(request_rec * r) {
         return m_retcode;
       }
     }
-    
+
     /* 
      * Request level control
      * get rule with conditional enforcement
@@ -9818,7 +9857,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       qos_srv_config *ssconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
 
       /* mutex init */
-      if(ssconf->act->lock_file == NULL) {
+      if(ssconf->act->lock == NULL) {
         ssconf->act->lock_file = sconf->act->lock_file;
         ssconf->act->lock = sconf->act->lock;
       }
@@ -10549,6 +10588,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->act->timeout = apr_time_sec(s->timeout);
   sconf->act->has_events = 0;
   sconf->act->lock_file = NULL;
+  sconf->act->lock = NULL;
   sconf->is_virtual = s->is_virtual;
   sconf->cookie_name = apr_pstrdup(sconf->pool, QOS_COOKIE_NAME);
   sconf->cookie_path = apr_pstrdup(sconf->pool, "/");

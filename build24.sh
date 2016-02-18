@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.17 2016-01-22 21:07:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.18 2016-02-18 21:41:52 pbuchbinder Exp $
 #
 # Simple Apache 2.4 build script.
 #
@@ -44,7 +44,7 @@ ln -s `pwd`/httpd_src/modules/qtest/mod_qtest.c httpd/modules/qtest
 ln -s `pwd`/httpd_src/modules/qtest/config.m4 httpd/modules/qtest
 ln -s `pwd`/httpd_src/modules/qtest/Makefile.in httpd/modules/qtest
 
-CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g -Wall"
+CFLAGS="-DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g -Wall -O0"
 export CFLAGS
 
 cd httpd

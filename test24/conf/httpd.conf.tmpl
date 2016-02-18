@@ -12,7 +12,7 @@ LogLevel       warn
 #LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\""
 LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e %k %{QS_Country}e %{QS_SrvConn}e a=%{QS_AllConn}e #%P"
 TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
-CustomLog      "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o"
+CustomLog      "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qslog.csv -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o"
 
 TypesConfig    conf/mime.types
 
@@ -33,6 +33,13 @@ KeepAlive               on
 MaxKeepAliveRequests   100
 KeepAliveTimeout         5
 RequestReadTimeout       header=0 body=0
+
+SSLProtocol              all -SSLv2 -SSLv3
+SSLCipherSuite           EDH:EECDH:!aNULL:!eNULL:!LOW:!MD5:!EXP:!ADH:!DSS:!ECDSA:!3DES:!RC4:!SEED:!CAMELLIA+SHA1
+SSLSessionCacheTimeout   864000
+SSLRandomSeed startup    builtin
+#SSLRandomSeed startup    file:/dev/random
+#SSLRandomSeed startup    file:/dev/urandom 1024
 
 <IfDefine real_ip>
 QS_EnableInternalIPSimulation off
@@ -56,7 +63,11 @@ QS_SetEnvIfStatus  414 QS_Limit=1
 
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
-  ServerName   127.0.0.1
+   ServerName   127.0.0.1
+
+<IfDefine h2>
+   Protocols h2c http/1.1
+</IfDefine>
 
    ProxyRequests              Off
    <Proxy *>
@@ -116,15 +127,8 @@ Listen         ##QS_PORT_BASE##
    QS_MileStone                 deny "^POST /htt/milestone/register*"
    QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
 
-   ScriptAlias /demo/a/1.jpg ##ROOT##/htdocs/demo/a/1.jpg
-   ScriptAlias /demo/a/2.jpg ##ROOT##/htdocs/demo/a/1.jpg
-   ScriptAlias /demo/a/3.jpg ##ROOT##/htdocs/demo/a/1.jpg
-   ScriptAlias /demo/a/4.jpg ##ROOT##/htdocs/demo/a/1.jpg
-   ScriptAlias /demo/a/5.jpg ##ROOT##/htdocs/demo/a/1.jpg
-   ScriptAlias /demo/a/6.jpg ##ROOT##/htdocs/demo/a/1.jpg
-   ScriptAlias /demo/a/7.jpg ##ROOT##/htdocs/demo/a/1.jpg
-   ScriptAlias /demo/a/8.jpg ##ROOT##/htdocs/demo/a/1.jpg
-   ScriptAlias /demo/a/9.jpg ##ROOT##/htdocs/demo/a/1.jpg
+   Include conf/demo.conf
+
 <IfDefine pathwhitelist>
    <Location /demo/>
      SetEnvIfPlus Request_URI ^/demo/index\.html$ PATHALLOWED=1
@@ -133,18 +137,6 @@ Listen         ##QS_PORT_BASE##
      QS_DenyEvent +pathwhitelist deny !PATHALLOWED
    </Location>
 </IfDefine>
-   <Location /demo/a>
-        Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
-        Order allow,deny
-        Allow from all
-   </Location>
-
-   ScriptAlias /demo/b ##ROOT##/htdocs/demo/b
-   <Location /demo/b>
-        Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
-        Order allow,deny
-        Allow from all
-   </Location>
 
   ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
   <Location /cgi-local>
@@ -153,16 +145,6 @@ Listen         ##QS_PORT_BASE##
     Allow from all
   </Location>
    
-   ScriptAlias /demo/c/1.jpg ##ROOT##/htdocs/demo/c/1.jpg
-   ScriptAlias /demo/c/2.jpg ##ROOT##/htdocs/demo/c/1.jpg
-   ScriptAlias /demo/c/3.jpg ##ROOT##/htdocs/demo/c/1.jpg
-   ScriptAlias /demo/c/login.cgi ##ROOT##/htdocs/demo/c/login.cgi
-   <Location /demo/c>
-        Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
-        Order allow,deny
-        Allow from all
-   </Location>
-
    <Location /ratelimit>
       SetOutputFilter RATE_LIMIT
       SetEnv rate-limit 500
@@ -203,6 +185,24 @@ Listen         ##QS_PORT_BASE1##
     Order allow,deny
     Allow from all
   </Location>
+
+</VirtualHost>
+
+Listen         ##QS_PORT_BASE2##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE2##>
+   ServerName   127.0.0.1
+
+<IfDefine h2>
+   Protocols h2 http/1.1
+</IfDefine>
+
+   SSLCertificateKeyFile  ../test/ssl/key.pem
+   SSLCertificateFile     ../test/ssl/cert.pem
+   SSLVerifyDepth         10
+   SSLEngine              on
+
+   Include conf/demo.conf
+
 
 </VirtualHost>
 

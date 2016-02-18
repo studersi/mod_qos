@@ -5,6 +5,8 @@ Version
 
  - Minor changes to the status viewer.
 
+ - Fixed: segfault when using HTTP/2.
+
 Version 11.21
 
  - Fixed: Implemented graceful restart detection for Apache 2.4
