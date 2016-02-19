@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.55 2016-02-09 20:53:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.56 2016-02-19 10:03:47 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -88,7 +88,7 @@ echo "update man pages"
 ./man.sh 1>/dev/null
 
 rm -rf mod_qos-${VERSION}*
-mkdir -p mod_qos-${VERSION}/doc
+mkdir -p mod_qos-${VERSION}/doc/images
 mkdir -p mod_qos-${VERSION}/apache2
 mkdir -p mod_qos-${VERSION}/tools/src
 mkdir -p mod_qos-${VERSION}/tools/man1
