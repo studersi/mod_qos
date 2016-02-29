@@ -208,6 +208,13 @@ ERRORS=`expr $ERRORS + $?`
 sleep 2
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucncust01 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UCN_Cust01.htt
+ERRORS=`expr $ERRORS + $?`
+sleep 2
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ./run.sh -s scripts/ucnu.htt
 ERRORS=`expr $ERRORS + $?`
 sleep 2

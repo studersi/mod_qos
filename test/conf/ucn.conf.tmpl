@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.45 2015-09-14 19:13:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.46 2016-02-29 16:28:08 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -286,9 +286,21 @@ QS_SrvMaxConnPerIP           2
 QS_SetEnvIfStatus            QS_SrvMaxConnPerIP QS_Block
 </IfDefine>
 
-
 <IfDefine ucnu>
 SetEnvIfPlus Request_Query (.*) mod_qos_user_id=$1
+</IfDefine>
+
+<IfDefine ucncust01>
+SetEnvIfPlusNoCase Remote_Addr (.*) RemoteIP=$1
+SetEnvIfPlusNoCase Y-Forwarded-For (.*) XForward=$1
+RequestHeaderPlus set Y-Forwarded-For ${RemoteIP} env=!XForward
+QS_ClientIpFromHeader Y-Forwarded-For
+QS_ErrorResponseCode 503
+QS_ErrorPage /errorpages/error.html
+QS_ClientEventLimitCount 2 10 QS_LoginSession
+SetEnvIfPlus         Request_URI              /htt/login EventApp
+QS_SetEnvIfStatus    302                      Event302
+QS_SetEnvIf          EventApp Event302        QS_LoginSession=1
 </IfDefine>
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE##>
