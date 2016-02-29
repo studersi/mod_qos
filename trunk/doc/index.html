@@ -796,11 +796,12 @@ that has occured during a request.
 <li>
 <a name="QS_Country"></a>
 <code>QS_Country</code><br>
-ISO 3166 country code of client IPv4 address. Only available if the <a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.<br>
-<small>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
-override the client's IP address based on the value within the defined HTTP request 
-header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
-the TCP connection.</small>
+ISO 3166 country code of client IPv4 address. Only available if the 
+<a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.<br>
+<small>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
+directive to override the client's IP address based on the value within the defined 
+HTTP request header (e.g., X-Forwarded-For) instead of taking the IP address of 
+the client which has opened the TCP connection.</small>
 </li>
 <!--<li>
 <code>QS_RuleId</code><br>
@@ -1215,12 +1216,13 @@ directives (pattern definitions) to a location.
 Filters request headers using validation rules provided by mod_qos. Suspicious 
 headers (not matching the pattern or those which are too long) are normally 
 dropped (removed from the request). Abnormal content-* headers cause 
-request blocking. Only the defined headers are allowed. Custom rules 
-(additional headers or different pattern/size definitions) may be 
-added using the <code><a href="#QS_RequestHeaderFilterRule">QS_RequestHeaderFilterRule</a></code> 
-directive. Filter is activated ('on') or deactivated ('off'). The mode 'size' does not verify 
-the pattern but limits the maximum length of request header values 
-(similar to the Apache directive <code>LimitRequestFieldsize</code> but 
+request blocking. Only the defined headers are allowed (whitelist). Custom 
+rules (additional headers or different pattern/size definitions) may be 
+added using the 
+<code><a href="#QS_RequestHeaderFilterRule">QS_RequestHeaderFilterRule</a></code> 
+directive. Filter is activated ('on') or deactivated ('off'). The mode 'size' 
+does not verify the pattern but limits the maximum length of request header 
+values (similar to the Apache directive <code>LimitRequestFieldsize</code> but 
 with an individual rule for each header field). Header validation is also useful 
 to avoid bypassing of 
 <code><a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> 
