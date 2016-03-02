@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.32 2014-07-02 19:29:41 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.33 2016-03-02 19:48:55 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -281,8 +281,22 @@ case "$1" in
 	rm -f qs.log
 	./qslog.sh test writelog4j | ../util/src/qslog -f ......IB.TS -o qs.log -p 2>/dev/null 1>/dev/null
 	if [ `grep -c 'r/s;4;req;240;b/s;600;1xx;0;2xx;180;3xx;0;4xx;0;5xx;60;av;1;<1s;180;1s;0;2s;0;3s;0;4s;60;5s;0;>5s;0;ip;3;usr;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log` -ne 2 ]; then
-	    echo "$PFX FAILED"
+	    echo "$PFX writelog4j FAILED"
 	    exit 1
+	fi
+	if [  `grep -c "14.04.2010 20" qs.log` -lt 2 ]; then
+	    echo "$PFX writelog4j date detection FAILED"
+	    exit 1
+	fi
+	echo "$PFX < OK"
+	;;
+	datedata)
+	echo "$PFX > datedata"
+	rm -f qs.log
+	cat qslog.2.data  | ../util/src/qslog -f ......t -p -o qs.log 2>/dev/null 1>/dev/null
+	if [ `grep -c "req;2;b/s;0;1xx;0;2xx;0;3xx;0;4xx;0;5xx;0;avms;20;" qs.log` -ne 2 ]; then
+	  echo "$PFX FAILED"
+	  exit 1
 	fi
 	echo "$PFX < OK"
 	;;
@@ -295,6 +309,10 @@ case "$1" in
 	cat qslog.data  | ../util/src/qslog -f I....RSB.D -p -o qs.log 2>/dev/null 1>/dev/null
 	if [ `grep -c "r/s;1;req;106;b/s;1019[12];1xx;0;2xx;101;3xx;5;4xx;0;5xx;0;avms;2206;av;2;<1s;59;1s;0;2s;0;3s;16;4s;4;5s;21;>5s;6;ip;1;usr;0;" qs.log` -ne 1 ]; then
 	  echo "$PFX FAILED"
+	  exit 1
+	fi
+	if [ `grep -c "05.04.2012 17" qs.log` -lt 1 ]; then
+	  echo "$PFX date detection FAILED"
 	  exit 1
 	fi
 	echo "$PFX < OK"
@@ -352,6 +370,11 @@ case "$1" in
 	     if [ $? -ne 0 ]; then
 	       ERRORS=`expr $ERRORS + 1`
 	       echo "FAILED qslog.htt"
+	     fi
+	     ./qslog.sh test datedata
+	     if [ $? -ne 0 ]; then
+	       ERRORS=`expr $ERRORS + 1`
+	       echo "FAILED qslog.sh test datedata"
 	     fi
 	     ./qslog.sh test log4j
 	     if [ $? -ne 0 ]; then

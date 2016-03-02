@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.98 2015-09-21 20:47:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.99 2016-03-02 19:48:55 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -189,8 +189,9 @@ static char  m_file_name2[MAX_LINE];
 static int   m_rotate = 0;
 static int   m_generations = QS_GENERATIONS;
 /* regex to search the time string */
-static regex_t m_trx;
-static regex_t m_trx2;
+static regex_t m_trx_access;
+static regex_t m_trx_j;
+static regex_t m_trx_g;
 /* real time mode (default) or offline */
 static int   m_off = 0;
 static int   m_offline = 0;
@@ -1545,85 +1546,112 @@ static int mstr2i(const char *m) {
   return 0;
 }
 
+/**
+ * Extracts the time from the log line using the 
+ * Apache access default time format (%t)
+ */
+static time_t getMinutesAccessLog(char *line, regmatch_t ma) {
+  time_t minutes = 0;
+  int buf_len = ma.rm_eo - ma.rm_so + 1;
+  char buf[buf_len];
+  strncpy(buf, &line[ma.rm_so], ma.rm_eo - ma.rm_so);
+  buf[ma.rm_eo - ma.rm_so] = '\0';
+  /* dd/MMM/yyyy:hh:mm:ss */
+  /* cut seconds */
+  buf[strlen(buf)-3] = '\0';
+  /* get minutes */
+  minutes = minutes + (atoi(&buf[strlen(buf)-2]));
+  /* cut minutes */
+  buf[strlen(buf)-3] = '\0';
+  /* get hours */
+  minutes = minutes + (atoi(&buf[strlen(buf)-2]) * 60);
+  
+  /* store date information */
+  {
+    char *year;
+    char *month;
+    char *day;
+    /* cut hours */
+    buf[strlen(buf)-3] = '\0';
+    year = &buf[strlen(buf)-4];
+    /* cut year */
+    buf[strlen(buf)-5] = '\0';
+    month = &buf[strlen(buf)-3];
+    /* cut month */
+    buf[strlen(buf)-4] = '\0';
+    day = buf;
+    snprintf(m_date_str, sizeof(m_date_str), "%s.%02d.%s", day, mstr2i(month), year);
+  }
+  return minutes;
+}
+
+/**
+ * Extracts the time from the log line using the 
+ * the time patterns "yyyy mm dd hh:mm:ss,mmm" or
+ * "yyyy mm dd hh:mm:ss.mmm"
+ */
+static time_t getMinutesJLog(char *line, regmatch_t ma) {
+  time_t minutes = 0;
+  int buf_len = ma.rm_eo - ma.rm_so + 1;
+  char buf[buf_len];
+  strncpy(buf, &line[ma.rm_so], ma.rm_eo - ma.rm_so);
+  buf[ma.rm_eo - ma.rm_so] = '\0';
+  /* yyyy mm dd hh:mm:ss,mmm */
+  /* cut seconds */
+  buf[strlen(buf)-7] = '\0';
+  /* get minutes */
+  minutes = minutes + (atoi(&buf[strlen(buf)-2]));
+  /* cut minutes */
+  buf[strlen(buf)-3] = '\0';
+  /* get hours */
+  minutes = minutes + (atoi(&buf[strlen(buf)-2]) * 60);
+  /* store date information */
+  {
+    char *year;
+    char *month;
+    char *day;
+    /* cut hours */
+    buf[strlen(buf)-3] = '\0';
+    day = &buf[strlen(buf)-2];
+    /* cut day */
+    buf[strlen(buf)-3] = '\0';
+    month = &buf[strlen(buf)-2];
+    /* cut month */
+    buf[strlen(buf)-3] = '\0';
+    year = buf;
+    snprintf(m_date_str, sizeof(m_date_str), "%s.%s.%s", day, month, year);
+  }
+  return minutes;
+}
+
 /*
- * get the time in minutes from the access log line
+ * gets today's time in minutes from the access log line
  */
 static time_t getMinutes(char *line) {
-  regmatch_t ma;
-  if(regexec(&m_trx, line, 1, &ma, 0) != 0) {
-    if(regexec(&m_trx2, line, 1, &ma, 0) == 0) {
-      time_t minutes = 0;
-      int buf_len = ma.rm_eo - ma.rm_so + 1;
-      char buf[buf_len];
-      strncpy(buf, &line[ma.rm_so], ma.rm_eo - ma.rm_so);
-      buf[ma.rm_eo - ma.rm_so] = '\0';
-      /* yyyy mm dd hh:mm:ss,mmm */
-      /* cut seconds */
-      buf[strlen(buf)-7] = '\0';
-      /* get minutes */
-      minutes = minutes + (atoi(&buf[strlen(buf)-2]));
-      /* cut minutes */
-      buf[strlen(buf)-3] = '\0';
-      /* get hours */
-      minutes = minutes + (atoi(&buf[strlen(buf)-2]) * 60);
-      /* store date information */
-      {
-        char *year;
-        char *month;
-        char *day;
-        /* cut hours */
-        buf[strlen(buf)-3] = '\0';
-        day = &buf[strlen(buf)-2];
-        /* cut day */
-        buf[strlen(buf)-3] = '\0';
-        month = &buf[strlen(buf)-2];
-        /* cut month */
-        buf[strlen(buf)-3] = '\0';
-        year = buf;
-        snprintf(m_date_str, sizeof(m_date_str), "%s.%s.%s", day, month, year);
-      }
-      return minutes;
-    } else {
-      // unknown format (not relevant for -pu/-puc
-      if(m_offline_url == 0) {
-        fprintf(stdout, "F(%ld)", m_lines);
-      }
-      return 0;
-    }
-  } else {
+  regmatch_t ma[2];
+  if(regexec(&m_trx_access, line, 1, ma, 0) == 0) {
+    return getMinutesAccessLog(line, ma[0]);
+  }
+  if(regexec(&m_trx_j, line, 1, ma, 0) == 0) {
+    return getMinutesJLog(line, ma[0]);
+  }
+  if(regexec(&m_trx_g, line, 2, ma, 0) == 0) {
     time_t minutes = 0;
-    int buf_len = ma.rm_eo - ma.rm_so + 1;
-    char buf[buf_len];
-    strncpy(buf, &line[ma.rm_so], ma.rm_eo - ma.rm_so);
-    buf[ma.rm_eo - ma.rm_so] = '\0';
-    /* dd/MMM/yyyy:hh:mm:ss */
-    /* cut seconds */
-    buf[strlen(buf)-3] = '\0';
-    /* get minutes */
-    minutes = minutes + (atoi(&buf[strlen(buf)-2]));
-    /* cut minutes */
-    buf[strlen(buf)-3] = '\0';
-    /* get hours */
-    minutes = minutes + (atoi(&buf[strlen(buf)-2]) * 60);
-
-    /* store date information */
-    {
-      char *year;
-      char *month;
-      char *day;
-      /* cut hours */
-      buf[strlen(buf)-3] = '\0';
-      year = &buf[strlen(buf)-4];
-      /* cut year */
-      buf[strlen(buf)-5] = '\0';
-      month = &buf[strlen(buf)-3];
-      /* cut month */
-      buf[strlen(buf)-4] = '\0';
-      day = buf;
-      snprintf(m_date_str, sizeof(m_date_str), "%s.%02d.%s", day, mstr2i(month), year);
-    }
+    int len = ma[1].rm_eo - ma[1].rm_so;
+    char buf[len+1];
+    strncpy(buf, &line[ma[1].rm_so], len);
+    buf[len] = '\0';
+    /* hh:mm */
+    buf[2] = '\0';
+    minutes = atoi(buf) * 60;
+    minutes = minutes + atoi(&buf[3]);
     return minutes;
   }
+  // unknown format (not relevant for "-pu"/"-puc" but for "-p" mode)
+  if(m_offline_url == 0) {
+    fprintf(stdout, "F(%ld)", m_lines);
+  }
+  return 0;
 }
 
 /*
@@ -1689,8 +1717,10 @@ static void readStdinOffline(apr_pool_t *pool, const char *cstr) {
     } else {
       if(l_time > unitTime) {
         if(!m_verbose) {
-          fprintf(outdev, ".");
-          fflush(outdev);
+          if(m_f != stdout) {
+            fprintf(outdev, ".");
+            fflush(outdev);
+          }
         }
       }
       while(l_time > unitTime) {
@@ -2077,13 +2107,17 @@ int main(int argc, const char *const argv[]) {
     if(nice(10) == -1) {
       fprintf(stderr, "ERROR, failed to change nice value: %s\n", strerror(errno));
     }
-    /* init time pattern regex, std apache access log */
-    regcomp(&m_trx, 
+    /* init time pattern regex, std apache access log "dd/MMM/yyyy:hh:mm:ss" */
+    regcomp(&m_trx_access, 
             "[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}",
             REG_EXTENDED);
     /* other time patterns: "yyyy mm dd hh:mm:ss,mmm" or "yyyy mm dd hh:mm:ss.mmm" */
-    regcomp(&m_trx2, 
+    regcomp(&m_trx_j,
             "[0-9]{4}[ -]{1}[0-9]{2}[ -]{1}[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[,.]{1}[0-9]{3}",
+            REG_EXTENDED);
+    /* fallback to generic " hh:mm:ss " pattern */
+    regcomp(&m_trx_g,
+            " ([0-9]{2}:[0-9]{2}):[0-9]{2} ",
             REG_EXTENDED);
   }
 
