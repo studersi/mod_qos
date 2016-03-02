@@ -1,3 +1,7 @@
+Version
+
+ - qslog -p: fallback to simple hour/minutes detection
+
 Version 11.22
 
  - Disables client behavior (content type) measurement if
