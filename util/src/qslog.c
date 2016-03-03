@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.99 2016-03-02 19:48:55 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.100 2016-03-03 18:39:20 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1724,11 +1724,11 @@ static void readStdinOffline(apr_pool_t *pool, const char *cstr) {
         }
       }
       while(l_time > unitTime) {
+        unitTime++;
         snprintf(buf, sizeof(buf), "%s %.2ld:%.2ld:00", m_date_str, unitTime/60, unitTime%60);
         if(m_offline) {
           printAndResetStat(buf);
         }
-        unitTime++;
         qs_setTime(unitTime * 60);;
       }
       updateStat(pool, cstr, line);
@@ -2111,7 +2111,8 @@ int main(int argc, const char *const argv[]) {
     regcomp(&m_trx_access, 
             "[0-9]{2}/[a-zA-Z]{3}/[0-9]{4}:[0-9]{2}:[0-9]{2}:[0-9]{2}",
             REG_EXTENDED);
-    /* other time patterns: "yyyy mm dd hh:mm:ss,mmm" or "yyyy mm dd hh:mm:ss.mmm" */
+    /* other time patterns: "yyyy mm dd hh:mm:ss,mmm" or "yyyy mm dd hh:mm:ss.mmm"
+       resp  "yyyy-mm-dd hh:mm:ss,mmm" or "yyyy-mm-dd hh:mm:ss.mmm" */
     regcomp(&m_trx_j,
             "[0-9]{4}[ -]{1}[0-9]{2}[ -]{1}[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}[,.]{1}[0-9]{3}",
             REG_EXTENDED);
