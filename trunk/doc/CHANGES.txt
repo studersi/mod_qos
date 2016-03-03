@@ -1,6 +1,8 @@
 Version
 
- - qslog -p: fallback to simple hour/minutes detection
+ - qslog -p:
+   * fallback to simple hour/minutes detection
+   * Fixed: write stat at "next" minute (m+1:00)
 
 Version 11.22
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.33 2016-03-02 19:48:55 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.34 2016-03-03 18:39:20 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -129,7 +129,7 @@ case "$1" in
 	  exit 1
 	fi
 	# first detailed: 2x A01, 1x A02 for application 01 (/a)
-	if [ `grep -c "18:11:00;01;r/s;0;req;2;b/s;50;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;102;av;0;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;A01;2;A02;1" qs.log.detailed` -ne 1 ]; then
+	if [ `grep -c "18:12:00;01;r/s;0;req;2;b/s;50;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;102;av;0;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;A01;2;A02;1" qs.log.detailed` -ne 1 ]; then
 	  echo "$PFX failed, wrong detailed"
 	  exit 1
 	fi
@@ -139,7 +139,7 @@ case "$1" in
 	  exit 1
 	fi
 	# detailed: one request, 1x A01, 1x X02 att application 02 (/b)
-	if [ `grep -c "24.08.2011 18:12:00;02;r/s;0;req;1;b/s;16;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;52;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;A01;1;X02;1" qs.log.detailed` -ne 1 ]; then
+	if [ `grep -c "24.08.2011 18:13:00;02;r/s;0;req;1;b/s;16;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;52;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;A01;1;X02;1" qs.log.detailed` -ne 1 ]; then
 	  echo "$PFX failed, wrong detailed 2"
 	  exit 1
 	fi
@@ -295,9 +295,20 @@ case "$1" in
 	rm -f qs.log
 	cat qslog.2.data  | ../util/src/qslog -f ......t -p -o qs.log 2>/dev/null 1>/dev/null
 	if [ `grep -c "req;2;b/s;0;1xx;0;2xx;0;3xx;0;4xx;0;5xx;0;avms;20;" qs.log` -ne 2 ]; then
-	  echo "$PFX FAILED"
+	  echo "$PFX 1 FAILED"
 	  exit 1
 	fi
+	if [ `grep -c "17:35:00;r/s;0;req;6;b/s;0;1xx;0;2xx;0;3xx;0;4xx;0;5xx;0;avms;20" qs.log` -ne 1 ]; then
+	  echo "$PFX 1 (time) FAILED"
+	  exit 1
+	fi
+	rm -f qs.log
+	cat qslog.3.data  | ../util/src/qslog -f ....t -p -o qs.log 2>/dev/null 1>/dev/null
+	if [ `grep -c "19.02.2016 09:33:00;r/s;0;req;4;b/s;0;1xx;0;2xx;0;3xx;0;4xx;0;5xx;0;avms;20" qs.log` -ne 1 ]; then
+	  echo "$PFX 2 (time) FAILED"
+	  exit 1
+	fi
+
 	echo "$PFX < OK"
 	;;
 	avms)
@@ -321,43 +332,43 @@ case "$1" in
 	echo "$PFX > gc"
 	rm -f gc.csv
 	echo "[28/Jun/2014:09:17:35 +0200] 200 5\n[28/Jun/2014:09:17:35 +0200] 200 3\n[28/Jun/2014:09:17:35 +0200] 200 0\n[28/Jun/2014:09:17:35 +0200] 200 7\n[28/Jun/2014:09:17:35 +0200] 200 5\n[28/Jun/2014:09:17:35 +0200] 200 20\n[28/Jun/2014:09:17:35 +0200] 200 30\n[28/Jun/2014:09:17:35 +0200] 200 40\n[28/Jun/2014:09:17:35 +0200] 200 30\n[28/Jun/2014:09:17:35 +0200] 200 30\n[28/Jun/2014:09:17:35 +0200] 200 31\n[28/Jun/2014:09:17:35 +0200] 200 32\n[28/Jun/2014:09:17:35 +0200] 200 33\n[28/Jun/2014:09:17:35 +0200] 200 34\n[28/Jun/2014:09:17:35 +0200] 200 35\n[28/Jun/2014:09:17:35 +0200] 200 36\n[28/Jun/2014:09:17:35 +0200] 200 37\n[28/Jun/2014:09:17:35 +0200] 200 38\n[28/Jun/2014:09:17:35 +0200] 200 39\n[28/Jun/2014:09:18:35 +0200] 200 35\n[28/Jun/2014:09:19:35 +0200] 200 35\n[28/Jun/2014:09:20:12 +0200] 200 35\n[28/Jun/2014:09:20:35 +0200] 200 28\n[28/Jun/2014:09:21:35 +0200] 200 19\n[28/Jun/2014:09:22:35 +0200] 200 32\n[28/Jun/2014:09:23:35 +0200] 200 35\n[28/Jun/2014:09:24:35 +0200] 200 32\n[28/Jun/2014:09:25:35 +0200] 200 35\n[28/Jun/2014:09:26:35 +0200] 200 32\n[28/Jun/2014:09:27:35 +0200] 200 32\n[28/Jun/2014:09:28:35 +0200] 200 32\n[28/Jun/2014:09:29:35 +0200] 200 32\n[28/Jun/2014:09:30:35 +0200] 200 32\n[28/Jun/2014:09:31:35 +0200] 200 32\n[28/Jun/2014:09:32:35 +0200] 200 32\n[28/Jun/2014:09:33:35 +0200] 200 32\n[28/Jun/2014:09:34:35 +0200] 200 32\n[28/Jun/2014:09:35:35 +0200] 200 32\n[28/Jun/2014:09:36:35 +0200] 200 32\n[28/Jun/2014:09:37:35 +0200] 200 32" | ../util/src/qslog -f ..SU -p 2>/dev/null > gc.csv
-	if [ `grep "2014 09:17" gc.csv | grep -c "req;19;"` -ne 1 ]; then
+	if [ `grep "2014 09:18" gc.csv | grep -c "req;19;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 17 - gc number of requests"
 	  exit 1
 	fi
-	if [ `grep "2014 09:17" gc.csv | grep -c "usr;16;"` -ne 1 ]; then
+	if [ `grep "2014 09:18" gc.csv | grep -c "usr;16;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 17 - gc number of users"
 	  exit 1
 	fi
-	if [ `grep "2014 09:18" gc.csv | grep -c "req;1;"` -ne 1 ]; then
+	if [ `grep "2014 09:19" gc.csv | grep -c "req;1;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 18 - gc number of requests"
 	  exit 1
 	fi
-	if [ `grep "2014 09:18" gc.csv | grep -c "usr;16;"` -ne 1 ]; then
+	if [ `grep "2014 09:19" gc.csv | grep -c "usr;16;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 18 - gc number of users"
 	  exit 1
 	fi
-	if [ `grep "2014 09:20" gc.csv | grep -c "usr;17;"` -ne 1 ]; then
+	if [ `grep "2014 09:21" gc.csv | grep -c "usr;17;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 20 - gc number of users"
 	  exit 1
 	fi
-	if [ `grep "2014 09:21" gc.csv | grep -c "usr;18;"` -ne 1 ]; then
+	if [ `grep "2014 09:22" gc.csv | grep -c "usr;18;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 21 - gc number of users"
 	  exit 1
 	fi
-	if [ `grep "2014 09:27" gc.csv | grep -c "usr;18;"` -ne 1 ]; then
+	if [ `grep "2014 09:28" gc.csv | grep -c "usr;18;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 27 - gc number of users"
 	  exit 1
 	fi
-	if [ `grep "2014 09:28" gc.csv | grep -c "usr;4;"` -ne 1 ]; then
+	if [ `grep "2014 09:29" gc.csv | grep -c "usr;4;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 28 - gc number of users"
 	  exit 1
 	fi
-	if [ `grep "2014 09:34" gc.csv | grep -c "usr;2;"` -ne 1 ]; then
+	if [ `grep "2014 09:35" gc.csv | grep -c "usr;2;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 34 - gc number of users"
 	  exit 1
 	fi
-	if [ `grep "2014 09:36" gc.csv | grep -c "usr;1;"` -ne 1 ]; then
+	if [ `grep "2014 09:37" gc.csv | grep -c "usr;1;"` -ne 1 ]; then
 	  echo "$PFX FAILED: 36 - gc number of users"
 	  exit 1
 	fi
@@ -423,6 +434,8 @@ case "$1" in
 	     fi
 	     if [ $ERRORS -eq 0 ]; then
 	       echo "normal end"
+	     else
+	       echo "FAILED: $ERRORS erros"
 	     fi
 	     exit $ERRORS
 	;;
