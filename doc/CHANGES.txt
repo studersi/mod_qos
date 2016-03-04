@@ -2,7 +2,7 @@ Version
 
  - qslog -p:
    * fallback to simple hour/minutes detection
-   * Fixed: write stat at "next" minute (m+1:00)
+   * Fixed: writes now statistic line at the "next" minute (m+1:00)
 
 Version 11.22
 
@@ -47,8 +47,8 @@ Version 11.18
 
  - QS_SrvSampleRate must be greater then one second.
 
- - Avoids using RAND_bytes() and checks if the generator
-   is seeded with enough entropy (mod_qos(08x) messages).
+ - Avoids using RAND_bytes() and checks if the generator is seeded with 
+   enough entropy (mod_qos(08x) messages).
 
  - Calculates MaxClients (instead of reading the directive).
 
@@ -62,9 +62,8 @@ Version 11.17
  - Enables QS_SrvMinDataRate, QS_SrvDataRateOff, and
    QS_SrvMinDataRateOffEvent for Apache 2.4 as smoke test against
    Apache 2.4.12 and 2.4.16 was now successful (MPM worker and event).
-   The QS_KeepAliveTimeout and QS_MaxKeepAliveRequests directives
-   have been disabled for the MPM event.
-   Apache 2.4 is still not fully tested.
+   The QS_KeepAliveTimeout and QS_MaxKeepAliveRequests directives have 
+   been disabled for the MPM event. Apache 2.4 is still not fully tested.
 
 Version 11.16
 
@@ -79,15 +78,15 @@ Version 11.15
 
  - QS_RedirectIf directive supports 307 response code.
 
- - Set *_Counter variable of QS_EventLimitCount within post read
-   request handler.
+ - Set *_Counter variable of QS_EventLimitCount within post read request
+   handler.
 
  - QS_ClientSerialize honors the sequence of receiving requests (fifo)
    in order to support requests from different clients accessing the
    server via a proxy.
 
- - Fixed: potential deadlock (when reaching the 5min timeout) when
-   using the QS_SrvSerialize directive.
+ - Fixed: potential deadlock (when reaching the 5min timeout) when using
+   the QS_SrvSerialize directive.
 
 Version 11.14
 
@@ -97,8 +96,8 @@ Version 11.13
 
  - Adds option "-u" to the qslogger and qssign utilities.
 
- - QS_MileStone features a "think time" attribute which defines how 
-   long a client must wait between two milestones.
+ - QS_MileStone features a "think time" attribute which defines how long
+   a client must wait between two milestones.
 
 Version 11.12
 
@@ -116,22 +115,21 @@ Version 11.11
 
  - QS_Limit (resp. the event variable processed by the
    QS_ClientEventLimitCount/QS_CondClientEventLimitCount directives)
-   event may specify a weighting of events defining by how many 
-   penalty points the counter shall be increased. Default is 1.
+   event may specify a weighting of events defining by how many penalty
+   points the counter shall be increased. Default is 1.
 
 Version 11.10
 
- - Adds qslog command to the module (dedicated statisic log facility
-   on a per Apache server instance basis).
+ - Adds qslog command to the module (dedicated statisic log facility on
+   a per Apache server instance basis).
 
 Version 11.9
 
- - QS_Block event may specify a weighting of events defining by how
-   many penalty points the counter shall be increased.
+ - QS_Block event may specify a weighting of events defining by how many
+   penalty points the counter shall be increased.
 
- - Fixed: enables per client data store when using the 
-   QS_VipIPHeaderName together with the QS_SrvMaxConn[PerIP]
-   directive.
+ - Fixed: enables per client data store when using the QS_VipIPHeaderName
+   together with the QS_SrvMaxConn[PerIP] directive.
 
 Version 11.8
 
@@ -152,8 +150,8 @@ Version 11.6
  - Adds "Public-Key-Pins" and "Public-Key-Pins-Report-Only" to the
    pre-defined list of allowed HTTP response header fields.
 
- - Adds "Origin" to the pre-defined list of allowed HTTP response
-   header fields.
+ - Adds "Origin" to the pre-defined list of allowed HTTP response header
+   fields.
 
  - Fixed: qsrotate reads the size of an existing logfile at startup
    (required by the "-b" option).
@@ -164,9 +162,9 @@ Version 11.5
 
  - Minor code refactoring.
 
- - Some log messages (010, 012, 013, 030, 031, 034, 040, 041, 042,
-   043, 044, 046, 047, 048, 060, 063, 064, 065, 067, 101) indicate
-   if QS_LogOnly mode is active.
+ - Some log messages (010, 012, 013, 030, 031, 034, 040, 041, 042, 043,
+   044, 046, 047, 048, 060, 063, 064, 065, 067, 101) indicate if 
+   QS_LogOnly mode is active.
 
  - Apply QS_LogOnly to header filter (action drop).
 
@@ -190,9 +188,8 @@ Version 11.3
 
  - Minor changes to the status viewer.
 
- - Modified error messages 060 and 067 (adding the "age" parameter
-   which indicates the seconds since the event occured the first
-   time).
+ - Modified error messages 060 and 067 (adding the "age" parameter which
+   indicates the seconds since the event occured the first time).
 
  - Fixed: Message 065 contained wrong directive name.
 
@@ -205,24 +202,24 @@ Version 11.2
 
 Version 11.1
 
- - Fixed: Shows "T" log marker only for requests which has really
-   been delayed by mod_qos.
+ - Fixed: Shows "T" log marker only for requests which has really been
+   delayed by mod_qos.
 
  - Further improved bytes/sec limitation implementation.
 
 Version 11.0
 
- - Highly improves bytes/sec limitation (response throttling) based
-   on the input I got from Jeff Trawick - many thanks!
+ - Highly improves bytes/sec limitation (response throttling) based on
+   the input I got from Jeff Trawick - many thanks!
    * Calculates delay within filter (immediately(!) when reaching the
      defined amount of bytes).
    * Uses nanoseconds delay (instead of milliseconds).
-   * Splits large bucket brigades to 8k blocks (support for local
-     files, not using mod_proxy).
+   * Splits large bucket brigades to 8k blocks (support for local files,
+     not using mod_proxy).
    * Inserts filter late (after mod_deflate).
 
- - User tracking: set Cache-Control header when accessing
-   the cookie check page.
+ - User tracking: set Cache-Control header when accessing the cookie
+   check page.
 
  - QS_UserTrackingCookieName: improved cookie header processing.
 
@@ -234,9 +231,9 @@ Version 10.30
 
  - New console output (without ':' suffix for the IP address).
 
- - Console 'search', 'limit', and 'unlimit' command support now
-   the 'event' parameter specifying which QS_ClientEventLimitCount
-   event variable to show/set/clear.
+ - Console 'search', 'limit', and 'unlimit' command support now the 
+   'event' parameter specifying which QS_ClientEventLimitCount event
+   variable to show/set/clear.
 
 Version 10.29
 
@@ -244,13 +241,13 @@ Version 10.29
 
 Version 10.28
 
- - Fixed: QS_ClientEventLimit did overwrite counters of other
-   clients if multiple events have been configured.
+ - Fixed: QS_ClientEventLimit did overwrite counters of other clients if
+   multiple events have been configured.
 
 Version 10.27
 
- - qslog features the option "-pu" and "-puc" used to gather
-   request information on a per URL basis.
+ - qslog features the option "-pu" and "-puc" used to gather request
+   information on a per URL basis.
 
  - Fixed: Wrong includes within the support utilities.
 
@@ -263,8 +260,8 @@ Version 10.26
  - Refactor method used to determine redirect port (user tracking)
    supporting servers not using virtual hosts.
 
- - Fixed: QS_UserTrackingCookieName uses correct server_rec to
-   retrieve configuration.
+ - Fixed: QS_UserTrackingCookieName uses correct server_rec to retrieve
+   configuration.
 
  - Hook implementing user tracking is now called after mod_unique_id.
 
@@ -274,36 +271,34 @@ Version 10.26
  
 Version 10.25
 
- - QS_EventLimitCount writes the current value to the process
-   environment variables.
+ - QS_EventLimitCount writes the current value to the process environment
+   variables.
 
  - Fixed: QS_[Cond]ClientEventLimitCount logs request id and propagtes
    message code (067) to the QS_ErrorNotes variable.
 
- - New variable QS_IPConn representing the number of connections
-   opened from the very same source IP (works in conjunction with
+ - New variable QS_IPConn representing the number of connections opened
+   from the very same source IP (works in conjunction with
    QS_SrvMaxConnPerIP only).
 
 Version 10.24
 
  - New directive QS_CondClientEventLimitCount.
 
- - QS_SrvMinDataRate: limits the max. data rate to the configured
-   value (prevents invalid rate due to misconfiguration server or
-   died child process).
+ - QS_SrvMinDataRate: limits the max. data rate to the configured value
+   (prevents invalid rate due to misconfiguration server or died child
+   process).
 
 Version 10.23
 
- - Fixed: QS_ClientEventLimitCount log message 067 contains now
-   the IP address of the request header if QS_ClientIpFromHeader
-   is used.
+ - Fixed: QS_ClientEventLimitCount log message 067 contains now the IP
+   address of the request header if QS_ClientIpFromHeader is used.
 
  - QS_SetEnvRes: supports multiple variables with the same name.
 
 Version 10.22
 
- - Process QS_SetEnvResHeader(Match) and QS_SetEnvRes at error
-   filter too.
+ - Process QS_SetEnvResHeader(Match) and QS_SetEnvRes at error filter too.
 
 Version 10.21
 
@@ -311,8 +306,8 @@ Version 10.21
 
  - Adds debug message when detecting "NullConnection" events.
 
- - Built-in request header rules: adapt If-Match, If-None-Match,
-   Cookie, and Cookie2 HTTP header patterns.
+ - Built-in request header rules: adapt If-Match, If-None-Match, Cookie,
+   and Cookie2 HTTP header patterns.
 
 Version 10.20
 
@@ -325,8 +320,8 @@ Version 10.19
 
 Version 10.18
 
- - QS_ClientEventLimitCount may be cleared by environment
-   variable (suffixed by "_Clear", e.g. QS_Limit_Clear).
+ - QS_ClientEventLimitCount may be cleared by environment variable
+   (suffixed by "_Clear", e.g. QS_Limit_Clear).
  
 Version 10.17
 
@@ -334,34 +329,31 @@ Version 10.17
 
  - Stores the value of the QS_ClientEventLimitCount variables as
    environment variables suffixed by "_Counter", e.g. QS_Limit_Counter
-   for the default QS_Limit variable, in order to be processed by
-   other rules.
+   for the default QS_Limit variable, in order to be processed by other
+   rules.
 
- - Add Content-Security-Policy to the default response header
-   white list.
+ - Add Content-Security-Policy to the default response header white list.
 
  - qslog features enhanced "-pc" mode providing more information:
    * Collects content type information (%{content-type}o).
    * Duration between the first and the last request.
    * Average response in ms.
    * "ci" indicates if we have seen the client at the end or the
-     beginning of the file (maybe not all requests in the log
-     due to log rotation).
+     beginning of the file (maybe not all requests in the log due to
+     log rotation).
    * Bytes downloaded.
    * Writes status characters to stderr.
    * HTTP request methods (GET/POST)
 
-- qsgeo features option "-l" and is able to process "qslog -pc"
-  files.
+- qsgeo features option "-l" and is able to process "qslog -pc" files.
 
 Version 10.16
 
- - qslog adds 'E' (event identifiers) to the format string.
-   QSEVENTPATH environment variable specifies a file containing
-   all known event names (comma separated list).
+ - qslog adds 'E' (event identifiers) to the format string. QSEVENTPATH
+   environment variable specifies a file containing all known event
+   names (comma separated list).
 
- - qslog average counter (a/A) count only if a numeric value
-   is available.
+ - qslog average counter (a/A) count only if a numeric value is available.
 
  - qssing does not try to execute invalid program name (space only).
 
@@ -374,13 +366,12 @@ Version 10.15
 
 Version 10.14
 
- - Minor changes to status viewer (color for QS_EventLimitCount
-   counter).
+ - Minor changes to status viewer (color for QS_EventLimitCount counter).
 
  - Q3594444: adapted man page subject.
 
- - QS_ErrorResponseCode verifies that the defined error code is
-   valid resp. known by Apache.
+ - QS_ErrorResponseCode verifies that the defined error code is valid
+   resp. known by Apache.
 
  - Add option "-b" to the qsrotate utility.
 
@@ -395,8 +386,8 @@ Version 10.12
 
 Version 10.11
 
- - Don't write QS_ClientEventBlockCount event messages (060) every
-   time a client is blocked.
+ - Don't write QS_ClientEventBlockCount event messages (060) every time
+   a client is blocked.
 
  - Adjust log message severity of permitted QS_SrvMinDataRate rule
    violations from 'info' to 'debug'.
@@ -422,8 +413,8 @@ Version 10.9
 
  - Adapted log message mod_qos(069)
 
- - QS_ClientIpFromHeader@logger searches for the header in r->prev
-   and r->main too.
+ - QS_ClientIpFromHeader@logger searches for the header in r->prev and
+   r->main too.
 
 Version 10.8
 
@@ -435,9 +426,9 @@ Version 10.8
 
 Version 10.7
 
- - Writes notice message at server startup if the Apache version
-   is not supported (mod_qos has been implemented for Apache 2.2
-   worker binaries only).
+ - Writes notice message at server startup if the Apache version is not
+   supported (mod_qos has been implemented for Apache 2.2 worker
+   binaries only).
 
  - Use pcre_study() API call only if QOS_EXTRA_USE_PCRE_STUDY has been
    defined while compiling mod_qos.
@@ -458,8 +449,8 @@ Version 10.5
 
  - New utility: qslogger.
 
- - JSON includes array index number (note: you need to adapt
-   existing JSON rules).
+ - JSON includes array index number (note: you need to adapt existing
+   JSON rules).
 
  - Experimental: mod_qos compiles with Apache 2.4
    * QS_SrvMinDataRate is not available (does not work, use mod_reqtimeout
@@ -482,8 +473,8 @@ Version 10.2
 
  - Add the qsgeo utility to the distribution archive file.
 
- - Fixed: Supress warning message about missing mod_unique_id
-   if mod_navajo.cpp is available.
+ - Fixed: Supress warning message about missing mod_unique_id if 
+   mod_navajo.cpp is available.
 
  - New connection correlation id QS_ConnectionId (available as
    an event for logging purposes).
@@ -507,8 +498,8 @@ Version 9.79
 
 Version 9.78
 
- - Fixed: QS_UserTrackingCookieName enforcement did not work
-   if server creates internal redirect.
+ - Fixed: QS_UserTrackingCookieName enforcement did not work if server
+   creates internal redirect.
 
 Version 9.77
 
@@ -528,23 +519,22 @@ Version 9.77
 
 Version 9.76
 
- - New directive QS_ClientIpFromHeader (may be used in conjunction
-   with QS_ClientEventLimitCount only).
+ - New directive QS_ClientIpFromHeader (may be used in conjunction with
+   QS_ClientEventLimitCount only).
  
  - qslog measures new connections per minute (%k == 0).
 
  - Fixed: Don't show connections in the overview if not measured.
 
- - Internal: QS_EventRequestLimit are added (insted of set) to the
-   event table in order to prevent multiple increments by the very
-   same request.
+ - Internal: QS_EventRequestLimit are added (insted of set) to the event
+   table in order to prevent multiple increments by the very same request.
 
 Version 9.75
 
  - New directive QS_SetEnvRes.
 
- - Viewer keeps value about the last measured kbytes/second result
-   for a longer time.
+ - Viewer keeps value about the last measured kbytes/second result for
+   a longer time.
 
  - Update documentation (description of QS_LocKBytesPerSecLimit* 
    directives).
@@ -560,8 +550,8 @@ Version 9.73
  - Q3429879: Format usage text of the mod_qos utilities to man page
    format. Use "<utility> --man" to generate the man page.
 
- - Make "NullConnection" detection (known by QS_SetEnvIfStatus)
-   more aggressive.
+ - Make "NullConnection" detection (known by QS_SetEnvIfStatus) more
+   aggressive.
 
 Version 9.72
 
@@ -570,19 +560,19 @@ Version 9.72
 
  - New status "NullConnection" known by QS_SetEnvIfStatus detecting
    TCP connections which are not used to send a HTTP request (closed
-   without transmitting HTTP request line and header or denied
-   by any other module).
+   without transmitting HTTP request line and header or denied by any
+   other module).
 
- - QS_ClientEventBlockCount is processed at pre_connection hook
-   (more aggressive, before mod_ssl).
+ - QS_ClientEventBlockCount is processed at pre_connection hook (more
+   aggressive, before mod_ssl).
 
- - Supress warning message about missing mod_unique_id if mod_navajo
-   is available.
+ - Supress warning message about missing mod_unique_id if mod_navajo is
+   available.
 
 Version 9.71
 
- - QS_RequestHeaderFilterRule and QS_ResponseHeaderFilterRule may
-   be configured within a host (outside location).
+ - QS_RequestHeaderFilterRule and QS_ResponseHeaderFilterRule may be
+   configured within a host (outside location).
 
  - QS_ResponseHeaderFilterRule features the action "silent" which drops 
    header silently without writing a log message.
@@ -601,12 +591,12 @@ Version 9.70
    longer updated if a request has already been denied by a
    QS_EventRequestLimit rule.
 
- - QS_LocRequestPerSecLimit* and QS_LocKBytesPerSecLimit* counter
-   are no longer updated if a request has already been denied by a
+ - QS_LocRequestPerSecLimit* and QS_LocKBytesPerSecLimit* counter are
+   no longer updated if a request has already been denied by a
    QS_LocRequestLimit* rule.
 
- - Adjust attributes/number of requests required to identify the
-   client behavior.
+ - Adjust attributes/number of requests required to identify the client
+   behavior.
 
  - Update request header white list rule for Content-Type.
 
@@ -622,8 +612,8 @@ Version 9.69
  - Detection if module has been build for a different MPM implementation
    than the server is using at runtime.
 
- - JSON parser processes request query (if starting with an array '['
-   of object '{') if no body is available.
+ - JSON parser processes request query (if starting with an array '[' of
+   object '{') if no body is available.
 
  - qssing supports additional log format detection.
 
@@ -670,7 +660,8 @@ Version 9.64
 
 Version 9.62
 
- - Some code refactoring (performance improvements, no functional changes).
+ - Some code refactoring (performance improvements, no functional
+   changes).
 
 Version 9.61
 
@@ -689,8 +680,8 @@ Version 9.60
 
 Version 9.58
 
- - Fixed: IP does not get marked as VIP if QS_ClientPrefer has not
-   been defined.
+ - Fixed: IP does not get marked as VIP if QS_ClientPrefer has not been
+   defined.
 
  - New variable QS_ErrorNotes.
 
@@ -713,8 +704,8 @@ Version 9.56
 
 Version 9.55
 
- - Minor changes in configure script (autotools) of the support
-   utilities (png library name).
+ - Minor changes in configure script (autotools) of the support utilities
+   (png library name).
 
  - Add allowed response header X-Content-Security-Policy.
 
@@ -746,8 +737,9 @@ Version 9.51
  - Set IP based VIP status to connection even before we receive the
    HTTP request.
 
- - New argument "connections" for the QS_SrvMinDataRate directive allows to
-   disable the limitation if the server is idle/has only little traffic.
+ - New argument "connections" for the QS_SrvMinDataRate directive allows
+   to disable the limitation if the server is idle/has only little
+   traffic.
 
  - Adapt built-in request header filter rules.
 
@@ -769,14 +761,15 @@ Version 9.48
 
  - qslog supports mod_logio (%I and %O).
 
- - Re-introduce deprecated QS_SetEnvStatus directive (for
-   backwards compatibility).
+ - Re-introduce deprecated QS_SetEnvStatus directive (for backwards
+   compatibility).
 
 Version 9.47
 
  - QS_SetEnvIfStatus may be used within Locations.
 
- - Sequence: execute QS_SetEnvIfStatus earlier (before QS_SetEnvResHeader).
+ - Sequence: execute QS_SetEnvIfStatus earlier (before 
+   QS_SetEnvResHeader).
 
  - Remove directive QS_SetEnvStatus (alias for QS_SetEnvIfStatus).
 
@@ -832,9 +825,9 @@ Version 9.38
  - Web console allows the modification of attributes of entries within
    the client data store.
 
- - Status viewer supports query "ip" (showing the IP addresses of
-   the connected clients for all open TCP connections) in
-   machine-readable version.
+ - Status viewer supports query "ip" (showing the IP addresses of the
+   connected clients for all open TCP connections) in machine-readable
+   version.
 
  - Status viewer used new delimiter within rule names on machine-readable
    version (query "auto").
@@ -875,10 +868,10 @@ Version 9.32
 
 Version 9.31
 
- - qsfilter2: encode double quotes and backslashes using their hex
-   values (no escaping within Apache configuration necessary).
+ - qsfilter2: encode double quotes and backslashes using their hex values
+   (no escaping within Apache configuration necessary).
 
- - Featuring JSON parser which may be used in conjunction with 
+ - Featuring JSON parser which may be used in conjunction with
    QS_PermitUri.
 
 Version 9.30
@@ -889,11 +882,11 @@ Version 9.29
 
  - Add Strict-Transport-Security to the default response header rules.
 
- - Directive QS_UserTrackingCookieName features an optional
-   "path" attribute. This path specifies a local error page
-   which is shown to users not accepting the user tracking
-   cookie (note: search engines do probably not support this cookie
-   enforcement and won't be able to crawl the site).
+ - Directive QS_UserTrackingCookieName features an optional "path"
+   attribute. This path specifies a local error page which is shown
+   to users not accepting the user tracking cookie (note: search engines
+   do probably not support this cookie enforcement and won't be able to
+   crawl the site).
 
  - Generates a simple request id (unique per pid/tid within a
    millisecond) if mod_unique_id has not been loaded.
@@ -906,29 +899,27 @@ Version 9.28
 
  - qsfilter2 features a rule id prefix (-k <prefix>).
 
- - qsfilter2 may process audit log using the sample log
-   format "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
-   without pre-processing.
+ - qsfilter2 may process audit log using the sample log format
+   "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n" without pre-processing.
 
 Version 9.27
 
  - Remove qscheck utility (don't compile it by default).
 
- - New variable %{qos-loc}n indicating the Location matching a
-   request (may be used to filter the audit log for dedicated
-   locations in order to generate QS_PermitUri rules).
+ - New variable %{qos-loc}n indicating the Location matching a request
+   (may be used to filter the audit log for dedicated locations in order
+   to generate QS_PermitUri rules).
 
  - qsfilter2 may process "standard" Apache access log (TransferLog)
    files too (automatically detecting the request line).
 
- - Several adaptions/fixes to the machine-readable version of
-   the status viewer.
+ - Several adaptions/fixes to the machine-readable version of the status
+   viewer.
 
 Version 9.26
 
- - Fix: no mutex destroy (called by register cleanup when
-   destroying pools). Should fix the restart issues with
-   MPM prefork binaries.
+ - Fix: no mutex destroy (called by register cleanup when destroying
+   pools). Should fix the restart issues with MPM prefork binaries.
 
  - Renew user tracking cookie once every month.
 
@@ -964,21 +955,19 @@ Version 9.21
 
 Version 9.20
 
- - Fixed: Racing condition when using QS_SrvMinDataRate
-   and ThreadsPerChild > 64 may cause segfault.
+ - Fixed: Racing condition when using QS_SrvMinDataRate and
+   ThreadsPerChild > 64 may cause segfault.
 
 Version 9.19
 
- - Fixed: Segfault at server start if no vhost has been
-   defined.
+ - Fixed: Segfault at server start if no vhost has been defined.
 
- - QS_SrvMinDataRateOffEvent may be used at server and/or
-   location level.
+ - QS_SrvMinDataRateOffEvent may be used at server and/or location level.
 
 Version 9.18
 
- - QS_SrvMaxConnClose supports the definition of the number
-   of keep-alive connections as a percentage of MaxClients.
+ - QS_SrvMaxConnClose supports the definition of the number of 
+   keep-alive connections as a percentage of MaxClients.
 
  - Update built-in filter pattern of QS_HeaderFilter.
 
@@ -992,8 +981,8 @@ Version 9.16
 
  - Changes directive process order (QS_SetEnvIfStatus).
 
- - QS_SrvMinDataRate enforces keep-alive timeout (request line
-   must be received within the keep-alive timeout).
+ - QS_SrvMinDataRate enforces keep-alive timeout (request line must be
+   received within the keep-alive timeout).
 
 Version 9.15
 
@@ -1013,16 +1002,15 @@ Version 9.10
 
  - Fixed: ap_remove_input_filter().
 
- - MaxClients overrides ServerLimit/Treads settings when
-   calculating the maximum number of possible client
-   connections.
+ - MaxClients overrides ServerLimit/Treads settings when calculating the
+   maximum number of possible client connections.
 
  - Log/debug message about used semaphore files.
 
 Version 9.9
 
- - New implementation of the code for QS_SrvMaxConnPerIP
-   to avoid malfunction reported by mod_qos user.
+ - New implementation of the code for QS_SrvMaxConnPerIP to avoid
+   malfunction reported by mod_qos user.
 
  - Module dependency (execution order) to mod_setenvifplus.
 
@@ -1032,14 +1020,14 @@ Version 9.8
 
 Version 9.7
 
-- mod_qos may be compiled defining QS_NO_STATUS_HOOK which
-  prevents mod_qos from registering to mod_status.
+- mod_qos may be compiled defining QS_NO_STATUS_HOOK which prevents
+  mod_qos from registering to mod_status.
 
 Version 9.6
 
-- Environment variable QS_DeflateReqBody to deflate request
-  body data (update to mod_parp 0.8 in order to get a correct
-  content-length header after data deflating).
+- Environment variable QS_DeflateReqBody to deflate request body data
+  (update to mod_parp 0.8 in order to get a correct content-length
+  header after data deflating).
 
 Version 9.5
 
@@ -1047,7 +1035,7 @@ Version 9.5
 
 Version 9.4
 
-- Fixed: Variable %{qos-query} is not set when using the 
+- Fixed: Variable %{qos-query} is not set when using the
   QS_DenyQueryBody directive (and neither QS_DenyBody nor
   QS_PermitUriBody has been set).
 
@@ -1065,22 +1053,22 @@ Version 9.2
 
 Version 9.1
 
-- QS_ClientEventRequestLimit limits the number of concurrent
-  events on a per client IP address basis (again increasing
-  the per client memory consumption).
+- QS_ClientEventRequestLimit limits the number of concurrent events on
+  a per client IP address basis (again increasing the per client memory
+  consumption).
 
 Version 9.0
 
- - Client level control: request characteristics measuring adds
-   content type ration and number of 304 responses (requires now
-   64bytes instead of 48bytes per client on a 32bit system).
+ - Client level control: request characteristics measuring adds content
+   type ration and number of 304 responses (requires now 64bytes instead
+   of 48bytes per client on a 32bit system).
 
- - Improved client level control (behavior detection, see above)
-   is processed by the QS_ClientPrefer directive.
-   Directive QS_ClientTolerance controls the allowed variation.
+ - Improved client level control (behavior detection, see above) is
+   processed by the QS_ClientPrefer directive. Directive
+   QS_ClientTolerance controls the allowed variation.
 
- - Directive QS_SrvPreferNet has been removed. It's recommended
-   to use QS_ClientPrefer instead.
+ - Directive QS_SrvPreferNet has been removed. It's recommended to use
+   QS_ClientPrefer instead.
 
 Version 8.18
 
@@ -1088,9 +1076,8 @@ Version 8.18
 
 Version 8.16
 
- - Q2834297: use a single mutex for all per virtual host ACT
-   tables (too many mutexes if a server uses many virtual
-   hosts).
+ - Q2834297: use a single mutex for all per virtual host ACT tables (too
+   many mutexes if a server uses many virtual hosts).
 
 Version 8.15
 
@@ -1102,11 +1089,11 @@ Version 8.14
 
 Version 8.13
 
- - New directives QS_DenyQueryBody and QS_PermitUriBody
-   obsolte QS_DenyBody.
+ - New directives QS_DenyQueryBody and QS_PermitUriBody obsolte
+   QS_DenyBody.
 
- - Fixed: QS_Deny*/QS_Permit* directives can handle strings
-   containing 0 bytes (qsfilter2 still can't).
+ - Fixed: QS_Deny*/QS_Permit* directives can handle strings containing
+   0 bytes (qsfilter2 still can't).
 
 Version 8.12
 
@@ -1114,8 +1101,8 @@ Version 8.12
 
 Version 8.11
 
- - Fixed: Change Apache 2.0 ifdef statements in order to
-   compile with any compiler.
+ - Fixed: Change Apache 2.0 ifdef statements in order to compile with
+   any compiler.
 
 Version 8.10
 
@@ -1128,34 +1115,32 @@ Version 8.9
 
  - mod_qos uses anonymous shm by default.
 
- - Use constant semaphore/shared memory file names in order
-   to reuse resources after unclear server shutdown.
+ - Use constant semaphore/shared memory file names in order to reuse
+   resources after unclear server shutdown.
 
 Version 8.5
 
  - New directive QS_EventKBytesPerSecLimit.
 
- - New structure of the source archive tarball, see
-   index.html#build for more information about building
-   the binaries.
+ - New structure of the source archive tarball, see index.html#build
+   for more information about building the binaries.
 
 Version 8.3
 
  - QS_RequestHeaderFilterRule has new syntax.
 
- - QS_RequestHeaderFilter checks the header length too.
-   It's possible to use "QS_RequestHeaderFilter size" for
-   header length checking only (instead of using
-   LimitRequestFieldsize).
+ - QS_RequestHeaderFilter checks the header length too. It's possible
+   to use "QS_RequestHeaderFilter size" for header length checking only
+   (instead of using LimitRequestFieldsize).
 
 Version 8.2
 
- - Fixed: Client prefer, don't mark connection timeout at
-   keep alive end (used in conjunction with QS_ClientPrefer).
+ - Fixed: Client prefer, don't mark connection timeout at keep alive
+   end (used in conjunction with QS_ClientPrefer).
 
- - Access log events (mod_qos_ev, mod_qos_cr, mod_qos_con)
-   are stored as variables (storing them in the out headers
-   will be removed in one of the next release).
+ - Access log events (mod_qos_ev, mod_qos_cr, mod_qos_con) are stored as
+   variables (storing them in the out headers will be removed in one of
+   the next release).
 
 Version 8.1
 
@@ -1165,10 +1150,10 @@ Version 8.1
 
 Version 8.0
 
- - New server configuration merger: settings within virtual
-   hosts are merged with the settings from the base server
-   (directives outside virtual hosts). Virtual host settings
-   do not overwrite base settings any more.
+ - New server configuration merger: settings within virtual hosts are
+   merged with the settings from the base server (directives outside
+   virtual hosts). Virtual host settings do not overwrite base settings
+   any more.
 
  - New directive QS_LimitRequestBody.
 
@@ -1178,8 +1163,8 @@ Version 7.20
 
 Version 7.19
 
- - QS_DenyEvent may be used to block requests which do NOT have
-   the specified event set.
+ - QS_DenyEvent may be used to block requests which do NOT have the
+   specified event set.
 
  - QS_DenyEvent is applied after the QS_SetEnvIf* directives.
    See mod_qos_seq.gif for more details.
@@ -1190,9 +1175,9 @@ Version 7.18
 
 Version 7.17
 
- - QS_SetEnvIfBody recognizes the occurrence of $1 within
-   the variable value and replaces it by the subexpressions
-   of the defined regex pattern.
+ - QS_SetEnvIfBody recognizes the occurrence of $1 within the variable
+   value and replaces it by the subexpressions of the defined regex
+   pattern.
 
 Version 7.16
 
@@ -1208,10 +1193,9 @@ Version 7.15
 
 Version 7.14
 
- - New directive QS_DenyBody implements generic request body
-   filter which can be used in conjunction with QS_DenyQuery,
-   QS_PermitUri, and body data audit log (to be processed
-   my qsfilter2).
+ - New directive QS_DenyBody implements generic request body filter
+   which can be used in conjunction with QS_DenyQuery, QS_PermitUri,
+   and body data audit log (to be processed my qsfilter2).
 
 Version 7.13
 
@@ -1221,13 +1205,11 @@ Version 7.13
    see http://parp.sourceforge.net).
 
    Important:
-   mod_parp and the QS_SetEnvIfParp directive copies
-   the whole HTTP request message body into the servers
-   memory (requires at least twice the memory size of
-   the posted data). It is very important that you
-   limit the messagy body size for requests processed
-   my mod_parp/QS_SetEnvIfParp using the Apache directive
-   LimitRequestBody.
+   mod_parp and the QS_SetEnvIfParp directive copies the whole HTTP
+   request message body into the servers memory (requires at least
+   twice the memory size of the posted data). It is very important
+   that you limit the messagy body size for requests processed my
+   mod_parp/QS_SetEnvIfParp using the Apache directive LimitRequestBody.
 
  - New directive QS_DenyEvent.
 
@@ -1235,11 +1217,10 @@ Version 7.13
 
 Version 7.12
 
- - Process event filter only if some rules have been
-   defined.
+ - Process event filter only if some rules have been defined.
 
- - Recovery rate (decreas limitation) for bandwidth and
-   and request limit has been increased from 16% to 25%.
+ - Recovery rate (decreas limitation) for bandwidth and and request
+   limit has been increased from 16% to 25%.
 
 Version 7.11
 
@@ -1247,15 +1228,14 @@ Version 7.11
 
 Version 7.9
 
- - Fixed: QS_SrvMinDataRate/QS_SrvRequestRate counts all
-   server connections (not only per child process).
+ - Fixed: QS_SrvMinDataRate/QS_SrvRequestRate counts all server
+   connections (not only per child process).
 
 Version 7.8
 
- - Directive QS_SrvMinDataRate/QS_SrvRequestRate supports
-   min/max limitation in order to increase the minimum
-   upload/download bandwith on multiple simultaneously
-   connections.
+ - Directive QS_SrvMinDataRate/QS_SrvRequestRate supports min/max
+   limitation in order to increase the minimum upload/download bandwith
+   on multiple simultaneously connections.
 
  - Fixed: Activation of QS_SrvMinDataRate did not work
    (QS_SrvRequestRate only).
@@ -1266,10 +1246,9 @@ Version 7.7
 
 Version 7.6
 
- - Use the HTTP response code defined by QS_ErrorResponseCode
-   (default is 500) settings for all denied requests expect
-   for those requests rejected to a QS_Deny*, QS_Permit*, or 
-   QS_RequestHeaderFilter rule.
+ - Use the HTTP response code defined by QS_ErrorResponseCode (default
+   is 500) settings for all denied requests expect for those requests
+   rejected to a QS_Deny*, QS_Permit*, or QS_RequestHeaderFilter rule.
 
 Version 7.5
 
@@ -1287,8 +1266,8 @@ Version 7.4
 
 Version 7.3
 
- - Partial (not for chunked post) fixed error message
-   for slow server response when using QS_SrvRequestRate.
+ - Partial (not for chunked post) fixed error message for slow server
+   response when using QS_SrvRequestRate.
 
 Version 7.2
 
@@ -1296,33 +1275,29 @@ Version 7.2
 
 Version 7.1
 
- - QS_SrvMaxConnExcludeIP works for QS_SrvRequestRate
-   (may be used to allow selected IP sources, e.g. slow
-   spider).
+ - QS_SrvMaxConnExcludeIP works for QS_SrvRequestRate (may be used to
+   allow selected IP sources, e.g. slow spider).
 
 Version 7.0
 
- - New directive QS_SrvRequestRate enforces minimum
-   upload bandwith (used for TCP DoS prevention).
-   Requires thread support.
+ - New directive QS_SrvRequestRate enforces minimum upload bandwith
+   (used for TCP DoS prevention). Requires thread support.
 
- - QS_ClientPrefer allows definition of free connections
-   in percent in order to override the default of 80%.
-   Available for Apache 2.2 only.
+ - QS_ClientPrefer allows definition of free connections in percent
+   in order to override the default of 80%. Available for Apache 2.2
+   only.
 
  - QS_SrvConnTimeout is no longer available.
    You may use QS_SrvRequestRate instead.
 
 Version 6.7
 
- - Detects low priotity clients (clients sending slow
-   or using small data packets get marked as low
-   priority clients). 
+ - Detects low priotity clients (clients sending slow or using small
+   data packets get marked as low priority clients). 
 
  - New directives QS_VipUser and QS_VipIpUser.
 
- - Status viewer shows information about client (IP)
-   control status.
+ - Status viewer shows information about client (IP) control status.
 
 Version 6.6
 
@@ -1345,8 +1320,8 @@ Version 6.4
 
 Version 6.3
 
- - New directive QS_VipIPHeaderName to mark clients (IP)
-   without providing them full VIP privileges.
+ - New directive QS_VipIPHeaderName to mark clients (IP) without
+   providing them full VIP privileges.
 
  - Add details to log messages.
 
@@ -1358,8 +1333,7 @@ Version 6.1
 
  - QS_SetEnvIf supports "NOT" operator.
 
- - Sets QS_VipRequest variable when receiving valid session
-   cookie.
+ - Sets QS_VipRequest variable when receiving valid session cookie.
 
 Version 6.0
 
@@ -1371,11 +1345,11 @@ Version 6.0
 
 Version 5.17
 
- - New directive QS_EventPerSecLimit allows req/sec limitation
-   for requests causing an event.
+ - New directive QS_EventPerSecLimit allows req/sec limitation for
+   requests causing an event.
 
- - New directive QS_SetEnvIf allows combination of multiple
-   environment variables.
+ - New directive QS_SetEnvIf allows combination of multiple environment
+   variables.
 
  - Fixed: sem/shm leak when using QS_SrvPreferNet.
 
@@ -1385,8 +1359,8 @@ Version 5.16
 
 Version 5.15
 
- - New directive QS_CondLocRequestLimitMatch allows conditional
-   request level rules.
+ - New directive QS_CondLocRequestLimitMatch allows conditional request
+   level rules.
 
 Version 5.14
 
@@ -1406,8 +1380,8 @@ Version 5.11
 
 Version 5.10
 
- - Rules do not use individual mutex any longer. This allows
-   an unlimted number of rules.
+ - Rules do not use individual mutex any longer. This allows an unlimted
+   number of rules.
 
 Version 5.9
 
@@ -1422,8 +1396,8 @@ Version 5.8
 Version 5.7
 
  - Important:
-   QS_PermitUri, QS_Deny*, qsfilter2 apply filter rules against
-   unescaped URLs where %<hex>, \x<hex> and + (new!) is unescaped.
+   QS_PermitUri, QS_Deny*, qsfilter2 apply filter rules against unescaped
+   URLs where %<hex>, \x<hex> and + (new!) is unescaped.
    You should regenerate your QS_PermitUri rules using the updated
    version of the qsfilter2 tool provided by this release.
 
@@ -1448,8 +1422,7 @@ Version 5.2
  - VIP has no QS_LocKBytesPerSecLimit/QS_LocKBytesPerSecLimitMatch
    restrictions.
 
- - QS_SrvPreferNet triggers for VIP user on response header
-   only.
+ - QS_SrvPreferNet triggers for VIP user on response header only.
 
 Version 5.1
 
@@ -1457,8 +1430,8 @@ Version 5.1
 
 Version 4.30
 
- - Fixed: Segfault at server startup when no virtual host has
-   been configured.       
+ - Fixed: Segfault at server startup when no virtual host has been
+   configured.       
 
 Version 4.29
 
