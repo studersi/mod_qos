@@ -44,11 +44,7 @@ if [ `../httpd/httpd -l | grep -c event.c` -eq 1 ]; then
     done
 fi
 
-# 
-# ~/projects/openssl-1.0.2g$ ./config --prefix=$HOME/openssl -fPIC no-gost no-shared no-zlib
-# ~/projects/curl-7.45.0$ LIBS="-ldl" ./configure --with-nghttp2 --with-ssl=$HOME/openssl/ --libdir=$HOME/openssl/lib
-# 
-for E in `ls scripts/*.htt | grep -v -e "WORKER.htt" -e "EVENT.htt -e "_h2" | sort`; do
+for E in `ls scripts/*.htt | grep -v -e "WORKER.htt" -e "EVENT.htt" -e "_h2" | sort`; do
   ./run.sh -s $E
   if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
@@ -60,6 +56,10 @@ done
 
 ./ctl.sh start -D h2 > /dev/null
 
+# 
+# ~/projects/openssl-1.0.2g$ ./config --prefix=$HOME/openssl -fPIC no-gost no-shared no-zlib
+# ~/projects/curl-7.45.0$ LIBS="-ldl" ./configure --with-nghttp2 --with-ssl=$HOME/openssl/ --libdir=$HOME/openssl/lib
+# 
 for E in `ls scripts/*.htt | grep "_h2" | sort`; do
   ./run.sh -s $E
   if [ $? -ne 0 ]; then
