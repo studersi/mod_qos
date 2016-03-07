@@ -1,6 +1,10 @@
 #
 # basic http/2 compatibility test
 #
+# Note: h2c IS NOT SUPPORTED by mod_qos as the current HTTP/2
+#       implementation of Apache 2.4.18 creates an addtional dummy
+#       request for every HTTP request (so we end up with two
+#       requests counted by mod_qos as matching requests).
 
 INCLUDE scripts/ports
 
@@ -8,13 +12,11 @@ INCLUDE scripts/ports
 
 CLIENT 2
 
-
 _LOOP 100
-_EXPECT EXEC "ALPN, server accepted to use h2"
 _EXPECT EXEC "HTTP/2 confirmed"
 _EXPECT EXEC "Static Page"
 _EXPECT EXEC "</html>"
-_EXEC ./bin/curl -v --http2 --insecure https://server1:${QS_PORT_BASE2}/static.html 2>&1
+_EXEC ./bin/curl -v --http2 http://server1:${QS_PORT_BASE}/static.html 2>&1
 _END LOOP
 
 _EXPECT EXEC "GET /static.html HTTP/2"
