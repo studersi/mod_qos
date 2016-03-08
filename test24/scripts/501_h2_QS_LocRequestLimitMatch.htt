@@ -1,5 +1,5 @@
 #
-# $Id: 501_h2_QS_LocRequestLimitMatch.htt,v 1.2 2016-03-07 21:25:19 pbuchbinder Exp $
+# $Id: 501_h2_QS_LocRequestLimitMatch.htt,v 1.3 2016-03-08 16:41:29 pbuchbinder Exp $
 #
 #   QS_LocRequestLimitMatch       ^/cgi2/.*   2
 #
@@ -32,7 +32,7 @@ _EXEC ./bin/curl -v --http2 --insecure https://server1:${QS_PORT_BASE2}/cgi2/sle
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(010\): access denied, QS_LocRequestLimit. rule: ..cgi2....2., concurrent requests=3"
 _EXEC tail -1 logs/error_log
-_EXPECT EXEC "GET /cgi2/sleep.cgi HTTP/2. 50"
+_EXPECT EXEC "GET /cgi2/sleep.cgi HTTP/2. 50. .* cr=3 ev=D;"
 _EXEC tail -1 logs/access_log
 
 END
