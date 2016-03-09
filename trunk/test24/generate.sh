@@ -1,14 +1,14 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.10 2016-02-18 21:41:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.11 2016-03-09 17:03:38 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2015 Pascal Buchbinder
+# Copyright (C) 2007-2016 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -104,7 +104,7 @@ if [ ! -d htdocs/demo ]; then
     ln -s ../../test/htdocs/demo/
     cd ..
 fi
-CONFFILES="conf/httpd.conf conf/demo.conf"
+CONFFILES="conf/httpd.conf conf/demo.conf conf/ucn.conf"
 for E in $CONFFILES; do
     sed <$E.tmpl >$E \
 	-e "s;##ROOT##;$ROOT;g" \

@@ -68,6 +68,10 @@ for E in `ls scripts/*.htt | grep "_h2" | sort`; do
   fi
 done
 
+./ucn.sh
+RC=$?
+ERRORS=`expr $ERRORS + $RC`
+
 ./ctl.sh stop > /dev/null
 echo "end (`date '+%a %b %d %H:%M:%S %Y'`)"
 
