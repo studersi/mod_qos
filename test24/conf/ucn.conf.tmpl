@@ -68,6 +68,11 @@ Listen         ##QS_PORT_BASE2##
 <IfDefine ucna>
    QS_LocRequestLimit     /cgi 5
 </IfDefine>
+<IfDefine ucnb>
+   SetEnvIfPlus           User-Agent EL5 EL=1
+   SetEnvIfPlus           User-Agent EL6 EL=2
+   QS_EventRequestLimit   EL=1 5
+</IfDefine>
 
    ProxyPass              /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi retry=0
    ProxyPassReverse       /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi
