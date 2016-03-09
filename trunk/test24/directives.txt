@@ -12,7 +12,7 @@ QS_LocKBytesPerSecLimit
 + QS_LocRequestPerSecLimitMatch
 + QS_LocKBytesPerSecLimitMatch
 QS_CondLocRequestLimitMatch
-QS_EventRequestLimit
++ QS_EventRequestLimit
 + QS_EventPerSecLimit
 QS_EventKBytesPerSecLimit
 + QS_EventLimitCount
