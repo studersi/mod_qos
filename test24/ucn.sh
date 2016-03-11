@@ -25,15 +25,16 @@ waitApache() {
   sleep 2
 }
 
+echo "$PFX start"
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucna 2>/dev/null 1>/dev/null
 waitApache
-./run.sh -s scripts/UCN_QS_LocRequestLimit.htt
+./run.sh -se scripts/UCN_QS_LocRequestLimit.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnb 2>/dev/null 1>/dev/null
 waitApache
-./run.sh -s scripts/UCN_QS_EventRequestLimit.htt
+./run.sh -se scripts/UCN_QS_EventRequestLimit.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
