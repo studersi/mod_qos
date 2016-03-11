@@ -10,7 +10,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qtest.c,v 1.9 2014-06-02 18:51:08 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qtest.c,v 1.10 2016-03-11 20:47:22 pbuchbinder Exp $";
 
 /************************************************************************
  * Includes
@@ -60,7 +60,8 @@ module AP_MODULE_DECLARE_DATA qtest_module;
 static int qtest_fixup(request_rec * r) {
 
 #ifdef QOS_TEST_MOD
-  /*
+  /**
+   * DEVELOPMENT MODE ONLY
    * set NEWSESSION variable to simulate a session creation
    */
   if(strstr(r->parsed_uri.path, "/loginme/")) {
@@ -68,7 +69,8 @@ static int qtest_fixup(request_rec * r) {
   }
 
 
-  /*
+  /**
+   * DEVELOPMENT MODE ONLY
    * stores all request headers in mod_qos_ev to be logged within 
    * the access log file
    */
@@ -83,7 +85,8 @@ static int qtest_fixup(request_rec * r) {
   }
 #endif
 
-  /*
+  /**
+   * PUBLIC INTERFACE
    * delay for the number of microseconds as definied within the request
    * query parameter "delayus"
    */
@@ -108,7 +111,8 @@ static int qtest_fixup(request_rec * r) {
   
 static int qtest_handler(request_rec * r) {
 
-  /*
+  /**
+   * DEVELOPMENT MODE ONLY
    * causes a segmentation fault (accessing a null pointer)
    */
   if(strcmp(r->parsed_uri.path, "/killme/") == 0) {
@@ -119,7 +123,8 @@ static int qtest_handler(request_rec * r) {
     memcpy(to, from, 1);
   }
 
-  /*
+  /**
+   * DEVELOPMENT MODE ONLY
    * endless loop
    */
   if(strcmp(r->parsed_uri.path, "/loopme/") == 0) {
@@ -130,7 +135,8 @@ static int qtest_handler(request_rec * r) {
     }
   }
 
-  /*
+  /**
+   * DEVELOPMENT MODE ONLY
    * internal redirect to the sepcifed path (defined within the query)
    */
   if(strcmp(r->parsed_uri.path, "/internalredirectme/") == 0) {
@@ -143,7 +149,8 @@ static int qtest_handler(request_rec * r) {
     return OK;
   }
 
-  /*
+  /**
+   * DEVELOPMENT MODE ONLY
    * internal redirect to the error document
    */
   if(strcmp(r->parsed_uri.path, "/qstredirectme/") == 0) {
@@ -153,7 +160,8 @@ static int qtest_handler(request_rec * r) {
     return OK;
   }
 
-  /*
+  /**
+   * DEVELOPMENT MODE ONLY
    * internal redirect to doc which does not exist
    */
   if(strcmp(r->parsed_uri.path, "/qstredirectme404/") == 0) {
@@ -163,7 +171,8 @@ static int qtest_handler(request_rec * r) {
     return HTTP_INTERNAL_SERVER_ERROR;
   }
 
-  /*
+  /**
+   * DEVELOPMENT MODE ONLY
    * writes the variables to the response
    */
   if(strcmp(r->parsed_uri.path, "/dumpvar/") == 0) {
@@ -178,7 +187,8 @@ static int qtest_handler(request_rec * r) {
     return OK;
   }
 
-  /*
+  /**
+   * DEVELOPMENT MODE ONLY
    * returns 403
    */
   if(strncmp(r->parsed_uri.path, "/qsforbidden/", 13) == 0) {
@@ -209,6 +219,8 @@ static int qtest_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *pt
  ***********************************************************************/
 static void qtest_register_hooks(apr_pool_t * p) {
   static const char *pre[] = { "mod_qos.c", NULL };
+  /* QOS_TEST_MOD must only be enabled when using the module within a
+     development environment (includes segfault, endless loop, etc) */
 #ifdef QOS_TEST_MOD
   ap_hook_handler(qtest_handler, pre, NULL, APR_HOOK_FIRST);
 #endif
