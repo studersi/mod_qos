@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.585 2016-02-18 21:41:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.586 2016-03-16 21:49:04 pbuchbinder Exp $";
 static const char g_revision[] = "11.22";
 
 /************************************************************************
@@ -12521,11 +12521,16 @@ const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg)
   sconf->qos_cc_prefer = 80;
 #ifdef AP_TAKE_ARGV
   if(argc) {
-    sconf->qos_cc_prefer = atoi(argv[0]);
+    char *copy = apr_pstrdup(cmd->pool, argv[0]); 
+    char *p = strchr(copy, '%');
+    if(p) {
+      p[0] = '\0';
+    }
+    sconf->qos_cc_prefer = atoi(copy);
   }
 #endif
-  if((sconf->qos_cc_prefer == 0) || (sconf->qos_cc_prefer > 99)) {
-    return apr_psprintf(cmd->pool, "%s: percentage must be numeric value between 1 and 99",
+  if((sconf->qos_cc_prefer < 1) || (sconf->qos_cc_prefer > 99)) {
+    return apr_psprintf(cmd->pool, "%s: percentage must be a percentage between 1 and 99",
                         cmd->directive->directive);
   }
 #ifdef AP_TAKE_ARGV
@@ -13322,20 +13327,19 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE_ARGV("QS_ClientPrefer", qos_client_pref_cmd, NULL,
                     RSRC_CONF,
                     "QS_ClientPrefer [<percent>], prefers known VIP clients"
-                    " when server has"
-                    " less than 80% of free TCP connections. Preferred clients"
-                    " are VIP clients only, see QS_VipHeaderName directive."
-                    " Directive is allowed in global server context only."
-                    ""),
+                    " when server has less than 80% (or the configured value)"
+                    " of free TCP connections. Preferred clients"
+                    " are VIP clients (or those without any negative penalties),"
+                    " see QS_VipHeaderName directive."
+                    " Directive is allowed in global server context only."),
 #else
   AP_INIT_NO_ARGS("QS_ClientPrefer", qos_client_pref_cmd, NULL,
                   RSRC_CONF,
-                  "QS_ClientPrefer [<percent>], prefers known VIP clients"
-                  " when server has"
-                  " less than 80% of free TCP connections. Preferred clients"
-                  " are VIP clients only, see QS_VipHeaderName directive."
-                  " Directive is allowed in global server context only."
-                  ""),
+                  "QS_ClientPrefer, prefers known VIP clients"
+                  " when server has less than 80% of free TCP connections."
+                  " Preferred clients are VIP clients only,"
+                  " see QS_VipHeaderName directive."
+                  " Directive is allowed in global server context only."),
 #endif
 
   AP_INIT_TAKE1("QS_ClientTolerance", qos_client_tolerance_cmd, NULL,
