@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.11 2016-03-09 17:03:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.12 2016-03-16 21:49:29 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -97,6 +97,8 @@ fi
 
 mkdir -p htdocs/limitbs
 mkdir -p htdocs/ratelimit
+mkdir -p htdocs/images
+cp ../doc/images/*.* htdocs/images
 cp htdocs/image.iso htdocs/limitbs/image.iso
 cp htdocs/image.iso htdocs/ratelimit/image.iso
 if [ ! -d htdocs/demo ]; then
