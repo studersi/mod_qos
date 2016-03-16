@@ -28,15 +28,22 @@ waitApache() {
 echo "$PFX start"
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucna 2>/dev/null 1>/dev/null
 waitApache
-./run.sh -se scripts/UCN_QS_LocRequestLimit.htt
+./run.sh -seT scripts/UCN_QS_LocRequestLimit.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnb 2>/dev/null 1>/dev/null
 waitApache
-./run.sh -se scripts/UCN_QS_EventRequestLimit.htt
+./run.sh -seT scripts/UCN_QS_EventRequestLimit.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
+
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D limit2block 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -seT scripts/UCN_limit2block_1.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 
 if [ $ERRORS -ne 0 ]; then
   echo "$PFX test failed with $ERRORS errors"
