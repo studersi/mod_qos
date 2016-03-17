@@ -38,6 +38,13 @@ SSLRandomSeed startup    builtin
 
 QS_EnableInternalIPSimulation off
 
+<IfDefine limit2level>
+ QS_ClientEventLimitCount 20 2 SlowRequest
+ QS_ClientEventLimitCount 3 300 SlowRepeatedlySlow
+ SetEnvIfPlus Request_URI / SlowRequest
+ SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
+</IfDefine>
+
 <IfDefine limit2block>
  #MaxRequestWorkers        896
  # low-bandwidth DoS
@@ -74,6 +81,12 @@ QS_EnableInternalIPSimulation off
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
    ServerName   127.0.0.1
+
+<IfDefine limit2level>
+   <Location />
+     SetEnvIfPlus SlowRequest_Counter 19 SlowRepeatedlySlow=1 late
+   </Location>
+</IfDefine>
 
 <IfDefine limit2block>
    <Location />
