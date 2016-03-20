@@ -2210,15 +2210,39 @@ certain content-type.
 </table>
 </p>
 
+<a name="brute_force"></a>
+<h3>Brute Force</h3>
+<p>
+Sometimes, you want to limit how often a resource may be accessed 
+within a certain amount of time. mod_qos allows you to limit this 
+either server wide (any request accessing the resource), e.g., by using 
+the <a href="#QS_EventLimitCount">QS_EventLimitCount</a> directive 
+or on a per client IP basis using the 
+<a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a> 
+directive.
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# Allows a single IP addess to access the URI /wp-login.php not more
+# than 10 times within a hour.
+<a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a> 10 3600 LimitLogin
+SetEnvIf                 Request_URI ^/wp-login.php LimitLogin
+</pre>
+</td></tr>
+</table>
+</p>
+
 <a name="ddos"></a>
 <a name="Too_Many_Client_Connections"></a>
 <h3>Too Many Client Connections</h3>
 <p>
-mod_qos may prefer "known" client IP addresses in the case that too 
-many clients access the server. "Known" clients are those which 
-has once been identified by the application by setting the corresponding 
-HTTP response header. Such identification may happen at successful 
-user login. Connections from clients which are not known to mod_qos 
+mod_qos may <a href="#QS_ClientPrefer">prefer</a> "known" client 
+IP addresses in the case that too many clients access the server. 
+"Known" clients are those which has once been identified by the 
+application by setting the corresponding HTTP response header. 
+Such identification may happen at successful user login. 
+Connections from clients which are not known to mod_qos 
 (never marked by the corresponding response header) are denied 
 if the server runs on low TCP connection resources (20% or fewer 
 free connections in this example). mod_qos prefers also those clients 
