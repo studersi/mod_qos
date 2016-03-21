@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.586 2016-03-16 21:49:04 pbuchbinder Exp $";
-static const char g_revision[] = "11.22";
+static const char revision[] = "$Id: mod_qos.c,v 5.587 2016-03-21 20:46:02 pbuchbinder Exp $";
+static const char g_revision[] = "11.23";
 
 /************************************************************************
  * Includes
@@ -12679,10 +12679,15 @@ const char *qos_client_tolerance_cmd(cmd_parms *cmd, void *dcfg, const char *arg
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  char *value = apr_pstrdup(cmd->pool, arg1);
+  char *p = strchr(value, '%');
+  if(p) {
+    p[0] = '\0';
+  }
   if (err != NULL) {
     return err;
   }
-  sconf->cc_tolerance = atoi(arg1);
+  sconf->cc_tolerance = atoi(value);
   if(sconf->cc_tolerance < 5 || sconf->cc_tolerance > 80) {
     return apr_psprintf(cmd->pool, "%s: must be numeric value between 5 and 80",
                         cmd->directive->directive);
@@ -12881,7 +12886,7 @@ static const command_rec qos_config_cmds[] = {
 
   AP_INIT_TAKE1("QS_SrvMaxConnClose", qos_max_conn_close_cmd, NULL,
                 RSRC_CONF,
-                "QS_SrvMaxConnClose <number>, defines the maximum number of"
+                "QS_SrvMaxConnClose <number>[%], defines the maximum number of"
                 " concurrent TCP connections until the server disables"
                 " keep-alive for this server (closes the connection after"
                 " each requests. You may specify the number of connections"
@@ -13344,7 +13349,7 @@ static const command_rec qos_config_cmds[] = {
 
   AP_INIT_TAKE1("QS_ClientTolerance", qos_client_tolerance_cmd, NULL,
                 RSRC_CONF,
-                "QS_ClientTolerance <number>, defines the allowed tolerance (variation)"
+                "QS_ClientTolerance <percent>, defines the allowed tolerance (variation)"
                 " from a \"normal\" client (average) in percent."
                 " Default is "QOS_CC_BEHAVIOR_TOLERANCE_STR"%."
                 " Directive is allowed in global server context only."),
