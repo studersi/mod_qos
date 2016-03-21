@@ -78,6 +78,17 @@ QS_EnableInternalIPSimulation off
  SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
 </IfDefine>
 
+<IfDefine e1>
+SetEnvIf                 Request_URI ^/wp-login.php LimitLogin
+QS_ClientEventLimitCount 10 3600 LimitLogin
+</IfDefine>
+
+<IfDefine e2>
+SetEnvIf                     Request_URI ^/download/mod_qos.so.gz LimitDownload
+SetEnvIf                     Request_URI ^/download/mod_qos.so.gz QS_Cond=LimitDownload
+QS_CondClientEventLimitCount 4 60 LimitDownload LimitDownload
+</IfDefine>
+
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
    ServerName   127.0.0.1
