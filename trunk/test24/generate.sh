@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.12 2016-03-16 21:49:29 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.13 2016-03-21 21:41:43 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -78,6 +78,11 @@ if [ ! -x bin/curl ]; then
     else
 	echo "ERROR, could not find curl binary"
     fi
+fi
+
+if [ ! -d htdocs/download/ ]; then
+    mkdir -p htdocs/download/
+    echo "dummy file" >> htdocs/download/mod_qos.so.gz
 fi
 if [ ! -f htdocs/image.iso -o ]; then
   for E in `seq 12500`; do

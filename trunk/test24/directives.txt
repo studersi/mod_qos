@@ -73,7 +73,7 @@ QS_ClientContentTypes
 + QS_ClientEventBlockCount
 QS_ClientEventBlockExcludeIP
 + QS_ClientEventLimitCount
-QS_CondClientEventLimitCount
++ QS_CondClientEventLimitCount
 QS_ClientEventPerSecLimit
 QS_ClientEventRequestLimit
 QS_ClientSerialize,
