@@ -50,6 +50,12 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D limit2levelnext 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -seT scripts/UCN_limit2levelnext.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D e1 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -seT scripts/UCN_e1.htt
