@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.588 2016-03-22 20:46:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.589 2016-03-22 21:10:43 pbuchbinder Exp $";
 static const char g_revision[] = "11.23";
 
 /************************************************************************
@@ -12594,7 +12594,8 @@ const char *qos_client_pref_cmd(cmd_parms *cmd, void *dcfg)
   }
 #endif
   if((sconf->qos_cc_prefer < 1) || (sconf->qos_cc_prefer > 99)) {
-    return apr_psprintf(cmd->pool, "%s: percentage must be a percentage between 1 and 99",
+    return apr_psprintf(cmd->pool, "%s: percentage must be a numeric value"
+                        " between 1 and 99",
                         cmd->directive->directive);
   }
 #ifdef AP_TAKE_ARGV
