@@ -42,7 +42,7 @@ QS_EnableInternalIPSimulation off
  QS_ClientEventLimitCount 20 2 SlowRequest
  QS_ClientEventLimitCount 3 300 SlowRepeatedlySlow
  SetEnvIfPlus Request_URI / SlowRequest
- SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest<
+ SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
 </IfDefine>
 
 <IfDefine limit2levelnext>
