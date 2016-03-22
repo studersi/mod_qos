@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.587 2016-03-21 20:46:02 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.588 2016-03-22 20:46:49 pbuchbinder Exp $";
 static const char g_revision[] = "11.23";
 
 /************************************************************************
@@ -447,6 +447,11 @@ typedef enum  {
 typedef struct {
   char *variable1;
   char *variable2;
+#ifdef AP_REGEX_H
+  ap_regex_t *preg;
+#else
+  regex_t *preg;
+#endif
   char *name;
   char *value;
 } qos_setenvif_t;
@@ -4263,40 +4268,61 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvif_t)->elts;
   for(i = 0; i < apr_table_elts(sconf->setenvif_t)->nelts; i++) {
     qos_setenvif_t *setenvif = (qos_setenvif_t *)entry[i].val;
-    if((setenvif->variable1[0] == '!') && (setenvif->variable2[0] == '!')) {
-      if(!apr_table_get(r->subprocess_env, &setenvif->variable1[1]) &&
-         !apr_table_get(r->subprocess_env, &setenvif->variable2[1])) {
-        if(setenvif->name[0] == '!') {
-          apr_table_unset(r->subprocess_env, &setenvif->name[1]);
-        } else {
-          apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+    if(setenvif->preg == NULL) {
+      // mode 1 (boolean AND operator)
+      if((setenvif->variable1[0] == '!') && (setenvif->variable2[0] == '!')) {
+        if(!apr_table_get(r->subprocess_env, &setenvif->variable1[1]) &&
+           !apr_table_get(r->subprocess_env, &setenvif->variable2[1])) {
+          if(setenvif->name[0] == '!') {
+            apr_table_unset(r->subprocess_env, &setenvif->name[1]);
+          } else {
+            apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+          }
         }
-      }
-    } else if(setenvif->variable1[0] == '!') {
-      if(!apr_table_get(r->subprocess_env, &setenvif->variable1[1]) &&
-         apr_table_get(r->subprocess_env, setenvif->variable2)) {
-        if(setenvif->name[0] == '!') {
-          apr_table_unset(r->subprocess_env, &setenvif->name[1]);
-        } else {
-          apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+      } else if(setenvif->variable1[0] == '!') {
+        if(!apr_table_get(r->subprocess_env, &setenvif->variable1[1]) &&
+           apr_table_get(r->subprocess_env, setenvif->variable2)) {
+          if(setenvif->name[0] == '!') {
+            apr_table_unset(r->subprocess_env, &setenvif->name[1]);
+          } else {
+            apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+          }
         }
-      }
-    } else if(setenvif->variable2[0] == '!') {
-      if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
-         !apr_table_get(r->subprocess_env, &setenvif->variable2[1])) {
-        if(setenvif->name[0] == '!') {
-          apr_table_unset(r->subprocess_env, &setenvif->name[1]);
-        } else {
-          apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+      } else if(setenvif->variable2[0] == '!') {
+        if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
+           !apr_table_get(r->subprocess_env, &setenvif->variable2[1])) {
+          if(setenvif->name[0] == '!') {
+            apr_table_unset(r->subprocess_env, &setenvif->name[1]);
+          } else {
+            apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+          }
+        }
+      } else {
+        if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
+           apr_table_get(r->subprocess_env, setenvif->variable2)) {
+          if(setenvif->name[0] == '!') {
+            apr_table_unset(r->subprocess_env, &setenvif->name[1]);
+          } else {
+            apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+          }
         }
       }
     } else {
-      if(apr_table_get(r->subprocess_env, setenvif->variable1) &&
-         apr_table_get(r->subprocess_env, setenvif->variable2)) {
-        if(setenvif->name[0] == '!') {
-          apr_table_unset(r->subprocess_env, &setenvif->name[1]);
-        } else {
-          apr_table_set(r->subprocess_env, setenvif->name, setenvif->value);
+      // mode 2 (pattern match)
+      const char *value = apr_table_get(r->subprocess_env, setenvif->variable1);
+      if(value) {
+#ifdef AP_REGEX_H
+        ap_regmatch_t regm[AP_MAX_REG_MATCH];
+#else
+        regmatch_t regm[AP_MAX_REG_MATCH];
+#endif
+        if(ap_regexec(setenvif->preg, value, AP_MAX_REG_MATCH, regm, 0) == 0) {
+          if(setenvif->name[0] == '!') {
+            apr_table_unset(r->subprocess_env, &setenvif->name[1]);
+          } else {
+            char *replaced = ap_pregsub(r->pool, setenvif->value, value, AP_MAX_REG_MATCH, regm);
+            apr_table_set(r->subprocess_env, setenvif->name, replaced);
+          }
         }
       }
     }
@@ -11405,20 +11431,58 @@ const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, c
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   qos_setenvif_t *setenvif = apr_pcalloc(cmd->pool, sizeof(qos_setenvif_t));
-  setenvif->variable1 = apr_pstrdup(cmd->pool, v1);
-  setenvif->variable2 = apr_pstrdup(cmd->pool, v2);
-  setenvif->name = apr_pstrdup(cmd->pool, a3);
-  setenvif->value = strchr(setenvif->name, '=');
-  if(setenvif->value == NULL) {
-    if(setenvif->name[0] == '!') {
-      setenvif->value = apr_pstrdup(cmd->pool, "");
+  if(a3) {
+    // mode 1 (boolean AND operator)
+    setenvif->variable1 = apr_pstrdup(cmd->pool, v1);
+    setenvif->variable2 = apr_pstrdup(cmd->pool, v2);
+    setenvif->preg = NULL;
+    setenvif->name = apr_pstrdup(cmd->pool, a3);
+    setenvif->value = strchr(setenvif->name, '=');
+    if(setenvif->value == NULL) {
+      if(setenvif->name[0] == '!') {
+        setenvif->value = apr_pstrdup(cmd->pool, "");
+      } else {
+        return apr_psprintf(cmd->pool, "%s: new variable must have the format <name>=<value>",
+                            cmd->directive->directive);
+      }
     } else {
-      return apr_psprintf(cmd->pool, "%s: new variable must have the format <name>=<value>",
-                          cmd->directive->directive);
+      setenvif->value[0] = '\0';
+      setenvif->value++;
     }
   } else {
-    setenvif->value[0] = '\0';
-    setenvif->value++;
+    // mode 2 (pattern match)
+    char *pattern;
+    setenvif->variable1 = apr_pstrdup(cmd->pool, v1);
+    pattern = strchr(setenvif->variable1, '=');
+    if(pattern == NULL) {
+        return apr_psprintf(cmd->pool, "%s: missing pattern for variable1",
+                            cmd->directive->directive);
+    }
+    pattern[0] = '\0';
+    pattern++;
+    setenvif->variable2 = NULL;
+#ifdef AP_REGEX_H
+    setenvif->preg = ap_pregcomp(cmd->pool, pattern, AP_REG_EXTENDED);
+#else
+    setenvif->preg = ap_pregcomp(cmd->pool, pattern, REG_EXTENDED);
+#endif
+    if(setenvif->preg == NULL) {
+      return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
+                          cmd->directive->directive, pattern);
+    }
+    setenvif->name = apr_pstrdup(cmd->pool, v2);
+    setenvif->value = strchr(setenvif->name, '=');
+    if(setenvif->value == NULL) {
+      if(setenvif->name[0] == '!') {
+        setenvif->value = apr_pstrdup(cmd->pool, "");
+      } else {
+        return apr_psprintf(cmd->pool, "%s: new variable must have the format <name>=<value>",
+                            cmd->directive->directive);
+      }
+    } else {
+      setenvif->value[0] = '\0';
+      setenvif->value++;
+    }
   }
   apr_table_setn(sconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
   return NULL;
@@ -13200,14 +13264,17 @@ static const command_rec qos_config_cmds[] = {
 #endif
 
   /* env vars */
-  AP_INIT_TAKE3("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
-                RSRC_CONF,
-                "QS_SetEnvIf [!]<variable1> [!]<variable1> [!]<variable=value>,"
-                " sets (or unsets) the 'variable=value' (literal string) if"
-                " variable1 (literal string) AND variable2 (literal string)"
-                " are set in the request environment variable list (not case"
-                " sensitive). This is used to combine multiple variables"
-                " to a new event type."),
+  AP_INIT_TAKE23("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
+                 RSRC_CONF,
+                 "QS_SetEnvIf [!]<variable1>[=<regex>] [!]<variable2> [!]<variable=value>,"
+                 " sets (or unsets) the 'variable=value' (literal string) if"
+                 " variable1 (literal string) AND variable2 (literal string)"
+                 " are set in the request environment variable list (not case"
+                 " sensitive). This is used to combine multiple variables"
+                 " to a new event type. Alternatively, a regular expression"
+                 " can be specifed for variable1's value and variable2 must be"
+                 " omitted in order to simply set a new variable if"
+                 " the regular expression matches."),
 
   AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
                 RSRC_CONF,

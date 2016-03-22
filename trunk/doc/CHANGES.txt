@@ -1,5 +1,7 @@
 Version
 
+ - Directive QS_SetEnvIf supports singe variable match.
+
  - qslog -p:
    * fallback to simple hour/minutes detection
    * Fixed: writes now statistic line at the "next" minute (m+1:00)

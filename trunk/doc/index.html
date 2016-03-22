@@ -938,11 +938,18 @@ denied when reaching this limitation for the specified time (blocked at request 
 </li>
 <li>
 <a name="QS_SetEnvIf"></a>
-<code>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; [!]&lt;variable=value&gt;</code><br>
-Sets (or unsets) the "variable=value" (literal string) if variable1 (literal string) 
-AND variable2 (literal string) are set in the request environment 
+<code>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; [!]&lt;env-variable=value&gt;</code><br>
+Sets (or unsets) the "variable=value" (literal string) if variable1 (literal 
+string) AND variable2 (literal string) are set in the request environment 
 variable list (not case sensitive). This is used to combine multiple 
 variables to a new event type.
+</li>
+<li>
+<a name="QS_SetEnvIfMatch"></a>
+<code>QS_SetEnvIf &lt;env-variable1&gt;=&lt;regex&gt; [!]&lt;env-variable&gt;=&lt;value&gt;</code><br>
+Sets the variable if the varaiable1's value matches the defined regular 
+expression. <code>$1</code>..<code>$9</code> within the value and are 
+replaced by parenthesized subexpressions of the regular expression.
 </li>
 <li>
 <a name="QS_SetEnv"></a>
