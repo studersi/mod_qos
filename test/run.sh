@@ -15,6 +15,7 @@ RC=0
 START=`date '+%s'`
 if [ "$1" = "-s" -o "$1" = "-se" ]; then
     $HTTEST -s -e $2
+    RC=$?
 #    LOG=`basename $2`
 #    echo "run (`date '+%a %b %d %H:%M:%S %Y'`) $2\t\c"
 #    if [ `expr length $2` -lt 38 ]; then
