@@ -1738,6 +1738,7 @@ the TCP connection.</small>
 
 </li>
 <li>
+<a name="QS_ClientGeoCountryPriv"></a>
 <code>QS_ClientGeoCountryPriv &lt;list&gt; &lt;connections&gt;</code><br>
 Defines a comma separated list of country codes for origin client IPv4 address 
 which are allowed to access the server even if the number of busy TCP 
@@ -2276,7 +2277,8 @@ if the server runs on low TCP connection resources (20% or fewer
 free connections in this example). mod_qos prefers also those clients 
 which communicate with the server instantaneously and fast, and denies 
 access to slow clients sending data irregularly, in case the server 
-has not enough resources. A minimal request bandwidth should be enforced, in 
+has not enough resources.<br/> 
+A minimal request bandwidth should be enforced, in 
 order to close the connections coming from idle clients. The 
 <code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code> 
 does this. You may want to combine this with 
@@ -2287,10 +2289,13 @@ This could even be extened by the Apache module
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_reqtimeout.html">mod_reqtimeout <img src="images/link.png"/></a> 
 (available since Apache 2.2.15) which may be used to set various 
 timeouts for receiving the request headers and the request 
-body from the client. The 
-<code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> 
+body from the client.<br/> 
+The <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> 
 directive is used in this example to block clients for a certain amount 
-of time if they cause errors because they send invalid HTTP requests.
+of time if they cause errors because they send invalid HTTP requests.<br/> 
+If you normally expect requests from certain countries only, you might also consider 
+using the <code><a href="#QS_ClientGeoCountryPriv">QS_ClientGeoCountryPriv</a></code> 
+directive in addition.
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
