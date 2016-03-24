@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.264 2016-02-01 06:30:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.265 2016-03-24 06:21:37 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -29,7 +29,7 @@
 cd `dirname $0`
 
 if [ `ps -ef | grep -v grep | grep -c "tee test.log"` -eq 0 ]; then
-  $0 | tee test.log
+  $0 2>&1 | tee test.log
   exit $?
 fi
 
