@@ -335,7 +335,7 @@ waitApache
 ./run.sh -s scripts/UC1_QS_SrvMaxConnPerIP.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
-./sleep.sh
+./sleep.sh; sleep 3
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D v6 -D uc1b 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UC1_QS_ClientEventLimitCount_v6.htt
