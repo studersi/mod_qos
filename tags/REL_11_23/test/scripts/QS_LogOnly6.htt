@@ -1,0 +1,50 @@
+#
+# QS_EventRequestLimit
+# DenyDecoding
+
+INCLUDE scripts/ports
+
+CLIENT 4
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: yoda
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 200
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: yoda
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(012\): access denied \(log only\), QS_EventRequestLimit rule: var=\(YODA\)\(4\)"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/query/uni/strict/get?name=\u053olEcT HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "!code=046"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(046\): access denied, invalid url encoding, action=log only"
+_EXEC tail -1 logs/error_log
+
+END

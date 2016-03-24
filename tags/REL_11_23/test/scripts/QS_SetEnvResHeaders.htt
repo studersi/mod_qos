@@ -1,0 +1,48 @@
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "!QS_Special"
+_EXPECT . "AS1"
+_WAIT
+
+_SLEEP 100
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . " value "
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__QS_Special: value
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+_PIPE
+_EXEC tail -1 ./logs/access_log
+
+END
