@@ -1,5 +1,5 @@
 #
-# $Id: 001_deny.htt,v 1.1 2015-08-20 20:39:45 pbuchbinder Exp $
+# $Id: 001_deny.htt,v 1.2 2016-03-30 19:40:54 pbuchbinder Exp $
 #
 #      QS_DenyPath +d1 deny /status/deny
 #      QS_DenyQuery +q1 deny denyme
@@ -26,6 +26,9 @@ __Connection: keep-alive
 __
 _EXPECT . "!200 OK"
 _EXPECT . "503 Service Unavailable"
+_EXPECT . "code=040"
+_EXPECT . "!have permission to access"
+_EXPECT . "!403 Forbidden"
 _EXPECT . "!<title>Apache Status</title>"
 _WAIT
 _CLOSE

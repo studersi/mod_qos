@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.9 2016-01-22 21:27:24 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.10 2016-03-30 19:40:54 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -67,6 +67,7 @@ case "$COMMAND" in
 	    APID=`cat logs/${E}.pid`
 	    echo "kill $E $APID"
 	    kill $APID
+            sleep 1
 	  fi
 	done
 	for E in $INST; do

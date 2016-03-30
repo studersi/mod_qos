@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.589 2016-03-22 21:10:43 pbuchbinder Exp $";
-static const char g_revision[] = "11.23";
+static const char revision[] = "$Id: mod_qos.c,v 5.590 2016-03-30 19:40:54 pbuchbinder Exp $";
+static const char g_revision[] = "11.24";
 
 /************************************************************************
  * Includes
@@ -2911,11 +2911,7 @@ static int qos_error_response(request_rec *r, const char *error_page) {
       r->method = apr_pstrdup(r->pool, "GET");
       r->method_number = M_GET;
       ap_internal_redirect(error_page, r);
-#ifdef QS_APACHE_24
-      return OK;
-#else
       return DONE;
-#endif
     }
   }
   return DECLINED;
