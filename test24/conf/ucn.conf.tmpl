@@ -38,6 +38,15 @@ SSLRandomSeed startup    builtin
 
 QS_EnableInternalIPSimulation off
 
+<IfDefine ssi>
+AddType                  text/html .shtml
+AddOutputFilter          INCLUDES .shtml
+QS_ErrorPage             /errorpages/error.shtml
+QS_ClientEventLimitCount 20 10
+SetEnvIfPlus Request_URI / QS_Limit
+SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !QS_Limit
+</IfDefine>
+
 <IfDefine limit2level>
  QS_ClientEventLimitCount 20 2 SlowRequest
  QS_ClientEventLimitCount 3 300 SlowRepeatedlySlow

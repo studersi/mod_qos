@@ -44,7 +44,7 @@ if [ `../httpd/httpd -l | grep -c event.c` -eq 1 ]; then
     done
 fi
 
-for E in `ls scripts/*.htt | grep -v -e "WORKER.htt" -e "EVENT.htt" -e "_h2" | sort`; do
+for E in `ls scripts/*.htt | grep -v -e "WORKER.htt" -e "EVENT.htt" -e "_h2" -e "UCN_" | sort`; do
   ./run.sh -seT $E
   if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
