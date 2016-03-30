@@ -1,0 +1,27 @@
+
+INCLUDE scripts/ports
+SET HOST=localhost
+
+# results in about 470 req/sec without restrictions
+CLIENT 10
+
+_RAND 100 30000 SLEEP
+_SLEEP $SLEEP
+
+_ERROR .*
+
+_LOOP FOREVER
+_LOOP 20
+_REQ $HOST $QS_PORT_BASE
+__GET /demo/sn-fb-dstk-war/getStatus HTTP/1.1
+__Host: $HOST
+__
+_WAIT
+_SLEEP 20
+_END LOOP
+_CLOSE
+_END LOOP
+
+_END ERROR
+
+END
