@@ -1,18 +1,39 @@
 #
-# $Id: UCN_ssi.htt,v 1.1 2016-03-30 20:39:13 pbuchbinder Exp $
+# $Id: UCN_ssi.htt,v 1.2 2016-04-01 18:54:19 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
 CLIENT
+#
+# QS_PermitUri +QSF001 deny "^/$"
+# QS_PermitUri +QSF002 deny "^/[a-zA-Z0-9]+\.html$"
+#
 
+_REQ localhost $QS_PORT_BASE
+__GET /demo/favicon.ico HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "!200 OK"
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "<title>ERROR - 041</title>"
+_EXPECT . "reason: request filter"
+_EXPECT . "!connection rule"
+_EXPECT . "!client limitation"
+_EXPECT . "!bandwidth limitation"
+_EXPECT . "!GEO location limitation"
+_EXPECT . "!generic failure"
+_WAIT
+_CLOSE
 
 # 
 # QS_ClientEventLimitCount 20 10
 # SetEnvIfPlus Request_URI / QS_Limit
 # SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !QS_Limit
 # 
-_LOOP 19
+_LOOP 18
 _REQ localhost $QS_PORT_BASE
 __GET /index.html HTTP/1.1
 __Host: localhost
@@ -41,6 +62,7 @@ _EXPECT . "!connection rule"
 _EXPECT . "!request filter"
 _EXPECT . "!bandwidth limitation"
 _EXPECT . "!GEO location limitation"
+_EXPECT . "!generic failure"
 _WAIT
 _CLOSE
 _SLEEP 1000
