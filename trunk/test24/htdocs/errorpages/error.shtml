@@ -14,20 +14,15 @@
 <p>
     <!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /00[0-9]/" -->
         reason: initialisation failure
-    <!--#endif -->
-    <!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /0[18][0-9]/" -->
+    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /0[18][0-9]/" -->
         reason: request rule
-    <!--#endif -->
-    <!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /03[0-9]/" -->
+    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /03[0-9]/" -->
         reason: connection rule
-    <!--#endif -->
-    <!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /04[0-9]/" -->
+    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /04[0-9]/" -->
         reason: request filter
-    <!--#endif -->
-    <!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /05[0-9]/" -->
+    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /05[0-9]/" -->
         reason: bandwidth limitation
-    <!--#endif -->
-    <!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /06[0-9]/" -->
+    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /06[0-9]/" -->
         reason: client limitation <br>
         remaining time: <span id="remaining"><!--#echo var="QS_Limit_Remaining" --></span> seconds
 <script type="text/javascript">
@@ -46,9 +41,10 @@ setInterval(function () {
 }, 1000);
 //-->
 </script>
-    <!--#endif -->
-    <!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /10[0-9]/" -->
+    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /10[0-9]/" -->
         reason: GEO location limitation
+    <!--#else -->
+        reason: generic failure
     <!--#endif -->
 </p>
   </body>

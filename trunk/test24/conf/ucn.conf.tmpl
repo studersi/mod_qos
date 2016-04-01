@@ -110,6 +110,13 @@ Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
    ServerName   127.0.0.1
 
+<IfDefine ssi>
+   <Location />
+     QS_PermitUri +QSF001 deny "^/$"
+     QS_PermitUri +QSF002 deny "^/[a-zA-Z0-9]+\.html$"
+   </Location>
+</IfDefine>
+
 <IfDefine limit2level>
    <Location />
      SetEnvIfPlus SlowRequest_Counter 19 SlowRepeatedlySlow=1 late
