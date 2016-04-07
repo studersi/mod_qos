@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: stack.c,v 1.33 2016-01-07 20:01:56 pbuchbinder Exp $";
+static const char revision[] = "$Id: stack.c,v 1.34 2016-04-07 15:54:57 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -377,6 +377,8 @@ int main(int argc, char **argv) {
   speed(1000000);
   m_qsmod = 32;
   speed(2000000);
+  m_qsmod = 32;
+  speed(10000000);
 
   return 0;
 }

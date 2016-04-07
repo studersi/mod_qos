@@ -1,3 +1,7 @@
+Version
+
+ - QS_ClientEntries max. value is now limited to 10000000.
+
 Version 11.24
 
  - Fixed: Apache 2.4 had nested error page when using QS_ErrorPage

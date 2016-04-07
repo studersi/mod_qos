@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.590 2016-03-30 19:40:54 pbuchbinder Exp $";
-static const char g_revision[] = "11.24";
+static const char revision[] = "$Id: mod_qos.c,v 5.591 2016-04-07 15:54:57 pbuchbinder Exp $";
+static const char g_revision[] = "11.25";
 
 /************************************************************************
  * Includes
@@ -12558,8 +12558,9 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   if(sconf->qos_cc_size >= 1000000) {
     m_qos_cc_partition = 32;
   }
-  if(sconf->qos_cc_size <= 0) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value >=100", 
+  if(sconf->qos_cc_size <= 0 || sconf->qos_cc_size > 10000000) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value gearter than 100"
+                        " and less than 10000000", 
                         cmd->directive->directive);
   }
   return NULL;
