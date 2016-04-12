@@ -939,7 +939,7 @@ denied when reaching this limitation for the specified time (blocked at request 
 <li>
 <a name="QS_SetEnvIf"></a>
 <code>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; [!]&lt;env-variable=value&gt;</code><br>
-Sets (or unsets) the "variable=value" (literal string) if variable1 (literal 
+Sets (or unsets) the environment "variable=value" (literal string) if variable1 (literal 
 string) AND variable2 (literal string) are set in the request environment 
 variable list (not case sensitive). This is used to combine multiple 
 variables to a new event type.
@@ -947,9 +947,10 @@ variables to a new event type.
 <li>
 <a name="QS_SetEnvIfMatch"></a>
 <code>QS_SetEnvIf &lt;env-variable1&gt;=&lt;regex&gt; [!]&lt;env-variable&gt;=&lt;value&gt;</code><br>
-Sets the variable if the varaiable1's value matches the defined regular 
-expression. <code>$1</code>..<code>$9</code> within the value and are 
-replaced by parenthesized subexpressions of the regular expression.
+Sets the environment variable if the environment varaiable1's value 
+matches the defined regular expression. <code>$1</code>..<code>$9</code> 
+within the value and are replaced by parenthesized subexpressions 
+of the regular expression.
 </li>
 <li>
 <a name="QS_SetEnv"></a>
@@ -1036,13 +1037,15 @@ rule violations.</li>
 to increment the <code><a href="#QS_Block">QS_Block</a></code> 
 event when closing connections due to the reach of the limitation configured 
 by the <a href="#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> directive.</li>
-<li>The "special code" <a name="NullConnection"></a><code>NullConnection</code> detects connections 
+<li><a name="NullConnection"></a><code>NullConnection</code> detects connections 
 which are closed even no HTTP request has been received. <br>
 <small>Note: The <code>NullConnection</code> event may happen silently (no log 
 message) expect when using <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a> debug</code>. 
 The parameter may be used to defend against SSL DoS attacks. 
 Please pay attention to the fact that unused <i>speculative TCP pre-connections</i> of 
 browsers may unintentionally cause this event as well.</small></li>
+<li><a name="BrokenConnection"></a><code>BrokenConnection</code> may be used to mark
+clients aborting the TCP connection before reading the whole HTTP response.</li>
 </ul>
 </li>
 <li>
@@ -1808,7 +1811,9 @@ due to an available <a href="#privilegedusers">VIP</a> session,
 "V"=create VIP session, "K"=connection closed 
 (no keep-alive), "T"=dynamic keep-alive, "r"=IP is marked as a 
 slow/bad client, "L"=means a request slowdown, and "s" is used for 
-serialized requests.
+serialized requests. The letter "A" for connection abort is set if 
+the status code detection <a href="#BrokenConnection"><code>BrokenConnection</code></a> 
+has been configured.
 </li>
 <li>
 <a name="mod_qos_cr"></a>
@@ -2358,6 +2363,7 @@ LimitRequestFields       30
 <a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a>  <a href="#QS_Block">QS_Block</a>
 <a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a> <a href="#QS_Block">QS_Block</a>
 <a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#NullConnection">NullConnection</a>     <a href="#QS_Block">QS_Block</a>
+<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#BrokenConnection">BrokenConnection</a>   <a href="#QS_Block">QS_Block</a>
 </pre>
 </td></tr>
 </table>
