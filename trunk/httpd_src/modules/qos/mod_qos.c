@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.591 2016-04-07 15:54:57 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.592 2016-04-12 19:29:42 pbuchbinder Exp $";
 static const char g_revision[] = "11.25";
 
 /************************************************************************
@@ -170,6 +170,7 @@ static const char g_revision[] = "11.25";
 #define QS_CLOSE          "QS_SrvMinDataRate"
 #define QS_MAXIP          "QS_SrvMaxConnPerIP"
 #define QS_EMPTY_CON      "NullConnection"
+#define QS_BROKEN_CON     "BrokenConnection"
 #define QS_RuleId         "QS_RuleId"
 #define QS_MFILE          "/var/tmp/"
 
@@ -200,6 +201,7 @@ static const char *m_env_variables[] = {
   QS_MAXKEEPALIVEREQ,
   QS_CLOSE,
   QS_EMPTY_CON,
+  QS_BROKEN_CON,
   QS_RuleId,
   NULL
 };
@@ -7532,8 +7534,8 @@ static void qos_propagate_notes(request_rec *r) {
  ***********************************************************************/
 
 /**
- * Destructor for connections which does not have been established
- * successfully.
+ * Destructor to handle connections which do not have been established
+ * successfully resp. have been closed unexpectedly.
  *
  * Increments block counter.
  *
@@ -7544,14 +7546,20 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
   qs_conn_base_ctx *base = p;
   if(base->sconf->has_qos_cc || base->sconf->qos_cc_prefer) {
     int connRuleViolation = 0;
+    const char *type = QS_EMPTY_CON;
     if(base->requests == 0 &&
        apr_table_get(base->sconf->setenvstatus_t, QS_EMPTY_CON) && 
        !apr_table_get(base->c->notes, QS_BLOCK_SEEN)) {
       connRuleViolation = 1;
       apr_table_set(base->c->notes, QS_BLOCK_SEEN, "");
     }
+    if(apr_table_get(base->c->notes, QS_BROKEN_CON)) {
+      connRuleViolation = 1;
+      type = QS_BROKEN_CON;
+    }
     if(apr_table_get(base->c->notes, QS_MAXIP)) {
       connRuleViolation = 1;
+      type = QS_MAXIP;
     }
     if(connRuleViolation) {
       qos_user_t *u = qos_get_user_conf(base->sconf->act->ppool);
@@ -7573,8 +7581,9 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
       if(QS_ISDEBUG(base->c->base_server)) {
         ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, base->c->base_server, 
                      QOS_LOGD_PFX"QS_ClientEventBlockCount rule: "
-                     QS_EMPTY_CON " event detected "
+                     "%s event detected "
                      "c=%s",
+                     type,
                      QS_CONN_REMOTEIP(base->c) == NULL ? "-" : QS_CONN_REMOTEIP(base->c));
       }
     }
@@ -8279,6 +8288,11 @@ static int qos_header_parser(request_rec * r) {
       ap_add_output_filter("qos-out-filter-body", NULL, r, r->connection);
     }
 
+    /* enable broken connection detection (connection abort by client) */
+    if(apr_table_get(sconf->setenvstatus_t, QS_BROKEN_CON)) {
+      ap_add_output_filter("qos-out-filter-brokencon", NULL, r, r->connection);
+    }
+
     /* 
      * QS_Permit* / QS_Deny* enforcement (but not QS_DenyEvent)
      */
@@ -8817,6 +8831,20 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
     }
   }
   return rv;
+}
+
+/**
+ * BrokenConnection
+ */
+static apr_status_t qos_out_filter_brokencon(ap_filter_t *f, apr_bucket_brigade *bb) {
+  apr_status_t rc = ap_pass_brigade(f->next, bb);
+  if(rc == APR_ECONNABORTED) {
+    // client closed the connection
+    request_rec *r = f->r;
+    qs_set_evmsg(r, "A;");
+    apr_table_set(r->connection->notes, QS_BROKEN_CON, "");
+  }
+  return rc;
 }
 
 /**
@@ -11264,6 +11292,16 @@ const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *r
       return apr_psprintf(cmd->pool, "%s: "QS_EMPTY_CON" may only be defined for the event "QS_BLOCK,
                           cmd->directive->directive);
     }
+  } else if(strcasecmp(rc, QS_BROKEN_CON) == 0) {
+    const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+    if(err != NULL) {
+      return apr_psprintf(cmd->pool, "%s: "QS_BROKEN_CON" may only be defined globally",
+                          cmd->directive->directive);
+    }
+    if(strcasecmp(var, QS_BLOCK) != 0) {
+      return apr_psprintf(cmd->pool, "%s: "QS_BROKEN_CON" may only be defined for the event "QS_BLOCK,
+                          cmd->directive->directive);
+    }
   } else {
     int code = atoi(rc);
     if(code <= 0) {
@@ -13330,7 +13368,9 @@ static const command_rec qos_config_cmds[] = {
                 " the status '"QS_EMPTY_CON"' may be used to mark connections"
                 " which are closed before any HTTP request has ever been received."
                 " The '"QS_MAXIP"' value may be used to count "QS_BLOCK" events for"
-                " connections closed by the "QS_MAXIP" directive."),
+                " connections closed by the "QS_MAXIP" directive."
+                " The '"QS_BROKEN_CON"' value may be used to mark clients not"
+                " reading the full HTTP response."),
 
   AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvresbody_cmd, NULL,
                 ACCESS_CONF,
@@ -13603,6 +13643,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_output_filter("qos-out-filter-min", qos_out_filter_min, NULL, AP_FTYPE_RESOURCE+1);
   ap_register_output_filter("qos-out-filter-delay", qos_out_filter_delay, NULL, AP_FTYPE_PROTOCOL+3);
   ap_register_output_filter("qos-out-filter-body", qos_out_filter_body, NULL, AP_FTYPE_RESOURCE+1);
+  ap_register_output_filter("qos-out-filter-brokencon", qos_out_filter_brokencon, NULL, AP_FTYPE_PROTOCOL+3);
   ap_register_output_filter("qos-out-err-filter", qos_out_err_filter, NULL, AP_FTYPE_RESOURCE+1);
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_insert_error_filter(qos_insert_err_filter, NULL, NULL, APR_HOOK_MIDDLE);
