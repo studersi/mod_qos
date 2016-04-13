@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.56 2016-02-19 10:03:47 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.57 2016-04-13 05:28:33 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -103,7 +103,6 @@ sed <doc/index.html >mod_qos-${VERSION}/doc/index.html \
 cp doc/images/mod_qos_s.gif mod_qos-${VERSION}/doc/images/
 cp doc/images/mod_qos_seq.gif mod_qos-${VERSION}/doc/images/
 cp doc/images/SrvMinDataRate.png mod_qos-${VERSION}/doc/images/
-cp doc/images/nevis.gif mod_qos-${VERSION}/doc/images/
 cp doc/images/download.jpg mod_qos-${VERSION}/doc/images/
 cp doc/favicon.ico mod_qos-${VERSION}/doc/
 cp doc/*.1.html mod_qos-${VERSION}/doc/
