@@ -1044,8 +1044,11 @@ message) expect when using <code><a href="http://httpd.apache.org/docs/2.2/mod/c
 The parameter may be used to defend against SSL DoS attacks. 
 Please pay attention to the fact that unused <i>speculative TCP pre-connections</i> of 
 browsers may unintentionally cause this event as well.</small></li>
-<li><a name="BrokenConnection"></a><code>BrokenConnection</code> may be used to mark
-clients aborting the TCP connection before reading the whole HTTP response.</li>
+<li><a name="BrokenConnection"></a><code>BrokenConnection</code> may be used 
+to mark clients aborting the TCP connection before reading the whole HTTP 
+response.<br>
+<small>Note: Connections may also be aborted by mod_qos if client reads 
+the response too slow.</small></li>
 </ul>
 </li>
 <li>
