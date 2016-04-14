@@ -101,7 +101,7 @@ options you want to apply to improve your Apache server's DoS resistence.
 It shall give you an idea about which parameter you might want to set.
 </p>
 
-<a name="server"></a>
+<a name="basic"></a>
 <h3>Basic Settings</h3>
 <p>
 Hardware is inexpensive. Today's CPUs offers many cores allowing the processing 
@@ -134,10 +134,123 @@ TimeOut                              10
 KeepAlive                            on
 KeepAliveTimeout                      5
 MaxKeepAliveRequests                 30
-QS_SrvMaxConnClose                   85%
+<a href="index.html#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a>                   85%
 </pre></td></tr></table>
 
+<a name="connectionperip"></a>
+<h3>Connections per IP</h3>
+<p>
+There is no reason to allow a single IP address to open an unlimited number of 
+TCP connections. The <a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> 
+directive can be used to limit the connections a single IP is allowed to open.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+<a href="index.html#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a>                   40
+</pre></td></tr></table>
 
+<a name="datarate"></a>
+<h3>Minimum Data Rate</h3>
+<p>
+The definition of a minimum upload/download throughput a client must generate 
+(the bytes sent/received by the client per seconds) is a very imporant protection 
+mechanism against <i>low-bandwidth DoS attacks</i>. 
+The <a href="index.html#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> directive 
+and be used to implement this rule.
+</p>
+Syntax: <code><a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a> &lt;bytes per second&gt; &lt;max bytes per second&gt; &lt;connections&gt;</code><br>
+
+<p>It offers three parameters. The first defines the 
+minimum data rate a client must achieve when this limitation becomes active and the 
+second parameter defines the throughput a client must achive when the server reaches 
+its <code>MaxClients</code> setting. The third parameter defines the number of busy 
+connections to enable this restriction.
+</p>
+<img src="images/SrvMinDataRate.png"/>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+<a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a>          120 1500 600
+</pre></td></tr></table>
+<p>
+You might also want to have a lock at the Apache module 
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_reqtimeout.html">mod_reqtimeout <img src="images/link.png"/></a> 
+(available since Apache 2.2.15) which may be used to set various timeouts for 
+receiving the request headers and the request body from the client.
+</p>
+<a name="block"></a>
+<h3>Repeat Offender</h3>
+<p>
+A very effective measurement is the possibility to block client IP addresses automatically 
+for a certain period if they violate a rule multiple times respecively if they cause 
+errors many times. The <a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a> 
+directive can be used to do this. It defines how often a "block event" (the Apache 
+process environment variable <code>QS_Block</code>) may occure during a defined period of 
+time. This enhances the effect of the above limitations.
+</p>
+<p>
+The <a href="index.html#QS_SetEnvIfStatus"><code>QS_SetEnvIfStatus</code></a> is one of mod_qos's 
+directive which may be used to define an event which must not occur too frequently. Incomming TCP 
+connections are rejected if a client IP address reaches this threshold.
+</p>
+<p>
+The following example blocks clients if they cause more than 20 erros within 5 minutes.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+<a href="index.html#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a> 20 300
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        400                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        405                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        406                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        408                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        413                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        414                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        500                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a>  <a href="#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a> <a href="#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#NullConnection">NullConnection</a>     <a href="#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#BrokenConnection">BrokenConnection</a>   <a href="#QS_Block">QS_Block</a>
+</pre></td></tr></table>
+<p>
+This is just an example of events you might want to limit.
+</p>
+<p>
+It is also possible that you enable this limitation only if the server 
+reaches a predefined number of busy connections. You can achieve this by 
+deleting the <code>QS_Block</code> event if the server has less 
+connections. The <a href="index.html#QS_AllConn"><code>QS_AllConn</code></a> 
+variable tells you the number of busy TCP connections and the 
+<a href="index.html#QS_SetEnvIf"><code>QS_SetEnvIf</code></a> directive 
+allows you to set or unset variables.<br>
+The follwing example unsets the <code>QS_Block</code> variable as long 
+as the server has less than 599 connections.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+<a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>                  <a href="index.html#QS_AllConn">QS_AllConn</a>=^[12345]?[0-9]{1,2}$ !<a href="index.html#QS_Block">QS_Block</a>
+</pre></td></tr></table>
+
+---------
+ QS_ClientEventLimitCount 
+---------
+ QS_ClientGeoCountryPriv 
+---------
+ QS_ClientPrefer
+---------
+tcp
+net.core.somaxconn = 32000
+net.core.netdev_max_backlog = 32000
+net.ipv4.ip_local_port_range = 9999 61000
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_slow_start_after_idle = 0
+---------
+iptables
+# limit the number of new connections (active after reaching
+# the burst limit only)
+iptables -A INPUT -p tcp --dport 80,443 -m limit \
+  --state NEW --limit 60/minute --limit-burst 250 -j ACCEPT
+# limit the number of established/concurrent connections
+iptables -A INPUT -m state --state RELATED,ESTABLISHED \
+  -m limit --limit 50/second --limit-burst 50 -j ACCEPT
+# limit the connections from a single source IP to 100
+iptables -A INPUT -p tcp --syn --dport 80,443 -m connlimit \
+  --connlimit-above 100 -j REJECT
 
 </td></tr>
 </tbody>
