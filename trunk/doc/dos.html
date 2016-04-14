@@ -31,7 +31,7 @@
 
  See http://opensource.adnovum.ch/mod_qos/ for further details.
 
- Copyright (C) 2007-2016 Pascal Buchbinder
+ Copyright (C) 2016 Pascal Buchbinder
 
  This program is free software; you can redistribute it and/or
  modify it under the terms of the GNU General Public License
@@ -144,7 +144,7 @@ MaxKeepAliveRequests                 30
 <a href="index.html#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a>                   85%
 </pre></td></tr></table>
 
-<a name="connectionperip"></a>
+<a name="connections"></a>
 <h3>Connections per IP</h3>
 <p>
 There is no reason to allow a single IP address to open an unlimited number of 
@@ -193,8 +193,8 @@ A very effective measurement is the possibility to block client IP addresses aut
 for a certain period if they violate a rule multiple times respecively if they cause 
 errors many times. The <a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a> 
 directive can be used to do this. It defines how often a "block event" (the Apache 
-process environment variable <code>QS_Block</code>) may occure during a defined period of 
-time. This enhances the effect of the above limitations.
+process environment variable <a href="index.html#QS_Block"><code>QS_Block</code></a>) 
+may occure during a defined period of time. This enhances the effect of the above limitations.
 </p>
 <p>
 The <a href="index.html#QS_SetEnvIfStatus"><code>QS_SetEnvIfStatus</code></a> is one of mod_qos's 
@@ -227,20 +227,21 @@ clients opening TCP connections not sending any HTTP data.
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#NullConnection">NullConnection</a>     <a href="#QS_Block">QS_Block</a>
 </pre></td></tr></table>
-<p>
+<!-- <p>
 It is also possible that you enable this limitation only if the server 
 reaches a predefined number of busy connections. You can achieve this by 
-deleting the <code>QS_Block</code> event if the server has less 
-connections. The <a href="index.html#QS_AllConn"><code>QS_AllConn</code></a> 
+deleting the <a href="index.html#QS_Block"><code>QS_Block</code></a> 
+event if the server has less connections. 
+The <a href="index.html#QS_AllConn"><code>QS_AllConn</code></a> 
 variable tells you the number of busy TCP connections and the 
 <a href="index.html#QS_SetEnvIf"><code>QS_SetEnvIf</code></a> directive 
 allows you to set or unset variables.<br>
-The follwing example unsets the <code>QS_Block</code> variable as long 
-as the server has less than 599 connections.
+The follwing example unsets the <a href="index.html#QS_Block"><code>QS_Block</code></a> 
+variable as long as the server has less than 599 connections.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 <a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>                  <a href="index.html#QS_AllConn">QS_AllConn</a>=^[12345]?[0-9]{1,2}$ !<a href="index.html#QS_Block">QS_Block</a>
-</pre></td></tr></table>
+</pre></td></tr></table> -->
 
 
 
