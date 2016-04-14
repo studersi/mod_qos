@@ -1,0 +1,149 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+ <title>mod_qos - Denial of Service Prevention</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
+<meta name="author" content="Pascal Buchbinder" />
+<meta name="KeyWords" content="Quality of Service, Apache Web Server, Web application security, WAF, Open Source Software, AdNovum Informatik, Secure Reverse Proxy, Denial of Service (DoS) Prevention" />
+<link rel="shortcut icon" href="favicon.ico" />
+<style TYPE="text/css">
+<!--  
+  body {
+	background-color: white;
+	color: black;
+	font-family: sans-serif, arial, verdana;
+	font-weight: normal;
+	text-align: left;
+  }
+  a:link    { color:#00673F; text-decoration:none; }
+  a:visited { color:#00673F; text-decoration:none; }
+  a:focus   { color:black; text-decoration:underline; }
+  a:hover   { color:black; text-decoration:underline; }
+  a:active  { color:black; text-decoration:underline; }
+  .btable   { font-size:0.75em; }
+-->
+</style>
+</head>
+<body>
+<!--
+
+ Quality of service module for Apache Web Server.
+
+ See http://opensource.adnovum.ch/mod_qos/ for further details.
+
+ Copyright (C) 2007-2016 Pascal Buchbinder
+
+ This program is free software; you can redistribute it and/or
+ modify it under the terms of the GNU General Public License
+ as published by the Free Software Foundation; either version 2
+ of the License, or (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ MA 02110-1301, USA.
+
+-->
+<table>
+<tbody>
+<tr><td><img src="images/mod_qos_s.gif" alt="mod_qos" /></td>
+    <td style="vertical-align: bottom;"><h1>Denial of Service Prevention</h1></td></tr>
+<tr><td>&nbsp;</td>
+    <td>
+
+
+<p>
+mod_qos cannot only be used to implement QoS by controlling your Apache 
+web server's traffic but may also be suitable to help you to protect 
+you web site against denial of servive (DoS) attacks. The two features 
+of mod_qos helping you in doing this, are the possibility to measure the 
+bandwith used for a TCP connection (and the possibility to enfore that 
+the requiements concerning the minimum banthwith is fulfilled) and the
+existence of event counters per client's IP addresses (allowing you 
+to limit the number of events a client may cause on your web site).
+</p>
+<p>
+<i>
+Note: Users may not use a unique IP addresses but their addresses may 
+be shared by multiple clients when using an intermediate proxy server. 
+This is expecially true for B2B applications.
+</i>
+</p>
+<p>
+This documentation shall give you an idea how you could use mod_qos 
+within your Apache web server helping you to defense against the following 
+DoS attacks:
+<ul>
+<li><i>Low-bandwidth DoS attacks</i><br>
+The attacker tries to keep many TCP connections to your web server open, 
+only sending partitial request data peridically (just engough not triggering 
+any inactivty timeouts). The target is to occupy all available connections 
+(running threads of your Apache server) so that nobody else can connect.
+</li>
+<li><i>HTTP GET/POST flood DoS attacks</i><br>
+The attacker sends a huge amount of HTTP requests to your web server without 
+awaiting the server's response. This requires only little traffic for the 
+attacker but may occupy your server's threads and consums computing resources 
+(CPU, memory). Some attackers scan your web site prior an attack measuring 
+the duration it takes to answer the request in order to find out the most 
+expensive calls.
+</li>
+</ul>
+</p>
+<p>
+The following is a step-by-step checklist about potential configuration 
+options you want to apply to improve your Apache server's DoS resistence. 
+It shall give you an idea about which parameter you might want to set.
+</p>
+
+<a name="server"></a>
+<h3>Basic Settings</h3>
+<p>
+Hardware is inexpensive. Today's CPUs offers many cores allowing the processing 
+of many threads in parallel and memory price is as low as never before. So allow 
+your Apache server to serve many requests / TCP connections in parallel by setting 
+a "high" value for its <a href="http://httpd.apache.org/docs/2.2/mod/mpm_common.html#maxclients"<code>MaxClients</code> <img src="images/link.png"/></a> 
+parameter (and the corresponding <code>ServerLimit</code>/<code>ThreadsPerChild</code>  
+values). I'm going to use 896 in the following examples. This is not an absolute 
+value. Is propably not even a particular "high" value if you are fighting against a 
+<i>low-bandwidth DoS attack</i>. Maybe it is fine for a quad-core Intel CPU serving 
+several thousand concurrent users but you might choose a different value suitable your 
+environment (note that each tread requires about 1 to 2 MB of memory). Just adapt all 
+other values accordingly.
+</p>
+<p>
+Other imporant Apache base settings are timeouts. 
+One is the <a href="http://httpd.apache.org/docs/2.2/mod/core.html#timeout"><code>TimeOut</code> <img src="images/link.png"/></a>  
+diretive defining the idle timeout while waiting for data on the network socket, 
+the other is directive is 
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html#keepalivetimeout"><code>KeepAliveTimeout</code> <img src="images/link.png"/></a>, telling the Apache server for how long to 
+wait for a subsequent request before closing an idle connection. Keep-Alive is an
+important feature to accelerate your web server but your should disable it if the 
+server runs out of free connections. Disabling Keep-Alive will give more users a 
+chance to connect to and send a HTTP request if your server becones too busy and don't 
+has any free slots anymore. mod_qos's <a href="index.html#QS_SrvMaxConnClose"><code>QS_SrvMaxConnClose</code></a> directive allows you to disable Keep-Alive in such a situation.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+MaxClients                          896
+TimeOut                              10
+KeepAlive                            on
+KeepAliveTimeout                      5
+MaxKeepAliveRequests                 30
+QS_SrvMaxConnClose                   85%
+</pre></td></tr></table>
+
+
+
+</td></tr>
+</tbody>
+</table>
+<br>
+<hr>
+<SMALL><SMALL>&copy; 2016, Pascal Buchbinder</SMALL></SMALL>
+</body>
+</html>
