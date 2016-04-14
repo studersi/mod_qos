@@ -129,8 +129,15 @@ chance to connect to and send a HTTP request if your server becones too busy and
 has any free slots anymore. mod_qos's <a href="index.html#QS_SrvMaxConnClose"><code>QS_SrvMaxConnClose</code></a> directive allows you to disable Keep-Alive in such a situation.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# maximum number of active TCP connections is limited to 896 (limited
+# by the available memory, adjust the settings according to the used
+# hardware):
 MaxClients                          896
+
+# idle timeout (while the server is waiting for TCP packets):
 TimeOut                              10
+
+# keep alive (enabled, but only until 85% of all connections are busy):
 KeepAlive                            on
 KeepAliveTimeout                      5
 MaxKeepAliveRequests                 30
@@ -145,7 +152,9 @@ TCP connections. The <a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConn
 directive can be used to limit the connections a single IP is allowed to open.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
-<a href="index.html#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a>                   40
+# don't allow more than 30 TCP connections per client source address
+# if the server has 400 or more open connections:
+<a href="index.html#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a>               30 400
 </pre></td></tr></table>
 
 <a name="datarate"></a>
@@ -167,7 +176,9 @@ connections to enable this restriction.
 </p>
 <img src="images/SrvMinDataRate.png"/>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
-<a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a>          120 1500 600
+# minimum request/response data reate if the server has 500 or more
+# open connections:
+<a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a>          120 1500 500
 </pre></td></tr></table>
 <p>
 You might also want to have a lock at the Apache module 
@@ -194,6 +205,8 @@ connections are rejected if a client IP address reaches this threshold.
 The following example blocks clients if they cause more than 20 erros within 5 minutes.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# block clients violating some basic rules frequently (don't allows more than 20
+# violations within 5 minutes):
 <a href="index.html#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a> 20 300
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        400                <a href="index.html#QS_Block">QS_Block</a>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        405                <a href="index.html#QS_Block">QS_Block</a>
@@ -204,12 +217,16 @@ The following example blocks clients if they cause more than 20 erros within 5 m
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        500                <a href="index.html#QS_Block">QS_Block</a>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a>  <a href="#QS_Block">QS_Block</a>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a> <a href="#QS_Block">QS_Block</a>
-<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#NullConnection">NullConnection</a>     <a href="#QS_Block">QS_Block</a>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#BrokenConnection">BrokenConnection</a>   <a href="#QS_Block">QS_Block</a>
 </pre></td></tr></table>
 <p>
-This is just an example of events you might want to limit.
+This is just an example of events you might want to limit.<br>
+If you want to prevent from SSL DoS attacks as well, you might also want to block 
+clients opening TCP connections not sending any HTTP data.
 </p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#NullConnection">NullConnection</a>     <a href="#QS_Block">QS_Block</a>
+</pre></td></tr></table>
 <p>
 It is also possible that you enable this limitation only if the server 
 reaches a predefined number of busy connections. You can achieve this by 
@@ -225,6 +242,9 @@ as the server has less than 599 connections.
 <a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>                  <a href="index.html#QS_AllConn">QS_AllConn</a>=^[12345]?[0-9]{1,2}$ !<a href="index.html#QS_Block">QS_Block</a>
 </pre></td></tr></table>
 
+
+
+<pre>
 ---------
  QS_ClientEventLimitCount 
 ---------
@@ -251,6 +271,7 @@ iptables -A INPUT -m state --state RELATED,ESTABLISHED \
 # limit the connections from a single source IP to 100
 iptables -A INPUT -p tcp --syn --dport 80,443 -m connlimit \
   --connlimit-above 100 -j REJECT
+</pre>
 
 </td></tr>
 </tbody>
