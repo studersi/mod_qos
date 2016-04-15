@@ -59,7 +59,7 @@
 
 <p>
 mod_qos cannot only be used to implement QoS by controlling your Apache 
-web server's traffic but may also be suitable to help you to protect 
+web server's traffic but may also help you to protect 
 you web site against denial of servive (DoS) attacks. The two features 
 of mod_qos helping you in doing this, are the possibility to measure the 
 bandwith used for a TCP connection (and the possibility to enfore that 
@@ -186,6 +186,7 @@ You might also want to have a lock at the Apache module
 (available since Apache 2.2.15) which may be used to set various timeouts for 
 receiving the request headers and the request body from the client.
 </p>
+
 <a name="block"></a>
 <h3>Repeat Offender</h3>
 <p>
@@ -194,12 +195,12 @@ for a certain period if they violate a rule multiple times respecively if they c
 errors many times. The <a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a> 
 directive can be used to do this. It defines how often a "block event" (the Apache 
 process environment variable <a href="index.html#QS_Block"><code>QS_Block</code></a>) 
-may occure during a defined period of time. This enhances the effect of the above limitations.
+may occure during a defined period of time. This enhances the effect of the above limitations. 
+Incomming TCP connections are rejected if a client IP address reaches this threshold.
 </p>
 <p>
 The <a href="index.html#QS_SetEnvIfStatus"><code>QS_SetEnvIfStatus</code></a> is one of mod_qos's 
-directive which may be used to define an event which must not occur too frequently. Incomming TCP 
-connections are rejected if a client IP address reaches this threshold.
+directive which may be used to define an event which must not occur too frequently.
 </p>
 <p>
 The following example blocks clients if they cause more than 20 erros within 5 minutes.
@@ -227,7 +228,44 @@ clients opening TCP connections not sending any HTTP data.
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#NullConnection">NullConnection</a>     <a href="#QS_Block">QS_Block</a>
 </pre></td></tr></table>
-<!-- <p>
+
+<a name="clients"></a>
+<h3>Requests per IP</h3>
+<p>
+Rules limiting a clients number of requests to a resource may be configured using the 
+<a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
+directive. This provides an event counter per IP address and you may specify how 
+ofen a client may cause this event within a defined period of time. Such a limitation 
+might defense <i>HTTP GET/POST flood DoS attacks</i>, especially if you know which 
+requests are the most expensive ones.
+</p>
+<p>You may use any request attributes to distinguish between "expensive" (resources 
+your server takes long to process) and "inexpensive" (like static resource files which 
+can be send to the client immediately). One could be the request's URL any you may use the 
+<a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus"><code>SetEnvIfPlus</code></a> 
+directive to process them.
+</p>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# don't allow a client IP to access a "handler" (not a static resource like
+# a jpg, gif, ..) more than 20 times per minute:
+<a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          20 60 SlowRequest
+SetEnvIfPlus              Request_URI / SlowRequest
+SetEnvIfPlus              Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
+
+# deny a client IP for 10 minutes if he violates the rule above 3 times
+<a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          3 600 SlowRepeatedlySlow
+QS_SetEnvIf SlowRequest_Counter=20 SlowRepeatedlySlow=1
+</pre></td></tr></table> 
+
+
+
+<pre>
+---------
+ QS_ClientEventLimitCount 
+
+</pre>
+<p>
 It is also possible that you enable this limitation only if the server 
 reaches a predefined number of busy connections. You can achieve this by 
 deleting the <a href="index.html#QS_Block"><code>QS_Block</code></a> 
@@ -240,14 +278,10 @@ The follwing example unsets the <a href="index.html#QS_Block"><code>QS_Block</co
 variable as long as the server has less than 599 connections.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
-<a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>                  <a href="index.html#QS_AllConn">QS_AllConn</a>=^[12345]?[0-9]{1,2}$ !<a href="index.html#QS_Block">QS_Block</a>
-</pre></td></tr></table> -->
-
-
-
+<a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>                  <a href="index.html#QS_AllConn">QS_AllConn</a>=^[12345]?[0-9]{1,2}$ !SlowRequest
+</pre></td></tr></table> 
 <pre>
----------
- QS_ClientEventLimitCount 
+<hr>
 ---------
  QS_ClientGeoCountryPriv 
 ---------
