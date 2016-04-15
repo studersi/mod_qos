@@ -45,6 +45,7 @@ QS_ErrorPage             /errorpages/error.shtml
 QS_ClientEventLimitCount 20 10
 SetEnvIfPlus Request_URI / QS_Limit
 SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !QS_Limit
+#QS_SetEnvIf              QS_AllConn=^[12345]?[0-9]{1,2}$ !QS_Limit
 </IfDefine>
 
 <IfDefine limit2level>
