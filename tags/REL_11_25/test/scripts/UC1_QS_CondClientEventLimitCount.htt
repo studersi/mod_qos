@@ -1,0 +1,104 @@
+# 
+# QS_CondClientEventLimitCount 3  2        QS_CondLimit /htt/a
+# SetEnvIf                     Request_URI ^/htt/a      QS_Cond=/htt/a
+# QS_SetEnvIfQuery             QS_Limit    QS_CondLimit=yes
+# 
+
+INCLUDE scripts/ports
+
+CLIENT
+_LOOP 2
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "==AS1=="
+_WAIT
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=QS_CondLimit, max=3, current=3.*127.0.0.1"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/b/?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "==AS2=="
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+
+_SLEEP 3000
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "==AS3=="
+_WAIT
+
+_LOOP 4
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "==AS4=="
+_WAIT
+_END LOOP
+
+END
+
+SERVER $QS_PORT_BASE6
+_LOOP 2
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_END LOOP
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS2==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS3==
+
+_LOOP 4
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS4==
+_END LOOP
+
+END
