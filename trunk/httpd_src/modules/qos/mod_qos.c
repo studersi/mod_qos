@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.592 2016-04-12 19:29:42 pbuchbinder Exp $";
-static const char g_revision[] = "11.25";
+static const char revision[] = "$Id: mod_qos.c,v 5.593 2016-04-15 20:15:13 pbuchbinder Exp $";
+static const char g_revision[] = "11.26";
 
 /************************************************************************
  * Includes
@@ -8838,8 +8838,8 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
  */
 static apr_status_t qos_out_filter_brokencon(ap_filter_t *f, apr_bucket_brigade *bb) {
   apr_status_t rc = ap_pass_brigade(f->next, bb);
-  if(rc == APR_ECONNABORTED) {
-    // client closed the connection
+  if(rc == APR_ECONNABORTED || rc == APR_EPIPE) {
+    // client closed the connection (abort or broken pipe)
     request_rec *r = f->r;
     qs_set_evmsg(r, "A;");
     apr_table_set(r->connection->notes, QS_BROKEN_CON, "");
