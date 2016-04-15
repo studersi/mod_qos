@@ -54,6 +54,9 @@ QS_ErrorResponseCode   503
 
 QS_ClientEventBlockCount 20 30
 QS_SetEnvIfStatus  400 QS_Block
+<IfDefine !h2>
+QS_SetEnvIfStatus  BrokenConnection QS_Block
+</IfDefine>
 
 QS_SrvMinDataRate  120 3000 10
 
