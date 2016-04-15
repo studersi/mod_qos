@@ -218,9 +218,9 @@ The following example blocks clients if they cause more than 20 errors within 5 
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        413                <a href="index.html#QS_Block">QS_Block</a>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        414                <a href="index.html#QS_Block">QS_Block</a>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        500                <a href="index.html#QS_Block">QS_Block</a>
-<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a>  <a href="#QS_Block">QS_Block</a>
-<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a> <a href="#QS_Block">QS_Block</a>
-<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#BrokenConnection">BrokenConnection</a>   <a href="#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a>  <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a> <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#BrokenConnection">BrokenConnection</a>   <a href="index.html#QS_Block">QS_Block</a>
 </pre></td></tr></table>
 <p>
 This is just an example of events you might want to limit.<br>
@@ -332,7 +332,7 @@ the majority of the other clients do.
 The directive to enable this is called 
 <a href="index.html#QS_ClientPrefer"><code>QS_ClientPrefer</code></a>. When 
 using this feature, you should define how to detect the "good" clients 
-using the <a href="#QS_VipIPHeaderName"><code>QS_VipIPHeaderName</code></a> 
+using the <a href="index.html#QS_VipIPHeaderName"><code>QS_VipIPHeaderName</code></a> 
 directive. It is also recommended to configure a static value for the 
 <a href="index.html#QS_ClientContentTypes"><code>QS_ClientContentTypes</code></a> 
 directive.
