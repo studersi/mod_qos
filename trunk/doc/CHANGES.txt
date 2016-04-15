@@ -1,4 +1,4 @@
-Version
+Version 11.25
 
  - QS_ClientEntries max. value is now limited to 10000000.
 
