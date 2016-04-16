@@ -112,9 +112,10 @@ parameter (and the corresponding <code>ServerLimit</code>/<code>ThreadsPerChild<
 values). I'm going to use <i>896</i> in the following examples. This is not an absolute 
 value. Its probably not even a particular "high" value if you are fighting against a 
 <i>low-bandwidth DoS attack</i>. Maybe it is fine for a quad-core Intel CPU serving 
-several thousand concurrent users but you might choose a different value suitable for your 
-environment (note that each tread requires about 1 to 2 MB of memory). Just adapt all 
-other values accordingly.
+several thousand concurrent users (assuming you are running the Apache server as your 
+web tier only and not using more than half of the possible connections in the normal case)
+but you might choose a different value suitable for your environment (note that 
+each tread requires about 1 to 2 MB of memory). Just adapt all other values accordingly.
 </p>
 <p>
 Other important Apache base settings concern timeouts. 
