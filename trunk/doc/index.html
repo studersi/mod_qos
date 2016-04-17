@@ -1030,22 +1030,26 @@ When using the special variable <code><a href="#QS_Block">QS_Block</a></code>, i
 value is set to "1" by default. There are also three "special codes" available to 
 set the <code><a href="#QS_Block">QS_Block</a></code> event:
 <ul>
-<li><code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code> may be used 
+<li><a name="QS_SrvMinDataRate_var"></a>
+<code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code> may be used 
 to set <code><a href="#QS_Block">QS_Block</a></code> events in order to limit the 
 allowed number of <a href="#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> 
 rule violations.</li>
-<li><code><a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a></code> may be used 
+<li><a name="QS_SrvMaxConnPerIP_var"></a>
+<code><a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a></code> may be used 
 to increment the <code><a href="#QS_Block">QS_Block</a></code> 
 event when closing connections due to the reach of the limitation configured 
 by the <a href="#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> directive.</li>
-<li><a name="NullConnection"></a><code>NullConnection</code> detects connections 
+<li><a name="NullConnection"></a>
+<code>NullConnection</code> detects connections 
 which are closed even no HTTP request has been received. <br>
 <small>Note: The <code>NullConnection</code> event may happen silently (no log 
 message) expect when using <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a> debug</code>. 
 The parameter may be used to defend against SSL DoS attacks. 
 Please pay attention to the fact that unused <i>speculative TCP pre-connections</i> of 
 browsers may unintentionally cause this event as well.</small></li>
-<li><a name="BrokenConnection"></a><code>BrokenConnection</code> may be used 
+<li><a name="BrokenConnection"></a>
+<code>BrokenConnection</code> may be used 
 to mark clients aborting the TCP connection before reading the whole HTTP 
 response.<br>
 <small>Note: Connections may also be aborted by mod_qos if client reads 
@@ -2364,8 +2368,8 @@ LimitRequestFields       30
 <a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        500                <a href="#QS_Block">QS_Block</a>
 <a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        503                <a href="#QS_Block">QS_Block</a>
 <a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        505                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a>  <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a> <a href="#QS_Block">QS_Block</a>
+<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#QS_SrvMinDataRate_var">QS_SrvMinDataRate</a>  <a href="#QS_Block">QS_Block</a>
+<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#QS_SrvMaxConnPerIP_var">QS_SrvMaxConnPerIP</a> <a href="#QS_Block">QS_Block</a>
 <a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#NullConnection">NullConnection</a>     <a href="#QS_Block">QS_Block</a>
 <a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#BrokenConnection">BrokenConnection</a>   <a href="#QS_Block">QS_Block</a>
 </pre>
