@@ -115,9 +115,10 @@ value. Its probably not even a particular "high" value if you are fighting again
 <i>low-bandwidth DoS attack</i>. Maybe it is fine for a quad-core Intel CPU serving 
 several thousand concurrent users (assuming you are running the Apache server as your 
 web tier only and not using more than half of the possible connections in the normal 
-case - the upper half is only a reserve for exceptional situations) but 
-you might choose a different value suitable for your environment (note that 
-each tread requires about 1 to 2 MB of memory). Just adapt all other values accordingly.
+case - the upper half is only a reserve for exceptional situations, better if you 
+have even more reserves as over-provisioning may be really helpful) but you might 
+choose a different value suitable for your environment (note that each tread 
+requires about 1 to 2 MB of memory). Just adapt all other values accordingly.
 </p>
 <p>
 Other important Apache base settings concern timeouts. 
