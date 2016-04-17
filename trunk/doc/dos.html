@@ -216,10 +216,11 @@ Slow clients violating the <a href="index.html#QS_SrvMinDataRate"><code>QS_SrvMi
 Clients opening too many TCP connections, see <a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> above.
 </li>
 <li><i>BrokenConnection</i><br>
-Clients closing/aborting the TCP connection before reading the the HTTP response (<a href="index.html#BrokenConnection"><code>BrokenConnection</code></a> even).
+Clients closing/aborting the TCP connection before reading the the HTTP response (<a href="index.html#BrokenConnection"><code>BrokenConnection</code></a> event).
 </li>
 </ul>
 </p>
+These limitations do not only increase the DoS defense efficiency. <a href="index.html#BrokenConnection"><code>BrokenConnection</code></a> in particular can be used to detect clients performing a <i>HTTP GET/POST flood DoS attack</i>.
 <p>
 The following example blocks clients if they cause more than 20 events within 5 minutes.
 </p>
@@ -240,7 +241,7 @@ The following example blocks clients if they cause more than 20 events within 5 
 </pre></td></tr></table>
 <p>
 This is just an example of events you might want to limit. Feel free to add more or 
-to ignore some.
+to ignore some events.
 </p>
 <p>
 If you want to prevent from SSL DoS attacks as well, you might also want to block 
