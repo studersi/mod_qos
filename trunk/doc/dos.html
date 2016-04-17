@@ -206,22 +206,22 @@ the limitation expires.
 The <a href="index.html#QS_SetEnvIfStatus"><code>QS_SetEnvIfStatus</code></a> is one of mod_qos's 
 directive which may be used to define an event which must not occur too frequently.
 <ul>
-<li>400 405 406 408 413 414 500<br>
+<li><i>400 405 406 408 413 414 500</i><br>
 Status codes which may be caused by clients sending invalid or incomplete requests.
 </li>
-<li>QS_SrvMinDataRate<br>
+<li><i>QS_SrvMinDataRate</i><br>
 Slow clients violating the <a href="index.html#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> rule (see above).
 </li>
-<li>QS_SrvMaxConnPerIP<br>
+<li><i>QS_SrvMaxConnPerIP</i><br>
 Clients opening too many TCP connections, see <a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> above.
 </li>
-<li>BrokenConnection<br>
+<li><i>BrokenConnection</i><br>
 Clients closing/aborting the TCP connection before reading the the HTTP response (<a href="index.html#BrokenConnection"><code>BrokenConnection</code></a> even).
 </li>
 </ul>
 </p>
 <p>
-The following example blocks clients if they cause more than 20 errors within 5 minutes.
+The following example blocks clients if they cause more than 20 events within 5 minutes.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # block clients violating some basic rules frequently (don't allows more than 20
@@ -239,9 +239,13 @@ The following example blocks clients if they cause more than 20 errors within 5 
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#BrokenConnection">BrokenConnection</a>   <a href="index.html#QS_Block">QS_Block</a>
 </pre></td></tr></table>
 <p>
-This is just an example of events you might want to limit.<br>
+This is just an example of events you might want to limit. Feel free to add more or 
+to ignore some.
+</p>
+<p>
 If you want to prevent from SSL DoS attacks as well, you might also want to block 
-clients opening TCP connections not sending any HTTP data.
+clients opening TCP connections not sending any HTTP data (using the 
+<a href="index.html#NullConnection"><code>NullConnection</code></a> event).
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#NullConnection">NullConnection</a>     <a href="index.html#QS_Block">QS_Block</a>
