@@ -102,6 +102,7 @@
 - support IPv6
   + "real" IPv6 support
   - net vs host address rules
+    + use Remote_Net provided by mod_setenvifplus
 - propagate client information via request header (set additional variables)
   + using mod_setenvifplus
   + QS_SetReqHeader late
