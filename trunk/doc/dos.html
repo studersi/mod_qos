@@ -90,8 +90,8 @@ awaiting the server's response. This requires only little traffic for the
 attacker but may occupy your server's threads and consumes computing resources 
 (CPU, memory). Some attackers scan your web site prior an attack measuring 
 the duration it takes to answer the request in order to find out which one are 
-the "most expensive" HTTP requests (consuming most time while being processed by 
-your web server).
+the "most expensive" HTTP requests (consuming most time while being processed 
+by your web server).
 </li>
 </ul>
 </p>
@@ -106,31 +106,35 @@ build an additional protective layer against DoS attacks.
 <h3>Basic Settings</h3>
 <p>
 Hardware is inexpensive. Today's CPUs offers many cores allowing the processing 
-of many threads in parallel and prices for memory are as low as never before. So allow 
-your Apache server to serve many requests / TCP connections in parallel by setting 
-a "high" value for its <a href="http://httpd.apache.org/docs/2.2/mod/mpm_common.html#maxclients"><code>MaxClients</code> <img src="images/link.png"/></a> 
+of many threads in parallel and prices for memory are as low as never before. 
+So allow your Apache server to serve many requests / TCP connections in 
+parallel by setting a "high" value for its <a href="http://httpd.apache.org/docs/2.2/mod/mpm_common.html#maxclients"><code>MaxClients</code> <img src="images/link.png"/></a> 
 parameter (and the corresponding <code>ServerLimit</code>/<code>ThreadsPerChild</code>  
-values). I'm going to use <i>896</i> in the following examples. This is not an absolute 
-value. Its probably not even a particular "high" value if you are fighting against a 
-<i>low-bandwidth DoS attack</i>. Maybe it is fine for a quad-core Intel CPU serving 
-several thousand concurrent users (assuming you are running the Apache server as your 
-web tier only and not using more than half of the possible connections in the normal 
-case - the upper half is only a reserve for exceptional situations, better if you 
-have even more reserves as over-provisioning may be really helpful) but you might 
-choose a different value suitable for your environment (note that each tread 
-requires about 1 to 2 MB of memory). Just adapt all other values accordingly.
+values). I'm going to use <i>896</i> in the following examples. This is not 
+an absolute value. Its probably not even a particular "high" value if you 
+are fighting against a <i>low-bandwidth DoS attack</i>. Maybe it is fine 
+for a quad-core Intel CPU serving several thousand concurrent users 
+(assuming you are running the Apache server as your web tier only and 
+not using more than half of the possible connections in the normal 
+case - the upper half is only a reserve for exceptional situations, better 
+if you have even more reserves as over-provisioning may be really helpful) 
+but you might choose a different value suitable for your environment 
+(note that each tread requires about 1 to 2 MB of memory). Just adapt 
+all other values accordingly.
 </p>
 <p>
 Other important Apache base settings concern timeouts. 
 One is the <a href="http://httpd.apache.org/docs/2.2/mod/core.html#timeout"><code>TimeOut</code> <img src="images/link.png"/></a>  
-directive defining the idle timeout while waiting for data on the network socket, 
-the other directive is 
-<a href="http://httpd.apache.org/docs/2.2/mod/core.html#keepalivetimeout"><code>KeepAliveTimeout</code> <img src="images/link.png"/></a>, telling the Apache server for how long to 
-wait for a subsequent request before closing an idle connection. Keep-Alive is an
-important feature to accelerate your web server but you should disable it if the 
-server runs out of free connections. Disabling Keep-Alive will give more users a 
-chance to connect to your server and send a HTTP request if your server becomes too busy and don't 
-has any free slots anymore. mod_qos's <a href="index.html#QS_SrvMaxConnClose"><code>QS_SrvMaxConnClose</code></a> directive allows you to disable Keep-Alive in such a situation automatically.
+directive defining the idle timeout while waiting for data on the network 
+socket, the other directive is 
+<a href="http://httpd.apache.org/docs/2.2/mod/core.html#keepalivetimeout"><code>KeepAliveTimeout</code> <img src="images/link.png"/></a>, telling the Apache 
+server for how long to wait for a subsequent request before closing an idle 
+connection. Keep-Alive is an important feature to accelerate your web server 
+but you should disable it if the server runs out of free connections. 
+Disabling Keep-Alive will give more users a chance to connect to your 
+server and send a HTTP request if your server becomes too busy and don't 
+has any free slots anymore. mod_qos's <a href="index.html#QS_SrvMaxConnClose"><code>QS_SrvMaxConnClose</code></a> directive allows you to disable Keep-Alive 
+in such a situation automatically.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # maximum number of active TCP connections is limited to 896 (limited
@@ -173,10 +177,10 @@ can be used to implement this rule.
 Syntax: <code><a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a> &lt;bytes per second&gt; &lt;max bytes per second&gt; &lt;connections&gt;</code><br>
 
 <p>It offers three parameters. The first defines the 
-minimum data rate a client must achieve when this limitation becomes active and the 
-second parameter defines the throughput a client must achive when the server reaches 
-its <code>MaxClients</code> setting. The third parameter defines the number of busy 
-connections to enable this restriction.
+minimum data rate a client must achieve when this limitation becomes active 
+and the second parameter defines the throughput a client must achive when 
+the server reaches its <code>MaxClients</code> setting. The third parameter 
+defines the number of busy connections to enable this restriction.
 </p>
 <img src="images/SrvMinDataRate.png"/>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
@@ -257,45 +261,54 @@ clients opening TCP connections not sending any HTTP data (using the
 <a name="clients"></a>
 <h3>Requests per IP</h3>
 <p>
-Rules, limiting a clients number of requests to a resource, may be configured using the 
+Rules, limiting a clients number of requests to a resource, may be configured 
+using the 
 <a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
-directive. This provides an event counter per IP address and you may specify how 
-ofen a client is allowed to trigger this event within a defined period of time. Such a limitation 
-might defense <i>HTTP GET/POST flood DoS attacks</i>, especially if you know which 
-requests are the most expensive ones / which URLs provide the greatest risk of being attacked.
+directive. This provides an event counter per IP address and you may specify 
+how ofen a client is allowed to trigger this event within a defined period of 
+time. Such a limitation might defense <i>HTTP GET/POST flood DoS attacks</i>, 
+especially if you know which requests are the most expensive ones / which 
+URLs provide the greatest risk of being attacked.
 </p>
-<p>You may use any request attributes to distinguish between "expensive" (resources 
-your server takes long to process) and "inexpensive" (like static resource files which 
-can be send to the client immediately). You can also define different attribues and 
-configure more than one counter per IP (each counter is idenitfied by the specified name).
+<p>You may use any request attributes to distinguish between "expensive" 
+(resources your server takes long to process) and "inexpensive" (like static 
+resource files which can be send to the client immediately). You can also 
+define different attribues and configure more than one counter per IP 
+(each counter is idenitfied by the specified name). 
 One attribute could be the request's URL and you may use the 
 <a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus"><code>SetEnvIfPlus</code></a> 
 directive to detect them and to increment the counter.<br>
 You can use the <code><a href="qslog.1.html">qslog</a></code> tool 
-(option <code>-pu</code>) to analyze log data (or just use any other log data management 
-tool). You should not only search your Apache server's log about "slow requests" but also 
-check how many requests are issued by a single IP address to decide what limitations 
-you want to configure (which URLs and how often).
+(option <code>-pu</code>) to analyze log data (or just use any other log data 
+management tool). You should not only search your Apache server's log about 
+"slow requests" but also check how many requests are issued by a single 
+IP address to decide what limitations you want to configure (which URLs 
+and how often).
 </p>
 <p>
-For the following example, lets assume that requests to static resources (jpg,gif,css,...) 
-are cheap (quickly processed by your server) and other requests expensive (takes long to be 
-processed) while the most expensive URL path is <code>/generateReport.php</code>. 
-Therefore, you won't need to set any penalty when accessing a static resource. 
-Other resources are marked by "1" (allowing a client to access them 20 times per minute) 
-while requests to the "most expensive" resource <code>/generateReport.php</code> are burden by a 
+For the following example, lets assume that requests to static resources 
+(jpg,gif,css,...) are cheap (quickly processed by your server) and other 
+requests expensive (takes long to be processed) while the most expensive 
+URL path is <code>/generateReport.php</code>. Therefore, you won't need 
+to set any penalty when accessing a static resource. Other resources 
+are marked by "1" (allowing a client to access them 20 times per minute) 
+while requests to the "most expensive" resource 
+<code>/generateReport.php</code> are burden by a 
 penalty of "2" (may be accessed only 10 times per minute).<br>
 It is also possible that you enable this limitation only if the server 
-reaches a predefined number of busy connections (no limitation if it is not necessary). 
+reaches a predefined number of busy connections (no limitation if it is not 
+necessary). 
 You can achieve this by deleting the event variable (<code>SlowRequest</code> 
 in this example) if the server has less connections. 
 The <a href="index.html#QS_AllConn"><code>QS_AllConn</code></a> 
 variable tells you the number of busy TCP connections and the 
 <a href="index.html#QS_SetEnvIf"><code>QS_SetEnvIf</code></a> directive 
 allows you to set or unset variables. The following example unset the
-<code>SlowRequest</code> variable as long as the server has less than 499 connections.<br>
+<code>SlowRequest</code> variable as long as the server has less than 499 
+connections.<br>
 Clients which violates this request violation may be blocked for an even 
-longer period of time. This is implemented by a second counter <code>SlowRepeatedlySlow</code>.
+longer period of time. This is implemented by a second counter 
+<code>SlowRepeatedlySlow</code>.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # don't allow a client IP to access a "handler" (not a static resource like
@@ -316,10 +329,11 @@ longer period of time. This is implemented by a second counter <code>SlowRepeate
 <a name="country"></a>
 <h3>Country Specific Rules</h3>
 <p>
-Some web sites may have content that is only of regional interest, e.g., a site whose 
-content is written in German has probably most visitors from countries where German is 
-an officially spoken language. This allows you to prefer clients connecting from one 
-of those country only in the case your server runs out of free TCP connections.
+Some web sites may have content that is only of regional interest, e.g., a 
+site whose content is written in German has probably most visitors from 
+countries where German is an officially spoken language. This allows you 
+to prefer clients connecting from one of those country only in the case 
+your server runs out of free TCP connections.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # loads the GEO IP database and allows only client connections from
@@ -329,7 +343,8 @@ of those country only in the case your server runs out of free TCP connections.
 <a href="index.html#QS_ClientGeoCountryPriv">QS_ClientGeoCountryPriv</a>        DE,AT,CH 700
 </pre></td></tr></table> 
 <p>
-Geolocation databases that work with mod_qos are available from MaxMind or IP2Location.
+Geolocation databases that work with mod_qos are available from MaxMind or 
+IP2Location.
 </p>
 
 <a name="prefer"></a>
@@ -392,21 +407,33 @@ net.ipv4.tcp_slow_start_after_idle = 0
 <p>
 Your firewall in front or your Apache web server also performs important 
 tasks related to DoS prevention - but the configuration of your FW is out of 
-the scope of this article. However, iptables can also be fun...
+the scope of this article. However, <i>iptables</i> can also be fun...
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
-# limit the number of new connections (active after reaching the burst limit only):
+# limits the number of new connections (active after reaching the burst limit
+# only):
 iptables -A INPUT -p tcp --dport 80,443 -m limit \
   --state NEW --limit 60/minute --limit-burst 250 -j ACCEPT
 
-# limit the number of established/concurrent connections:
+# limits the number of established/concurrent connections:
 iptables -A INPUT -m state --state RELATED,ESTABLISHED \
   -m limit --limit 50/second --limit-burst 50 -j ACCEPT
 
-# limit the connections from a single source IP to 100:
+# limits the connections from a single source IP to 100:
 iptables -A INPUT -p tcp --syn --dport 80,443 -m connlimit \
   --connlimit-above 100 -j REJECT
 </pre></td></tr></table> 
+
+<a name="sync"></a>
+<h3>Inform Others</h3>
+<p>
+You may want to inform other systems about client IP addresses which shall 
+be blocked, e.g., to synchronize multiple Apache instances (using the 
+<a href="index.html#webconsole">web console</a>), to configure 
+<i>iptables</i> rules, or to inform your ISP about clients which shall no 
+longer be routed to your site. Watch your server's 
+<a href="index.html#errorlog">logs</a>!
+</p>
 
 </td></tr>
 </tbody>
