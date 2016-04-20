@@ -410,8 +410,7 @@ tasks related to DoS prevention - but the configuration of your FW is out of
 the scope of this article. However, <i>iptables</i> can also be fun...
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
-# limits the number of new connections (active after reaching the burst limit
-# only):
+# limits the number of new connections (active after reaching the burst limit only):
 iptables -A INPUT -p tcp --dport 80,443 -m limit \
   --state NEW --limit 60/minute --limit-burst 250 -j ACCEPT
 
@@ -432,7 +431,17 @@ be blocked, e.g., to synchronize multiple Apache instances (using the
 <a href="index.html#webconsole">web console</a>), to configure 
 <i>iptables</i> rules, or to inform your ISP about clients which shall no 
 longer be routed to your site. Watch your server's 
-<a href="index.html#errorlog">logs</a>!
+<a href="index.html#errorlog">logs</a>! The directives mentiond on this 
+page may write event <a href="MESSAGES.txt">messages</a> using the 
+following identifiers when blocking clients.
+<ul>
+<li><code>QS_SrvMaxConnPerIP</code>: mod_qos(031)</li>
+<li><code>QS_SrvMinDataRate</code>: mod_qos(034)</li>
+<li><code>QS_ClientEventBlockCount</code>: mod_qos(060)</li>
+<li><code>QS_ClientEventLimitCount</code>: mod_qos(067)</li>
+<li><code>QS_ClientGeoCountryPriv</code>: mod_qos(101)</li>
+<li><code>QS_ClientPrefer</code>: mod_qos(066)</li>
+</ul>
 </p>
 
 </td></tr>
