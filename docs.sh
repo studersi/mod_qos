@@ -15,7 +15,7 @@ fi
 strings ./httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | sort -u | sort -n | grep -v -e "mod_qos()" -e "mod_qos(000)" > doc/MESSAGES.txt
 
 sed <doc/index.html >doc/tmp/index.html \
-    -e "s:DDoS:<a href='dos.html'>DDoS</a>:g" \
+    -e "s:(DoS):(<a href='dos.html'>DDoS</a>):g" \
     -e "s/0\.00/${VERSION}/g" \
     -e "s:BUILD START -->::g" \
     -e "s:<!-- BUILD END::g"
