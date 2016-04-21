@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.262 2016-04-12 19:29:42 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.263 2016-04-21 20:32:51 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -191,8 +191,7 @@ LoadModule              mem_cache_module ##ROOT##/../httpd/modules/cache/.libs/m
 LoadModule              rewrite_module ##ROOT##/../httpd/modules/mappers/.libs/mod_rewrite.so
 LoadModule              websocket_module libexec/mod_websocket.so
 
-NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
-Listen                  127.0.0.1:##QS_PORT_BASE##
+Listen                  *:##QS_PORT_BASE##
 
 BrowserMatch googlebot DISABLE_UTC_ENFORCEMENT=allow
 SetEnvIfNoCase X-Do-Not-Track 1 DISABLE_UTC_ENFORCEMENT=allow
@@ -239,7 +238,7 @@ ErrorDocument 404 /error-docs/error404.html
 #DumpIOInput             On
 #DumpIOLogLevel          warn
 
-<VirtualHost 127.0.0.1:##QS_PORT_BASE##>
+<VirtualHost *:##QS_PORT_BASE##>
    ServerName                 127.0.0.1
 
    # -----------------------------------------------------------------
@@ -670,9 +669,7 @@ ErrorDocument 404 /error-docs/error404.html
 
 </VirtualHost>
 
-NameVirtualHost         server1:##QS_PORT_BASE1##
 Listen                  server1:##QS_PORT_BASE1##
-
 <VirtualHost server1:##QS_PORT_BASE1##>
    ServerName                 server1
 
@@ -767,7 +764,7 @@ Listen                  server1:##QS_PORT_BASE1##
 
 </VirtualHost>
 
-NameVirtualHost         server1:##QS_PORT_BASE2##
+
 Listen                  server1:##QS_PORT_BASE2##
 
 SSLProtocol             all -SSLv2
@@ -851,7 +848,6 @@ SSLRandomSeed           startup builtin
 
 </VirtualHost>
 
-NameVirtualHost         127.0.0.1:##QS_PORT_BASE9##
 Listen                  127.0.0.1:##QS_PORT_BASE9##
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE9##>
@@ -936,7 +932,7 @@ Listen                  [fc00::112]:##QS_PORT_BASE10##
 </IfDefine>
 
 <IfDefine forwardproxy>
-NameVirtualHost         127.0.0.1:##QS_PORT_BASE11##
+
 Listen                  127.0.0.1:##QS_PORT_BASE11##
 
 <VirtualHost 127.0.0.1:##QS_PORT_BASE11##>
