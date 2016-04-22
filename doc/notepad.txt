@@ -22,6 +22,7 @@
 - new machine-readable status viewer (json,xml,...)
   - add statistics, e.g. how often a limit had been reached
   - implement plugins to read the status viewer (e.g. for nagios)
+  + scoreboard log message once every minute (json)
 + geo location
   + country
   - region, city. latitude/longitude
@@ -93,16 +94,19 @@
 - management tool (sep. application)
   - configuration guidance
     - documentation, mobile app?
+    + dos.html
   - log data management
   - rule generation
   - utilities (ha/lb/...)
   + log data signing (using pipe: "|sig |qsrotate <file>")
+    - for other software (java)
+      + log4j 1.2
   - nms plugin (OpenNMS? Nagios?)
     - see https://github.com/dimovelev/metrics-sampler
 - support IPv6
   + "real" IPv6 support
   - net vs host address rules
-    + use Remote_Net provided by mod_setenvifplus
+    + use "Remote_Net" provided by mod_setenvifplus
 - propagate client information via request header (set additional variables)
   + using mod_setenvifplus
   + QS_SetReqHeader late
@@ -113,7 +117,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
   + QS_Timeout for reading the req body
 + QS_SrvMaxConnClose to support "percentage" of the MaxClient settings instead of abs. value
   - set variable mod_qos_con_ip (see mod_qos_con)
-+ user tracking cookie (for statistics)
++ user tracking cookie (for statistics and cookie-check)
   + timeout/renew
 + gnu autotools to build tools
 - full Apache 2.4 support

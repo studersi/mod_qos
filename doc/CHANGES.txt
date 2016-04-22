@@ -1,3 +1,12 @@
+Version 11.26
+
+ - Changed: QS_SrvMaxConn* directive counter's inheritance from the
+   base server to virtual hosts is no longer coupled to other QS_*
+   directive rules. This means, that a virtual host uses the very
+   same counters as the base server as long as neither QS_SrvMaxConn,
+   QS_SrvMaxConnClose, nor QS_SrvMaxConnPerIP has been configured
+   within the virtual host.
+
 Version 11.25
 
  - QS_ClientEntries max. value is now limited to 10000000.
