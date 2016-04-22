@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.60 2016-01-10 15:23:53 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.61 2016-04-22 19:06:16 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -93,6 +93,10 @@ QS_ErrorPage             /error-docs/error.shtml
 
 <IfDefine status>
 LoadModule               status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
+</IfDefine>
+
+<IfDefine globalmaxconn>
+QS_SrvMaxConn           5
 </IfDefine>
 
 <IfDefine uc1status>
@@ -290,6 +294,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
 
+<IfDefine globalmaxconn>
+  QS_SrvMaxConn          3
+</IfDefine>
+
 <IfDefine status>
    <Location /status>
        SetHandler server-status
@@ -357,6 +365,12 @@ QS_SrvSerialize           on
 
 <IfDefine uc1i>
    QS_LocRequestPerSecLimit   / 10
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine viewer>
    <Location /qos >
        SetHandler qos-viewer
    </Location>
@@ -484,6 +498,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE1##
    TransferLog ##ROOT##/logs/access_log
 
    ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+
+<IfDefine globalmaxconn>
+   QS_EventLimitCount     limitc 1 3
+#   QS_LocRequestLimitMatch      \.iso  300
+</IfDefine>
 
 <IfDefine uc1WW>
 QS_SrvSerialize           off

@@ -1,5 +1,5 @@
 #
-# $Id: Count.htt,v 1.2 2010-03-01 19:31:23 pbuchbinder Exp $
+# $Id: Count.htt,v 1.3 2016-04-22 19:06:16 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -13,8 +13,6 @@ __Connection: keep-alive
 __
 _EXPECT . "<!--0-->.*free ip entries.*896"
 _EXPECT . "<!--0-->.*current connections.*colspan=.3.>0</td>"
-_EXPECT . "<!--2-->.*free ip entries.*896"
-_EXPECT . "<!--2-->.*current connections.*colspan=.3.>0</td>"
 _EXPECT . "<!--3-->.*free ip entries.*896"
 _EXPECT . "<!--3-->.*current connections.*colspan=.3.>0</td>"
 _EXPECT . "<!--3--><td>/no</a></td><td>200</td><td >0</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>"

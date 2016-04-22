@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.263 2016-04-21 20:32:51 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.264 2016-04-22 19:06:16 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -233,7 +233,7 @@ QS_SrvMaxConnExcludeIP       127.
 QS_RedirectIf        QS_LimitVar4_Counter (20) http://127.0.0.1/global/error.html?c=$1
 </IfDefine>
 
-ErrorDocument 404 /error-docs/error404.html
+ErrorDocument            404 /error-docs/error404.html
 
 #DumpIOInput             On
 #DumpIOLogLevel          warn

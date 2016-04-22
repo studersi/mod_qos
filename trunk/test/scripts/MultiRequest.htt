@@ -1,5 +1,5 @@
 #
-# $Id: MultiRequest.htt,v 1.8 2010-03-01 19:31:23 pbuchbinder Exp $
+# $Id: MultiRequest.htt,v 1.9 2016-04-22 19:06:16 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -87,8 +87,6 @@ __Connection: keep-alive
 __
 _EXPECT . "<!--0-->.*free ip entries.*896"
 _EXPECT . "<!--0-->.*current connections.*colspan=.3.>0</td>"
-_EXPECT . "<!--2-->.*free ip entries.*896"
-_EXPECT . "<!--2-->.*current connections.*colspan=.3.>0</td>"
 _EXPECT . "<!--3-->.*free ip entries.*896"
 _EXPECT . "<!--3-->.*current connections.*colspan=.3.>0</td>"
 _EXPECT . "<!--4-->.*free ip entries.*895"

@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.593 2016-04-15 20:15:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.594 2016-04-22 19:06:16 pbuchbinder Exp $";
 static const char g_revision[] = "11.26";
 
 /************************************************************************
@@ -704,11 +704,14 @@ typedef struct {
 #endif
   int vip_user;
   int vip_ip_user;
+
+  int has_conn_counter;
   int max_conn;
   int max_conn_close;
   int max_conn_close_percent;
   int max_conn_per_ip;
   int max_conn_per_ip_connections;
+
   int serialize;
   int serializeTMO;
   apr_table_t *exclude_ip;
@@ -6695,17 +6698,11 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
 #ifdef QS_INTERNAL_TEST
   {
     apr_uint64_t remoteip[2];
-    qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &remoteip);
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
+    qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &remoteip);
     if(cconf) {
       remoteip[0] = cconf->ip6[0];
       remoteip[1] = cconf->ip6[1];
-    } else {
-      // HTTP/2
-      apr_uint64_t ci6[2];
-      qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &ci6);
-      remoteip[0] = ci6[0];
-      remoteip[1] = ci6[1];
     }
     ap_rputs("<p>TEST BINARY, NOT FOR PRODUCTIVE USE<br>\n", r);
     ap_rprintf(r, "client ip=%s</p>\n", qos_ip_long2str(r->pool, remoteip));
@@ -6741,7 +6738,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
 
     if((sconf == bsconf) && s->is_virtual) {
       ap_rputs("    <tr class=\"rows\">\n"
-               "     <td colspan=\"9\"><i>uses base server settings</i></td>\n    </tr>\n", r);
+               "     <td colspan=\"9\"><i>uses base server settings and counters</i></td>\n    </tr>\n", r);
     } else {
       if(!s->is_virtual && sconf->has_qos_cc) {
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
@@ -6892,7 +6889,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         }
       }
       /* connection level */
-      if(sconf) {
+      if(sconf->has_conn_counter == 1 || !s->is_virtual) {
         char *red = "style=\"background-color: rgb(240,153,155);\"";
         int c = qos_count_free_ip(sconf);
         ap_rputs("    <tr class=\"rowt\">"
@@ -6979,6 +6976,12 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                      sconf->min_rate_max == -1 ? sconf->req_rate : sconf->min_rate_max,
                      rt);
         }
+      } else {
+        ap_rputs("    <tr class=\"rowt\">"
+                 "<td colspan=\"9\">connections</td>", r);
+        ap_rputs("</tr>\n", r);
+        ap_rputs("    <tr class=\"rows\">\n"
+                 "     <td colspan=\"9\"><i>uses base server settings and counters</i></td>\n    </tr>\n", r);
       }
     }
     ap_rprintf(r, "    <tr class=\"row\">"
@@ -7672,18 +7675,15 @@ static int qos_process_connection(conn_rec *c) {
     }
 
     /* evaluates client ip */
-    if((sconf->max_conn_per_ip != -1) ||
-       sconf->has_qos_cc) {
-      qos_ip_str2long(QS_CONN_REMOTEIP(c), &cconf->ip6);
+    qos_ip_str2long(QS_CONN_REMOTEIP(c), &cconf->ip6);
 #ifdef QS_INTERNAL_TEST
-      /* use one of the predefined ip addresses */
-      if(cconf->sconf->enable_testip) {
-        char *testid = apr_psprintf(c->pool, "%d", rand()%(QS_SIM_IP_LEN-1));
-        const char *testip = apr_table_get(cconf->sconf->testip, testid);
-        qos_ip_str2long(testip, &cconf->ip6);
-      }
-#endif
+    /* use one of the predefined ip addresses */
+    if(cconf->sconf->enable_testip) {
+      char *testid = apr_psprintf(c->pool, "%d", rand()%(QS_SIM_IP_LEN-1));
+      const char *testip = apr_table_get(cconf->sconf->testip, testid);
+      qos_ip_str2long(testip, &cconf->ip6);
     }
+#endif
 
     /* ------------------------------------------------------------
      * update data
@@ -9929,6 +9929,10 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
         }
         apr_pool_cleanup_register(ssconf->pool, ssconf->act,
                                   qos_cleanup_shm, apr_pool_cleanup_null);
+        if(ssconf->has_conn_counter == 0 && sconf->has_conn_counter == 1) {
+          // shall use global counter because vhost has not QS_SrvMaxConn* directive
+          ssconf->act->conn = sconf->act->conn;
+        }
       }
       if(ssconf->error_page == NULL && error_page != NULL) {
         ssconf->error_page = error_page;
@@ -10655,10 +10659,13 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->ip_header_name_regex = NULL;
   sconf->vip_user = 0;
   sconf->vip_ip_user = 0;
+
+  sconf->has_conn_counter = 0;
   sconf->max_conn = -1;
   sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
   sconf->max_conn_per_ip_connections = -1;
+
   sconf->serialize = -1;
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->hfilter_table = apr_table_make(p, 5);
@@ -11903,6 +11910,7 @@ const char *qos_vip_ip_u_cmd(cmd_parms *cmd, void *dcfg) {
 const char *qos_max_conn_cmd(cmd_parms *cmd, void *dcfg, const char *number) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
+  sconf->has_conn_counter = 1;
   sconf->max_conn = atoi(number);
   if(sconf->max_conn == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
@@ -11918,6 +11926,7 @@ const char *qos_max_conn_close_cmd(cmd_parms *cmd, void *dcfg, const char *numbe
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *n = apr_pstrdup(cmd->temp_pool, number);
+  sconf->has_conn_counter = 1;
   if((strlen(n) > 1) &&
      (n[strlen(n)-1] == '%')) {
     n[strlen(n)-1] = '\0';
@@ -11945,6 +11954,7 @@ const char *qos_max_conn_ip_cmd(cmd_parms *cmd, void *dcfg, const char *number,
                                 const char *connections) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
+  sconf->has_conn_counter = 1;
   sconf->max_conn_per_ip = atoi(number);
   if(sconf->max_conn_per_ip == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
