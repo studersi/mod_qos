@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.61 2016-04-22 19:06:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.62 2016-04-22 20:38:35 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -520,6 +520,9 @@ Listen       127.0.0.1:##QS_PORT_BASE10##
 <VirtualHost 127.0.0.1:##QS_PORT_BASE10##>
    ServerName                 127.0.0.1
    TransferLog ##ROOT##/logs/access_app_log
+
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+
 </VirtualHost>
 
 <IfDefine uc1v6c>
