@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.63 2016-04-24 19:56:57 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.64 2016-04-24 20:06:19 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -57,7 +57,9 @@ MaxKeepAliveRequests    100
 KeepAliveTimeout        5
 
 LimitRequestFields      30
+<IfDefine !net>
 QS_EnableInternalIPSimulation off
+</IfDefine>
 
 <IfDefine logonly>
 QS_LogOnly              on
@@ -92,6 +94,7 @@ QS_ErrorPage             /error-docs/error.shtml
 </IfDefine>
 
 <IfDefine net>
+QS_EnableInternalIPSimulation on
 LoadModule               setenvifplus_module libexec/mod_setenvifplus.so
 SetEnvIfPlus             Remote_Net (.*) NetAddr=$1
 RequestHeaderPlus        set X-NetAddr ${NetAddr}
