@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.594 2016-04-22 19:06:16 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.595 2016-04-24 18:14:02 pbuchbinder Exp $";
 static const char g_revision[] = "11.26";
 
 /************************************************************************
@@ -1589,7 +1589,6 @@ static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
   unsigned char *b = (void *)&pA->ip6[1];
   int mod = b[7] % m_qos_cc_partition;
-  // int mod = pA->ip6[1] % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
   if(m_ip_type == QS_IP_V4) {
@@ -1609,7 +1608,7 @@ static qos_s_entry_t **qos_cc_get0(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
 }
 
 /**
- * inerts a new entry to the client data store
+ * inserts a new entry to the client data store
  * @param s Client store (locked)
  * @param pA IP to insert
  * @param now Current time (last access)
@@ -1619,7 +1618,6 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   qos_s_entry_t **pB;
   unsigned char *b = (void *)&pA->ip6[1];
   int mod = b[7] % m_qos_cc_partition;
-  //  int mod = pA->ip6[1] % m_qos_cc_partition;
   int max = (s->max / m_qos_cc_partition);
   int start = mod * max;
   s->t = now;
@@ -12593,7 +12591,7 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
     return err;
   }
   sconf->qos_cc_size = atoi(arg1);
-  sconf->qos_cc_size = sconf->qos_cc_size / 100 * 100 ;
+  sconf->qos_cc_size = sconf->qos_cc_size / 640 * 640 ;
   if(sconf->qos_cc_size < 50000) {
     m_qos_cc_partition = 2;
   }
@@ -12606,8 +12604,11 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   if(sconf->qos_cc_size >= 1000000) {
     m_qos_cc_partition = 32;
   }
+  if(sconf->qos_cc_size >= 4000000) {
+    m_qos_cc_partition = 64;
+  }
   if(sconf->qos_cc_size <= 0 || sconf->qos_cc_size > 10000000) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value gearter than 100"
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value gearter than 640"
                         " and less than 10000000", 
                         cmd->directive->directive);
   }
