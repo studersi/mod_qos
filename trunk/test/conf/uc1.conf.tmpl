@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.62 2016-04-22 20:38:35 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.63 2016-04-24 19:56:57 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -89,6 +89,15 @@ LoadModule              logio_module ##ROOT##/../httpd/modules/loggers/.libs/mod
 QS_ClientEventLimitCount 3 3
 QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
 QS_ErrorPage             /error-docs/error.shtml
+</IfDefine>
+
+<IfDefine net>
+LoadModule               setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus             Remote_Net (.*) NetAddr=$1
+RequestHeaderPlus        set X-NetAddr ${NetAddr}
+QS_ClientIpFromHeader    X-NetAddr
+QS_ClientEventLimitCount 3 3 NET
+QS_SetEnvIfQuery         NET NET=yes
 </IfDefine>
 
 <IfDefine status>
