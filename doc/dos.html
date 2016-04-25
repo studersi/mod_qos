@@ -343,9 +343,21 @@ your server runs out of free TCP connections.
 <a href="index.html#QS_ClientGeoCountryPriv">QS_ClientGeoCountryPriv</a>        DE,AT,CH 700
 </pre></td></tr></table> 
 <p>
-Geolocation databases that work with mod_qos are available from MaxMind or 
-IP2Location.
+The geolocation database file is a CSV file containing the following 
+fields: the double quoted <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">integer number<id></i> 
+defining the first IPv4 address in a netblock, the double quoted <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">integer number<id></i> 
+defining the last IPv4 address in a netblock, and the double quoted ISO 3166 
+country code.
 </p>
+Example (extract) of a database file:
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+"176.10.86.0","176.10.87.255",<b>"2953467392","2953467903","GB"</b>,"United Kingdom"
+"176.10.88.0","176.10.95.255",<b>"2953467904","2953469951","BE"</b>,"Belgium"
+"176.10.96.0","176.10.127.255",<b>"2953469952","2953478143","CH"</b>,"Switzerland"
+"176.10.128.0","176.10.227.63",<b>"2953478144","2953503551","SE"</b>,"Sweden"
+"176.10.227.64","176.10.227.71",<b>"2953503552","2953503559","NO"</b>,"Norway"
+"176.10.227.72","176.10.255.255",<b>"2953503560","2953510911","SE"</b>,"Sweden"
+</pre></td></tr></table> 
 
 <a name="prefer"></a>
 <h3>Prefer Known Clients</h3>
