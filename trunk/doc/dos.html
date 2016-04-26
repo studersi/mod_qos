@@ -390,12 +390,33 @@ directive.
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # specify the threshold (busy connections) when mod_qos starts to prefer some clients:
-QS_ClientPrefer                      80%
+<a href="index.html#QS_ClientPrefer">QS_ClientPrefer</a>                      80%
 
 # define what content type "normal" clients do access (this is just an example!):
 #                      html css/js images other 304
-QS_ClientContentTypes    40     15    150    10  40
+<a href="index.html#QS_ClientContentTypes">QS_ClientContentTypes</a>    40     15    150    10  40
 </pre></td></tr></table> 
+
+<a name="request"></a>
+<h3>Size Restrictions</h3>
+<p>
+There are two reasons why you would like to limit some request attributes 
+when fighting against DoS attacks. Having request line or header limitations 
+may bust up clients exceeding these limits. The other one is that you don't 
+want allow a client to send too many data. Two Apache and one mod_qos 
+directives may be used to set limitations.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# limits request line, header and body:
+LimitRequestLine                   7168
+LimitRequestFields                   35
+<a href="index.html#QS_LimitRequestBody">QS_LimitRequestBody</a>              102400
+</pre></td></tr></table> 
+<p>
+Note: The request body size limitation needs to be adapted to fit your 
+web server's usage. You might want to configure this limitation depending 
+on the request's content type.
+</p>
 
 <a name="kernel"></a>
 <h3>Kernel and iptables</h3>
