@@ -19,3 +19,4 @@ for E in `grep -v geoname_id $list | awk -F',' '{print $1 "," $3 "," $5}'`; do
 done
 cat tmp.txt | sort -n > tmp.sorted.txt
 ../../util/src/qsgeo -d tmp.sorted.txt -l
+
