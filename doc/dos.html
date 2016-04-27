@@ -402,20 +402,24 @@ directive.
 <p>
 There are two reasons why you would like to limit some request attributes 
 when fighting against DoS attacks. Having request line or header limitations 
-may bust up clients exceeding these limits. The other one is that you don't 
-want allow a client to send too many data. Two Apache and one mod_qos 
-directives may be used to set limitations.
+may lay open clients exceeding these limits exposing attackers trying 
+to hide themslef. The other one is that you don't want allow a client to 
+send too many data. 
+Three <a href="https://httpd.apache.org/docs/2.2/mod/core.html">Apache core <img src="images/link.png"></a> 
+and one mod_qos directives may be used to set limitations.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # limits request line, header and body:
 LimitRequestLine                   7168
 LimitRequestFields                   35
+LimitRequestFieldSize              7168
 <a href="index.html#QS_LimitRequestBody">QS_LimitRequestBody</a>              102400
 </pre></td></tr></table> 
 <p>
-Note: The request body size limitation needs to be adapted to fit your 
-web server's usage. You might want to configure this limitation depending 
-on the request's content type.
+Note: These parameters needs to be adapted to fit your web server's usage. 
+Especially the request body size limitation. 
+You might want to configure this limitation depending 
+on the request's content type or increase the values for some URLs.
 </p>
 
 <a name="kernel"></a>
