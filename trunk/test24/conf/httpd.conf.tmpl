@@ -35,6 +35,7 @@ RequestReadTimeout       header=0 body=0
 
 SSLProtocol              all -SSLv2 -SSLv3
 SSLCipherSuite           EDH:EECDH:!aNULL:!eNULL:!LOW:!MD5:!EXP:!ADH:!DSS:!ECDSA:!3DES:!RC4:!SEED:!CAMELLIA+SHA1
+#SSLCipherSuite           ALL:!DH
 SSLSessionCacheTimeout   864000
 SSLRandomSeed startup    builtin
 #SSLRandomSeed startup    file:/dev/random
