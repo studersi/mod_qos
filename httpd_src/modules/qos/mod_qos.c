@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.596 2016-05-13 19:36:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.597 2016-05-13 20:16:36 pbuchbinder Exp $";
 static const char g_revision[] = "11.27";
 
 /************************************************************************
@@ -9184,7 +9184,7 @@ static void qos_set_dscp(request_rec *r) {
                       QOS_LOGD_PFX"DSCP 0x%02x, id=%s",
                       tos, qos_unique_id(r, NULL));
       }
-      if(tos > 0) {
+      if(tos >= 0 && tos < 64) {
         rc = setsockopt(fd,
                         IPPROTO_IP, IP_TOS, 
                         &tos, sizeof(tos));

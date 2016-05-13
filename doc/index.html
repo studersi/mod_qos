@@ -731,9 +731,10 @@ Variable processed by the <code><a href="#QS_ClientEventRequestLimit">QS_ClientE
 <li>
 <a name="QS_Set_DSCP"></a>
 <code>QS_Set_DSCP=&lt;value&gt;</code><br>
-Variable used to set the IP differentiated services code points (DiffServ) 
-for the response data ("value" represents the 6-bit DSCP field as a decimal 
-number).
+Variable used to set the IP differentiated services code points 
+(DiffServ / RFC 2474). This allows you to classify the network 
+traffic when sending the response data to the client. "value" 
+represents the 6-bit DSCP field as a decimal number (0 to 63).
 </li>
 </ul>
 
