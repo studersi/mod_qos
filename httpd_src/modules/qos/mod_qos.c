@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.595 2016-04-24 18:14:02 pbuchbinder Exp $";
-static const char g_revision[] = "11.26";
+static const char revision[] = "$Id: mod_qos.c,v 5.596 2016-05-13 19:36:20 pbuchbinder Exp $";
+static const char g_revision[] = "11.27";
 
 /************************************************************************
  * Includes
@@ -58,6 +58,10 @@ static const char g_revision[] = "11.26";
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <stdlib.h>
+
+// for socket options
+#include <sys/types.h>
+#include <sys/socket.h>
 
 /* apache */
 #include <httpd.h>
@@ -146,6 +150,8 @@ static const char g_revision[] = "11.26";
 
 #define QSLOGFORMAT       "ISBiDUkEQaC"
 
+#define QS_SET_DSCP       "QS_Set_DSCP"
+
 #define QS_RESDELYATIME   "QS_ResponseDelayTime"
 #define QS_CONNID         "QS_ConnectionId"
 #define QS_COUNTRY        "QS_Country"
@@ -184,6 +190,14 @@ static const char g_revision[] = "11.26";
 
 // "3758096128","3758096383","AU"
 #define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2}|-)\""
+
+// apr_socket_t is hidden struct
+typedef struct {
+    apr_pool_t *pool;
+    int socketdes;
+    int type;
+    int protocol;
+} qs_socket_t;
 
 static const char *m_env_variables[] = {
   QS_ErrorNotes,
@@ -9155,6 +9169,36 @@ static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
   }
 }
 
+/* QS_SET_DSCP */
+static void qos_set_dscp(request_rec *r) {
+  qs_conn_base_ctx *base = qos_get_conn_base_ctx(r->connection);
+  if(base) {
+    const char *tosStr = apr_table_get(r->subprocess_env, QS_SET_DSCP);
+    if(tosStr) {
+      qs_socket_t *sock = (qs_socket_t *)base->client_socket;
+      int fd = sock->socketdes;
+      int tos = atoi(tosStr);
+      int rc = -1;
+      if(QS_ISDEBUG(r->server)) {
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                      QOS_LOGD_PFX"DSCP 0x%02x, id=%s",
+                      tos, qos_unique_id(r, NULL));
+      }
+      if(tos > 0) {
+        rc = setsockopt(fd,
+                        IPPROTO_IP, IP_TOS, 
+                        &tos, sizeof(tos));
+      }
+      if(rc != 0) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
+                      QOS_LOG_PFX(038)"DSCP, failed to set socket options,"
+                      " TOS %d, id=%s",
+                      tos, qos_unique_id(r, "038"));
+      }
+    }
+  }
+}
+
 /* QS_UnsetResHeader */
 static void qos_unset_header(request_rec *r, qos_srv_config *sconf) {
   int i;
@@ -9308,6 +9352,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     qos_header_filter(r, sconf, r->headers_out, "response",
                       sconf->reshfilter_table, mode);
   }
+  qos_set_dscp(r);
   qos_keepalive(r, sconf);
   if(sconf->max_conn_close != -1) {
     if(sconf->act->conn->connections > sconf->max_conn_close) {

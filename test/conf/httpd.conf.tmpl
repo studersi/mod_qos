@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.264 2016-04-22 19:06:16 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.265 2016-05-13 19:36:20 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -201,6 +201,9 @@ QS_UserTrackingCookieName stat
 <IfDefine usertrack_force>
 QS_UserTrackingCookieName stat /error-docs/cookie.html
 </IfDefine>
+
+# differentiated services
+SetEnvIfPlus Request_Query QS_Set_DSCP=([0-9]+) QS_Set_DSCP=$1
 
 <IfDefine geodynamic>
 QS_ClientGeoCountryDB        conf/GeoDynamic.csv
