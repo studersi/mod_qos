@@ -63,7 +63,7 @@
 - response filter (e.g. detecting "bad" js code)
   - try to enforce content security header settings
 - support milestones on a per Location basis
-- Set IP differentiated services code points (DSCP)
++ Set IP differentiated services code points (DSCP)
 - Change log message severity of errors caused by QS_SrvMinDataRate
   (mod_qos(034) events) if we did not receive any byte to avoid too 
   many event messages caused by browser's speculative preconnect requests

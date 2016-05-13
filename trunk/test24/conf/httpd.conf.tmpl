@@ -59,6 +59,8 @@ QS_SetEnvIfStatus  400 QS_Block
 QS_SetEnvIfStatus  BrokenConnection QS_Block
 </IfDefine>
 
+SetEnvIfPlus Request_Query QS_Set_DSCP=([0-9]+) QS_Set_DSCP=$1
+
 QS_SrvMinDataRate  120 3000 10
 
 QS_ClientEventLimitCount  3 10
