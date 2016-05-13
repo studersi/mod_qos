@@ -1,8 +1,7 @@
 Version 11.27
 
  - New variable "QS_Set_DSCP" to set the IP differentiated services
-   code points (DiffServ) for the response data, e.g. to set priority
-   when downloading different content.
+   code points (DiffServ / RFC 2474).
 
 Version 11.26
 
