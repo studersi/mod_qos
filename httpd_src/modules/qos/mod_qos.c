@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.597 2016-05-13 20:16:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.598 2016-05-14 07:06:00 pbuchbinder Exp $";
 static const char g_revision[] = "11.27";
 
 /************************************************************************
@@ -11479,6 +11479,12 @@ const char *qos_redirectif_cmd(cmd_parms *cmd, void *dcfg, const char *var,
   if(strncasecmp(url, "307:", 4) == 0) {
     new->code = HTTP_TEMPORARY_REDIRECT;
     new->url = apr_pstrdup(cmd->pool, &url[4]);
+  } else if(strncasecmp(url, "301:", 4) == 0) {
+    new->code = HTTP_MOVED_PERMANENTLY;
+    new->url = apr_pstrdup(cmd->pool, &url[4]);
+  } else if(strncasecmp(url, "302:", 4) == 0) {
+    new->code = HTTP_MOVED_TEMPORARILY;
+    new->url = apr_pstrdup(cmd->pool, &url[4]);
   } else {
     new->code = HTTP_MOVED_TEMPORARILY;
     new->url = apr_pstrdup(cmd->pool, url);
@@ -13478,9 +13484,10 @@ static const command_rec qos_config_cmds[] = {
 
   AP_INIT_TAKE3("QS_RedirectIf", qos_redirectif_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
-                "QS_RedirectIf <variable> <regex> <url>, redirects the client to the"
-                " configured url if the regular expression matches the value of the"
-                " the environment variable."),
+                "QS_RedirectIf <variable> <regex> [<code>:]<url>,"
+                " redirects the client to the configured url"
+                " if the regular expression matches"
+                " the value of the the environment variable."),
 
   /* client control */
   AP_INIT_TAKE1("QS_ClientEntries", qos_client_cmd, NULL,

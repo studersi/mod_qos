@@ -3,6 +3,8 @@ Version 11.27
  - New variable "QS_Set_DSCP" to set the IP differentiated services
    code points (DiffServ / RFC 2474).
 
+ - QS_RedirectIf also supports 301.
+
 Version 11.26
 
  - Changed: QS_SrvMaxConn* directive counter's inheritance from the
