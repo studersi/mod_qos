@@ -636,6 +636,12 @@ variables to form new variables interpreted by mod_qos rules. <br>
 These are the variables recognized by mod_qos:
 <ul>
 <li>
+<a name="QS_ErrorPage_Var"></a>
+<code>QS_ErrorPage=&lt;URL&gt;</code><br>
+Defines the error page overriding the setting made by the 
+<code><a href="#QS_ErrorPage">QS_ErrorPage</a></code> directive.
+</li>
+<li>
 <a name="QS_VipRequest"></a>
 <code>QS_VipRequest=yes</code><br>
 Disables the per location restrictions for this request. 
@@ -667,10 +673,12 @@ of the current request overriding the Apache
 directive settings.
 </li>
 <li>
-<a name="QS_ErrorPage_Var"></a>
-<code>QS_ErrorPage=&lt;URL&gt;</code><br>
-Defines the error page overriding the setting made by the 
-<code><a href="#QS_ErrorPage">QS_ErrorPage</a></code> directive.
+<a name="QS_Set_DSCP"></a>
+<code>QS_Set_DSCP=&lt;value&gt;</code><br>
+Variable used to set the IP differentiated services code points 
+(DiffServ / RFC 2474). This allows you to classify the network 
+traffic when sending the response data to the client. "value" 
+represents the 6-bit DSCP field as a decimal number (0 to 63).
 </li>
 <li>
 <a name="QS_Delay"></a>
@@ -727,14 +735,6 @@ and <code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</
 <a name="QS_EventRequest"></a>
 <code>QS_EventRequest</code><br>
 Variable processed by the <code><a href="#QS_ClientEventRequestLimit">QS_ClientEventRequestLimit</a></code> directive.
-</li>
-<li>
-<a name="QS_Set_DSCP"></a>
-<code>QS_Set_DSCP=&lt;value&gt;</code><br>
-Variable used to set the IP differentiated services code points 
-(DiffServ / RFC 2474). This allows you to classify the network 
-traffic when sending the response data to the client. "value" 
-represents the 6-bit DSCP field as a decimal number (0 to 63).
 </li>
 </ul>
 
