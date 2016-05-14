@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.598 2016-05-14 07:06:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.599 2016-05-14 13:15:01 pbuchbinder Exp $";
 static const char g_revision[] = "11.27";
 
 /************************************************************************
@@ -12642,7 +12642,11 @@ const char *qos_client_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
     return err;
   }
   sconf->qos_cc_size = atoi(arg1);
+#ifdef QS_INTERNAL_TEST
+  sconf->qos_cc_size = sconf->qos_cc_size / 100 * 100 ;
+#else
   sconf->qos_cc_size = sconf->qos_cc_size / 640 * 640 ;
+#endif
   if(sconf->qos_cc_size < 50000) {
     m_qos_cc_partition = 2;
   }
