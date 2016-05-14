@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.64 2016-04-24 20:06:19 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.65 2016-05-14 07:06:00 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -160,7 +160,7 @@ QS_RedirectIf            QS_Country DE http://qos.de/
 <IfDefine uc1ip2location>
 QS_ClientGeoCountryDB    conf/LITE-DB1.CSV
 QS_ClientIpFromHeader    Y-Forwarded-For
-QS_RedirectIf            QS_Country CN http://qos.cn/
+QS_RedirectIf            QS_Country CN 301:http://qos.cn/
 </IfDefine>
 
 <IfDefine uc1x1>

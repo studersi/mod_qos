@@ -29,7 +29,7 @@ __Y-Forwarded-For: 1.0.8.1
 __Connection: keep-alive
 __
 _EXPECT . "!this is the root index.html"
-_EXPECT . "302 Found"
+_EXPECT . "301 Moved"
 _EXPECT . "Location: http://qos.cn/"
 _WAIT
 _CLOSE
