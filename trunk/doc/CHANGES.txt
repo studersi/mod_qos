@@ -1,4 +1,4 @@
-Version 11.27
+Version 11.28
 
  - New variable "QS_Set_DSCP" to set the IP differentiated services
    code points (DiffServ / RFC 2474).
