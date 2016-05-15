@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.599 2016-05-14 13:15:01 pbuchbinder Exp $";
-static const char g_revision[] = "11.27";
+static const char revision[] = "$Id: mod_qos.c,v 5.600 2016-05-15 10:56:44 pbuchbinder Exp $";
+static const char g_revision[] = "11.28";
 
 /************************************************************************
  * Includes
@@ -9179,21 +9179,22 @@ static void qos_set_dscp(request_rec *r) {
       int fd = sock->socketdes;
       int tos = atoi(tosStr);
       int rc = -1;
-      if(QS_ISDEBUG(r->server)) {
-        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                      QOS_LOGD_PFX"DSCP 0x%02x, id=%s",
-                      tos, qos_unique_id(r, NULL));
-      }
       if(tos >= 0 && tos < 64) {
+        int dscp = tos << 2;
+        if(QS_ISDEBUG(r->server)) {
+          ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                        QOS_LOGD_PFX"DSCP tos=0x%02x, dscp=0x%02x, id=%s",
+                        tos, dscp, qos_unique_id(r, NULL));
+        }
         rc = setsockopt(fd,
                         IPPROTO_IP, IP_TOS, 
-                        &tos, sizeof(tos));
+                        &dscp, sizeof(dscp));
       }
       if(rc != 0) {
         ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
                       QOS_LOG_PFX(038)"DSCP, failed to set socket options,"
-                      " TOS %d, id=%s",
-                      tos, qos_unique_id(r, "038"));
+                      " TOS %s, id=%s",
+                      tosStr, qos_unique_id(r, "038"));
       }
     }
   }
