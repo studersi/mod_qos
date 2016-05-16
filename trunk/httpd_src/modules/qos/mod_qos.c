@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.602 2016-05-16 19:39:13 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.603 2016-05-16 19:45:53 pbuchbinder Exp $";
 static const char g_revision[] = "11.29";
 
 /************************************************************************
@@ -9179,11 +9179,11 @@ static void qos_set_dscp(request_rec *r) {
   if(base) {
     const char *dscpStr = apr_table_get(r->subprocess_env, QS_SET_DSCP);
     if(dscpStr) {
+#ifdef __unix__
       qs_socket_t *sock = (qs_socket_t *)base->client_socket;
       int fd = sock->socketdes;
       int dscp = atoi(dscpStr);
       int rc = -1;
-#ifdef __unix__
       if(dscp >= 0 && dscp < 64) {
         int tos = dscp << 2;
         if(QS_ISDEBUG(r->server)) {
