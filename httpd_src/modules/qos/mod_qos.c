@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.601 2016-05-15 12:23:54 pbuchbinder Exp $";
-static const char g_revision[] = "11.28";
+static const char revision[] = "$Id: mod_qos.c,v 5.602 2016-05-16 19:39:13 pbuchbinder Exp $";
+static const char g_revision[] = "11.29";
 
 /************************************************************************
  * Includes
@@ -60,8 +60,10 @@ static const char g_revision[] = "11.28";
 #include <stdlib.h>
 
 // for socket options
+#ifdef __unix__
 #include <sys/types.h>
 #include <sys/socket.h>
+#endif
 
 /* apache */
 #include <httpd.h>
@@ -191,6 +193,7 @@ static const char g_revision[] = "11.28";
 // "3758096128","3758096383","AU"
 #define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2}|-)\""
 
+#ifdef __unix__
 // apr_socket_t is hidden struct
 typedef struct {
     apr_pool_t *pool;
@@ -198,6 +201,7 @@ typedef struct {
     int type;
     int protocol;
 } qs_socket_t;
+#endif
 
 static const char *m_env_variables[] = {
   QS_ErrorNotes,
@@ -9179,6 +9183,7 @@ static void qos_set_dscp(request_rec *r) {
       int fd = sock->socketdes;
       int dscp = atoi(dscpStr);
       int rc = -1;
+#ifdef __unix__
       if(dscp >= 0 && dscp < 64) {
         int tos = dscp << 2;
         if(QS_ISDEBUG(r->server)) {
@@ -9196,6 +9201,10 @@ static void qos_set_dscp(request_rec *r) {
                       " '%s', id=%s",
                       dscpStr, qos_unique_id(r, "038"));
       }
+#else
+      ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
+                    QOS_LOG_PFX(038)QS_SET_DSCP" is not available on this platform");
+#endif
     }
   }
 }
