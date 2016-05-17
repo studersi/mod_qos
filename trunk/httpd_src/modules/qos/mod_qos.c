@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.604 2016-05-17 15:57:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.605 2016-05-17 19:36:04 pbuchbinder Exp $";
 static const char g_revision[] = "11.29";
 
 /************************************************************************
@@ -329,6 +329,37 @@ static const qos_errelt_t m_error_pages[] = {
   { "/errorpages/error500.html", "work/errorpages/error500.html" },
   { "/errorpages/gateway_error.html", "work/errorpages/gateway_error.html" },
   { NULL, NULL }
+};
+
+typedef struct {
+  int id;
+  const char *name;
+} qos_dscp_t;
+
+static const qos_dscp_t m_dscp_desc[] = {
+  { 0, "none" },
+  { 8, "class selector 1" },
+  { 10, "assured forwarding 11" },
+  { 12, "assured forwarding 12" },
+  { 14, "assured forwarding 13" },
+  { 16, "class selector 2" },
+  { 18, "assured forwarding 21" },
+  { 20, "assured forwarding 22" },
+  { 22, "assured forwarding 23" },
+  { 24, "class selector 3" },
+  { 26, "assured forwarding 31" },
+  { 28, "assured forwarding 32" },
+  { 30, "assured forwarding 33" },
+  { 32, "class selector 4" },
+  { 34, "assured forwarding 41" },
+  { 36, "assured forwarding 42" },
+  { 38, "assured forwarding 43" },
+  { 40, "class selector 5" },
+  { 44, "voice admit" },
+  { 46, "expedited forwarding" },
+  { 48, "class selector 6" },
+  { 56, "class selector 7" },
+  { -1, "unknown" }
 };
 
 typedef struct {
@@ -9169,18 +9200,28 @@ static void qos_set_dscp(request_rec *r) {
   if(dscpStr) {
 #ifdef __unix__
     qs_conn_base_ctx *base = qos_get_conn_base_ctx(r->connection);
-    int rc = -1;
-    if(base && base->client_socket) {
+    int rc = -2;
+    int hasSocket = 0;
+    if(base!=NULL && base->client_socket!=NULL) {
       apr_socket_t *sock = base->client_socket;
       int fd;
       int dscp = atoi(dscpStr);
+      hasSocket = 1;
       apr_os_sock_get(&fd, sock);
       if(dscp >= 0 && dscp < 64) {
         int tos = dscp << 2;
         if(QS_ISDEBUG(r->server)) {
+          int n = 0;
+          const char *d = "unknown";
+          while(m_dscp_desc[n].id >= 0)  {
+            if(m_dscp_desc[n].id == dscp) {
+              d = m_dscp_desc[n].name;
+            }
+            n++;
+          }
           ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                        QOS_LOGD_PFX"DSCP tos=0x%02x, dscp=0x%02x, id=%s",
-                        tos, dscp, qos_unique_id(r, NULL));
+                        QOS_LOGD_PFX"%s=%s, tos=0x%02x, dscp=0x%02x (%s), id=%s",
+                        QS_SET_DSCP, dscpStr, tos, dscp, d, qos_unique_id(r, NULL));
         }
         rc = setsockopt(fd,
                         IPPROTO_IP, IP_TOS, 
@@ -9189,13 +9230,16 @@ static void qos_set_dscp(request_rec *r) {
     }
     if(rc != 0) {
       ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
-                    QOS_LOG_PFX(038)"DSCP, failed to set socket options,"
-                    " '%s', id=%s",
-                    dscpStr, qos_unique_id(r, "038"));
+                    QOS_LOG_PFX(038)"DSCP, failed to set socket options, "
+                    QS_SET_DSCP"=%s, socket=%s, rc=%d, id=%s",
+                    dscpStr,
+                    hasSocket ? "yes" : "no",
+                    rc,
+                    qos_unique_id(r, "038"));
     }
 #else
     ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
-                  QOS_LOG_PFX(038)QS_SET_DSCP" is not available on this platform");
+                  QOS_LOG_PFX(038)QS_SET_DSCP" is not available for this platform");
 #endif
   }
 }
