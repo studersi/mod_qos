@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.603 2016-05-16 19:45:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.604 2016-05-17 15:57:06 pbuchbinder Exp $";
 static const char g_revision[] = "11.29";
 
 /************************************************************************
@@ -192,16 +192,6 @@ static const char g_revision[] = "11.29";
 
 // "3758096128","3758096383","AU"
 #define QS_GEO_PATTERN "\"([0-9]+)\",\"([0-9]+)\",\"([A-Z0-9]{2}|-)\""
-
-#ifdef __unix__
-// apr_socket_t is hidden struct
-typedef struct {
-    apr_pool_t *pool;
-    int socketdes;
-    int type;
-    int protocol;
-} qs_socket_t;
-#endif
 
 static const char *m_env_variables[] = {
   QS_ErrorNotes,
@@ -9175,15 +9165,16 @@ static void qos_start_res_rate(request_rec *r, qos_srv_config *sconf) {
 
 /* QS_SET_DSCP */
 static void qos_set_dscp(request_rec *r) {
-  qs_conn_base_ctx *base = qos_get_conn_base_ctx(r->connection);
-  if(base) {
-    const char *dscpStr = apr_table_get(r->subprocess_env, QS_SET_DSCP);
-    if(dscpStr) {
+  const char *dscpStr = apr_table_get(r->subprocess_env, QS_SET_DSCP);
+  if(dscpStr) {
 #ifdef __unix__
-      qs_socket_t *sock = (qs_socket_t *)base->client_socket;
-      int fd = sock->socketdes;
+    qs_conn_base_ctx *base = qos_get_conn_base_ctx(r->connection);
+    int rc = -1;
+    if(base && base->client_socket) {
+      apr_socket_t *sock = base->client_socket;
+      int fd;
       int dscp = atoi(dscpStr);
-      int rc = -1;
+      apr_os_sock_get(&fd, sock);
       if(dscp >= 0 && dscp < 64) {
         int tos = dscp << 2;
         if(QS_ISDEBUG(r->server)) {
@@ -9195,17 +9186,17 @@ static void qos_set_dscp(request_rec *r) {
                         IPPROTO_IP, IP_TOS, 
                         &tos, sizeof(tos));
       }
-      if(rc != 0) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
-                      QOS_LOG_PFX(038)"DSCP, failed to set socket options,"
-                      " '%s', id=%s",
-                      dscpStr, qos_unique_id(r, "038"));
-      }
-#else
-      ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
-                    QOS_LOG_PFX(038)QS_SET_DSCP" is not available on this platform");
-#endif
     }
+    if(rc != 0) {
+      ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
+                    QOS_LOG_PFX(038)"DSCP, failed to set socket options,"
+                    " '%s', id=%s",
+                    dscpStr, qos_unique_id(r, "038"));
+    }
+#else
+    ap_log_rerror(APLOG_MARK, APLOG_NOTICE, 0, r, 
+                  QOS_LOG_PFX(038)QS_SET_DSCP" is not available on this platform");
+#endif
   }
 }
 
