@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.605 2016-05-17 19:36:04 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.606 2016-05-24 15:31:53 pbuchbinder Exp $";
 static const char g_revision[] = "11.29";
 
 /************************************************************************
@@ -1872,6 +1872,43 @@ static char *qos_revision(apr_pool_t *p) {
 }
 
 /**
+ * returns the request context
+ */
+static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
+  qs_req_ctx *rctx = ap_get_module_config(r->request_config, &qos_module);
+  if(rctx == NULL) {
+    rctx = apr_pcalloc(r->pool, sizeof(qs_req_ctx));
+    rctx->entry = NULL;
+    rctx->entry_cond = NULL;
+    rctx->evmsg = NULL;
+    rctx->is_vip = 0;
+    rctx->event_entries = apr_table_make(r->pool, 1);
+    rctx->maxpostcount = 0;
+    rctx->cc_event_req_set = 0;
+    rctx->cc_serialize_set = 0;
+    rctx->srv_serialize_set = 0;
+    rctx->body_window = NULL;
+    rctx->response_delayed = 0;
+    ap_set_module_config(r->request_config, &qos_module, rctx);
+  }
+  return rctx;
+}
+
+/**
+ * Adds the defined mod_qos_ev id to the request context (creates
+ * the req ctx if necessary).
+ *
+ * @param r
+ * @param id ID to set, e.g. "L;" or "D;"
+ */
+static void qs_set_evmsg(request_rec *r, const char *id) {
+  qs_req_ctx *rctx = qos_rctx_config_get(r);
+  if(rctx->evmsg == NULL || (strstr(rctx->evmsg, id) == NULL)) {
+    rctx->evmsg = apr_pstrcat(r->pool, id, rctx->evmsg, NULL);
+  }
+}
+
+/**
  * Encrypts and base64 encodes the provided buffer
  * @param r
  * @param sconf Key to use (sconf->key)
@@ -2029,6 +2066,7 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
   if(verified == NULL) {
     verified = uid;
     apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
+    qs_set_evmsg(r, "u;"); 
   } else if(strlen(verified) > 2) {
     /* renew, if not from this month */
     apr_size_t retcode;
@@ -2318,43 +2356,6 @@ static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
                         sconf->cookie_path, sconf->max_age);
   apr_table_add(r->headers_out,"Set-Cookie", cookie);
   return;
-}
-
-/**
- * returns the request context
- */
-static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
-  qs_req_ctx *rctx = ap_get_module_config(r->request_config, &qos_module);
-  if(rctx == NULL) {
-    rctx = apr_pcalloc(r->pool, sizeof(qs_req_ctx));
-    rctx->entry = NULL;
-    rctx->entry_cond = NULL;
-    rctx->evmsg = NULL;
-    rctx->is_vip = 0;
-    rctx->event_entries = apr_table_make(r->pool, 1);
-    rctx->maxpostcount = 0;
-    rctx->cc_event_req_set = 0;
-    rctx->cc_serialize_set = 0;
-    rctx->srv_serialize_set = 0;
-    rctx->body_window = NULL;
-    rctx->response_delayed = 0;
-    ap_set_module_config(r->request_config, &qos_module, rctx);
-  }
-  return rctx;
-}
-
-/**
- * Adds the defined mod_qos_ev id to the request context (creates
- * the req ctx if necessary).
- *
- * @param r
- * @param id ID to set, e.g. "L;" or "D;"
- */
-static void qs_set_evmsg(request_rec *r, const char *id) {
-  qs_req_ctx *rctx = qos_rctx_config_get(r);
-  if(rctx->evmsg == NULL || (strstr(rctx->evmsg, id) == NULL)) {
-    rctx->evmsg = apr_pstrcat(r->pool, id, rctx->evmsg, NULL);
-  }
 }
 
 /**
@@ -11859,18 +11860,20 @@ const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg,
   const char *force = NULL;
   sconf->user_tracking_cookie = apr_pstrdup(cmd->pool, name);
   if(option1) {
-    if(strcasecmp(option1, "session") == 0) {
+    if((strcasecmp(option1, "session") == 0) || 
+       (strcasecmp(option1, "'session'") == 0)) {
       sconf->user_tracking_cookie_session = 1;
     } else {
       force = option1;
     }
   }
   if(option2) {
-    if(strcasecmp(option2, "session") == 0) {
+    if((strcasecmp(option2, "session") == 0) || 
+       (strcasecmp(option2, "'session'") == 0)) {
       sconf->user_tracking_cookie_session = 1;
     } else {
       if(force == NULL) {
-        force = option2;
+         force = option2;
       }
     }
   }

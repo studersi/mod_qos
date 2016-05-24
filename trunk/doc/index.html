@@ -683,17 +683,17 @@ Commonly used values:
 <small>
 <table class="btable">
 <tr><td>DSCP</td><td>Class</td><td>&nbsp;&nbsp;</td>  <td>DSCP</td><td>Class</td></tr>
-<tr><td>0</td><td>none</td><td>&nbsp;&nbsp;</td>  <td>8</td><td>Class selector 1</td></tr>
-<tr><td>10</td><td>Assured forwarding 11</td><td>&nbsp;&nbsp;</td> <td>12</td><td>Assured forwarding 12</td></tr>
-<tr><td>14</td><td>Assured forwarding 13</td><td>&nbsp;&nbsp;</td> <td>16</td><td>Class selector 2</td></tr>
-<tr><td>18</td><td>Assured forwarding 21</td><td>&nbsp;&nbsp;</td> <td>20</td><td>Assured forwarding 22</td></tr>
-<tr><td>22</td><td>Assured forwarding 23</td><td>&nbsp;&nbsp;</td> <td>24</td><td>Class selector 3</td></tr>
-<tr><td>26</td><td>Assured forwarding 31</td><td>&nbsp;&nbsp;</td> <td>28</td><td>Assured forwarding 32</td></tr>
-<tr><td>30</td><td>Assured forwarding 33</td><td>&nbsp;&nbsp;</td> <td>32</td><td>Class selector 4</td></tr>
-<tr><td>34</td><td>Assured forwarding 41</td><td>&nbsp;&nbsp;</td> <td>36</td><td>Assured forwarding 42</td></tr>
-<tr><td>38</td><td>Assured forwarding 43</td><td>&nbsp;&nbsp;</td> <td>40</td><td>Class selector 5</td></tr>
-<tr><td>44</td><td>Voice admit</td><td>&nbsp;&nbsp;</td> <td>46</td><td>Expedited forwarding</td></tr>
-<tr><td>48</td><td>Class selector 6</td><td>&nbsp;&nbsp;</td> <td>56</td><td>Class selector 7</td></tr>
+<tr><td>0</td><td>none</td><td>&nbsp;&nbsp;&nbsp;</td>  <td>8</td><td>Class selector 1</td></tr>
+<tr><td>10</td><td>Assured forwarding 11</td><td>&nbsp;&nbsp;&nbsp;</td> <td>12</td><td>Assured forwarding 12</td></tr>
+<tr><td>14</td><td>Assured forwarding 13</td><td>&nbsp;&nbsp;&nbsp;</td> <td>16</td><td>Class selector 2</td></tr>
+<tr><td>18</td><td>Assured forwarding 21</td><td>&nbsp;&nbsp;&nbsp;</td> <td>20</td><td>Assured forwarding 22</td></tr>
+<tr><td>22</td><td>Assured forwarding 23</td><td>&nbsp;&nbsp;&nbsp;</td> <td>24</td><td>Class selector 3</td></tr>
+<tr><td>26</td><td>Assured forwarding 31</td><td>&nbsp;&nbsp;&nbsp;</td> <td>28</td><td>Assured forwarding 32</td></tr>
+<tr><td>30</td><td>Assured forwarding 33</td><td>&nbsp;&nbsp;&nbsp;</td> <td>32</td><td>Class selector 4</td></tr>
+<tr><td>34</td><td>Assured forwarding 41</td><td>&nbsp;&nbsp;&nbsp;</td> <td>36</td><td>Assured forwarding 42</td></tr>
+<tr><td>38</td><td>Assured forwarding 43</td><td>&nbsp;&nbsp;&nbsp;</td> <td>40</td><td>Class selector 5</td></tr>
+<tr><td>44</td><td>Voice admit</td><td>&nbsp;&nbsp;&nbsp;</td> <td>46</td><td>Expedited forwarding</td></tr>
+<tr><td>48</td><td>Class selector 6</td><td>&nbsp;&nbsp;&nbsp;</td> <td>56</td><td>Class selector 7</td></tr>
 </table>
 </small>
 </li>
@@ -1844,8 +1844,9 @@ single letter which is used to signalize an event: "D"=denied, "S"=pass
 due to an available <a href="#privilegedusers">VIP</a> session, 
 "V"=create VIP session, "K"=connection closed 
 (no keep-alive), "T"=dynamic keep-alive, "r"=IP is marked as a 
-slow/bad client, "L"=means a request slowdown, and "s" is used for 
-serialized requests. The letter "A" for connection abort is set if 
+slow/bad client, "L"=means a request slowdown, "u"=request without a 
+user tracking cookie, and "s" is used for serialized requests. 
+The letter "A" for connection abort is set if 
 the status code detection <a href="#BrokenConnection"><code>BrokenConnection</code></a> 
 has been configured.
 </li>

@@ -1,3 +1,14 @@
+Verion 11.29
+
+ - mod_qos_ev variable sets character "u" if server is accessed by 
+   a client wihout a user tracking cookie (but QS_UserTrackingCookieName
+   has been configured).
+
+ - Minor (non-functional) DSCP implementation code changes (incl. new
+   log messages).
+
+ - Adds mod_qos events "qA" and "qu" to qslog.
+
 Version 11.28
 
  - New variable "QS_Set_DSCP" to set the IP differentiated services

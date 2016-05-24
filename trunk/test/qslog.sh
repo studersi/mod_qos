@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.34 2016-03-03 18:39:20 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.35 2016-05-24 15:31:53 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -129,7 +129,7 @@ case "$1" in
 	  exit 1
 	fi
 	# first detailed: 2x A01, 1x A02 for application 01 (/a)
-	if [ `grep -c "18:12:00;01;r/s;0;req;2;b/s;50;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;102;av;0;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;A01;2;A02;1" qs.log.detailed` -ne 1 ]; then
+	if [ `grep -c "18:12:00;01;r/s;0;req;2;b/s;50;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;102;av;0;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;qA;0;qu;0;A01;2;A02;1" qs.log.detailed` -ne 1 ]; then
 	  echo "$PFX failed, wrong detailed"
 	  exit 1
 	fi
@@ -139,7 +139,7 @@ case "$1" in
 	  exit 1
 	fi
 	# detailed: one request, 1x A01, 1x X02 att application 02 (/b)
-	if [ `grep -c "24.08.2011 18:13:00;02;r/s;0;req;1;b/s;16;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;52;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;A01;1;X02;1" qs.log.detailed` -ne 1 ]; then
+	if [ `grep -c "24.08.2011 18:13:00;02;r/s;0;req;1;b/s;16;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;52;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;qA;0;qu;0;A01;1;X02;1" qs.log.detailed` -ne 1 ]; then
 	  echo "$PFX failed, wrong detailed 2"
 	  exit 1
 	fi

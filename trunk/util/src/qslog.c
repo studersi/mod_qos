@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.100 2016-03-03 18:39:20 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.101 2016-05-24 15:31:53 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -156,6 +156,8 @@ typedef struct stat_rec_st {
   long qos_t;
   long qos_l;
   long qos_ser;
+  long qos_a;
+  long qos_u;
 
   apr_table_t *events;
   apr_pool_t *pool;
@@ -724,6 +726,8 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
           "qT;%ld;"
           "qL;%ld;"
           "qs;%ld;"
+          "qA;%ld;"
+          "qu;%ld;"
           "%s"
           ,
           timeStr,
@@ -756,6 +760,8 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
           stat_rec->qos_t,
           stat_rec->qos_l,
           stat_rec->qos_ser,
+          stat_rec->qos_a,
+          stat_rec->qos_u,
           custom
           );
   stat_rec->line_count = 0;
@@ -792,6 +798,8 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   stat_rec->qos_t = 0;
   stat_rec->qos_l = 0;
   stat_rec->qos_ser = 0;
+  stat_rec->qos_a = 0;
+  stat_rec->qos_u = 0;
   if(main) {
     if(!offline) {
       fprintf(f, "sl;%.2f;", av[0]);
@@ -937,6 +945,8 @@ static stat_rec_t *createRec(apr_pool_t *pool, const char *id, const char *patte
   rec->qos_t = 0;
   rec->qos_l = 0;
   rec->qos_ser = 0;
+  rec->qos_a = 0;
+  rec->qos_u = 0;
 
   rec->events = apr_table_make(pool, 300);
   rec->pool = pool;
@@ -1242,6 +1252,12 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     }
     if(strchr(Q, 's') != NULL) {
       rec->qos_ser++;
+    }
+    if(strchr(Q, 'A') != NULL) {
+      rec->qos_a++;
+    }
+    if(strchr(Q, 'u') != NULL) {
+      rec->qos_u++;
     }
   }
   if(E != NULL) {
@@ -1833,7 +1849,8 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - number of events identified by the 'E' format character\n");
   qs_man_println(man, "  - number of mod_qos events within the last minute (qV=create session,\n");
   qs_man_print(man, "    qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
-  qs_man_print(man, "    keep-alive, qL=request/response slow down, qs=serialized request)\n");
+  qs_man_print(man, "    keep-alive, qL=request/response slow down, qs=serialized request, \n");
+  qs_man_print(man, "    qA=connection abort, qU=new user tracking cookie)\n");
   printf("\n");
   if(man) {
     printf(".SH OPTIONS\n");
