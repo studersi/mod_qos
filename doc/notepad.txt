@@ -86,7 +86,7 @@
     - mod_qos "light"
     - sepatate modules for some function sets
 - web interface (handler) to configure mod_qos dynamically
-  - impoved viewer
+  - improved viewer
   - console:
     + clear per client stats
     + block clients/IPs
@@ -123,7 +123,7 @@ x initial socket timeout for new connections (tcp open only and no initial reque
 - full Apache 2.4 support
   - all features/directives
   - MPM "worker" and "event"
-+ create request id if mod_uniqueid is not available
++ create request id if mod_unique_id is not available
 + enforce cookie support (redirect until client sends cookie), option for
   user tracking cookie or seperate cookie?
   + disable for certain user-agent headers (or X-Do-Not-Track header)
@@ -155,5 +155,8 @@ March 2008, Version 6: Per client (IP) control mechanisms.
 May 2008, Version 7: Enforces minimum upload/download throughput a client must generate.
 September 2009, Version 9: Anomaly detection using client characteristic measurement.
 Februar 2012, Version 10: Adds geolocation features (ISO 3166 country codes).
+May 2014, Version 11: Highly improves bytes/sec limitation (response throttling)
+July 2015, Version 11.15: Client and server serialization 
+May 2016, Version 1128: IP differentiated services code points
 
 ----------------
