@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.35 2016-05-24 15:31:53 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.36 2016-05-25 11:39:58 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -78,12 +78,12 @@ case "$1" in
 	./sleep.sh
  	echo "$PFX > apache"
 	./qslog.sh test writeapache | ../util/src/qslog -f I....RSB.TkC -o qs.log -c qslog.conf
-	if [ `grep -c 'r/s;3;req;236;b/s;590;esco;59;1xx;0;2xx;177;3xx;0;4xx;0;5xx;59;av;1;<1s;177;1s;0;2s;0;3s;0;4s;59;5s;0;>5s;0;ip;3;usr;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log` -ne 2 ]; then
+	if [ `grep -c 'r/s;3;req;236;b/s;590;esco;59;1xx;0;2xx;177;3xx;0;4xx;0;5xx;59;av;1;<1s;177;1s;0;2s;0;3s;0;4s;59;5s;0;>5s;0;ip;3;usr;0;' qs.log` -ne 2 ]; then
 	    cat qs.log
 	    echo "$PFX FAILED"
 	    exit 1
 	fi
-	if [ `grep -c '01;r/s;1;req;118;b/s;295;1xx;0;2xx;59;3xx;0;4xx;0;5xx;59;av;2;<1s;59;1s;0;2s;0;3s;0;4s;59;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log.detailed` -ne 2 ]; then
+	if [ `grep -c '01;r/s;1;req;118;b/s;295;1xx;0;2xx;59;3xx;0;4xx;0;5xx;59;av;2;<1s;59;1s;0;2s;0;3s;0;4s;59;5s;0;>5s;0;' qs.log.detailed` -ne 2 ]; then
 	    cat qs.log.detailed
 	    echo "$PFX FAILED (rule 01)"
 	    exit 1
@@ -129,7 +129,7 @@ case "$1" in
 	  exit 1
 	fi
 	# first detailed: 2x A01, 1x A02 for application 01 (/a)
-	if [ `grep -c "18:12:00;01;r/s;0;req;2;b/s;50;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;102;av;0;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;qA;0;qu;0;A01;2;A02;1" qs.log.detailed` -ne 1 ]; then
+	if [ `grep -c "18:12:00;01;r/s;0;req;2;b/s;50;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;102;av;0;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;2;A02;1" qs.log.detailed` -ne 1 ]; then
 	  echo "$PFX failed, wrong detailed"
 	  exit 1
 	fi
@@ -139,7 +139,7 @@ case "$1" in
 	  exit 1
 	fi
 	# detailed: one request, 1x A01, 1x X02 att application 02 (/b)
-	if [ `grep -c "24.08.2011 18:13:00;02;r/s;0;req;1;b/s;16;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;52;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;qA;0;qu;0;A01;1;X02;1" qs.log.detailed` -ne 1 ]; then
+	if [ `grep -c "24.08.2011 18:13:00;02;r/s;0;req;1;b/s;16;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;52;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;1;X02;1" qs.log.detailed` -ne 1 ]; then
 	  echo "$PFX failed, wrong detailed 2"
 	  exit 1
 	fi
@@ -280,7 +280,7 @@ case "$1" in
 	# offline foreign log
 	rm -f qs.log
 	./qslog.sh test writelog4j | ../util/src/qslog -f ......IB.TS -o qs.log -p 2>/dev/null 1>/dev/null
-	if [ `grep -c 'r/s;4;req;240;b/s;600;1xx;0;2xx;180;3xx;0;4xx;0;5xx;60;av;1;<1s;180;1s;0;2s;0;3s;0;4s;60;5s;0;>5s;0;ip;3;usr;0;qV;0;qS;0;qD;0;qK;0;qT;0;qL;0;qs;0;' qs.log` -ne 2 ]; then
+	if [ `grep -c 'r/s;4;req;240;b/s;600;1xx;0;2xx;180;3xx;0;4xx;0;5xx;60;av;1;<1s;180;1s;0;2s;0;3s;0;4s;60;5s;0;>5s;0;ip;3;usr;0;' qs.log` -ne 2 ]; then
 	    echo "$PFX writelog4j FAILED"
 	    exit 1
 	fi
