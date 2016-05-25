@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.101 2016-05-24 15:31:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.102 2016-05-25 11:39:58 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -213,6 +213,8 @@ static int   m_methods = 0;
 /* debug/offline */
 static long  m_lines = 0;
 static int   m_verbose = 0;
+/* enable/disable event counter */
+static int   m_hasEV = 0;
 
 /* events ----------------------------------------------------- */
 /*
@@ -719,16 +721,6 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
           ">5s;%ld;"
           "%s"
           "%s"
-          "qV;%ld;"
-          "qS;%ld;"
-          "qD;%ld;"
-          "qK;%ld;"
-          "qT;%ld;"
-          "qL;%ld;"
-          "qs;%ld;"
-          "qA;%ld;"
-          "qu;%ld;"
-          "%s"
           ,
           timeStr,
           main ? "" : stat_rec->id,
@@ -752,18 +744,31 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
           stat_rec->duration_5,
           stat_rec->duration_6,
           ip,
-          usr,
-          stat_rec->qos_v,
-          stat_rec->qos_s,
-          stat_rec->qos_d,
-          stat_rec->qos_k,
-          stat_rec->qos_t,
-          stat_rec->qos_l,
-          stat_rec->qos_ser,
-          stat_rec->qos_a,
-          stat_rec->qos_u,
-          custom
+          usr
           );
+  if(m_hasEV) {
+    fprintf(f,
+            "qV;%ld;"
+            "qS;%ld;"
+            "qD;%ld;"
+            "qK;%ld;"
+            "qT;%ld;"
+            "qL;%ld;"
+            "qs;%ld;"
+            "qA;%ld;"
+            "qu;%ld;",
+            stat_rec->qos_v,
+            stat_rec->qos_s,
+            stat_rec->qos_d,
+            stat_rec->qos_k,
+            stat_rec->qos_t,
+            stat_rec->qos_l,
+            stat_rec->qos_ser,
+            stat_rec->qos_a,
+            stat_rec->qos_u);
+  }
+  fprintf(f, "%s",
+          custom);
   stat_rec->line_count = 0;
   stat_rec->byte_count = 0;
   if(stat_rec->i_byte_count != -1) {
@@ -2064,6 +2069,9 @@ int main(int argc, const char *const argv[]) {
         if(strchr(config, 's') || strchr(config, 'a') || strchr(config, 'A')) {
           // enable custom counter
           m_customcounter = 1;
+        }
+        if(strchr(config, 'Q')) {
+          m_hasEV = 1;
         }
       }
     } else if(strcmp(*argv,"-o") == 0) { /* this is the out file */

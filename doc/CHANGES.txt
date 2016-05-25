@@ -7,7 +7,8 @@ Verion 11.29
  - Minor (non-functional) DSCP implementation code changes (incl. new
    log messages).
 
- - Adds mod_qos events "qA" and "qu" to qslog.
+ - Adds mod_qos events "qA" and "qu" to qslog and the output of event
+   counters (q*) has been made optional.
 
 Version 11.28
 

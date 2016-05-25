@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qspng.c,v 1.19 2015-01-05 17:35:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qspng.c,v 1.20 2016-05-25 11:39:58 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <strings.h>
@@ -77,12 +77,15 @@ static const qs_png_elt_t qs_png_elts[] = {
   { "5xx","requets with HTTP status 5xx",   50, 70, 150 },
   { "ip", "IP addresses",          55, 60, 150 },
   { "usr","active users",          55, 66, 150 },
-  { "qv", "created VIP sessions",  55, 50, 155 },
-  { "qs", "session pass",          55, 75, 160 },
-  { "qd", "access denied",         55, 70, 170 },
-  { "qk", "conection closed",      55, 60, 145 },
-  { "qt", "dynamic keep-alive",    55, 55, 153 },
-  { "ql", "slow down",             55, 65, 140 },
+  { "qV", "created VIP sessions",  55, 50, 155 },
+  { "qS", "session pass",          55, 75, 160 },
+  { "qD", "access denied",         55, 70, 170 },
+  { "qK", "conection closed",      55, 60, 145 },
+  { "qT", "dynamic keep-alive",    55, 55, 153 },
+  { "qL", "slow down",             55, 65, 140 },
+  { "qA", "connection aborts",     55, 50, 175 },
+  { "qs", "serialization",         55, 40, 175 },
+  { "qu", "start user tracking",   55, 45, 175 },
   { "sl", "system load",           25, 60, 175 },
   { "m", "free memory", 35, 90, 185 },
   { NULL, NULL, 0, 0, 0 }
