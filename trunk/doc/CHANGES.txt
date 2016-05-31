@@ -1,4 +1,4 @@
-Verion 11.29
+Version 11.29
 
  - mod_qos_ev variable sets character "u" if server is accessed by 
    a client wihout a user tracking cookie (but QS_UserTrackingCookieName
