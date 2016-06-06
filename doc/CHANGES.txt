@@ -1,3 +1,8 @@
+Version 11.30
+
+ - Fix calculating MaxClients for MPM prefork binary (patch contributed
+   by Fergus).
+
 Version 11.29
 
  - mod_qos_ev variable sets character "u" if server is accessed by 
