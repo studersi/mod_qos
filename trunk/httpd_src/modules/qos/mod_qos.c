@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.606 2016-05-24 15:31:53 pbuchbinder Exp $";
-static const char g_revision[] = "11.29";
+static const char revision[] = "$Id: mod_qos.c,v 5.607 2016-06-06 19:01:45 pbuchbinder Exp $";
+static const char g_revision[] = "11.30";
 
 /************************************************************************
  * Includes
@@ -9801,7 +9801,11 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   QOS_MY_GENERATION(m_generation);
 
   ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &maxDaemons);
+#ifdef PREFORK_MPM
+  maxThreads = 1;
+#else
   ap_mpm_query(AP_MPMQ_MAX_THREADS, &maxThreads);
+#endif
   sconf->max_clients = maxThreads * maxDaemons;
   net_prefer = sconf->max_clients;
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
