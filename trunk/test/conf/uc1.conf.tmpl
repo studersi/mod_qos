@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.65 2016-05-14 07:06:00 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.66 2016-06-07 16:42:02 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -294,11 +294,11 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /b !
    ProxyPass                  /c !
    ProxyPass                  /cgi-local !
-   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
-   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
 
-   ProxyPass                  /myimages/ http://localhost:##QS_PORT_BASE10##/ retry=0
-   ProxyPassReverse           /myimages/ http://localhost:##QS_PORT_BASE10##/
+   ProxyPass                  /myimages/ http://127.0.0.1:##QS_PORT_BASE10##/ retry=0
+   ProxyPassReverse           /myimages/ http://127.0.0.1:##QS_PORT_BASE10##/
 
    ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
    ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/

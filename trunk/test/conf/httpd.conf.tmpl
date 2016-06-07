@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.265 2016-05-13 19:36:20 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.266 2016-06-07 16:42:02 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -305,23 +305,23 @@ ErrorDocument            404 /error-docs/error404.html
    ProxyPass                  /mirror !
    ProxyPass                  /dumpvar !
 
-   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
-   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
 
-   ProxyPass                  /app/a http://localhost:##QS_PORT_BASE6##/app/a retry=0
-   ProxyPassReverse           /app/a http://localhost:##QS_PORT_BASE6##/app/a
-   ProxyPass                  /app/b http://localhost:##QS_PORT_BASE6##/app/b retry=0
-   ProxyPassReverse           /app/b http://localhost:##QS_PORT_BASE6##/app/b
-   ProxyPass                  /app/c http://localhost:##QS_PORT_BASE6##/app/c retry=0
-   ProxyPassReverse           /app/c http://localhost:##QS_PORT_BASE6##/app/c
-   ProxyPass                  /app/d http://localhost:##QS_PORT_BASE6##/app/d retry=0
-   ProxyPassReverse           /app/d http://localhost:##QS_PORT_BASE6##/app/d
-   ProxyPass                  /app/e http://localhost:9999/app/e retry=0
-   ProxyPassReverse           /app/e http://localhost:9999/app/e
-   ProxyPass                  /support http://localhost:##QS_PORT_BASE6##/support retry=0
-   ProxyPassReverse           /support http://localhost:##QS_PORT_BASE6##/support
-   ProxyPass                  /sn-fb-dstk-war http://localhost:##QS_PORT_BASE5##/sn-fb-dstk-war retry=0
-   ProxyPassReverse           /sn-fb-dstk-war http://localhost:##QS_PORT_BASE5##/sn-fb-dstk-war
+   ProxyPass                  /app/a http://127.0.0.1:##QS_PORT_BASE6##/app/a retry=0
+   ProxyPassReverse           /app/a http://127.0.0.1:##QS_PORT_BASE6##/app/a
+   ProxyPass                  /app/b http://127.0.0.1:##QS_PORT_BASE6##/app/b retry=0
+   ProxyPassReverse           /app/b http://127.0.0.1:##QS_PORT_BASE6##/app/b
+   ProxyPass                  /app/c http://127.0.0.1:##QS_PORT_BASE6##/app/c retry=0
+   ProxyPassReverse           /app/c http://127.0.0.1:##QS_PORT_BASE6##/app/c
+   ProxyPass                  /app/d http://127.0.0.1:##QS_PORT_BASE6##/app/d retry=0
+   ProxyPassReverse           /app/d http://127.0.0.1:##QS_PORT_BASE6##/app/d
+   ProxyPass                  /app/e http://127.0.0.1:9999/app/e retry=0
+   ProxyPassReverse           /app/e http://127.0.0.1:9999/app/e
+   ProxyPass                  /support http://127.0.0.1:##QS_PORT_BASE6##/support retry=0
+   ProxyPassReverse           /support http://127.0.0.1:##QS_PORT_BASE6##/support
+   ProxyPass                  /sn-fb-dstk-war http://127.0.0.1:##QS_PORT_BASE5##/sn-fb-dstk-war retry=0
+   ProxyPassReverse           /sn-fb-dstk-war http://127.0.0.1:##QS_PORT_BASE5##/sn-fb-dstk-war
 
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
@@ -624,8 +624,8 @@ ErrorDocument            404 /error-docs/error404.html
       SetEnvIf Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=10
    </Location>
    
-   #ProxyPass              /support http://localhost:##QS_PORT_BASE6##/support
-   #ProxyPassReverse       /support http://localhost:##QS_PORT_BASE6##/support
+   #ProxyPass              /support http://127.0.0.1:##QS_PORT_BASE6##/support
+   #ProxyPassReverse       /support http://127.0.0.1:##QS_PORT_BASE6##/support
    PARP_BodyData                       text/xml
    SetEnvIf               Content-Type text/xml.* parp
    QS_SetEnvIfBody        <codeApplication>(A1|A2|A3)</codeApplication> CODEAPPLI=$1
@@ -672,8 +672,8 @@ ErrorDocument            404 /error-docs/error404.html
 
 </VirtualHost>
 
-Listen                  server1:##QS_PORT_BASE1##
-<VirtualHost server1:##QS_PORT_BASE1##>
+Listen                  127.0.0.1:##QS_PORT_BASE1##
+<VirtualHost 127.0.0.1:##QS_PORT_BASE1##>
    ServerName                 server1
 
    # -----------------------------------------------------------------
@@ -692,8 +692,8 @@ Listen                  server1:##QS_PORT_BASE1##
    ProxyPass                  /info !
    ProxyPass                  /qos !
    ProxyPass                  /qos_control !
-   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
-   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
    ProxyPass                  /ggg http://127.0.0.1:##QS_PORT_BASE5##/bbb retry=0
    ProxyPassReverse           /ggg http://127.0.0.1:##QS_PORT_BASE5##/bbb
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
@@ -768,7 +768,7 @@ Listen                  server1:##QS_PORT_BASE1##
 </VirtualHost>
 
 
-Listen                  server1:##QS_PORT_BASE2##
+Listen                  127.0.0.1:##QS_PORT_BASE2##
 
 SSLProtocol             all -SSLv2
 SSLCipherSuite          RC4-SHA:RC4-MD5:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!SSLv2:!EXP
@@ -777,7 +777,7 @@ SSLMutex                file:##ROOT##/logs/ssl_mutex
 SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
 SSLRandomSeed           startup builtin
 
-<VirtualHost server1:##QS_PORT_BASE2##>
+<VirtualHost 127.0.0.1:##QS_PORT_BASE2##>
    SSLCertificateKeyFile  ssl/key.pem
    SSLCertificateFile     ssl/cert.pem
    SSLVerifyDepth         10

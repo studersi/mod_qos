@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.46 2016-02-29 16:28:08 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/ucn.conf.tmpl,v 2.47 2016-06-07 16:42:02 pbuchbinder Exp $
 #
 # mod_qos test configuration using use cases using multiple directives/features
 #
@@ -322,8 +322,8 @@ QS_SetEnvIf          EventApp Event302        QS_LoginSession=1
    ProxyPass                  /qos !
    ProxyPass                  /cgi-local !
    ProxyPass                  /qsforbidden !
-   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
-   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
 
    ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
    ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/
