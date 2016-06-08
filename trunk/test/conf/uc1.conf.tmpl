@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.66 2016-06-07 16:42:02 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.67 2016-06-08 05:43:00 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -76,7 +76,8 @@ LogLevel                warn
 ErrorLog                ##ROOT##/logs/error_log
 #TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 14400 -f"
 TransferLog             ##ROOT##/logs/access_log
-CustomLog               "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
+CustomLog               "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQ" \
+                        "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
 
 PidFile                 ##ROOT##/logs/apache.pid
 CoreDumpDirectory       ##ROOT##/logs/
