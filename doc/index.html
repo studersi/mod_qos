@@ -1939,7 +1939,8 @@ utility for further details.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
 <pre>
-CustomLog "|/usr/bin/qslog -o logs/qslog.csv -x -f ISBTQkU" "%h %>s %b %T %{mod_qos_ev}e %k %{mod_qos_user_id}e"
+CustomLog "|/usr/bin/qslog -o logs/qslog.csv -x -f ISBTQkU" \
+          "%h %>s %b %T %{mod_qos_ev}e %k %{mod_qos_user_id}e"
 </pre>
 </td></tr>
 </table>
