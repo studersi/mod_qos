@@ -66,6 +66,10 @@ QS_SrvMinDataRate  120 3000 10
 QS_ClientEventLimitCount  3 10
 QS_SetEnvIfStatus  414 QS_Limit=1
 
+<IfDefine usertrack_force>
+QS_UserTrackingCookieName _ckUT /errorpages/cookie.html
+</IfDefine>
+
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
    ServerName   127.0.0.1
