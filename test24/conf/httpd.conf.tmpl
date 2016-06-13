@@ -66,6 +66,11 @@ QS_SrvMinDataRate  120 3000 10
 QS_ClientEventLimitCount  3 10
 QS_SetEnvIfStatus  414 QS_Limit=1
 
+<IfDefine serialize>
+QS_ClientSerialize
+QS_ClientIpFromHeader X-Frwd-Address
+</IfDefine>
+
 <IfDefine usertrack_force>
 QS_UserTrackingCookieName _ckUT /errorpages/cookie.html
 </IfDefine>
@@ -111,6 +116,7 @@ Listen         ##QS_PORT_BASE##
 
    QS_SrvSerialize            on
    SetEnvIf                   User-Agent serializeme QS_SrvSerialize=1
+   SetEnvIf                   User-Agent serialClient QS_Serialize=1
 
    QS_SrvMaxConnClose         40
    QS_SrvMaxConnPerIP         30

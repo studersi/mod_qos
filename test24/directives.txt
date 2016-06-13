@@ -76,7 +76,7 @@ QS_ClientEventBlockExcludeIP
 + QS_CondClientEventLimitCount
 QS_ClientEventPerSecLimit
 QS_ClientEventRequestLimit
-QS_ClientSerialize,
++ QS_ClientSerialize
 QS_ClientIpFromHeader
 QS_ClientGeoCountryDB
 QS_ClientGeoCountryPriv
