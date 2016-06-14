@@ -1,5 +1,5 @@
 #
-# $Id: 066_QS_ClientSerialize.htt,v 1.1 2016-06-13 15:33:23 pbuchbinder Exp $
+# $Id: 066_QS_ClientSerialize.htt,v 1.2 2016-06-14 20:00:55 pbuchbinder Exp $
 #
 # QS_ClientSerialize
 # QS_ClientIpFromHeader X-Frwd-Address
@@ -68,4 +68,10 @@ _SLEEP 100
 _EXPECT EXEC "GET /cgi/sleep.cgi\?s=1 HTTP/1.1\" 200 [0-9]+ \"serialClient x\" 3 cr=. ev=s;"
 _EXEC tail -1 logs/access_log
 
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh stop 2>/dev/null 1>/dev/null
+_SLEEP 1000
+_EXEC ./ctl.sh start 2>/dev/null 1>/dev/null
 END
