@@ -20,23 +20,23 @@ QS_EventKBytesPerSecLimit
 + QS_SrvMaxConnClose
 + QS_SrvMaxConnPerIP
 QS_SrvMaxConnExcludeIP
-+ QS_SrvDataRateOff,
++ QS_SrvDataRateOff
 QS_SrvRequestRate
 + QS_SrvMinDataRate
 QS_SrvMinDataRateOffEvent
 + QS_SrvSerialize
 + QS_DenyRequestLine
-+ QS_DenyPath,
-+ QS_DenyQuery,
++ QS_DenyPath
++ QS_DenyQuery
 + QS_DenyEvent
-+ QS_PermitUri,
++ QS_PermitUri
 QS_DenyBody
 QS_DenyQueryBody
 QS_PermitUriBody
 QS_InvalidUrlEncoding
 QS_LimitRequestBody
 QS_DenyDecoding
-QS_DenyInheritanceOff,
+QS_DenyInheritanceOff
 QS_RequestHeaderFilter
 QS_ResponseHeaderFilter
 QS_RequestHeaderFilterRule
@@ -49,8 +49,8 @@ QS_SessionTimeout
 QS_SessionKey
 + QS_VipHeaderName
 QS_VipIPHeaderName
-QS_VipUser,
-QS_VipIpUser,
+QS_VipUser
+QS_VipIpUser
 + QS_UserTrackingCookieName
 + QS_SetEnvIf
 QS_SetEnvIfQuery
@@ -65,7 +65,7 @@ QS_UnsetResHeader
 QS_SetEnvResHeader
 QS_SetEnvResHeaderMatch
 QS_SetEnvRes
-QS_RedirectIf
++ QS_RedirectIf
 QS_ClientEntries
 QS_ClientPrefer
 QS_ClientTolerance
