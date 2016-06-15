@@ -1,9 +1,9 @@
 Version 11.30
 
- - Fix calculating MaxClients for MPM prefork binary (patch contributed
-   by Fergus).
-
  - qslogger supports option "-x" (adding a prefix to every message).
+
+ - Fix calculating MaxClients for MPM prefork binary (bug reported by
+   by Fergus - thanks!).
 
 Version 11.29
 
