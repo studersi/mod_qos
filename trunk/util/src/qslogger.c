@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.21 2016-02-18 21:41:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.22 2016-06-15 11:31:46 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -229,7 +229,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s [-r <expression>] [-t <tag>] [-f <facility>] [-l <level>] [-d <level>] [-u <name>] [-p]\n",  man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s [-r <expression>] [-t <tag>] [-f <facility>] [-l <level>] [-x <prefix>] [-d <level>] [-u <name>] [-p]\n",  man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -275,6 +275,10 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     Defines the minimal severity a message must have in order to\n");
   qs_man_print(man, "     be forwarded. Default is 'DEBUG' (fowarding everything).\n");
   if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -x <prefix>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Allows you to add a prefix (literal string) to every message.\n");
+  if(man) printf("\n.TP\n");
   qs_man_print(man, "  -d <level>\n");
   if(man) printf("\n");
   qs_man_print(man, "     The default severity if the specified pattern (-r) does not\n");
@@ -318,6 +322,7 @@ int main(int argc, const char * const argv[]) {
   int level = LOG_INFO;
   const char *regexpattern = QS_DEFAULTPATTERN;
   const char *username = NULL;
+  const char *prefix = NULL;
   regex_t preg;
   if(cmd == NULL) {
     cmd = (char *)argv[0];
@@ -339,6 +344,10 @@ int main(int argc, const char * const argv[]) {
       if (--argc >= 1) {
 	const char *severityname = *(++argv);
         severity = qsgetprio(severityname, strlen(severityname));
+      }
+    } else if(strcmp(*argv, "-x") == 0) {
+      if (--argc >= 1) {
+	prefix = *(++argv);
       }
     } else if(strcmp(*argv,"-u") == 0) { /* switch user id */
       if (--argc >= 1) {
@@ -395,7 +404,11 @@ int main(int argc, const char * const argv[]) {
     level = qsgetlevel(preg, line);
     if(level <= severity) {
       // send message
-      syslog(level, "%s", line);
+      if(prefix) {
+        syslog(level, "%s%s", prefix, line);
+      } else {
+        syslog(level, "%s", line);
+      }
     }
     if(pass) {
       printf("%s\n", line);
