@@ -116,5 +116,15 @@ if [ $TOT -ne 9 ]; then
   exit 1
 fi
 
+
+echo "[$TMST] [error] mod_qos(001): qslogger test message emerg" | ../util/src/qslogger -x "message prefix: " -t mod-qos-logger -f local5
+sleep 1
+if [ `tail -1 /var/log/local5.error | egrep -c "mod-qos-logger: message prefix: \[$TMST\] \[error\] mod_qos\(001\): qslogger test message emerg"` -ne 1 ]; then
+  echo "FAILED, missing prefix"
+  tail -2 /var/log/local5.error
+  exit 1
+fi
+
+
 echo "$PFX OK"
 exit 0
