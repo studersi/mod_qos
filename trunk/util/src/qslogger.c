@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.22 2016-06-15 11:31:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.23 2016-06-16 05:34:47 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -229,7 +229,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s [-r <expression>] [-t <tag>] [-f <facility>] [-l <level>] [-x <prefix>] [-d <level>] [-u <name>] [-p]\n",  man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s [-t <tag>] [-f <facility>] [-l <level>] [-x <prefix>] [-r <expression>] [-d <level>] [-u <name>] [-p]\n",  man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -245,17 +245,6 @@ static void usage(const char *cmd, int man) {
   } else {
     printf("Options\n");
   }
-  if(man) printf("\n.TP\n");
-  qs_man_print(man, "  -r <expression>\n");
-  if(man) printf("\n");
-  qs_man_print(man, "     Specifies a regular expression which shall be used to\n");
-  qs_man_print(man, "     determine the severity (syslog level) for each log line.\n");
-  qs_man_print(man, "     The default pattern '"QS_DEFAULTPATTERN"' can\n");
-  qs_man_print(man, "     be used for Apache error log messages but you may configure\n");
-  qs_man_print(man, "     your own pattern matching and other log format too. Use brackets\n");
-  qs_man_print(man, "     to define the string enclosing the severity string.\n");
-  qs_man_print(man, "     Default level (if severity can't be determined) is defined by the\n");
-  qs_man_print(man, "     option '-d' (see below).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -t <tag>\n");
   if(man) printf("\n");
@@ -278,6 +267,17 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "  -x <prefix>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Allows you to add a prefix (literal string) to every message.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  -r <expression>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Specifies a regular expression which shall be used to\n");
+  qs_man_print(man, "     determine the severity (syslog level) for each log line.\n");
+  qs_man_print(man, "     The default pattern '"QS_DEFAULTPATTERN"' can\n");
+  qs_man_print(man, "     be used for Apache error log messages but you may configure\n");
+  qs_man_print(man, "     your own pattern matching other log formats. Use brackets\n");
+  qs_man_print(man, "     to define the pattern enclosing the severity string.\n");
+  qs_man_print(man, "     Default level (if severity can't be determined) is defined by the\n");
+  qs_man_print(man, "     option '-d' (see below).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -d <level>\n");
   if(man) printf("\n");
