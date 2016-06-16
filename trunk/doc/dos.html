@@ -114,9 +114,9 @@ all the time or just as part ot your incident response plan.
 <a name="basic"></a>
 <h3>Basic Settings</h3>
 <p>
-Hardware is inexpensive. Today's CPUs offers many cores allowing the processing 
-of many threads in parallel and prices for memory are as low as never before. 
-So allow your Apache server to serve many requests / TCP connections in 
+Hardware is inexpensive. Today's CPUs offers many cores allowing you to run 
+many threads in parallel and prices for memory are as low as never before. 
+So please allow your Apache server to serve many requests / TCP connections in 
 parallel by setting a "high" value for its <a href="http://httpd.apache.org/docs/2.2/mod/mpm_common.html#maxclients"><code>MaxClients</code> <img src="images/link.png"/></a> 
 parameter (and the corresponding <code>ServerLimit</code>/<code>ThreadsPerChild</code>  
 values). I'm going to use <i>896</i> in the following examples. This is not 
