@@ -52,7 +52,8 @@
 <table>
 <tbody>
 <tr><td><img src="images/mod_qos_s.gif" alt="mod_qos" /></td>
-    <td style="vertical-align: bottom;"><h1>mod_qos</h1></td></tr>
+    <td style="vertical-align: bottom;"><h1>mod_qos</h1></td>
+</tr>
 <tr><td>&nbsp;</td>
     <td>
 <p>
@@ -540,10 +541,10 @@ Defines the cookie path. Default is "/".
 <li>
 <a name="QS_SessionKey"></a>
 <code>QS_SessionKey &lt;string&gt;</code><br>
-Secret key used for cookie encryption. Used when using the same 
-session cookie for multiple web servers (load balancing) or 
-sessions should survive a server restart. By default, 
-a random key is used which changes every server restart.
+Secret key used for cookie encryption. This key must be defined 
+when using the same session cookie for multiple web servers 
+(load balancing) or the sessions should survive a server restart. 
+By default, a random key is used which changes every server restart.
 </li>
 </ul>
 
@@ -1882,7 +1883,7 @@ feature is enabled by setting the
 directive.<br>
 Options of the <code>QS_UserTrackingCookieName</code> directive are:
 <ul>
-<li>The <code>cookie name</code> argument defines the name of the 
+<li>The <code>cookie name</code> argument defining the name of the 
 user tracking cookie.</li>
 <li>The <code>path</code> specifies a local error document 
 which is shown if a user does not accept the cookie (enforcement). 
@@ -1891,15 +1892,19 @@ You may disable this enforcement for certain clients by setting the
 <code>DISABLE_UTC_ENFORCEMENT</code> environment variable at server 
 level (outside Location), e.g., to allow crawlers not supporting 
 cookies to access your site.</li> 
-<li><code>domain</code> defines the domain attribute for the Set-Cookie 
-header.</li>
+<li><code>domain</code> defines optionally the domain attribute for 
+the Set-Cookie header.</li>
 <li>The <code>session</code> flag indicates that a short lived (per 
 session) cookie shall be creaed which won't be stored by the browser 
 permanently.</li>
 </ul>
-<small><small>Note: 
-<code>QS_UserTrackingCookieName</code> ignores the <code><a href="#QS_LogOnly">QS_LogOnly</a></code> 
-directive.</small></small>
+Note:
+<ul>
+<li><code>QS_UserTrackingCookieName</code> ignores the 
+<code><a href="#QS_LogOnly">QS_LogOnly</a></code> 
+directive.</li>
+<li>The cookie is secured by the <code><a href="#QS_SessionKey">QS_SessionKey</a></code>.</li>
+</ul>
 </li>
 <li>
 <a name="UNIQUE_ID"></a>
@@ -2411,6 +2416,6 @@ LimitRequestFields       30
 </table>
 <br>
 <hr>
-<SMALL><SMALL>&copy; 2007-2016, Pascal Buchbinder</SMALL></SMALL>
+<small><small>&copy; 2007-2016, Pascal Buchbinder</small></small>
 </body>
 </html>
