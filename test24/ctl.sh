@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.10 2016-03-30 19:40:54 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/ctl.sh,v 1.11 2016-07-06 15:20:36 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -82,6 +82,19 @@ case "$COMMAND" in
 	  done
 	done
 	../test/bin/sleep 1500
+	waitAgain=0
+	for epid in `ps -ef | grep "mod-qos/httpd/.libs" | grep -v grep | awk '{print $2}'`; do
+	  echo "> kill $epid"
+	  kill $epid
+	  waitAgain=1
+        done
+	if [ $waitAgain -eq 1 ]; then
+	  sleep 2
+          for epid in `ps -ef | grep "mod-qos/httpd/.libs" | grep -v grep | awk '{print $2}'`; do
+            echo ">> kill $epid"
+            kill -9 $epid
+          done
+	fi
 	;;
   graceful)
 	if [ -f logs/apache.pid ]; then
