@@ -46,8 +46,9 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.608 2016-06-07 16:36:05 pbuchbinder Exp $";
-static const char g_revision[] = "11.30";
+static const char revision[] = "$Id: mod_qos.c,v 5.609 2016-07-06 20:31:27 pbuchbinder Exp $";
+static const char g_revision[] = "11.31";
+
 
 /************************************************************************
  * Includes
@@ -76,6 +77,7 @@ static const char g_revision[] = "11.30";
 #include <http_config.h>
 #include <http_log.h>
 #include <util_filter.h>
+#include <util_md5.h>
 #include <ap_mpm.h>
 #include <scoreboard.h>
 #include <ap_config.h>
@@ -109,7 +111,7 @@ static const char g_revision[] = "11.30";
  ***********************************************************************/
 #define QOS_LOG_PFX(id)  "mod_qos("#id"): "
 #define QOS_LOGD_PFX  "mod_qos(): "
-#define QOS_RAN 10
+#define QOS_RAN 16
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
 #define QOS_USER_TRACKING "mod_qos_user_id"
@@ -264,9 +266,6 @@ static const char *m_note_variables[] = {
 
 #define QSMOD 4
 #define QOS_DELIM ";"
-
-#define QOS_MAGIC_LEN 8
-static char qs_magic[QOS_MAGIC_LEN] = "qsmagic";
 
 // Apache 2.4 compat (experimental)
 #if (AP_SERVER_MINORVERSION_NUMBER == 4)
@@ -569,7 +568,6 @@ typedef struct {
  */
 typedef struct {
   unsigned char ran[QOS_RAN];
-  char magic[QOS_MAGIC_LEN];
   time_t time;
 } qos_session_t;
 
@@ -1918,13 +1916,25 @@ static void qs_set_evmsg(request_rec *r, const char *id) {
  */
 static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned char *b, int l) {
   EVP_CIPHER_CTX cipher_ctx;
+  unsigned char hash[APR_MD5_DIGESTSIZE];
+  apr_md5_ctx_t md5;
   int buf_len = 0;
   int len = 0;
-  unsigned char *buf = apr_pcalloc(r->pool, l + EVP_CIPHER_block_size(EVP_des_ede3_cbc()));
+  unsigned char *buf = apr_pcalloc(r->pool, l + 
+                                   EVP_CIPHER_block_size(EVP_des_ede3_cbc()) +
+                                   APR_MD5_DIGESTSIZE);
+  /* checksum */
+  apr_md5_init(&md5);
+  apr_md5_update(&md5, b, l);
+  apr_md5_final(hash, &md5);
 
   /* sym enc, should be sufficient for this use case */
   EVP_CIPHER_CTX_init(&cipher_ctx);
   EVP_EncryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
+  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, hash, APR_MD5_DIGESTSIZE)) {
+    goto failed;
+  }
+  buf_len+=len;
   if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, b, l)) {
     goto failed;
   }
@@ -1961,6 +1971,9 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     return 0;
   } else {
     /* decrypt */
+    unsigned char *hashIn;
+    unsigned char hash[APR_MD5_DIGESTSIZE];
+    apr_md5_ctx_t md5;
     int len = 0;
     int buf_len = 0;
     unsigned char *buf = apr_pcalloc(r->pool, dec_len);
@@ -1976,7 +1989,20 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     }
     buf_len+=len;
     EVP_CIPHER_CTX_cleanup(&cipher_ctx);
-    *ret_buf = buf;
+    if(buf_len < APR_MD5_DIGESTSIZE) {
+      return 0;
+    }
+    buf_len -= APR_MD5_DIGESTSIZE;
+    apr_md5_init(&md5);
+    apr_md5_update(&md5, &buf[APR_MD5_DIGESTSIZE], buf_len);
+    apr_md5_final(hash, &md5);
+    hashIn = buf;
+
+    if(memcmp(hash, hashIn, APR_MD5_DIGESTSIZE) != 0) {
+      return 0;
+    }
+
+    *ret_buf = &buf[APR_MD5_DIGESTSIZE];
     return buf_len;
   }
  failed:
@@ -1998,7 +2024,7 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
     apr_size_t retcode;
     char tstr[MAX_STRING_LEN];
     apr_time_exp_t n;
-    int len = QOS_RAN + QOS_MAGIC_LEN + 2 + strlen(new_user);
+    int len = QOS_RAN + 2 + strlen(new_user);
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
     char *domain = NULL;
@@ -2015,9 +2041,8 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
                     QOS_LOG_PFX(080)"Can't generate random data.");
     }
 #endif
-    memcpy(&value[QOS_RAN], qs_magic, QOS_MAGIC_LEN);
-    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], tstr, 2);
-    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN+2], new_user, strlen(new_user));
+    memcpy(&value[QOS_RAN], tstr, 2);
+    memcpy(&value[QOS_RAN+2], new_user, strlen(new_user));
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
     if(sconf->user_tracking_cookie_domain != NULL) {
@@ -2058,9 +2083,8 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
     int buf_len = 0;
     unsigned char *buf;
     buf_len = qos_decrypt(r, sconf, &buf, value);
-    if((buf_len > (QOS_MAGIC_LEN + QOS_RAN)) &&
-       (strncmp((char *)&buf[QOS_RAN], qs_magic, QOS_MAGIC_LEN) == 0)) {
-      verified = (char *)&buf[QOS_RAN+QOS_MAGIC_LEN];
+    if(buf_len > QOS_RAN) {
+      verified = (char *)&buf[QOS_RAN];
     }
   }
   if(verified == NULL) {
@@ -2094,7 +2118,7 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
   const char *new_ms = apr_table_get(r->subprocess_env, QOS_MILESTONE_COOKIE);
   if(new_ms) {
     apr_time_t now = apr_time_sec(r->request_time);
-    int len = QOS_RAN + QOS_MAGIC_LEN  + sizeof(apr_time_t) + strlen(new_ms);
+    int len = QOS_RAN + sizeof(apr_time_t) + strlen(new_ms);
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
 #if APR_HAS_RANDOM
@@ -2108,9 +2132,8 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
                     QOS_LOG_PFX(081)"Can't generate random data.");
     }
 #endif
-    memcpy(&value[QOS_RAN], qs_magic, QOS_MAGIC_LEN);
-    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN], &now, sizeof(apr_time_t));
-    memcpy(&value[QOS_RAN+QOS_MAGIC_LEN+sizeof(apr_time_t)], new_ms, strlen(new_ms));
+    memcpy(&value[QOS_RAN], &now, sizeof(apr_time_t));
+    memcpy(&value[QOS_RAN+sizeof(apr_time_t)], new_ms, strlen(new_ms));
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
     apr_table_add(r->headers_out, "Set-Cookie",
@@ -2146,13 +2169,12 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
     int buf_len = 0;
     unsigned char *buf;
     buf_len = qos_decrypt(r, sconf, &buf, value);
-    if((buf_len > (QOS_MAGIC_LEN + QOS_RAN)) &&
-       (strncmp((char *)&buf[QOS_RAN], qs_magic, QOS_MAGIC_LEN) == 0)) {
-      apr_time_t *t = (apr_time_t *)&buf[QOS_RAN+QOS_MAGIC_LEN];
+    if(buf_len > QOS_RAN) {
+      apr_time_t *t = (apr_time_t *)&buf[QOS_RAN];
       apr_time_t now = apr_time_sec(r->request_time);
       age = now - *t;
       if(now <= (*t + sconf->milestone_timeout)) {
-        ms = atoi((char *)&buf[QOS_RAN+QOS_MAGIC_LEN+sizeof(apr_time_t)]);
+        ms = atoi((char *)&buf[QOS_RAN+sizeof(apr_time_t)]);
       }
     }
   }
@@ -2303,13 +2325,6 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
     return 0;
   } else {
     qos_session_t *s = (qos_session_t *)buf;
-    s->magic[QOS_MAGIC_LEN-1] = '\0';
-    if(strcmp(qs_magic, s->magic) != 0) {
-      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                    QOS_LOG_PFX(022)"session cookie verification failed, "
-                    "invalid magic, id=%s", qos_unique_id(r, "022"));
-      return 0;
-    }
     if(s->time < (apr_time_sec(r->request_time) - sconf->max_age)) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                     QOS_LOG_PFX(023)"session cookie verification failed, "
@@ -2330,8 +2345,6 @@ static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
   char *cookie;
   char *session;
   /* payload */
-  strcpy(s->magic, qs_magic);
-  s->magic[QOS_MAGIC_LEN-1] = '\0';
   s->time = time(NULL);
 #if APR_HAS_RANDOM
   if(apr_generate_random_bytes(s->ran, sizeof(s->ran)) != APR_SUCCESS) {
