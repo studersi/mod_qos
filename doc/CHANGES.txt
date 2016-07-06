@@ -1,3 +1,7 @@
+Version 11.31
+
+ - New cookie data format (user tracking, vip, milestones).
+
 Version 11.30
 
  - qslogger supports option "-x" (adding a prefix to every message).

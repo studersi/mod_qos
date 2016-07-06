@@ -1,5 +1,5 @@
 #
-# $Id: QS_UserTrackingCookieName.htt,v 1.9 2016-05-24 15:31:53 pbuchbinder Exp $
+# $Id: QS_UserTrackingCookieName.htt,v 1.10 2016-07-06 20:31:27 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -57,9 +57,7 @@ __GET /htt/index.html?id=4 HTTP/1.1
 __Host: 127.0.0.1
 __Connection: keep-alive
 # 07:
-__Cookie: stat=BqGJIzX5OO53pXOoyI9oLlvHeokAy7eCOTIJMZ02er0NRp2oDlXKEiYPJAOAyPN4; name=value 
-## 08
-#__Cookie: stat=P23SwNj3qiqdvjZdGVq4MDobFRsp/WMpET2Da2wLiB3BS2SD49dn0SQvGTJ8adf7; name=value 
+__Cookie: stat=LxbqBELqXdAdw3QVXumJiMY0GxBle7tCVWDNCwAVZsCe9iwxmuCtGwBeL7m1QM/LyQIb8zpVivVYOSfZnaCbdQ==; name=value;
 __
 _EXPECT . "AS1"
 _EXPECT . "Set-Cookie"
@@ -76,9 +74,7 @@ __Cookie: stat=$UTC; name=value
 __
 _EXPECT . "AS1"
 # 07:
-_EXPECT . "cexKon8AAQEAAE2OcncAAAAE"
-## 08:
-#_EXPECT . "THX7mX8AAQEAAE2OclIAAAAA"
+_EXPECT . "V31Yw38AAAEAACuuBScAAAAA"
 _EXPECT . "!Set-Cookie"
 _WAIT
 
