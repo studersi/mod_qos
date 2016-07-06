@@ -94,7 +94,13 @@
 - management tool (sep. application)
   - configuration guidance
     - documentation, mobile app?
-    + dos.html
+  - topics:
+    - concurrency limitation (QS_LocRequestLimitMatch)
+    - response throttling (QS_LocKBytesPerSecLimitMatch (+QS_LocRequestLimitMatch))
+    + denial of service defense: dos.html
+    - session dos/brute foce attack defense
+    - user tracking cookie for stats and to ensure client accepts cookies
+    - ...
   - log data management
   - rule generation
   - utilities (ha/lb/...)
