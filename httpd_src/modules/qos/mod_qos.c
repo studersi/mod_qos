@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.609 2016-07-06 20:31:27 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.610 2016-07-07 19:29:38 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -567,7 +567,6 @@ typedef struct {
  * session cookie
  */
 typedef struct {
-  unsigned char ran[QOS_RAN];
   time_t time;
 } qos_session_t;
 
@@ -969,6 +968,8 @@ static int m_qos_cc_partition = QSMOD;
 static qos_unique_id_t m_unique_id;
 static const char qos_basis_64[] =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+
+static const unsigned char m_qsmagic[] = "qsMagitk3n";
 
 /* mod_parp, forward and optional function */
 static apr_status_t qos_cleanup_conn(void *p);
@@ -1920,9 +1921,26 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
   apr_md5_ctx_t md5;
   int buf_len = 0;
   int len = 0;
-  unsigned char *buf = apr_pcalloc(r->pool, l + 
-                                   EVP_CIPHER_block_size(EVP_des_ede3_cbc()) +
-                                   APR_MD5_DIGESTSIZE);
+  unsigned char ran[QOS_RAN];
+  unsigned char *buf = apr_pcalloc(r->pool, +
+                                   QOS_RAN +
+                                   APR_MD5_DIGESTSIZE +
+                                   sizeof(m_qsmagic) +
+                                   l +
+                                   EVP_CIPHER_block_size(EVP_des_ede3_cbc()));
+
+#if APR_HAS_RANDOM
+  if(apr_generate_random_bytes(ran, QOS_RAN) != APR_SUCCESS) {
+    ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(080)"Can't generate random data.");
+  }
+#else
+  if(!RAND_bytes(ran, QOS_RAN)) {
+    ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(080)"Can't generate random data.");
+  }
+#endif
+
   /* checksum */
   apr_md5_init(&md5);
   apr_md5_update(&md5, b, l);
@@ -1931,7 +1949,17 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
   /* sym enc, should be sufficient for this use case */
   EVP_CIPHER_CTX_init(&cipher_ctx);
   EVP_EncryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
+
+  // rand + hash + magic + data
+  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, ran, QOS_RAN)) {
+    goto failed;
+  }
+  buf_len+=len;
   if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, hash, APR_MD5_DIGESTSIZE)) {
+    goto failed;
+  }
+  buf_len+=len;
+  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, m_qsmagic, sizeof(m_qsmagic))) {
     goto failed;
   }
   buf_len+=len;
@@ -1943,6 +1971,7 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
     goto failed;
   }
   buf_len+=len;
+
   EVP_CIPHER_CTX_cleanup(&cipher_ctx);
   
   /* encode */
@@ -1978,6 +2007,7 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     int buf_len = 0;
     unsigned char *buf = apr_pcalloc(r->pool, dec_len);
     EVP_CIPHER_CTX_init(&cipher_ctx);
+
     EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
     if(!EVP_DecryptUpdate(&cipher_ctx, (unsigned char *)&buf[buf_len], &len,
                           (const unsigned char *)dec, dec_len)) {
@@ -1989,20 +2019,27 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     }
     buf_len+=len;
     EVP_CIPHER_CTX_cleanup(&cipher_ctx);
-    if(buf_len < APR_MD5_DIGESTSIZE) {
+
+    // rand + hash + magic + data
+    if(buf_len < (QOS_RAN + APR_MD5_DIGESTSIZE + sizeof(m_qsmagic) + 1)) {
       return 0;
     }
-    buf_len -= APR_MD5_DIGESTSIZE;
+
+    if(memcmp(&buf[QOS_RAN+APR_MD5_DIGESTSIZE], m_qsmagic, sizeof(m_qsmagic)) != 0) {
+      return 0;
+    }
+
+    buf_len = buf_len - QOS_RAN - APR_MD5_DIGESTSIZE - sizeof(m_qsmagic);
     apr_md5_init(&md5);
-    apr_md5_update(&md5, &buf[APR_MD5_DIGESTSIZE], buf_len);
+    apr_md5_update(&md5, &buf[QOS_RAN+APR_MD5_DIGESTSIZE+sizeof(m_qsmagic)], buf_len);
     apr_md5_final(hash, &md5);
-    hashIn = buf;
+    hashIn = &buf[QOS_RAN];
 
     if(memcmp(hash, hashIn, APR_MD5_DIGESTSIZE) != 0) {
       return 0;
     }
 
-    *ret_buf = &buf[APR_MD5_DIGESTSIZE];
+    *ret_buf = &buf[APR_MD5_DIGESTSIZE+QOS_RAN+sizeof(m_qsmagic)];
     return buf_len;
   }
  failed:
@@ -2024,25 +2061,16 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
     apr_size_t retcode;
     char tstr[MAX_STRING_LEN];
     apr_time_exp_t n;
-    int len = QOS_RAN + 2 + strlen(new_user);
+    int new_user_len = strlen(new_user);
+    int len = 2 + new_user_len;
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
     char *domain = NULL;
     apr_time_exp_gmt(&n, r->request_time);
     apr_strftime(tstr, &retcode, sizeof(tstr), "%m", &n);
-#if APR_HAS_RANDOM
-    if(apr_generate_random_bytes(value, QOS_RAN) != APR_SUCCESS) {
-      ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
-                    QOS_LOG_PFX(080)"Can't generate random data.");
-    }
-#else
-    if(!RAND_bytes(value, QOS_RAN)) {
-      ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
-                    QOS_LOG_PFX(080)"Can't generate random data.");
-    }
-#endif
-    memcpy(&value[QOS_RAN], tstr, 2);
-    memcpy(&value[QOS_RAN+2], new_user, strlen(new_user));
+
+    memcpy(value, tstr, 2);
+    memcpy(&value[2], new_user, new_user_len);
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
     if(sconf->user_tracking_cookie_domain != NULL) {
@@ -2083,8 +2111,8 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
     int buf_len = 0;
     unsigned char *buf;
     buf_len = qos_decrypt(r, sconf, &buf, value);
-    if(buf_len > QOS_RAN) {
-      verified = (char *)&buf[QOS_RAN];
+    if(buf_len > 0) {
+      verified = (char *)buf;
     }
   }
   if(verified == NULL) {
@@ -2118,22 +2146,13 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
   const char *new_ms = apr_table_get(r->subprocess_env, QOS_MILESTONE_COOKIE);
   if(new_ms) {
     apr_time_t now = apr_time_sec(r->request_time);
-    int len = QOS_RAN + sizeof(apr_time_t) + strlen(new_ms);
+    int new_ms_len = strlen(new_ms);
+    int len = sizeof(apr_time_t) + new_ms_len;
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
-#if APR_HAS_RANDOM
-    if(apr_generate_random_bytes(value, QOS_RAN) != APR_SUCCESS) {
-      ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
-                    QOS_LOG_PFX(081)"Can't generate random data.");
-    }
-#else
-    if(!RAND_bytes(value, QOS_RAN)) {
-      ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
-                    QOS_LOG_PFX(081)"Can't generate random data.");
-    }
-#endif
-    memcpy(&value[QOS_RAN], &now, sizeof(apr_time_t));
-    memcpy(&value[QOS_RAN+sizeof(apr_time_t)], new_ms, strlen(new_ms));
+
+    memcpy(value, &now, sizeof(apr_time_t));
+    memcpy(&value[sizeof(apr_time_t)], new_ms, new_ms_len);
     value[len] = '\0';
     c = qos_encrypt(r, sconf, value, len + 1);
     apr_table_add(r->headers_out, "Set-Cookie",
@@ -2169,12 +2188,12 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
     int buf_len = 0;
     unsigned char *buf;
     buf_len = qos_decrypt(r, sconf, &buf, value);
-    if(buf_len > QOS_RAN) {
-      apr_time_t *t = (apr_time_t *)&buf[QOS_RAN];
+    if(buf_len > (sizeof(apr_time_t) + 2)) {
+      apr_time_t *t = (apr_time_t *)buf;
       apr_time_t now = apr_time_sec(r->request_time);
       age = now - *t;
       if(now <= (*t + sconf->milestone_timeout)) {
-        ms = atoi((char *)&buf[QOS_RAN+sizeof(apr_time_t)]);
+        ms = atoi((char *)&buf[sizeof(apr_time_t)]);
       }
     }
   }
@@ -2346,17 +2365,6 @@ static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
   char *session;
   /* payload */
   s->time = time(NULL);
-#if APR_HAS_RANDOM
-  if(apr_generate_random_bytes(s->ran, sizeof(s->ran)) != APR_SUCCESS) {
-    ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(082)"Can't generate random data.");
-  }
-#else
-  if(!RAND_bytes(s->ran, sizeof(s->ran))) {
-    ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(082)"Can't generate random data.");
-  }
-#endif
   session = qos_encrypt(r, sconf, (const unsigned char *)s, sizeof(qos_session_t));
   if(session == NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
