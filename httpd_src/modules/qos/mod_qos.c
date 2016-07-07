@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.610 2016-07-07 19:29:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.611 2016-07-07 19:52:10 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -2022,10 +2022,12 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
 
     // rand + hash + magic + data
     if(buf_len < (QOS_RAN + APR_MD5_DIGESTSIZE + sizeof(m_qsmagic) + 1)) {
+      fprintf(stderr, "$$$ wrong size\n"); fflush(stderr);
       return 0;
     }
 
     if(memcmp(&buf[QOS_RAN+APR_MD5_DIGESTSIZE], m_qsmagic, sizeof(m_qsmagic)) != 0) {
+      fprintf(stderr, "$$$ wrong magix\n"); fflush(stderr);
       return 0;
     }
 
@@ -2036,6 +2038,7 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     hashIn = &buf[QOS_RAN];
 
     if(memcmp(hash, hashIn, APR_MD5_DIGESTSIZE) != 0) {
+      fprintf(stderr, "$$$ wrong hash\n"); fflush(stderr);
       return 0;
     }
 
@@ -2154,7 +2157,7 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
     memcpy(value, &now, sizeof(apr_time_t));
     memcpy(&value[sizeof(apr_time_t)], new_ms, new_ms_len);
     value[len] = '\0';
-    c = qos_encrypt(r, sconf, value, len + 1);
+    c = qos_encrypt(r, sconf, value, len);
     apr_table_add(r->headers_out, "Set-Cookie",
                   apr_psprintf(r->pool, "%s=%s; Path=/;",
                                QOS_MILESTONE_COOKIE, c));
@@ -2188,7 +2191,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
     int buf_len = 0;
     unsigned char *buf;
     buf_len = qos_decrypt(r, sconf, &buf, value);
-    if(buf_len > (sizeof(apr_time_t) + 2)) {
+    if(buf_len >= (sizeof(apr_time_t) + 1)) {
       apr_time_t *t = (apr_time_t *)buf;
       apr_time_t now = apr_time_sec(r->request_time);
       age = now - *t;
