@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.611 2016-07-07 19:52:10 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.612 2016-07-08 18:05:24 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -77,7 +77,6 @@ static const char g_revision[] = "11.31";
 #include <http_config.h>
 #include <http_log.h>
 #include <util_filter.h>
-#include <util_md5.h>
 #include <ap_mpm.h>
 #include <scoreboard.h>
 #include <ap_config.h>
@@ -97,6 +96,7 @@ static const char g_revision[] = "11.31";
 /* mod_qos requires OpenSSL */
 #include <openssl/rand.h>
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 
 /* additional modules */
 #include "mod_status.h"
@@ -112,6 +112,7 @@ static const char g_revision[] = "11.31";
 #define QOS_LOG_PFX(id)  "mod_qos("#id"): "
 #define QOS_LOGD_PFX  "mod_qos(): "
 #define QOS_RAN 16
+#define QOS_HMAC_CBLOCK 16
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
 #define QOS_USER_TRACKING "mod_qos_user_id"
@@ -722,6 +723,8 @@ typedef struct {
   char *user_tracking_cookie_domain;
   int max_age;
   unsigned char key[EVP_MAX_KEY_LENGTH];
+  const unsigned char *rawKey;
+  int rawKeyLen;
   int keyset;
   char *header_name;
   int header_name_drop;
@@ -968,8 +971,6 @@ static int m_qos_cc_partition = QSMOD;
 static qos_unique_id_t m_unique_id;
 static const char qos_basis_64[] =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
-
-static const unsigned char m_qsmagic[] = "qsMagitk3n";
 
 /* mod_parp, forward and optional function */
 static apr_status_t qos_cleanup_conn(void *p);
@@ -1917,18 +1918,18 @@ static void qs_set_evmsg(request_rec *r, const char *id) {
  */
 static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned char *b, int l) {
   EVP_CIPHER_CTX cipher_ctx;
-  unsigned char hash[APR_MD5_DIGESTSIZE];
-  apr_md5_ctx_t md5;
+  HMAC_CTX hmac;
+  unsigned char hash[HMAC_MAX_MD_CBLOCK];
+  unsigned int hashLen = HMAC_MAX_MD_CBLOCK;
   int buf_len = 0;
   int len = 0;
   unsigned char ran[QOS_RAN];
   unsigned char *buf = apr_pcalloc(r->pool, +
                                    QOS_RAN +
-                                   APR_MD5_DIGESTSIZE +
-                                   sizeof(m_qsmagic) +
+                                   QOS_HMAC_CBLOCK +
                                    l +
                                    EVP_CIPHER_block_size(EVP_des_ede3_cbc()));
-
+  
 #if APR_HAS_RANDOM
   if(apr_generate_random_bytes(ran, QOS_RAN) != APR_SUCCESS) {
     ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
@@ -1942,24 +1943,20 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
 #endif
 
   /* checksum */
-  apr_md5_init(&md5);
-  apr_md5_update(&md5, b, l);
-  apr_md5_final(hash, &md5);
+  HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_md5());
+  HMAC_Update(&hmac, b, l);
+  HMAC_Final(&hmac, hash, &hashLen);
 
-  /* sym enc, should be sufficient for this use case */
+  /* sym enc */
   EVP_CIPHER_CTX_init(&cipher_ctx);
   EVP_EncryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
 
-  // rand + hash + magic + data
+  // rand + hash + data
   if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, ran, QOS_RAN)) {
     goto failed;
   }
   buf_len+=len;
-  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, hash, APR_MD5_DIGESTSIZE)) {
-    goto failed;
-  }
-  buf_len+=len;
-  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, m_qsmagic, sizeof(m_qsmagic))) {
+  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, hash, QOS_HMAC_CBLOCK)) {
     goto failed;
   }
   buf_len+=len;
@@ -1974,7 +1971,7 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
 
   EVP_CIPHER_CTX_cleanup(&cipher_ctx);
   
-  /* encode */
+  /* b64 encode */
   {
     char *data = (char *)apr_pcalloc(r->pool, 1 + apr_base64_encode_len(buf_len));
     len = apr_base64_encode(data, (const char *)buf, buf_len);
@@ -2000,9 +1997,10 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     return 0;
   } else {
     /* decrypt */
+    HMAC_CTX hmac;
+    unsigned char hash[HMAC_MAX_MD_CBLOCK];
     unsigned char *hashIn;
-    unsigned char hash[APR_MD5_DIGESTSIZE];
-    apr_md5_ctx_t md5;
+    unsigned int hashLen = HMAC_MAX_MD_CBLOCK;
     int len = 0;
     int buf_len = 0;
     unsigned char *buf = apr_pcalloc(r->pool, dec_len);
@@ -2020,29 +2018,26 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     buf_len+=len;
     EVP_CIPHER_CTX_cleanup(&cipher_ctx);
 
-    // rand + hash + magic + data
-    if(buf_len < (QOS_RAN + APR_MD5_DIGESTSIZE + sizeof(m_qsmagic) + 1)) {
-      fprintf(stderr, "$$$ wrong size\n"); fflush(stderr);
+    // rand + hash + data
+    if(buf_len < (QOS_RAN + QOS_HMAC_CBLOCK + 1)) {
       return 0;
     }
 
-    if(memcmp(&buf[QOS_RAN+APR_MD5_DIGESTSIZE], m_qsmagic, sizeof(m_qsmagic)) != 0) {
-      fprintf(stderr, "$$$ wrong magix\n"); fflush(stderr);
-      return 0;
-    }
-
-    buf_len = buf_len - QOS_RAN - APR_MD5_DIGESTSIZE - sizeof(m_qsmagic);
-    apr_md5_init(&md5);
-    apr_md5_update(&md5, &buf[QOS_RAN+APR_MD5_DIGESTSIZE+sizeof(m_qsmagic)], buf_len);
-    apr_md5_final(hash, &md5);
+    buf_len = buf_len - QOS_RAN - QOS_HMAC_CBLOCK;
+    /* checksum */
+    HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_md5());
+    HMAC_Update(&hmac, &buf[QOS_RAN+QOS_HMAC_CBLOCK], buf_len);
+    HMAC_Final(&hmac, hash, &hashLen);
     hashIn = &buf[QOS_RAN];
-
-    if(memcmp(hash, hashIn, APR_MD5_DIGESTSIZE) != 0) {
-      fprintf(stderr, "$$$ wrong hash\n"); fflush(stderr);
+    if(hashLen > QOS_HMAC_CBLOCK) {
+      // we don't keep more than 16 bytes
+      hashLen = QOS_HMAC_CBLOCK;
+    }
+    if(memcmp(hash, hashIn, hashLen) != 0) {
       return 0;
     }
 
-    *ret_buf = &buf[APR_MD5_DIGESTSIZE+QOS_RAN+sizeof(m_qsmagic)];
+    *ret_buf = &buf[QOS_RAN+QOS_HMAC_CBLOCK];
     return buf_len;
   }
  failed:
@@ -2098,7 +2093,7 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
  * - QOS_USER_TRACKING if the cookie was available
  * - QOS_USER_TRACKING_NEW if a new cookie needs to be set
  *
- * syntax: b64(enc(<rand><magic><month><UNIQUE_ID>))
+ * syntax: b64(enc(<month><UNIQUE_ID>))
  *
  * shall be called after(!) mod_unique_id has created an id
  *
@@ -2169,7 +2164,7 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
  * Verifies the milestone. Evaluates rule and enforces it. Does also set the
  * QOS_MILESTONE_COOKIE variable if a new milestone has been reached.
  *
- * milestone cookie syntax: b64(enc(<rand><magic><time><milestone>))
+ * milestone cookie syntax: b64(enc(<time><milestone>))
  *
  * @param r
  * @param sconf
@@ -10852,6 +10847,8 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
     }
 #endif
     EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL, rand, len, 1, sconf->key, NULL);
+    sconf->rawKey = rand;
+    sconf->rawKeyLen = len;
     sconf->keyset = 0;
   }
 #ifdef QS_INTERNAL_TEST
@@ -10962,6 +10959,8 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->keyset == 0) {
     memcpy(o->key, b->key, sizeof(o->key));
+    o->rawKey = b->rawKey;
+    o->rawKeyLen = b->rawKeyLen;
   }
   if(o->header_name == NULL) {
     o->header_name = b->header_name;
@@ -11947,8 +11946,10 @@ const char *qos_timeout_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
 const char *qos_key_cmd(cmd_parms *cmd, void *dcfg, const char *seed) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
+  sconf->rawKey = (unsigned char *)apr_pstrdup(cmd->pool, seed);
+  sconf->rawKeyLen = strlen(seed);
   EVP_BytesToKey(EVP_des_ede3_cbc(), EVP_sha1(), NULL,
-                 (const unsigned char *)seed, strlen(seed), 1, sconf->key, NULL);
+                 sconf->rawKey, sconf->rawKeyLen, 1, sconf->key, NULL);
   sconf->keyset = 1;
   return NULL;
 }
