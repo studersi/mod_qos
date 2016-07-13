@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.613 2016-07-13 19:31:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.614 2016-07-13 19:52:46 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -1993,7 +1993,7 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
   char *dec = (char *)apr_pcalloc(r->pool, 1 + apr_base64_decode_len(value));
   int dec_len = apr_base64_decode(dec, value);
   *ret_buf = NULL;
-  if(dec_len < EVP_MAX_IV_LENGTH) {
+  if(dec_len <= EVP_MAX_IV_LENGTH) {
     return 0;
   } else {
     /* decrypt */
