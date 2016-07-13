@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.612 2016-07-08 18:05:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.613 2016-07-13 19:31:45 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -111,7 +111,7 @@ static const char g_revision[] = "11.31";
  ***********************************************************************/
 #define QOS_LOG_PFX(id)  "mod_qos("#id"): "
 #define QOS_LOGD_PFX  "mod_qos(): "
-#define QOS_RAN 16
+//#define QOS_RAN EVP_MAX_IV_LENGTH
 #define QOS_HMAC_CBLOCK 16
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
@@ -1923,39 +1923,39 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
   unsigned int hashLen = HMAC_MAX_MD_CBLOCK;
   int buf_len = 0;
   int len = 0;
-  unsigned char ran[QOS_RAN];
   unsigned char *buf = apr_pcalloc(r->pool, +
-                                   QOS_RAN +
+                                   EVP_MAX_IV_LENGTH +
                                    QOS_HMAC_CBLOCK +
                                    l +
                                    EVP_CIPHER_block_size(EVP_des_ede3_cbc()));
   
 #if APR_HAS_RANDOM
-  if(apr_generate_random_bytes(ran, QOS_RAN) != APR_SUCCESS) {
+  if(apr_generate_random_bytes(buf, EVP_MAX_IV_LENGTH) != APR_SUCCESS) {
     ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
                   QOS_LOG_PFX(080)"Can't generate random data.");
   }
 #else
-  if(!RAND_bytes(ran, QOS_RAN)) {
+  if(!RAND_bytes(buf, EVP_MAX_IV_LENGTH)) {
     ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
                   QOS_LOG_PFX(080)"Can't generate random data.");
   }
 #endif
 
   /* checksum */
+#ifndef OPENSSL_NO_MD5
   HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_md5());
+#else
+  HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_sha256());
+#endif
   HMAC_Update(&hmac, b, l);
   HMAC_Final(&hmac, hash, &hashLen);
 
   /* sym enc */
   EVP_CIPHER_CTX_init(&cipher_ctx);
-  EVP_EncryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
+  EVP_EncryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, (unsigned char *)buf);
 
-  // rand + hash + data
-  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, ran, QOS_RAN)) {
-    goto failed;
-  }
-  buf_len+=len;
+  // skip iv, enc(hash + data)
+  buf_len = EVP_MAX_IV_LENGTH;
   if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, hash, QOS_HMAC_CBLOCK)) {
     goto failed;
   }
@@ -1993,22 +1993,23 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
   char *dec = (char *)apr_pcalloc(r->pool, 1 + apr_base64_decode_len(value));
   int dec_len = apr_base64_decode(dec, value);
   *ret_buf = NULL;
-  if(dec_len == 0) {
+  if(dec_len < EVP_MAX_IV_LENGTH) {
     return 0;
   } else {
     /* decrypt */
     HMAC_CTX hmac;
     unsigned char hash[HMAC_MAX_MD_CBLOCK];
-    unsigned char *hashIn;
     unsigned int hashLen = HMAC_MAX_MD_CBLOCK;
     int len = 0;
     int buf_len = 0;
-    unsigned char *buf = apr_pcalloc(r->pool, dec_len);
+    unsigned char *buf;
+    dec_len -= EVP_MAX_IV_LENGTH;
+    buf = apr_pcalloc(r->pool, dec_len);
     EVP_CIPHER_CTX_init(&cipher_ctx);
 
-    EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, NULL);
+    EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, (unsigned char *)dec);
     if(!EVP_DecryptUpdate(&cipher_ctx, (unsigned char *)&buf[buf_len], &len,
-                          (const unsigned char *)dec, dec_len)) {
+                          (const unsigned char *)&dec[EVP_MAX_IV_LENGTH], dec_len)) {
       goto failed;
     }
     buf_len+=len;
@@ -2018,26 +2019,29 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     buf_len+=len;
     EVP_CIPHER_CTX_cleanup(&cipher_ctx);
 
-    // rand + hash + data
-    if(buf_len < (QOS_RAN + QOS_HMAC_CBLOCK + 1)) {
+    // hash + data
+    if(buf_len < (QOS_HMAC_CBLOCK + 1)) {
       return 0;
     }
 
-    buf_len = buf_len - QOS_RAN - QOS_HMAC_CBLOCK;
+    buf_len = buf_len - QOS_HMAC_CBLOCK;
     /* checksum */
+#ifndef OPENSSL_NO_MD5
     HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_md5());
-    HMAC_Update(&hmac, &buf[QOS_RAN+QOS_HMAC_CBLOCK], buf_len);
+#else
+    HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_sha256());
+#endif
+    HMAC_Update(&hmac, &buf[QOS_HMAC_CBLOCK], buf_len);
     HMAC_Final(&hmac, hash, &hashLen);
-    hashIn = &buf[QOS_RAN];
     if(hashLen > QOS_HMAC_CBLOCK) {
       // we don't keep more than 16 bytes
       hashLen = QOS_HMAC_CBLOCK;
     }
-    if(memcmp(hash, hashIn, hashLen) != 0) {
+    if(memcmp(hash, buf, hashLen) != 0) {
       return 0;
     }
 
-    *ret_buf = &buf[QOS_RAN+QOS_HMAC_CBLOCK];
+    *ret_buf = &buf[QOS_HMAC_CBLOCK];
     return buf_len;
   }
  failed:
