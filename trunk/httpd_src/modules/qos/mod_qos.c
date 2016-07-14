@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.614 2016-07-13 19:52:46 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.615 2016-07-14 19:46:53 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -1911,10 +1911,10 @@ static void qs_set_evmsg(request_rec *r, const char *id) {
 /**
  * Encrypts and base64 encodes the provided buffer
  * @param r
- * @param sconf Key to use (sconf->key)
+ * @param sconf Secret to use (sconf->key)
  * @param b Buffer to encrypt
  * @param l Length of the buffer
- * @return Encrypted string (NULL on error)
+ * @return Encrypted string (or NULL on error)
  */
 static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned char *b, int l) {
   EVP_CIPHER_CTX cipher_ctx;
@@ -1981,11 +1981,20 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
 
  failed:
   EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+  if(QS_ISDEBUG(r->server)) {
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                  QOS_LOGD_PFX"qos_encrypt() encryption operation failed");
+  }
   return NULL;
 }
 
 /**
- * Decryptes the base64 encoded string (see qos_encrypt())
+ * Decryptes the base64 encoded string (see qos_encrypt()).
+ * @param r
+ * @param sconf To access the secret
+ * @param ret_buf Pointer to the decypted data (result), NULL if decyption fails
+ * @param value Base64 encded string to decrypt
+ * @return Length of the decypted data (0 if decyption failed)
  */
 static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **ret_buf, const char *value) {
   EVP_CIPHER_CTX cipher_ctx;
@@ -1993,7 +2002,12 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
   char *dec = (char *)apr_pcalloc(r->pool, 1 + apr_base64_decode_len(value));
   int dec_len = apr_base64_decode(dec, value);
   *ret_buf = NULL;
-  if(dec_len <= EVP_MAX_IV_LENGTH) {
+  
+  if(dec_len < (EVP_MAX_IV_LENGTH + QOS_HMAC_CBLOCK)) {
+    if(QS_ISDEBUG(r->server)) {
+      ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                    QOS_LOGD_PFX"qos_decrypt() base64 decoding failed");
+    }
     return 0;
   } else {
     /* decrypt */
@@ -2005,8 +2019,9 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     unsigned char *buf;
     dec_len -= EVP_MAX_IV_LENGTH;
     buf = apr_pcalloc(r->pool, dec_len);
-    EVP_CIPHER_CTX_init(&cipher_ctx);
 
+    /* sym dec */
+    EVP_CIPHER_CTX_init(&cipher_ctx);
     EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, (unsigned char *)dec);
     if(!EVP_DecryptUpdate(&cipher_ctx, (unsigned char *)&buf[buf_len], &len,
                           (const unsigned char *)&dec[EVP_MAX_IV_LENGTH], dec_len)) {
@@ -2021,11 +2036,15 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
 
     // hash + data
     if(buf_len < (QOS_HMAC_CBLOCK + 1)) {
+      if(QS_ISDEBUG(r->server)) {
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                      QOS_LOGD_PFX"qos_decrypt() misshing hash");
+      }
       return 0;
     }
 
-    buf_len = buf_len - QOS_HMAC_CBLOCK;
     /* checksum */
+    buf_len -= QOS_HMAC_CBLOCK;
 #ifndef OPENSSL_NO_MD5
     HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_md5());
 #else
@@ -2038,14 +2057,24 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
       hashLen = QOS_HMAC_CBLOCK;
     }
     if(memcmp(hash, buf, hashLen) != 0) {
+      if(QS_ISDEBUG(r->server)) {
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                      QOS_LOGD_PFX"qos_decrypt() invalid hash");
+      }
       return 0;
     }
 
+    /* decrypted and valid */
     *ret_buf = &buf[QOS_HMAC_CBLOCK];
     return buf_len;
   }
+
  failed:
   EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+  if(QS_ISDEBUG(r->server)) {
+    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                  QOS_LOGD_PFX"qos_decrypt() decryption operation failed");
+  }
   return 0;
 }
 
