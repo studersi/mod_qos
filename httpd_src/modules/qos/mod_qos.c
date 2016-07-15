@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.615 2016-07-14 19:46:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.616 2016-07-15 05:26:22 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -1244,7 +1244,8 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table,
     }
     he->extra = qos_pcre_study(pool, he->pcre);
     apr_table_setn(hfilter_table, elt->name, (char *)he);
-    apr_pool_cleanup_register(pool, he->pcre, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
+    apr_pool_cleanup_register(pool, he->pcre, (int(*)(void*))pcre_free, 
+                              apr_pool_cleanup_null);
   }
   return NULL;
 }
@@ -1302,7 +1303,8 @@ static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
  * @return path
  */
 static char *qos_tmpnam(apr_pool_t *pool, server_rec *s) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(s->module_config, 
+                                                                &qos_module);
   char *path = QS_MFILE;
   char *id;
   char *e;
@@ -1339,7 +1341,8 @@ static char *qos_tmpnam(apr_pool_t *pool, server_rec *s) {
  * @param sconf
  * @param dconf
  */
-static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
+static apr_off_t qos_maxpost(request_rec *r, qos_srv_config *sconf, 
+                             qos_dir_config *dconf) {
   if(r->subprocess_env) {
     const char *bytes = apr_table_get(r->subprocess_env, "QS_LimitRequestBody");
     if(bytes) {
@@ -1437,7 +1440,8 @@ static int qos_is_excluded_ip(conn_rec *c, apr_table_t *exclude_ip) {
 }
 
 /**
- * Comperator (ip search) for the client ip store qos_cc_*() functions (used by bsearch/qsort)
+ * Comperator (ip search) for the client ip store qos_cc_*() 
+ * functions (used by bsearch/qsort)
  */
 static int qos_cc_comp(const void *_pA, const void *_pB) {
   qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
@@ -1458,7 +1462,8 @@ static int qos_cc_compv4(const void *_pA, const void *_pB) {
 }
 
 /**
- * Comperator (time search) for the client ip store qos_cc_*() functions (used by bsearch/qsort)
+ * Comperator (time search) for the client ip store qos_cc_*() 
+ * functions (used by bsearch/qsort)
  */
 static int qos_cc_comp_time(const void *_pA, const void *_pB) {
   qos_s_entry_t *pA=*(( qos_s_entry_t **)_pA);
@@ -1476,7 +1481,8 @@ static int qos_cc_comp_time(const void *_pA, const void *_pB) {
  * @param limitTable Table of "QS_Limit" events
  * @return pointer to the per client data array
  */
-static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size, apr_table_t *limitTable) {
+static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
+                           apr_table_t *limitTable) {
   char *file = "-";
   apr_shm_t *m;  // per client memory table
   apr_shm_t *lm; // "limit" memory table
@@ -1524,7 +1530,8 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size, apr_tab
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, srec,
-                 QOS_LOG_PFX(002)"failed to create shared memory (client control)(%s): %s (%d bytes)",
+                 QOS_LOG_PFX(002)"failed to create shared memory (client control)(%s): "
+                 "%s (%d bytes)",
                  file, buf, msize);
     return NULL;
   }
@@ -1916,7 +1923,8 @@ static void qs_set_evmsg(request_rec *r, const char *id) {
  * @param l Length of the buffer
  * @return Encrypted string (or NULL on error)
  */
-static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned char *b, int l) {
+static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, 
+                         const unsigned char *b, int l) {
   EVP_CIPHER_CTX cipher_ctx;
   HMAC_CTX hmac;
   unsigned char hash[HMAC_MAX_MD_CBLOCK];
@@ -1932,12 +1940,14 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
 #if APR_HAS_RANDOM
   if(apr_generate_random_bytes(buf, EVP_MAX_IV_LENGTH) != APR_SUCCESS) {
     ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(080)"Can't generate random data.");
+                  QOS_LOG_PFX(080)"Can't generate random data, id=%s",
+                  qos_unique_id(r, NULL));
   }
 #else
   if(!RAND_bytes(buf, EVP_MAX_IV_LENGTH)) {
     ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(080)"Can't generate random data.");
+                  QOS_LOG_PFX(080)"Can't generate random data, id=%s",
+                  qos_unique_id(r, NULL));
   }
 #endif
 
@@ -1983,7 +1993,8 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, const unsigned c
   EVP_CIPHER_CTX_cleanup(&cipher_ctx);
   if(QS_ISDEBUG(r->server)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                  QOS_LOGD_PFX"qos_encrypt() encryption operation failed");
+                  QOS_LOGD_PFX"qos_encrypt() encryption operation failed, id=%s",
+                  qos_unique_id(r, NULL));
   }
   return NULL;
 }
@@ -2006,7 +2017,8 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
   if(dec_len < (EVP_MAX_IV_LENGTH + QOS_HMAC_CBLOCK)) {
     if(QS_ISDEBUG(r->server)) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                    QOS_LOGD_PFX"qos_decrypt() base64 decoding failed");
+                    QOS_LOGD_PFX"qos_decrypt() base64 decoding failed, id=%s",
+                    qos_unique_id(r, NULL));
     }
     return 0;
   } else {
@@ -2038,7 +2050,8 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     if(buf_len < (QOS_HMAC_CBLOCK + 1)) {
       if(QS_ISDEBUG(r->server)) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                      QOS_LOGD_PFX"qos_decrypt() misshing hash");
+                      QOS_LOGD_PFX"qos_decrypt() misshing hash, id=%s",
+                      qos_unique_id(r, NULL));
       }
       return 0;
     }
@@ -2059,7 +2072,8 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     if(memcmp(hash, buf, hashLen) != 0) {
       if(QS_ISDEBUG(r->server)) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                      QOS_LOGD_PFX"qos_decrypt() invalid hash");
+                      QOS_LOGD_PFX"qos_decrypt() invalid hash, id=%s",
+                      qos_unique_id(r, NULL));
       }
       return 0;
     }
@@ -2073,7 +2087,8 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
   EVP_CIPHER_CTX_cleanup(&cipher_ctx);
   if(QS_ISDEBUG(r->server)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                  QOS_LOGD_PFX"qos_decrypt() decryption operation failed");
+                  QOS_LOGD_PFX"qos_decrypt() decryption operation failed, id=%s",
+                  qos_unique_id(r, NULL));
   }
   return 0;
 }
@@ -2085,7 +2100,8 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
  * @param sconf
  * @param status (302 or other)
  */
-static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf, int status) {
+static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf, 
+                                          int status) {
   const char *new_user = apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW);
   if(new_user) {
     char *sc;
@@ -2151,13 +2167,13 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
     apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
     qs_set_evmsg(r, "u;"); 
   } else if(strlen(verified) > 2) {
-    /* renew, if not from this month */
     apr_size_t retcode;
     char tstr[MAX_STRING_LEN];
     apr_time_exp_t n;
     apr_time_exp_gmt(&n, r->request_time);
     apr_strftime(tstr, &retcode, sizeof(tstr), "%m", &n);
     if(strncmp(tstr, verified, 2) != 0) {
+      /* renew, if not from this month */
       apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, &verified[2]);
     }
     verified = &verified[2];
@@ -2170,7 +2186,8 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
 }
 
 /**
- * Adds new milestone cookie to the response headers if QOS_MILESTONE_COOKIE has been set.
+ * Adds new milestone cookie to the response headers if QOS_MILESTONE_COOKIE 
+ * has been set.
  * See qos_verify_milestone() about the syntax.
  */
 static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
@@ -2710,7 +2727,8 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
  * @param errors Number of errors
  * @param Array with all enties
  */
-static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char **msg, int *errors) {
+static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, 
+                              char **msg, int *errors) {
 #ifdef AP_REGEX_H
   ap_regmatch_t ma[AP_MAX_REG_MATCH];
   ap_regex_t *preg;
@@ -4454,7 +4472,8 @@ static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_c
 
 /**
  * Dynamic keep alive.
- * Creates a copy of the server_rec and adjusts the keep-aliva settings for this request.
+ * Creates a copy of the server_rec and adjusts the keep-aliva settings 
+ * for this request.
  *
  * @param r
  * @param sconf
@@ -4617,7 +4636,8 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
           if(entry->limit > entry->max) {
             rv = m_retcode;
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOS_LOG_PFX(013)"access denied%s, QS_EventLimitCount rule: %s,"
+                          QOS_LOG_PFX(013)"access denied%s,"
+                          " QS_EventLimitCount rule: %s,"
                           " max=%d, current=%d,"
                           " c=%s, id=%s",
                           sconf->log_only ? " (log only)" : "",
@@ -4679,7 +4699,8 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
               if(e->counter > e->limit) {
                 rv = m_retcode;
                 ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                              QOS_LOG_PFX(012)"access denied%s, QS_EventRequestLimit rule: %s(%d),"
+                              QOS_LOG_PFX(012)"access denied%s,"
+                              " QS_EventRequestLimit rule: %s(%d),"
                               " concurrent requests=%d,"
                               " c=%s, id=%s",
                               sconf->log_only ? " (log only)" : "",
@@ -4758,7 +4779,8 @@ static qs_conn_ctx *qos_create_cconf(conn_rec *c, qos_srv_config *sconf) {
 /*
  * QS_SrvSerialize
  */
-static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ctx * rctx) {
+static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf, 
+                                 qs_req_ctx * rctx) {
   int loops = 0;
   int locked = 0; // we got the lock for this request
   if(!rctx) {
@@ -4863,7 +4885,8 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
           if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                           QOS_LOG_PFX(069)"no valid IP header found (@hp):"
-                          " invalid header value '%s', fallback to connection's IP %s, id=%s",
+                          " invalid header value '%s',"
+                          " fallback to connection's IP %s, id=%s",
                           forwardedfor,
                           QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
                           QS_CONN_REMOTEIP(r->connection),
@@ -4877,7 +4900,8 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                         QOS_LOG_PFX(069)"no valid IP header found (@hp):"
-                        " header '%s' not available, fallback to connection's IP %s, id=%s",
+                        " header '%s' not available,"
+                        " fallback to connection's IP %s, id=%s",
                         sconf->qos_cc_forwardedfor,
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
                         QS_CONN_REMOTEIP(r->connection),
@@ -4959,7 +4983,8 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
 /*
  * QS_ClientEventRequestLimit
  */
-static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_ctx * rctx) {
+static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, 
+                                 qs_req_ctx * rctx) {
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
   qs_conn_ctx *cconf = qos_get_cconf(r->connection);
   if(!rctx) {
@@ -4995,8 +5020,9 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf, qs_req_c
         int rc;
         const char *error_page = sconf->error_page;
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(065)"access denied%s, QS_ClientEventRequestLimit rule: "
-                      "max=%d, current=%d, c=%s, id=%s",
+                      QOS_LOG_PFX(065)"access denied%s,"
+                      " QS_ClientEventRequestLimit rule:"
+                      " max=%d, current=%d, c=%s, id=%s",
                       sconf->log_only ? " (log only)" : "",
                       sconf->qos_cc_event_req,
                       count,
@@ -5365,7 +5391,8 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                         QOS_LOG_PFX(069)"no valid IP header found (@logger):"
-                        " invalid header value '%s', fallback to connection's IP %s, id=%s",
+                        " invalid header value '%s',"
+                        " fallback to connection's IP %s, id=%s",
                         forwardedfor,
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                         QS_CONN_REMOTEIP(r->connection),
@@ -5377,7 +5404,8 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                       QOS_LOG_PFX(069)"no valid IP header found (@logger):"
-                      " header '%s' not available, fallback to connection's IP %s, id=%s",
+                      " header '%s' not available,"
+                      " fallback to connection's IP %s, id=%s",
                       sconf->qos_cc_forwardedfor,
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "069"));
@@ -5579,7 +5607,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                         QOS_LOG_PFX(069)"no valid IP header found (@hp):"
-                        " header '%s' not available, fallback to connection's IP %s, id=%s",
+                        " header '%s' not available,"
+                        " fallback to connection's IP %s, id=%s",
                         sconf->qos_cc_forwardedfor,
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                         QS_CONN_REMOTEIP(r->connection),
@@ -5640,7 +5669,8 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
               (*e)->req_per_sec_block_rate = (*e)->req_per_sec_block_rate - factor;
             }
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
-                          QOS_LOG_PFX(062)"request rate limit, rule: "QS_EVENT"(%d), req/sec=%ld,"
+                          QOS_LOG_PFX(062)"request rate limit,"
+                          " rule: "QS_EVENT"(%d), req/sec=%ld,"
                           " delay=%dms",
                           sconf->qos_cc_event,
                           (*e)->req_per_sec, (*e)->req_per_sec_block_rate);
@@ -7170,7 +7200,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
         /* enforce keep alive */
         apr_interval_time_t current_timeout = 0;
         apr_socket_timeout_get(inctx->client_socket, &current_timeout);
-        /* add 5sec tolerance to receive the request line or let Apache close the connection */
+        /* add 5sec tolerance to receive the request line 
+           or let Apache close the connection */
         if(!m_event_mpm && 
            (now > (apr_time_sec(current_timeout) + 5 + inctx->time))) {
           qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
@@ -7193,7 +7224,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
             }
             ip = qos_inc_block(inctx->c, sconf, cconf, ip);
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                         QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (enforce keep-alive),"
+                         QOS_LOG_PFX(034)"%s,"
+                         " QS_SrvMinDataRate rule (enforce keep-alive),"
                          " c=%s",
                          (level == APLOG_DEBUG) || sconf->log_only ? 
                          "log only (allowed)" 
@@ -7470,7 +7502,8 @@ static void qos_version_check(server_rec *bs) {
  * @param rules Rules array
  * @return HTTP_MOVED_TEMPORARILY/HTTP_TEMPORARY_REDIRECT or DECLINED
  */
-static int qos_redirectif(request_rec *r, qos_srv_config *sconf, apr_array_header_t *rules) {
+static int qos_redirectif(request_rec *r, qos_srv_config *sconf, 
+                          apr_array_header_t *rules) {
 #ifdef AP_REGEX_H
   ap_regmatch_t regm[AP_MAX_REG_MATCH];
 #else
@@ -7840,7 +7873,8 @@ static int qos_process_connection(conn_rec *c) {
         if(all_connections >= sconf->geo_limit) {
           if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                         QOS_LOG_PFX(101)"access denied%s, QS_ClientGeoCountryPriv rule: max=%d,"
+                         QOS_LOG_PFX(101)"access denied%s,"
+                         " QS_ClientGeoCountryPriv rule: max=%d,"
                          " concurrent connections=%d,"
                          " c=%s"
                          " country=%s",
@@ -7884,7 +7918,8 @@ static int qos_process_connection(conn_rec *c) {
         /* only print the first 20 messages for this client */
         if(e->error <= QS_LOG_REPEAT) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                       QOS_LOG_PFX(031)"access denied%s, QS_SrvMaxConnPerIP rule: max=%d,"
+                       QOS_LOG_PFX(031)"access denied%s,"
+                       " QS_SrvMaxConnPerIP rule: max=%d,"
                        " concurrent connections=%d,"
                        " c=%s",
                        sconf->log_only ? " (log only)" : "",
@@ -7893,7 +7928,8 @@ static int qos_process_connection(conn_rec *c) {
         } else {
           if((e->error % QS_LOG_REPEAT) == 0) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                         QOS_LOG_PFX(031)"access denied%s, QS_SrvMaxConnPerIP rule: max=%d,"
+                         QOS_LOG_PFX(031)"access denied%s,"
+                         " QS_SrvMaxConnPerIP rule: max=%d,"
                          " concurrent connections=%d,"
                          " message repeated %d times,"
                          " c=%s",
@@ -7911,7 +7947,8 @@ static int qos_process_connection(conn_rec *c) {
         if(e) {
           if(e->error > QS_LOG_REPEAT) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                         QOS_LOG_PFX(031)"access denied (previously), QS_SrvMaxConnPerIP rule: max=%d,"
+                         QOS_LOG_PFX(031)"access denied (previously),"
+                         " QS_SrvMaxConnPerIP rule: max=%d,"
                          " concurrent connections=%d,"
                          " message repeated %d times,"
                          " c=%s",
@@ -7978,7 +8015,8 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
         if((*e)->blockMsg > QS_LOG_REPEAT) {
           if(((*e)->blockMsg % QS_LOG_REPEAT) == 0) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
-                         QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
+                         QOS_LOG_PFX(060)"access denied, "
+                         "QS_ClientEventBlockCount rule: "
                          "max=%d, current=%d, "
                          "message repeated %d times, "
                          "c=%s",
