@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.616 2016-07-15 05:26:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.617 2016-07-15 15:52:24 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -111,8 +111,7 @@ static const char g_revision[] = "11.31";
  ***********************************************************************/
 #define QOS_LOG_PFX(id)  "mod_qos("#id"): "
 #define QOS_LOGD_PFX  "mod_qos(): "
-//#define QOS_RAN EVP_MAX_IV_LENGTH
-#define QOS_HMAC_CBLOCK 16
+#define QOS_HASH_LEN 16
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
 #define QOS_USER_TRACKING "mod_qos_user_id"
@@ -1933,7 +1932,7 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
   int len = 0;
   unsigned char *buf = apr_pcalloc(r->pool, +
                                    EVP_MAX_IV_LENGTH +
-                                   QOS_HMAC_CBLOCK +
+                                   QOS_HASH_LEN +
                                    l +
                                    EVP_CIPHER_block_size(EVP_des_ede3_cbc()));
   
@@ -1966,7 +1965,7 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
 
   // skip iv, enc(hash + data)
   buf_len = EVP_MAX_IV_LENGTH;
-  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, hash, QOS_HMAC_CBLOCK)) {
+  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, hash, QOS_HASH_LEN)) {
     goto failed;
   }
   buf_len+=len;
@@ -2014,7 +2013,7 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
   int dec_len = apr_base64_decode(dec, value);
   *ret_buf = NULL;
   
-  if(dec_len < (EVP_MAX_IV_LENGTH + QOS_HMAC_CBLOCK)) {
+  if(dec_len < (EVP_MAX_IV_LENGTH + QOS_HASH_LEN)) {
     if(QS_ISDEBUG(r->server)) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
                     QOS_LOGD_PFX"qos_decrypt() base64 decoding failed, id=%s",
@@ -2047,7 +2046,7 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     EVP_CIPHER_CTX_cleanup(&cipher_ctx);
 
     // hash + data
-    if(buf_len < (QOS_HMAC_CBLOCK + 1)) {
+    if(buf_len < (QOS_HASH_LEN + 1)) {
       if(QS_ISDEBUG(r->server)) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
                       QOS_LOGD_PFX"qos_decrypt() misshing hash, id=%s",
@@ -2057,17 +2056,17 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     }
 
     /* checksum */
-    buf_len -= QOS_HMAC_CBLOCK;
+    buf_len -= QOS_HASH_LEN;
 #ifndef OPENSSL_NO_MD5
     HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_md5());
 #else
     HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_sha256());
 #endif
-    HMAC_Update(&hmac, &buf[QOS_HMAC_CBLOCK], buf_len);
+    HMAC_Update(&hmac, &buf[QOS_HASH_LEN], buf_len);
     HMAC_Final(&hmac, hash, &hashLen);
-    if(hashLen > QOS_HMAC_CBLOCK) {
+    if(hashLen > QOS_HASH_LEN) {
       // we don't keep more than 16 bytes
-      hashLen = QOS_HMAC_CBLOCK;
+      hashLen = QOS_HASH_LEN;
     }
     if(memcmp(hash, buf, hashLen) != 0) {
       if(QS_ISDEBUG(r->server)) {
@@ -2079,7 +2078,7 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     }
 
     /* decrypted and valid */
-    *ret_buf = &buf[QOS_HMAC_CBLOCK];
+    *ret_buf = &buf[QOS_HASH_LEN];
     return buf_len;
   }
 
