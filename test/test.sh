@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.267 2016-05-31 18:57:22 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.268 2016-07-19 05:32:30 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -1022,6 +1022,7 @@ if [ $? -ne 0 ]; then
     echo "FAILED stack.htt"
 fi
 
+./ctl.sh stop >/dev/null
 sleep 10
 ./ctl.sh restart -D logonly -D real_ip >/dev/null
 TEST="QS_LogOnly.htt QS_LogOnly1.htt QS_LogOnly1a.htt QS_LogOnly1b.htt QS_LogOnly2.htt QS_LogOnly3.htt QS_LogOnly4.htt QS_LogOnly5.htt QS_LogOnly6.htt QS_LogOnly7.htt QS_LogOnly8.htt QS_LogOnly9.htt"
