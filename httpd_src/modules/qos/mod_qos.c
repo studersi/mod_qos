@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.617 2016-07-15 15:52:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.618 2016-07-21 18:30:17 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -4361,7 +4361,11 @@ static void qos_setreqheader(request_rec *r, apr_table_t *header_t) {
     variable++;
     val = apr_table_get(r->subprocess_env, variable);
     if(val) {
-      apr_table_set(r->headers_in, header, val);
+      if(header[0] == '!') {
+        apr_table_unset(r->headers_in, &header[1]);
+      } else {
+        apr_table_set(r->headers_in, header, val);
+      }
     }
   }
 }
@@ -11546,6 +11550,10 @@ const char *qos_setreqheader_cmd(cmd_parms *cmd, void *dcfg, const char *header,
     return apr_psprintf(cmd->pool, "%s: invalid parameter",
                         cmd->directive->directive);
   }
+  if(header[0] == '!' && !header[1]) {
+    return apr_psprintf(cmd->pool, "%s: header name is too short",
+                        cmd->directive->directive);
+  }
   if(strchr(header, '=')) {
     return apr_psprintf(cmd->pool, "%s: header name must not contain a '='",
                         cmd->directive->directive);
@@ -13606,7 +13614,7 @@ static const command_rec qos_config_cmds[] = {
 
   AP_INIT_TAKE23("QS_SetReqHeader", qos_setreqheader_cmd, NULL,
                 RSRC_CONF,
-                "QS_SetReqHeader <header name> <variable> ['late'], sets the defined"
+                "QS_SetReqHeader [!]<header name> <variable> ['late'], sets the defined"
                 " HTTP request header to the request if the specified"
                 " environment variable is set."),
 

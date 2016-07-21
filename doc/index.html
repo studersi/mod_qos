@@ -1092,6 +1092,20 @@ level. Only one directive may be defined per location
 (one search string per response).
 </li>
 <li>
+<a name="QS_SetEnvRes"></a>
+<code>QS_SetEnvRes &lt;env-variable&gt; &lt;regex&gt; &lt;env-variable2&gt;[=&lt;value&gt;]</code><br>
+Sets the environmet variable (env-variable2) if the regular expression (regex) matches 
+against the value of the environment variable (env-variable). Occurrences of $1..$9 within 
+the value are replaced by parenthesized subexpressions of the regular expression.
+</li>
+<li>
+<a name="QS_SetReqHeader"></a>
+<code>QS_SetReqHeader [!]&lt;header name&gt; &lt;env-variable&gt; [late]</code><br>
+Sets the defined HTTP request header to the request if the specified 
+environment variable is set. The header is unset (removed from the request) 
+if the header name is prefixed by a "!".
+</li>
+<li>
 <a name="QS_SetEnvResHeader"></a>
 <code>QS_SetEnvResHeader &lt;header name&gt; [drop]</code><br>
 Sets the defined HTTP response header to the request environment variables. 
@@ -1103,19 +1117,6 @@ Deletes the specified header if the action 'drop' has been specified.
 Sets the defined HTTP response header to the request environment variables if 
 the specified regular expression (pcre, not case sensitive) matches 
 the header value.
-</li>
-<li>
-<a name="QS_SetEnvRes"></a>
-<code>QS_SetEnvRes &lt;env-variable&gt; &lt;regex&gt; &lt;env-variable2&gt;[=&lt;value&gt;]</code><br>
-Sets the environmet variable (env-variable2) if the regular expression (regex) matches 
-against the value of the environment variable (env-variable). Occurrences of $1..$9 within 
-the value are replaced by parenthesized subexpressions of the regular expression.
-</li>
-<li>
-<a name="QS_SetReqHeader"></a>
-<code>QS_SetReqHeader &lt;header name&gt; &lt;env-variable&gt; [late]</code><br>
-Sets the defined HTTP request header to the request if the specified 
-environment variable is set.
 </li>
 <li>
 <a name="QS_UnsetResHeader"></a>

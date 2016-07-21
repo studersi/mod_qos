@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.266 2016-06-07 16:42:02 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.267 2016-07-21 18:30:17 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -274,6 +274,9 @@ ErrorDocument            404 /error-docs/error404.html
    # mod_parp:
    QS_SetEnvIfParp  body=([a-z]*)         BODY=parp[$1]
    QS_SetEnvIfParp  postdata=([a-z]*)     PARP_PATTERN=parp[$1]
+
+   SetEnvIfPlus    Request_Query suppressUserAgent suppressUserAgent=1
+   QS_SetReqHeader !User-Agent suppressUserAgent
 
    # cache
    <IfDefine cache>

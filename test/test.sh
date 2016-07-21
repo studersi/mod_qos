@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.268 2016-07-19 05:32:30 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.269 2016-07-21 18:30:17 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -705,6 +705,13 @@ fi
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED QS_ErrorResponseCode.htt"
+fi
+
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SetReqHeader" >>  logs/error_log
+./run.sh -s ./scripts/QS_SetReqHeader.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SetReqHeader.htt"
 fi
 
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_UnsetResHeader (QS_ClientEventLimitCount)" >>  logs/error_log
