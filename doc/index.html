@@ -414,6 +414,10 @@ conjunction with <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></cod
 concurrent requests.. Has lower priority than 
 <code><a href="#QS_LocKBytesPerSecLimitMatch">QS_LocKBytesPerSecLimitMatch</a></code>.
 </li>
+</ul>
+The <code>QS_Error*</code> directives are used to control the response 
+given to clients whose requests have been denied.
+<ul>
 <li>
 <a name="QS_ErrorPage"></a>
 <code>QS_ErrorPage &lt;URL&gt;</code><br>Defines an error page to be 
@@ -958,11 +962,18 @@ concurrent requests.
 <li>
 <a name="QS_EventLimitCount"></a>
 <code>QS_EventLimitCount &lt;env-variable&gt; &lt;number&gt; &lt;seconds&gt;</code><br>
-Defines the maximum number of events allowed within the defined time. Requests are 
-denied when reaching this limitation for the specified time (blocked at request level).<br>
-<small>Note: The current counter value is propagated to the process environment within the variable 
+Defines the maximum number of events allowed within the defined time. Requests 
+are denied when reaching this limitation for the specified time (blocked at 
+request level).<br>
+<small>Note: The current counter value is propagated to the process 
+environment within the variable 
 <code>&lt;env-variable&gt;_Counter</code>.</small>
 </li>
+</ul>
+Mulpiple built-in directives may be used to set or detect events (additional
+event variable processing could be configured using 
+<a href="http://opensource.adnovum.ch/mod_setenvifplus/">mod_setenvifplus</a>).
+<ul>
 <li>
 <a name="QS_SetEnvIf"></a>
 <code>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; [!]&lt;env-variable=value&gt;</code><br>
@@ -1084,12 +1095,13 @@ the response too slow.</small></li>
 </li>
 <li>
 <a name="QS_SetEnvIfResBody"></a>
-<code>QS_SetEnvIfResBody &lt;string&gt; &lt;env-variable&gt;</code><br>
+<code>QS_SetEnvIfResBody &lt;string&gt; [!]&lt;env-variable&gt;</code><br>
 Adds the defined environment variable (e.g., <code><a href="#QS_Block">QS_Block</a></code>) 
 if the response body contains the defined literal string. Used on a per-
 <a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">location <img src="images/link.png"/></a> 
 level. Only one directive may be defined per location 
-(one search string per response).
+(one search string per response). Prefixing the variably by a "!" 
+lets the variable being removed (unset).
 </li>
 <li>
 <a name="QS_SetEnvRes"></a>

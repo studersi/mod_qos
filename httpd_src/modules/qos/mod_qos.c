@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.618 2016-07-21 18:30:17 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.619 2016-07-22 14:31:32 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -9023,14 +9023,22 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
               rctx->body_window[wlen+blen+1] = '\0';
               if(strstr(rctx->body_window, dconf->response_pattern)) {
                 /* found pattern */
-                apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
+                if(dconf->response_pattern_var[0] == '!') {
+                  apr_table_unset(r->subprocess_env, &dconf->response_pattern_var[1]);
+                } else {
+                  apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
+                }
                 ap_remove_output_filter(f);
               }
             }
             /* 2. new buffer (don't want to copy the data) */
             if(qos_strnstr(buf, dconf->response_pattern, nbytes)) {
               /* found pattern */
-              apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
+              if(dconf->response_pattern_var[0] == '!') {
+                apr_table_unset(r->subprocess_env, &dconf->response_pattern_var[1]);
+              } else {
+                apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
+              }
               ap_remove_output_filter(f);
             }
             /* 3. store the end (for next loop) */
@@ -11448,7 +11456,7 @@ const char *qos_event_limit_cmd(cmd_parms *cmd, void *dcfg, const char *event,
   return NULL;
 }
 
-const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *rc, const char *var) {
+const char *qos_event_setenvifstatus_cmd(cmd_parms *cmd, void *dcfg, const char *rc, const char *var) {
   apr_table_t *setenvstatus_t;
   if(cmd->path) {
     qos_dir_config *dconf = (qos_dir_config*)dcfg;
@@ -11511,7 +11519,7 @@ const char *qos_event_setenvstatus_cmd(cmd_parms *cmd, void *dcfg, const char *r
 }
 
 /** QS_SetEnvIfResBody */
-const char *qos_event_setenvresbody_cmd(cmd_parms *cmd, void *dcfg, const char *pattern,
+const char *qos_event_setenvifresbody_cmd(cmd_parms *cmd, void *dcfg, const char *pattern,
                                         const char *var) {
   qos_dir_config *dconf = (qos_dir_config*)dcfg;
   if(dconf->response_pattern) {
@@ -11520,6 +11528,10 @@ const char *qos_event_setenvresbody_cmd(cmd_parms *cmd, void *dcfg, const char *
   }
   dconf->response_pattern = apr_pstrdup(cmd->pool, pattern);
   dconf->response_pattern_var = apr_pstrdup(cmd->pool, var);
+  if(var[0] == '!' && !var[1]) {
+    return apr_psprintf(cmd->pool, "%s: variable name is too short",
+                        cmd->directive->directive);
+  }
   return NULL;
 }
 
@@ -13575,11 +13587,11 @@ static const command_rec qos_config_cmds[] = {
                 " value and replaces it by the sub-expressions of the defined regex"
                 " pattern."),
 
-  AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvstatus_cmd, NULL,
+  AP_INIT_TAKE2("QS_SetEnvStatus", qos_event_setenvifstatus_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvStatus (deprecated, use QS_SetEnvIfStatus)"),
 
-  AP_INIT_TAKE2("QS_SetEnvIfStatus", qos_event_setenvstatus_cmd, NULL,
+  AP_INIT_TAKE2("QS_SetEnvIfStatus", qos_event_setenvifstatus_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvIfStatus <status code> <variable>, adds the defined"
                 " request environment variable if the HTTP status code matches the"
@@ -13593,13 +13605,13 @@ static const command_rec qos_config_cmds[] = {
                 " The '"QS_BROKEN_CON"' value may be used to mark clients not"
                 " reading the full HTTP response."),
 
-  AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvresbody_cmd, NULL,
+  AP_INIT_TAKE2("QS_SetEnvResBody", qos_event_setenvifresbody_cmd, NULL,
                 ACCESS_CONF,
                 "QS_SetEnvResBody (deprecated, use QS_SetEnvIfResBody)"),
 
-  AP_INIT_TAKE2("QS_SetEnvIfResBody", qos_event_setenvresbody_cmd, NULL,
+  AP_INIT_TAKE2("QS_SetEnvIfResBody", qos_event_setenvifresbody_cmd, NULL,
                 ACCESS_CONF,
-                "QS_SetEnvIfResBody <string> <variable>, adds the defined"
+                "QS_SetEnvIfResBody <string> [!]<variable>, adds the defined"
                 " request environment variable (e.g. "QS_BLOCK") if the HTTP"
                 " response body contains the defined literal string."
                 " Supports only one pattern per location."),
