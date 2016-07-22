@@ -1,12 +1,12 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.267 2016-07-21 18:30:17 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.268 2016-07-22 14:31:32 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
 # See http://opensource.adnovum.ch/mod_qos/ for further
 # details about mod_qos.
 #
-# Copyright (C) 2007-2014 Pascal Buchbinder
+# Copyright (C) 2007-2016 Pascal Buchbinder
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -620,6 +620,11 @@ ErrorDocument            404 /error-docs/error404.html
 
    <Location /app/a/resbody/pattern>
       QS_SetEnvIfResBody "Login Failed" QS_Block
+   </Location>
+
+   <Location /app/a/resbody/unset>
+      SetEnvIfPlus Request_URI /app/a/resbody/unset QS_Country=TESTPATTERN
+      QS_SetEnvIfResBody "Login Success" !QS_Country
    </Location>
 
    <Location /app/a/maxpost/dynamic>

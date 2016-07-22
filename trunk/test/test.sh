@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.269 2016-07-21 18:30:17 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.270 2016-07-22 14:31:32 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -79,6 +79,14 @@ if [ $? -ne 0 ]; then
 fi
 sleep 2
 ./ctl.sh restart > /dev/null
+
+# -----------------------------------------------------------------
+echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SetEnvIfResBody.htt" >>  logs/error_log
+./run.sh -se ./scripts/QS_SetEnvIfResBody.htt
+if [ $? -ne 0 ]; then
+    ERRORS=`expr $ERRORS + 1`
+    echo "FAILED QS_SetEnvIfResBody.htt"
+fi
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- 6 requests to an url limited to max 5 concurrent requests, QS_LocRequestLimit_5.htt" >>  logs/error_log
