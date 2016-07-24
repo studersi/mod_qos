@@ -3,10 +3,10 @@ Version 11.31
  - QS_SetReqHeader supports header removal (unset) by prefixing
    the header name with "!".
 
- - New cookie data format (user tracking, vip, milestones).
-
  - QS_SetEnvIfResBody supports variable removal (unset) by 
    prefixing the variably with "!".
+
+ - New cookie data format (user tracking, vip, milestones).
 
 Version 11.30
 
