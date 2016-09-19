@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.619 2016-07-22 14:31:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.620 2016-09-19 15:37:12 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -1002,7 +1002,7 @@ static const qos_her_t qs_header_rules[] = {
 #define QS_H_ACCEPT        "[a-zA-Z0-9_\\*\\+\\-]+/[a-zA-Z0-9_\\*\\+\\.\\-]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_C      "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_ACCEPT_E      "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
-#define QS_H_ACCEPT_L      "[a-zA-Z\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
+#define QS_H_ACCEPT_L      "[a-zA-Z\\*\\-]+[0-9]{0,3}(;[ ]?q=[0-9\\.]+)?"
 #define QS_H_CACHE         "no-cache|no-store|max-age=[0-9]+|max-stale(=[0-9]+)?|min-fresh=[0-9]+|no-transform|only-if-chached"
 #define QS_H_CONTENT       "[\"a-zA-Z0-9\\*/; =\\-]+"
 #define QS_H_COOKIE        "["QS_URL_GEN""QS_URL_SUB"\""QS_URL_UNRESERVED"]"
