@@ -1,5 +1,5 @@
 #
-# $Id: QS_PermitUriJSON.htt,v 1.7 2014-07-18 20:51:33 pbuchbinder Exp $
+# $Id: QS_PermitUriJSON.htt,v 1.8 2016-10-04 15:25:55 pbuchbinder Exp $
 #
 
 
@@ -179,5 +179,62 @@ _CLOSE
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(048\): access denied, invalid JSON syntax \(null chracter within data structure in query\), action=deny"
 _EXEC tail -1 logs/error_log
+
+# ---
+
+# rule violation (json)
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/json?session=123 HTTP/1.1
+__Host: localhost
+__Content-Type: application/json
+__Content-Length: AUTO
+__Req: 9
+__
+__ [{
+__    "name": "Jack (\"Bee\") Nimble", 
+__    "format": {
+__        "type":       "rect",
+__        "width":      1920, 
+__        "height":     1080,
+__        "interlace":  false, 
+__        "frame rates": [ 24 , 30 , 60, 72 ]
+__    }
+__ }]
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "code=041"
+_WAIT
+_CLOSE
+
+_SLEEP 200
+_EXEC tail -1 logs/qsaudit_log | awk '{print $4}' > in.log
+_EXEC ../util/src/qsfilter2 -i in.log -v 0 | grep QS_PermitUri | sed "s:QSF001:QSF003:g" >> conf/json.conf
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+_EXEC rm in.log
+_SLEEP 1000
+
+# same test but with updated ruleset
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/json?session=123 HTTP/1.1
+__Host: localhost
+__Content-Type: application/json
+__Content-Length: AUTO
+__Req: 10
+__
+__ [{
+__    "name": "Jack (\"Bee\") Nimble", 
+__    "format": {
+__        "type":       "rect",
+__        "width":      1920, 
+__        "height":     1080,
+__        "interlace":  false, 
+__        "frame rates": [ 24 , 30 , 60, 72 ]
+__    }
+__ }]
+_EXPECT . "!500 Internal Server Error"
+_EXPECT . "!code=041"
+_EXPECT . "200 OK"
+_EXPECT . ", mod_qos"
+_WAIT
+_CLOSE
 
 END
