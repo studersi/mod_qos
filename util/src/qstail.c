@@ -5,7 +5,7 @@
  *
  * Shows the end of a log file beginning at the provided pattern.
  *
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2010-2015 Pascal Buchbinder
@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qstail.c,v 1.17 2015-01-28 21:03:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: qstail.c,v 1.18 2016-10-07 13:33:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -85,9 +85,9 @@ static void usage(char *cmd, int man) {
     printf(".SH SEE ALSO\n");
     printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsrotate(1), qssign(1)\n");
     printf(".SH AUTHOR\n");
-    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+    printf("Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
   } else {
-    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+    printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   }
   if(man) {
     exit(0);

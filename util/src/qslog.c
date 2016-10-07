@@ -6,7 +6,7 @@
  *
  * Real time access log data correlation.
  *
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2007-2015 Pascal Buchbinder
@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.102 2016-05-25 11:39:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.103 2016-10-07 13:33:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1956,9 +1956,9 @@ static void usage(const char *cmd, int man) {
     printf(".SH SEE ALSO\n");
     printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslogger(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
     printf(".SH AUTHOR\n");
-    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+    printf("Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
   } else {
-    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+    printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   }
   if(man) {
     exit(0);

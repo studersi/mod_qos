@@ -1,5 +1,5 @@
 /**
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2007-2014 Pascal Buchbinder
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: b64.c,v 1.11 2014-01-09 08:13:06 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.12 2016-10-07 13:33:38 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -68,7 +68,7 @@ static void usage() {
   printf("\n");
   printf("Base64 (-e/-d) or hex (-he/-hd) encoder/decoder.\n");
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
 }
 

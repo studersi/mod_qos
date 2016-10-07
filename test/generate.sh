@@ -1,11 +1,11 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.40 2016-01-22 16:41:57 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.41 2016-10-07 13:33:38 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
-# See http://opensource.adnovum.ch/mod_qos/ for further
+# See http://mod-qos.sourceforge.net/ for further
 # details about mod_qos.
 #
 # Copyright (C) 2007-2015 Pascal Buchbinder

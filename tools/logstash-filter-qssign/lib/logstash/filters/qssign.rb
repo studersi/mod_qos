@@ -6,10 +6,10 @@ require "logstash/namespace"
 # This "qssign" filter validates the signature and sequence number
 # of log messages and sets the "signature" field accordingly.
 #
-# You may use http://opensource.adnovum.ch/mod_qos/qssign.1.html
+# You may use http://mod-qos.sourceforge.net/qssign.1.html
 # to sign your log data before storing/transferring it.
 #
-# See http://opensource.adnovum.ch/mod_qos/ for further
+# See http://mod-qos.sourceforge.net/ for further
 # details.
 #
 # Copyright (C) 2015 Pascal Buchbinder

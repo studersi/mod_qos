@@ -1,11 +1,11 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.73 2016-01-22 21:07:41 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.74 2016-10-07 13:33:37 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
-# See http://opensource.adnovum.ch/mod_qos/ for further
+# See http://mod-qos.sourceforge.net/ for further
 # details about mod_qos.
 #
 # Copyright (C) 2007-2016 Pascal Buchbinder

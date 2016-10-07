@@ -12,7 +12,7 @@
  * This module implements control mechanisms that can provide
  * different priority to different requests.
  *
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2007-2016 Pascal Buchbinder

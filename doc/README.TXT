@@ -1,6 +1,6 @@
 
  Quality of service module for Apache Web Server.
- http://opensource.adnovum.ch/mod_qos/
+ http://mod-qos.sourceforge.net/
 
  Copyright (C) 2007-2016 Pascal Buchbinder
 
