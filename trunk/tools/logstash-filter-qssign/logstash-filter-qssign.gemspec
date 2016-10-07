@@ -6,7 +6,7 @@ Gem::Specification.new do |s|
   s.description = "This gem is a logstash plugin required to be installed on top of the Logstash core pipeline using $LS_HOME/bin/plugin install gemname. This gem is not a stand-alone program."
   s.authors = ["Pascal Buchbinder"]
   s.email = 'pbuchbinder@users.sourceforge.net'
-  s.homepage = "http://opensource.adnovum.ch/mod_qos/"
+  s.homepage = "http://mod-qos.sourceforge.net/"
   s.require_paths = ["lib"]
 
   # Files

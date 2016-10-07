@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.57 2016-04-13 05:28:33 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.58 2016-10-07 13:33:37 pbuchbinder Exp $
 #
 # Script to build file release
 #
@@ -12,7 +12,7 @@
 # ./tools
 # supplemental code
 #
-# See http://opensource.adnovum.ch/mod_qos/ for further
+# See http://mod-qos.sourceforge.net/ for further
 # details about mod_qos.
 #
 # Copyright (C) 2007-2015 Pascal Buchbinder

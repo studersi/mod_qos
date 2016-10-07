@@ -3,7 +3,7 @@
  *
  * Monitor testing tcp connectivity to servers used by mod_proxy.
  *
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2007-2015 Pascal Buchbinder
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qscheck.c,v 1.9 2015-01-05 17:35:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: qscheck.c,v 1.10 2016-10-07 13:33:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -76,7 +76,7 @@ static void usage(char *cmd) {
   printf("You may alternatively use \"%s -i <hostname>:<port>\" if\n", cmd);
   printf("you want to check the TCP connectivity to a single host.\n");
   printf("\n");
-  printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
 }
 

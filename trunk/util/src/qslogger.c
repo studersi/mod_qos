@@ -3,7 +3,7 @@
 /**
  * Utilities for the quality of service module mod_qos.
  *
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2007-2016 Pascal Buchbinder
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.23 2016-06-16 05:34:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.24 2016-10-07 13:33:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -300,9 +300,9 @@ static void usage(const char *cmd, int man) {
     printf(".SH SEE ALSO\n");
     printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
     printf(".SH AUTHOR\n");
-    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+    printf("Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
   } else {
-    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+    printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   }
   if(man) {
     exit(0);

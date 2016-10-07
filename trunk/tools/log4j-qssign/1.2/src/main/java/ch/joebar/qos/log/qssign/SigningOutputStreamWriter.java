@@ -3,7 +3,7 @@
  *
  * Log data signing tool to ensure data integrity.
  *
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2016 Pascal Buchbinder

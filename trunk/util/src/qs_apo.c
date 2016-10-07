@@ -1,7 +1,7 @@
 /**
  * Utilities for the quality of service module mod_qos.
  *
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2007-2015 Pascal Buchbinder
@@ -23,7 +23,7 @@
  *
  */
 
-static const char revision[] = "$Id: qs_apo.c,v 1.1 2015-09-25 14:34:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_apo.c,v 1.2 2016-10-07 13:33:38 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>

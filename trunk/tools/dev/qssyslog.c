@@ -1,5 +1,5 @@
 /**
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2015 Pascal Buchbinder

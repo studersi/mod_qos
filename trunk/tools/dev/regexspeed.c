@@ -1,5 +1,5 @@
 /**
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
  * Copyright (C) 2007-2015 Pascal Buchbinder
@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Revision: 1.13 $";
+static const char revision[] = "$Revision: 1.14 $";
 
 /* system */
 #include <stdio.h>

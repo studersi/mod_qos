@@ -3,7 +3,7 @@
 /**
  * Filter utility for the quality of service module mod_qos.
  *
- * See http://opensource.adnovum.ch/mod_qos/ for further details.
+ * See http://mod-qos.sourceforge.net/ for further details.
  *
  * Copyright (C) 2011-2015 Pascal Buchbinder
  *
@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsgrep.c,v 1.17 2015-01-05 17:35:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsgrep.c,v 1.18 2016-10-07 13:33:38 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -124,9 +124,9 @@ static void usage(char *cmd, int man) {
     printf(".SH SEE ALSO\n");
     printf("qsexec(1), qsfilter2(1), qsgeo(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
     printf(".SH AUTHOR\n");
-    printf("Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+    printf("Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
   } else {
-    printf("See http://opensource.adnovum.ch/mod_qos/ for further details.\n");
+    printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   }
   if(man) {
     exit(0);

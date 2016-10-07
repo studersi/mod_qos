@@ -17,7 +17,7 @@
  * httpd version 2.2 MPM worker binaries and is optimized to be
  * used in a reverse proxy.
  *
- * See http://opensource.adnovum.ch/mod_qos/ for further
+ * See http://mod-qos.sourceforge.net/ for further
  * details and to optain the latest version of this module.
  *
  * Copyright (C) 2007-2016 Pascal Buchbinder
@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.620 2016-09-19 15:37:12 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.621 2016-10-07 13:33:38 pbuchbinder Exp $";
 static const char g_revision[] = "11.31";
 
 
@@ -10350,7 +10350,7 @@ static int qos_handler_man1(request_rec * r) {
         }
       }
       ap_rprintf(r, ".SH AUTHOR\n");
-      ap_rprintf(r, "Pascal Buchbinder, http://opensource.adnovum.ch/mod_qos/\n");
+      ap_rprintf(r, "Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
     }
   }
   return OK;
