@@ -15,8 +15,8 @@ scp ../images/link.png ${dest}/images/
 scp ../images/SrvMinDataRate.png ${dest}/images/
 scp ../images/mod_qos_s.gif ${dest}/images/
 scp ../qsfilter2_process.gif ${dest}/
-scp ..../favicon.ico ${dest}/
-echo "copy html files to $E"
+scp ../favicon.ico ${dest}/
+echo "copy html files"
 scp index.html ${dest}/
 scp ../dos.html ${dest}/
 scp ../MESSAGES.txt ${dest}/
