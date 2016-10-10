@@ -627,7 +627,7 @@ if the rule should be applied.</small>
 Environment variables are used on a per request level and implement
 additional control mechanisms. Variables may be set using the standard 
 Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a> or 
-<a href="http://opensource.adnovum.ch/mod_setenvifplus/">mod_setenvifplus</a>.
+<a href="http://opensource.adnovum.ch/mod_setenvifplus/">mod_setenvifplus <img src="images/link.png"/></a>.
 See also the <a href="#eventcontrol">
 <code><a href="#QS_SetEnvIf">QS_SetEnvIf*</a></code></a> directives in order to combine multiple 
 variables to form new variables interpreted by mod_qos rules. <br>
@@ -912,7 +912,7 @@ mod_qos may control the frequency of "events". An event may be any
 request attribute which can be represented by an environment variable. 
 Such variables may be set by 
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a>, 
-<a href="http://opensource.adnovum.ch/mod_setenvifplus/">mod_setenvifplus</a>, or 
+<a href="http://opensource.adnovum.ch/mod_setenvifplus/">mod_setenvifplus <img src="images/link.png"/></a>, or 
 by other Apache modules.
 Please adhere to the <a href="images/mod_qos_seq.gif">order</a> of command 
 execution to ensure that the necessary variables are set.
@@ -966,7 +966,7 @@ environment within the variable
 </ul>
 Mulpiple built-in directives may be used to set or detect events (additional
 event variable processing could be configured using 
-<a href="http://opensource.adnovum.ch/mod_setenvifplus/">mod_setenvifplus</a>).
+<a href="http://opensource.adnovum.ch/mod_setenvifplus/">mod_setenvifplus <img src="images/link.png"/></a>).
 <ul>
 <li>
 <a name="QS_SetEnvIf"></a>
@@ -1019,7 +1019,7 @@ of the defined regex pattern. This directive activates
 mod_parp for every request to the virtual host. 
 You may deactivate mod_parp for selected requests using the 
 <code><a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> 
-or <code><a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus">SetEnvIfPlus</a></code> 
+or <code><a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus">SetEnvIfPlus <img src="images/link.png"/></a></code> 
 directive: unset the variable "parp" to do so.
 Important: request message body processing requires that the server 
 loads the whole request into its memory (at least twice the length 
@@ -1036,7 +1036,7 @@ types to process using the mod_parp directive
 <code><a href="http://parp.sourceforge.net/#PARP_BodyData">PARP_BodyData <img src="images/link.png"/></a></code> 
 and ensure that mod_parp is enabled using the 
 <code><a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> 
-or <code><a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus">SetEnvIfPlus</a></code> 
+or <code><a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus">SetEnvIfPlus <img src="images/link.png"/></a></code> 
 directive.
 You should limit the allowed size of HTTP requests message body 
 using the <code><a href="#QS_LimitRequestBody">QS_LimitRequestBody</a></code> 
@@ -1672,7 +1672,7 @@ directive to determine the client's IP address based on the defined HTTP
 request header (e.g., X-Forwarded-For) instead of taking the IP address 
 of the client which has opened the TCP connection. The header must only 
 contain a single IP address.<br>
-You might even use the <a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetHashHeaderPlus"><code>SetHashHeaderPlus</code></a> 
+You might even use the <a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetHashHeaderPlus"><code>SetHashHeaderPlus</code> <img src="images/link.png"/></a> 
 directive to create a hash representing a client using arbitrary HTTP 
 request attributes.
 </li>
