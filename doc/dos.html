@@ -286,7 +286,7 @@ resource files which can be send to the client immediately). You can also
 define different attribues and configure more than one counter per IP 
 (each counter is idenitfied by the specified name). 
 One attribute could be the request's URL and you may use the 
-<a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus"><code>SetEnvIfPlus</code> <img src="images/link.png"/></a> 
+<a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus"><code>SetEnvIfPlus</code> <img src="images/link.png"/></a> 
 directive to detect them and to increment the counter.<br>
 You can use the <code><a href="qslog.1.html">qslog</a></code> tool 
 (option <code>-pu</code>) to analyze log data (or just use any other log data 
@@ -324,9 +324,9 @@ longer period of time. This is implemented by a second counter
 # don't allow a client IP to access a "handler" (not a static resource like
 # a jpg, gif, ..) more than 20 times per minute:
 <a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          20 60 <a href="index.html#QS_Limit">SlowRequest</a>
-<a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI / SlowRequest=1
-<a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI /generateReport.php SlowRequest=2
-<a href="http://opensource.adnovum.ch/mod_setenvifplus/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
+<a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI / SlowRequest=1
+<a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI /generateReport.php SlowRequest=2
+<a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
 
 # disable any event counting if the server has less than 499 connections:
 <a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>               <a href="index.html#QS_AllConn">QS_AllConn</a>=^[1234]?[0-9]{1,2}$ !SlowRequest
