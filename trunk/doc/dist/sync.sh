@@ -20,4 +20,5 @@ echo "copy html files"
 scp index.html ${dest}/
 scp ../dos.html ${dest}/
 scp ../MESSAGES.txt ${dest}/
+scp ../LICENSE.txt ${dest}/
 
