@@ -256,13 +256,15 @@ The following example blocks clients if they cause more than 20 events within 5 
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#BrokenConnection">BrokenConnection</a>   <a href="index.html#QS_Block">QS_Block</a>
 </pre></td></tr></table>
 <p>
-This is just an example of events you might want to limit. Feel free to add more or 
-to ignore some events.
+This is just an example of events you might want to limit. Feel free to add 
+more or to ignore some events.
 </p>
 <p>
-If you want to prevent from SSL DoS attacks as well, you might also want to block 
-clients opening TCP connections not sending any HTTP data (using the 
-<a href="index.html#NullConnection"><code>NullConnection</code></a> event).
+<a name="NullConnection"></a>
+If you want to prevent from SSL DoS attacks as well (many SSL handshakes 
+initiated by the client), you might also want to block clients opening TCP 
+connections not sending any HTTP data. These clients may be marked using the 
+<a href="index.html#NullConnection"><code>NullConnection</code></a> event.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 <a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#NullConnection">NullConnection</a>     <a href="index.html#QS_Block">QS_Block</a>
