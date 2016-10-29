@@ -1,7 +1,9 @@
-Version
+Version 11.32
 
  - Header filter: accept reagion specific language codes in 
    Accept-Language request header by default.
+
+ - Compiles also against OpenSSL 1.1.0b.
 
 Version 11.31
 
