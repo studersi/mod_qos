@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.622 2016-10-13 20:15:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.623 2016-10-29 09:20:37 pbuchbinder Exp $";
 static const char g_revision[] = "11.32";
 
 
@@ -1924,7 +1924,14 @@ static void qs_set_evmsg(request_rec *r, const char *id) {
  */
 static char *qos_encrypt(request_rec *r, qos_srv_config *sconf, 
                          const unsigned char *b, int l) {
+  // $$$
+  //pbu@kalix:~/projects/mod-qos/httpd/modules/qos$ /home/pbu/projects/apr/libtool --silent --mode=compile gcc -std=gnu99  -O2 -pthread  -DDEFAULT_SERVER_LIMIT=512 -DDEFAULT_THREAD_LIMIT=256 -DQS_INTERNAL_TEST -g -Wall -O0    -DLINUX -D_REENTRANT -D_GNU_SOURCE     -I. -I/home/pbu/projects/mod-qos/httpd/os/unix  -I /home/pbu/projects/openssl-1.1.0b/dist/include -I/home/pbu/projects/mod-qos/httpd/include -I/home/pbu/projects/apr/include -I/usr/include/postgresql -I/home/pbu/projects/mod-qos/httpd/modules/aaa -I/home/pbu/projects/mod-qos/httpd/modules/cache -I/home/pbu/projects/mod-qos/httpd/modules/core -I/home/pbu/projects/mod-qos/httpd/modules/database -I/home/pbu/projects/mod-qos/httpd/modules/filters -I/home/pbu/projects/mod-qos/httpd/modules/ldap -I/home/pbu/projects/mod-qos/httpd/server -I/home/pbu/projects/mod-qos/httpd/modules/loggers -I/home/pbu/projects/mod-qos/httpd/modules/lua -I/home/pbu/projects/mod-qos/httpd/modules/proxy -I/home/pbu/projects/mod-qos/httpd/modules/session -I/home/pbu/projects/mod-qos/httpd/modules/ssl -I/home/pbu/projects/mod-qos/httpd/modules/test -I/home/pbu/projects/mod-qos/httpd/server -I/home/pbu/projects/mod-qos/httpd/modules/arch/unix -I/home/pbu/projects/mod-qos/httpd/modules/dav/main -I/home/pbu/projects/mod-qos/httpd/modules/generators -I/home/pbu/projects/mod-qos/httpd/modules/mappers  -prefer-non-pic -static -c mod_qos.c && touch mod_qos.lo
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   EVP_CIPHER_CTX cipher_ctx;
+  EVP_CIPHER_CTX *cipher_ctx_p = &cipher_ctx;
+#else
+  EVP_CIPHER_CTX *cipher_ctx_p;
+#endif
   HMAC_CTX hmac;
   unsigned char hash[HMAC_MAX_MD_CBLOCK];
   unsigned int hashLen = HMAC_MAX_MD_CBLOCK;
@@ -1960,25 +1967,33 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
   HMAC_Final(&hmac, hash, &hashLen);
 
   /* sym enc */
-  EVP_CIPHER_CTX_init(&cipher_ctx);
-  EVP_EncryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, (unsigned char *)buf);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_init(cipher_ctx_p);
+#else
+  cipher_ctx_p = EVP_CIPHER_CTX_new();
+#endif
+  EVP_EncryptInit(cipher_ctx_p, EVP_des_ede3_cbc(), sconf->key, (unsigned char *)buf);
 
   // skip iv, enc(hash + data)
   buf_len = EVP_MAX_IV_LENGTH;
-  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, hash, QOS_HASH_LEN)) {
+  if(!EVP_EncryptUpdate(cipher_ctx_p, &buf[buf_len], &len, hash, QOS_HASH_LEN)) {
     goto failed;
   }
   buf_len+=len;
-  if(!EVP_EncryptUpdate(&cipher_ctx, &buf[buf_len], &len, b, l)) {
+  if(!EVP_EncryptUpdate(cipher_ctx_p, &buf[buf_len], &len, b, l)) {
     goto failed;
   }
   buf_len+=len;
-  if(!EVP_EncryptFinal(&cipher_ctx, &buf[buf_len], &len)) {
+  if(!EVP_EncryptFinal(cipher_ctx_p, &buf[buf_len], &len)) {
     goto failed;
   }
   buf_len+=len;
 
-  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_cleanup(cipher_ctx_p);
+#else
+  EVP_CIPHER_CTX_free(cipher_ctx_p);
+#endif
   
   /* b64 encode */
   {
@@ -1989,7 +2004,11 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
   }
 
  failed:
-  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_cleanup(cipher_ctx_p);
+#else
+  EVP_CIPHER_CTX_free(cipher_ctx_p);
+#endif
   if(QS_ISDEBUG(r->server)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
                   QOS_LOGD_PFX"qos_encrypt() encryption operation failed, id=%s",
@@ -2006,8 +2025,15 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
  * @param value Base64 encded string to decrypt
  * @return Length of the decypted data (0 if decyption failed)
  */
-static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **ret_buf, const char *value) {
+static int qos_decrypt(request_rec *r, qos_srv_config* sconf, 
+                       unsigned char **ret_buf, const char *value) {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
   EVP_CIPHER_CTX cipher_ctx;
+  EVP_CIPHER_CTX *cipher_ctx_p = &cipher_ctx;
+#else
+  EVP_CIPHER_CTX *cipher_ctx_p;
+#endif
+
   /* decode */
   char *dec = (char *)apr_pcalloc(r->pool, 1 + apr_base64_decode_len(value));
   int dec_len = apr_base64_decode(dec, value);
@@ -2032,18 +2058,27 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
     buf = apr_pcalloc(r->pool, dec_len);
 
     /* sym dec */
-    EVP_CIPHER_CTX_init(&cipher_ctx);
-    EVP_DecryptInit(&cipher_ctx, EVP_des_ede3_cbc(), sconf->key, (unsigned char *)dec);
-    if(!EVP_DecryptUpdate(&cipher_ctx, (unsigned char *)&buf[buf_len], &len,
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    EVP_CIPHER_CTX_init(cipher_ctx_p);
+#else
+    cipher_ctx_p = EVP_CIPHER_CTX_new();
+#endif
+    EVP_DecryptInit(cipher_ctx_p, EVP_des_ede3_cbc(), sconf->key, (unsigned char *)dec);
+    if(!EVP_DecryptUpdate(cipher_ctx_p, (unsigned char *)&buf[buf_len], &len,
                           (const unsigned char *)&dec[EVP_MAX_IV_LENGTH], dec_len)) {
       goto failed;
     }
     buf_len+=len;
-    if(!EVP_DecryptFinal(&cipher_ctx, (unsigned char *)&buf[buf_len], &len)) {
+    if(!EVP_DecryptFinal(cipher_ctx_p, (unsigned char *)&buf[buf_len], &len)) {
       goto failed;
     }
     buf_len+=len;
-    EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    EVP_CIPHER_CTX_cleanup(cipher_ctx_p);
+#else
+    EVP_CIPHER_CTX_free(cipher_ctx_p);
+#endif
 
     // hash + data
     if(buf_len < (QOS_HASH_LEN + 1)) {
@@ -2083,7 +2118,11 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf, unsigned char **re
   }
 
  failed:
-  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  EVP_CIPHER_CTX_cleanup(cipher_ctx_p);
+#else
+  EVP_CIPHER_CTX_free(cipher_ctx_p);
+#endif
   if(QS_ISDEBUG(r->server)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
                   QOS_LOGD_PFX"qos_decrypt() decryption operation failed, id=%s",
