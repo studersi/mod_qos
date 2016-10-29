@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.624 2016-10-29 09:21:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.625 2016-10-29 09:31:54 pbuchbinder Exp $";
 static const char g_revision[] = "11.32";
 
 
@@ -1927,10 +1927,12 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
   EVP_CIPHER_CTX cipher_ctx;
   EVP_CIPHER_CTX *cipher_ctx_p = &cipher_ctx;
+  HMAC_CTX hmac;
+  HMAC_CTX *hmac_p = hmac;
 #else
   EVP_CIPHER_CTX *cipher_ctx_p;
+  HMAC_CTX *hmac_p;
 #endif
-  HMAC_CTX hmac;
   unsigned char hash[HMAC_MAX_MD_CBLOCK];
   unsigned int hashLen = HMAC_MAX_MD_CBLOCK;
   int buf_len = 0;
@@ -1956,13 +1958,19 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
 #endif
 
   /* checksum */
-#ifndef OPENSSL_NO_MD5
-  HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_md5());
-#else
-  HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_sha256());
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  hmac_p = HMAC_CTX_new();
 #endif
-  HMAC_Update(&hmac, b, l);
-  HMAC_Final(&hmac, hash, &hashLen);
+#ifndef OPENSSL_NO_MD5
+  HMAC_Init_ex(hmac_p, sconf->rawKey, sconf->rawKeyLen, EVP_md5(), NULL);
+#else
+  HMAC_Init_ex(hmac_p, sconf->rawKey, sconf->rawKeyLen, EVP_sha256(), NULL);
+#endif
+  HMAC_Update(hmac_p, b, l);
+  HMAC_Final(hmac_p, hash, &hashLen);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  HMAC_CTX_free(hmac_p);
+#endif
 
   /* sym enc */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -2046,7 +2054,12 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf,
     return 0;
   } else {
     /* decrypt */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
     HMAC_CTX hmac;
+    HMAC_CTX *hmac_p = hmac;
+#else
+    HMAC_CTX *hmac_p;
+#endif
     unsigned char hash[HMAC_MAX_MD_CBLOCK];
     unsigned int hashLen = HMAC_MAX_MD_CBLOCK;
     int len = 0;
@@ -2090,13 +2103,19 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf,
 
     /* checksum */
     buf_len -= QOS_HASH_LEN;
-#ifndef OPENSSL_NO_MD5
-    HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_md5());
-#else
-    HMAC_Init(&hmac, sconf->rawKey, sconf->rawKeyLen, EVP_sha256());
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    hmac_p = HMAC_CTX_new();
 #endif
-    HMAC_Update(&hmac, &buf[QOS_HASH_LEN], buf_len);
-    HMAC_Final(&hmac, hash, &hashLen);
+#ifndef OPENSSL_NO_MD5
+    HMAC_Init_ex(hmac_p, sconf->rawKey, sconf->rawKeyLen, EVP_md5(), NULL);
+#else
+    HMAC_Init_ex(hmac_p, sconf->rawKey, sconf->rawKeyLen, EVP_sha256(), NULL);
+#endif
+    HMAC_Update(hmac_p, &buf[QOS_HASH_LEN], buf_len);
+    HMAC_Final(hmac_p, hash, &hashLen);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+    HMAC_CTX_free(hmac_p);
+#endif
     if(hashLen > QOS_HASH_LEN) {
       // we don't keep more than 16 bytes
       hashLen = QOS_HASH_LEN;
