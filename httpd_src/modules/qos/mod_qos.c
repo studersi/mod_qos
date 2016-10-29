@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.625 2016-10-29 09:31:54 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.626 2016-10-29 12:56:47 pbuchbinder Exp $";
 static const char g_revision[] = "11.32";
 
 
@@ -1928,7 +1928,7 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
   EVP_CIPHER_CTX cipher_ctx;
   EVP_CIPHER_CTX *cipher_ctx_p = &cipher_ctx;
   HMAC_CTX hmac;
-  HMAC_CTX *hmac_p = hmac;
+  HMAC_CTX *hmac_p = &hmac;
 #else
   EVP_CIPHER_CTX *cipher_ctx_p;
   HMAC_CTX *hmac_p;
@@ -2056,7 +2056,7 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf,
     /* decrypt */
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     HMAC_CTX hmac;
-    HMAC_CTX *hmac_p = hmac;
+    HMAC_CTX *hmac_p = &hmac;
 #else
     HMAC_CTX *hmac_p;
 #endif

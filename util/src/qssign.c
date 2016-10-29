@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.45 2016-10-07 13:33:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.46 2016-10-29 12:51:52 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -111,15 +111,26 @@ static const qos_p_t pattern[] = {
  * @param sec_len Length of the secret
  */
 static void qs_write(char *line, int line_size, const char *sec, int sec_len) {
-  HMAC_CTX ctx;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  HMAC_CTX hmac;
+  HMAC_CTX *hmac_p = &hmac;
+#else
+  HMAC_CTX *hmac_p;
+#endif
   unsigned char data[HMAC_MAX_MD_CBLOCK];
   unsigned int len;
   char *m;
   int data_len;
   sprintf(&line[strlen(line)], " %."SEQDIG"ld", m_nr);
-  HMAC_Init(&ctx, sec, sec_len, m_evp);
-  HMAC_Update(&ctx, (const unsigned char *)line, strlen(line));
-  HMAC_Final(&ctx, data, &len);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  hmac_p = HMAC_CTX_new();
+#endif
+  HMAC_Init_ex(hmac_p, sec, sec_len, m_evp, NULL);
+  HMAC_Update(hmac_p, (const unsigned char *)line, strlen(line));
+  HMAC_Final(hmac_p, data, &len);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+  HMAC_CTX_free(hmac_p);
+#endif
   m = calloc(1, apr_base64_encode_len(len) + 1);
   data_len = apr_base64_encode(m, (char *)data, len);
   m[data_len] = '\0';
@@ -414,7 +425,12 @@ static long qs_verify(const char *sec) {
   while(fgets(line, line_size, stdin) != NULL) {
     int valid = 0;
     long ns = 0;
-    HMAC_CTX ctx;
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    HMAC_CTX hmac;
+    HMAC_CTX *hmac_p = &hmac;
+#else
+    HMAC_CTX *hmac_p;
+#endif
     unsigned char data[HMAC_MAX_MD_CBLOCK];
     unsigned int len;
     char *m;
@@ -436,9 +452,15 @@ static long qs_verify(const char *sec) {
       sig[0] = '\0';
       sig++;
       /* verify hmac */
-      HMAC_Init(&ctx, sec, sec_len, m_evp);
-      HMAC_Update(&ctx, (const unsigned char *)line, strlen(line));
-      HMAC_Final(&ctx, data, &len);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      hmac_p = HMAC_CTX_new();
+#endif
+      HMAC_Init_ex(hmac_p, sec, sec_len, m_evp, NULL);
+      HMAC_Update(hmac_p, (const unsigned char *)line, strlen(line));
+      HMAC_Final(hmac_p, data, &len);
+#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+      HMAC_CTX_free(hmac_p);
+#endif
       m = calloc(1, apr_base64_encode_len(len) + 1);
       data_len = apr_base64_encode(m, (char *)data, len);
       m[data_len] = '\0';
