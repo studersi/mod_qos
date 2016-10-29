@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.627 2016-10-29 13:06:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.628 2016-10-29 16:18:18 pbuchbinder Exp $";
 static const char g_revision[] = "11.32";
 
 
@@ -1576,6 +1576,8 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
                  QOS_LOG_PFX(004)"failed to create mutex (client control)(%s): %s", 
                  s->lock_file, buf);
     apr_shm_destroy(s->m);
+    s->m = NULL;
+    s->lock = NULL;
     return NULL;
   }
 #ifdef AP_NEED_SET_MUTEX_PERMS
@@ -1610,17 +1612,24 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
 
 /**
  * Destroys the client data store
- * -- not yet implemented (errors for DSO) --
  */
 static void qos_cc_free(qos_s_t *s) {
+  /*
+    We don't need to destroy locks or shared memory 
+    manually as apr_global_mutex_create() and 
+    apr_shm_create() register the cleanup methods 
+    themself to the pool we used when allocating the
+    locks/memory.
   if(s->lock) {
-    // called by apr_pool_cleanup_register():
-    // apr_global_mutex_destroy(s->lock);
+    apr_global_mutex_destroy(s->lock);
   }
   if(s->m) {
-    // called by apr_pool_cleanup_register():
-    // apr_shm_destroy(s->m);
+    apr_shm_destroy(s->m);
   }
+  if(s->lm) {
+    apr_shm_destroy(s->lm);
+  }
+  */
 }
 
 /** 
@@ -2499,12 +2508,27 @@ static void qos_destroy_act(qs_actable_t *act) {
                act->size);
   act->child_init = 0;
   if(act->lock_file && act->lock_file[0]) {
-    // called by apr_pool_cleanup_register():
-    // apr_global_mutex_destroy(act->lock);
+    /*
+      We don't need to destroy locks manually as
+      apr_global_mutex_create() registers the cleanup
+      method itself to the pool we used when allocating the
+      lock.
+    if(act->lock) {
+      apr_global_mutex_destroy(act->lock);
+    }
+    */
     act->lock_file[0] = '\0';
     act->lock_file = NULL;
   }
-  //apr_shm_destroy(act->m);
+  /*
+    We don't need to destroy shared memory 
+    manually as apr_shm_create() registers the
+    cleanup method to the pool we used when
+    allocating the memory.
+  if(act->m) {
+    apr_shm_destroy(act->m);
+  }
+  */
   apr_pool_destroy(act->pool);
 }
 
@@ -2587,11 +2611,11 @@ static apr_status_t qos_cleanup_shm(void *p) {
   char *last_generation;
   int i;
   apr_table_entry_t *entry;
-
+  
   this_generation = apr_psprintf(act->ppool, "%d", m_generation);
   last_generation = apr_psprintf(act->pool, "%d", m_generation-1);
   qos_clear_cc(u);
-
+  
   /* delete acts from the last graceful restart */
   entry = (apr_table_entry_t *)apr_table_elts(u->act_table)->elts;
   for(i = 0; i < apr_table_elts(u->act_table)->nelts; i++) {
@@ -2599,7 +2623,7 @@ static apr_status_t qos_cleanup_shm(void *p) {
       qs_actable_t *a = (qs_actable_t *)entry[i].val;
 #ifdef QS_INTERNAL_TEST
       ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-        QOS_LOGD_PFX"clear ACT generation '%s' at '%d'", last_generation, m_generation);
+                   QOS_LOGD_PFX"clear ACT generation '%s' at '%d'", last_generation, m_generation);
 #endif
       qos_destroy_act(a);
     }
@@ -2615,8 +2639,8 @@ static apr_status_t qos_cleanup_shm(void *p) {
       u->qos_cc = NULL;
     }
 #ifdef QS_INTERNAL_TEST
-      ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
-        QOS_LOGD_PFX"clear ACT generation 'current' at '%d'", m_generation);
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
+                 QOS_LOGD_PFX"clear ACT generation 'current' at '%d'", m_generation);
 #endif
     qos_destroy_act(act);
   }
