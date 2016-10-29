@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.46 2016-10-29 12:51:52 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.47 2016-10-29 13:07:24 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>
@@ -122,13 +122,17 @@ static void qs_write(char *line, int line_size, const char *sec, int sec_len) {
   char *m;
   int data_len;
   sprintf(&line[strlen(line)], " %."SEQDIG"ld", m_nr);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  HMAC_CTX_init(hmac_p);
+#else
   hmac_p = HMAC_CTX_new();
 #endif
   HMAC_Init_ex(hmac_p, sec, sec_len, m_evp, NULL);
   HMAC_Update(hmac_p, (const unsigned char *)line, strlen(line));
   HMAC_Final(hmac_p, data, &len);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  HMAC_CTX_cleanup(hmac_p);
+#else
   HMAC_CTX_free(hmac_p);
 #endif
   m = calloc(1, apr_base64_encode_len(len) + 1);
@@ -452,13 +456,17 @@ static long qs_verify(const char *sec) {
       sig[0] = '\0';
       sig++;
       /* verify hmac */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+      HMAC_CTX_init(hmac_p);
+#else
       hmac_p = HMAC_CTX_new();
 #endif
       HMAC_Init_ex(hmac_p, sec, sec_len, m_evp, NULL);
       HMAC_Update(hmac_p, (const unsigned char *)line, strlen(line));
       HMAC_Final(hmac_p, data, &len);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+      HMAC_CTX_cleanup(hmac_p);
+#else
       HMAC_CTX_free(hmac_p);
 #endif
       m = calloc(1, apr_base64_encode_len(len) + 1);

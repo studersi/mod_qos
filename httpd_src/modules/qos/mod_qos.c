@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.626 2016-10-29 12:56:47 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.627 2016-10-29 13:06:41 pbuchbinder Exp $";
 static const char g_revision[] = "11.32";
 
 
@@ -1958,7 +1958,9 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
 #endif
 
   /* checksum */
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  HMAC_CTX_init(hmac_p);
+#else
   hmac_p = HMAC_CTX_new();
 #endif
 #ifndef OPENSSL_NO_MD5
@@ -1968,7 +1970,9 @@ static char *qos_encrypt(request_rec *r, qos_srv_config *sconf,
 #endif
   HMAC_Update(hmac_p, b, l);
   HMAC_Final(hmac_p, hash, &hashLen);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+  HMAC_CTX_cleanup(hmac_p);
+#else
   HMAC_CTX_free(hmac_p);
 #endif
 
@@ -2103,7 +2107,9 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf,
 
     /* checksum */
     buf_len -= QOS_HASH_LEN;
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    HMAC_CTX_init(hmac_p);
+#else
     hmac_p = HMAC_CTX_new();
 #endif
 #ifndef OPENSSL_NO_MD5
@@ -2113,7 +2119,9 @@ static int qos_decrypt(request_rec *r, qos_srv_config* sconf,
 #endif
     HMAC_Update(hmac_p, &buf[QOS_HASH_LEN], buf_len);
     HMAC_Final(hmac_p, hash, &hashLen);
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+    HMAC_CTX_cleanup(hmac_p);
+#else
     HMAC_CTX_free(hmac_p);
 #endif
     if(hashLen > QOS_HASH_LEN) {
