@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: b64.c,v 1.12 2016-10-07 13:33:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: b64.c,v 1.13 2016-11-08 16:45:50 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -184,7 +184,12 @@ static void code(const char *mode, const char *line, int len) {
 	p = p + 1;
 	printf("%c", qos_hex2c(p));
 	p = p + 2;
-
+      } else if(qos_ishex(p[0]) &&
+		qos_ishex(p[1])) {
+	printf("%c", qos_hex2c(p));
+	p = p + 2;
+      } else if(p[0] == ' ') {
+	p++;
       } else {
 	if(p[0] != CR && p[0] != LF) {
 	  printf(".");
