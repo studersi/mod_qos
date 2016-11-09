@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.628 2016-10-29 16:18:18 pbuchbinder Exp $";
-static const char g_revision[] = "11.32";
+static const char revision[] = "$Id: mod_qos.c,v 5.629 2016-11-09 07:18:07 pbuchbinder Exp $";
+static const char g_revision[] = "11.33";
 
 
 /************************************************************************
@@ -4241,8 +4241,7 @@ static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
   if((r->unparsed_uri == NULL) || (r->parsed_uri.path == NULL)) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(045)"access denied, invalid request line:"
-                  " can't parse uri,%s c=%s, id=%s",
-                  sconf->log_only ? " ignores log only mode," : "",
+                  " can't parse uri, c=%s, id=%s",
                   QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                   qos_unique_id(r, "045"));
     return HTTP_BAD_REQUEST;

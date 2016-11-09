@@ -1,3 +1,7 @@
+Version 
+
+ - Fixed message 045 (uri check ignores log-only mode).
+
 Version 11.32
 
  - Header filter: accept reagion specific language codes in 
