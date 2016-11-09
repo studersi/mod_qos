@@ -23,7 +23,7 @@ Version 11.30
 
  - qslogger supports option "-x" (adding a prefix to every message).
 
- - Fix calculating MaxClients for MPM prefork binary (bug reported by
+ - Fixed calculation of MaxClients for MPM prefork binary (bug reported by
    by Fergus - thanks!).
 
 Version 11.29
@@ -611,9 +611,9 @@ Version 9.75
 
 Version 9.74
 
- - Fix header file in qsfilter2 (possible compile problems).
+ - Fixed header file in qsfilter2 (possible compile problems).
 
- - Fix pre connection handling for outgoing (mod_proxy) connections.
+ - Fixed pre connection handling for outgoing (mod_proxy) connections.
 
 Version 9.73
 
@@ -1086,46 +1086,46 @@ Version 9.9
 
 Version 9.8
 
-- Internal code changes/maintenance (join thread).
+ - Internal code changes/maintenance (join thread).
 
 Version 9.7
 
-- mod_qos may be compiled defining QS_NO_STATUS_HOOK which prevents
-  mod_qos from registering to mod_status.
+ - mod_qos may be compiled defining QS_NO_STATUS_HOOK which prevents
+   mod_qos from registering to mod_status.
 
 Version 9.6
 
-- Environment variable QS_DeflateReqBody to deflate request body data
-  (update to mod_parp 0.8 in order to get a correct content-length
-  header after data deflating).
+ - Environment variable QS_DeflateReqBody to deflate request body data
+   (update to mod_parp 0.8 in order to get a correct content-length
+   header after data deflating).
 
 Version 9.5
 
-- New directives QS_SetReqHeader and QS_SetEnv.
+ - New directives QS_SetReqHeader and QS_SetEnv.
 
 Version 9.4
 
-- Fixed: Variable %{qos-query} is not set when using the
-  QS_DenyQueryBody directive (and neither QS_DenyBody nor
-  QS_PermitUriBody has been set).
+ - Fixed: Variable %{qos-query} is not set when using the
+   QS_DenyQueryBody directive (and neither QS_DenyBody nor
+   QS_PermitUriBody has been set).
 
-- Increased line buffer for qsfilter2 (2MB). 
+ - Increased line buffer for qsfilter2 (2MB). 
 
 Version 9.3
 
-- New directive QS_SetEnvResBody.
+ - New directive QS_SetEnvResBody.
 
 Version 9.2
 
-- New syntax:
-  QS_VipHeaderName <header name>[=<regex>] [drop]
-  QS_VipIPHeaderName <header name>[=<regex>] [drop]
+ - New syntax:
+   QS_VipHeaderName <header name>[=<regex>] [drop]
+   QS_VipIPHeaderName <header name>[=<regex>] [drop]
 
 Version 9.1
 
-- QS_ClientEventRequestLimit limits the number of concurrent events on
-  a per client IP address basis (again increasing the per client memory
-  consumption).
+ - QS_ClientEventRequestLimit limits the number of concurrent events on
+   a per client IP address basis (again increasing the per client memory
+   consumption).
 
 Version 9.0
 
