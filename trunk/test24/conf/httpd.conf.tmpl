@@ -247,3 +247,15 @@ Listen                  [::1]:##QS_PORT_BASE10##
 
 </VirtualHost>
 
+Listen                 ##QS_PORT_BASE3##
+<VirtualHost 127.0.0.1:##QS_PORT_BASE3##>
+   ServerName                 127.0.0.1
+   ProxyRequests On
+   ProxyVia On
+
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+   
+</VirtualHost>
