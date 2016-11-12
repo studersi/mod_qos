@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.629 2016-11-09 07:18:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.630 2016-11-12 17:59:29 pbuchbinder Exp $";
 static const char g_revision[] = "11.33";
 
 
@@ -6174,79 +6174,59 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
       u->qos_cc->connections++;
       if((*e)->lowrate) {
         if(c->notes) {
-          apr_table_set(c->notes, "QS_ClientLowPrio", "1");
+          char *flags = apr_psprintf(c->pool, "0x%02x", (*e)->lowratestatus);
+          apr_table_set(c->notes, "QS_ClientLowPrio", flags);
         }
       }
+      if((*e)->vip) {
+        /* allow all vip addresses - no restrictions */
+        apr_table_set(c->notes, QS_ISVIPREQ, "yes");
+        return ret;
+      }
       if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
-        /* allow all vip addresses */
-        if(!(*e)->vip) {
-          int penalty = 4; // 2 to 12 points
-          int reqSpare = 0;
-          if((*e)->lowrate) {
-            if((*e)->lowratestatus & QOS_LOW_FLAG_PKGRATE) {
-              penalty++;
-            }
-            if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_BAD) {
-              penalty+=2;
-            }
-            if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTBLOCK) {
-              penalty+=2;
-            }
-            if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTLIMIT) {
-              penalty+=2;
-            }
-            if((*e)->lowratestatus & QOS_LOW_FLAG_TIMEOUT) {
-              penalty++;
-            }
+        int penalty = 4; // 2 to 12 points
+        int reqSpare = 0;
+        if((*e)->lowrate) {
+          if((*e)->lowratestatus & QOS_LOW_FLAG_PKGRATE) {
+            penalty++;
           }
-          if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
-            // normal behavior
-            penalty-=2;
+          if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_BAD) {
+            penalty+=2;
           }
-          // calculate the min. required free connections allowing us to serve request by this IP
-          reqSpare = (cconf->sconf->max_clients - cconf->sconf->qos_cc_prefer_limit) * penalty / 12;
-          if((cconf->sconf->max_clients - u->qos_cc->connections) < reqSpare) {
-            /* not enougth free connections */
-            if(c->notes) {
-              apr_table_set(c->notes, "QS_ClientLowPrio", "1");
-            }
-            if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
-              *msg = apr_psprintf(cconf->c->pool, 
-                                  QOS_LOG_PFX(066)"access denied%s, "
-                                  "QS_ClientPrefer rule (penalty=%d 0x%02x): "
-                                  "max=%d, concurrent connections=%d, c=%s",
-                                  cconf->sconf->log_only ? " (log only)" : "",
-                                  penalty, (*e)->lowratestatus,
-                                  cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
-                                  QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
-                                  QS_CONN_REMOTEIP(cconf->c));
-              ret = m_retcode;
-            }
+          if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTBLOCK) {
+            penalty+=2;
+          }
+          if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTLIMIT) {
+              penalty+=2;
+          }
+          if((*e)->lowratestatus & QOS_LOW_FLAG_TIMEOUT) {
+            penalty++;
+          }
+        }
+        if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+          // normal behavior
+          penalty-=2;
+        }
+        // calculate the min. required free connections allowing us to serve request by this IP
+        reqSpare = (cconf->sconf->max_clients - cconf->sconf->qos_cc_prefer_limit) * penalty / 12;
+        if((cconf->sconf->max_clients - u->qos_cc->connections) < reqSpare) {
+          /* not enougth free connections */
+          if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
+            *msg = apr_psprintf(cconf->c->pool, 
+                                QOS_LOG_PFX(066)"access denied%s, "
+                                "QS_ClientPrefer rule (penalty=%d 0x%02x): "
+                                "max=%d, concurrent connections=%d, c=%s",
+                                cconf->sconf->log_only ? " (log only)" : "",
+                                penalty, (*e)->lowratestatus,
+                                cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
+                                QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
+                                QS_CONN_REMOTEIP(cconf->c));
+            ret = m_retcode;
           }
         }
       }
     }
 
-//    /* blocked by event (block only, no limit) - moderate*/
-//    if(cconf->sconf->qos_cc_block) {
-//      if((*e)->block >= cconf->sconf->qos_cc_block) {
-//        apr_time_t now = time(NULL);
-//        if(((*e)->block_time + cconf->sconf->qos_cc_block_time) > now) {
-//          /* still blocking */
-//          *msg = apr_psprintf(cconf->c->pool, 
-//                              QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
-//                              "max=%d, current=%d, c=%s",
-//                              cconf->sconf->qos_cc_block,
-//                              (*e)->block,
-//                              QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : QS_CONN_REMOTEIP(cconf->c));
-//          ret = m_retcode;
-//        } else {
-//          /* release */
-//          (*e)->block = 0;
-//          (*e)->block_time = 0;
-//        }
-//      }
-//    }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT14 */
   }
   return ret;
@@ -8233,6 +8213,9 @@ static int qos_post_read_request(request_rec *r) {
   const char *all_connections = apr_table_get(r->connection->notes, "QS_AllConn");
   const char *fromCurrentIp = apr_table_get(r->connection->notes, "QS_IPConn");
   const char *connectionid = apr_table_get(r->connection->notes, QS_CONNID);
+  const char *lowPrioFlags = apr_table_get(r->connection->notes, "QS_ClientLowPrio");
+  const char *isVipIP = apr_table_get(r->connection->notes, QS_ISVIPREQ);
+
   if(sconf->geodb) {
     if(sconf->qos_cc_forwardedfor) {
       // override country determined on a per connection basis
@@ -8300,9 +8283,13 @@ static int qos_post_read_request(request_rec *r) {
     qos_pr_event_limit(r, sconf);
   }
 
-  /* QS_ClientPrefer: propagate connection env vars to req*/
-  if(apr_table_get(r->connection->notes, "QS_ClientLowPrio")) {
-    apr_table_set(r->subprocess_env, "QS_ClientLowPrio", "1");
+  /* QS_ClientPrefer: propagate connection env vars to req */
+  if(lowPrioFlags) {
+    apr_table_set(r->subprocess_env, "QS_ClientLowPrio", lowPrioFlags);
+  }
+  /* QS_IsVipRequest is set due VIP IP */
+  if(isVipIP) {
+    apr_table_set(r->subprocess_env, QS_ISVIPREQ, isVipIP);
   }
   if(qos_request_check(r, sconf) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;

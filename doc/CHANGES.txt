@@ -1,5 +1,11 @@
 Version 
 
+ - QS_ClientLowPrio variable's value contains the status flag representing
+   the tracked attribues.
+
+ - Sets QS_IsVipRequest variable for marked IP addresses at connection
+   processing handler and propagetes it to every request.
+
  - Fixed message 045 (uri check ignores log-only mode).
 
 Version 11.32

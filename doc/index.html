@@ -794,8 +794,12 @@ and remains the same for all HTTP requests performed on this connection.</small>
 <li>
 <a name="QS_ClientLowPrio"></a>
 <code>QS_ClientLowPrio</code><br>
-The variable is set for requests by clients which have been marked to be 
-processed with low priority, see <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code>.
+The variable is set for connections by clients which have been marked to be 
+processed with low priority, see <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code>. 
+The variable's value is determined when the client opens a new connection and 
+its value represents the status flag of the tracked client attributes 
+(hexadecimal). VIP status is ignored and the variable is always set even 
+the IP has been marked as being VIP.
 </li>
 <li>
 <a name="QS_IsVipRequest"></a>

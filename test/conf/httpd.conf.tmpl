@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.269 2016-10-07 13:33:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.270 2016-11-12 17:59:29 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -767,7 +767,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE1##
      QS_SetEnvIfStatus          401 QS_KeepAliveTimeout=12
    </Location>
    <Location /htt/prefer>
-     RequestHeaderPlus set Via QS_ClientLowPrio env=QS_ClientLowPrio
+     RequestHeaderPlus set Via QS_ClientLowPrio=${QS_ClientLowPrio} env=QS_ClientLowPrio
    </Location>
 
    Include 	  conf/qos_viewer.conf
