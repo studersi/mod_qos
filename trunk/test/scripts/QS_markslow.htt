@@ -1,5 +1,5 @@
 #
-# $Id: QS_markslow.htt,v 1.1 2010-12-07 20:49:08 pbuchbinder Exp $
+# $Id: QS_markslow.htt,v 1.2 2016-11-12 17:59:29 pbuchbinder Exp $
 #
 # slow clients get marked
 #
@@ -55,7 +55,7 @@ __==html==
 _CLOSE
 
 _RES
-_EXPECT . "Via: QS_ClientLowPrio"
+_EXPECT . "Via: QS_ClientLowPrio=0x01"
 _WAIT
 __HTTP/1.1 200 OK
 __Content-Length: AUTO 
