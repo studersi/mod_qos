@@ -1,0 +1,31 @@
+#
+# $Id: QS_ClientPrefer.htt,v 1.3 2016-01-07 20:01:56 pbuchbinder Exp $
+#
+
+INCLUDE scripts/ports
+
+CLIENT 50
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+
+END
+
+CLIENT 20
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 2000
+_EXPECT EXEC "mod_qos\(066\): access denied, QS_ClientPrefer rule"
+_EXEC tail -10 logs/error_log
+END
