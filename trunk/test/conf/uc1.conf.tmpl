@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.68 2016-10-07 13:33:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.69 2016-11-13 21:40:12 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -391,7 +391,7 @@ QS_SrvSerialize           on
 
 <IfDefine uc1z>
    <Location /htt/priv>
-     QS_RedirectIf             QS_ClientLowPrio 1 http://localhost/error
+     QS_RedirectIf             QS_ClientLowPrio (0x[0-9]+) http://localhost/error?$1
    </Location>
 
    <Location /qos >
