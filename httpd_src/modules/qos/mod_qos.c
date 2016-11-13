@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.630 2016-11-12 17:59:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.631 2016-11-13 12:15:41 pbuchbinder Exp $";
 static const char g_revision[] = "11.33";
 
 
@@ -6181,47 +6181,47 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
       if((*e)->vip) {
         /* allow all vip addresses - no restrictions */
         apr_table_set(c->notes, QS_ISVIPREQ, "yes");
-        return ret;
-      }
-      if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
-        int penalty = 4; // 2 to 12 points
-        int reqSpare = 0;
-        if((*e)->lowrate) {
-          if((*e)->lowratestatus & QOS_LOW_FLAG_PKGRATE) {
+      } else {
+        if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
+          int penalty = 4; // 2 to 12 points
+          int reqSpare = 0;
+          if((*e)->lowrate) {
+            if((*e)->lowratestatus & QOS_LOW_FLAG_PKGRATE) {
             penalty++;
-          }
-          if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_BAD) {
-            penalty+=2;
-          }
-          if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTBLOCK) {
-            penalty+=2;
-          }
-          if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTLIMIT) {
+            }
+            if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_BAD) {
               penalty+=2;
+            }
+            if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTBLOCK) {
+              penalty+=2;
+            }
+            if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTLIMIT) {
+              penalty+=2;
+            }
+            if((*e)->lowratestatus & QOS_LOW_FLAG_TIMEOUT) {
+              penalty++;
+            }
           }
-          if((*e)->lowratestatus & QOS_LOW_FLAG_TIMEOUT) {
-            penalty++;
+          if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+            // normal behavior
+            penalty-=2;
           }
-        }
-        if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
-          // normal behavior
-          penalty-=2;
-        }
-        // calculate the min. required free connections allowing us to serve request by this IP
-        reqSpare = (cconf->sconf->max_clients - cconf->sconf->qos_cc_prefer_limit) * penalty / 12;
-        if((cconf->sconf->max_clients - u->qos_cc->connections) < reqSpare) {
-          /* not enougth free connections */
-          if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
-            *msg = apr_psprintf(cconf->c->pool, 
-                                QOS_LOG_PFX(066)"access denied%s, "
-                                "QS_ClientPrefer rule (penalty=%d 0x%02x): "
-                                "max=%d, concurrent connections=%d, c=%s",
-                                cconf->sconf->log_only ? " (log only)" : "",
-                                penalty, (*e)->lowratestatus,
-                                cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
-                                QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
-                                QS_CONN_REMOTEIP(cconf->c));
-            ret = m_retcode;
+          // calculate the min. required free connections allowing us to serve request by this IP
+          reqSpare = (cconf->sconf->max_clients - cconf->sconf->qos_cc_prefer_limit) * penalty / 12;
+          if((cconf->sconf->max_clients - u->qos_cc->connections) < reqSpare) {
+            /* not enougth free connections */
+            if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
+              *msg = apr_psprintf(cconf->c->pool, 
+                                  QOS_LOG_PFX(066)"access denied%s, "
+                                  "QS_ClientPrefer rule (penalty=%d 0x%02x): "
+                                  "max=%d, concurrent connections=%d, c=%s",
+                                  cconf->sconf->log_only ? " (log only)" : "",
+                                  penalty, (*e)->lowratestatus,
+                                  cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
+                                  QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
+                                  QS_CONN_REMOTEIP(cconf->c));
+              ret = m_retcode;
+            }
           }
         }
       }
