@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.631 2016-11-13 12:15:41 pbuchbinder Exp $";
-static const char g_revision[] = "11.33";
+static const char revision[] = "$Id: mod_qos.c,v 5.632 2016-11-14 20:26:49 pbuchbinder Exp $";
+static const char g_revision[] = "11.34";
 
 
 /************************************************************************
@@ -9053,7 +9053,7 @@ static apr_status_t qos_out_filter_brokencon(ap_filter_t *f, apr_bucket_brigade 
 }
 
 /**
- * QS_SetEnvIfResBody 
+ * QS_SetEnvIfResBody
  *
  * Searches the response body for the pattern defined by the QS_SetEnvIfResBody
  * directive (supports only one search pattern (literal string)).
@@ -9065,48 +9065,51 @@ static apr_status_t qos_out_filter_brokencon(ap_filter_t *f, apr_bucket_brigade 
 static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) {
   request_rec *r = f->r;
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
+  qs_req_ctx *rctx;
+  int len;
+  apr_bucket *b;
+
   if((dconf == NULL) || (dconf->response_pattern == NULL)) {
+    // not used
     ap_remove_output_filter(f);
-  } else {
-    int len = strlen(dconf->response_pattern);
-    apr_bucket *b;
-    qs_req_ctx *rctx = qos_rctx_config_get(r);
-    for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
-      if(APR_BUCKET_IS_EOS(b)) {
-        /* If we ever see an EOS, make sure to FLUSH. */
-        apr_bucket *flush = apr_bucket_flush_create(f->c->bucket_alloc);
-        APR_BUCKET_INSERT_BEFORE(b, flush);
-      }
-      if(!(APR_BUCKET_IS_METADATA(b))) {
-        const char *buf;
-        apr_size_t nbytes;
-        if(apr_bucket_read(b, &buf, &nbytes, APR_BLOCK_READ) == APR_SUCCESS) {
-          if(nbytes > 0) {
-            int blen = nbytes > len ? len : nbytes - 1;
-            /* 1. overlap: this buffer avoids that we miss a string if it is cut apart
-               within two buckets 
-               e.g., [Logi][n Page] instaed of [Login Page] when searching for "Login Page" */
-            if(rctx->body_window == NULL) {
-              // first call, create a window buffer
-              rctx->body_window = apr_pcalloc(r->pool, (len*2)+1);
-              rctx->body_window[0] = '\0';
-            } else {
-              // subsequent call, searches within the window too
-              int wlen = strlen(rctx->body_window);
-              strncpy(&rctx->body_window[wlen], buf, blen);
-              rctx->body_window[wlen+blen+1] = '\0';
-              if(strstr(rctx->body_window, dconf->response_pattern)) {
-                /* found pattern */
-                if(dconf->response_pattern_var[0] == '!') {
-                  apr_table_unset(r->subprocess_env, &dconf->response_pattern_var[1]);
-                } else {
-                  apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
-                }
-                ap_remove_output_filter(f);
-              }
-            }
-            /* 2. new buffer (don't want to copy the data) */
-            if(qos_strnstr(buf, dconf->response_pattern, nbytes)) {
+    return ap_pass_brigade(f->next, bb);
+  }
+
+  rctx = qos_rctx_config_get(r);
+  len = strlen(dconf->response_pattern);
+  
+  if((apr_table_get(r->subprocess_env, "QS_SetEnvIfResBodyIgnore") != NULL) && 
+     rctx->body_window == NULL) {
+    // skip this response (disabled and nothing processed yet)
+    ap_remove_output_filter(f);
+    return ap_pass_brigade(f->next, bb);
+  }
+
+  for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
+    if(APR_BUCKET_IS_EOS(b)) {
+      /* If we ever see an EOS, make sure to FLUSH. */
+      apr_bucket *flush = apr_bucket_flush_create(f->c->bucket_alloc);
+      APR_BUCKET_INSERT_BEFORE(b, flush);
+    }
+    if(!(APR_BUCKET_IS_METADATA(b))) {
+      const char *buf;
+      apr_size_t nbytes;
+      if(apr_bucket_read(b, &buf, &nbytes, APR_BLOCK_READ) == APR_SUCCESS) {
+        if(nbytes > 0) {
+          int blen = nbytes > len ? len : nbytes - 1;
+          /* 1. overlap: this buffer avoids that we miss a string if it is cut apart
+             within two buckets 
+             e.g., [Logi][n Page] instaed of [Login Page] when searching for "Login Page" */
+          if(rctx->body_window == NULL) {
+            // first call, create a window buffer
+            rctx->body_window = apr_pcalloc(r->pool, (len*2)+1);
+            rctx->body_window[0] = '\0';
+          } else {
+            // subsequent call, searches within the window too
+            int wlen = strlen(rctx->body_window);
+            strncpy(&rctx->body_window[wlen], buf, blen);
+            rctx->body_window[wlen+blen+1] = '\0';
+            if(strstr(rctx->body_window, dconf->response_pattern)) {
               /* found pattern */
               if(dconf->response_pattern_var[0] == '!') {
                 apr_table_unset(r->subprocess_env, &dconf->response_pattern_var[1]);
@@ -9115,10 +9118,20 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
               }
               ap_remove_output_filter(f);
             }
-            /* 3. store the end (for next loop) */
-            strncpy(rctx->body_window, &buf[nbytes - blen], blen);
-            rctx->body_window[blen] = '\0';
           }
+          /* 2. new buffer (don't want to copy the data) */
+          if(qos_strnstr(buf, dconf->response_pattern, nbytes)) {
+            /* found pattern */
+            if(dconf->response_pattern_var[0] == '!') {
+              apr_table_unset(r->subprocess_env, &dconf->response_pattern_var[1]);
+            } else {
+              apr_table_set(r->subprocess_env, dconf->response_pattern_var, dconf->response_pattern);
+            }
+            ap_remove_output_filter(f);
+          }
+          /* 3. store the end (for next loop) */
+          strncpy(rctx->body_window, &buf[nbytes - blen], blen);
+          rctx->body_window[blen] = '\0';
         }
       }
     }
