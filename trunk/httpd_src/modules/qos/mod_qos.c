@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.632 2016-11-14 20:26:49 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.633 2016-11-14 21:24:50 pbuchbinder Exp $";
 static const char g_revision[] = "11.34";
 
 
@@ -679,8 +679,9 @@ typedef struct {
   int dec_mode;
   apr_off_t maxpost;
   qs_rfilter_action_e urldecoding;
-  char *response_pattern;
-  char *response_pattern_var;
+  const char *response_pattern;
+  int response_pattern_len;
+  const char *response_pattern_var;
   apr_array_header_t *redirectif;
   int decodings; 
   apr_table_t *disable_reqrate_events;
@@ -9076,7 +9077,7 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
   }
 
   rctx = qos_rctx_config_get(r);
-  len = strlen(dconf->response_pattern);
+  len = dconf->response_pattern_len;
   
   if((apr_table_get(r->subprocess_env, "QS_SetEnvIfResBodyIgnore") != NULL) && 
      rctx->body_window == NULL) {
@@ -10869,9 +10870,11 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->response_pattern) {
     dconf->response_pattern = o->response_pattern;
+    dconf->response_pattern_len = o->response_pattern_len;
     dconf->response_pattern_var = o->response_pattern_var;
   } else {
     dconf->response_pattern = b->response_pattern;
+    dconf->response_pattern_len = b->response_pattern_len;
     dconf->response_pattern_var = b->response_pattern_var;
   }
   dconf->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
@@ -11614,6 +11617,7 @@ const char *qos_event_setenvifresbody_cmd(cmd_parms *cmd, void *dcfg, const char
                         cmd->directive->directive);
   }
   dconf->response_pattern = apr_pstrdup(cmd->pool, pattern);
+  dconf->response_pattern_len = strlen(dconf->response_pattern);
   dconf->response_pattern_var = apr_pstrdup(cmd->pool, var);
   if(var[0] == '!' && !var[1]) {
     return apr_psprintf(cmd->pool, "%s: variable name is too short",
