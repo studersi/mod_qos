@@ -1099,7 +1099,9 @@ if the response body contains the defined literal string. Used on a per-
 <a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">location <img src="images/link.png"/></a> 
 level. Only one directive may be defined per location 
 (one search string per response). Prefixing the variably by a "!" 
-lets the variable being removed (unset).
+lets the variable being removed (unset). You may set the <code>QS_SetEnvIfResBodyIgnore</code> 
+environment variable if you want mod_qos to skip (not parsing) a request's response 
+body.
 </li>
 <li>
 <a name="QS_SetEnvRes"></a>

@@ -1,8 +1,9 @@
 #
-# $Id: QS_SetEnvResBody.htt,v 1.4 2012-06-07 05:35:57 pbuchbinder Exp $
+# $Id: QS_SetEnvResBody.htt,v 1.5 2016-11-14 20:26:49 pbuchbinder Exp $
 #
 #   QS_ClientEventBlockCount 3 10
 #   <Location /app/a/resbody/pattern>
+#      SetEnvIf REQUEST_URI \.jpg$ QS_SetEnvIfResBodyIgnore=skip
 #      QS_SetEnvIfResBody "Login Failed" QS_Block
 #   </Location>
 #
@@ -30,6 +31,16 @@ _EXPECT . "<html>"
 _EXPECT . "<body>"
 _EXPECT . "</body>"
 _EXPECT . "</html>"
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /app/a/resbody/pattern/logo.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Req: img
+__
+_EXPECT . "200 OK"
+_EXPECT . "data data"
 _WAIT
 
 _REQ 127.0.0.1 $QS_PORT_BASE
@@ -202,6 +213,16 @@ __<body>
 __<p>Login Failed</p>
 __</body>
 __</html>
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: image/jpg
+__
+__data data
+__Login Failed
+__data
 
 _RES
 _WAIT

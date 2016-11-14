@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.270 2016-11-12 17:59:29 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.271 2016-11-14 20:26:49 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -619,6 +619,7 @@ ErrorDocument            404 /error-docs/error404.html
    </Location>
 
    <Location /app/a/resbody/pattern>
+      SetEnvIf REQUEST_URI \.jpg$ QS_SetEnvIfResBodyIgnore=skip
       QS_SetEnvIfResBody "Login Failed" QS_Block
    </Location>
 

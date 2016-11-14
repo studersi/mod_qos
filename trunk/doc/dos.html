@@ -395,7 +395,8 @@ The directive to enable this is called
 <a href="index.html#QS_ClientPrefer"><code>QS_ClientPrefer</code></a>. When 
 using this feature, you should define how to detect the "good" clients 
 using the <a href="index.html#QS_VipIPHeaderName"><code>QS_VipIPHeaderName</code></a> 
-directive. It is also recommended to configure a static value for the 
+directive (e.g., let your application add a special response header if a user 
+successfully authenticates). It is also recommended to configure a static value for the 
 <a href="index.html#QS_ClientContentTypes"><code>QS_ClientContentTypes</code></a> 
 directive.
 </p>
