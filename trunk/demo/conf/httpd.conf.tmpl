@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.21 2016-10-07 13:33:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/demo/conf/httpd.conf.tmpl,v 1.22 2016-11-15 06:25:59 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -173,7 +173,7 @@ Listen                  server1:##QS_PORT_BASE##
 </IfDefine>
 
 <IfDefine 05bruteforce>
-   <Location /c>
+   <Location /c/login.cgi>
         QS_SetEnvIfResBody "Login Failed" QS_Limit
    </Location>
 </IfDefine>
