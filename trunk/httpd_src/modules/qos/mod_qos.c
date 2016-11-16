@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.633 2016-11-14 21:24:50 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.634 2016-11-16 21:31:28 pbuchbinder Exp $";
 static const char g_revision[] = "11.34";
 
 
@@ -9571,6 +9571,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   if(sconf->vip_ip_user && r->user) {
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     if(cconf) {
+      qs_set_evmsg(r, "v;"); 
       cconf->is_vip = 1;
       cconf->is_vip_by_header = 1;
       apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
@@ -9657,6 +9658,7 @@ static int qos_fixup(request_rec * r) {
     /* check r->user early (final status is update is implemented in output-filter) */
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     if(cconf) {
+      qs_set_evmsg(r, "v;"); 
       cconf->is_vip = 1;
       cconf->is_vip_by_header = 1;
       apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");

@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.103 2016-10-07 13:33:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.104 2016-11-16 21:31:28 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -149,6 +149,7 @@ typedef struct stat_rec_st {
   long status_4;
   long status_5;
 
+  long qos_V;
   long qos_v;
   long qos_s;
   long qos_d;
@@ -749,6 +750,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   if(m_hasEV) {
     fprintf(f,
             "qV;%ld;"
+            "qv;%ld;"
             "qS;%ld;"
             "qD;%ld;"
             "qK;%ld;"
@@ -757,6 +759,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
             "qs;%ld;"
             "qA;%ld;"
             "qu;%ld;",
+            stat_rec->qos_V,
             stat_rec->qos_v,
             stat_rec->qos_s,
             stat_rec->qos_d,
@@ -796,6 +799,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   stat_rec->duration_4 = 0;
   stat_rec->duration_5 = 0;
   stat_rec->duration_6 = 0;
+  stat_rec->qos_V = 0;
   stat_rec->qos_v = 0;
   stat_rec->qos_s = 0;
   stat_rec->qos_d = 0;
@@ -943,6 +947,7 @@ static stat_rec_t *createRec(apr_pool_t *pool, const char *id, const char *patte
   rec->status_4 = 0;
   rec->status_5 = 0;
 
+  rec->qos_V = 0;
   rec->qos_v = 0;
   rec->qos_s = 0;
   rec->qos_d = 0;
@@ -1238,6 +1243,9 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
                       char *E, char *k, char *C, long tme, long tmems) {
   if(Q != NULL) {
     if(strchr(Q, 'V') != NULL) {
+      rec->qos_V++;
+    }
+    if(strchr(Q, 'v') != NULL) {
       rec->qos_v++;
     }
     if(strchr(Q, 'S') != NULL) {
@@ -1852,7 +1860,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
   qs_man_println(man, "  - number of different users seen withn the last %d seconds (usr)\n", ACTIVE_TIME);
   qs_man_println(man, "  - number of events identified by the 'E' format character\n");
-  qs_man_println(man, "  - number of mod_qos events within the last minute (qV=create session,\n");
+  qs_man_println(man, "  - number of mod_qos events within the last minute (qV=create session,qv=set IP as VIP,\n");
   qs_man_print(man, "    qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
   qs_man_print(man, "    keep-alive, qL=request/response slow down, qs=serialized request, \n");
   qs_man_print(man, "    qA=connection abort, qU=new user tracking cookie)\n");
