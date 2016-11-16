@@ -398,11 +398,12 @@ using the <a href="index.html#QS_VipIPHeaderName"><code>QS_VipIPHeaderName</code
 directive (e.g., let your application add a special response header if a user 
 successfully authenticates). Alternatively, you can use the 
 <a href="#QS_VipIPUser"><code>QS_VipIPUser</code></a> directive if you are using 
-an Apache authentication module such as mod_auth_basic. </p>
+an Apache authentication module such as mod_auth_basic to mark IP addresses 
+from which someone has successfully been authenticated. </p>
 <p>
 It is also recommended to configure a static value for the 
 <a href="index.html#QS_ClientContentTypes"><code>QS_ClientContentTypes</code></a> 
-directive.
+directive in order to avoid distortions of the reference values during an attack.
 </p>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
@@ -413,8 +414,8 @@ directive.
 <a href="index.html#QS_ClientPrefer">QS_ClientPrefer</a>                      80%
 
 # define what content type "normal" clients do access (this is just an example!):
-#                      html css/js images other 304
-<a href="index.html#QS_ClientContentTypes">QS_ClientContentTypes</a>    40     15    150    10  40
+#                     html css/js images other 304
+<a href="index.html#QS_ClientContentTypes">QS_ClientContentTypes</a>   40     15    150    10  40
 </pre></td></tr></table> 
 
 <a name="request"></a>
