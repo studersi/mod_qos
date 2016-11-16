@@ -2351,8 +2351,7 @@ the <code><a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a></code>
 directive and you can <a href="#HTTP_Keep-Alive">disable HTTP keep-alive</a> 
 dynamically.</p>
 <p>
-Recommended further reading about the how mod_qos can help you in 
-such situations is the article about 
+For more information about how mod_qos can help you in such situations, see the article 
 <a href="http://mod-qos.sourceforge.net/dos.html">Denial of Service Defense</a>.
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -2374,9 +2373,9 @@ KeepAliveTimeout         3
 
 # name of the HTTP response header which marks preferred clients (this
 # may be used to let the application decide which clients are "good" and
-# have higher privileges, e.g. authenticated users. you may also use
-# the <a href="#QS_VipIPUser">QS_VipIPUser</a> directive when using an Apache authentication module such
-# as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/">mod_auth_oid <img src="images/link.png"/></a>):
+# have higher privileges, e.g. authenticated users.
+# you may also use the <a href="#QS_VipIPUser">QS_VipIPUser</a> directive when using an Apache 
+# authentication module such as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/">mod_auth_oid <img src="images/link.png"/></a>):
 <a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a>       mod-qos-login
 
 # enables the known client prefer mode (server allows new TCP connections
