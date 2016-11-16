@@ -1856,11 +1856,11 @@ to access log messages.
 <code>mod_qos_ev</code> <br> Status event message of mod_qos. It's a 
 single letter which is used to signalize an event: "D"=denied, "S"=pass 
 due to an available <a href="#privilegedusers">VIP</a> session, 
-"V"=create VIP session, "K"=connection closed 
-(no keep-alive), "T"=dynamic keep-alive, "r"=IP is marked as a 
-slow/bad client, "L"=means a request slowdown, "u"=request without a 
-user tracking cookie, and "s" is used for serialized requests. 
-The letter "A" for connection abort is set if 
+"V"=create VIP session (or "v" if an IP is marked as VIP by to <code>QS_VipIPUser</code>), 
+"K"=connection closed (no keep-alive), "T"=dynamic keep-alive, 
+"r"=IP is marked as a slow/bad client, "L"=means a request slowdown, 
+"u"=request without a user tracking cookie, and "s" is used for 
+serialized requests. The letter "A" for connection abort is set if 
 the status code detection <a href="#BrokenConnection"><code>BrokenConnection</code></a> 
 has been configured.
 </li>
@@ -2330,36 +2330,30 @@ SetEnvIf                 Request_URI ^/wp-login.php LimitLogin
 <a name="Too_Many_Client_Connections"></a>
 <h3>Too Many Client Connections</h3>
 <p>
-mod_qos may <a href="#QS_ClientPrefer">prefer</a> "known" client 
-IP addresses in the case that too many clients access the server. 
-"Known" clients are those which has once been identified by the 
-application by setting the corresponding HTTP response header. 
+mod_qos may <a href="#QS_ClientPrefer">prefer</a> "known" client IP 
+addresses in the case that too many clients access the server.
+"Known" clients are those which have once been identified by the 
+application by setting the corresponding 
+<a href="#QS_VipIPHeaderName ">HTTP response header</a>. 
 Such identification may happen at successful user login. 
 Connections from clients which are not known to mod_qos 
 (never marked by the corresponding response header) are denied 
-if the server runs on low TCP connection resources (20% or fewer 
-free connections in this example). mod_qos prefers also those clients 
-which communicate with the server instantaneously and fast, and denies 
-access to slow clients sending data irregularly, in case the server 
-has not enough resources.<br/> 
-A minimal request bandwidth should be enforced, in 
-order to close the connections coming from idle clients. The 
-<code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code> 
-does this. You may want to combine this with 
+if the server runs on low TCP connection resources (20% or 
+fewer free connections in this example). mod_qos may 
+also prefer those clients which communicate with the server 
+instantaneously and fast, and denies access to slow clients 
+sending data irregularly, in case the server has not enough 
+resources.</p>
+<p>
+You may also set limitations defining how many resources 
+may be requested by a single IP address source, e.g., using 
 the <code><a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a></code> 
-directive as shown above in the 
-"Client Opens Many Concurrent Connections" example. 
-This could even be extened by the Apache module 
-<a href="http://httpd.apache.org/docs/2.2/mod/mod_reqtimeout.html">mod_reqtimeout <img src="images/link.png"/></a> 
-(available since Apache 2.2.15) which may be used to set various 
-timeouts for receiving the request headers and the request 
-body from the client.<br/> 
-The <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> 
-directive is used in this example to block clients for a certain amount 
-of time if they cause errors because they send invalid HTTP requests.<br/> 
-If you normally expect requests from certain countries only, you might also consider 
-using the <code><a href="#QS_ClientGeoCountryPriv">QS_ClientGeoCountryPriv</a></code> 
-directive in addition.
+directive and you can <a href="#HTTP_Keep-Alive">disable HTTP keep-alive</a> 
+dynamically.</p>
+<p>
+Recommended further reading about the how mod_qos can help you in 
+such situations is the article about 
+<a href="http://mod-qos.sourceforge.net/dos.html">Denial of Service Defense</a>.
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
@@ -2381,7 +2375,7 @@ KeepAliveTimeout         3
 # name of the HTTP response header which marks preferred clients (this
 # may be used to let the application decide which clients are "good" and
 # have higher privileges, e.g. authenticated users. you may also use
-# the <a href="#QS_VipUser">QS_VipUser</a> directive when using an Apache authentication module such
+# the <a href="#QS_VipIPUser">QS_VipIPUser</a> directive when using an Apache authentication module such
 # as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/">mod_auth_oid <img src="images/link.png"/></a>):
 <a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a>       mod-qos-login
 
@@ -2389,40 +2383,9 @@ KeepAliveTimeout         3
 # from known/good clients only if there are more than 716 open TCP connections):
 <a href="#QS_ClientPrefer">QS_ClientPrefer</a>          80%
 
-# minimum request/response speed (deny slow clients blocking the server, 
-# e.g. defending slowloris) if the server has 500 or more open connections:
-<a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a>        120 1500 500
-
-# and limit request line, header and body:
-LimitRequestLine         7168
-LimitRequestFields       30
-<a href="#QS_LimitRequestBody">QS_LimitRequestBody</a>      102400
-
 # don't allow more than 30 TCP connections per client source address being
 # processed if the server has 500 or more open connections:
 <a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a>       30 500
-
-# block clients violating some basic rules frequently (don't allows more than 20
-# violations within 5 minutes):
-<a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a> 20 300
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        400                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        401                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        403                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        404                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        405                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        406                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        408                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        411                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        413                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        414                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        417                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        500                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        503                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        505                <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#QS_SrvMinDataRate_var">QS_SrvMinDataRate</a>  <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#QS_SrvMaxConnPerIP_var">QS_SrvMaxConnPerIP</a> <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#NullConnection">NullConnection</a>     <a href="#QS_Block">QS_Block</a>
-<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="#BrokenConnection">BrokenConnection</a>   <a href="#QS_Block">QS_Block</a>
 </pre>
 </td></tr>
 </table>

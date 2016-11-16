@@ -396,12 +396,19 @@ The directive to enable this is called
 using this feature, you should define how to detect the "good" clients 
 using the <a href="index.html#QS_VipIPHeaderName"><code>QS_VipIPHeaderName</code></a> 
 directive (e.g., let your application add a special response header if a user 
-successfully authenticates). It is also recommended to configure a static value for the 
+successfully authenticates). Alternatively, you can use the 
+<a href="#QS_VipIPUser"><code>QS_VipIPUser</code></a> directive if you are using 
+an Apache authentication module such as mod_auth_basic. </p>
+<p>
+It is also recommended to configure a static value for the 
 <a href="index.html#QS_ClientContentTypes"><code>QS_ClientContentTypes</code></a> 
 directive.
 </p>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# mark an IP address from which someone has authenticated
+<a href="#QS_VipIPUser">QS_VipIPUser</a>
+
 # specify the threshold (busy connections) when mod_qos starts to prefer some clients:
 <a href="index.html#QS_ClientPrefer">QS_ClientPrefer</a>                      80%
 
