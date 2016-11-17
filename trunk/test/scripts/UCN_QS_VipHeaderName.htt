@@ -39,7 +39,7 @@ _MATCH headers "Set-Cookie: MODQOS=(.*); Path" COOKIE
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "POST /htt/login .* V;"
+_EXPECT EXEC "POST /htt/login .* v;V;"
 _EXEC tail -1 logs/access_log
 
 _SLEEP 650
