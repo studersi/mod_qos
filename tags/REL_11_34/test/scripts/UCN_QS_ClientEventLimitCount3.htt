@@ -1,0 +1,46 @@
+# 
+# SetEnvIfPlus                  Request_URI     ^(/htt/aaa/|/htt/ccc/|/qsforbidden/limit).* EventApp
+# QS_SetEnvRes                  qsforbidden     true                     EventForbidden
+# QS_SetEnvIf                   EventApp        EventForbidden           QS_LimitCL=1
+# QS_ClientEventLimitCount      3 2 QS_LimitCL
+# 
+
+INCLUDE scripts/ports
+
+CLIENT
+_LOOP 3
+_REQ localhost $QS_PORT_BASE
+__GET /qsforbidden/limit HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "403"
+_WAIT
+_CLOSE
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /qsforbidden/limit HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 3000
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_LimitCL, max=3, current=3.*c=127.0.0.1"
+_EXEC tail -1 logs/error_log
+
+_LOOP 5
+_REQ localhost $QS_PORT_BASE
+__GET /qsforbidden/allow HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "403"
+_WAIT
+_CLOSE
+_END LOOP
+
+
+END
