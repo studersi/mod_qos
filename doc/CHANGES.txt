@@ -3,8 +3,7 @@ Version 11.34
  - New variable QS_SetEnvIfResBodyIgnore which might be used to
    deactivate QS_SetEnvIfResBody.
 
- - mod_qos_ev: set "v" if an IP is marked as VIP due QS_VipUser 
-   or QS_VipIPUser directive.
+ - mod_qos_ev: sets "v" if an IP is marked as VIP.
 
 Version 11.33
 

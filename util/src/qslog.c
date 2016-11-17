@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.104 2016-11-16 21:31:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.105 2016-11-17 06:37:30 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1860,8 +1860,8 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - number of client ip addresses seen withn the last %d seconds (ip)\n", ACTIVE_TIME);
   qs_man_println(man, "  - number of different users seen withn the last %d seconds (usr)\n", ACTIVE_TIME);
   qs_man_println(man, "  - number of events identified by the 'E' format character\n");
-  qs_man_println(man, "  - number of mod_qos events within the last minute (qV=create session,qv=set IP as VIP,\n");
-  qs_man_print(man, "    qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
+  qs_man_println(man, "  - number of mod_qos events within the last minute (qV=create session,\n");
+  qs_man_print(man, "    qv=VIP IP,qS=session pass, qD=access denied, qK=connection closed, qT=dynamic\n");
   qs_man_print(man, "    keep-alive, qL=request/response slow down, qs=serialized request, \n");
   qs_man_print(man, "    qA=connection abort, qU=new user tracking cookie)\n");
   printf("\n");

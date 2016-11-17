@@ -1856,7 +1856,7 @@ to access log messages.
 <code>mod_qos_ev</code> <br> Status event message of mod_qos. It's a 
 single letter which is used to signalize an event: "D"=denied, "S"=pass 
 due to an available <a href="#privilegedusers">VIP</a> session, 
-"V"=create VIP session (or "v" if an IP is marked as VIP by to <code>QS_VipIPUser</code>), 
+"V"=create VIP session (cookie), "v"=marks an IP as VIP, 
 "K"=connection closed (no keep-alive), "T"=dynamic keep-alive, 
 "r"=IP is marked as a slow/bad client, "L"=means a request slowdown, 
 "u"=request without a user tracking cookie, and "s" is used for 
