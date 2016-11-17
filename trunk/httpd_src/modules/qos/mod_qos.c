@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.634 2016-11-16 21:31:28 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.635 2016-11-17 06:37:30 pbuchbinder Exp $";
 static const char g_revision[] = "11.34";
 
 
@@ -853,7 +853,7 @@ typedef struct {
   char *evmsg;
   qos_srv_config *sconf;
   int is_vip;           /* is vip, either by request or by session or by ip */
-  int is_vip_by_header; /* received vip header from application/or auth. user */
+  int set_vip_by_header; /* received vip header from application/or auth. user (propagate to IP store)*/
   int has_lowrate;
   qs_conn_t *conn;
 } qs_conn_ctx;
@@ -2484,6 +2484,7 @@ static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
   qos_session_t *s = (qos_session_t *)apr_pcalloc(r->pool, sizeof(qos_session_t));
   char *cookie;
   char *session;
+  qs_set_evmsg(r, "V;"); // log VIP session creation
   /* payload */
   s->time = time(NULL);
   session = qos_encrypt(r, sconf, (const unsigned char *)s, sizeof(qos_session_t));
@@ -4857,7 +4858,7 @@ static qs_conn_ctx *qos_create_cconf(conn_rec *c, qos_srv_config *sconf) {
   cconf->evmsg = NULL;
   cconf->sconf = sconf;
   cconf->is_vip = 0;
-  cconf->is_vip_by_header = 0;
+  cconf->set_vip_by_header = 0;
   cconf->has_lowrate = 0;
   apr_pool_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
   if(base == NULL) {
@@ -7814,7 +7815,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
       e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
     }
     (*e)->events++; // update event activity even there is no valid request (logger)
-    if(cconf->is_vip_by_header) {
+    if(cconf->set_vip_by_header) {
       (*e)->vip = 1;
     }
     if(cconf->has_lowrate) {
@@ -9519,8 +9520,9 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       if(match) {
         qs_conn_ctx *cconf = qos_get_cconf(r->connection);
         if(cconf) {
+          qs_set_evmsg(r, "v;"); 
           cconf->is_vip = 1;
-          cconf->is_vip_by_header = 1;
+          cconf->set_vip_by_header = 1;
           apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
         }
       }
@@ -9542,10 +9544,10 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       if(match) {
         qs_conn_ctx *cconf = qos_get_cconf(r->connection);
         qos_set_session(r, sconf);
-        qs_set_evmsg(r, "V;"); 
         if(cconf) {
+          qs_set_evmsg(r, "v;"); 
           cconf->is_vip = 1;
-          cconf->is_vip_by_header = 1;
+          cconf->set_vip_by_header = 1;
           apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
         }
         apr_table_set(r->notes, QS_REC_COOKIE, "");
@@ -9559,10 +9561,10 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     if(!apr_table_get(r->notes, QS_REC_COOKIE)) {
       qs_conn_ctx *cconf = qos_get_cconf(r->connection);
       qos_set_session(r, sconf);
-      qs_set_evmsg(r, "V;"); 
       if(cconf) {
+        qs_set_evmsg(r, "v;"); 
         cconf->is_vip = 1;
-        cconf->is_vip_by_header = 1;
+        cconf->set_vip_by_header = 1;
         apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
       }
       apr_table_set(r->notes, QS_REC_COOKIE, "");
@@ -9573,7 +9575,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     if(cconf) {
       qs_set_evmsg(r, "v;"); 
       cconf->is_vip = 1;
-      cconf->is_vip_by_header = 1;
+      cconf->set_vip_by_header = 1;
       apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
     }
   }
@@ -9660,7 +9662,7 @@ static int qos_fixup(request_rec * r) {
     if(cconf) {
       qs_set_evmsg(r, "v;"); 
       cconf->is_vip = 1;
-      cconf->is_vip_by_header = 1;
+      cconf->set_vip_by_header = 1;
       apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
     }
   }
