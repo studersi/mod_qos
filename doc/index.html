@@ -1904,7 +1904,9 @@ which is shown if a user does not accept the cookie (enforcement).
 You may disable this enforcement for certain clients by setting the 
 <code>DISABLE_UTC_ENFORCEMENT</code> environment variable at server 
 level (outside Location), e.g., to allow crawlers not supporting 
-cookies to access your site.</li> 
+cookies to access your site.<br/>
+This option can also be used to ensure that your client accepts 
+cookies which might be a requirement of your application.</li> 
 <li><code>domain</code> defines optionally the domain attribute for 
 the Set-Cookie header.</li>
 <li>The <code>session</code> flag indicates that a short lived (per 
