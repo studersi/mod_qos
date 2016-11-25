@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.636 2016-11-25 19:28:48 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.637 2016-11-25 21:19:10 pbuchbinder Exp $";
 static const char g_revision[] = "11.35";
 
 
@@ -3068,19 +3068,107 @@ static void qos_dec_ip(qs_conn_ctx *cconf) {
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT2 */
 }
 
+static apr_status_t qos_cleanup_inctx(void *p) {
+  qos_ifctx_t *inctx = p;
+  qos_srv_config *sconf = inctx->sconf;
+#if APR_HAS_THREADS
+  if(sconf && sconf->inctx_t && !sconf->inctx_t->exit) {
+    apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT25 */
+    inctx->status = QS_CONN_STATE_DESTROY;
+    apr_table_unset(sconf->inctx_t->table,
+                    QS_INCTX_ID);
+    apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT25 */
+  }
+#endif
+  return APR_SUCCESS;
+}
+
+/**
+ * creates a new connection ctx (remember to set the socket, connection and timeout)
+ */
+static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
+  char buf[128];
+  qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
+  inctx->client_socket = NULL;
+  inctx->status = QS_CONN_STATE_NEW;
+  inctx->cl_val = 0;
+  inctx->c = c;
+  inctx->r = NULL;
+  inctx->client_socket = NULL;
+  inctx->time = 0;
+  inctx->nbytes = 0;
+  inctx->shutdown = 0;
+  inctx->disabled = 0;
+  inctx->lowrate = -1;
+  sprintf(buf, "%p", inctx);
+  inctx->id = apr_psprintf(c->pool, "%s%.16lx", buf, c->id);
+  inctx->sconf = sconf;
+  apr_pool_cleanup_register(c->pool, inctx, qos_cleanup_inctx, apr_pool_cleanup_null);
+  return inctx;
+}
+
+/**
+ * returns the context from the r->connection->input_filters
+ */
+static qos_ifctx_t *qos_get_ifctx(ap_filter_t *f) {
+  qos_ifctx_t *inctx = NULL;
+  while(f) {
+    if(strcmp(f->frec->name, "qos-in-filter") == 0) {
+      inctx = f->ctx;
+      break;
+    }
+    f = f->next;
+  }
+  return inctx;
+}
+
+static qs_conn_base_ctx *qos_create_conn_base_ctx(conn_rec *c, qos_srv_config *sconf) {
+  qs_conn_base_ctx *base = apr_pcalloc(c->pool, sizeof(qs_conn_base_ctx));
+  base->cconf = NULL;
+  base->requests = 0;
+  base->c = c;
+  base->sconf = sconf;
+  base->client_socket = NULL;
+  ap_set_module_config(c->conn_config, &qos_module, base);
+  apr_pool_cleanup_register(c->pool, base, qos_base_cleanup_conn, apr_pool_cleanup_null);
+  return base;
+}
+
+static qs_conn_base_ctx *qos_get_conn_base_ctx(conn_rec *c) {
+  qs_conn_base_ctx *base = (qs_conn_base_ctx*)ap_get_module_config(c->conn_config, &qos_module);
+  return base;
+}
+
 /**
  * send server error, used for connection errors
  */
-static int qos_return_error(conn_rec *c) {
+static int qos_return_error_andclose(conn_rec *c) {
   char *line = apr_pstrcat(c->pool, AP_SERVER_PROTOCOL, " ",
                            ap_get_status_line(500), CRLF CRLF, NULL);
   apr_bucket *e = apr_bucket_pool_create(line, strlen(line), c->pool, c->bucket_alloc);
   apr_bucket_brigade *bb = apr_brigade_create(c->pool, c->bucket_alloc);
-  c->aborted = 1; // prevent's mod_ssl from crashing while processing the data
+  qs_conn_base_ctx *base;
+  if(qos_is_https && qos_is_https(c)) {
+    c->aborted = 1;   // prevents mod_ssl from crashing in ssl_io_filter_disable()
+  }
   APR_BRIGADE_INSERT_HEAD(bb, e);
   e = apr_bucket_flush_create(c->bucket_alloc);
   APR_BRIGADE_INSERT_TAIL(bb, e);
   ap_pass_brigade(c->output_filters, bb);
+  base = qos_get_conn_base_ctx(c);
+  if(base) {
+    qos_ifctx_t *inctx = qos_get_ifctx(c->input_filters);
+#ifdef QS_INTERNAL_TEST
+    struct timespec delay;
+    delay.tv_sec  = 0;
+    delay.tv_nsec = 1000000; // 1ms to allow testing
+    nanosleep(&delay, NULL);
+#endif
+    apr_socket_shutdown(base->client_socket, APR_SHUTDOWN_READ);
+    if(inctx) {
+      qos_cleanup_inctx(inctx);
+    }
+  }
   return m_retcode;
 }
 
@@ -4826,23 +4914,6 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
   return rv;
 }
 
-static qs_conn_base_ctx *qos_create_conn_base_ctx(conn_rec *c, qos_srv_config *sconf) {
-  qs_conn_base_ctx *base = apr_pcalloc(c->pool, sizeof(qs_conn_base_ctx));
-  base->cconf = NULL;
-  base->requests = 0;
-  base->c = c;
-  base->sconf = sconf;
-  base->client_socket = NULL;
-  ap_set_module_config(c->conn_config, &qos_module, base);
-  apr_pool_cleanup_register(c->pool, base, qos_base_cleanup_conn, apr_pool_cleanup_null);
-  return base;
-}
-
-static qs_conn_base_ctx *qos_get_conn_base_ctx(conn_rec *c) {
-  qs_conn_base_ctx *base = (qs_conn_base_ctx*)ap_get_module_config(c->conn_config, &qos_module);
-  return base;
-}
-
 static qs_conn_ctx *qos_get_cconf(conn_rec *c) {
   qs_conn_ctx *cconf = NULL;
   qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
@@ -5181,60 +5252,6 @@ static qs_acentry_t *qos_hp_event_count(request_rec *r,
     }
   }
   return event_kbytes_limit;
-}
-
-static apr_status_t qos_cleanup_inctx(void *p) {
-  qos_ifctx_t *inctx = p;
-  qos_srv_config *sconf = inctx->sconf;
-#if APR_HAS_THREADS
-  if(sconf->inctx_t && !sconf->inctx_t->exit) {
-    apr_thread_mutex_lock(sconf->inctx_t->lock);     /* @CRT25 */
-    inctx->status = QS_CONN_STATE_DESTROY;
-    apr_table_unset(sconf->inctx_t->table,
-                    QS_INCTX_ID);
-    apr_thread_mutex_unlock(sconf->inctx_t->lock);   /* @CRT25 */
-  }
-#endif
-  return APR_SUCCESS;
-}
-
-/**
- * creates a new connection ctx (remember to set the socket, connection and timeout)
- */
-static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
-  char buf[128];
-  qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
-  inctx->client_socket = NULL;
-  inctx->status = QS_CONN_STATE_NEW;
-  inctx->cl_val = 0;
-  inctx->c = c;
-  inctx->r = NULL;
-  inctx->client_socket = NULL;
-  inctx->time = 0;
-  inctx->nbytes = 0;
-  inctx->shutdown = 0;
-  inctx->disabled = 0;
-  inctx->lowrate = -1;
-  sprintf(buf, "%p", inctx);
-  inctx->id = apr_psprintf(c->pool, "%s%.16lx", buf, c->id);
-  inctx->sconf = sconf;
-  apr_pool_cleanup_register(c->pool, inctx, qos_cleanup_inctx, apr_pool_cleanup_null);
-  return inctx;
-}
-
-/**
- * returns the context from the r->connection->input_filters
- */
-static qos_ifctx_t *qos_get_ifctx(ap_filter_t *f) {
-  qos_ifctx_t *inctx = NULL;
-  while(f) {
-    if(strcmp(f->frec->name, "qos-in-filter") == 0) {
-      inctx = f->ctx;
-      break;
-    }
-    f = f->next;
-  }
-  return inctx;
 }
 
 static apr_size_t qos_packet_rate(qos_ifctx_t *inctx, apr_bucket_brigade *bb) {
@@ -7928,7 +7945,7 @@ static int qos_process_connection(conn_rec *c) {
                    msg == NULL ? "-" : msg);
       if(!sconf->log_only) {
         c->keepalive = AP_CONN_CLOSE;
-        return qos_return_error(c);
+        return qos_return_error_andclose(c);
       }
     }
     /* Geo */
@@ -7958,7 +7975,7 @@ static int qos_process_connection(conn_rec *c) {
                          pB != NULL ? pB->country : "--");
             if(!sconf->log_only) {
               c->keepalive = AP_CONN_CLOSE;
-              return qos_return_error(c);
+              return qos_return_error_andclose(c);
             }
           }
         }
@@ -7976,7 +7993,7 @@ static int qos_process_connection(conn_rec *c) {
                      QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         if(!sconf->log_only) {
           c->keepalive = AP_CONN_CLOSE;
-          return qos_return_error(c);
+          return qos_return_error_andclose(c);
         }
       }
     }
@@ -8014,7 +8031,7 @@ static int qos_process_connection(conn_rec *c) {
         }
         if(!sconf->log_only) {
           c->keepalive = AP_CONN_CLOSE;
-          return qos_return_error(c);
+          return qos_return_error_andclose(c);
         }
       } else {
         if(e) {
