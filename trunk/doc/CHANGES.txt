@@ -1,3 +1,8 @@
+Version 11.35
+
+ - Fixed: potential segfault by mod_ssl in ssl_io_filter_disable()
+   when closing a connection after a failed SSL handshake.
+
 Version 11.34
 
  - New variable QS_SetEnvIfResBodyIgnore which might be used to
@@ -13,7 +18,7 @@ Version 11.33
  - Sets QS_IsVipRequest variable for marked IP addresses at connection
    processing handler and propagetes it to every request.
 
- - Fixed message 045 (uri check ignores log-only mode).
+ - Fixed: message 045 (uri check ignores log-only mode).
 
 Version 11.32
 
@@ -36,7 +41,7 @@ Version 11.30
 
  - qslogger supports option "-x" (adding a prefix to every message).
 
- - Fixed calculation of MaxClients for MPM prefork binary (bug reported by
+ - Fixed: calculation of MaxClients for MPM prefork binary (bug reported by
    by Fergus - thanks!).
 
 Version 11.29
