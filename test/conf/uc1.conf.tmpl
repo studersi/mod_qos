@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.70 2016-11-16 21:31:28 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.71 2016-11-25 19:28:48 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -106,6 +106,10 @@ QS_SetEnvIfQuery         NET NET=yes
 
 <IfDefine status>
 LoadModule               status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
+</IfDefine>
+
+<IfDefine uc1vssl>
+QS_SrvMaxConnPerIP      2
 </IfDefine>
 
 <IfDefine globalmaxconn>
@@ -540,6 +544,37 @@ QS_SrvSerialize           off
    </Location>
 
 </VirtualHost>
+
+
+<IfDefine uc1vssl>
+Listen                  127.0.0.1:##QS_PORT_BASE2##
+SSLProtocol             all -SSLv2
+SSLCipherSuite          RC4-SHA:RC4-MD5:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!SSLv2:!EXP
+SSLSessionCacheTimeout  864000
+SSLMutex                file:##ROOT##/logs/ssl_mutex
+SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
+SSLRandomSeed           startup builtin
+<VirtualHost 127.0.0.1:##QS_PORT_BASE2##>
+   SSLCertificateKeyFile  ssl/key.pem
+   SSLCertificateFile     ssl/cert.pem
+   SSLVerifyDepth         10
+   SSLEngine              on
+   ServerName                 127.0.0.1
+
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
+   <Location /console>
+       SetHandler qos-console
+   </Location>
+
+</VirtualHost>
+</IfDefine>
 
 Listen       127.0.0.1:##QS_PORT_BASE10##
 <VirtualHost 127.0.0.1:##QS_PORT_BASE10##>

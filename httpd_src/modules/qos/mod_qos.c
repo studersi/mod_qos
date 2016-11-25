@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.635 2016-11-17 06:37:30 pbuchbinder Exp $";
-static const char g_revision[] = "11.34";
+static const char revision[] = "$Id: mod_qos.c,v 5.636 2016-11-25 19:28:48 pbuchbinder Exp $";
+static const char g_revision[] = "11.35";
 
 
 /************************************************************************
@@ -3076,6 +3076,7 @@ static int qos_return_error(conn_rec *c) {
                            ap_get_status_line(500), CRLF CRLF, NULL);
   apr_bucket *e = apr_bucket_pool_create(line, strlen(line), c->pool, c->bucket_alloc);
   apr_bucket_brigade *bb = apr_brigade_create(c->pool, c->bucket_alloc);
+  c->aborted = 1; // prevent's mod_ssl from crashing while processing the data
   APR_BRIGADE_INSERT_HEAD(bb, e);
   e = apr_bucket_flush_create(c->bucket_alloc);
   APR_BRIGADE_INSERT_TAIL(bb, e);
