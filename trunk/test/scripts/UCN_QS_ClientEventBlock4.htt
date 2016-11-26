@@ -1,5 +1,5 @@
 #
-# $Id: UCN_QS_ClientEventBlock4.htt,v 1.1 2015-09-14 19:13:38 pbuchbinder Exp $
+# $Id: UCN_QS_ClientEventBlock4.htt,v 1.2 2016-11-26 07:11:33 pbuchbinder Exp $
 #
 # QS_ClientEventBlockCount     10 2
 # QS_SrvMaxConnPerIP           2
@@ -45,16 +45,26 @@ _WAIT
 _CLOSE
 _END LOOP
 
+_SLEEP 200
 _REQ server1 $QS_PORT_BASE
+_EXPECT ERROR "Connection reset by peer"
 __GET /index.html HTTP/1.1
 __Host: server1:$QS_PORT_BASE
 __User-Agent: Mozilla
 __
-_EXPECT ERROR "Connection reset by peer"
 _WAIT
 _CLOSE
 _SLEEP 100
 _EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=10, current=10"
 _EXEC tail -1 logs/error_log
+
+_REQ server1 $QS_PORT_BASE
+_EXPECT ERROR "Connection reset by peer"
+__GET /index.html HTTP/1.1
+__Host: server1:$QS_PORT_BASE
+__User-Agent: Mozilla
+__
+_WAIT
+_CLOSE
 
 END
