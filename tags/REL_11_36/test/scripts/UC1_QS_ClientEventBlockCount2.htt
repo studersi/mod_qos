@@ -1,0 +1,44 @@
+# 
+# QS_ClientEventBlockCount 3 3
+# QS_SetEnvIfStatus        404 QS_Block
+# QS_SetEnvIfStatus        NullConnection    QS_Block
+#
+
+INCLUDE scripts/ports
+
+CLIENT 
+_LOOP 4
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_END LOOP
+_CLOSE
+
+_LOOP 3
+_REQ localhost $QS_PORT_BASE
+_SLEEP 50
+_CLOSE
+_END LOOP
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3, current=3"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 3500
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+
+END
