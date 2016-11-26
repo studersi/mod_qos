@@ -1,7 +1,7 @@
 #
 # test QS_SrvMaxConn directive
 #
-# $Id: QS_SrvMaxConn_50.htt,v 1.5 2011-08-23 18:42:25 pbuchbinder Exp $
+# $Id: QS_SrvMaxConn_50.htt,v 1.6 2016-11-26 19:49:55 pbuchbinder Exp $
 #
 
 
@@ -23,10 +23,11 @@ _RAND 0 500 SLEEP
 _SLEEP $SLEEP
 _SLEEP 3000
 _REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
 __GET /cgi100/sleep.cgi HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "500 Internal Server Error"
+#_EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 

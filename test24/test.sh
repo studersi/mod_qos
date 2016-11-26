@@ -31,7 +31,7 @@ if [ `../httpd/httpd -l | grep -c worker.c` -eq 1 ]; then
 	    ERRORS=`expr $ERRORS + 1`
 	    echo "FAILED $E"
 	fi
-	sleep 1
+	sleep 2
     done
 fi
 if [ `../httpd/httpd -l | grep -c event.c` -eq 1 ]; then
@@ -41,6 +41,7 @@ if [ `../httpd/httpd -l | grep -c event.c` -eq 1 ]; then
 	    ERRORS=`expr $ERRORS + 1`
 	    echo "FAILED $E"
 	fi
+	sleep 2
     done
 fi
 
@@ -50,6 +51,7 @@ for E in `ls scripts/*.htt | grep -v -e "WORKER.htt" -e "EVENT.htt" -e "_h2" -e 
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED $E"
   fi
+  sleep 2
 done
 
 ./ctl.sh stop > /dev/null
@@ -66,6 +68,7 @@ for E in `ls scripts/*.htt | grep "_h2" | sort`; do
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED $E"
   fi
+  sleep 2
 done
 
 ./ucn.sh

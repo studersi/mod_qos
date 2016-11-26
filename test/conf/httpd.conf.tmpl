@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.271 2016-11-14 20:26:49 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.272 2016-11-26 19:49:55 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -679,6 +679,12 @@ ErrorDocument            404 /error-docs/error404.html
       QS_RedirectIf     QS_LimitVar4_Counter (27) http://127.0.0.1/dir/error.html?c=$1
    </Location>
 
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
 </VirtualHost>
 
 Listen                  127.0.0.1:##QS_PORT_BASE1##
@@ -701,12 +707,15 @@ Listen                  127.0.0.1:##QS_PORT_BASE1##
    ProxyPass                  /info !
    ProxyPass                  /qos !
    ProxyPass                  /qos_control !
+   ProxyPass                  /cgi-local !
    ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
    ProxyPass                  /ggg http://127.0.0.1:##QS_PORT_BASE5##/bbb retry=0
    ProxyPassReverse           /ggg http://127.0.0.1:##QS_PORT_BASE5##/bbb
    ProxyPass                  / http://127.0.0.1:##QS_PORT_BASE5##/ retry=0
    ProxyPassReverse           / http://127.0.0.1:##QS_PORT_BASE5##/
+
+   ScriptAlias /cgi-local/   ##ROOT##/htdocs/cgi-local/
 
    # -----------------------------------------------------------------
    # connection level control

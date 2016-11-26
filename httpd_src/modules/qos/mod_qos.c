@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.638 2016-11-26 08:39:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.639 2016-11-26 19:49:54 pbuchbinder Exp $";
 static const char g_revision[] = "11.36";
 
 
@@ -3142,34 +3142,39 @@ static qs_conn_base_ctx *qos_get_conn_base_ctx(conn_rec *c) {
 /**
  * send server error, used for connection errors
  */
-static int qos_return_error_andclose(conn_rec *c) {
+static int qos_return_error_andclose(conn_rec *c, apr_socket_t *socket) {
   char *line = apr_pstrcat(c->pool, AP_SERVER_PROTOCOL, " ",
                            ap_get_status_line(500), CRLF CRLF, NULL);
   apr_bucket *e = apr_bucket_pool_create(line, strlen(line), c->pool, c->bucket_alloc);
   apr_bucket_brigade *bb = apr_brigade_create(c->pool, c->bucket_alloc);
-  qs_conn_base_ctx *base;
+
   if(qos_is_https && qos_is_https(c)) {
-    c->aborted = 1;   // prevents mod_ssl from crashing in ssl_io_filter_disable()
+    c->aborted = 1;   // prevents mod_ssl from crashing
   }
+
   APR_BRIGADE_INSERT_HEAD(bb, e);
   e = apr_bucket_flush_create(c->bucket_alloc);
   APR_BRIGADE_INSERT_TAIL(bb, e);
   ap_pass_brigade(c->output_filters, bb);
-  base = qos_get_conn_base_ctx(c);
-  if(base) {
-    qos_ifctx_t *inctx = qos_get_ifctx(c->input_filters);
-#ifdef QS_INTERNAL_TEST
-    struct timespec delay;
-    delay.tv_sec  = 0;
-    delay.tv_nsec = 1000000; // 1ms to allow testing
-    nanosleep(&delay, NULL);
-#endif
-    apr_socket_shutdown(base->client_socket, APR_SHUTDOWN_READ);
-    if(inctx) {
-      qos_cleanup_inctx(inctx);
-    }
-  }
-  return m_retcode;
+  //  e = apr_bucket_flush_create(c->bucket_alloc);
+  //  APR_BRIGADE_INSERT_TAIL(bb, e);
+
+//  if(socket) {
+//    // speed up connection termination
+//    qos_ifctx_t *inctx = qos_get_ifctx(c->input_filters);
+//#ifdef QS_INTERNAL_TEST
+//    struct timespec delay;
+//    delay.tv_sec  = 0;
+//    delay.tv_nsec = 1000000; // 1ms to allow testing
+//    nanosleep(&delay, NULL);
+//#endif
+//    apr_socket_shutdown(socket, APR_SHUTDOWN_READ);
+//    if(inctx) {
+//      qos_cleanup_inctx(inctx);
+//    }
+//  }
+
+  return HTTP_INTERNAL_SERVER_ERROR;
 }
 
 /**
@@ -6843,7 +6848,7 @@ static void qos_bars(request_rec *r, server_rec *bs) {
     ap_rprintf(r, "<td>");
     if(connections != -1) {
       int percentage = 100 * connections / bsconf->max_clients;
-      
+      if(percentage > 100) percentage = 100;
       ap_rprintf(r, "<div class=\"prog-border\">"
                  "<div class=\"%s\" style=\"width: %d%%;\"></div></div>",
                  percentage < 90 ? "prog-bar" : "prog-bar-limit",
@@ -7862,9 +7867,15 @@ static apr_status_t qos_cleanup_conn(void *p) {
  * @param c
  * @return
  */
-static int qos_process_connection(conn_rec *c) {
-  qs_conn_ctx *cconf = qos_get_cconf(c);
+static int qos_pre_process_connection(conn_rec *c, void *skt) {
+  qs_conn_ctx *cconf;
   int vip = 0;
+  apr_socket_t *socket = skt;
+  if(c->sbh == NULL) {
+    // proxy connections do NOT have any relation to the score board, don't handle them
+    return DECLINED;
+  }
+  cconf = qos_get_cconf(c);
   if(cconf == NULL) {
     int client_control = DECLINED;
     int connections = 0;
@@ -7945,7 +7956,7 @@ static int qos_process_connection(conn_rec *c) {
                    msg == NULL ? "-" : msg);
       if(!sconf->log_only) {
         c->keepalive = AP_CONN_CLOSE;
-        return qos_return_error_andclose(c);
+        return qos_return_error_andclose(c, socket);
       }
     }
     /* Geo */
@@ -7975,7 +7986,7 @@ static int qos_process_connection(conn_rec *c) {
                          pB != NULL ? pB->country : "--");
             if(!sconf->log_only) {
               c->keepalive = AP_CONN_CLOSE;
-              return qos_return_error_andclose(c);
+              return qos_return_error_andclose(c, socket);
             }
           }
         }
@@ -7993,7 +8004,7 @@ static int qos_process_connection(conn_rec *c) {
                      QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         if(!sconf->log_only) {
           c->keepalive = AP_CONN_CLOSE;
-          return qos_return_error_andclose(c);
+          return qos_return_error_andclose(c, socket);
         }
       }
     }
@@ -8031,7 +8042,7 @@ static int qos_process_connection(conn_rec *c) {
         }
         if(!sconf->log_only) {
           c->keepalive = AP_CONN_CLOSE;
-          return qos_return_error_andclose(c);
+          return qos_return_error_andclose(c, socket);
         }
       } else {
         if(e) {
@@ -13970,7 +13981,8 @@ static void qos_register_hooks(apr_pool_t * p) {
 #endif
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_pre_connection(qos_pre_connection, NULL, pressl, APR_HOOK_FIRST);
-  ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
+  ap_hook_pre_connection(qos_pre_process_connection, prelast, NULL, APR_HOOK_LAST);
+  //  ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request_later, preuid, NULL, APR_HOOK_MIDDLE);
   ap_hook_header_parser(qos_header_parser0, NULL, post, APR_HOOK_FIRST);

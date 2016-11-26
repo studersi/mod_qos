@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvMaxConnPerIP_10_idle.htt,v 1.1 2013-04-08 18:44:30 pbuchbinder Exp $
+# $Id: QS_SrvMaxConnPerIP_10_idle.htt,v 1.2 2016-11-26 19:49:55 pbuchbinder Exp $
 #
 #<IfDefine SrvMaxConnPerIPConnections>
 #   QS_SrvMaxConnPerIP                        5 8
@@ -31,10 +31,11 @@ END
 CLIENT
 _SLEEP 1000
 _REQ server1 $QS_PORT_BASE1
+_EXPECT ERROR "Connection reset"
 __GET /cgi100/sleep.cgi?s=2 HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "500 Internal Server Error"
+#_EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _EXPECT EXEC "\[error\] mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=5, concurrent connections=8"
