@@ -1,3 +1,7 @@
+Version
+
+ - Lower severity of message 036 to critical.
+
 Version 11.35
 
  - Fixed: potential segfault by mod_ssl in ssl_io_filter_disable()
