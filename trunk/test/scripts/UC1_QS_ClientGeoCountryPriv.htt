@@ -36,11 +36,12 @@ CLIENT
 
 _SLEEP 300
 _REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
 __GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: 174.132.97.19
 __
-_EXPECT . "500 Internal Server Error"
+#_EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 100
@@ -48,11 +49,12 @@ _EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoCountryPriv rule: max=5
 _EXEC tail -1 logs/error_log
 
 _REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
 __GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
 __Y-Forwarded-For: 174.132.97.19
 __
-_EXPECT . "500 Internal Server Error"
+#_EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 100

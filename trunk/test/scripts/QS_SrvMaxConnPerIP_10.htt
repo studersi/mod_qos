@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvMaxConnPerIP_10.htt,v 1.4 2013-06-29 19:05:12 pbuchbinder Exp $
+# $Id: QS_SrvMaxConnPerIP_10.htt,v 1.5 2016-11-26 19:49:55 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -30,10 +30,11 @@ _SLEEP 1000
 
 # 1
 _REQ server1 $QS_PORT_BASE1
+_EXPECT ERROR "Connection reset"
 __GET /cgi100/sleep.cgi?s=2 HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "500 Internal Server Error"
+#_EXPECT . "500 Internal Server Error"
 _WAIT
 
 _CLOSE
@@ -49,10 +50,11 @@ _EXEC grep -c 'mod_qos(031)' logs/error_log
 # 11
 _LOOP 10
 _REQ server1 $QS_PORT_BASE1
+_EXPECT ERROR "Connection reset"
 __GET /cgi100/sleep.cgi?s=2 HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "500 Internal Server Error"
+#_EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _END LOOP
@@ -71,10 +73,11 @@ _SLEEP 1000
 # 77
 _LOOP 66
 _REQ server1 $QS_PORT_BASE1
+_EXPECT ERROR "Connection reset"
 __GET /cgi100/sleep.cgi?s=2 HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "500 Internal Server Error"
+#_EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _END LOOP

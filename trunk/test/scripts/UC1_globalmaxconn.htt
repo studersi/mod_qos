@@ -16,10 +16,11 @@ END
 CLIENT
 _SLEEP 500
 _REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
 __GET /a/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "HTTP/1.1 500 Internal Server Error"
+#_EXPECT . "HTTP/1.1 500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 200
@@ -54,13 +55,15 @@ END
 CLIENT
 _SLEEP 1500
 _REQ localhost $QS_PORT_BASE1
+_EXPECT ERROR "Connection reset"
 __GET /a/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
 __
-_EXPECT . "HTTP/1.1 500 Internal Server Error"
+#_EXPECT . "HTTP/1.1 500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(030\): access denied, QS_SrvMaxConn rule: max=5, concurrent connections=6"
 _EXEC tail -1 logs/error_log
+
 END

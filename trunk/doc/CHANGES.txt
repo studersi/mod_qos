@@ -1,4 +1,7 @@
-Version
+Version 11.36
+
+ - Fixed: moves code from "process connection" hook to the "pre
+   connection" hook for Apache 2.4 compatibility and higher efficiency.
 
  - Lower severity of message 036 to critical.
 

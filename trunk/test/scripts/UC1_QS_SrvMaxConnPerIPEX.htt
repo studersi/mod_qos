@@ -34,11 +34,12 @@ END
 CLIENT
 _SLEEP 200
 _REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
 __GET /a/sleep.cgi?s=1 HTTP/1.1
 __Host: localhost
 __User-Agent: client 2
 __
-_EXPECT . "500 Internal Server Error"
+#_EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 

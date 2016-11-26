@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientGeoIPPriv2.htt,v 1.4 2014-08-11 20:22:21 pbuchbinder Exp $
+# $Id: QS_ClientGeoIPPriv2.htt,v 1.5 2016-11-26 19:49:55 pbuchbinder Exp $
 #
 # deny access to clients (clients from "LO" are NOT priviliged)
 #
@@ -38,13 +38,14 @@ CLIENT 2
 _SLEEP 100
 
 _REQ server1 $QS_PORT_BASE1
+_EXPECT ERROR "Connection reset"
 __GET /cgi100/sleep.cgi?s=2 HTTP/1.1
 __Host: localhost.host.ch
 __User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
 __Connection: keep-alive
 __
 _EXPECT . "!done"
-_EXPECT . "500 Internal Server Error"
+#_EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 200
