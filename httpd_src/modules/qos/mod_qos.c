@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.637 2016-11-25 21:19:10 pbuchbinder Exp $";
-static const char g_revision[] = "11.35";
+static const char revision[] = "$Id: mod_qos.c,v 5.638 2016-11-26 08:39:00 pbuchbinder Exp $";
+static const char g_revision[] = "11.36";
 
 
 /************************************************************************
@@ -3031,7 +3031,7 @@ static int qos_inc_ip(qos_srv_config *sconf,
       ap_log_error(APLOG_MARK, APLOG_ALERT, 0, sconf->base_server, 
                    QOS_LOG_PFX(035)"QS_SrvMaxConn: no free IP slot available!"
                    " Check log for unclean child exit and consider"
-                   " to do a graceful server restart.");
+                   " to do a graceful server restart if this condition persists.");
     }
   }
   
@@ -6273,14 +6273,14 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
       /* keep the minimal rate until reaching the min connections */
       req_rate = req_rate + ((sconf->min_rate_max / sconf->max_clients) * connections);
       if(connections > sconf->max_clients) {
-        // limit the max rate if we have more connections then expected
-        ap_log_error(APLOG_MARK, APLOG_ALERT, 0, sconf->base_server, 
+        // limit the max rate to its max if we have more connections then expected
+        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
                      QOS_LOG_PFX(036)"QS_SrvMinDataRate: unexpected connection status!"
                      " connections=%d,"
                      " cal. request rate=%d,"
                      " max. limit=%d."
                      " Check log for unclean child exit and consider"
-                     " to do a graceful server restart.",
+                     " to do a graceful server restart if this condition persists.",
                      connections, req_rate, sconf->min_rate_max);
         req_rate = sconf->min_rate_max;
       }
