@@ -221,6 +221,16 @@ Listen         ##QS_PORT_BASE2##
    Protocols h2 http/1.1
 </IfDefine>
 
+<IfDefine bfs>
+  QS_SrvMaxConnPerIP         10
+  ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
+  <Location /cgi-local>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
+</IfDefine>
+
    SSLCertificateKeyFile  ../test/ssl/key.pem
    SSLCertificateFile     ../test/ssl/cert.pem
    SSLVerifyDepth         10
