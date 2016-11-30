@@ -1,27 +1,42 @@
 #
-# $Id: QS_ClientPrefer.htt,v 1.3 2016-01-07 20:01:56 pbuchbinder Exp $
+# $Id: QS_ClientPrefer.htt,v 1.4 2016-11-30 16:35:36 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
 
 CLIENT 50
+_ERROR .*
 _REQ server1 $QS_PORT_BASE1
 __GET /cgi/sleep.cgi?s=5 HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
 _WAIT
-
+_END ERROR
 END
 
-CLIENT 20
+CLIENT 10
+_SLEEP 100
+_ERROR .*
 _REQ server1 $QS_PORT_BASE1
 __GET /cgi/sleep.cgi?s=5 HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
 _WAIT
+_END ERROR
+END
 
+CLIENT 10
+_SLEEP 200
+_ERROR .*
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_END ERROR
 END
 
 CLIENT
