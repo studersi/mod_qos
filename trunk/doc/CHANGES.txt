@@ -1,3 +1,7 @@
+Version
+
+ - Fixed: wrong include in qspng.c
+
 Version 11.36
 
  - Fixed: moves code from "process connection" hook to the "pre
