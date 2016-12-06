@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex regexspeed b64 crs mem json pws qssearch vszl stack2 rand qssyslog net2range
+PROGRAMS = regex regexspeed b64 qnc crs mem json pws qssearch vszl stack2 rand qssyslog net2range
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -49,6 +49,12 @@ b64: $(b64_OBJECTS)
 	$(LINK) $(b64_LTFLAGS) -static $(b64_OBJECTS) $(b64_LDADD)
 	strip b64
 
+qnc_OBJECTS = qnc.lo
+qnc_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+qnc: $(qnc_OBJECTS)
+	$(LINK) $(qnc_LTFLAGS) -static $(qnc_OBJECTS) $(qnc_LDADD)
+	strip qnc
+
 crs_OBJECTS = crs.lo
 crs_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 crs: $(crs_OBJECTS)
@@ -89,5 +95,5 @@ stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
 clean:
-	rm -f *.o stack stack2 regex regexspeed b64 crs mem vszl json pws qssearch rand qssyslog net2range
+	rm -f *.o stack stack2 regex regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog net2range
 
