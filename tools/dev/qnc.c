@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: qnc.c,v 1.2 2016-12-07 14:43:58 pbuchbinder Exp $";
+static const char revision[] = "$Id: qnc.c,v 1.3 2016-12-07 20:22:33 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -34,6 +34,7 @@ static const char revision[] = "$Id: qnc.c,v 1.2 2016-12-07 14:43:58 pbuchbinder
 #include <sys/un.h>
 
 static void usage(const char *cmd, int code) {
+  struct sockaddr_un addr;
   printf("usage: %s [-l] -U <path>\n", cmd);
   printf("\n");
   printf("Lightweight client/server utility which can be used to exchange data\n");
@@ -43,7 +44,7 @@ static void usage(const char *cmd, int code) {
   printf("\n");
   printf("Options\n");
   printf(" -U <path>\n");
-  printf("    Specifies the UNIX-domain socket.\n");
+  printf("    Specifies the UNIX-domain socket path (max. %lu char).\n", sizeof(addr.sun_path)-1);
   printf(" -l\n");
   printf("    Used to specify that %s should listen for an incoming\n", cmd);
   printf("    message rather than initiate a connection and sending data.\n");
