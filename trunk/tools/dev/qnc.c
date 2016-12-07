@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Id: qnc.c,v 1.1 2016-12-06 19:00:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: qnc.c,v 1.2 2016-12-07 14:43:58 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -38,12 +38,12 @@ static void usage(const char *cmd, int code) {
   printf("\n");
   printf("Lightweight client/server utility which can be used to exchange data\n");
   printf("(strings) via UNIX-domain sockets. The client reads data from STDIN\n");
-  printf("and send it to the socket while the server is listening on the socket\n");
-  printf("writing the received data to STDOUT.\n");
+  printf("and sends it to the socket while the server (-l) is listening on the\n");
+  printf("socket writing the received data to STDOUT.\n");
   printf("\n");
   printf("Options\n");
   printf(" -U <path>\n");
-  printf("    Specified the UNIX-domain socket.\n");
+  printf("    Specifies the UNIX-domain socket.\n");
   printf(" -l\n");
   printf("    Used to specify that %s should listen for an incoming\n", cmd);
   printf("    message rather than initiate a connection and sending data.\n");
