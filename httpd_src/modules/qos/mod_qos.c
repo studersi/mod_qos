@@ -20,7 +20,7 @@
  * See http://mod-qos.sourceforge.net/ for further
  * details and to optain the latest version of this module.
  *
- * Copyright (C) 2007-2016 Pascal Buchbinder
+ * Copyright (C) 2007-2017 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.639 2016-11-26 19:49:54 pbuchbinder Exp $";
-static const char g_revision[] = "11.36";
+static const char revision[] = "$Id: mod_qos.c,v 5.640 2017-01-11 06:23:11 pbuchbinder Exp $";
+static const char g_revision[] = "11.37";
 
 
 /************************************************************************
@@ -8015,7 +8015,7 @@ static int qos_pre_process_connection(conn_rec *c, void *skt) {
         e->error++;
         if(apr_table_get(sconf->setenvstatus_t, QS_MAXIP)) {
           apr_table_set(c->notes, QS_MAXIP, "1");
-      }
+        }
         /* only print the first 20 messages for this client */
         if(e->error <= QS_LOG_REPEAT) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
