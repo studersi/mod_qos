@@ -6,7 +6,7 @@
  * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
- * Copyright (C) 2010-2016 Pascal Buchbinder
+ * Copyright (C) 2010-2017 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.47 2016-10-29 13:07:24 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.48 2017-01-11 06:23:11 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>

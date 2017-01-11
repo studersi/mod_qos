@@ -6,7 +6,7 @@
  * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
- * Copyright (C) 2007-2016 Pascal Buchbinder
+ * Copyright (C) 2007-2017 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.24 2016-10-07 13:33:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslogger.c,v 1.25 2017-01-11 06:23:11 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
