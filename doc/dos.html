@@ -339,6 +339,19 @@ longer period of time. This is implemented by a second counter
 <a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>      <a href="index.html#_Counter">SlowRequest_Counter</a>=20 SlowRepeatedlySlow=1
 </pre></td></tr></table> 
 
+<a name="separation"></a>
+<h3>Separation</h3>
+<p>
+Your site might hosts multiple web applications of different importance. An 
+unimportant application can be prone to a <i>HTTP GET/POST flood DoS attack</i>. 
+To minimize the influence of such an application on others, you can limit the 
+allocable resources using the 
+<a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a> 
+directive. This directive allows you to limit the number of concurrent 
+requests to certain URLs and thus limit with how many simultaneous request 
+one or multiple attacker can try to slowdown your server.
+</p>
+
 <a name="country"></a>
 <h3>Country Specific Rules</h3>
 <p>
