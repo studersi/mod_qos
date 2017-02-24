@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.640 2017-01-11 06:23:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.641 2017-02-24 16:41:36 pbuchbinder Exp $";
 static const char g_revision[] = "11.37";
 
 
@@ -10411,7 +10411,7 @@ static int qos_console_dump(request_rec * r, const char *event) {
           }
         }
         k = apr_psprintf(r->pool,
-                         "%010d %s vip=%s lowprio=%s block=%d/%ld limit=%d/%ld",
+                         "%010d %s vip=%s lowprio=%s block=%d/%ld limit=%d/%ld %ld",
                          i,
                          qos_ip_long2str(r->pool, e[i]->ip6),
                          e[i]->vip ? "yes" : "no",
@@ -10420,7 +10420,8 @@ static int qos_console_dump(request_rec * r, const char *event) {
                          (sconf->qos_cc_block_time >= (time(NULL) - e[i]->block_time)) ? 
                          (sconf->qos_cc_block_time - (time(NULL) - e[i]->block_time)) : 0,
                          limit,
-                         limit_time);
+                         limit_time,
+                         e[i]->time);
         apr_table_addn(iptable, k, NULL);
       }
     }
