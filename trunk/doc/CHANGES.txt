@@ -1,8 +1,10 @@
-Version
+Version 11.37
 
  - Fixed: wrong include in qspng.c
 
  - Console: dump shows time of last db access (seconds since epoch).
+
+ - Add clientContentTypes to QS_Status.
 
 Version 11.36
 

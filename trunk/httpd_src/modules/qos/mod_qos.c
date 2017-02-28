@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.641 2017-02-24 16:41:36 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.642 2017-02-28 19:46:53 pbuchbinder Exp $";
 static const char g_revision[] = "11.37";
 
 
@@ -821,6 +821,7 @@ typedef struct {
   time_t *qsstatustimer;    /* shm in act */
   apr_global_mutex_t *lock; /* lock of act */
   apr_pool_t *pool;
+  qos_srv_config *sconf;
 } qsstatus_t;
 #endif
 
@@ -6007,6 +6008,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
   while(!s->exit) {
+    char clientContentTypes[2048];
     int s_busy = 0;
     int s_open = 0;
     int s_ready = 0;
@@ -6081,6 +6083,30 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
           }
         }
       }
+      clientContentTypes[0] = '\0';
+      if(s->sconf->qos_cc_prefer) {
+        qos_user_t *u = qos_get_user_conf(s->sconf->act->ppool);
+        if(u) {
+          unsigned long html;
+          unsigned long cssjs;
+          unsigned long img;
+          unsigned long other;
+          unsigned long notmodified;
+          apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT48 */
+          html = u->qos_cc->html;
+          cssjs = u->qos_cc->cssjs;
+          img = u->qos_cc->img;
+          other = u->qos_cc->other;
+          notmodified = u->qos_cc->notmodified;
+          apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT48 */
+          snprintf(clientContentTypes, 2047, ", \"clientContentTypes\": { "
+                   "\"html\": %lu,  \"css/js\": %lu,"
+                   " \"images\": %lu, \"other\": %lu, \"304\": %lu }",
+                   html, cssjs,
+                   img, other, notmodified
+                   );
+        }
+      }
       ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
                    QOS_LOG_PFX(200)"{ \"scoreboard\": { "
                    "\"open\": %d, \"waiting\": %d, \"read\": %d, "
@@ -6089,11 +6115,11 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
                    "\"dns\": %d, \"closing\": %d, "
                    "\"finishing\": %d, \"idle\": %d }, "
                    "\"maxclients\": { "
-                   "\"max\": %d, \"busy\": %d }"
-                   " }",
+                   "\"max\": %d, \"busy\": %d }%s }",
                    s_open, s_ready, s_read, s_write, s_keep, s_start, s_log,
                    s_dns, s_closing, s_usr1, s_kill,
-                   s->maxclients, s_busy);
+                   s->maxclients, s_busy,
+                   clientContentTypes);
     }
   }
   if(m_worker_mpm || m_event_mpm) {
@@ -6105,7 +6131,8 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
 /**
  * Starts the stats logger thread
  */
-static void qos_init_status_thread(apr_pool_t *p, qs_actable_t *act, int maxclients) {
+static void qos_init_status_thread(apr_pool_t *p, qos_srv_config *sconf, int maxclients) {
+  qs_actable_t *act = sconf->act;
   apr_pool_t *pool;
   apr_threadattr_t *tattr;
   qsstatus_t *s;
@@ -6116,6 +6143,7 @@ static void qos_init_status_thread(apr_pool_t *p, qs_actable_t *act, int maxclie
   s->maxclients = maxclients;
   s->qsstatustimer = act->qsstatustimer;
   s->lock = act->lock;
+  s->sconf = sconf;
   if(apr_threadattr_create(&tattr, pool) == APR_SUCCESS) {
     if(apr_thread_create(&s->thread, tattr, qos_status_thread, s, pool) == APR_SUCCESS) {
       apr_pool_cleanup_register(p, s, qos_cleanup_status_thread,
@@ -9954,7 +9982,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   }
 #if APR_HAS_THREADS
   if(sconf->qsstatus) {
-    qos_init_status_thread(p, sconf->act, sconf->max_clients);
+    qos_init_status_thread(p, sconf, sconf->max_clients);
   }
 #endif
 }
