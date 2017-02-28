@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.642 2017-02-28 19:46:53 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.643 2017-02-28 21:06:33 pbuchbinder Exp $";
 static const char g_revision[] = "11.37";
 
 
@@ -6087,11 +6087,11 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
       if(s->sconf->qos_cc_prefer) {
         qos_user_t *u = qos_get_user_conf(s->sconf->act->ppool);
         if(u) {
-          unsigned long html;
-          unsigned long cssjs;
-          unsigned long img;
-          unsigned long other;
-          unsigned long notmodified;
+          unsigned long long html;
+          unsigned long long cssjs;
+          unsigned long long img;
+          unsigned long long other;
+          unsigned long long notmodified;
           apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT48 */
           html = u->qos_cc->html;
           cssjs = u->qos_cc->cssjs;
@@ -6100,8 +6100,8 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
           notmodified = u->qos_cc->notmodified;
           apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT48 */
           snprintf(clientContentTypes, 2047, ", \"clientContentTypes\": { "
-                   "\"html\": %lu,  \"css/js\": %lu,"
-                   " \"images\": %lu, \"other\": %lu, \"304\": %lu }",
+                   "\"html\": %llu,  \"css/js\": %llu,"
+                   " \"images\": %llu, \"other\": %llu, \"304\": %llu }",
                    html, cssjs,
                    img, other, notmodified
                    );
