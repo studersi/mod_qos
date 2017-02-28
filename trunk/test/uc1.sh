@@ -413,6 +413,18 @@ ERRORS=`expr $ERRORS + $RC`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 sleep 1
 
+sleep 3
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1status -D uc1z 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -s scripts/UC1_QS_Status_2.htt
+RC=$?
+if [ $RC -ne 0 ]; then
+    tail -2 logs/error_log
+fi
+ERRORS=`expr $ERRORS + $RC`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+sleep 1
+
 ../httpd/httpd -d `pwd` -f conf/uc1.conf -D viewer -D globalmaxconn 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UC1_globalmaxconn.htt
