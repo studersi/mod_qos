@@ -21,8 +21,8 @@ PFX=[`basename $0`]
 # ----------------------------------------------------------------------------------
 echo "$PFX dropping normal clients"
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_log
-echo "SET maxclients=61" > scripts/maxclients
-./run.sh -s scripts/QS_ClientPrefer20.htt
+echo "SET maxclients=60" > scripts/maxclients
+./run.sh -s scripts/QS_ClientPrefer20.htt 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]; then
     exit 1
 fi
@@ -44,7 +44,7 @@ fi
 echo "$PFX not reaching the limit for normal (no errors)"
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_log
 echo "SET maxclients=58" > scripts/maxclients
-./run.sh -s scripts/QS_ClientPrefer20.htt
+./run.sh -s scripts/QS_ClientPrefer20.htt 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]; then
     exit 1
 fi
@@ -65,7 +65,7 @@ sleep 12
 echo "$PFX block clients which have violated QS_SrvMinDataRate rule"
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_log
 echo "SET maxclients=58" > scripts/maxclients
-./run.sh -s scripts/QS_ClientPrefer20.htt
+./run.sh -s scripts/QS_ClientPrefer20.htt 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]; then
     exit 1
 fi
