@@ -7,7 +7,7 @@
  * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
- * Copyright (C) 2007-2015 Pascal Buchbinder
+ * Copyright (C) 2007-2017 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -26,7 +26,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.31 2017-01-23 11:53:51 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.32 2017-03-01 06:39:57 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -113,7 +113,7 @@ static void usage(char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -b <bytes>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     File size limitation (default are %ld bytes).\n", m_limit);
+  qs_man_print(man, "     File size limitation (default/max. are %ld bytes, min. are 1048576 bytes).\n", m_limit);
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -f\n");
   if(man) printf("\n");
@@ -322,6 +322,7 @@ int main(int argc, char **argv) {
   int nRead, nWrite;
   time_t now;
   struct stat st;
+  long sizeLimit = 0;
 
   pthread_attr_t *tha = NULL;
   pthread_t tid;
@@ -361,7 +362,7 @@ int main(int argc, char **argv) {
       } 
     } else if(strcmp(*argv,"-b") == 0) {
       if (--argc >= 1) {
-	m_limit = atoi(*(++argv));
+	sizeLimit = atol(*(++argv));
       } 
     } else if(strcmp(*argv,"-z") == 0) {
       m_compress = 1;
@@ -384,7 +385,11 @@ int main(int argc, char **argv) {
   }
 
   if(m_file_name == NULL) usage(m_cmd, 0);
-  if(m_limit < (1024 * 1024)) usage(m_cmd, 0);
+  if(sizeLimit > 0 && sizeLimit < m_limit && sizeLimit >= (1024 * 1024)) {
+    m_limit = sizeLimit;
+  } else if(sizeLimit < (1024 * 1024)) {
+    m_limit = 1024 * 1024;
+  }
 
   if(stat(m_file_name, &st) == 0) {
     m_counter = st.st_size;
