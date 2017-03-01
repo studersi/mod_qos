@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.271 2016-10-07 13:33:38 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.272 2017-03-01 20:54:19 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -490,6 +490,7 @@ ERRORS=`expr $ERRORS + $EXT_ERR`
 ./prefer2.sh
 EXT_ERR=$?
 ERRORS=`expr $ERRORS + $EXT_ERR`
+sleep 1
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SetEnvResHeaders" >> logs/error_log
@@ -1040,6 +1041,7 @@ fi
 ./ctl.sh stop >/dev/null
 sleep 10
 ./ctl.sh restart -D logonly -D real_ip >/dev/null
+sleep 1
 TEST="QS_LogOnly.htt QS_LogOnly1.htt QS_LogOnly1a.htt QS_LogOnly1b.htt QS_LogOnly2.htt QS_LogOnly3.htt QS_LogOnly4.htt QS_LogOnly5.htt QS_LogOnly6.htt QS_LogOnly7.htt QS_LogOnly8.htt QS_LogOnly9.htt"
 for E in $TEST; do 
     ./run.sh -s ./scripts/$E
