@@ -7,7 +7,7 @@
  * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
- * Copyright (C) 2007-2015 Pascal Buchbinder
+ * Copyright (C) 2007-2017 Pascal Buchbinder
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -29,7 +29,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsfilter2.c,v 1.81 2016-10-07 13:33:38 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsfilter2.c,v 1.82 2017-03-08 21:37:26 pbuchbinder Exp $";
 
 /* system */
 #include <stdio.h>
@@ -409,6 +409,11 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "     also request lines from previous rule generation steps. It\n");
   qs_man_print(man, "     must also include request lines which cover manually generated\n");
   qs_man_print(man, "     rules.\n");
+  qs_man_print(man, "     You may use the 'qos-path' and 'qos-query' variables to create\n");
+  qs_man_print(man, "     an audit log containing all request data (path and query/body data).\n");
+  qs_man_print(man, "     Example: 'CustomLog audit_log %{qos-path}n%{qos-query}n'.\n");
+  qs_man_print(man, "     See also http://mod-qos.sourceforge.net#qsfiltersample about\n");
+  qs_man_print(man, "     the module settings.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -c <path>\n");
   if(man) printf("\n");
@@ -479,13 +484,6 @@ static void usage(char *cmd, int man) {
   if(man) printf("\n");
   qs_man_print(man, "     Enables additional decoding methods. Use the same settings as you have\n");
   qs_man_print(man, "     used for the QS_Decoding directive.\n");
-  if(man) printf("\n.TP\n");
-  qs_man_print(man, "  -p\n");
-  if(man) printf("\n");
-  qs_man_print(man, "     Repesents query by pcre only (no literal strings).\n");
-  qs_man_print(man, "     Determines the worst case performance for the generated whitelist\n");
-  qs_man_print(man, "     by applying each rule for each request line (output is real time\n");
-  qs_man_print(man, "     filter duration per request line in milliseconds).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -k <prefix>\n");
   if(man) printf("\n");
