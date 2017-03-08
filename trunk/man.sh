@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/man.sh,v 2.10 2016-10-07 13:33:37 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/man.sh,v 2.11 2017-03-08 21:36:50 pbuchbinder Exp $
 #
 
 set -e
@@ -34,4 +34,6 @@ for t in $tools; do
 done
 
 # insert process image
-sed -i "s:<H2>DESCRIPTION</H2>:<H2>DESCRIPTION</H2><p><img src=\"qsfilter2_process.gif\" alt=\"overview\"></p>:g" ../../doc/qsfilter2.1.html
+sed -i  ../../doc/qsfilter2.1.html \
+    -e "s:<H2>DESCRIPTION</H2>:<H2>DESCRIPTION</H2><p><img src=\"qsfilter2_process.gif\" alt=\"overview\"></p>:g"
+
