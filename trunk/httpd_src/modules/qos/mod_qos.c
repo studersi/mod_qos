@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.644 2017-03-16 19:24:26 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.645 2017-03-16 20:05:05 pbuchbinder Exp $";
 static const char g_revision[] = "11.38";
 
 
@@ -169,6 +169,7 @@ static const char g_revision[] = "11.38";
 #define QS_LIMIT_SEEN     "QS_Limit_seen"
 #define QS_COUNTER_SUFFIX "_Counter"
 #define QS_LIMIT_CLEAR    "_Clear"
+#define QS_LIMIT_DEC      "_Decrement"
 #define QS_LIMIT_REMAINING "_Remaining"
 #define QS_EVENT          "QS_Event"
 #define QS_COND           "QS_Cond"
@@ -370,6 +371,7 @@ typedef struct {
   short int limit;
   time_t limit_time;
   const char *eventClearStr; // name of the var clearing the counter
+  const char *eventDecStr; // name of the var decrementing the counter
   const char *condStr;
 #ifdef AP_REGEX_H
   ap_regex_t *preg;
@@ -1551,6 +1553,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
       eventLimitConf->limit = src->limit;
       eventLimitConf->limit_time = src->limit_time;
       eventLimitConf->eventClearStr = apr_pstrcat(pool, eventName, QS_LIMIT_CLEAR, NULL);
+      eventLimitConf->eventDecStr = apr_pstrcat(pool, eventName, QS_LIMIT_DEC, NULL);
       eventLimitConf->condStr = NULL;
       eventLimitConf->preg = NULL;
       if(src->condStr) {
@@ -2967,12 +2970,12 @@ static int qos_count_free_ip(qos_srv_config *sconf) {
  * @return Number within the variable or 0 if not set
  */
 static int get_qs_event(request_rec *r, const char *variable) {
-  const char *block = apr_table_get(r->subprocess_env, variable);
-  if(block == NULL) {
+  const char *eventStr = apr_table_get(r->subprocess_env, variable);
+  if(eventStr == NULL) {
     return 0;
   }
-  if(qos_is_num(block) && (strlen(block) > 0)) {
-    int num = atoi(block);
+  if(qos_is_num(eventStr) && (strlen(eventStr) > 0)) {
+    int num = atoi(eventStr);
     if(num <= 0) {
       num = 1;
     }
@@ -5457,7 +5460,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   qos_s_entry_t searchEFromHeader;
   searchEFromHeader.ip6[0] = 0;
   searchEFromHeader.ip6[1] = 0;
-
+ 
   if(block_seen != NULL) {
     block_event = 0;
   }
@@ -5633,15 +5636,25 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       const char *eventName = limitTableEntry[limitTableIndex].key;
       qos_s_entry_limit_conf_t *eventLimitConf = (qos_s_entry_limit_conf_t *)limitTableEntry[limitTableIndex].val;
       const char *clearEvent = apr_table_get(r->subprocess_env, eventLimitConf->eventClearStr);
+      int decEvent = get_qs_event(r, eventLimitConf->eventDecStr);
 
       /*
-       * reset expired events
+       * reset expired events, clear event counter, decrement event counter
        */
       if(clearEvent ||
          (((*ef)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now)) {
         (*ef)->limit[limitTableIndex].limit = 0;
         (*ef)->limit[limitTableIndex].limit_time = 0;
       }
+      if(decEvent > 0) {
+        if(decEvent >= (*ef)->limit[limitTableIndex].limit) {
+          (*ef)->limit[limitTableIndex].limit = 0;
+          (*ef)->limit[limitTableIndex].limit_time = 0;
+        } else {
+          (*ef)->limit[limitTableIndex].limit = (*ef)->limit[limitTableIndex].limit - decEvent;
+        }
+      }
+
       /*
        * check for new events
        */
@@ -5862,7 +5875,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         const char *clearEvent = apr_table_get(r->subprocess_env, eventLimitConf->eventClearStr);
 
         /*
-         * reset expired events
+         * reset expired events or clear event counter
          */
         if(clearEvent ||
            (((*ef)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now)) {

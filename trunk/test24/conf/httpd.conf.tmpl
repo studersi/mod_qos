@@ -128,6 +128,8 @@ Listen         ##QS_PORT_BASE##
    SetEnvIfPlus               User-Agent reDirectMe=(/errorpages/error.html) QS_RI=$1
    QS_RedirectIf              QS_RI ([a-z0-9_/.-]+) $1
 
+   SetEnvIfPlus               Request_Query DecrementLimitCounter=([0-9]+) QS_Limit_Decrement=$1
+
    QS_SrvMaxConnClose         25
    QS_SrvMaxConnPerIP         30
    QS_SrvMaxConn              45

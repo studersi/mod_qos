@@ -2,6 +2,9 @@ Version
 
  - New directive QS_SrvMinDataRateIgnoreVIP.
 
+ - QS_ClientEventLimitCount may be decremented or cleared by environment variable
+   (suffixed by "_Decrement", e.g. QS_Limit_Decrement).
+
 Version 11.37
 
  - Fixed: wrong include in qspng.c
