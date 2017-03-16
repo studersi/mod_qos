@@ -1,6 +1,6 @@
 Version
 
- - New directive QS_SrvMinDataRateIgnoreVIP.
+ - New directive QS_SrvMinDataRateIgnoreVIP and QS_SrvMaxConnPerIPIgnoreVIP.
 
  - QS_ClientEventLimitCount may be decremented or cleared by environment variable
    (suffixed by "_Decrement", e.g. QS_Limit_Decrement).
