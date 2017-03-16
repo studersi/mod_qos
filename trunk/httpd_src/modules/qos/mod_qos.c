@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.645 2017-03-16 20:05:05 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.646 2017-03-16 21:33:00 pbuchbinder Exp $";
 static const char g_revision[] = "11.38";
 
 
@@ -752,6 +752,7 @@ typedef struct {
   int max_conn_close_percent;
   int max_conn_per_ip;
   int max_conn_per_ip_connections;
+  int max_conn_per_ip_ignore_vip;
 
   int serialize;
   int serializeTMO;
@@ -8051,7 +8052,7 @@ static int qos_pre_process_connection(conn_rec *c, void *skt) {
       }
     }
     /* single source ip */
-    if((sconf->max_conn_per_ip != -1) && !vip) {
+    if((sconf->max_conn_per_ip != -1) && (!vip || sconf->max_conn_per_ip_ignore_vip == 1)) {
       if((current > sconf->max_conn_per_ip) &&
          (all_connections >= sconf->max_conn_per_ip_connections)) {
         e->error++;
@@ -11026,6 +11027,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->max_conn_close = -1;
   sconf->max_conn_per_ip = -1;
   sconf->max_conn_per_ip_connections = -1;
+  sconf->max_conn_per_ip_ignore_vip = -1;
 
   sconf->serialize = -1;
   sconf->exclude_ip = apr_table_make(sconf->pool, 2);
@@ -11237,6 +11239,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->max_conn_per_ip == -1) {
     o->max_conn_per_ip = b->max_conn_per_ip;
+  }
+  if(o->max_conn_per_ip_ignore_vip == -1) {
+    o->max_conn_per_ip_ignore_vip = b->max_conn_per_ip_ignore_vip;
   }
   if(o->max_conn_per_ip_connections == -1) {
     o->max_conn_per_ip_connections = b->max_conn_per_ip_connections;
@@ -12356,6 +12361,14 @@ const char *qos_max_conn_ip_cmd(cmd_parms *cmd, void *dcfg, const char *number,
   return NULL;
 }
 
+/* QS_SrvMaxConnPerIPIgnoreVIP */
+const char *qos_max_conn_ip_vip_off_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->max_conn_per_ip_ignore_vip = flag;
+  return NULL;
+}
+
 /**
  * QS_SrvSerialize
  */
@@ -13418,6 +13431,13 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an IP address or"
                 " address range from beeing limited."),
+
+  AP_INIT_FLAG("QS_SrvMaxConnPerIPIgnoreVIP", qos_max_conn_ip_vip_off_cmd, NULL,
+                RSRC_CONF,
+               "QS_SrvMinDataRateIgnoreVIP tells the QS_SrvMaxConnPerIP"
+               " directive to ignore (if set to \"on\") the VIP status"
+               " of clients. Default is \"off\", which means that"
+               " QS_SrvMaxConnPerIP is disabled for VIPs."),
 
   AP_INIT_TAKE12("QS_SrvSerialize", qos_serialize_cmd, NULL,
                RSRC_CONF,

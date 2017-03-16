@@ -133,6 +133,9 @@ Listen         ##QS_PORT_BASE##
    QS_SrvMaxConnClose         25
    QS_SrvMaxConnPerIP         30
    QS_SrvMaxConn              45
+<IfDefine QS_SrvMaxConnPerIPIgnoreVIP>
+   QS_SrvMaxConnPerIPIgnoreVIP on
+</IfDefine>
 
    SetEnvIf User-Agent        limitme ALIMIT   
    QS_EventLimitCount         ALIMIT 3 2
