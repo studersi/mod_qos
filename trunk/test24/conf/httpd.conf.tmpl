@@ -66,6 +66,10 @@ SetEnvIfPlus Request_Query QS_Set_DSCP=([0-9]+) QS_Set_DSCP=$1
 
 QS_SrvMinDataRate  120 3000 10
 
+<IfDefine QS_SrvMinDataRateIgnoreVIP>
+   QS_SrvMinDataRateIgnoreVIP on
+</IfDefine>
+
 QS_ClientEventLimitCount  3 10
 QS_SetEnvIfStatus  414 QS_Limit=1
 
@@ -134,7 +138,8 @@ Listen         ##QS_PORT_BASE##
    SetEnvIf User-Agent        limipersec limit=a
    QS_EventPerSecLimit        limit 10
 
-   QS_VipHeaderName              X-Login        drop
+   QS_VipHeaderName           X-Login        drop
+   QS_VipIPHeaderName         X-VIP-IP       drop
 
    QS_LocRequestLimitMatch       ^/htt/limit2/.*   2
    QS_LocRequestPerSecLimitMatch ^/limitrs/.*     10

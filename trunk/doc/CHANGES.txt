@@ -1,3 +1,7 @@
+Version
+
+ - New directive QS_SrvMinDataRateIgnoreVIP.
+
 Version 11.37
 
  - Fixed: wrong include in qspng.c
