@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.643 2017-02-28 21:06:33 pbuchbinder Exp $";
-static const char g_revision[] = "11.37";
+static const char revision[] = "$Id: mod_qos.c,v 5.644 2017-03-16 19:24:26 pbuchbinder Exp $";
+static const char g_revision[] = "11.38";
 
 
 /************************************************************************
@@ -767,6 +767,7 @@ typedef struct {
   int min_rate;               /* GLOBAL ONLY */
   int min_rate_max;           /* GLOBAL ONLY */
   int min_rate_off;
+  int req_ignore_vip_rate;    /* GLOBAL ONLY */
   int max_clients;
 #ifdef QS_INTERNAL_TEST
   apr_table_t *testip;
@@ -7331,7 +7332,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
           int level = APLOG_ERR;
           if(cconf) {
             /* disabled by vip priv */
-            if(cconf->is_vip) {
+            if(cconf->is_vip && sconf->req_ignore_vip_rate != 1) {
               level = APLOG_DEBUG;
               cconf->has_lowrate = 1; /* mark connection low rate */
             }
@@ -7376,7 +7377,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
               int level = APLOG_ERR;
               if(cconf) {
                 /* disabled by vip priv */
-                if(cconf->is_vip) {
+                if(cconf->is_vip && sconf->req_ignore_vip_rate != 1) {
                   level = APLOG_DEBUG;
                   cconf->has_lowrate = 1; /* mark connection low rate */
                 }
@@ -10976,6 +10977,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->min_rate = -1;
   sconf->min_rate_max = -1;
   sconf->min_rate_off = 0;
+  sconf->req_ignore_vip_rate = -1;
   sconf->max_clients = 1024;
   sconf->has_event_filter = 0;
   sconf->has_event_limit = 0;
@@ -11139,6 +11141,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->req_rate_start = b->req_rate_start;
   o->min_rate = b->min_rate;
   o->min_rate_max = b->min_rate_max;
+  o->req_ignore_vip_rate = b->req_ignore_vip_rate;
   o->event_limit_a = apr_array_append(p, b->event_limit_a, o->event_limit_a);
   /* end GLOBAL ONLY directives */
   if(o->disable_handler == -1) {
@@ -12517,6 +12520,18 @@ const char *qos_min_rate_cmd(cmd_parms *cmd, void *dcfg, const char *_sec, const
   return NULL;
 }
 
+/* QS_SrvMinDataRateIgnoreVIP */
+const char *qos_min_rate_vip_off_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->req_ignore_vip_rate = flag;
+  return NULL;
+}
+
 /**
  * generic filter command
  */
@@ -13462,6 +13477,14 @@ static const command_rec qos_config_cmds[] = {
                 " has been set. The '+' prefix is used to add a variable"
                 " to the configuration while the '-' prefix is used"
                 " to remove a variable."),
+
+  AP_INIT_FLAG("QS_SrvMinDataRateIgnoreVIP", qos_min_rate_vip_off_cmd, NULL,
+                RSRC_CONF,
+               "QS_SrvMinDataRateIgnoreVIP tells the QS_SrvMinDataRate"
+               " directive to ignore (if set to \"on\") the VIP status"
+               " of clients. Default is \"off\", which means that"
+               " QS_SrvMinDataRate is disabled for VIPs."),
+
 #endif // has threads
 
   AP_INIT_TAKE1("QS_SrvSampleRate", qos_req_rate_tm_cmd, NULL,
