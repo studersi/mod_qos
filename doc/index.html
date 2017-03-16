@@ -728,8 +728,15 @@ increase the counter (default is 1).
 <a name="_Clear"></a>
 <code>*_Clear</code><br>
 The counter of the variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> directive  
-are reset if you set the same variable suffixed by <code>_Clear</code>, 
+is reset if you set the same variable suffixed by <code>_Clear</code>, 
 e.g. <code>QS_Limit_Clear</code>.
+</li>
+<li>
+<a name="_Decrement"></a>
+<code>*_Decrement</code><br>
+The counter of the variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> directive 
+is decremented by the value set in the same variable suffixed by <code>_Decrement</code>, 
+e.g. <code>QS_Limit_Decrement=1</code>.
 </li>
 <li>
 <a name="QS_Serialize"></a>
@@ -1700,6 +1707,8 @@ by <code>_Remaining</code>, e.g. <code>QS_Limit_Remaining</code> to be
 used within SSI error pages.</li>
 <li>The counter can be reset by setting the environment variable which name is 
 suffixed by <code><a href="#_Clear">_Clear</a></code>, e.g. <code>QS_Limit_Clear</code>.
+<li>The counter can be decremented by setting the environment variable which name is 
+suffixed by <code><a href="#_Decrement">_Decrement</a></code>, e.g. <code>QS_Limit_Decrement</code>.
 <li>Adding/removing events (configuration changes) require a server restart 
 (graceful restart is not supported).</li>
 <li>Only the default rule (<code><a href="#QS_Limit">QS_Limit</a></code>) is accessibly by the 
