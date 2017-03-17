@@ -157,9 +157,22 @@ Listen         ##QS_PORT_BASE##
    SetEnvIf                     User-Agent keepAliveTimeout10 QS_KeepAliveTimeout=10
    SetEnvIf                     User-Agent maxKeepAliveReq150  QS_MaxKeepAliveRequests=150
    SetEnvIf                     User-Agent QS_Timeout40 QS_Timeout=40
+<IfDefine milestone302>
+<Location />
+   RedirectMatch                ^/index.html http://127.0.0.1:##QS_PORT_BASE##/htt/milestone/index.html
+   #RewriteEngine                on
+   #RewriteCond                  %{REQUEST_URI} ^/index.html$
+   #RewriteRule                  ^(.*)? /htt/milestone/index.html [NC,R=302]
+</Location>
+   QS_MileStone                 deny "^GET /index.html"
+   QS_MileStone                 deny "^POST /htt/milestone/register*"
+   QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
+</IfDefine>
+<IfDefine !milestone302>
    QS_MileStone                 deny "^GET /htt/milestone/index.html"
    QS_MileStone                 deny "^POST /htt/milestone/register*"
    QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
+</IfDefine>
 
    Include conf/demo.conf
 
