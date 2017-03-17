@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.647 2017-03-17 18:48:32 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.648 2017-03-17 21:19:05 pbuchbinder Exp $";
 static const char g_revision[] = "11.38";
 
 
@@ -1583,8 +1583,6 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
                  QOS_LOG_PFX(004)"failed to create mutex (client control)(%s): %s", 
                  s->lock_file, buf);
     apr_shm_destroy(s->m);
-    s->m = NULL;
-    s->lock = NULL;
     return NULL;
   }
 #ifdef AP_NEED_SET_MUTEX_PERMS
