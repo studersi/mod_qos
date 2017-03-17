@@ -5,6 +5,9 @@ Version
  - QS_ClientEventLimitCount may be decremented or cleared by environment variable
    (suffixed by "_Decrement", e.g. QS_Limit_Decrement).
 
+ - QS_MileStone sets cookie also within error filter supporting redirects
+   even not reaching the handler.
+
 Version 11.37
 
  - Fixed: wrong include in qspng.c

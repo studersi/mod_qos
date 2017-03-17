@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.646 2017-03-16 21:33:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.647 2017-03-17 18:48:32 pbuchbinder Exp $";
 static const char g_revision[] = "11.38";
 
 
@@ -2278,6 +2278,7 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
     char *c;
 
+    apr_table_unset(r->subprocess_env, QOS_MILESTONE_COOKIE);
     memcpy(value, &now, sizeof(apr_time_t));
     memcpy(&value[sizeof(apr_time_t)], new_ms, new_ms_len);
     value[len] = '\0';
@@ -2311,6 +2312,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
   int ms = -1; // milestone the user has reached
   int required = -1; // required for this request
   apr_time_t age = 0; // milestone's age
+
   if(value != NULL) {
     int buf_len = 0;
     unsigned char *buf;
@@ -9687,7 +9689,11 @@ static apr_status_t qos_out_err_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
     qos_setenvstatus(r, sconf, dconf);
     qos_setenvresheader(r, sconf);
     qos_setenvres(r, sconf);
+    if(sconf->milestones) {
+      qos_update_milestone(r, sconf);
+    }
   }
+
   ap_remove_output_filter(f);
   return ap_pass_brigade(f->next, bb);
 }
