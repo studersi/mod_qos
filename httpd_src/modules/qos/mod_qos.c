@@ -46,8 +46,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.648 2017-03-17 21:19:05 pbuchbinder Exp $";
-static const char g_revision[] = "11.38";
+static const char revision[] = "$Id: mod_qos.c,v 5.649 2017-03-20 21:22:09 pbuchbinder Exp $";
+static const char g_revision[] = "11.39";
 
 
 /************************************************************************
@@ -111,6 +111,7 @@ static const char g_revision[] = "11.38";
  ***********************************************************************/
 #define QOS_LOG_PFX(id)  "mod_qos("#id"): "
 #define QOS_LOGD_PFX  "mod_qos(): "
+#define QOS_LOG_MSGCT 200
 #define QOS_HASH_LEN 16
 #define QOS_MAX_AGE "3600"
 #define QOS_COOKIE_NAME "MODQOS"
@@ -435,6 +436,9 @@ typedef struct {
   int connections;
   /* remember for which clients this rec has created (shared mem) */
   int generation_locked;  // indicates the the counters have been cleared for this generation
+  /* log counter */
+  unsigned long eventTotal[QOS_LOG_MSGCT]; // total number of events since initial start
+  unsigned long eventLast[QOS_LOG_MSGCT];  // number of events since last read
 } qos_s_t;
 
 typedef enum  {
@@ -992,6 +996,11 @@ static int m_enable_audit = 0;
 /* mod_ssl, forward and optional function */
 APR_DECLARE_OPTIONAL_FN(int, ssl_is_https, (conn_rec *));
 static APR_OPTIONAL_FN_TYPE(ssl_is_https) *qos_is_https = NULL;
+
+static void qs_inc_eventcounter(apr_pool_t *ppool, int event, int locked);
+#define QS_INC_EVENT(sconf, event) qs_inc_eventcounter(sconf->act->ppool, event, 0)
+#define QS_INC_EVENT_LOCKED(sconf, event) qs_inc_eventcounter(sconf->act->ppool, event, 1)
+static int m_knownEvents[] = { 10, 11, 12, 13, 21, 23, 25, 30, 31, 34, 35, 36, 37, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 60, 61, 62, 65, 66, 67, 68, 69, 101, 147, 0 };
 
 /* simple header rules allowing "the usual" header formats only (even drop requests using
    extensions which are used rarely) */
@@ -1612,6 +1621,10 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
     e++;
   }
   s->t = time(NULL);
+  for(i = 0; i < QOS_LOG_MSGCT; i++) {
+    s->eventTotal[i] = 0;
+    s->eventLast[i] = 0;
+  }
   return s;
 }
 
@@ -2348,6 +2361,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
                     "deny" : "log only (pass milestone)",
                     QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                     qos_unique_id(r, "047"));
+      QS_INC_EVENT(sconf, 47);
       if(milestone->action == QS_DENY) {
         return HTTP_FORBIDDEN;
       }
@@ -2364,6 +2378,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
                       "deny" : "log only (pass milestone)",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "147"));
+        QS_INC_EVENT(sconf, 147);
         if(milestone->action == QS_DENY) {
           return HTTP_FORBIDDEN;
         }
@@ -2468,6 +2483,7 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                   QOS_LOG_PFX(021)"session cookie verification failed, "
                   "decoding failed, id=%s", qos_unique_id(r, "021"));
+    QS_INC_EVENT(sconf, 21);
     return 0;
   } else {
     qos_session_t *s = (qos_session_t *)buf;
@@ -2475,6 +2491,7 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
       ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                     QOS_LOG_PFX(023)"session cookie verification failed, "
                     "expired, id=%s", qos_unique_id(r, "023"));
+      QS_INC_EVENT(sconf, 23);
       return 0;
     }
   }
@@ -2498,6 +2515,7 @@ static void qos_set_session(request_rec *r, qos_srv_config *sconf) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
                   QOS_LOG_PFX(025)"failed to create session cookie, id=%s",
                   qos_unique_id(r, "025"));
+    QS_INC_EVENT(sconf, 25);
     return;
   }
   cookie = apr_psprintf(r->pool, "%s=%s; Path=%s; Max-Age=%d",
@@ -2557,6 +2575,27 @@ static qos_user_t *qos_get_user_conf(apr_pool_t *ppool) {
   apr_pool_userdata_set(u, QS_USR_SPE, apr_pool_cleanup_null, ppool);
   u->qos_cc = NULL;
   return u;
+}
+
+/**
+ * increments the event counters for the specified event
+ * @param ppool Process pool to fetch user ctx from
+ * @param event Event number
+ * @param locked Set this to 1 if user ctx is already locked
+ */
+static void qs_inc_eventcounter(apr_pool_t *ppool, int event, int locked) {
+  qos_user_t *u = qos_get_user_conf(ppool);
+  if(u->qos_cc == NULL) {
+    return;
+  }
+  if(!locked) {
+    apr_global_mutex_lock(u->qos_cc->lock);        /* @CRT49 */
+  }
+  u->qos_cc->eventTotal[event]++;
+  u->qos_cc->eventLast[event]++;
+  if(!locked) {
+    apr_global_mutex_unlock(u->qos_cc->lock);      /* @CRT49 */
+  }
 }
 
 #ifdef QS_APACHE_24
@@ -3038,11 +3077,11 @@ static int qos_inc_ip(qos_srv_config *sconf,
                    QOS_LOG_PFX(035)"QS_SrvMaxConn: no free IP slot available!"
                    " Check log for unclean child exit and consider"
                    " to do a graceful server restart if this condition persists.");
+      QS_INC_EVENT_LOCKED(sconf, 35);
     }
   }
   
   apr_global_mutex_unlock(cconf->sconf->act->lock); /* @CRT1 */
-
   return num;
 }
 
@@ -3398,6 +3437,7 @@ static int qos_per_dir_event_rules(request_rec *r, qos_srv_config *sconf,
                       (!sconf->log_only) && (rfilter->action == QS_DENY) ? "deny" : "log only",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "040"));
+        QS_INC_EVENT(sconf, 40);
         if(rfilter->action == QS_DENY) {
           return HTTP_FORBIDDEN;
         }
@@ -3757,6 +3797,7 @@ static int qos_per_dir_rules(request_rec *r, qos_srv_config *sconf,
                       sconf->log_only ? "log only" : "deny",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "048"));
+        QS_INC_EVENT(sconf, 48);
         return HTTP_FORBIDDEN;
       }
     }
@@ -3837,6 +3878,7 @@ static int qos_per_dir_rules(request_rec *r, qos_srv_config *sconf,
                   (!sconf->log_only) && (dconf->urldecoding == QS_DENY) ? "deny" : "log only",
                   QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                   qos_unique_id(r, "046"));
+    QS_INC_EVENT(sconf, 46);
     if(dconf->urldecoding == QS_DENY) {
       return HTTP_FORBIDDEN;
     }
@@ -3878,6 +3920,7 @@ static int qos_per_dir_rules(request_rec *r, qos_srv_config *sconf,
                       (!sconf->log_only) && (rfilter->action == QS_DENY) ? "deny" : "log only",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "040"));
+        QS_INC_EVENT(sconf, 40);
         if(rfilter->action == QS_DENY) {
           return HTTP_FORBIDDEN;
         }
@@ -3891,6 +3934,7 @@ static int qos_per_dir_rules(request_rec *r, qos_srv_config *sconf,
                   (!sconf->log_only) && (permit_rule_action == QS_DENY) ? "deny" : "log only",
                   QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                   qos_unique_id(r, "041"));
+    QS_INC_EVENT(sconf, 41);
     if(permit_rule_action == QS_DENY) {
       return HTTP_FORBIDDEN;
     }
@@ -3933,6 +3977,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
                         pattern,
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "043"));
+          QS_INC_EVENT(sconf, 43);
           return HTTP_FORBIDDEN;
         }
         if(reason == NULL) {
@@ -3960,6 +4005,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
                     apr_table_get(reason, entry[i].key),
                     QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                     qos_unique_id(r, "042"));
+      QS_INC_EVENT(sconf, 42);
     }
     if(!sconf->log_only) {
       apr_table_unset(headers, entry[i].key);
@@ -4013,7 +4059,7 @@ static char *qos_crline(request_rec *r, const char *line) {
 /**
  * calculates the rec/sec block rate
  */
-static void qos_cal_req_sec(request_rec *r, qs_acentry_t *e) {
+static void qos_cal_req_sec(qos_srv_config *sconf, request_rec *r, qs_acentry_t *e) {
   if(e->req_per_sec > e->req_per_sec_limit) {
     int factor = ((e->req_per_sec * 100) / e->req_per_sec_limit) - 100;
     e->req_per_sec_block_rate = e->req_per_sec_block_rate + factor;
@@ -4026,6 +4072,7 @@ static void qos_cal_req_sec(request_rec *r, qs_acentry_t *e) {
                   e->url, e->req_per_sec_limit,
                   e->req_per_sec, e->req_per_sec_block_rate,
                   e->req_per_sec_block_rate == QS_MAX_DELAY/1000 ? " (max)" : "");
+    QS_INC_EVENT(sconf, 50);
   } else if(e->req_per_sec_block_rate > 0) {
     if(e->req_per_sec_block_rate < 50) {
       e->req_per_sec_block_rate = 0;
@@ -4038,6 +4085,7 @@ static void qos_cal_req_sec(request_rec *r, qs_acentry_t *e) {
                   " delay=%dms",
                   e->url, e->req_per_sec_limit,
                   e->req_per_sec, e->req_per_sec_block_rate);
+    QS_INC_EVENT(sconf, 51);
   }
 }
 
@@ -4346,6 +4394,7 @@ static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
                   " can't parse uri, c=%s, id=%s",
                   QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                   qos_unique_id(r, "045"));
+    QS_INC_EVENT(sconf, 45);
     return HTTP_BAD_REQUEST;
   }
   return APR_SUCCESS;
@@ -4695,6 +4744,7 @@ static void qos_keepalive(request_rec *r, qos_srv_config *sconf) {
                       QOS_LOG_PFX(037)"loaded MPM is 'event'"
                       " and the QS_KeepAliveTimeout/QS_MaxKeepAliveRequests"
                       " directives can't be used.");
+        QS_INC_EVENT(sconf, 37);
         return;
       }
       if(QS_ISDEBUG(r->server)) {
@@ -4759,7 +4809,7 @@ static void qos_lg_event_update(request_rec *r, apr_time_t *t) {
                 e->req_per_sec = e->req / (now - e->interval);
                 e->req = 0;
                 e->interval = now;
-                qos_cal_req_sec(r, e);
+                qos_cal_req_sec(sconf, r, e);
               }
             }
           }
@@ -4836,6 +4886,7 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
                           entry->env_var, entry->max, entry->limit,
                           QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "013"));
+            QS_INC_EVENT_LOCKED(sconf, 13);
           }
         }
         // propagte to environment (current)
@@ -4900,6 +4951,7 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
                               QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                               qos_unique_id(r, "012"));
                 apr_table_set(r->notes, QS_R012_ALREADY_BLOCKED, "");
+                QS_INC_EVENT_LOCKED(sconf, 12);
               }
             }
           }
@@ -5024,6 +5076,7 @@ static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf,
                     "id=%s",
                     sconf->serializeTMO / 20,
                     qos_unique_id(r, "037"));
+      QS_INC_EVENT(sconf, 37);
       /* remove this request from the queue resp. clear the queue
          to avaoid a deadlock */
       apr_global_mutex_lock(sconf->act->lock);     /* @CRT44.1 */
@@ -5067,6 +5120,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
                           QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "069"));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+            QS_INC_EVENT(sconf, 69);
           }
         } else {
           forwardedForLogIP = forwardedfor;
@@ -5082,6 +5136,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
                         QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "069"));
           apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+          QS_INC_EVENT(sconf, 69);
         }
       }
     }
@@ -5139,6 +5194,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
                       "c=%s, id=%s",
                       forwardedForLogIP == NULL ? "-" : forwardedForLogIP,
                       qos_unique_id(r, "068"));
+        QS_INC_EVENT(sconf, 68);
         /* remove this request from the queue resp. clear the queue
            to avaoid a deadlock */
         apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36.1 */
@@ -5204,6 +5260,7 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf,
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                       QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "065"));
+        QS_INC_EVENT(sconf, 65);
         qs_set_evmsg(r, "D;"); 
         if(!sconf->log_only) {
           rc = qos_error_response(r, error_page);
@@ -5519,6 +5576,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
                         QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "069"));
           apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+          QS_INC_EVENT(sconf, 69);
         }
       }
     } else {
@@ -5531,6 +5589,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "069"));
         apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+        QS_INC_EVENT(sconf, 69);
       }
     }
   }
@@ -5589,6 +5648,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
                      (*e)->blockMsg % QS_LOG_REPEAT,
                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                      QS_CONN_REMOTEIP(r->connection)/*no id here, this r is okay*/);
+        QS_INC_EVENT_LOCKED(sconf, 60);
         (*e)->blockMsg = 0;
       }
       (*e)->block = 0;
@@ -5730,6 +5790,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                           QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "069"));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+            QS_INC_EVENT(sconf, 69);
           }
         } else {
           forwardedForLogIP = forwardedfor;
@@ -5745,6 +5806,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                         QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "069"));
           apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+          QS_INC_EVENT(sconf, 69);
         }
       }
     }
@@ -5792,6 +5854,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                           sconf->qos_cc_event,
                           (*e)->req_per_sec, (*e)->req_per_sec_block_rate,
                           (*e)->req_per_sec_block_rate == QS_MAX_DELAY/1000 ? " (max)" : "");
+            QS_INC_EVENT_LOCKED(sconf, 61);
           } else if((*e)->req_per_sec_block_rate > 0) {
             if((*e)->req_per_sec_block_rate < 50) {
               (*e)->req_per_sec_block_rate = 0;
@@ -5805,6 +5868,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                           " delay=%dms",
                           sconf->qos_cc_event,
                           (*e)->req_per_sec, (*e)->req_per_sec_block_rate);
+            QS_INC_EVENT_LOCKED(sconf, 62);
           }
         }
         req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
@@ -5828,6 +5892,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                        (*e)->blockMsg % QS_LOG_REPEAT,
                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                        QS_CONN_REMOTEIP(r->connection)/*no id here, this r is okay*/);
+          QS_INC_EVENT_LOCKED(sconf, 60);
           (*e)->blockMsg = 0;
         }
         (*e)->block = 0;
@@ -5856,6 +5921,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                             now - (*e)->block_time,
                             QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                             QS_CONN_REMOTEIP(r->connection));
+        QS_INC_EVENT_LOCKED(sconf, 60);
         ret = m_retcode;
         (*e)->lowrate = apr_time_sec(r->request_time);
         (*e)->lowratestatus |= QOS_LOW_FLAG_EVENTBLOCK;
@@ -5957,6 +6023,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                                   (*ef)->limit[limitTableIndex].limit,
                                   now - (*ef)->limit[limitTableIndex].limit_time,
                                   forwardedForLogIP == NULL ? "-" : forwardedForLogIP);
+              QS_INC_EVENT_LOCKED(sconf, 67);
               ret = m_retcode;
             }
           }
@@ -6288,6 +6355,7 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
                                   cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
                                   QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
                                   QS_CONN_REMOTEIP(cconf->c));
+              QS_INC_EVENT_LOCKED(cconf->sconf, 66);
               ret = m_retcode;
             }
           }
@@ -6330,6 +6398,7 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
                      " Check log for unclean child exit and consider"
                      " to do a graceful server restart if this condition persists.",
                      connections, req_rate, sconf->min_rate_max);
+        QS_INC_EVENT(sconf, 36);
         req_rate = sconf->min_rate_max;
       }
     }
@@ -6370,6 +6439,8 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
   apr_time_t now = apr_time_sec(r->request_time);
   double av[1];
 
+  qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
+
 #if (!defined(WIN32) && !defined(__MINGW32__) && !defined(_WIN64) && !defined(CYGWIN))
   getloadavg(av, 1);
   ap_rprintf(r, "b"QOS_DELIM"system.load: %.2f\n", av[0]);
@@ -6388,7 +6459,6 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
     if((s->is_virtual && (sconf != bsconf)) || !s->is_virtual) {
       qs_acentry_t *e;
       if(!s->is_virtual && sconf->has_qos_cc && sconf->qos_cc_prefer_limit) {
-        qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
         int hc = u->qos_cc->connections; /* not synchronized ... */
         ap_rprintf(r, "%s"QOS_DELIM"QS_ClientPrefer"QOS_DELIM"%d[]: %d\n", sn,
                    sconf->qos_cc_prefer_limit, hc);
@@ -6488,6 +6558,27 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
       }
     }
     s = s->next;
+  }
+  if(u->qos_cc) {
+    int i = 0;
+    apr_table_t *eTable = apr_table_make(r->pool, QOS_LOG_MSGCT);
+    apr_table_entry_t *entry;
+    apr_global_mutex_lock(u->qos_cc->lock);        /* @CRT50 */
+    while(m_knownEvents[i] > 0) {
+      char *c = apr_psprintf(r->pool, "e;mod_qos(%03d);last: %lu",
+                             m_knownEvents[i], u->qos_cc->eventLast[m_knownEvents[i]]);
+      char *a = apr_psprintf(r->pool, "e;mod_qos(%03d);all: %lu", 
+                             m_knownEvents[i], u->qos_cc->eventTotal[m_knownEvents[i]]);
+      apr_table_addn(eTable, c, a);
+      u->qos_cc->eventLast[m_knownEvents[i]] = 0;
+      i++;
+    }
+    apr_global_mutex_unlock(u->qos_cc->lock);      /* @CRT50 */
+    entry = (apr_table_entry_t *)apr_table_elts(eTable)->elts;
+    for(i = 0; i < apr_table_elts(eTable)->nelts; ++i) {
+      ap_rprintf(r, "%s\n%s\n", entry[i].key, entry[i].val);
+    }
+
   }
 }
 
@@ -7369,6 +7460,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                          "log only (allowed)" 
                          : "access denied",
                          QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
+            QS_INC_EVENT_LOCKED(sconf, 34);
             inctx->time = now;
             inctx->nbytes = 0;
             if((level == APLOG_ERR) &&
@@ -7417,6 +7509,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                              req_rate,
                              rate,
                              QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
+                QS_INC_EVENT_LOCKED(sconf, 34);
                 inctx->time = interval + sconf->qs_req_rate_tm;
                 inctx->nbytes = 0;
                 if((level == APLOG_ERR) && !sconf->log_only) {
@@ -7666,6 +7759,7 @@ static int qos_redirectif(request_rec *r, qos_srv_config *sconf,
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
                       QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "049"));
+        QS_INC_EVENT(sconf, 49);
         if(!sconf->log_only) {
           apr_table_set(r->headers_out, "Location", replaced);
           return entry->code;
@@ -8027,6 +8121,7 @@ static int qos_pre_process_connection(conn_rec *c, void *skt) {
                          all_connections,
                          QS_CONN_REMOTEIP(c),
                          pB != NULL ? pB->country : "--");
+            QS_INC_EVENT(sconf, 101);
             if(!sconf->log_only) {
               c->keepalive = AP_CONN_CLOSE;
               return qos_return_error_andclose(c, socket);
@@ -8045,6 +8140,7 @@ static int qos_pre_process_connection(conn_rec *c, void *skt) {
                      sconf->log_only ? " (log only)" : "",
                      sconf->max_conn, connections,
                      QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
+        QS_INC_EVENT(sconf, 30);
         if(!sconf->log_only) {
           c->keepalive = AP_CONN_CLOSE;
           return qos_return_error_andclose(c, socket);
@@ -8060,6 +8156,7 @@ static int qos_pre_process_connection(conn_rec *c, void *skt) {
           apr_table_set(c->notes, QS_MAXIP, "1");
         }
         /* only print the first 20 messages for this client */
+        QS_INC_EVENT(sconf, 31);
         if(e->error <= QS_LOG_REPEAT) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                        QOS_LOG_PFX(031)"access denied%s,"
@@ -8156,6 +8253,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
       if(((*e)->block_time + sconf->qos_cc_block_time) > now) {
         (*e)->blockMsg++;;
         // stop logging every event if we have logged it many times
+        QS_INC_EVENT_LOCKED(sconf, 60);
         if((*e)->blockMsg > QS_LOG_REPEAT) {
           if(((*e)->blockMsg % QS_LOG_REPEAT) == 0) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
@@ -8314,6 +8412,7 @@ static int qos_post_read_request(request_rec *r) {
                           QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                           qos_unique_id(r, "069"));
             apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+            QS_INC_EVENT(sconf, 69);
           }
         }
       } else {
@@ -8325,6 +8424,7 @@ static int qos_post_read_request(request_rec *r) {
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "069"));
           apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+          QS_INC_EVENT(sconf, 69);
         }
       }
     }
@@ -8444,6 +8544,7 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
                       sconf->log_only ? " (log only)" : "",
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));
+        QS_INC_EVENT(sconf, 44);
         return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
       if(s > maxpost) {
@@ -8454,6 +8555,7 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
                       maxpost, s,
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));
+        QS_INC_EVENT(sconf, 44);
         return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
     } else {
@@ -8781,6 +8883,7 @@ static int qos_header_parser(request_rec * r) {
                         e->url, e->limit, e->counter,
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "010"));
+          QS_INC_EVENT(sconf, 10);
           qs_set_evmsg(r, "D;"); 
           // request has already been blocked, don't cont this request for req/sec violations!
           apr_table_set(r->notes, QS_R010_ALREADY_BLOCKED, "");
@@ -8868,6 +8971,7 @@ static int qos_header_parser(request_rec * r) {
                             e_cond->url, e_cond->limit, e_cond->counter,
                             QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                             qos_unique_id(r, "011"));
+              QS_INC_EVENT(sconf, 11);
               qs_set_evmsg(r, "D;"); 
               if(!sconf->log_only) {
                 rc = qos_error_response(r, error_page);
@@ -8951,6 +9055,7 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
                       maxpost, rctx->maxpostcount,
                       QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                       qos_unique_id(r, "044"));
+        QS_INC_EVENT(sconf, 44);
         qs_set_evmsg(r, "D;"); 
         if(!sconf->log_only) {
           rc = qos_error_response(r, error_page);
@@ -9833,7 +9938,7 @@ static int qos_logger(request_rec *r) {
           e->req = 0;
           e->interval = now;
           if(e->req_per_sec_limit) {
-            qos_cal_req_sec(r, e);
+            qos_cal_req_sec(sconf, r, e);
           }
         }
       }

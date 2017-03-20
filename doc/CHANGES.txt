@@ -1,3 +1,7 @@
+Version
+
+ - Event counter (status view)
+
 Version 11.38
 
  - New directive QS_SrvMinDataRateIgnoreVIP and QS_SrvMaxConnPerIPIgnoreVIP.
