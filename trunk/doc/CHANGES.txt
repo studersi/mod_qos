@@ -1,6 +1,8 @@
-Version
+Version 11.39
 
- - Event counter (status view)
+ - New directive QS_EventCount to enable an error message event counter
+   (counters are shown in the machine-readable status view).
+   Adds also clientContentTypes statistics to the status view.
 
 Version 11.38
 

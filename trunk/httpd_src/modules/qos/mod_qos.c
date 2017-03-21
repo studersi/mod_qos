@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.649 2017-03-20 21:22:09 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.650 2017-03-21 20:37:29 pbuchbinder Exp $";
 static const char g_revision[] = "11.39";
 
 
@@ -437,8 +437,8 @@ typedef struct {
   /* remember for which clients this rec has created (shared mem) */
   int generation_locked;  // indicates the the counters have been cleared for this generation
   /* log counter */
-  unsigned long eventTotal[QOS_LOG_MSGCT]; // total number of events since initial start
-  unsigned long eventLast[QOS_LOG_MSGCT];  // number of events since last read
+  unsigned long long eventTotal[QOS_LOG_MSGCT]; // total number of events since initial start
+  unsigned long long eventLast[QOS_LOG_MSGCT];  // number of events since last read
 } qos_s_t;
 
 typedef enum  {
@@ -806,6 +806,7 @@ typedef struct {
   apr_table_t *geo_priv;      /* GLOBAL ONLY */
   qs_ip_type_e ip_type;       /* GLOBAL ONLY */
   int qsstatus;               /* GLOBAL ONLY */
+  int qsevents;               /* GLOBAL ONLY */
   int server_limit;
   int thread_limit;
   apr_array_header_t *milestones;
@@ -998,8 +999,8 @@ APR_DECLARE_OPTIONAL_FN(int, ssl_is_https, (conn_rec *));
 static APR_OPTIONAL_FN_TYPE(ssl_is_https) *qos_is_https = NULL;
 
 static void qs_inc_eventcounter(apr_pool_t *ppool, int event, int locked);
-#define QS_INC_EVENT(sconf, event) qs_inc_eventcounter(sconf->act->ppool, event, 0)
-#define QS_INC_EVENT_LOCKED(sconf, event) qs_inc_eventcounter(sconf->act->ppool, event, 1)
+#define QS_INC_EVENT(sconf, event) if(sconf->qsevents) qs_inc_eventcounter(sconf->act->ppool, event, 0)
+#define QS_INC_EVENT_LOCKED(sconf, event) if(sconf->qsevents) qs_inc_eventcounter(sconf->act->ppool, event, 1)
 static int m_knownEvents[] = { 10, 11, 12, 13, 21, 23, 25, 30, 31, 34, 35, 36, 37, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 60, 61, 62, 65, 66, 67, 68, 69, 101, 147, 0 };
 
 /* simple header rules allowing "the usual" header formats only (even drop requests using
@@ -6090,7 +6091,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
   while(!s->exit) {
-    char clientContentTypes[2048];
+    char clientContentTypes[8192];
     int s_busy = 0;
     int s_open = 0;
     int s_ready = 0;
@@ -6181,7 +6182,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
           other = u->qos_cc->other;
           notmodified = u->qos_cc->notmodified;
           apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT48 */
-          snprintf(clientContentTypes, 2047, ", \"clientContentTypes\": { "
+          snprintf(clientContentTypes, 8191, ", \"clientContentTypes\": { "
                    "\"html\": %llu,  \"css/js\": %llu,"
                    " \"images\": %llu, \"other\": %llu, \"304\": %llu }",
                    html, cssjs,
@@ -6446,6 +6447,27 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
   ap_rprintf(r, "b"QOS_DELIM"system.load: %.2f\n", av[0]);
 #endif
 
+  if(u->qos_cc && sconf->qos_cc_prefer) {
+    unsigned long long html;
+    unsigned long long cssjs;
+    unsigned long long img;
+    unsigned long long other;
+    unsigned long long notmodified;
+    char clientContentTypes[8192];
+    apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT51 */
+    html = u->qos_cc->html;
+    cssjs = u->qos_cc->cssjs;
+    img = u->qos_cc->img;
+    other = u->qos_cc->other;
+    notmodified = u->qos_cc->notmodified;
+    apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT51 */
+    snprintf(clientContentTypes, 8191,
+             "b;clientContentTypes(html,css/js,images,other,304): "
+             "%llu %llu %llu %llu %llu",
+             html, cssjs, img, other, notmodified
+             );
+    ap_rprintf(r, "%s\n", clientContentTypes);
+  }
   while(s) {
     char *sn = apr_psprintf(r->pool, "%s"QOS_DELIM"%s"QOS_DELIM"%d",
                             s->is_virtual ? "v" : "b",
@@ -6559,17 +6581,19 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
     }
     s = s->next;
   }
-  if(u->qos_cc) {
+  if(u->qos_cc && sconf->qsevents) {
     int i = 0;
     apr_table_t *eTable = apr_table_make(r->pool, QOS_LOG_MSGCT);
     apr_table_entry_t *entry;
+    char buf1[1024];
+    char buf2[1024];
     apr_global_mutex_lock(u->qos_cc->lock);        /* @CRT50 */
     while(m_knownEvents[i] > 0) {
-      char *c = apr_psprintf(r->pool, "e;mod_qos(%03d);last: %lu",
-                             m_knownEvents[i], u->qos_cc->eventLast[m_knownEvents[i]]);
-      char *a = apr_psprintf(r->pool, "e;mod_qos(%03d);all: %lu", 
-                             m_knownEvents[i], u->qos_cc->eventTotal[m_knownEvents[i]]);
-      apr_table_addn(eTable, c, a);
+      snprintf(buf1, 1023, "e;mod_qos(%03d);new: %llu",
+               m_knownEvents[i], u->qos_cc->eventLast[m_knownEvents[i]]);
+      snprintf(buf2, 1023, "e;mod_qos(%03d);total: %llu", 
+               m_knownEvents[i], u->qos_cc->eventTotal[m_knownEvents[i]]);
+      apr_table_addn(eTable, buf1, buf2);
       u->qos_cc->eventLast[m_knownEvents[i]] = 0;
       i++;
     }
@@ -6578,7 +6602,6 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
     for(i = 0; i < apr_table_elts(eTable)->nelts; ++i) {
       ap_rprintf(r, "%s\n%s\n", entry[i].key, entry[i].val);
     }
-
   }
 }
 
@@ -11162,6 +11185,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->geo_priv = apr_table_make(p, 20);
   sconf->qslog_p = NULL;
   sconf->qsstatus = 0;
+  sconf->qsevents = 0;
   sconf->qslog_str = NULL;
   sconf->ip_type = QS_IP_V6_DEFAULT;
   sconf->qos_cc_block_time = 600;
@@ -11259,6 +11283,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->geo_priv = b->geo_priv;
   o->qslog_p = b->qslog_p;
   o->qsstatus = b->qsstatus;
+  o->qsevents = b->qsevents;
   o->qslog_str = b->qslog_str;
   o->ip_type = b->ip_type;
   o->req_rate = b->req_rate;
@@ -12143,6 +12168,9 @@ const char *qos_error_page_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
 }
 
 #if APR_HAS_THREADS
+/**
+ * QS_Status
+ */
 const char *qos_qsstatus_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                   &qos_module);
@@ -12154,6 +12182,20 @@ const char *qos_qsstatus_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   return NULL;
 }
 #endif
+
+/**
+ * QS_EventCount
+ */
+const char *qos_qsevents_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                  &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->qsevents = flag;
+  return NULL;
+}
 
 /**
  * pipe to global qslog tool (per Apache instance stat)
@@ -14141,6 +14183,12 @@ static const command_rec qos_config_cmds[] = {
                "QS_Status 'on'|'off', writes a log message containing server"
                " statistics once every minute. Default is off."),
 #endif
+
+  AP_INIT_FLAG("QS_EventCount", qos_qsevents_cmd, NULL,
+               RSRC_CONF,
+               "QS_EventCount 'on'|'off', enables error event counting"
+               " (counters are shown in the machine-readable version"
+               " of the status viewer). Default is off."),
 
   AP_INIT_TAKE1("QSLog", qos_qlog_cmd, NULL,
                 RSRC_CONF,

@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.71 2016-11-25 19:28:48 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/uc1.conf.tmpl,v 2.72 2017-03-21 20:37:29 pbuchbinder Exp $
 #
 # mod_qos test configuration using single use cases
 #
@@ -55,6 +55,8 @@ Timeout                 30
 KeepAlive               on
 MaxKeepAliveRequests    100
 KeepAliveTimeout        5
+
+QS_EventCount           on
 
 LimitRequestFields      30
 <IfDefine !net>

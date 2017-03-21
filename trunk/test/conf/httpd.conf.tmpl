@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.272 2016-11-26 19:49:55 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.273 2017-03-21 20:37:29 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -76,6 +76,8 @@ Timeout                 3
 KeepAlive               on
 MaxKeepAliveRequests    100
 KeepAliveTimeout        5
+
+QS_EventCount           on
 
 LimitRequestFields      30
 QS_LimitRequestBody     65536
