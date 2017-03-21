@@ -46,7 +46,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.650 2017-03-21 20:37:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.651 2017-03-21 21:11:30 pbuchbinder Exp $";
 static const char g_revision[] = "11.39";
 
 
@@ -6593,7 +6593,7 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
                m_knownEvents[i], u->qos_cc->eventLast[m_knownEvents[i]]);
       snprintf(buf2, 1023, "e;mod_qos(%03d);total: %llu", 
                m_knownEvents[i], u->qos_cc->eventTotal[m_knownEvents[i]]);
-      apr_table_addn(eTable, buf1, buf2);
+      apr_table_add(eTable, buf1, buf2);
       u->qos_cc->eventLast[m_knownEvents[i]] = 0;
       i++;
     }
