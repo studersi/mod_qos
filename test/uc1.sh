@@ -414,7 +414,7 @@ ERRORS=`expr $ERRORS + $RC`
 sleep 1
 
 sleep 3
-../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1status -D uc1z 2>/dev/null 1>/dev/null
+../httpd/httpd -d `pwd` -f conf/uc1.conf -D uc1status -D uc1z -D status 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UC1_QS_Status_2.htt
 RC=$?
