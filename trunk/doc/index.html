@@ -1849,10 +1849,14 @@ SetEnvIf     Request_URI /app/start.html          <a href="#QS_Block">QS_Block</
 <a name="errorlog"></a>
 <h3>Error Log</h3>
 <p>
-mod_qos writes <a href="MESSAGES.txt">messages</a> to Apache's error log when enforcing a rule. Each 
-error messages is prefixed by an id: <code>mod_qos(&lt;number&gt;)</code>. These 
-error codes (number only) are also written to the error notes in order 
-to be processed within error pages using <a href="http://httpd.apache.org/docs/2.2/howto/ssi.html">server-side includes <img src="images/link.png"/></a> (SSI).
+mod_qos writes <a href="MESSAGES.txt">messages</a> to Apache's error log when 
+detecting a rule violation. Each error message is prefixed by an id: 
+<code>mod_qos(&lt;number&gt;)</code>. These error codes (number only) 
+are also written to the error notes (Apache's <code>error-notes</code> note 
+as well as the <code>QS_ErrorNotes</code> variable) in order to be 
+processed within error pages using 
+<a href="http://httpd.apache.org/docs/2.2/howto/ssi.html">server-side includes <img src="images/link.png"/></a> 
+(SSI).
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
 <pre>
@@ -2024,11 +2028,15 @@ mod_qos features a handler showing the current connection and request status.
 </td></tr>
 </table>
 A machine-readable version of the status information is available when using 
-the request query string <code>auto</code>, e.g., <code>http://your.server.name/qos?auto</code>. 
-The page updates itself automatically every 10 seconds if you add the request 
-query string <code>refresh</code>, e.g., <code>http://your.server.name/qos?refresh</code>.<br>
-This view shows you also the error log event counters if you enable event 
-counting by setting <code>QS_EventCount on</code>.
+the request query string <code>auto</code>, e.g., 
+<code>http://your.server.name/qos?auto</code>. The page updates itself 
+automatically every 10 seconds if you add the request 
+query string <code>refresh</code>, e.g., 
+<code>http://your.server.name/qos?refresh</code>.<br>
+<a name="QS_EventCount"></a>
+This view also shows you the <a href="#errorlog">error log event</a> 
+counters if you enable event (errors and warnings) counting by 
+configuring <code>QS_EventCount on</code>.
 </p>
 <p>
 The status information is also provided on the server status page of 
