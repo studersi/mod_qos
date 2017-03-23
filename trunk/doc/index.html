@@ -93,7 +93,7 @@ Oversubscription of link capabilities due to many concurrent
 clients uploading or downloading data.
 </li>
 <li>
-Penetration of the web server by attackers (DoS).
+Penetration of the web server by attackers (DoS).<!-- line  is a MARKER -->
 </li>
 </ul>
 </p>
@@ -211,7 +211,7 @@ reverse <a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy.html">proxy <img
 server.<br><br>
 Just copy the module into the <code>modules</code> directory of the Apache 
 server's source code and compile it using the following commands (all 
-examples are using Apache 2.2.27 and mod_qos 0.00):
+examples are using Apache 2.2.27 and mod_qos 0.00):<!-- 0.00 is a MARKER -->
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
 <pre>
@@ -1089,7 +1089,7 @@ by the <a href="#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> directi
 which are closed even no HTTP request has been received. <br>
 <small>Note: The <code>NullConnection</code> event may happen silently (no log 
 message) expect when using <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a> debug</code>. 
-The parameter may be used to defend against SSL DoS attacks. 
+The parameter may be used to defend against SSL DoS attacks. <!-- "defend against SSL DoS attacks" is a MARKER -->
 Please pay attention to the fact that unused <i>speculative TCP pre-connections</i> of 
 browsers may unintentionally cause this event as well.</small></li>
 <li><a name="BrokenConnection"></a>
@@ -2364,6 +2364,12 @@ SetEnvIf                 Request_URI ^/wp-login.php LimitLogin
 </pre>
 </td></tr>
 </table>
+<small>
+Note: Multiple users may share an IP addresses which might cause false 
+positives. You might avoid this by decrementing the counter on successful 
+user authentication / login, e.g. by setting the variable 
+<code><a href="#_Decrement">LimitLogin_Decrement=1</a></code>.
+</small>
 </p>
 
 <a name="ddos"></a>
