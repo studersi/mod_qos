@@ -21,3 +21,8 @@
 
  Please refer to ./doc/index.html for further information.
 
+ Directories in this archive:
+  apache2/ The source code of the module (mod_qos.c).
+  doc/     Contains the documentation (HTML).
+  tools/   Source code of several supplement tools incl. their
+           man pages.
