@@ -159,11 +159,18 @@ Prefers known IP addresses when server runs out of free TCP connections.
 </li>
 </ul>
 </p>
-<p>
+<hr>
+</td></tr>
+<tr><td>&nbsp;</td><td style="background-color: #E2EDE2">
+<p align="center">
+<br>
 mod_qos is an open source software licensed under the 
-<a href="LICENSE.txt">GNU General Public License</a>. Downloads are handled by 
-<a href="http://sourceforge.net/projects/mod-qos/">SourceForge.net</a>.
+<a href="LICENSE.txt">GNU General Public License</a>. You can download the latest release at 
+<a href="https://sourceforge.net/projects/mod-qos/files/">SourceForge.net</a>.
+<br><br>
 </p>
+</td></tr>
+<tr><td>&nbsp;</td><td>
 <hr>
 <p>
 More information about mod_qos:
@@ -211,13 +218,13 @@ reverse <a href="http://httpd.apache.org/docs/2.2/mod/mod_proxy.html">proxy <img
 server.<br><br>
 Just copy the module into the <code>modules</code> directory of the Apache 
 server's source code and compile it using the following commands (all 
-examples are using Apache 2.2.27 and mod_qos 0.00):
+examples are using Apache 2.2.31 and mod_qos 0.00):
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
 <pre>
-tar xfz httpd-2.2.27.tar.gz
+tar xfz httpd-2.2.31.tar.gz
 tar xfz mod_qos-0.00-src.tar.gz
-ln -s httpd-2.2.27 httpd
+ln -s httpd-2.2.31 httpd
 cd httpd
 mkdir modules/qos
 cp ../mod_qos-0.00/apache2/* modules/qos
@@ -2034,9 +2041,11 @@ automatically every 10 seconds if you add the request
 query string <code>refresh</code>, e.g., 
 <code>http://your.server.name/qos?refresh</code>.<br>
 <a name="QS_EventCount"></a>
-This view also shows you the <a href="#errorlog">error log event</a> 
+<small>Note: This view also shows you the <a href="#errorlog">error log event</a> 
 counters if you enable event (errors and warnings) counting by 
-configuring <code>QS_EventCount on</code>.
+configuring <code>QS_EventCount on</code> and are using any 
+<a href="#clientlevelcontrol">client level limitation</a> using 
+<code>QS_Client*</code> directives.</small>
 </p>
 <p>
 The status information is also provided on the server status page of 
