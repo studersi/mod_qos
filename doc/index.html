@@ -285,12 +285,12 @@ make
 </pre>
 </td></tr>
 </table>
-<small>Note: 
+<small><i>Note: 
 If you have a different version of <code>aclocal</code> or 
 <code>automake</code> on your system (you get a message like 
 "aclocal-1.11 is missing on your system"), try to execute 
 <code>aclocal</code> manually and execute <code>make</code> again.
-</small>
+</i></small>
 </p>
 
 <a name="source"></a>
@@ -322,6 +322,7 @@ into a permissive mode where rule violations are logged only but no
 actions are applied to requests or connections to enforce a rule. 
 This may be used for test purposes.
 </p>
+
 <p>
 <a name="requestlevelcontrol"></a>
 <h3>Request Level Control</h3>
@@ -624,12 +625,12 @@ The following table shows if a rules may be deactivated for VIPs:
 <tr><td>QS_SrvSerialize</td><td>no</td></tr>
 <tr><td>&nbsp;</td><td>&nbsp;</td></tr>
 </table>
-<small>Notes:<br>
+<small><i>Notes:<br>
 &nbsp;&nbsp;Directives marked by "*" allow you to disable VIP support.<br>
 &nbsp;&nbsp;Event based rules (e.g., <a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>) may evaluate the 
 <a href="#QS_VipRequest">QS_VipRequest</a> and 
 <a href="#QS_IsVipRequest">QS_IsVipRequest</a> variables to decide 
-if the rule should be applied.</small>
+if the rule should be applied.</i></small>
 
 <a name="variables"></a>
 <h3>Variables</h3>
@@ -783,8 +784,8 @@ when using either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>,
 <code><a href="#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a></code>, or 
 <code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> 
 directive. <br>
-<small>Note: value is calulcated when the client establishes the connection 
-and remains the same for all HTTP requests performed on this connection.</small>
+<small><i>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.</i></small>
 </li>
 <li>
 <a name="QS_AllConn"></a>
@@ -795,8 +796,8 @@ when using either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>,
 <code><a href="#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a></code>, or 
 <code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> 
 directive. <br>
-<small>Note: value is calulcated when the client establishes the connection 
-and remains the same for all HTTP requests performed on this connection.</small>
+<small><i>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.</i></small>
 </li>
 <li>
 <a name="QS_IPConn"></a>
@@ -804,8 +805,8 @@ and remains the same for all HTTP requests performed on this connection.</small>
 Number of IP connections open from the current IP address. Variable is 
 available when using the <code><a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a></code> 
 directive. <br>
-<small>Note: value is calulcated when the client establishes the connection 
-and remains the same for all HTTP requests performed on this connection.</small>
+<small><i>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.</i></small>
 </li>
 <li>
 <a name="QS_ClientLowPrio"></a>
@@ -844,10 +845,10 @@ that has occured during a request.
 <code>QS_Country</code><br>
 ISO 3166 country code of client IPv4 address. Only available if the 
 <a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.<br>
-<small>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
+<small><i>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
 directive to override the client's IP address based on the value within the defined 
 HTTP request header (e.g., X-Forwarded-For) instead of taking the IP address of 
-the client which has opened the TCP connection.</small>
+the client which has opened the TCP connection.</i></small>
 </li>
 <!--<li>
 <code>QS_RuleId</code><br>
@@ -979,9 +980,9 @@ concurrent requests.
 Defines the maximum number of events allowed within the defined time. Requests 
 are denied when reaching this limitation for the specified time (blocked at 
 request level).<br>
-<small>Note: The current counter value is propagated to the process 
+<small><i>Note: The current counter value is propagated to the process 
 environment within the variable 
-<code>&lt;env-variable&gt;_Counter</code>.</small>
+<code>&lt;env-variable&gt;_Counter</code>.</i></small>
 </li>
 </ul>
 Mulpiple built-in directives may be used to set or detect events (additional
@@ -1094,17 +1095,17 @@ by the <a href="#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> directi
 <li><a name="NullConnection"></a>
 <code>NullConnection</code> detects connections 
 which are closed even no HTTP request has been received. <br>
-<small>Note: The <code>NullConnection</code> event may happen silently (no log 
+<small><i>Note: The <code>NullConnection</code> event may happen silently (no log 
 message) expect when using <code><a href="http://httpd.apache.org/docs/2.2/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a> debug</code>. 
 The parameter may be used to defend against SSL DoS attacks. <!-- "defend against SSL DoS attacks" is a MARKER -->
-Please pay attention to the fact that unused <i>speculative TCP pre-connections</i> of 
-browsers may unintentionally cause this event as well.</small></li>
+Please pay attention to the fact that unused speculative TCP pre-connections of 
+browsers may unintentionally cause this event as well.</i></small></li>
 <li><a name="BrokenConnection"></a>
 <code>BrokenConnection</code> may be used 
 to mark clients aborting the TCP connection before reading the whole HTTP 
 response.<br>
-<small>Note: Connections may also be aborted by mod_qos if client reads 
-the response too slow.</small></li>
+<small><i>Note: Connections may also be aborted by mod_qos if client reads 
+the response too slow.</i></small></li>
 </ul>
 </li>
 <li>
@@ -1471,16 +1472,19 @@ any other resource not covered by a milestone in between requests to milestones)
 <ul>
 <li>
 <code>QS_MileStone 'log'|'deny' &lt;pattern&gt; [&lt;thinktime&gt;]</code><br>
-Defines request line patterns a client must access in the defined order as they are defined in the 
-configuration file. The optional 'thinktime' parameter defines the minimal 
-elapse time (in seconds) between two milestones. Milestones are defined on a per server basis, outside 
+Defines request line patterns a client must access in the defined order as
+they are defined in the configuration file. The optional 'thinktime' parameter
+defines the minimal elapse time (in seconds) between two milestones.
+Milestones are defined on a per server basis, outside
 <a href="http://httpd.apache.org/docs/2.2/mod/core.html.en#location">location <img src="images/link.png"/></a>. 
-Access to milestones is tracked by a dedicated <a href="#QS_SessionKey">session cookie</a>.
+Access to milestones is tracked by a dedicated
+<a href="#QS_SessionKey">session cookie</a> (QSSCD).
 </li>
 <li>
 <a name="QS_MileStoneTimeout"></a>
 <code>QS_MileStoneTimeout &lt;seconds&gt;</code><br>
-Defines the time in seconds within which a client must reach the next milestone. Default are 3600 seconds.
+Defines the time in seconds within which a client must reach the next
+milestone. Default are 3600 seconds.
 </li>
 </ul>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -1489,7 +1493,7 @@ Sample configuration:<br>
 <pre>
 # four milestones:
 # 1) client must start with /app/index.html
-# 2) and then read some images
+# 2) and then read some images (e.g. media used within the first page)
 # 3) before posting data to /app/register
 # 4) afterwards, the user may download zip files
 <a href="#QS_MileStone">QS_MileStone</a>          deny       "^GET /app/index.html"
@@ -1500,6 +1504,7 @@ Sample configuration:<br>
 </td></tr>
 </table>
 </p>
+
 <a name="connectionlevelcontrol"></a>
 <h3>Connection Level Control</h3>
 <p>
@@ -1609,9 +1614,9 @@ Ensures that not more than one request having the
 <a href="#QS_SrvSerialize_var"><code>QS_SrvSerialize</code></a> 
 variable set is processed at the same time by serializing them 
 (process one request after each other). Default is "off".<br>
-<small>Note: Maximum wait time for a request is defined by the 
+<small><i>Note: Maximum wait time for a request is defined by the 
 optional timeout parameter (in seconds). The default is 300 
-seconds.</small>
+seconds.</i></small>
 </li>
 <li>
 Throttling the download bandwidth: 
@@ -1646,6 +1651,7 @@ Sample configuration:<br>
 </td></tr>
 </table>
 </p>
+
 <a name="clientlevelcontrol"></a>
 <h3>Client Level Control</h3>
 <p>
@@ -1701,7 +1707,7 @@ Defines the maximum number of requests having the defined environment variables
 (<code><a href="#QS_Limit">QS_Limit</a></code> by default) set allowed within 
 the defined time (default is 600 seconds). Requests from client IP's reaching 
 this limitation are denied for the specified time (blocked at request level). <br/>
-<small>Notes:
+<small><i>Notes:
 <ul>
 <li>The value of the variable defines the penalty points by which the counters 
 are increased. Default (empty or non-numeric value) is 1 (increment per request).</li>
@@ -1732,14 +1738,14 @@ suffixed by <code><a href="#_Decrement">_Decrement</a></code>, e.g. <code>QS_Lim
 <a href="#webconsole">console</a> to view other variables alternatively).</li>
 <li>See also <a href="#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></a> 
 if you want to enforce a rule under certain conditions only.
-</ul></small>
+</ul></i></small>
 </li>
 <li>
 <a name="QS_ClientSerialize"></a>
 <code>QS_ClientSerialize</code><br>
 Serializes requests having the <a href="#QS_Serialize"><code>QS_Serialize</code></a> 
 variable set if they are comming from the same IP address.<br>
-<small>Notes:
+<small><i>Notes:
 <ul>
 <li>You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 override the client's IP address based on the value within the defined HTTP request 
@@ -1748,7 +1754,7 @@ the TCP connection.
 </li>
 <li>Maximum wait time for a request is 5 minutes.
 </li>
-</ul></small>
+</ul></i></small>
 </li>
 <li>
 <a name="QS_ClientPrefer"></a>
@@ -1817,10 +1823,10 @@ Double quoted ISO 3166 country code, e.g. "FR" for France.
 </ul>
 The <a href="#QS_Country"><code>QS_Country</code></a> variable contains 
 the country code for the client's IP address. <br>
-<small>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+<small><i>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 override the client's IP address based on the value within the defined HTTP request 
 header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
-the TCP connection.</small>
+the TCP connection.</i></small>
 
 </li>
 <li>
@@ -1952,7 +1958,7 @@ the Set-Cookie header.</li>
 session) cookie shall be creaed which won't be stored by the browser 
 permanently.</li>
 </ul>
-<small>
+<small><i>
 Notes:
 <ul>
 <li><code>QS_UserTrackingCookieName</code> ignores the 
@@ -1961,7 +1967,7 @@ directive.</li>
 <li>The cookie is secured by the <code><a href="#QS_SessionKey">QS_SessionKey</a></code>.</li>
 </ul>
 </li>
-</small>
+</i></small>
 <li>
 <a name="UNIQUE_ID"></a>
 <code>UNIQUE_ID</code> <br> This is a unique request id generated by 
@@ -1987,6 +1993,7 @@ LogFormat "%h %u %t \"%r\" %>s %b %T \"%{content-length}i\" %k \"%{User-Agent}i\
 </td></tr>
 </table>
 </p>
+
 <a name="requeststatistics"></a>
 <h3>Request Statistics</h3>
 <p>
@@ -2041,18 +2048,18 @@ automatically every 10 seconds if you add the request
 query string <code>refresh</code>, e.g., 
 <code>http://your.server.name/qos?refresh</code>.<br>
 <a name="QS_EventCount"></a>
-<small>Note: This view also shows you the <a href="#errorlog">error log event</a> 
+<small><i>Note: This view also shows you the <a href="#errorlog">error log event</a> 
 counters if you enable event (errors and warnings) counting by 
 configuring <code>QS_EventCount on</code> and are using any 
 <a href="#clientlevelcontrol">client level limitation</a> using 
-<code>QS_Client*</code> directives.</small>
+<code>QS_Client*</code> directives.</i></small>
 </p>
 <p>
 The status information is also provided on the server status page of 
 <a href="http://httpd.apache.org/docs/2.2/mod/mod_status.html">mod_status <img src="images/link.png"/></a>.<br>
-<small>Note: compile mod_qos with the preprocessor definition 
+<small><i>Note: compile mod_qos with the preprocessor definition 
 <code>-DQS_NO_STATUS_HOOK</code> to disable its regisration to 
-the status page rendered by mod_status.</small>
+the status page rendered by mod_status.</i></small>
 </p>
 <p>
 <a name="QS_DisableHandler"></a>
@@ -2067,6 +2074,7 @@ status log message (<i>mod_qos(200)</i>) written to the Apache server's
 <code>ErrorLog</code>. This message contains information about the server's 
 scoreboard. The message is written once every minute.
 </p>
+
 <a name="webconsole"></a>
 <h3>Web Console</h3>
 <p>
@@ -2374,11 +2382,11 @@ SetEnvIf                 Request_URI ^/wp-login.php LimitLogin
 </td></tr>
 </table>
 <small>
-Note: Multiple users may share an IP addresses which might cause false 
+<i>Note: Multiple users may share an IP addresses which might cause false 
 positives. You might avoid this by decrementing the counter on successful 
 user authentication / login, e.g. by setting the variable 
 <code><a href="#_Decrement">LimitLogin_Decrement=1</a></code>.
-</small>
+</i></small>
 </p>
 
 <a name="ddos"></a>
