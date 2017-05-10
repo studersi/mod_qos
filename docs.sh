@@ -13,7 +13,8 @@ fi
 strings ./httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | sort -u | sort -n | grep -v -e "mod_qos()" -e "mod_qos(000)" > doc/MESSAGES.txt
 
 sed <doc/index.html >doc/dist/index.html \
-    -e "s:(DoS):(<a href='dos.html'>DoS</a>):g" \
+    -e "s:Penetration of the web server by attackers (DoS):<a href='dos.html'>Penetration of the web server by attackers (DoS)</a>:g" \
+    -e "s:defend against SSL DoS attacks:<a href='dos.html#NullConnection'>defend against SSL DoS attacks</a>:g" \
     -e "s/0\.00/${VERSION}/g" \
     -e "s:BUILD START -->::g" \
     -e "s:<!-- BUILD END::g"
