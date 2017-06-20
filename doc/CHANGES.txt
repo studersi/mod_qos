@@ -33,7 +33,7 @@ Version 11.36
 Version 11.35
 
  - Fixed: potential segfault by mod_ssl in ssl_io_filter_disable()
-   when closing a connection after a failed SSL handshake.
+   when closing a connection after a failed SSL handshake (CVE-2017-3169).
 
 Version 11.34
 
