@@ -1,34 +1,30 @@
 /**
  * Utilities for the quality of service module mod_qos.
  *
- * Log data signing tool to ensure data integrity.
+ * qssign.c: Log data signing tool to ensure data integrity.
  *
  * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
- * Copyright (C) 2010-2017 Pascal Buchbinder
+ * Copyright (C) 2017 Pascal Buchbinder
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- * This program is released under the GPL with the additional
- * exemption that compiling, linking, and/or using OpenSSL is allowed.
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
- * MA 02110-1301, USA.
- *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.48 2017-01-11 06:23:11 pbuchbinder Exp $";
+static const char revision[] = "$Id: qssign.c,v 1.49 2017-06-29 05:24:33 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <unistd.h>

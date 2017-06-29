@@ -1,3 +1,7 @@
+Version 11.40
+
+ - mod_qos and all utilities are now distributed under the Apache License.
+
 Version 11.39
 
  - New directive QS_EventCount to enable an error message event counter
