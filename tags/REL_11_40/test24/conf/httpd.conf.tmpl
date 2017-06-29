@@ -1,0 +1,294 @@
+
+ServerRoot     ##ROOT##
+User           ##USR##
+Group          users
+ServerName     127.0.0.1
+
+ServerAdmin    ##USR##@example.com
+DocumentRoot   ##ROOT##/htdocs
+ErrorLog       logs/error_log
+LogLevel       warn
+<IfDefine debug>
+LogLevel       debug
+</IfDefine>
+
+LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T cr=%{mod_qos_cr}e ev=%{mod_qos_ev}e con=%{mod_qos_con}e id=%{UNIQUE_ID}e sp=%{qs_special}e cl=%{content-length}i uid=%{mod_qos_user_id}e k=%k country=%{QS_Country}e srcConn=%{QS_SrvConn}e allConn=%{QS_AllConn}e #%P"
+TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
+CustomLog      "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qslog.csv -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o"
+
+TypesConfig    conf/mime.types
+
+PidFile        logs/apache.pid
+StartServers             1
+MinSpareThreads         25
+MaxSpareThreads         75 
+ThreadsPerChild         25
+MaxRequestWorkers      150
+MaxConnectionsPerChild   0
+
+LoadModule     setenvifplus_module ##ROOT##/../install/modules/.libs/mod_setenvifplus.so
+
+Options        FollowSymLinks Indexes Includes
+
+Timeout                 30
+KeepAlive               on
+MaxKeepAliveRequests   100
+KeepAliveTimeout         5
+RequestReadTimeout       header=0 body=0
+
+SSLProtocol              all -SSLv2 -SSLv3
+SSLCipherSuite           EDH:EECDH:!aNULL:!eNULL:!LOW:!MD5:!EXP:!ADH:!DSS:!ECDSA:!3DES:!RC4:!SEED:!CAMELLIA+SHA1
+#SSLCipherSuite           ALL:!DH
+SSLSessionCacheTimeout   864000
+SSLRandomSeed startup    builtin
+#SSLRandomSeed startup    file:/dev/random
+#SSLRandomSeed startup    file:/dev/urandom 1024
+
+<IfDefine real_ip>
+QS_EnableInternalIPSimulation off
+</IfDefine>
+
+<IfDefine status>
+QS_Status on
+</IfDefine>
+
+<IfDefine !pathwhitelist>
+QS_ErrorResponseCode   503
+</IfDefine>
+
+QS_ClientEventBlockCount 20 30
+QS_SetEnvIfStatus  400 QS_Block
+<IfDefine !h2>
+QS_SetEnvIfStatus  BrokenConnection QS_Block
+</IfDefine>
+
+SetEnvIfPlus Request_Query QS_Set_DSCP=([0-9]+) QS_Set_DSCP=$1
+
+QS_SrvMinDataRate  120 3000 10
+
+<IfDefine QS_SrvMinDataRateIgnoreVIP>
+   QS_SrvMinDataRateIgnoreVIP on
+</IfDefine>
+
+QS_ClientEventLimitCount  3 10
+QS_SetEnvIfStatus  414 QS_Limit=1
+
+<IfDefine serialize>
+QS_ClientSerialize
+QS_ClientIpFromHeader X-Frwd-Address
+</IfDefine>
+
+<IfDefine usertrack_force>
+QS_UserTrackingCookieName _ckUT /errorpages/cookie.html
+</IfDefine>
+
+Listen         ##QS_PORT_BASE##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE##>
+   ServerName   127.0.0.1
+
+<IfDefine h2>
+   Protocols h2c http/1.1
+</IfDefine>
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /qos !
+   ProxyPass                  /status !
+   ProxyPass                  /info !
+   ProxyPass                  /error-pages !
+   ProxyPass                  /limitrs !
+   ProxyPass                  /limitbs !
+   ProxyPass                  /cgi-local !
+
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
+
+   ProxyPass                  /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi retry=0
+   ProxyPassReverse           /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi
+   ProxyPass                  /cgi2 http://127.0.0.1:##QS_PORT_BASE1##/cgi2 retry=0
+   ProxyPassReverse           /cgi2 http://127.0.0.1:##QS_PORT_BASE1##/cgi2
+   #ProxyPass                  /limitbs http://127.0.0.1:##QS_PORT_BASE1##/limitbs retry=0
+   #ProxyPassReverse           /limitbs http://127.0.0.1:##QS_PORT_BASE1##/limitbs
+
+   AddType                    text/html .shtml
+   AddOutputFilter            INCLUDES .shtml
+
+<IfDefine !pathwhitelist>
+   QS_ErrorPage               /error-docs/error.shtml
+</IfDefine>
+
+   QS_SrvSerialize            on
+   SetEnvIf                   User-Agent serializeme QS_SrvSerialize=1
+   SetEnvIf                   User-Agent serialClient QS_Serialize=1
+
+   SetEnvIfPlus               User-Agent reDirectMe=(/errorpages/error.html) QS_RI=$1
+   QS_RedirectIf              QS_RI ([a-z0-9_/.-]+) $1
+
+   SetEnvIfPlus               Request_Query DecrementLimitCounter=([0-9]+) QS_Limit_Decrement=$1
+
+   QS_SrvMaxConnClose         25
+   QS_SrvMaxConnPerIP         30
+   QS_SrvMaxConn              45
+<IfDefine QS_SrvMaxConnPerIPIgnoreVIP>
+   QS_SrvMaxConnPerIPIgnoreVIP on
+</IfDefine>
+
+   SetEnvIf User-Agent        limitme ALIMIT   
+   QS_EventLimitCount         ALIMIT 3 2
+
+   SetEnvIf User-Agent        limipersec limit=a
+   QS_EventPerSecLimit        limit 10
+
+   QS_VipHeaderName           X-Login        drop
+   QS_VipIPHeaderName         X-VIP-IP       drop
+
+   QS_LocRequestLimitMatch       ^/htt/limit2/.*   2
+   QS_LocRequestPerSecLimitMatch ^/limitrs/.*     10
+   QS_LocKBytesPerSecLimitMatch  ^/limitbs/.*    500
+   QS_LocRequestLimitMatch       ^/index.html    200
+   QS_LocRequestLimitMatch       ^/cgi2/.*   2
+   SetEnvIf                     User-Agent delayme QS_Delay=100
+   SetEnvIf                     User-Agent delay1000 QS_Delay=1000
+   SetEnvIf                     User-Agent delay2100 QS_Delay=2100
+   SetEnvIf                     User-Agent keepAliveTimeout10 QS_KeepAliveTimeout=10
+   SetEnvIf                     User-Agent maxKeepAliveReq150  QS_MaxKeepAliveRequests=150
+   SetEnvIf                     User-Agent QS_Timeout40 QS_Timeout=40
+<IfDefine milestone302>
+<Location />
+   RedirectMatch                ^/index.html http://127.0.0.1:##QS_PORT_BASE##/htt/milestone/index.html
+   #RewriteEngine                on
+   #RewriteCond                  %{REQUEST_URI} ^/index.html$
+   #RewriteRule                  ^(.*)? /htt/milestone/index.html [NC,R=302]
+</Location>
+   QS_MileStone                 deny "^GET /index.html"
+   QS_MileStone                 deny "^POST /htt/milestone/register*"
+   QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
+</IfDefine>
+<IfDefine !milestone302>
+   QS_MileStone                 deny "^GET /htt/milestone/index.html"
+   QS_MileStone                 deny "^POST /htt/milestone/register*"
+   QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
+</IfDefine>
+
+   Include conf/demo.conf
+
+<IfDefine pathwhitelist>
+   <Location /demo/>
+     SetEnvIfPlus Request_URI ^/demo/index\.html$ PATHALLOWED=1
+     SetEnvIfPlus Request_URI ^/demo/a/[0-9]\.jpg$ PATHALLOWED=1
+     QS_DenyPath  +pathDeny01 deny ^/demo/a/2\.jpg$
+     QS_DenyEvent +pathwhitelist deny !PATHALLOWED
+   </Location>
+</IfDefine>
+
+  ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
+  <Location /cgi-local>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
+   
+   <Location /ratelimit>
+      SetOutputFilter RATE_LIMIT
+      SetEnv rate-limit 500
+   </Location>
+
+   <Location /htt/limit>
+      QS_SetEnvIfResBody "Login Failed" QS_Limit
+   </Location>
+
+   <Location /htt/filter>
+     QS_DenyRequestLine +printable deny [\x00-\x1f\xf7-\xff]
+   </Location>
+   <Location /qos>
+      SetHandler qos-viewer
+   </Location>
+   <Location /status>
+      SetHandler server-status
+      QS_DenyPath +d1 deny /status/deny
+      QS_DenyQuery +q1 deny denyme
+   </Location>
+   <Location /info>
+      SetHandler server-info
+   </Location>
+
+</VirtualHost>
+
+Listen         ##QS_PORT_BASE1##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE1##>
+  ServerName   127.0.0.1
+
+  TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 21600 -f"
+
+  QS_SrvDataRateOff   off
+
+  ScriptAlias /cgi2/ ##ROOT##/htdocs/cgi/
+  ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
+  <Location /cgi>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
+
+</VirtualHost>
+
+Listen         ##QS_PORT_BASE2##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE2##>
+   ServerName   127.0.0.1
+
+<IfDefine h2>
+   Protocols h2 http/1.1
+</IfDefine>
+
+<IfDefine bfs>
+  QS_SrvMaxConnPerIP         10
+  ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
+  <Location /cgi-local>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
+</IfDefine>
+
+   SSLCertificateKeyFile  ../test/ssl/key.pem
+   SSLCertificateFile     ../test/ssl/cert.pem
+   SSLVerifyDepth         10
+   SSLEngine              on
+
+   Include conf/demo.conf
+
+   QS_LocRequestLimitMatch       ^/cgi2/.*   2
+
+   ProxyPass                  /cgi2 http://127.0.0.1:##QS_PORT_BASE1##/cgi2 retry=0
+   ProxyPassReverse           /cgi2 http://127.0.0.1:##QS_PORT_BASE1##/cgi2
+
+</VirtualHost>
+
+Listen                  [::1]:##QS_PORT_BASE10##
+<VirtualHost [::1]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
+
+
+   QS_LocRequestLimit         /htt/limit2      2
+
+</VirtualHost>
+
+Listen                 ##QS_PORT_BASE3##
+<VirtualHost 127.0.0.1:##QS_PORT_BASE3##>
+   ServerName                 127.0.0.1
+   ProxyRequests On
+   ProxyVia On
+
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+   
+</VirtualHost>
