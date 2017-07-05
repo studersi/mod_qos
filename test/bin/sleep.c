@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
+#include <ctype.h>
+
 
 static void usage() {
   printf("Usage: sleep <milliseconds>\n");

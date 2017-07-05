@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.76 2017-06-27 19:24:21 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.77 2017-07-05 05:29:22 pbuchbinder Exp $
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #
@@ -19,8 +19,14 @@ MPM=worker
 
 echo "build Apache $APACHE_VER ($MPM)"
 if [ ! -d httpd-${APACHE_VER}-${MPM} ]; then
-  gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
+    gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
+    echo "apply security patches"
+    for E in `(cd 3thrdparty/patch22/; find . -name "*patch")`; do
+	srcFile=`echo $E | sed "s/.patch//"`
+	patch httpd-${APACHE_VER}/$srcFile  3thrdparty/patch22/$E 
+    done
 fi
+
 rm -f httpd
 rm -rf httpd-${APACHE_VER}-${MPM}
 mv httpd-${APACHE_VER} httpd-${APACHE_VER}-${MPM}
