@@ -1,3 +1,8 @@
+Version
+
+ - qsrotate supports signal USR1 to perform a file rotation manually
+   at any time.
+
 Version 11.40
 
  - mod_qos and all utilities are now distributed under the Apache License.

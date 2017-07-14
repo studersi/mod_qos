@@ -1,4 +1,3 @@
-
 /**
  * Utilities for the quality of service module mod_qos.
  *
@@ -26,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.33 2017-06-29 05:24:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.34 2017-07-14 14:16:45 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -149,9 +148,11 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH NOTE\n");
   } else {
-    printf("Note:\n");
+    printf("Notes:\n");
   }
-  qs_man_print(man, "  Each %s instance must use an individual file.\n", cmd);
+  qs_man_println(man, " - Each %s instance must use an individual file.\n", cmd);
+  qs_man_println(man, " - You may trigger a file rotation manually by sending the signal USR1\n");
+  qs_man_print(man, "   to the process.\n");
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
@@ -315,6 +316,11 @@ static void *forcedRotationThread(void *argv) {
   return NULL;
 }
 
+void handle_signal1(int signal) {
+  rotate(m_cmd, get_now(), m_file_name, &m_messages);
+  return;
+}
+
 int main(int argc, char **argv) {
   char *username = NULL;
   int rc;
@@ -326,9 +332,13 @@ int main(int argc, char **argv) {
 
   pthread_attr_t *tha = NULL;
   pthread_t tid;
-
+  struct sigaction sa;
+ 
   char *cmd = strrchr(argv[0], '/');
 
+  sa.sa_handler = &handle_signal1;
+  sa.sa_flags = SA_RESTART;
+   
   if(cmd == NULL) {
     cmd = argv[0];
   } else {
@@ -395,6 +405,7 @@ int main(int argc, char **argv) {
     m_counter = st.st_size;
   }
 
+  sigaction(SIGUSR1, &sa, NULL);
   qs_setuid(username, m_cmd);
   
   /* set next rotation time */
