@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: qsrotate.sh,v 2.5 2014-09-11 06:12:09 pbuchbinder Exp $
+# $Id: qsrotate.sh,v 2.6 2017-07-14 14:36:16 pbuchbinder Exp $
 
 cd `dirname $0`
 PFX=[`basename $0`]
@@ -61,6 +61,21 @@ for LINE in `seq 3`; do
 	ERROR=1
     fi
 done
+
+# 4 SIGUST1
+rm -f usr1.log*
+for E in `seq 3`; do date; sleep 1; done | ../util/src/qsrotate -o usr1.log &
+qpid=`ps -ef | grep usr1.log | grep qsrotate | awk '{print $2}'`
+sleep 1
+kill -USR1 $qpid
+sleep 1
+if [ `ls -l usr1.log* | wc -l` -ne 2 ]; then
+    echo "$PFX FAILED, USR1"
+    ls -l usr1.log*
+    ERROR=1
+fi
+rm -f usr1.log*
+
 
 if [ $ERROR -ne 0 ]; then
     exit 1
