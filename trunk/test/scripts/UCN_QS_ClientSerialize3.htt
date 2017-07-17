@@ -51,7 +51,7 @@ _SLEEP 200
 _EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme 2\" 30[12] . s;"
 _EXEC tail -1 logs/access_log
 _EXPECT EXEC "mod_qos\(068\): QS_ClientSerialize exceeds limit of 5 minutes, c=127.0.0.2"
-_EXEC tail -1 logs/error_log
+_EXEC tail -2 logs/error_log
 
 _SLEEP 7000
 _REQ 127.0.0.1 $QS_PORT_BASE

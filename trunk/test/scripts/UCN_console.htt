@@ -1,5 +1,5 @@
 #
-# $Id: UCN_console.htt,v 1.13 2016-01-08 20:11:43 pbuchbinder Exp $
+# $Id: UCN_console.htt,v 1.14 2017-07-17 16:00:57 pbuchbinder Exp $
 #
 # QS_ClientIpFromHeader        Y-Forwarded-For
 # 
@@ -385,7 +385,8 @@ _CLOSE
 # inclimit
 _REQ localhost $QS_PORT_BASE
 __GET /console?action=inclimit&address=194.31.217.21&event=QS_Limit HTTP/1.1
-__Host: httest limit 1
+__Host: httest
+__Req: limit 1
 __Y-Forwarded-For: 127.0.0.1
 __
 _EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=1/5"
@@ -394,7 +395,8 @@ _CLOSE
 
 _REQ localhost $QS_PORT_BASE
 __GET /console?address=194.31.217.21&action=inclimit&event=QS_Limit HTTP/1.1
-__Host: httest limit 2
+__Host: httest
+__Req: limit 2
 __Y-Forwarded-For: 127.0.0.1
 __
 _EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=2/5"
@@ -403,7 +405,8 @@ _CLOSE
 
 _REQ localhost $QS_PORT_BASE
 __GET /console?address=194.31.217.21&action=inclimit&event=QS_Limit HTTP/1.1
-__Host: httest limit 3
+__Host: httest
+__Req: limit 3
 __Y-Forwarded-For: 127.0.0.1
 __
 _EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=3/5"
@@ -413,7 +416,8 @@ _CLOSE
 _SLEEP 1200
 _REQ localhost $QS_PORT_BASE
 __GET /console?address=194.31.217.21&action=inclimit&event=QS_Limit HTTP/1.1
-__Host: httest limit 4
+__Host: httest
+__Req: limit 4
 __Y-Forwarded-For: 127.0.0.1
 __
 _EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=4/[34]"
@@ -423,7 +427,8 @@ _CLOSE
 _SLEEP 6000
 _REQ localhost $QS_PORT_BASE
 __GET /console?action=inclimit&address=194.31.217.21&event=QS_Limit HTTP/1.1
-__Host: httest limit 0
+__Host: httest
+__Req: limit 0
 __Y-Forwarded-For: 127.0.0.1
 __
 _EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=1/5"

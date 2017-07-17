@@ -1,5 +1,7 @@
-Version
+Version 11.41
 
+ - Fixed: wrong default file size used by qsrotate.
+ 
  - qsrotate supports signal USR1 to perform a file rotation manually
    at any time.
 
