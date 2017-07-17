@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_7.htt,v 1.1 2010-04-22 17:02:49 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_7.htt,v 1.2 2017-07-17 16:00:57 pbuchbinder Exp $
 #
 
 INCLUDE scripts/ports
@@ -113,7 +113,7 @@ _WAIT
 _CLOSE
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in\)"
-_EXPECT EXEC "request failed: error reading the headers"
+#_EXPECT EXEC "request failed: error reading the headers"
 _EXEC tail -2 logs/error_log
 
 _REQ server1 SSL:$QS_PORT_BASE2

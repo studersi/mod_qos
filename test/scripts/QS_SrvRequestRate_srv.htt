@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_srv.htt,v 1.1 2011-03-16 20:48:34 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_srv.htt,v 1.2 2017-07-17 16:00:57 pbuchbinder Exp $
 #
 # test: disabled while waiting for server response
 #
@@ -34,7 +34,7 @@ _WAIT
 
 _CLOSE
 _EXPECT EXEC " mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in\)"
-_EXPECT EXEC "error reading the headers"
+#_EXPECT EXEC "error reading the headers"
 _EXEC tail -2 logs/error_log
 
 END

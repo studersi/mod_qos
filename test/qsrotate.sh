@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: qsrotate.sh,v 2.7 2017-07-16 20:41:05 pbuchbinder Exp $
+# $Id: qsrotate.sh,v 2.8 2017-07-17 16:00:57 pbuchbinder Exp $
 
 cd `dirname $0`
 PFX=[`basename $0`]
@@ -7,7 +7,7 @@ LOGFILE=`pwd`/qsrotate.log
 ERROR=0
 
 # log of application is rotated every 10 minutes, uses gzip and 4 generations
-# we keep 4 generations
+# we keep 4 generations (and we assume somebody has run all tests before)
 # qsrotate -o <access1_log> -z -g 4 -s 600 -f -b 536870912"
 FNR=`ls -l logs/| grep -c "access1_log.*gz"`
 if [ $FNR -ne 4 ]; then
