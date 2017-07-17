@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.34 2017-07-14 14:16:45 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.35 2017-07-17 08:42:35 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -397,7 +397,7 @@ int main(int argc, char **argv) {
   if(m_file_name == NULL) usage(m_cmd, 0);
   if(sizeLimit > 0 && sizeLimit < m_limit && sizeLimit >= (1024 * 1024)) {
     m_limit = sizeLimit;
-  } else if(sizeLimit < (1024 * 1024)) {
+  } else if(sizeLimit > 0 && sizeLimit < (1024 * 1024)) {
     m_limit = 1024 * 1024;
   }
 
