@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.276 2017-06-27 19:24:21 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.277 2017-07-18 05:37:39 pbuchbinder Exp $
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #
@@ -674,11 +674,11 @@ for E in $PSCR; do
 	echo "FAILED $E"
     fi
 done
-./htt.sh -se ./scripts/QS_UriParser.htt
-if [ $? -ne 0 ]; then
-    ERRORS=`expr $ERRORS + 1`
-    echo "FAILED QS_UriParser.htt"
-fi
+#./htt.sh -se ./scripts/QS_UriParser.htt
+#if [ $? -ne 0 ]; then
+#    ERRORS=`expr $ERRORS + 1`
+#    echo "FAILED QS_UriParser.htt"
+#fi
 ./run.sh -se ./scripts/Count.htt
 if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
