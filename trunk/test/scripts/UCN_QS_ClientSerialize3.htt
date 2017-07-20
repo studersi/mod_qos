@@ -1,4 +1,6 @@
-# 
+#
+# $Id: UCN_QS_ClientSerialize3.htt,v 1.5 2017-07-20 05:36:19 pbuchbinder Exp $
+#
 # QS_ClientIpFromHeader         Y-Forwarded-For
 # SetEnvIfPlus                  User-Agent serializeme QS_Serialize=yes
 # QS_ClientSerialize
@@ -7,6 +9,7 @@
 INCLUDE scripts/ports
 
 CLIENT
+
 _TIMEOUT 700000
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /cgi-local/sleep.cgi?s=305 HTTP/1.1
@@ -22,13 +25,15 @@ _SLEEP 200
 _EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=305 HTTP/1.1\" 200 5 \"serializeme 1\" 30[345] . -"
 _EXEC tail -1 logs/access_log
 
+_SLEEP 2000
+
 _REQ localhost $QS_PORT_BASE
 __GET /status?auto HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __User-Agent: verify
 __
-_EXPECT . "v;.*QS_LocRequestLimit;30\[/\]: 1$"
+_EXPECT . "QS_LocRequestLimit.* 1"
 _EXPECT . "200 OK"
 _WAIT
 
