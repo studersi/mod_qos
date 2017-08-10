@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.35 2017-07-17 08:42:35 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.36 2017-08-10 05:38:22 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -116,7 +116,7 @@ static void usage(char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -f\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Forced log rotation even no data is written.\n");
+  qs_man_print(man, "     Forced log rotation at the specified interval even no data is written.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -z\n");
   if(man) printf("\n");
