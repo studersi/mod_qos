@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: qsrotate.sh,v 2.8 2017-07-17 16:00:57 pbuchbinder Exp $
+# $Id: qsrotate.sh,v 2.9 2017-08-30 16:50:21 pbuchbinder Exp $
 
 cd `dirname $0`
 PFX=[`basename $0`]
@@ -82,6 +82,31 @@ if [ "`head -1 usr1.log`" != "$next" ]; then
     ERROR=1
 fi
 rm -f usr1.log*
+
+# line-by-line processing (incl. time stamp)
+rm -f d.log
+echo "msgA\nmsgB\nmsgC" |  ../util/src/qsrotate -d -o d.log
+if [ `egrep -c "^20..\-..\-.. ..:..:.. msgA$" d.log` -ne 1 ]; then
+    echo "$PFX FAILED, -d line 1"
+    cat d.log
+    ERROR=1
+fi
+if [ `egrep -c "^20..\-..\-.. ..:..:.. msgB$" d.log` -ne 1 ]; then
+    echo "$PFX FAILED, -d line 2"
+    cat d.log
+    ERROR=1
+fi
+if [ `egrep -c "^20..\-..\-.. ..:..:.. msgC$" d.log` -ne 1 ]; then
+    echo "$PFX FAILED, -d line 3"
+    cat d.log
+    ERROR=1
+fi
+if [ `wc -l d.log | awk '{print $1}'` -ne 3 ]; then
+    echo "$PFX FAILED, -d number of lines"
+    cat d.log
+    ERROR=1
+fi
+rm d.log
 
 if [ $ERROR -ne 0 ]; then
     exit 1

@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.36 2017-08-10 05:38:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.37 2017-08-30 16:50:21 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -51,6 +51,9 @@ static const char revision[] = "$Id: qsrotate.c,v 1.36 2017-08-10 05:38:22 pbuch
 
 #define HUGE_STR       1024
 
+//yyyy-mm-dd<sp>hh-mm-ss<sp>
+#define TME_STR_LEN    20
+
 /* global variables used by main and support thread */
 static int m_force_rotation = 0;
 static time_t m_tLogEnd = 0;
@@ -62,6 +65,8 @@ static long m_messages = 0;
 static char *m_cmd = NULL;
 static int m_compress = 0;
 static int m_stdout = 0;
+static int m_timestamp = 0;
+static char time_string[TME_STR_LEN];
 static long m_counter = 0;
 static long m_limit = 2147483648 - (128 * 1024);
 static int m_offset = 0;
@@ -82,7 +87,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -o <file> [-s <sec> [-t <hours>]] [-b <bytes>] [-f] [-z] [-g <num>] [-u <name>] [-p]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -o <file> [-s <sec> [-t <hours>]] [-b <bytes>] [-f] [-z] [-g <num>] [-u <name>] [-p] [-d]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -133,6 +138,9 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "  -p\n");
   if(man) printf("\n");
   qs_man_print(man, "     Writes data also to stdout (for piped logging).\n");
+  qs_man_print(man, "  -d\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Line-by-line data reading prefixing every line with a timestamp.\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
@@ -234,13 +242,20 @@ void sigchild(int signo) {
   }
 }
 
+void writeTimestamp() {
+  time_t tm = time(NULL);
+  struct tm *ptr = localtime(&tm);
+  strftime(time_string, TME_STR_LEN, "%Y-%m-%d %H:%M:%S ", ptr);
+  write(m_nLogFD, time_string, TME_STR_LEN);
+}
+
 /**
  * Rotates a file
  *
  * @param cmd Command name to be used in log messages
  * @param now
  * @param file_name Name of the file to rotate (rename)
- * @param messages Error message if rotation was not successful
+ * @param messages Number of lines/buffers which had been read
  */
 static void rotate(const char *cmd, time_t now,
 		   const char *file_name, long *messages) {
@@ -378,6 +393,9 @@ int main(int argc, char **argv) {
       m_compress = 1;
     } else if(strcmp(*argv,"-p") == 0) {
       m_stdout = 1;
+    } else if(strcmp(*argv,"-d") == 0) {
+      m_timestamp = 1;
+      memset(time_string, 32, TME_STR_LEN);
     } else if(strcmp(*argv,"-f") == 0) {
       m_force_rotation = 1;
     } else if(strcmp(*argv,"-h") == 0) {
@@ -425,42 +443,59 @@ int main(int argc, char **argv) {
 
   buf = calloc(1, MAX_LINE_BUFFER+1);
   for(;;) {
-    nRead = read(0, buf, MAX_LINE_BUFFER);
-    if(nRead == 0) exit(3);
-    if(nRead < 0) if(errno != EINTR) exit(4);
-    if(m_force_rotation) {
-      qs_csLock();
-    }
-    m_counter += nRead;
-    now = get_now();
-    /* write data if we have a file handle (else continue but drop log data,
-       re-try to open the file at next rotation time) */
-    if(m_nLogFD >= 0) {
-      do {
+    if(m_timestamp) {
+      // low perf line-by-line read
+      if(fgets(buf, MAX_LINE_BUFFER, stdin) == NULL) {
+	exit(3);
+      } else {
+	nRead = strlen(buf);
+	if(m_force_rotation) {
+	qs_csLock();                       // >@CTR1
+      }
+	m_counter += (nRead + TME_STR_LEN);
+	now = get_now();
+	writeTimestamp();
 	nWrite = write(m_nLogFD, buf, nRead);
-	if(m_stdout) {
-	  printf("%.*s", nRead, buf);
-	}
-      } while (nWrite < 0 && errno == EINTR);
-    }
-    if(nWrite != nRead) {
-      m_messages++;
-      if(m_nLogFD >= 0) {
-	char msg[HUGE_STR];
-	snprintf(msg, sizeof(msg), "ERROR while writing to file, %ld messages lost\n", m_messages);
-	/* error while writing data, try to delete the old file and continue ... */
-	rc = ftruncate(m_nLogFD, 0);
-	rc = write(m_nLogFD, msg, strlen(msg));
       }
     } else {
+      // normal/fast buffer read/process
+      nRead = read(0, buf, MAX_LINE_BUFFER);
+      if(nRead == 0) exit(3);
+      if(nRead < 0) if(errno != EINTR) exit(4);
+      if(m_force_rotation) {
+	qs_csLock();                         // >@CTR1
+      }
+      m_counter += nRead;
+      now = get_now();
+      /* write data if we have a file handle (else continue but drop log data,
+	 re-try to open the file at next rotation time) */
+      if(m_nLogFD >= 0) {
+	do {
+	  nWrite = write(m_nLogFD, buf, nRead);
+	  if(m_stdout) {
+	    printf("%.*s", nRead, buf);
+	  }
+	} while (nWrite < 0 && errno == EINTR);
+      }
       m_messages++;
+      if(nWrite != nRead) {
+	if(m_nLogFD >= 0) {
+	  char msg[HUGE_STR];
+	  snprintf(msg, sizeof(msg), "ERROR while writing to file, %ld messages lost\n", m_messages);
+	  /* error while writing data, try to delete the old file and continue ... */
+	  rc = ftruncate(m_nLogFD, 0);
+	  rc = write(m_nLogFD, msg, strlen(msg));
+	  m_messages = 0;
+	}
+      }
     }
+    // end buffer or line read
     if((now > m_tLogEnd) || (m_counter > m_limit)) {
       /* rotate! */
       rotate(m_cmd, now, m_file_name, &m_messages);
     }
     if(m_force_rotation) {
-      qs_csUnLock();
+      qs_csUnLock();                         // <@CTR1
     }
   }
   memset(buf, 0, MAX_LINE_BUFFER);
