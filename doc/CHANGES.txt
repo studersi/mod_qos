@@ -1,3 +1,8 @@
+Version
+
+ - qsrotate supports line-by-line data processing prefixing every line
+   by a timestamp when using the option "-d".
+
 Version 11.41
 
  - Fixed: wrong default file size used by qsrotate.
