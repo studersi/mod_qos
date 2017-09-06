@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# ErrorLog "|##ROOT##/../util/src/qsexec -e \'child pid [0-9]+ exit signal\' -p ##ROOT##/usr1.sh | ##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
+# ErrorLog "|##ROOT##/../util/src/qsexec -e \'^.[a-zA-Z0-9: ]+. .notice. child pid [0-9]+ exit signal \' -p ##ROOT##/usr1.sh | ##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
 #
 
 cmdDir=`dirname $0`
