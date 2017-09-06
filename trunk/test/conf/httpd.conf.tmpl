@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.274 2017-06-27 19:26:21 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test/conf/httpd.conf.tmpl,v 2.275 2017-09-06 18:50:41 pbuchbinder Exp $
 #
 # mod_qos test configuration using mod_proxy
 #
@@ -148,7 +148,7 @@ QSLog                  "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/stat.csv"
 LogLevel                warn
 #ErrorLog                "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log -z -g 4 -s 43200 -f -b 536870912"
 ErrorLog                ##ROOT##/logs/error_log
-#ErrorLog                "|##ROOT##/../util/src/qsexec -e \'child pid .* exit signal\' -p ##ROOT##/usr1.sh | ##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
+#ErrorLog                "|##ROOT##/../util/src/qsexec -e \'^.[a-zA-Z0-9: ]+. .notice. child pid [0-9]+ exit signal \' -p ##ROOT##/usr1.sh | ##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
 TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 43200 -f -b 536870912"
 CustomLog               "|##ROOT##/../util/src/qssign -s password -e |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log_signed -z -g 4 -s 43200 -f -b 536870912" "%h %l %u %t \"%r\" %>s %b %{ms}T %k %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{QS_Country}e %{QS_SrvConn}e a=%{QS_AllConn}e"
 TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....RSB.T.Q....Uk"
