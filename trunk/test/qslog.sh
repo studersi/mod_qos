@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.36 2016-05-25 11:39:58 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.37 2017-09-07 16:35:41 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -203,9 +203,14 @@ case "$1" in
 	    echo "$PFX FAILED (.8)"
 	    exit 1
 	fi
-	echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] \"/a/\" POST 200 1000 52637 49 text/html\n127.0.0.1 [24/Aug/2011:18:12:00 +0200] \"/a/\" GET 200 2000 10000 8 text/css" | ../util/src/qslog -f I..RmSBDAc -pc 2>/dev/null > pc
+	echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] \"/a/\" POST 200 1000 52637 49 text/html\n127.0.0.1 [24/Aug/2011:18:12:00 +0200] \"/a/\" GET 200 2000 10000 8 text/css" | ../util/src/qslog -f I..RmSBD.c -pc 2>/dev/null > pc
 	if [ `grep -c "127.0.0.1;req;2;errors;0;duration;60;bytes;3000;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;31;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;GET;1;POST;1;ci;0;html;1;css/js;1;img;0;other;0;" pc` -eq 0 ]; then
 	    echo "$PFX FAILED (.9)"
+	    exit 1
+	fi
+	echo "127.0.0.1 [24/Aug/2011:18:11:00 +0200] 1\n127.0.0.1 [24/Aug/2011:13:11:00 +0200] 3\n127.0.0.1 [24/Aug/2011:18:11:00 +0200] 2" | ../util/src/qslog -f I..M -pc 2>/dev/null > pc
+	if [ `grep -c "127.0.0.1;req;3;errors;0;duration;0;bytes;0;1xx;0;2xx;0;3xx;0;4xx;0;5xx;0;304;0;av;0;avms;0;<1s;3;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;ci;0;M;3;" pc` -eq 0 ]; then
+	    echo "$PFX FAILED (.10)"
 	    exit 1
 	fi
         rm pc
