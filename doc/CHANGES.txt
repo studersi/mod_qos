@@ -1,5 +1,7 @@
 Version
 
+ - qslog -pc mode supports peak/max value counter.
+
  - qsrotate supports line-by-line data processing prefixing every line
    by a timestamp when using the option "-d".
 

@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.106 2017-06-29 05:24:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.107 2017-09-07 16:35:41 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -102,6 +102,7 @@ typedef struct {
   long status_5;
   long status_304;
   long connections;
+  unsigned long max;
   apr_table_t *events;
   apr_pool_t *pool;
   long get;
@@ -1100,7 +1101,7 @@ static void updateUrl(apr_pool_t *pool, char *R, char *S, long tmems) {
  */
 static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
                          char *BI, char *B, char *R, char *I, char *U, char *Q,
-                         char *E, char *k, char *C, char *ct, long tme, long tmems,
+                         char *E, char *k, char *C, char *M, char *ct, long tme, long tmems,
                          char *m) {
   client_rec_t *client_rec;
   const char *id = I; // ip
@@ -1144,6 +1145,7 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     client_rec->status_5 = 0;
     client_rec->status_304 = 0;
     client_rec->connections = 0;
+    client_rec->max = 0;
     client_rec->events = apr_table_make(pool, 100);
     client_rec->pool = pool;
     client_rec->get = 0;
@@ -1198,6 +1200,12 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
       client_rec->cssjs++;
     } else {
       client_rec->other++;
+    }
+  }
+  if(M && M[0]) {
+    long max = atol(M);
+    if(max > client_rec->max) {
+      client_rec->max = max;
     }
   }
   if(m) {
@@ -1376,6 +1384,7 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
   char *s = NULL; /* sum */
   char *a = NULL; /* avarage 1 */
   char *A = NULL; /* average 2 */
+  char *M = NULL; /* max */
   char *E = NULL; /* events */
   char *ct = NULL; /* content type */
   char *m = NULL; /* method */
@@ -1461,6 +1470,10 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
       if(l != NULL && l[0] != '\0') {
         A = cutNext(&l);
       }
+    } else if(c[0] == 'M') {
+      if(l != NULL && l[0] != '\0') {
+        M = cutNext(&l);
+      }
     } else if(c[0] == 'E') {
       if(l != NULL && l[0] != '\0') {
         E = cutNext(&l);
@@ -1506,6 +1519,10 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
     stripNum(&A);
     qsNoFloat(A);
   }
+  if(M != NULL) {
+    stripNum(&M);
+    qsNoFloat(M);
+  }
   tme = 0;
   if(T != NULL || t != NULL || D != NULL) {
     /* response duration */
@@ -1525,7 +1542,7 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
     }
   }
   if(m_offline_count) {
-    updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, ct, tme, tmems, m);
+    updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, M, ct, tme, tmems, m);
   } else if(m_offline_url) {
     if((tmems) == 0 && (tme > 0)) {
       tmems = 1000 * tme;
@@ -1894,6 +1911,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     s arbitrary counter to add up (sum within a minute)\n");
   qs_man_println(man, "     a arbitrary counter to build an average from (average per request)\n");
   qs_man_println(man, "     A arbitrary counter to build an average from (average per request)\n");
+  qs_man_println(man, "     M maximum of an ever reached value, available in -pc mode only\n");
   qs_man_println(man, "     E comma separated list of event strings\n");
   qs_man_println(man, "     c content type (%%{content-type}o), available in -pc mode only\n");
   qs_man_println(man, "     m request method (GET/POST) (%%m), available in -pc mode only\n");
@@ -1912,7 +1930,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     The option \"-pc\" may be used alternatively if you want to gather request\n");
   qs_man_print(man, "     information per client (identified by IP address (I) or user tracking id (U)\n");
   qs_man_print(man, "     showing how many request each client has performed within the captured period\n");
-  qs_man_print(man, "     of time). \"-pc\" supports the format characters IURSBTtDkEcm.\n");
+  qs_man_print(man, "     of time). \"-pc\" supports the format characters IURSBTtDkMEcm.\n");
   qs_man_print(man, "     The option \"-pu\" collects statistics on a per URL level (supports format\n");
   qs_man_print(man, "     characters RSTtD).\n");
   qs_man_print(man, "     \"-puc\" is very similar to \"-pu\" but cuts the end (handler) of each URL.\n");
@@ -2074,7 +2092,7 @@ int main(int argc, const char *const argv[]) {
         if(strchr(config, 'm')) {
           m_methods = 1;
         }
-        if(strchr(config, 's') || strchr(config, 'a') || strchr(config, 'A')) {
+        if(strchr(config, 's') || strchr(config, 'a') || strchr(config, 'A') || strchr(config, 'M')) {
           // enable custom counter
           m_customcounter = 1;
         }
@@ -2315,6 +2333,10 @@ int main(int argc, const char *const argv[]) {
               esco,
               m,
               coverage);
+      if(m_customcounter) {
+        fprintf(m_f, "M;%ld;",
+                client_rec->max);
+        }
       if(m_ct) {
         fprintf(m_f, "html;%ld;css/js;%ld;img;%ld;other;%ld;",
                 client_rec->html,
