@@ -22,7 +22,7 @@
  * limitations under the License.
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.24 2017-06-29 05:24:33 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.25 2017-09-08 18:28:29 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -248,55 +248,57 @@ void qs_csInitLock() {
  * @param generations Number of files to keep
  */
 void qs_deleteOldFiles(const char *file_name, int generations) {
+  DIR *dir;
   char dirname[QS_HUGE_STR];
   char *p;
-  strcpy(dirname, file_name);
-  p = strrchr(dirname, '/');
-  if(strlen(file_name) > (QS_HUGE_STR - 10)) {
+  if(strlen(file_name) > (QS_HUGE_STR - 12)) {
     // invalid file length
     return;
   }
-  if(p) {
-    DIR *dir;
-    p[0] = '\0'; p++;
-    dir = opendir(dirname);
-    if(dir) {
-      int num = 0;
-      struct dirent *de;
-      char filename[QS_HUGE_STR];
-      snprintf(filename, sizeof(filename), "%s.20", p);
-      /* determine how many files to delete */
+  if(strrchr(file_name, '/') == NULL) {
+    sprintf(dirname, "./%s", file_name);
+  } else {
+    strcpy(dirname, file_name);
+  }
+  p = strrchr(dirname, '/');
+  p[0] = '\0'; p++;
+  dir = opendir(dirname);
+  if(dir) {
+    int num = 0;
+    struct dirent *de;
+    char filename[QS_HUGE_STR];
+    snprintf(filename, sizeof(filename), "%s.20", p);
+    /* determine how many files to delete */
+    while((de = readdir(dir)) != 0) {
+      if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
+	num++;
+      }
+    }
+    /* delete the oldest files (assumes they are ordered by their creation date) */
+    while(num > generations) {
+      char old[QS_HUGE_STR];
+      old[0] = '\0';
+      rewinddir(dir);
       while((de = readdir(dir)) != 0) {
 	if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
-	  num++;
-	}
-      }
-      /* delete the oldest files (assumes they are ordered by their creation date) */
-      while(num > generations) {
-	char old[QS_HUGE_STR];
-	old[0] = '\0';
-	rewinddir(dir);
-	while((de = readdir(dir)) != 0) {
-	  if(de->d_name && (strncmp(de->d_name, filename, strlen(filename)) == 0)) {
-	    if(strcmp(old, de->d_name) > 0) {
+	  if(strcmp(old, de->d_name) > 0) {
+	    snprintf(old, sizeof(old), "%s", de->d_name);
+	  } else {
+	    if(old[0] == '\0') {
 	      snprintf(old, sizeof(old), "%s", de->d_name);
-	    } else {
-	      if(old[0] == '\0') {
-		snprintf(old, sizeof(old), "%s", de->d_name);
-	      }
 	    }
 	  }
 	}
-	{
-	  /* build abs path and delete it */
-	  char unl[QS_HUGE_STR];
-	  snprintf(unl, sizeof(unl), "%s/%s", dirname, old);
-	  unlink(unl);
-	}
-	num--;
       }
-      closedir(dir);
+      {
+	/* build abs path and delete it */
+	char unl[QS_HUGE_STR];
+	snprintf(unl, sizeof(unl), "%s/%s", dirname, old);
+	unlink(unl);
+      }
+      num--;
     }
+    closedir(dir);
   }
 }
 

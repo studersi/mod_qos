@@ -25,7 +25,7 @@
  *
  */
 
-static const char revision[] = "$Id: qsrotate.c,v 1.37 2017-08-30 16:50:21 pbuchbinder Exp $";
+static const char revision[] = "$Id: qsrotate.c,v 1.38 2017-09-08 18:28:29 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -60,6 +60,7 @@ static time_t m_tLogEnd = 0;
 static time_t m_tRotation = 86400; /* default are 24h */
 static int m_nLogFD = -1;
 static int m_generations = -1;
+static mode_t m_mode = 0660;
 static char *m_file_name = NULL;
 static long m_messages = 0;
 static char *m_cmd = NULL;
@@ -87,7 +88,7 @@ static void usage(char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s -o <file> [-s <sec> [-t <hours>]] [-b <bytes>] [-f] [-z] [-g <num>] [-u <name>] [-p] [-d]\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s -o <file> [-s <sec> [-t <hours>]] [-b <bytes>] [-f] [-z] [-g <num>] [-u <name>] [-m <mask>] [-p] [-d]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
   if(man) {
     printf(".SH DESCRIPTION\n");
@@ -134,6 +135,9 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "  -u <name>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Become another user, e.g. www-data.\n");
+  qs_man_print(man, "  -m <mask>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     File permission which is either 600, 640, 660 (default) or 664.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -p\n");
   if(man) printf("\n");
@@ -190,7 +194,7 @@ static time_t get_now() {
 }
 
 static int openFile(const char *cmd, const char *file_name) {
-  int m_nLogFD = open(file_name, O_WRONLY | O_CREAT | O_APPEND, 0660);
+  int m_nLogFD = open(file_name, O_WRONLY | O_CREAT | O_APPEND, m_mode);
   /* error while opening log file */
   if(m_nLogFD < 0) {
     fprintf(stderr,"[%s]: ERROR, failed to open file <%s>\n", cmd, file_name);
@@ -226,6 +230,7 @@ static void compressThread(const char *cmd, const char *arch) {
     close(infp);
     return;
   }
+  chmod(dest, m_mode);
   while((len = read(infp, buf, sizeof(buf))) > 0) {
     gzwrite(outfp, buf, len);
   }
@@ -388,6 +393,19 @@ int main(int argc, char **argv) {
     } else if(strcmp(*argv,"-b") == 0) {
       if (--argc >= 1) {
 	sizeLimit = atol(*(++argv));
+      } 
+    } else if(strcmp(*argv,"-m") == 0) {
+      if (--argc >= 1) {
+	int mode = atoi(*(++argv));
+	if(mode == 600) {
+	  m_mode = 0600;
+	} else if(mode == 640) {
+	  m_mode = 0640;
+	} else if(mode == 660) {
+	  m_mode = 0660;
+	} else if(mode == 664) {
+	  m_mode = 0664;
+	}
       } 
     } else if(strcmp(*argv,"-z") == 0) {
       m_compress = 1;
