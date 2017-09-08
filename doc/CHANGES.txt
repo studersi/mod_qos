@@ -3,8 +3,11 @@ Version
  - qslog -pc mode supports peak/max value counter.
 
  - qsrotate supports line-by-line data processing prefixing every line
-   by a timestamp when using the option "-d".
+   by a timestamp when using the option "-d", e.g. for batch/script 
+   output logging.
 
+ - qsrotate supports option "-m" to define the file permission.
+ 
 Version 11.41
 
  - Fixed: wrong default file size used by qsrotate.
