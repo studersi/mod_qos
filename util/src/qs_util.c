@@ -22,7 +22,7 @@
  * limitations under the License.
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.25 2017-09-08 18:28:29 pbuchbinder Exp $";
+static const char revision[] = "$Id: qs_util.c,v 1.26 2017-09-09 20:10:30 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <pthread.h>
@@ -251,6 +251,7 @@ void qs_deleteOldFiles(const char *file_name, int generations) {
   DIR *dir;
   char dirname[QS_HUGE_STR];
   char *p;
+  memset(dirname, 0, QS_HUGE_STR);
   if(strlen(file_name) > (QS_HUGE_STR - 12)) {
     // invalid file length
     return;
