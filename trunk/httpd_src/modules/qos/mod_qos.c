@@ -42,8 +42,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.653 2017-07-17 16:00:57 pbuchbinder Exp $";
-static const char g_revision[] = "11.41";
+static const char revision[] = "$Id: mod_qos.c,v 5.654 2017-09-11 20:29:50 pbuchbinder Exp $";
+static const char g_revision[] = "11.42";
 
 
 /************************************************************************
@@ -842,6 +842,7 @@ typedef struct {
   /* upload bandwidth (received bytes and start time) */
   time_t time;
   apr_size_t nbytes;    // measuring the bytes/sec
+  int hasBytes;
   int shutdown;
   int errors;
   int disabled;
@@ -3139,6 +3140,7 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
   inctx->client_socket = NULL;
   inctx->time = 0;
   inctx->nbytes = 0;
+  inctx->hasBytes = 0;
   inctx->shutdown = 0;
   inctx->disabled = 0;
   inctx->lowrate = -1;
@@ -7500,6 +7502,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
             if(inctx->client_socket) {
               qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
               int level = APLOG_ERR;
+              int notUsed = 0;
               if(cconf) {
                 /* disabled by vip priv */
                 if(cconf->is_vip && sconf->req_ignore_vip_rate != 1) {
@@ -7517,14 +7520,21 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                   cconf->has_lowrate = 1; /* mark connection low rate */
                 }
                 ip = qos_inc_block(inctx->c, sconf, cconf, ip);
+                if((inctx->hasBytes == 0) &&
+                   (inctx->c->keepalives == 0) &&
+                   (inctx->status == QS_CONN_STATE_HEAD)) {
+                  // not even received the request line
+                  notUsed = 1;
+                }
                 ap_log_error(APLOG_MARK, APLOG_NOERRNO|level, 0, inctx->c->base_server,
-                             QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s): min=%d,"
+                             QOS_LOG_PFX(034)"%s, QS_SrvMinDataRate rule (%s%s): min=%d,"
                              " this connection=%d,"
                              " c=%s",
                              (level == APLOG_DEBUG) || sconf->log_only ? 
                              "log only (allowed)" 
                              : "access denied",
                              inctx->status == QS_CONN_STATE_RESPONSE ? "out" : "in",
+                             notUsed ? ":0" : "",
                              req_rate,
                              rate,
                              QS_CONN_REMOTEIP(inctx->c) == NULL ? "-" : QS_CONN_REMOTEIP(inctx->c));
@@ -9188,6 +9198,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         }
       }
       inctx->nbytes = inctx->nbytes + bytes;
+      inctx->hasBytes = inctx->nbytes;
       if(inctx->status == QS_CONN_STATE_BODY) {
         if(inctx->cl_val >= bytes) {
           inctx->cl_val = inctx->cl_val - bytes;

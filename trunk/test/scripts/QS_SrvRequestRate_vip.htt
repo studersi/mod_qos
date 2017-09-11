@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_vip.htt,v 1.2 2011-11-01 20:30:47 pbuchbinder Exp $
+# $Id: QS_SrvRequestRate_vip.htt,v 1.3 2017-09-11 20:29:51 pbuchbinder Exp $
 #
 # client ip is marked as VIP
 #
@@ -47,7 +47,7 @@ _EXPECT ERROR "Software caused connection abort"
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in\): min=123, this connection=0"
+_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in:0\): min=123, this connection=0"
 _EXEC tail -1 logs/error_log
 
 _SLEEP 4000
