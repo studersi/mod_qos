@@ -39,30 +39,30 @@ if [ -n "$1" ]; then
     exit $?
 fi
 
-../../util/src/qsfilter2 -e -i access_log -m 2>&1 | grep -v "mod_qos version" > qm2.txt
+../../util/src/qsfilter2 -e -i access_log -m 2>&1 > qm2.txt
 DLINES=`diff qm2.txt.ref qm2.txt | wc -l`
 DCONF=`diff qm2.txt.ref qm2.txt | grep QS_`
-if [ $DLINES -ne 4 -a $DLINES -ne 8 ]; then
-    echo "ERROR diff qm2.txt.ref qm2.txt"
+if [ $DLINES -ne 6 ]; then
+    echo "ERROR a diff qm2.txt.ref qm2.txt"
     diff qm2.txt.ref qm2.txt
     exit 1
 fi
 if [ -n "$DCONF" ]; then
-    echo "ERROR diff qm2.txt.ref qm2.txt"
+    echo "ERROR b diff qm2.txt.ref qm2.txt"
     diff qm2.txt.ref qm2.txt
     exit 1
 fi
 
-../../util/src/qsfilter2 -e -i access_log 2>&1 | grep -v "mod_qos version" > q2.txt
+../../util/src/qsfilter2 -e -i access_log 2>&1 > q2.txt
 DLINES=`diff q2.txt.ref q2.txt | wc -l`
 DCONF=`diff q2.txt.ref q2.txt | grep QS_`
-if [ $DLINES -ne 4 -a $DLINES -ne 8 ]; then
-    echo "ERROR diff q2.txt.ref q2.txt"
+if [ $DLINES -ne 6 ]; then
+    echo "ERROR c diff q2.txt.ref q2.txt"
     diff q2.txt.ref q2.txt
     exit 1
 fi
 if [ -n "$DCONF" ]; then
-    echo "ERROR diff qm2.txt.ref qm2.txt"
+    echo "ERROR d diff qm2.txt.ref qm2.txt"
     diff q2.txt.ref q2.txt
     exit 1
 fi
