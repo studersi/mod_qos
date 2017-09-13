@@ -1,16 +1,16 @@
 Version 11.42
 
- - Message mod_qos(034) indicates by "in:0" that the server no even
+ - Message mod_qos(034) indicates by "in:0" that the server not even
    received a request line on a TCP connection (potentially a speculative
    TCP pre-connection).
 
- - qslog -pc mode supports peak/max value counter.
+ - qslog -pc mode supports peak/max value counter (M).
 
  - qsrotate supports line-by-line data processing prefixing every line
    by a timestamp when using the option "-d", e.g. for batch/script 
    output logging.
 
- - qsrotate supports option "-m" to define the file permission.
+ - qsrotate supports option "-m" to define the file permissions.
  
 Version 11.41
 
