@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.107 2017-09-07 16:35:41 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.108 2017-09-14 05:33:06 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1154,6 +1154,7 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     client_rec->img = 0;
     client_rec->cssjs = 0;
     client_rec->other = 0;
+    qsInitEvent(pool, client_rec->events);
     qs_time(&client_rec->start_s);
     client_rec->end_s = client_rec->start_s + 1; // +1 prevents div by 0
     client_rec->firstLine = m_lines;

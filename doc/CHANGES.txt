@@ -1,3 +1,7 @@
+Version
+
+ - qslog supports QSEVENTPATH variable in -pc mode.
+
 Version 11.42
 
  - Message mod_qos(034) indicates (by "in:0") when the server not even
