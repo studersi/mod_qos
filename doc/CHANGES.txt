@@ -1,4 +1,4 @@
-Version
+Version 11.42b
 
  - qslog supports QSEVENTPATH variable in -pc mode.
 
