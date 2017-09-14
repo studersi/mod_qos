@@ -1,6 +1,6 @@
 Version 11.42
 
- - Message mod_qos(034) indicates by "in:0" that the server not even
+ - Message mod_qos(034) indicates (by "in:0") when the server not even
    received a request line on a TCP connection (potentially a speculative
    TCP pre-connection).
 
