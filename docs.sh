@@ -10,7 +10,7 @@ if [ "$A_V" != "2.2" ]; then
     echo "FAILED, need Apache 2.2 binary to read log messages"
     exit 1
 fi
-strings ./httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | sort -u | sort -n | grep -v -e "mod_qos()" -e "mod_qos(000)" > doc/MESSAGES.txt
+strings ./httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | sort -u | sort -n | grep -v -e "mod_qos()" -e "mod_qos(000)" -e "e;mod_qos(%" > doc/MESSAGES.txt
 
 sed <doc/index.html >doc/dist/index.html \
     -e "s:Penetration of the web server by attackers (DoS):<a href='dos.html'>Penetration of the web server by attackers (DoS)</a>:g" \
