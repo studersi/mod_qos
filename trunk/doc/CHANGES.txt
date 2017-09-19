@@ -1,14 +1,32 @@
-Version
+Version 11.42c
 
- - qslog supports QSCOUNTERPATH variable (-pc mode) to read list of
-   QS_ClientEventLimitCount rules.
+ - qslog supports QSCOUNTERPATH (-pc mode) environment variable which
+   defines a file containg a list of QS_ClientEventLimitCount rules.
+   The 'E' format character defines the event string in the log
+   to match (literal string) the event1 and event2 event names against.
+
    Rule syntax: <name>:<event1>-<n>*<event2>/<duration>=<limit>
+
    Example mod_qos config:
     QS_ClientEventLimitCount 20 600 QS_LimitEv
     QS_SetEnvRes Event AU04 QS_LimitEv
     QS_SetEnvRes Event AU05 QS_LimitEv_Decrement=2
    Sample qslog rule:
     QS_LimitEv:AU04-2*AU05/600=20
+
+   Special us case mathing against the HTTP status code ('S' character)
+   is used if the rule 'name' starts with STATUS.
+   Example mod_qos configuration:
+    QS_ClientEventLimitCount 10 300 QS_LimisS
+    QS_SetEnvIfStatus 400 QS_LimitS=1
+    QS_SetEnvIfStatus 405 QS_LimitS=1
+    QS_SetEnvIfStatus 406 QS_LimitS=1
+    QS_SetEnvIfStatus 408 QS_LimitS=1
+    QS_SetEnvIfStatus 413 QS_LimitS=1
+    QS_SetEnvIfStatus 414 QS_LimitS=1
+    QS_SetEnvIfStatus 500 QS_LimitS=1
+   Sample qslog rule:
+    STATUS:400_405_406_408_413_414_500-1*X/300=10
 
 Version 11.42
 
