@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.109 2017-09-18 15:20:31 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.110 2017-09-19 17:08:07 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -44,6 +44,8 @@ static const char revision[] = "$Id: qslog.c,v 1.109 2017-09-18 15:20:31 pbuchbi
 
 #include <regex.h>
 #include <time.h>
+
+#include <pcre.h>
 
 /* apr */
 #include <apr.h>
@@ -67,10 +69,24 @@ static const char revision[] = "$Id: qslog.c,v 1.109 2017-09-18 15:20:31 pbuchbi
 #define QS_GENERATIONS 14
 #define EVENT_DELIM ','
 #define QSEVENTPATH "QSEVENTPATH" /* varibale name to find event definitions */
+#define QSCOUNTERPATH "QSCOUNTERPATH" /* counter rule definitions */
+#define COUNTER_PATTERN "([a-zA-Z0-9_]+):([a-zA-Z0-9_]+)[-]([0-9]+)[*]([a-zA-Z0-9_]+)[/]([0-9]+)=([0-9]+)"
 
 /* ----------------------------------
  * structures
  * ---------------------------------- */
+
+typedef struct {
+  const char *name;
+  int limit;
+  int count;
+  int total;
+  time_t start;
+  int duration;
+  const char *inc;
+  const char *dec;
+  int decVal;
+} counter_rec_t;
 
 typedef struct {
   long request_count;
@@ -104,6 +120,7 @@ typedef struct {
   long connections;
   unsigned long max;
   apr_table_t *events;
+  apr_table_t *counters;
   apr_pool_t *pool;
   long get;
   long post;
@@ -833,6 +850,64 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   fprintf(f, "\n");
 }
 
+/**
+ * updates the counter by event or status conditions
+ */
+static void qs_updateCounter(apr_pool_t *pool, char *E, char *S, apr_table_t *counters) {
+  time_t ltime;
+  apr_table_entry_t *entry;
+  int i;
+  if(counters == NULL) {
+    return;
+  }
+  if(S == 0 && E == NULL) {
+    return;
+  }
+  qs_time(&ltime);
+  entry = (apr_table_entry_t *) apr_table_elts(counters)->elts;
+  for(i = 0; i < apr_table_elts(counters)->nelts; i++) {
+    counter_rec_t *c = (counter_rec_t *)entry[i].val;
+    if(c->start && ((c->start + c->duration) < ltime)) {
+      // expired
+      c->start = 0;
+      c->count = 0;
+    }
+  }
+  for(i = 0; i < apr_table_elts(counters)->nelts; i++) {
+    counter_rec_t *c = (counter_rec_t *)entry[i].val;
+    if(S) {
+      if((strncmp(c->name, "STATUS", 6) == 0) &&
+         (strstr(c->inc, S) != NULL)) {
+        if(c->start == 0) {
+          c->start = ltime;
+        }
+        c->count++;
+        if(c->count == c->limit) {
+          c->total++;
+        }
+      }
+    }
+    if(E) {
+      if(strstr(c->inc, E)) {
+        if(c->start == 0) {
+          c->start = ltime;
+        }
+        c->count++;
+        if(strstr(c->dec, E)) {
+          if(c->count > c->decVal) {
+            c->count = c->count - c->decVal;
+          } else {
+            c->count = 0;
+          }
+        }
+        if(c->count == c->limit) {
+          c->total++;
+        }
+      }
+    }
+  }
+}
+
 static void qs_updateEvents(apr_pool_t *pool, char *E, apr_table_t *events) {
   if(!E[0]) {
     return;
@@ -867,9 +942,54 @@ static void qs_updateEvents(apr_pool_t *pool, char *E, apr_table_t *events) {
 }
 
 /**
+ * Reads the counter rule file, each line contains:
+ * <name>:<event>-<n>*<event>/<duration>=<limit>
+ */
+static void qsInitCounter(apr_pool_t *pool, apr_table_t *counters) {
+  const char *envFile = getenv(QSCOUNTERPATH);
+  if(envFile != NULL) {
+    const char *errptr = NULL;
+    int erroffset;
+    int ovector[100];
+    pcre *pcrestat = pcre_compile(COUNTER_PATTERN, PCRE_CASELESS, &errptr, &erroffset, NULL);
+    FILE *file = fopen(envFile, "r"); 
+    if(file != NULL) {
+      char line[MAX_LINE];
+      while(!qs_getLinef(line, sizeof(line), file)) {
+        if(pcre_exec(pcrestat, NULL, line, strlen(line), 0, 0, ovector, 100) >= 0) {
+          counter_rec_t *c = apr_pcalloc(pool, sizeof(counter_rec_t));
+          line[ovector[2] + ovector[3] - ovector[2]] = '\0';
+          line[ovector[4] + ovector[5] - ovector[4]] = '\0';
+          line[ovector[6] + ovector[7] - ovector[6]] = '\0';
+          line[ovector[8] + ovector[9] - ovector[8]] = '\0';
+          line[ovector[10] + ovector[11] - ovector[10]] = '\0';
+ 
+          c->name = apr_pstrdup(pool, &line[ovector[2]]);
+          c->count = 0;
+          c->total = 0;
+          c->start = 0;
+          c->inc = apr_pstrdup(pool, &line[ovector[4]]);
+          c->decVal = atoi(&line[ovector[6]]);
+          c->dec = apr_pstrdup(pool, &line[ovector[8]]);
+          c->duration = atoi(&line[ovector[10]]);
+          c->limit = atoi(&line[ovector[12]]);
+          if(m_verbose) {
+            fprintf(stderr, "%s : %s - (%d * %s) / %d = %d\n",
+                    c->name, c->inc, c->decVal, c->dec, c->duration, c->limit);
+          }
+          apr_table_setn(counters, c->name, (char *)c);
+        }
+      }
+      fclose(file);
+    }
+  }
+}
+
+/**
  * Initializes the event table by the events specified within the
  * file whose path is defined by the QSEVENTPATH environment
  * variable.
+ * File contains event names, separated by comma and/or new line.
  *
  * @param pool To allocate memory
  * @param events Table to init
@@ -1147,6 +1267,7 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     client_rec->connections = 0;
     client_rec->max = 0;
     client_rec->events = apr_table_make(pool, 100);
+    client_rec->counters = apr_table_make(pool, 10);
     client_rec->pool = pool;
     client_rec->get = 0;
     client_rec->post = 0;
@@ -1158,6 +1279,7 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
     client_rec->end_s = client_rec->start_s + 1; // +1 prevents div by 0
     client_rec->firstLine = m_lines;
     qsInitEvent(pool, client_rec->events);
+    qsInitCounter(pool, client_rec->counters);
     apr_table_setn(m_client_entries, tid, (char *)client_rec);
   } else {
     qs_time(&client_rec->end_s);
@@ -1239,6 +1361,7 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
   if(E != NULL) {
     qs_updateEvents(client_rec->pool, E, client_rec->events);
   }
+  qs_updateCounter(client_rec->pool, E, S, client_rec->counters);
   return;
 }
 
@@ -2336,7 +2459,15 @@ int main(int argc, const char *const argv[]) {
       if(m_customcounter) {
         fprintf(m_f, "M;%ld;",
                 client_rec->max);
+      }
+      if(client_rec->counters) {
+        int c;
+        apr_table_entry_t *centry = (apr_table_entry_t *) apr_table_elts(client_rec->counters)->elts;
+        for(c = 0; c < apr_table_elts(client_rec->counters)->nelts; c++) {
+          counter_rec_t *cr = (counter_rec_t *)centry[c].val;
+          fprintf(m_f, "%s;%d;", cr->name, cr->total);
         }
+      }
       if(m_ct) {
         fprintf(m_f, "html;%ld;css/js;%ld;img;%ld;other;%ld;",
                 client_rec->html,
