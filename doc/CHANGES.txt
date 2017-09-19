@@ -1,3 +1,15 @@
+Version
+
+ - qslog supports QSCOUNTERPATH variable (-pc mode) to read list of
+   QS_ClientEventLimitCount rules.
+   Rule syntax: <name>:<event1>-<n>*<event2>/<duration>=<limit>
+   Example mod_qos config:
+    QS_ClientEventLimitCount 20 600 QS_LimitEv
+    QS_SetEnvRes Event AU04 QS_LimitEv
+    QS_SetEnvRes Event AU05 QS_LimitEv_Decrement=2
+   Sample qslog rule:
+    QS_LimitEv:AU04-2*AU05/600=20
+
 Version 11.42
 
  - Message mod_qos(034) indicates (by "in:0") when the server not even

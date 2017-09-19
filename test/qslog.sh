@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.37 2017-09-07 16:35:41 pbuchbinder Exp $
+# $Id: qslog.sh,v 2.38 2017-09-19 17:08:06 pbuchbinder Exp $
 #
 # used by qslog.htt
 
@@ -162,6 +162,7 @@ case "$1" in
 	  echo "$PFX failed, wrong events in initialized event list"
 	  exit 1
 	fi
+	unset QSEVENTPATH
 	rm -f event.conf
 	echo "$PFX < OK"
 	;;
@@ -214,6 +215,30 @@ case "$1" in
 	    exit 1
 	fi
         rm pc
+	QSEVENTPATH=qslog_events
+	export QSEVENTPATH
+	QSCOUNTERPATH=`pwd`/qslog_rules.conf
+	export QSCOUNTERPATH
+	cat qslog_counter.log | ../util/src/qslog -f I..S..M.E -pc >pc
+	if [ `egrep -c "^1;.*SC01Limit;2;STATUS;0;SC01;18;SC02;0;AU04;0;AU05;0;" pc` -ne 1 ]; then
+	    echo "$PFX FAILED counter IP1"
+	    exit 1
+	fi
+	if [ `egrep -c "^3;.*SC01Limit;0;STATUS;0;SC01;7;SC02;0;AU04;0;AU05;0;" pc` -ne 1 ]; then
+	    echo "$PFX FAILED counter IP3"
+	    exit 1
+	fi
+	if [ `egrep -c "^4;.*SC01Limit;0;STATUS;0;SC01;27;SC02;0;AU04;0;AU05;26;" pc` -ne 1 ]; then
+	    echo "$PFX FAILED counter IP4"
+	    exit 1
+	fi
+	if [ `egrep -c "^5;.*4xx;4;5xx;17;.*SC01Limit;0;STATUS;2;SC01;0;SC02;0;AU04;0;AU05;0;" pc` -ne 1 ]; then
+	    echo "$PFX FAILED counter IP5"
+	    exit 1
+	fi
+	unset QSCOUNTERPATH
+	unset QSEVENTPATH
+	rm pc
 	echo "$PFX < OK"
 	;;
 	pu)
