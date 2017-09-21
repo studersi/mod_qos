@@ -1,0 +1,50 @@
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/login HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Login Success"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+
+_LOOP 30
+_REQ localhost $QS_PORT_BASE
+__GET /xxx HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "Service Unavailable"
+_WAIT
+_CLOSE
+_END LOOP
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/html
+__Content-Length: AUTO
+__login: valid
+__
+__<html>
+__<head><title>Login Success</title></head>
+__<body>
+__</body>
+__</html>
+_CLOSE
+
+END
