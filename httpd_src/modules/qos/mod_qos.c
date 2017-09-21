@@ -42,8 +42,8 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.654 2017-09-11 20:29:50 pbuchbinder Exp $";
-static const char g_revision[] = "11.42";
+static const char revision[] = "$Id: mod_qos.c,v 5.655 2017-09-21 19:41:00 pbuchbinder Exp $";
+static const char g_revision[] = "11.43";
 
 
 /************************************************************************
@@ -6299,10 +6299,13 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
     if(!e) {
       e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
     }
+
     /* early vip detection */
     if((*e)->vip) {
       cconf->is_vip = 1;
+      apr_table_set(c->notes, QS_ISVIPREQ, "yes");
     }
+
     /* max connections */
     if(cconf->sconf->has_qos_cc && cconf->sconf->qos_cc_prefer) {
       u->qos_cc->connections++;
@@ -6312,10 +6315,8 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
           apr_table_set(c->notes, "QS_ClientLowPrio", flags);
         }
       }
-      if((*e)->vip) {
-        /* allow all vip addresses - no restrictions */
-        apr_table_set(c->notes, QS_ISVIPREQ, "yes");
-      } else {
+      /* non vip (allow all vip addresses - no restrictions) */
+      if(!(*e)->vip) {
         if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
           int penalty = 4; // 2 to 12 points
           int reqSpare = 0;

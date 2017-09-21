@@ -1,3 +1,8 @@
+Version 11.43
+
+ - Fixed: QS_IsVipRequest was not set if QS_ClientPrefer hasn't been
+   used.
+
 Version 11.42c
 
  - qslog supports QSCOUNTERPATH (-pc mode) environment variable which

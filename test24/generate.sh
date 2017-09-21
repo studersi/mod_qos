@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.15 2017-06-27 19:24:21 pbuchbinder Exp $
+# $Header: /home/cvs/m/mo/mod-qos/src/test24/generate.sh,v 1.16 2017-09-21 19:41:00 pbuchbinder Exp $
 #
 # Simple start/stop script (for test purposes only).
 #
@@ -94,7 +94,7 @@ if [ ! -d htdocs/demo ]; then
     ln -s ../../test/htdocs/demo/
     cd ..
 fi
-CONFFILES="conf/httpd.conf conf/demo.conf conf/ucn.conf"
+CONFFILES="conf/httpd.conf conf/demo.conf conf/ucn.conf conf/dos.conf"
 for E in $CONFFILES; do
     sed <$E.tmpl >$E \
 	-e "s;##ROOT##;$ROOT;g" \
