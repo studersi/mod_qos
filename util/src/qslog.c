@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.110 2017-09-19 17:08:07 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.111 2017-09-21 05:34:59 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -2302,12 +2302,6 @@ int main(int argc, const char *const argv[]) {
   if(m_offline_url) {
     int i;
     apr_table_entry_t *entry;
-    long request_count = 0;
-    long request_count_min = -1;
-    long request_count_max = 0;
-    long long duration_count_ms = 0;
-    long long duration_count_ms_min = -1;
-    long long duration_count_ms_max = 0;
     m_url_entries = apr_table_make(pool, MAX_CLIENT_ENTRIES + 1);
     if(config == NULL) usage(cmd, 0);
     readStdinOffline(pool, config);
@@ -2323,26 +2317,6 @@ int main(int argc, const char *const argv[]) {
     entry = (apr_table_entry_t *) apr_table_elts(m_url_entries)->elts;
     for(i = 0; i < apr_table_elts(m_url_entries)->nelts; i++) {
       url_rec_t *url_rec = (url_rec_t *)entry[i].val;
-      request_count += url_rec->request_count;
-      if(request_count_min == -1) {
-        request_count_min = url_rec->request_count;
-      }
-      if(request_count_min > url_rec->request_count) {
-        request_count_min = url_rec->request_count;
-      }
-      if(request_count_max < url_rec->request_count) {
-        request_count_max = url_rec->request_count;
-      }
-      duration_count_ms += url_rec->duration_count_ms;
-      if(duration_count_ms_min == -1) {
-        duration_count_ms_min = url_rec->duration_count_ms;
-      }
-      if(duration_count_ms_min > url_rec->duration_count_ms) {
-        duration_count_ms_min = url_rec->duration_count_ms;
-      }
-      if(duration_count_ms_max < url_rec->duration_count_ms) {
-        duration_count_ms_max = url_rec->duration_count_ms;
-      }
       fprintf(m_f, "req;%ld;"
               "1xx;%ld;2xx;%ld;3xx;%ld;4xx;%ld;5xx;%ld;"
               NAVMS";%lld;%s\n",
@@ -2356,21 +2330,6 @@ int main(int argc, const char *const argv[]) {
               entry[i].key);
       
     }
-    fprintf(m_f, "req;%ld;"
-            ";;;;;;;;;;"
-            NAVMS";%lld;min;\n",
-            request_count_min,
-            duration_count_ms_min);
-    fprintf(m_f, "req;%ld;"
-            ";;;;;;;;;;"
-            NAVMS";%lld;max;\n",
-            request_count_max,
-            duration_count_ms_max);
-    fprintf(m_f, "req;%ld;"
-            ";;;;;;;;;;"
-            NAVMS";%lld;average;\n",
-            apr_table_elts(m_url_entries)->nelts ? (request_count / apr_table_elts(m_url_entries)->nelts) : 0,
-            request_count ? (duration_count_ms / request_count) : 0);
     if(file && m_f != stdout) {
       fclose(m_f);
     }
