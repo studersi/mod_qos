@@ -1,5 +1,27 @@
+# 
+# $Id: StatusVipLow_dos.htt,v 1.2 2017-09-22 05:39:38 pbuchbinder Exp $
+# 
+# QS_ClientEventBlockCount 20 300
+# QS_SetEnvIfStatus        400                QS_Block
+# QS_SetEnvIfStatus        405                QS_Block
+# QS_SetEnvIfStatus        406                QS_Block
+# QS_SetEnvIfStatus        408                QS_Block
+# QS_SetEnvIfStatus        413                QS_Block
+# QS_SetEnvIfStatus        414                QS_Block
+# QS_SetEnvIfStatus        500                QS_Block
+# QS_SetEnvIfStatus        503                QS_Block
+# QS_SetEnvIfStatus        QS_SrvMinDataRate  QS_Block
+# QS_SetEnvIfStatus        QS_SrvMaxConnPerIP QS_Block
+# QS_SetEnvIfStatus        BrokenConnection   QS_Block
+# 
+# QS_SetEnvIf QS_AllConn=^[0-9]$ LowConnection=yes
+# QS_SetEnvIf LowConnection QS_IsVipRequest !QS_Block
+# QS_VipIPHeaderName       login=valid drop
+# 
 
 INCLUDE scripts/ports
+
+EXEC ../httpd/httpd -d `pwd` -f conf/dos.conf 2>/dev/null 1>/dev/null
 
 CLIENT
 

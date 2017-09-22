@@ -25,7 +25,6 @@ waitApache() {
 echo "$PFX start"
 
 for E in `ls scripts/*dos.htt | sort`; do
-  ../httpd/httpd -d `pwd` -f conf/dos.conf 2>/dev/null 1>/dev/null
   waitApache
   ./run.sh -seT $E
   if [ $? -ne 0 ]; then
