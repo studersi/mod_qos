@@ -90,13 +90,16 @@ waitApache
 ./run.sh -s scripts/UCN_QS_IPConn.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
-sleep 5
+
+sleep 10
 
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnh 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -s scripts/UCN_QS_EventRequestLimit.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
+
+sleep 10
 
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucni 2>/dev/null 1>/dev/null
 waitApache
