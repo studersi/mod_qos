@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.111 2017-09-21 05:34:59 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.112 2017-09-25 15:43:14 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -1971,19 +1971,21 @@ static void usage(const char *cmd, int man) {
   }
   qs_man_print(man, "%s - collects request statistics from access log data.\n", cmd);
   printf("\n");
+
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
   qs_man_print(man, "%s%s -f <format_string> -o <out_file> [-p[c|u[c]] [-v]] [-x [<num>]] [-u <name>] [-m] [-c <path>]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
+
   if(man) {
     printf(".SH DESCRIPTION\n");
   } else {
     printf("Summary\n");
   }
-  qs_man_print(man, "%s is a real time access log analyzer. It collects\n", cmd);
-  qs_man_print(man, "the data from stdin. The output is written to the specified\n");
-  qs_man_println(man, "file every minute and includes the following entries:\n");
+  qs_man_print(man, "%s is a real time access log analyzer. It collects the data from stdin.\n", cmd);
+  qs_man_print(man, "The output is written to the specified file every minute and includes the\n");
+  qs_man_println(man, "following entries:\n");
   qs_man_println(man, "  - requests per second ("NRS")\n");
   qs_man_println(man, "  - number of requests within measured time (req)\n");
   qs_man_println(man, "  - bytes sent to the client per second ("NBS")\n");
@@ -2005,6 +2007,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "    keep-alive, qL=request/response slow down, qs=serialized request, \n");
   qs_man_print(man, "    qA=connection abort, qU=new user tracking cookie)\n");
   printf("\n");
+
   if(man) {
     printf(".SH OPTIONS\n");
   } else {
@@ -2082,6 +2085,48 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     identifier and a regular expression to identify a request seprarated\n");
   qs_man_print(man, "     by a colon, e.g., 01:^(/a)|(/c). The regular expressions are matched against\n");
   qs_man_print(man, "     the log data element which has been identified by the 'C' format character.\n");
+
+  printf("\n");
+  if(man) {
+    printf(".SH VARIABLES\n");
+  } else {
+    printf("Variables\n");
+  }
+  qs_man_print(man, "The following environment variables are known to %s:\n", cmd);
+  if(man) printf("\n");
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  "QSEVENTPATH"=<path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines a file containing a comma or new line separated list\n");
+  qs_man_print(man, "     of known event strings expected within the log filed identified\n");
+  qs_man_print(man, "     by the 'E' format character.\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  "QSCOUNTERPATH"=<path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines a file containing a by new line separated list of rules which\n");
+  qs_man_print(man, "     reflects possible QS_ClientEventLimitCount directive settings (for\n");
+  qs_man_print(man, "     simulation purpose). The 'E' format character defines the event string\n");
+  qs_man_print(man, "     in the log to match (literal string) the 'event1' and 'event2' event names\n");
+  qs_man_print(man, "     against.\n");
+  printf("\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Rule syntax: <name>:<event1>-<n>*<event2>/<duration>=<limit>\n");
+  printf("\n");
+  qs_man_println(man, "      'name' defines the name you have given to the rule entry.\n");
+  qs_man_println(man, "      'event1' defines the variable name (in 'E') to increment the counter.\n");
+  qs_man_println(man, "      'event2' defines the variable name (in 'E') to decrement the counter (and\n");
+  qs_man_print(man, "       the parameter 'n' defines by how much).\n");
+  if(man) printf("\n");
+  qs_man_println(man, "      'duration' defines the measure interval (in seconds) used for the\n");
+  qs_man_print(man, "       QS_ClientEventLimitCount directive.\n");
+  if(man) printf("\n");
+  qs_man_println(man, "      'limit' defines the threshold (number) defined for the QS_ClientEventLimitCount\n");
+  qs_man_print(man, "       directive.\n");
+  if(man) printf("\n");
+  printf("\n");
+  qs_man_print(man, "     Note: If the 'name' parameter is prefixed by 'STATUS', the rule is applied against\n");
+  qs_man_print(man, "     the HTTP status code 'S' and the 'event1' string shall contain a list of relevant\n");
+  qs_man_print(man, "     status codes separated by an underscore (while 'event2 is ignored).\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
