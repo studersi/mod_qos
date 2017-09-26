@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.112 2017-09-25 15:43:14 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.113 2017-09-26 05:37:22 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -2112,16 +2112,18 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n");
   qs_man_print(man, "     Rule syntax: <name>:<event1>-<n>*<event2>/<duration>=<limit>\n");
   printf("\n");
-  qs_man_println(man, "      'name' defines the name you have given to the rule entry.\n");
-  qs_man_println(man, "      'event1' defines the variable name (in 'E') to increment the counter.\n");
-  qs_man_println(man, "      'event2' defines the variable name (in 'E') to decrement the counter (and\n");
-  qs_man_print(man, "       the parameter 'n' defines by how much).\n");
+  qs_man_println(man, "     'name' defines the name you have given to the rule entry and is logged along with\n");
+  qs_man_print(man, "      with the number of times the 'limit' has been reached within the 'duration'.\n");
   if(man) printf("\n");
-  qs_man_println(man, "      'duration' defines the measure interval (in seconds) used for the\n");
-  qs_man_print(man, "       QS_ClientEventLimitCount directive.\n");
+  qs_man_println(man, "     'event1' defines the variable name (if found in 'E') to increment the counter.\n");
+  qs_man_println(man, "     'event2' defines the variable name (if found in 'E') to decrement the counter (and\n");
+  qs_man_print(man, "      the parameter 'n' defines by how much).\n");
   if(man) printf("\n");
-  qs_man_println(man, "      'limit' defines the threshold (number) defined for the QS_ClientEventLimitCount\n");
-  qs_man_print(man, "       directive.\n");
+  qs_man_println(man, "     'duration' defines the measure interval (in seconds) used for the\n");
+  qs_man_print(man, "      QS_ClientEventLimitCount directive.\n");
+  if(man) printf("\n");
+  qs_man_println(man, "     'limit' defines the threshold (number) defined for the QS_ClientEventLimitCount\n");
+  qs_man_print(man, "      directive.\n");
   if(man) printf("\n");
   printf("\n");
   qs_man_print(man, "     Note: If the 'name' parameter is prefixed by 'STATUS', the rule is applied against\n");
