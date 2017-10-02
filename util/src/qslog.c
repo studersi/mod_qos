@@ -28,7 +28,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslog.c,v 1.113 2017-09-26 05:37:22 pbuchbinder Exp $";
+static const char revision[] = "$Id: qslog.c,v 1.114 2017-10-02 15:44:03 pbuchbinder Exp $";
 
 #include <stdio.h>
 #include <string.h>
@@ -197,8 +197,9 @@ static stat_rec_t* m_stat_sub = NULL;
 static time_t m_qs_expiration = 60 * 10;
 
 static apr_table_t *m_ip_list[NUM_EVENT_TABLES];   /* IP session store */
+static int m_ip_log_max = 0;                       /* already reached store limit */
 static apr_table_t *m_user_list[NUM_EVENT_TABLES]; /* user session store */
-static int m_log_max = 0;                          /* already reached store limit */
+static int m_usr_log_max = 0;                      /* already reached store limit */
 static int m_hasGC = 0;                            /* sep. gc thread or not */
 static qs_event_t **m_gc_event_list = NULL;        /* list of entries to delete */
 
@@ -301,10 +302,10 @@ static int qs_tableSelector(const char *str) {
  *
  * @param l_qs_event Pointer to the event list.
  * @param id Identifer, e.g. IP address or user tracking cookie
- *
+ * @param type which counter is used (either 'I' or 'U')
  * @return event counter (number of updates) for the provided id
  */
-static long qs_insertEventT(apr_table_t **list0, const char *id) {
+static long qs_insertEventT(apr_table_t **list0, const char *id, const char *type) {
   qs_event_t *lp;
   int select = qs_tableSelector(id);
   apr_table_t *list = list0[select];
@@ -316,14 +317,20 @@ static long qs_insertEventT(apr_table_t **list0, const char *id) {
     return lp->count;
   }
   if(apr_table_elts(list)->nelts >= MAX_EVENT_ENTRIES) {
-    if(m_log_max == 0) {
+    if((type[0] == 'I' && m_ip_log_max == 0) ||
+       (type[0] == 'U' && m_usr_log_max == 0)) {
       char time_string[1024];
       time_t tm = time(NULL);
       struct tm *ptr = localtime(&tm);
       strftime(time_string, sizeof(time_string), "%a %b %d %H:%M:%S %Y", ptr);
-      fprintf(stderr, "[%s] [notice] qslog: reached event count limit\n",
-              time_string);
-      m_log_max = 1;
+      fprintf(stderr, "[%s] [notice] qslog: reached event (%s) count limit\n",
+              time_string, type);
+      if(type[0] == 'I') {
+        m_ip_log_max = 1;
+      }
+      if(type[0] == 'U') {
+        m_usr_log_max = 1;
+      }
     }
     return 0;
   }
@@ -689,6 +696,9 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   esco[0] = '\0';
   avms[0] = '\0';
   custom[0] = '\0';
+
+  m_ip_log_max = 0;
+  m_usr_log_max = 0;
 
   if(stat_rec->i_byte_count != -1) {
     sprintf(bis, NBIS";%lld;", stat_rec->i_byte_count/LOG_INTERVAL);
@@ -1409,11 +1419,11 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
   }
   if(I != NULL) {
     /* update/store client IP */
-    qs_insertEventT(m_ip_list, I);
+    qs_insertEventT(m_ip_list, I, "I");
   }
   if(U != NULL) {
     /* update/store user */
-    qs_insertEventT(m_user_list, U);
+    qs_insertEventT(m_user_list, U, "U");
   }
   if(B != NULL) {
     /* transferred bytes */
@@ -2128,7 +2138,7 @@ static void usage(const char *cmd, int man) {
   printf("\n");
   qs_man_print(man, "     Note: If the 'name' parameter is prefixed by 'STATUS', the rule is applied against\n");
   qs_man_print(man, "     the HTTP status code 'S' and the 'event1' string shall contain a list of relevant\n");
-  qs_man_print(man, "     status codes separated by an underscore (while 'event2 is ignored).\n");
+  qs_man_print(man, "     status codes separated by an underscore (while 'event2' is ignored).\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
