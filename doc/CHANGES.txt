@@ -1,3 +1,7 @@
+Version
+
+ - Slightly changed unique-id generator (shorter).
+
 Version 11.43
 
  - Fixed: QS_IsVipRequest was not set if QS_ClientPrefer hasn't been
