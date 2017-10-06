@@ -42,7 +42,7 @@
 /************************************************************************
  * Version
  ***********************************************************************/
-static const char revision[] = "$Id: mod_qos.c,v 5.655 2017-09-21 19:41:00 pbuchbinder Exp $";
+static const char revision[] = "$Id: mod_qos.c,v 5.656 2017-10-06 19:34:59 pbuchbinder Exp $";
 static const char g_revision[] = "11.43";
 
 
@@ -959,7 +959,6 @@ typedef struct {
   apr_time_t request_time;
   unsigned int in_addr;
   unsigned int conn;
-  unsigned int pid;
   unsigned int tid;
   unsigned int unique_id_counter;
 } qos_unique_id_t;
@@ -1197,8 +1196,8 @@ static pcre_extra *qos_pcre_study(apr_pool_t *pool, pcre *pc) {
   return extra;
 }
 
-static int qos_encode64_binary(char *encoded,
-                               const char *string, int len) {
+static int qos_encode64_binary(char *encoded, const char *string,
+                               int len) {
   int i;
   char *p;
   
@@ -1876,7 +1875,6 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
     m_unique_id.unique_id_counter++;
     id.request_time = r->request_time;
     id.in_addr = m_unique_id.in_addr;
-    id.pid = m_unique_id.pid;
 #if APR_HAS_THREADS
     id.tid = apr_os_thread_current();
 #else
@@ -1886,7 +1884,7 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
     id.unique_id_counter = m_unique_id.unique_id_counter;
     uidstr = (char *)apr_pcalloc(r->pool, apr_base64_encode_len(sizeof(qos_unique_id_t)));
     len = qos_encode64_binary(uidstr, (const char *)&id, sizeof(qos_unique_id_t));
-    uidstr[len-2] = '\0';
+    uidstr[len-2] = (id.unique_id_counter%8)+50;
     uid = uidstr;
     apr_table_set(r->subprocess_env, "UNIQUE_ID", uid);
   }
@@ -7804,16 +7802,14 @@ static void qos_init_unique_id(apr_pool_t *p, server_rec *bs) {
   char str[APRMAXHOSTLEN + 1];
   apr_sockaddr_t *sockaddr;
   str[APRMAXHOSTLEN] = '\0';
-  m_unique_id.in_addr = 0;
+  unsigned int in_addr = 0;
   if(apr_gethostname(str, sizeof(str) - 1, p) == APR_SUCCESS) {
     if(apr_sockaddr_info_get(&sockaddr, str, AF_INET, 0, 0, p) == APR_SUCCESS) {
-      m_unique_id.in_addr = sockaddr->sa.sin.sin_addr.s_addr;
+      in_addr = sockaddr->sa.sin.sin_addr.s_addr;
     }
   }
-  m_unique_id.pid = getpid();
-  if(m_unique_id.in_addr == 0) {
-    m_unique_id.in_addr = m_unique_id.pid;
-  }
+  pid_t pid = getpid();
+  m_unique_id.in_addr = pid^in_addr;
   m_unique_id.unique_id_counter = time(NULL);
 }
 
