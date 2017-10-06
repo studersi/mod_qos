@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Revision: 1.16 $";
+static const char revision[] = "$Revision: 1.17 $";
 
 /* system */
 #include <stdio.h>
@@ -64,7 +64,11 @@ typedef struct {
 } rule_t;
 
 static void usage2() {
-  printf("usage: regex <path to pattern file>\n");
+  printf("usage: regexspeed <path to pattern file>\n");
+  printf("\n");
+  printf("Tool to compare / estimate the processing time of regular expressions.\n");
+  printf("\n");
+  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
 }
 
@@ -186,23 +190,27 @@ int main(int argc, const char *const argv[]) {
 	apr_table_addn(rules, apr_pstrdup(pool, p), (char *)rule);
       }
     }
+  } else {
+    usage2();
   }
 
   { // per rule
       int k;
       apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
       for(k = 0; k < apr_table_elts(rules)->nelts; k++) {
-	qs_r_t *d = data;
 	rule_t* rule = (rule_t *)entry[k].val;
 	gettimeofday(&tv, NULL);
 	start = tv.tv_sec * 1000000 + tv.tv_usec;
-	while(d->string) {
-	  pcre_exec(rule->pc, rule->extra, d->string, d->len, 0, 0, NULL, 0);
-	  d++;
+	for(i = 0; i < LOOPS; i++) {
+	  qs_r_t *d = data;
+	  while(d->string) {
+	    pcre_exec(rule->pc, rule->extra, d->string, d->len, 0, 0, NULL, 0);
+	    d++;
+	  }
 	}
 	gettimeofday(&tv, NULL);
 	end = tv.tv_sec * 1000000 + tv.tv_usec;
-	printf("%lld usec for %s\n", end - start, rule->id != NULL ? rule->id : entry[k].key);	
+	printf("%lld usec for %s\n", (end - start)/LOOPS, rule->id != NULL ? rule->id : entry[k].key);	
       }
   }
 
