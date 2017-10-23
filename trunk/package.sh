@@ -29,12 +29,12 @@ fi
 
 TAGV=`echo $VERSION | awk -F'.' '{print "REL_" $1 "_" $2}'`
 echo "check release tag $TAGV ..."
-SREV=`svn info ^/tags/${TAGV} | grep "Revision:" | awk '{print $2}'`
+SREV=`svn ls -v ^/tags | grep ${TAGV}/ | awk '{print $1}'`
 echo "revision: $SREV"
 if [ -z "$SREV" ]; then
     echo "FAILED - revision does not exist"
 fi
-if [ -z "`svn diff -r $SREV $TAGV 2>&1`" ]; then
+if [ -z "`svn diff -r $SREV 2>&1`" ]; then
   echo ok
 else
   echo "FAILED - open changes"
