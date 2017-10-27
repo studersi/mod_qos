@@ -2114,10 +2114,10 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "  "QSCOUNTERPATH"=<path>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Defines a file containing a by new line separated list of rules which\n");
-  qs_man_print(man, "     reflects possible QS_ClientEventLimitCount directive settings (for\n");
-  qs_man_print(man, "     simulation purpose). The 'E' format character defines the event string\n");
-  qs_man_print(man, "     in the log to match (literal string) the 'event1' and 'event2' event names\n");
-  qs_man_print(man, "     against.\n");
+  qs_man_print(man, "     reflect possible QS_ClientEventLimitCount directive settings (for\n");
+  qs_man_print(man, "     simulation purpose / -pc option). The 'E' format character defines the event\n");
+  qs_man_print(man, "     string in the log to match (literal string) the 'event1' and 'event2' event\n");
+  qs_man_print(man, "     names against.\n");
   printf("\n");
   if(man) printf("\n");
   qs_man_print(man, "     Rule syntax: <name>:<event1>-<n>*<event2>/<duration>=<limit>\n");
