@@ -56,7 +56,7 @@ _REQ localhost $QS_PORT_BASE
 _CLOSE
 _SLEEP 100
 _EXPECT EXEC "mod_qos.060.: access denied, QS_ClientEventBlockCount rule: max=20"
-_EXEC tail -3 logs/error_log
+_EXEC tail -4 logs/error_log
 
 END
 
