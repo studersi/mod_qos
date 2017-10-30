@@ -744,10 +744,11 @@ e.g. <code>QS_Limit_Clear</code>.
 <a name="_Decrement"></a>
 <code>*_Decrement</code><br>
 The counter of the variable processed by the
-<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>,
-<code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code>,
-<code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code>, and 
-<code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code> directives 
+<code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code>, 
+<code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code>, 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>, and 
+<code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code>
+directives 
 is decremented by the value set in the same variable suffixed by <code>_Decrement</code>, 
 e.g. <code>QS_Limit_Decrement=1</code>. The variable is evaluated at the end
 of the request processing.
@@ -997,11 +998,11 @@ causing the event are denied when reaching this limitation for the specified tim
 (blocked at request level).<br>
 <small><i>Notes:<ul>
 <li>The current counter value is propagated to the process environment within 
-the variable <code>&lt;env-variable&gt;_Counter</code>.</li>
+the variable <code>&lt;env-variable&gt;<a href="#_Counter">_Counter</a></code>.</li>
 <li>See also <a href="#QS_CondEventLimitCount"><code>QS_CondEventLimitCount</code></a> 
 if you want to enforce a rule under certain conditions only.</li>
-<li>The event counter can be decremented by setting the environment variable which name is 
-suffixed by <code><a href="#_Decrement">_Decrement</a></code>.</li>
+<li>The event counter can be decremented by setting the environment 
+<code>&lt;env-variable&gt;<a href="#_Decrement">_Decrement</a></code>.</li>
 </ul>
 </i></small>
 </li>
