@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id: mod_qos.c,v 5.656 2017-10-06 19:34:59 pbuchbinder Exp $";
-static const char g_revision[] = "11.43";
+static const char g_revision[] = "11.44";
 
 
 /************************************************************************
@@ -577,11 +577,18 @@ typedef struct {
  */
 typedef struct {
   const char *env_var;// configured environment variable name
+  const char *eventDecStr;
   int max;            // configured max. num
   int seconds;        // configured duration
   int limit;          // event counter
   time_t limit_time;  // timer
   qs_event_action_e action;
+  const char *condStr;
+#ifdef AP_REGEX_H
+  ap_regex_t *preg;
+#else
+  regex_t *preg;
+#endif
 } qos_event_limit_entry_t;
 
 /** 
@@ -2835,11 +2842,14 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
       // set config
       for(i = 0; i < event_limit_entries; i++) {
         evet->env_var = eves->env_var;
+        evet->eventDecStr = eves->eventDecStr;
         evet->max = eves->max;
         evet->seconds = eves->seconds;
         evet->limit = 0;
         evet->limit_time = 0;
         evet->action = eves->action;
+        evet->condStr = eves->condStr;
+        evet->preg = eves->preg;
         evet++;
         eves++;
       }
@@ -4873,17 +4883,34 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
           }
           // check limit
           if(entry->limit > entry->max) {
-            rv = m_retcode;
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOS_LOG_PFX(013)"access denied%s,"
-                          " QS_EventLimitCount rule: %s,"
-                          " max=%d, current=%d,"
-                          " c=%s, id=%s",
-                          sconf->log_only ? " (log only)" : "",
-                          entry->env_var, entry->max, entry->limit,
-                          QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
-                          qos_unique_id(r, "013"));
-            QS_INC_EVENT_LOCKED(sconf, 13);
+            int block = 1;
+            char *conditional = "";
+            if(entry->condStr != NULL) {
+              // conditional enforcement...
+              const char *condition = apr_table_get(r->subprocess_env, QS_COND);
+              conditional = apr_pstrdup(r->pool, "Cond");
+              if(condition == NULL) {
+                block = 0; // variable not set
+              } else {
+                if(ap_regexec(entry->preg, condition, 0, NULL, 0) != 0) {
+                  block = 0; // pattern does not match
+                }
+              }
+            }
+            if(block) {
+              rv = m_retcode;
+              ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                            QOS_LOG_PFX(013)"access denied%s,"
+                            " QS_%sEventLimitCount rule: %s,"
+                            " max=%d, current=%d,"
+                            " c=%s, id=%s",
+                            sconf->log_only ? " (log only)" : "",
+                            conditional,
+                            entry->env_var, entry->max, entry->limit,
+                            QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                            qos_unique_id(r, "013"));
+              QS_INC_EVENT_LOCKED(sconf, 13);
+            }
           }
         }
         // propagte to environment (current)
@@ -5473,6 +5500,15 @@ static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
     apr_global_mutex_lock(act->lock);     /* @CRT42 */
     for(i = 0; i < sconf->event_limit_a->nelts; i++) {
       if(entry->action == QS_EVENT_ACTION_DENY) {
+        int decEvent = get_qs_event(r, entry->eventDecStr);
+        if(decEvent > 0) {
+          if(decEvent > entry->limit) {
+            entry->limit = 0;
+            entry->limit_time = 0;
+          } else {
+            entry->limit = entry->limit - decEvent;
+          }
+        }
         if(apr_table_get(r->subprocess_env, entry->env_var) != NULL) {
           // increment only once
           char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, entry->env_var, NULL);
@@ -6542,7 +6578,9 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
             elimit = 0;
           }
           if(event_limit->action == QS_EVENT_ACTION_DENY) {
-            ap_rprintf(r, "%s"QOS_DELIM"QS_EventLimitCount"QOS_DELIM"%d/%d[%s]: %d\n", sn,
+            ap_rprintf(r, "%s"QOS_DELIM"QS_%sEventLimitCount"QOS_DELIM"%d/%d[%s]: %d\n",
+                       sn,
+                       event_limit->condStr == NULL ? "" : "Cond",
                        event_limit->max,
                        event_limit->seconds,
                        event_limit->env_var,
@@ -7244,10 +7282,11 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
           }
           if(event_limit->action == QS_EVENT_ACTION_DENY) {
             ap_rprintf(r, "    <tr class=\"rows\">"
-                       "<td colspan=\"5\">%s</td>"
+                       "<td colspan=\"5\">%s%s</td>"
                        "<td>%d</td><td>%ds</td><td %s>%d</td><td>%ds</td>"
                        "</tr>\n",
                        event_limit->env_var,
+                       event_limit->condStr == NULL ? "" : " <small>(conditional)</small>",
                        event_limit->max,
                        event_limit->seconds,
                        elimit >= event_limit->max ? red : "",
@@ -11747,6 +11786,42 @@ const char *qos_event_bps_cmd(cmd_parms *cmd, void *dcfg, const char *event, con
   return NULL;
 }
 
+// QS_CondEventLimitCount
+const char *qos_cond_event_limit_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  qos_event_limit_entry_t *new = apr_array_push(sconf->event_limit_a);
+  if(argc < 4) {
+    return apr_psprintf(cmd->pool, "%s: takes 3 arguments",
+                        cmd->directive->directive);
+  }
+  new->env_var = apr_pstrdup(cmd->pool, argv[0]);
+  new->eventDecStr = apr_pstrcat(cmd->pool, argv[0], QS_LIMIT_DEC, NULL);
+  new->max = atoi(argv[1]);
+  new->seconds = atoi(argv[2]);
+  new->action = QS_EVENT_ACTION_DENY;
+  if(new->max == 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  if(new->seconds == 0) {
+    return apr_psprintf(cmd->pool, "%s: seconds must be numeric value >0", 
+                        cmd->directive->directive);
+  }
+  new->condStr = apr_pstrdup(cmd->pool, argv[3]);
+#ifdef AP_REGEX_H
+  new->preg = ap_pregcomp(cmd->pool, new->condStr, AP_REG_EXTENDED);
+#else
+  new->preg = ap_pregcomp(cmd->pool, new->condStr, REG_EXTENDED);
+#endif
+  if(new->preg == NULL) {
+    return apr_psprintf(cmd->pool, "%s: failed to compile regex (%s)",
+                        cmd->directive->directive, new->condStr);
+  }
+  return NULL;
+}
+
+// QS_EventLimitCount
 const char *qos_event_limit_cmd(cmd_parms *cmd, void *dcfg, const char *event,
                                 const char *number, const char *seconds) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -11756,6 +11831,7 @@ const char *qos_event_limit_cmd(cmd_parms *cmd, void *dcfg, const char *event,
   new->max = atoi(number);
   new->seconds = atoi(seconds);
   new->action = QS_EVENT_ACTION_DENY;
+  new->condStr = NULL;
   if(new->max == 0) {
     return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
                         cmd->directive->directive);
@@ -13559,6 +13635,13 @@ static const command_rec qos_config_cmds[] = {
                 " defines the maximum number of events allowed within the defined"
                 " time. Requests are denied when reaching this limitation for the"
                 " specified time (blocked at request level)."),
+#ifdef AP_TAKE_ARGV
+  AP_INIT_TAKE_ARGV("QS_CondEventLimitCount", qos_cond_event_limit_cmd, NULL,
+                RSRC_CONF,
+                "QS_CondEventLimitCount <env-variable> <number> <seconds> <pattern>,"
+                " same as QS_EventLimitCount but blocks requests only if the "QS_COND
+                " variable matches the specified pattern (regex)."),
+#endif
 
   /* server / connection limitation */
   AP_INIT_TAKE1("QS_SrvMaxConn", qos_max_conn_cmd, NULL,

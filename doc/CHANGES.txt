@@ -1,4 +1,9 @@
-Version
+Version 11.44
+
+ - New directive QS_CondEventLimitCount.
+
+ - QS_EventLimitCount (and QS_CondEventLimitCount) counter may be decremented
+   by environment variable suffixed by "_Decrement".
 
  - Slightly changed unique-id generator (shorter).
 
@@ -73,8 +78,8 @@ Version 11.38
 
  - New directive QS_SrvMinDataRateIgnoreVIP and QS_SrvMaxConnPerIPIgnoreVIP.
 
- - QS_ClientEventLimitCount may be decremented or cleared by environment variable
-   (suffixed by "_Decrement", e.g. QS_Limit_Decrement).
+ - QS_ClientEventLimitCount may be decremented or cleared by environment
+   variable (suffixed by "_Decrement", e.g. QS_Limit_Decrement).
 
  - QS_MileStone sets cookie also within error filter supporting redirects
    even not reaching the handler.

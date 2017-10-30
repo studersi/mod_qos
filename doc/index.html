@@ -597,6 +597,7 @@ The following table shows if a rules may be deactivated for VIPs:
 <tr><td>QS_ClientSerialize</td><td>no</td></tr>
 <tr><td>QS_ClientGeoCountryPriv</td><td>no</td></tr>
 <tr><td>QS_CondLocRequestLimitMatch</td><td>yes</td></tr>
+<tr><td>QS_CondEventLimitCount</td><td>no</td></tr>
 <tr><td>QS_CondClientEventLimitCount</td><td>no</td></tr>
 <tr><td>QS_DenyQueryBody</td><td>no</td></tr>
 <tr><td>QS_PermitUriBody</td><td>no</td></tr>
@@ -742,9 +743,14 @@ e.g. <code>QS_Limit_Clear</code>.
 <li>
 <a name="_Decrement"></a>
 <code>*_Decrement</code><br>
-The counter of the variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> directive 
+The counter of the variable processed by the
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>,
+<code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code>,
+<code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code>, and 
+<code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code> directives 
 is decremented by the value set in the same variable suffixed by <code>_Decrement</code>, 
-e.g. <code>QS_Limit_Decrement=1</code>.
+e.g. <code>QS_Limit_Decrement=1</code>. The variable is evaluated at the end
+of the request processing.
 </li>
 <li>
 <a name="QS_Serialize"></a>
@@ -761,8 +767,9 @@ directive.
 <li>
 <a name="QS_Cond"></a>
 <code>QS_Cond</code><br>
-Variable processed by the <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLocRequestLimitMatch</a></code> 
-and <code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code> directives.
+Variable processed by the <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLocRequestLimitMatch</a></code>, 
+<code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code>, and
+<code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code> directives.
 </li>
 <li>
 <a name="QS_EventRequest"></a>
@@ -898,8 +905,16 @@ enforced for those requests matching the specified condition. <br>
 Only one <code>QS_CondLocRequestLimitMatch</code> rule is evaluated per request.
 </li>
 <li>
+<a name="QS_CondEventLimitCount"></a>
+<code>QS_CondEventLimitCount &lt;env-variable&gt; &lt;number&gt; &lt;seconds&gt; &lt;pattern&gt;</code><br>
+Same as <code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code> but
+requests are only blocked if the value of the
+<code><a href="#QS_Cond">QS_Cond</a></code> 
+variable matches the defined pattern (regex).
+</li>
+<li>
 <a name="QS_CondClientEventLimitCount"></a>
-<code>QS_CondClientEventLimitCount &lt;number&gt; &lt;seconds&gt; &lt;variable&gt; &lt;pattern&gt</code><br>
+<code>QS_CondClientEventLimitCount &lt;number&gt; &lt;seconds&gt; &lt;variable&gt; &lt;pattern&gt;</code><br>
 Defines the maximum number of the specified environment variable
 allowed within the defined time. Directive works similar as 
 <a href="#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
@@ -978,15 +993,22 @@ concurrent requests.
 <a name="QS_EventLimitCount"></a>
 <code>QS_EventLimitCount &lt;env-variable&gt; &lt;number&gt; &lt;seconds&gt;</code><br>
 Defines the maximum number of events allowed within the defined time. Requests 
-are denied when reaching this limitation for the specified time (blocked at 
-request level).<br>
-<small><i>Note: The current counter value is propagated to the process 
-environment within the variable 
-<code>&lt;env-variable&gt;_Counter</code>.</i></small>
+causing the event are denied when reaching this limitation for the specified time 
+(blocked at request level).<br>
+<small><i>Notes:<ul>
+<li>The current counter value is propagated to the process environment within 
+the variable <code>&lt;env-variable&gt;_Counter</code>.</li>
+<li>See also <a href="#QS_CondEventLimitCount"><code>QS_CondEventLimitCount</code></a> 
+if you want to enforce a rule under certain conditions only.</li>
+<li>The event counter can be decremented by setting the environment variable which name is 
+suffixed by <code><a href="#_Decrement">_Decrement</a></code>.</li>
+</ul>
+</i></small>
 </li>
 </ul>
 Mulpiple built-in directives may be used to set or detect events (additional
-event variable processing could be configured using 
+event variable processing could be configured using
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a> or 
 <a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a>).
 <ul>
 <li>
@@ -1620,8 +1642,8 @@ Ensures that not more than one request having the
 variable set is processed at the same time by serializing them 
 (process one request after each other). Default is "off".<br>
 <small><i>Note: Maximum wait time for a request is defined by the 
-optional timeout parameter (in seconds). The default is 300 
-seconds.</i></small>
+optional timeout parameter (in seconds). The default is 300 seconds.
+</i></small>
 </li>
 <li>
 Throttling the download bandwidth: 
@@ -1742,7 +1764,7 @@ suffixed by <code><a href="#_Decrement">_Decrement</a></code>, e.g. <code>QS_Lim
 <a href="#statusviewer">status viewer</a> (you may use the 
 <a href="#webconsole">console</a> to view other variables alternatively).</li>
 <li>See also <a href="#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></a> 
-if you want to enforce a rule under certain conditions only.
+if you want to enforce a rule under certain conditions only.</li>
 </ul></i></small>
 </li>
 <li>

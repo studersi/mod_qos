@@ -140,6 +140,11 @@ Listen         ##QS_PORT_BASE##
    SetEnvIf User-Agent        limitme ALIMIT   
    QS_EventLimitCount         ALIMIT 3 2
 
+   SetEnvIfPlus               Request_Query CELS CEL=1
+   SetEnvIfPlus               Request_Query CELD=([0-9]+) CEL_Decrement=$1
+   SetEnvIfPlusNoCase         User-Agent CEL QS_Cond=CEL
+   QS_CondEventLimitCount     CEL 10 2 CEL
+
    SetEnvIf User-Agent        limipersec limit=a
    QS_EventPerSecLimit        limit 10
 
