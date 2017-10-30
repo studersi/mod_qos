@@ -54,6 +54,7 @@ echo "QS_PORT_BASE2=$QS_PORT_BASE2" >> ports
 echo "export QS_PORT_BASE1"         >> ports
 
 if [ ! -x bin/curl ]; then
+    mkdir bin
     if [ -x ../../curl-*/src/curl ]; then
 	cd bin
 	ln -s ../../../curl-*/src/curl .
