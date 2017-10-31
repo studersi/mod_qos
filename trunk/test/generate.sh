@@ -151,3 +151,4 @@ cd ..
 
 cd ./bin
 cc -o sleep sleep.c
+cd ..

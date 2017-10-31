@@ -9,6 +9,8 @@
 # details about mod_qos.
 #
 
+cd `dirname $0`
+
 DIRECTORIES="logs scripts htdocs conf"
 for E in $DIRECTORIES; do
   mkdir -p $E
@@ -54,7 +56,7 @@ echo "QS_PORT_BASE2=$QS_PORT_BASE2" >> ports
 echo "export QS_PORT_BASE1"         >> ports
 
 if [ ! -x bin/curl ]; then
-    mkdir bin
+    mkdir -p bin
     if [ -x ../../curl-*/src/curl ]; then
 	cd bin
 	ln -s ../../../curl-*/src/curl .
@@ -115,8 +117,8 @@ if [ ! -x run.sh ]; then
   ln -s ../test/run.sh .
 fi
 
-if [ ! -d bin ]; then
-  mkdir bin
+if [ ! -x bin/sleep.sh ]; then
+  mkdir -p bin
   cd bin
   ln -s ../../test/bin/h* .
   ln -s ../../test/bin/s* .
