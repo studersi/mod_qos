@@ -97,6 +97,22 @@ __User-Agent: CEL
 __
 _EXPECT . "!root index.html"
 _EXPECT . "!200 OK"
+_EXPECT . "custom error page"
 _WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(013\): access denied, QS_CondEventLimitCount rule: CEL, max=10, current=22"
+_EXEC tail -1 logs/error_log
+_SLEEP 3100
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?CELS HTTP/1.1
+__Host: localhost
+__User-Agent: CEL
+__
+_EXPECT . "root index"
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
 
 END
