@@ -728,7 +728,8 @@ increase the counter (default is 1).
 <li>
 <a name="QS_Limit"></a>
 <code>QS_Limit[=&lt;number&gt;]</code><br>
-(Default) variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+(Default) variable processed by the
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
 directive.<br>
 The optional <code>number</code> value defines the penalty points to 
 increase the counter (default is 1).
@@ -736,8 +737,9 @@ increase the counter (default is 1).
 <li>
 <a name="_Clear"></a>
 <code>*_Clear</code><br>
-The counter of the variable processed by the <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> directive  
-is reset if you set the same variable suffixed by <code>_Clear</code>, 
+The counter of the variable processed by the
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>
+directive  is reset if you set the same variable suffixed by <code>_Clear</code>, 
 e.g. <code>QS_Limit_Clear</code>.
 </li>
 <li>
@@ -750,8 +752,10 @@ The counter of the variable processed by the
 <code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code>
 directives 
 is decremented by the value set in the same variable suffixed by <code>_Decrement</code>, 
-e.g. <code>QS_Limit_Decrement=1</code>. The variable is evaluated at the end
-of the request processing.
+e.g. <code>QS_Limit_Decrement=1</code> decrements the value of the <code>QS_Limit</code>
+variable of the corresponding
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>
+rule by 1. The variable is evaluated at the end of the request processing.
 </li>
 <li>
 <a name="QS_Serialize"></a>
