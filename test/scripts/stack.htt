@@ -1,5 +1,5 @@
 #
-# $Id: stack.htt,v 1.7 2014-03-21 21:21:38 pbuchbinder Exp $
+# $Id$
 #
 # inserts  50'000 client entries and verifies that they are available
 #

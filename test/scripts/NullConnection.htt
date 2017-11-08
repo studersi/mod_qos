@@ -1,5 +1,5 @@
 #
-# $Id: NullConnection.htt,v 1.2 2014-06-12 05:49:08 pbuchbinder Exp $
+# $Id$
 #
 # <IfDefine BlockNullConn>
 # QS_ClientEventBlockCount 3 40

@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_0.htt,v 1.3 2010-06-10 07:39:39 pbuchbinder Exp $
+# $Id$
 #
 # client which is not sending a complete request line within 8 seconds
 #

@@ -1,5 +1,5 @@
 #
-# $Id: QS_SetReqHeader.htt,v 1.1 2016-07-21 18:30:17 pbuchbinder Exp $
+# $Id$
 #
 #   SetEnvIfPlus    Request_Query suppressUserAgent
 #   QS_SetReqHeader !User-Agent suppressUserAgent

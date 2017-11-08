@@ -1,5 +1,5 @@
 #
-# $Id: QS_LimitRequestBody.htt,v 1.5 2012-01-11 21:27:03 pbuchbinder Exp $
+# $Id$
 #
 
 INCLUDE scripts/ports

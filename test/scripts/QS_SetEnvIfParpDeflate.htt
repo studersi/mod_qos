@@ -1,6 +1,6 @@
 http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
 #
-# $Id: QS_SetEnvIfParpDeflate.htt,v 1.1 2010-01-19 21:48:43 pbuchbinder Exp $
+# $Id$
 #
 
 

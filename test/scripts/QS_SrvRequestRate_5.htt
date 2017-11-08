@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_5.htt,v 1.1 2008-06-25 20:32:54 pbuchbinder Exp $
+# $Id$
 #
 # slow post data (hard at the limit, 132 bytes/sec)
 #

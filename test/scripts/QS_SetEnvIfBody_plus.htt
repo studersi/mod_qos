@@ -1,5 +1,5 @@
 #
-# $Id: QS_SetEnvIfBody_plus.htt,v 1.1 2013-06-21 19:05:25 pbuchbinder Exp $
+# $Id$
 #
 # extracts user name and password from the request body and forwards
 # it to the application in a header (using mod_setenvifplus)

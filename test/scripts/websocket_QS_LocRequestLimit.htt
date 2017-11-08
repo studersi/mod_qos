@@ -1,7 +1,7 @@
 #
 #  QS_LocRequestLimit         /echo           3
 #
-# $Id: websocket_QS_LocRequestLimit.htt,v 1.1 2014-01-27 07:08:39 pbuchbinder Exp $
+# $Id$
 #
 
 INCLUDE scripts/ports

@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/generate.sh,v 2.42 2017-06-27 19:24:21 pbuchbinder Exp $
+# $Header$
 #
 # Simple start/stop script (for test purposes only).
 #

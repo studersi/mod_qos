@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build.sh,v 2.78 2017-07-17 16:00:56 pbuchbinder Exp $
+# $Header$
 #
 # Simple build script using Apache tar.gz from the 3thrdparty directory
 #

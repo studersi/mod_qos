@@ -1,5 +1,5 @@
 #
-# $Id: 040_QS_ClientEventBlockCount.htt,v 1.1 2012-03-12 19:15:43 pbuchbinder Exp $
+# $Id$
 #
 #   QS_ClientEventBlockCount 20 30
 #   QS_SetEnvIfStatus  400 QS_Block

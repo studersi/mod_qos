@@ -1,5 +1,5 @@
 #
-# $Id: UCN_QS_DenyEvent.htt,v 1.1 2014-06-10 19:18:23 pbuchbinder Exp $
+# $Id$
 #
 #   SetEnvIf Host server[0-9] ValidHostHeader
 #   <Location />

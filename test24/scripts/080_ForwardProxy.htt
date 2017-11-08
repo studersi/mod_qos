@@ -1,5 +1,5 @@
 #
-# $Id: 080_ForwardProxy.htt,v 1.1 2016-11-09 17:23:18 pbuchbinder Exp $
+# $Id$
 #
 # ensure the module can be used in a forward proxy (HTTP)
 #

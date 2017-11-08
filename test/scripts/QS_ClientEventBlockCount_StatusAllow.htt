@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventBlockCount_StatusAllow.htt,v 1.1 2013-03-26 19:35:46 pbuchbinder Exp $
+# $Id$
 #
 # QS_ClientEventBlockCount 3 10
 # <IfDefine ip_not_blocked>

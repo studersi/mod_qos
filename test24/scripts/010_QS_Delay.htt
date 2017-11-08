@@ -1,5 +1,5 @@
 #
-# $Id: 010_QS_Delay.htt,v 1.1 2015-08-26 18:53:24 pbuchbinder Exp $
+# $Id$
 #   SetEnvIf                     User-Agent delay2100 QS_Delay=2100
 #
 

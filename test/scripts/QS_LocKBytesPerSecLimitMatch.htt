@@ -1,5 +1,5 @@
 #
-# $Id: QS_LocKBytesPerSecLimitMatch.htt,v 1.2 2014-06-12 05:49:08 pbuchbinder Exp $
+# $Id$
 #
 #   QS_LocKBytesPerSecLimitMatch ".*\.mpeg$" 1000
 #

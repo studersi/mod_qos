@@ -1,5 +1,5 @@
 #
-# $Id: UCN_QS_EventRequestLimit.htt,v 1.2 2016-03-11 20:47:30 pbuchbinder Exp $
+# $Id$
 #
 #   SetEnvIfPlus           User-Agent EL5 EL=1
 #   SetEnvIfPlus           User-Agent EL6 EL=2

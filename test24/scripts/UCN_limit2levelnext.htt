@@ -1,5 +1,5 @@
 #
-# $Id: UCN_limit2levelnext.htt,v 1.1 2016-03-22 20:46:49 pbuchbinder Exp $
+# $Id$
 #
 #  QS_ClientEventLimitCount 20 2 SlowRequest
 #  QS_ClientEventLimitCount 3 300 SlowRepeatedlySlow

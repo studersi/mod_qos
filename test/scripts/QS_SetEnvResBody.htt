@@ -1,5 +1,5 @@
 #
-# $Id: QS_SetEnvResBody.htt,v 1.5 2016-11-14 20:26:49 pbuchbinder Exp $
+# $Id$
 #
 #   QS_ClientEventBlockCount 3 10
 #   <Location /app/a/resbody/pattern>

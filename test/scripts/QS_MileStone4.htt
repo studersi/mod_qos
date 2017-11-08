@@ -1,5 +1,5 @@
 #
-# $Id: QS_MileStone4.htt,v 1.1 2010-07-29 17:45:07 pbuchbinder Exp $
+# $Id$
 #
 #   QS_MileStone deny "^GET /htt/index.html"
 #   QS_MileStone deny "^GET /htt/logo.gif"

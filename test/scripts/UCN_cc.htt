@@ -1,5 +1,5 @@
 # 
-# $Id: UCN_cc.htt,v 1.1 2014-11-23 19:34:49 pbuchbinder Exp $
+# $Id$
 # 
 # QS_SrvMaxConn                 10000
 # SetEnvIf                      QS_SrvConn [0-9]{2,} MaxConnections

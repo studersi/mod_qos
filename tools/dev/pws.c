@@ -53,7 +53,7 @@
 #include <openssl/err.h>
 #include <openssl/safestack.h>
 
-static const char revision[] = "$Id: pws.c,v 1.10 2017-06-29 05:24:32 pbuchbinder Exp $";
+static const char revision[] = "$Id$";
 
 #define MAX_LINE 32768
 #define QOSCR    13

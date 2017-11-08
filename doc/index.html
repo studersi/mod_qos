@@ -1273,8 +1273,9 @@ but the rule match is logged) or 'deny' (access is denied).
 Enforces correct URL decoding in conjunction with the 
 <code><a href="#QS_DenyRequestLine">QS_DenyRequestLine</a></code>, 
 <code><a href="#QS_DenyPath">QS_DenyPath</a></code>, and 
-<code><a href="#QS_DenyQuery">QS_DenyQuery</a></code> directives. Default is 
-"off" which means that incorrect encodings are ignored.
+<code><a href="#QS_DenyQuery">QS_DenyQuery</a></code> directives.
+Default is "off" which means that an incorrect encoding does stop
+request processing.
 </li>
 <li>
 <a name="QS_Decoding"></a>
@@ -2207,7 +2208,7 @@ similar to Apache's <code>rotatelogs</code>.</li>
 <li><code><a href="qssign.1.html">qssign</a></code><br>A log data integrity 
 check tool. It reads log data from stdin (pipe) and writes the signed data 
 to stdout adding a sequence number and signatur to ever log line.<br>
-<a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/tools/logstash-filter-qssign/lib/logstash/filters/qssign.rb?format=raw"><code>qssign.rb</code></a> is a <i><a href="http://www.logstash.net/">Logstash <img src="images/link.png"/></a></i> filter 
+<a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/tools/logstash-filter-qssign/lib/logstash/filters/qssign.rb?format=raw"><code>qssign.rb</code></a> is a <a href="http://www.logstash.net/">Logstash <img src="images/link.png"/></a> filter 
 plugin which may be used to verify the signatures of log messages in real time.</li>
 <a name="qstail"></a>
 <li><code><a href="qstail.1.html">qstail</a></code><br>Shows the end of a log 

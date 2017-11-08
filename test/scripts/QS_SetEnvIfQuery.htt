@@ -1,6 +1,6 @@
 http://127.0.0.1:5960/qos?other;value=123match&name=abc&ok
 #
-# $Id: QS_SetEnvIfQuery.htt,v 1.2 2008-10-22 18:15:53 pbuchbinder Exp $
+# $Id$
 #
 
 

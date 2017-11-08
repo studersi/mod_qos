@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_conn_off.htt,v 1.4 2011-08-23 18:42:25 pbuchbinder Exp $
+# $Id$
 #
 
 INCLUDE scripts/ports

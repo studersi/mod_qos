@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventLimitCount.htt,v 1.11 2014-06-18 19:05:54 pbuchbinder Exp $
+# $Id$
 #
 #  QS_ClientEventLimitCount 3 10
 #  QS_ClientIpFromHeader      Y-Forwarded-For

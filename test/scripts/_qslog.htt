@@ -1,5 +1,5 @@
 #
-# $Id: _qslog.htt,v 1.1 2009-07-31 21:49:48 pbuchbinder Exp $
+# $Id$
 #
 # simple script which generates 3x30 + start/end messages = 94 lines output to stdout/stderr
 # used by qslog.htt

@@ -1,5 +1,5 @@
 #
-# $Id: QS_EventPerSecLimit.htt,v 1.4 2011-11-22 21:46:25 pbuchbinder Exp $
+# $Id$
 #
 #   BrowserMatch               "event"                         qsevent=yes
 #   QS_SetEnvIf                qsevent !QS_VipRequest          qsmin=event

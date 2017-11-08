@@ -1,5 +1,5 @@
 #
-# $Id: UCN_QS_ClientEventBlock4.htt,v 1.3 2016-11-26 19:49:55 pbuchbinder Exp $
+# $Id$
 #
 # QS_ClientEventBlockCount     10 2
 # QS_SrvMaxConnPerIP           2

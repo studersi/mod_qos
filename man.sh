@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/man.sh,v 2.11 2017-03-08 21:36:50 pbuchbinder Exp $
+# $Header$
 #
 
 set -e

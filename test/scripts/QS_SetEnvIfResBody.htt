@@ -1,5 +1,5 @@
 #
-# $Id: QS_SetEnvIfResBody.htt,v 1.1 2016-07-22 14:31:33 pbuchbinder Exp $
+# $Id$
 #
 #   <Location /app/a/resbody/unset>
 #      SetEnvIfPlus Request_URI /app/a/resbody/unset QS_Country=TESTPATTERN

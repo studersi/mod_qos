@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/demo/ctl.sh,v 1.4 2017-06-27 19:24:21 pbuchbinder Exp $
+# $Header$
 #
 # Simple start/stop script (for test purposes only).
 #

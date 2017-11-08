@@ -1,5 +1,5 @@
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/scripts/QS_SrvMaxConnClosePercent.htt,v 1.1 2010-05-19 18:01:06 pbuchbinder Exp $
+# $Header$
 #
 # calculate max keep alive using percentage of MaxClients
 # 67% of MaxClients 896 = 600

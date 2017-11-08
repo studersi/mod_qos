@@ -22,7 +22,7 @@
  * limitations under the License.
  */
 
-static const char revision[] = "$Id: qs_util.c,v 1.26 2017-09-09 20:10:30 pbuchbinder Exp $";
+static const char revision[] = "$Id$";
 
 #include <stdio.h>
 #include <pthread.h>

@@ -1,5 +1,5 @@
 #
-# $Id: 008_QS_MileStone.htt,v 1.1 2012-03-14 19:51:39 pbuchbinder Exp $
+# $Id$
 #
 #   QS_MileStone                 deny "^GET /htt/milestone/index.html"
 #   QS_MileStone                 deny "^POST /htt/milestone/register*"

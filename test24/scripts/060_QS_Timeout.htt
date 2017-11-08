@@ -1,5 +1,5 @@
 #
-# $Id: 060_QS_Timeout.htt,v 1.2 2017-07-03 05:29:55 pbuchbinder Exp $
+# $Id$
 #
 #   Timeout 30
 #   SetEnvIf                     User-Agent QS_Timeout40 QS_Timeout=40

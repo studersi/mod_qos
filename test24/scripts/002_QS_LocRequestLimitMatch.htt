@@ -1,5 +1,5 @@
 #
-# $Id: 002_QS_LocRequestLimitMatch.htt,v 1.5 2015-08-26 18:53:24 pbuchbinder Exp $
+# $Id$
 #
 #    QS_LocRequestLimitMatch     ^/htt/limit2/.*   2
 #    QS_LocRequestLimitMatch     ^/index.html    200

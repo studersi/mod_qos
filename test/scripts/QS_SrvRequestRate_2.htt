@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_2.htt,v 1.5 2009-11-25 21:27:28 pbuchbinder Exp $
+# $Id$
 #
 # slow post data, second request on the same connection
 #

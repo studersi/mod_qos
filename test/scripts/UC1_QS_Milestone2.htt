@@ -1,5 +1,5 @@
 #
-# $Id: UC1_QS_Milestone2.htt,v 1.2 2014-08-11 20:22:22 pbuchbinder Exp $
+# $Id$
 #
 #   QS_MileStone deny "^GET /index.html "
 #   QS_MileStone deny "^GET /a/sleep.cgi "

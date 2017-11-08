@@ -1,5 +1,5 @@
 #
-# $Id: dos_perf.htt,v 1.2 2016-01-31 19:11:03 pbuchbinder Exp $
+# $Id$
 #
 # creates "mixed" traffic (some requests take up to 10 milliseconds
 # but overal, we are still measuring a very fast application)

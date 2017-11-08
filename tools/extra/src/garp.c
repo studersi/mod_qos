@@ -1,5 +1,5 @@
 /*
- * $Header: /home/cvs/m/mo/mod-qos/src/tools/extra/src/garp.c,v 1.1 2010-05-03 19:27:08 pbuchbinder Exp $
+ * $Header$
  *
  * send gratuitous arp
  */

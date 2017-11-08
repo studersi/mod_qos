@@ -1,5 +1,5 @@
 #
-# $Id: UCN_QS_CondClientEventLimitCount_adm.htt,v 1.2 2014-06-18 19:05:54 pbuchbinder Exp $
+# $Id$
 #
 #   QS_CondClientEventLimitCount 2 3 CL01 _CL01_URI_
 #   QS_ClientIpFromHeader        Y-Forwarded-For

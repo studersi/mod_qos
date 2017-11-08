@@ -1,5 +1,5 @@
 #
-# $Id: UCN_Cust01.htt,v 1.1 2016-02-29 16:28:08 pbuchbinder Exp $
+# $Id$
 # 
 # SetEnvIfPlusNoCase Remote_Addr (.*) RemoteIP=$1
 # SetEnvIfPlusNoCase Y-Forwarded-For (.*) XForward=$1

@@ -1,5 +1,5 @@
 #
-# $Id: 101_QS_LocRequestPerSecLimitMatch.htt,v 1.3 2016-02-18 21:41:53 pbuchbinder Exp $
+# $Id$
 #
 #   QS_LocRequestPerSecLimitMatch ^/limitrs/       10
 #

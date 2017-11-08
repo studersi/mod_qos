@@ -1,5 +1,5 @@
 #
-# $Id: QS_ErrorPage2.htt,v 1.1 2013-02-20 20:51:32 pbuchbinder Exp $
+# $Id$
 #
 # <IfDefine !autoerrorpage>
 #    QS_ErrorPage               /error-docs/error.shtml

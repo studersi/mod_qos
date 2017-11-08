@@ -1,7 +1,7 @@
 #
 # test QS_KeepAliveTimeout
 #
-# $Id: QS_KeepAliveTimeout.htt,v 1.3 2011-02-10 19:28:56 pbuchbinder Exp $
+# $Id$
 #
 
 INCLUDE scripts/ports

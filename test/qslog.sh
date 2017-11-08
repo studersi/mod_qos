@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: qslog.sh,v 2.39 2017-09-19 18:25:11 pbuchbinder Exp $
+# $Id$
 #
 # used by qslog.htt
 

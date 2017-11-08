@@ -1,5 +1,5 @@
 #
-# $Id: InternalRedirect.htt,v 1.1 2012-03-06 06:58:14 pbuchbinder Exp $
+# $Id$
 #
 #   # mutiple rule match
 #   BrowserMatch  "yoda"          YODA

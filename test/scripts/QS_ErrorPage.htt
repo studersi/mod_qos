@@ -1,5 +1,5 @@
 #
-# $Id: QS_ErrorPage.htt,v 1.2 2013-02-20 20:51:32 pbuchbinder Exp $
+# $Id$
 #
 # SetEnvIf                   Request_URI /qos/parp/err302  QS_ErrorPage=http://server1/error.html
 # QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"

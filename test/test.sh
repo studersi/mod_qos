@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/test/test.sh,v 2.278 2017-09-12 18:40:56 pbuchbinder Exp $
+# $Header$
 #
 # mod_qos test cases, requires htt, see http://htt.sourceforge.net/
 #

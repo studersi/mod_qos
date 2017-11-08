@@ -1,5 +1,5 @@
 #
-# $Id: ClientBehavior.htt,v 1.5 2011-09-09 21:26:07 pbuchbinder Exp $
+# $Id$
 #
 #ifdef QS_INTERNAL_TEST
 #define QOS_CC_BEHAVIOR_THR 50

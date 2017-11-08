@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.13 2015-09-24 19:31:17 pbuchbinder Exp $
+# $Id$
 
 bin_PROGRAMS=qsfilter2 qslog qspng qsrotate qssign qstail qsgrep qsexec qscheck qsgeo qslogger qshead
 

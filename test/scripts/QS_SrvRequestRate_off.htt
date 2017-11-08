@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_off.htt,v 1.1 2009-06-19 09:14:21 pbuchbinder Exp $
+# $Id$
 #
 # client which is not sending a complete request line
 #
