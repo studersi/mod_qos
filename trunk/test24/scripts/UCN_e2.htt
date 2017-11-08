@@ -1,5 +1,5 @@
 # 
-# $Id: UCN_e2.htt,v 1.1 2016-03-21 21:41:43 pbuchbinder Exp $
+# $Id$
 #
 # SetEnvIf                     Request_URI ^/download/mod_qos.so.gz LimitDownload
 # SetEnvIf                     Request_URI ^/download/mod_qos.so.gz QS_Cond=LimitDownload

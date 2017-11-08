@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientGeoIPPriv2.htt,v 1.5 2016-11-26 19:49:55 pbuchbinder Exp $
+# $Id$
 #
 # deny access to clients (clients from "LO" are NOT priviliged)
 #

@@ -1,5 +1,5 @@
 #
-# $Id: 006_QS_SrvSerialize.htt,v 1.1 2015-06-10 15:57:48 pbuchbinder Exp $
+# $Id$
 #
 #   QS_SrvSerialize            on
 #   SetEnvIf                   User-Agent serializeme QS_SrvSerialize=1

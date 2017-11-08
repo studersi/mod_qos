@@ -1,5 +1,5 @@
 #
-# $Id: QS_LocRequestPerSecLimitMatch_t.htt,v 1.5 2014-06-13 19:19:17 pbuchbinder Exp $
+# $Id$
 #
 
 INCLUDE scripts/ports

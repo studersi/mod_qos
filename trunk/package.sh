@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/package.sh,v 2.60 2017-09-18 15:20:31 pbuchbinder Exp $
+# $Header$
 #
 # Script to build file release
 #

@@ -1,5 +1,5 @@
 #
-# $Id: Graceful.htt,v 1.3 2011-06-27 19:45:12 pbuchbinder Exp $
+# $Id$
 #
 # reaches MaxRequestsPerChild (terminating supervisor thread)
 #

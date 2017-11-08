@@ -1,5 +1,5 @@
 #
-# $Id: UCN_QS_ClientEventBlockExcludeIP2.htt,v 1.1 2014-06-12 05:49:30 pbuchbinder Exp $
+# $Id$
 #
 # QS_ClientEventBlock          10 2
 # QS_SetEnvIfStatus            404               QS_Block

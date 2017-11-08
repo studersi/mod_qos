@@ -24,7 +24,7 @@
  * limitations under the License.
  */
 
-static const char revision[] = "$Id: qssign.c,v 1.49 2017-06-29 05:24:33 pbuchbinder Exp $";
+static const char revision[] = "$Id$";
 
 #include <stdio.h>
 #include <unistd.h>

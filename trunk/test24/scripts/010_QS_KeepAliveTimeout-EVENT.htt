@@ -1,5 +1,5 @@
 #
-# $Id: 010_QS_KeepAliveTimeout-EVENT.htt,v 1.1 2015-08-27 19:26:09 pbuchbinder Exp $
+# $Id$
 #
 #   KeepAliveTimeout         5
 #   SetEnvIf                     User-Agent keepAliveTimeout10 QS_KeepAliveTimeout=10

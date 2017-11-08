@@ -1,5 +1,5 @@
 #
-# $Id: 001_deny.htt,v 1.2 2016-03-30 19:40:54 pbuchbinder Exp $
+# $Id$
 #
 #      QS_DenyPath +d1 deny /status/deny
 #      QS_DenyQuery +q1 deny denyme

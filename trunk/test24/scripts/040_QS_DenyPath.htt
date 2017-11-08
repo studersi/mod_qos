@@ -1,5 +1,5 @@
 #
-# $Id: 040_QS_DenyPath.htt,v 1.2 2015-11-23 21:46:28 pbuchbinder Exp $
+# $Id$
 #
 # filter (whitelist/blacklist combo) path portion of the URI only
 # 

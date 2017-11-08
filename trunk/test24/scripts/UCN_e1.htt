@@ -1,5 +1,5 @@
 #
-# $Id: UCN_e1.htt,v 1.1 2016-03-21 21:41:43 pbuchbinder Exp $
+# $Id$
 #
 # SetEnvIf                 Request_URI ^/wp-login.php LimitLogin
 # QS_ClientEventLimitCount 10 3600 LimitLogin

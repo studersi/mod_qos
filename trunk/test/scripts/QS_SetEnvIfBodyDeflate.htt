@@ -1,5 +1,5 @@
 #
-# $Id: QS_SetEnvIfBodyDeflate.htt,v 1.2 2010-01-21 18:45:47 pbuchbinder Exp $
+# $Id$
 #
 
 INCLUDE scripts/ports

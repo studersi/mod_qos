@@ -1,5 +1,5 @@
 #
-# $Id: 010_QS_MaxKeepAliveRequests-WORKER.htt,v 1.1 2015-08-27 19:58:17 pbuchbinder Exp $
+# $Id$
 #
 # MaxKeepAliveRequests   100
 #   SetEnvIf                     User-Agent maxKeepAliveReq150  QS_MaxKeepAliveRequests=150

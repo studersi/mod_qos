@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventLimitCount2.htt,v 1.2 2013-09-02 18:42:00 pbuchbinder Exp $
+# $Id$
 #
 # config enabled by QS_ClientEventLimitCount.htt!!!
 #  QS_ClientEventLimitCount 100 600 QS_LimitVar4

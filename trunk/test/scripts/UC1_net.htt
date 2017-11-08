@@ -1,5 +1,5 @@
 # 
-# $Id: UC1_net.htt,v 1.2 2016-04-24 20:06:19 pbuchbinder Exp $
+# $Id$
 # 
 # QS_EnableInternalIPSimulation on
 # LoadModule               setenvifplus_module libexec/mod_setenvifplus.so

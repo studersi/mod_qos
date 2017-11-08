@@ -1,5 +1,5 @@
 #
-# $Id: QS_VipCookie.htt,v 1.1 2010-06-17 19:28:24 pbuchbinder Exp $
+# $Id$
 #
 # remove_cookie() tests
 # Set-Cookie: MODQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=; Path=/; Max-Age=3600

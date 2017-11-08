@@ -1,5 +1,5 @@
 #
-# $Id: QS_SetEnvResHeadersMatch.htt,v 1.2 2011-11-28 20:06:45 pbuchbinder Exp $
+# $Id$
 #
 # by header:
 #   # detect new session (implements session dos prevention

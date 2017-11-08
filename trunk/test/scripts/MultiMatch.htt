@@ -1,5 +1,5 @@
 #
-# $Id: MultiMatch.htt,v 1.1 2012-03-05 19:32:29 pbuchbinder Exp $
+# $Id$
 #
 #   # mutiple rule match
 #   BrowserMatch  "yoda"          YODA

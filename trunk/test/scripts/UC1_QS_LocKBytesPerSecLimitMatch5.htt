@@ -1,5 +1,5 @@
 #
-# $Id: UC1_QS_LocKBytesPerSecLimitMatch5.htt,v 1.1 2014-05-03 16:11:28 pbuchbinder Exp $
+# $Id$
 #
 #<IfDefine uc1l5>
 #   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so

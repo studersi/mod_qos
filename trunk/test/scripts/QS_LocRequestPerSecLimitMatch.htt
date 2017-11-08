@@ -1,5 +1,5 @@
 #
-# $Id: QS_LocRequestPerSecLimitMatch.htt,v 1.4 2014-06-13 19:19:17 pbuchbinder Exp $
+# $Id$
 #
 #   QS_LocRequestPerSecLimitMatch /ccc/.*     75
 #

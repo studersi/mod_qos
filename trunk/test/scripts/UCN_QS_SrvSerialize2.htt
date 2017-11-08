@@ -1,5 +1,5 @@
 #
-# $Id: UCN_QS_SrvSerialize2.htt,v 1.3 2015-08-10 20:29:11 pbuchbinder Exp $
+# $Id$
 #
 # SetEnvIf                      User-Agent max4persec QS_SrvSerialize=1
 # SetEnvIf                      User-Agent max4persec QS_Delay=250

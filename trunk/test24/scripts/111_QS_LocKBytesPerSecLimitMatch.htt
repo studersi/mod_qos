@@ -1,5 +1,5 @@
 #
-# $Id: 111_QS_LocKBytesPerSecLimitMatch.htt,v 1.3 2016-02-18 21:41:53 pbuchbinder Exp $
+# $Id$
 #
 #   QS_LocKBytesPerSecLimitMatch  ^/limitbs/.*   500
 #

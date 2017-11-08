@@ -1,5 +1,5 @@
 #
-# $Id: MaxRequestsPerChild.htt,v 1.9 2014-05-14 19:08:48 pbuchbinder Exp $
+# $Id$
 #
 # reaches MaxRequestsPerChild (terminating supervisor thread)
 #

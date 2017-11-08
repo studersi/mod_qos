@@ -1,5 +1,5 @@
 #
-# $Id: 109_QS_MileStone.htt,v 1.1 2017-03-17 18:48:32 pbuchbinder Exp $
+# $Id$
 #
 #   RedirectMatch                ^/index.html$ http://127.0.0.1:##QS_PORT_BASE##/htt/milestone/admin
 #   QS_MileStone                 deny "^GET /index.html"

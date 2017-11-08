@@ -1,5 +1,5 @@
 #
-# $Id: QS_ClientEventBlockCount_v6.htt,v 1.7 2014-06-18 19:05:54 pbuchbinder Exp $
+# $Id$
 #
 #   QS_ClientEventBlockCount 3 10
 #   SetEnvIf Referer  /block    QS_Block=yes

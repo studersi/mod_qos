@@ -1,5 +1,5 @@
 #
-# $Id: 012_QS_RedirectIf.htt,v 1.1 2016-06-14 05:34:55 pbuchbinder Exp $
+# $Id$
 #
 #   SetEnvIfPlus               User-Agent reDirectMe=(/errorpages/error.html) QS_RI=$1
 #   QS_RedirectIf              QS_RI ([a-z0-9_/.-]+) $1

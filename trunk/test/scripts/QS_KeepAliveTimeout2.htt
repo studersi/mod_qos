@@ -1,7 +1,7 @@
 #
 # test QS_KeepAliveTimeout (multiple clients, parallel requests)
 #
-# $Id: QS_KeepAliveTimeout2.htt,v 1.1 2011-01-18 10:27:13 pbuchbinder Exp $
+# $Id$
 #
 
 INCLUDE scripts/ports

@@ -1,5 +1,5 @@
 #
-# $Id: QS_EventRequestLimit_vip.htt,v 1.1 2011-03-04 16:35:20 pbuchbinder Exp $
+# $Id$
 #
 
 INCLUDE scripts/ports

@@ -1,5 +1,5 @@
 #
-# $Id: QS_SetEnvIfStatus.htt,v 1.3 2017-07-17 16:00:57 pbuchbinder Exp $
+# $Id$
 #
 
 INCLUDE scripts/ports

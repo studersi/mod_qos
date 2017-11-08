@@ -27,7 +27,7 @@
  *
  */
 
-static const char revision[] = "$Id: qslogger.c,v 1.26 2017-06-29 05:24:33 pbuchbinder Exp $";
+static const char revision[] = "$Id$";
 
 #include <stdio.h>
 #include <stdlib.h>

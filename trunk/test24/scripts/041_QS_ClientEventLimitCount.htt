@@ -1,5 +1,5 @@
 #
-# $Id: 041_QS_ClientEventLimitCount.htt,v 1.2 2017-06-30 19:58:29 pbuchbinder Exp $
+# $Id$
 #
 # QS_ClientEventLimitCount  3 10
 # QS_SetEnvIfStatus         414 QS_Limit

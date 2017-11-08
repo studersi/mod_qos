@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: qsrotate.sh,v 2.9 2017-08-30 16:50:21 pbuchbinder Exp $
+# $Id$
 
 cd `dirname $0`
 PFX=[`basename $0`]

@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvConn.htt,v 1.2 2015-12-10 20:02:12 pbuchbinder Exp $
+# $Id$
 #
 #   # conditional based on concurrent connections (more than 9 concurrent connections)
 #   SetEnvIf                   QS_SrvConn   [0-9]{2,10}          QS_Cond=onloadonly

@@ -1,5 +1,5 @@
 # 
-# $Id: UC1_QS_ClientEventBlockCount.htt,v 1.6 2014-06-18 19:05:54 pbuchbinder Exp $
+# $Id$
 #
 # QS_ClientEventBlockCount 3 3
 # QS_SetEnvIfStatus        404 QS_Block

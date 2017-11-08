@@ -1,5 +1,5 @@
 # 
-# $Id: BrokenConnection.htt,v 1.3 2017-07-18 05:21:38 pbuchbinder Exp $
+# $Id$
 #
 # QS_ClientEventBlockCount 2 10
 # QS_SetEnvIfStatus        BrokenConnection  QS_Block

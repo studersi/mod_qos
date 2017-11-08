@@ -1,7 +1,7 @@
 #!/bin/sh
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Header: /home/cvs/m/mo/mod-qos/src/build24.sh,v 1.25 2017-07-12 16:13:08 pbuchbinder Exp $
+# $Header$
 #
 # Simple Apache 2.4 build script.
 #

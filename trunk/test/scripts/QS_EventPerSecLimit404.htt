@@ -1,5 +1,5 @@
 #
-# $Id: QS_EventPerSecLimit404.htt,v 1.2 2011-11-23 11:20:19 pbuchbinder Exp $
+# $Id$
 #
 # similar to QS_EventPerSecLimit.htt but ausing internal redirect (ErrorDocument 404)
 #

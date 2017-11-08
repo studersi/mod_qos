@@ -1,5 +1,5 @@
 #
-# $Id: QS_EventKBytesPerSecLimit.htt,v 1.6 2014-05-02 19:44:24 pbuchbinder Exp $
+# $Id$
 #
 #   BrowserMatch QS_EventKBytesPerSecLimit  eventkbytespersec
 #   QS_EventKBytesPerSecLimit  eventkbytespersec 202

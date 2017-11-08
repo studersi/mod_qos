@@ -1,5 +1,5 @@
 #
-# $Id: UCN_QS_ClientSerialize3.htt,v 1.5 2017-07-20 05:36:19 pbuchbinder Exp $
+# $Id$
 #
 # QS_ClientIpFromHeader         Y-Forwarded-For
 # SetEnvIfPlus                  User-Agent serializeme QS_Serialize=yes

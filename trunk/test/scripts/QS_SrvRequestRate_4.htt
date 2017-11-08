@@ -1,5 +1,5 @@
 #
-# $Id: QS_SrvRequestRate_4.htt,v 1.2 2008-06-25 20:32:54 pbuchbinder Exp $
+# $Id$
 #
 # slow application (test ensures we remove the conn ctx after we got all data)
 #

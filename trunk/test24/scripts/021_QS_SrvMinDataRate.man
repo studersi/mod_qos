@@ -1,5 +1,5 @@
 #
-# $Id: 021_QS_SrvMinDataRate.man,v 1.1 2012-03-09 20:41:01 pbuchbinder Exp $
+# $Id$
 #
 #    QS_SrvMinDataRate      120 3000 10
 #

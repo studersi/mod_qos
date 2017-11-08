@@ -1,5 +1,5 @@
 #
-# $Id: 111_mod_ratelimit.man,v 1.1 2014-06-10 19:04:57 pbuchbinder Exp $
+# $Id$
 #
 #      SetOutputFilter RATE_LIMIT
 #      SetEnv rate-limit 500

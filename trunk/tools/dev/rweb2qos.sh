@@ -1,7 +1,7 @@
 #!/bin/bash
 # -*-mode: ksh; ksh-indent: 2; -*-
 #
-# $Id: rweb2qos.sh,v 1.7 2011-01-24 21:22:15 pbuchbinder Exp $
+# $Id$
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of

@@ -1,5 +1,5 @@
 #
-# $Id: 130_QS_SrvMaxConnPerIP.htt,v 1.1 2017-03-16 21:33:01 pbuchbinder Exp $
+# $Id$
 #
 #      QS_VipIPHeaderName         X-VIP-IP       drop
 #      QS_SrvMaxConnPerIP         30
