@@ -304,10 +304,10 @@ For the following example, lets assume that requests to static resources
 requests expensive (takes long to be processed) while the most expensive 
 URL path is <code>/generateReport.php</code>. Therefore, you won't need 
 to set any penalty when accessing a static resource. Other resources 
-are marked by "1" (allowing a client to access them 20 times per minute) 
+are marked by "1" (allowing a client to access them 20 times within two minutes) 
 while requests to the "most expensive" resource 
 <code>/generateReport.php</code> are burden by a 
-penalty of "2" (may be accessed only 10 times per minute).<br>
+penalty of "2" (may be accessed only 10 times within two minutes).<br>
 It is also possible that you enable this limitation only if the server 
 reaches a predefined number of busy connections (no limitation if it is not 
 necessary). 
@@ -325,8 +325,8 @@ longer period of time. This is implemented by a second counter
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # don't allow a client IP to access a "handler" (not a static resource like
-# a jpg, gif, ..) more than 20 times per minute:
-<a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          20 60 <a href="index.html#QS_Limit">SlowRequest</a>
+# a jpg, gif, ..) more than 20 times within two minutes:
+<a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          20 120 <a href="index.html#QS_Limit">SlowRequest</a>
 <a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI / SlowRequest=1
 <a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI /generateReport.php SlowRequest=2
 <a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
