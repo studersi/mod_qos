@@ -19,6 +19,7 @@ scp ../favicon.ico ${dest}/
 echo "copy html files"
 scp index.html ${dest}/
 scp ../dos.html ${dest}/
+scp ../glossary.html ${dest}/
 scp ../MESSAGES.txt ${dest}/
 scp ../LICENSE.txt ${dest}/
 

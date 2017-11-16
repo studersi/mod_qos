@@ -107,8 +107,8 @@ IP address), the number of concurrent requests to the
 server (total or requests having similar attributes), the number 
 of concurrent TCP connections (total or from a single source IP), 
 and so forth.<br>
-The rules you want to configure are defined by the 
-<a href="images/mod_qos_seq.gif">module's directives</a>, each reading 
+The <a href="glossary.html#rules">rules</a> you want to configure are defined by the 
+<a href="glossary.html#directives">module's directives</a>, each reading 
 attributes from different sources and using its own counters to 
 store their status.
 </p>
@@ -635,9 +635,10 @@ if the rule should be applied.</i></small>
 
 <a name="variables"></a>
 <h3>Variables</h3>
-Environment variables are used on a per request level and implement
-additional control mechanisms. Variables may be set using the standard 
-Apache module <a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a> or 
+<a href="glossary.html#variables">Environment variables</a> are used on a per
+request level and implement additional control mechanisms. Variables may be set
+using the standard Apache module
+<a href="http://httpd.apache.org/docs/2.2/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a> or 
 <a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a>.
 See also the <a href="#eventcontrol">
 <code><a href="#QS_SetEnvIf">QS_SetEnvIf*</a></code></a> directives in order to combine multiple 
