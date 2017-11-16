@@ -51,7 +51,7 @@
 -->
 <table>
 <tbody>
-<tr><td><img src="images/mod_qos_s.gif" alt="mod_qos" /></td>
+<tr><td><a href="index.html"><img src="images/mod_qos_s.gif" alt="mod_qos" /></a></td>
     <td style="vertical-align: bottom;"><h1>Denial of Service Defense</h1></td></tr>
 <tr><td>&nbsp;</td>
     <td>
@@ -118,7 +118,7 @@ all the time or just as part ot your incident response plan.
 Hardware is inexpensive. Today's CPUs offers many cores allowing you to run 
 many threads in parallel and prices for memory are as low as never before. 
 So please allow your Apache server to serve many requests / TCP connections in 
-parallel by setting a "high" value for its <a href="http://httpd.apache.org/docs/2.2/mod/mpm_common.html#maxclients"><code>MaxClients</code> <img src="images/link.png"/></a> 
+parallel by setting a "high" value for its <a href="http://httpd.apache.org/docs/current/mod/mpm_common.html#maxrequestworkers"><code>MaxClients</code> resp. <code>MaxRequestWorkers</code> <img src="images/link.png"/></a> 
 parameter (and the corresponding <code>ServerLimit</code>/<code>ThreadsPerChild</code>  
 values). I'm going to use <i>896</i> in the following examples. This is not 
 an absolute value. Its probably not even a particular "high" value if you 
@@ -134,10 +134,10 @@ all other values accordingly.
 </p>
 <p>
 Other important Apache base settings concern timeouts. 
-One is the <a href="http://httpd.apache.org/docs/2.2/mod/core.html#timeout"><code>TimeOut</code> <img src="images/link.png"/></a>  
+One is the <a href="http://httpd.apache.org/docs/current/mod/core.html#timeout"><code>TimeOut</code> <img src="images/link.png"/></a>  
 directive defining the idle timeout while waiting for data on the network 
 socket, the other directive is 
-<a href="http://httpd.apache.org/docs/2.2/mod/core.html#keepalivetimeout"><code>KeepAliveTimeout</code> <img src="images/link.png"/></a>, telling the Apache 
+<a href="http://httpd.apache.org/docs/current/mod/core.html#keepalivetimeout"><code>KeepAliveTimeout</code> <img src="images/link.png"/></a>, telling the Apache 
 server for how long to wait for a subsequent request before closing an idle 
 connection. Keep-Alive is an important feature to accelerate your web server 
 but you should disable it if the server runs out of free connections. 
@@ -201,7 +201,7 @@ defines the number of busy connections to enable this restriction.
 </pre></td></tr></table>
 <p>
 You might also want to have a look at the Apache module 
-<a href="http://httpd.apache.org/docs/2.2/mod/mod_reqtimeout.html">mod_reqtimeout <img src="images/link.png"/></a> 
+<a href="http://httpd.apache.org/docs/current/mod/mod_reqtimeout.html">mod_reqtimeout <img src="images/link.png"/></a> 
 (available since Apache 2.2.15) which may be used to set various timeouts for 
 receiving the request headers and the request body from the client.
 </p>
@@ -450,7 +450,7 @@ when fighting against DoS attacks. Having request line or header limitations
 may lay open clients exceeding these limits exposing attackers trying 
 to hide themslef. The other one is that you don't want allow a client to 
 send too many data. 
-Three <a href="https://httpd.apache.org/docs/2.2/mod/core.html">Apache core <img src="images/link.png"></a> 
+Three <a href="https://httpd.apache.org/docs/current/mod/core.html">Apache core <img src="images/link.png"></a> 
 and one mod_qos directives may be used to set limitations.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
