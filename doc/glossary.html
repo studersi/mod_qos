@@ -78,7 +78,7 @@ variables can also be written or read by other Apache modules, such as
 file using the format string <code>%{VARNAME}e</code> within the
 <code><a href="http://httpd.apache.org/docs/2.2/mod/mod_log_config.html">TransferLog/CustomLog <img src="images/link.png"/></a></code>
 directives. Or you can use them within error pages using
-<a href="http://httpd.apache.org/docs/2.2/howto/ssi.html">server-side includes <img src="images/link.png"/></a> 
+<a href="http://httpd.apache.org/docs/current/howto/ssi.html">server-side includes <img src="images/link.png"/></a> 
 (SSI).
 </p>
 
@@ -95,6 +95,29 @@ The following graph shows the order in which the directives work.
 <a href="images/mod_qos_seq.gif"><img src="images/mod_qos_seq.gif" height="335" width="458"/></a>
 </p>
 
+<hr>
+<a name="limit"></a>
+<h2>Limitation Counter</h2>
+<p>
+Limitation counters limit the number how often (Cr) something is allowed to 
+happen in a certain amount of time (Td). These rules trigger a timer whenever
+the definied event occures the first time and start to count every subsequent event
+until the timer expires. If the event counter reaches the defined limitation,
+requests are getting blocked until the time is up.
+</p>
+<p>
+    <img src="images/LimitCount.png" height="432" width="576"/>
+</p>
+<p>
+The directives implementing this rule type are:
+<ul>
+<li><a href="index.html#QS_EventLimitCount"><code>QS_EventLimitCount</code></li>
+<li><a href="index.html#QS_CondEventLimitCount"><code>QS_CondEventLimitCount</code></li>
+<li><a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></li>
+<li><a href="index.html#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></li>
+<li><a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></li>
+</ul>
+</p>
 
 <hr>
 <a name="rules"></a>
@@ -102,9 +125,9 @@ The following graph shows the order in which the directives work.
 <p>
 <a href="index.html">mod_qos</a> allows you to configure different kind of 
 rules. Every rules implement a counter, measuring either the concurrenty 
-(how many times something happens at the same time), an occurrence  
+(how many times something happens at the same time), the <a href="#limit">occurrence </a>
 (how often does something happen in a certain amount of time), or 
-throughput (sent amount of data or number of request).</p>
+the throughput (sent amount of data or number of request).</p>
 <p>
 Every rule has it's own threshold and maintains its own counter
 which is identified by either an URL pattern/matching string or by an 
