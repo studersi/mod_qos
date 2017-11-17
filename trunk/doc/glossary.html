@@ -1,7 +1,7 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
- <title>mod_qos - Glossary</title>
+ <title>mod_qos - Additional Information</title>
 <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
 <meta name="author" content="Pascal Buchbinder" />
 <meta name="KeyWords" content="Quality of Service, Apache Web Server, Web application security, WAF, Open Source Software, Denial of Service Prevention, DoS, DDoS" />
@@ -52,7 +52,7 @@
 <table>
 <tbody>
 <tr><td><a href="index.html"><img src="images/mod_qos_s.gif" alt="mod_qos" /></a></td>
-    <td style="vertical-align: bottom;"><h1>Glossary</h1></td></tr>
+    <td style="vertical-align: bottom;"><h1>Additional Information</h1></td></tr>
 <tr><td>&nbsp;</td>
     <td>
 
@@ -64,6 +64,8 @@ to use the module.
 </p>
 
 
+
+<!-- --------------------------------------------------------- -->
 <hr>
 <a name="directives"></a>
 <h2>Directives</h2>
@@ -77,6 +79,34 @@ The following graph shows the order in which the directives work.
 </p>
 
 
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="rules"></a>
+<h2>Rules</h2>
+<p>
+<a href="index.html">mod_qos</a> allows you to configure different kind of 
+rules. The main component of a rule is its counter. A rule measures either 
+the <a href="#concurrency">concurrency</a> (how many times something happens 
+at the same time), the <a href="#repeat">occurrence </a> (how often does 
+something happen in a certain amount of time), or the throughput (sent amount 
+of data or number of request) and stores this information within that counter.</p>
+<p>
+Every rule has it's own threshold and maintains its own counter. A rule 
+is identified by either an URL pattern/matching string or by an 
+<a href="#variables">environment variable name</a>. 
+You can configure as many rules as you want. </p>
+<p>
+<i>Note: Some counters are only available once. This applies to the counters of
+the rules using the
+<code><a href="index.html#QS_Block">QS_Block</a></code>, 
+<code><a href="index.html#QS_SrvSerialize">QS_SrvSerialize</a></code>, and 
+<code><a href="index.html#QS_ClientSerialize">QS_ClientSerialize</a></code> 
+environment variables.
+</i>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
 <hr>
 <a name="variables"></a>
 <h2>Environment Variables</h2>
@@ -97,59 +127,79 @@ directives. Or you can use them within error pages using
 </p>
 
 
+<!-- --------------------------------------------------------- -->
 <hr>
-<a name="limit"></a>
-<h2>Limitation Counter</h2>
+<a name="concurrency"></a>
+<h2>Concurrency Counter</h2>
 <p>
-Limitation counters limit the number how often (Cr) something is allowed to 
+A "concurrency counter" is used to determine how many times something 
+happens at the same time, e.g. HTTP requests accessing the same 
+resource/URL at the same time. The rules using this counter type are either 
+defined by an <a href="#variables">environment variable name</a> or an 
+URL pattern (regular expression of a string matching the request's URL). 
+Such a rule automatically increments the counter when the Apache web server 
+starts to process a matching request and decrements the counter when the 
+request processing is completed.
+</p>
+<p>
+You have to configure a threshold and the rule's variable name resp. URL 
+pattern.
+</p>
+<p>
+Directives using this counter type are:
+<ul>
+<li><a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a></li>
+<li><a href="index.html#QS_LocRequestLimit"><code>QS_LocRequestLimit</code></a></li>
+<li><a href="index.html#QS_CondLocRequestLimitMatch"><code>QS_CondLocRequestLimitMatch</code></a></li>
+<li><a href="index.html#QS_EventRequestLimit"><code>QS_EventRequestLimit</code></a></li>
+<li><a href="index.html#QS_ClientEventRequestLimit"><code>QS_ClientEventRequestLimit</code></a></li>
+</ul>
+Also the 
+<a href="index.html#QS_SrvMaxConn"><code>QS_SrvMaxConn</code></a>, 
+<a href="index.html#QS_SrvMaxConnClose"><code>QS_SrvMaxConnClose</code></a>, and 
+<a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a>
+directives use this counter type, although with fewer parameter options.
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="repeat"></a>
+<h2>Repeat Counter</h2>
+<p>
+"Repeat counters" limit the number how often (Cr) something is allowed to 
 happen in a certain amount of time (Td). These rules trigger a timer whenever
 the defined event occurs the first time and start to count every subsequent event
 until the timer expires. If the event counter reaches the defined limitation,
-requests are getting blocked until the time is up.
+requests are blocked until the time is up.
 </p>
 <p>
     <img src="images/LimitCount.png" height="432" width="576"/>
 </p>
 <p>
-The directives implementing this rule type are:
+All repeat counters allow you to define an event which shall 
+increment the counter if they occur. You also have to configure a 
+duration Td and the threshold Cr, defining how many events are 
+allowed within the time Td.<br>
+While the counter is automatically cleared (set to 0) when the 
+time Td is up, you might also configure additional events to 
+decrement or clear the counter earlier.
+</p>
+<p>
+The directives using this counter type are:
 <ul>
-<li><a href="index.html#QS_EventLimitCount"><code>QS_EventLimitCount</code></li>
-<li><a href="index.html#QS_CondEventLimitCount"><code>QS_CondEventLimitCount</code></li>
-<li><a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></li>
-<li><a href="index.html#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></li>
-<li><a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></li>
+<li><a href="index.html#QS_EventLimitCount"><code>QS_EventLimitCount</code></a></li>
+<li><a href="index.html#QS_CondEventLimitCount"><code>QS_CondEventLimitCount</code></a></li>
+<li><a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a></li>
+<li><a href="index.html#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></a></li>
+<li><a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a></li>
 </ul>
 </p>
 
-<hr>
-<a name="rules"></a>
-<h2>Rules</h2>
-<p>
-<a href="index.html">mod_qos</a> allows you to configure different kind of 
-rules. Every rules implement a counter, measuring either the concurrency 
-(how many times something happens at the same time), the <a href="#limit">occurrence </a>
-(how often does something happen in a certain amount of time), or 
-the throughput (sent amount of data or number of request).</p>
-<p>
-Every rule has it's own threshold and maintains its own counter
-which is identified by either an URL pattern/matching string or by an 
-<a href="#variables">environment variable name</a>. 
-You can configure as many rules as you want. </p>
-<p>
-Some counters are only available once. This applies to the counters of
-the rules using the
-<code><a href="index.html#QS_Block">QS_Block</a></code>, 
-<code><a href="index.html#QS_SrvSerialize">QS_SrvSerialize</a></code>, and 
-<code><a href="index.html#QS_ClientSerialize">QS_ClientSerialize</a></code> 
-environment variables.
-</p>
 
 
 
-<!--
-counter per time
-min data rate
-  -->
+
 
 
 </td></tr>

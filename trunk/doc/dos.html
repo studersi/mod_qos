@@ -213,7 +213,7 @@ A very effective means of protection is the possibility to block client
 IP addresses automatically for a certain period if they violate a rule 
 multiple times respectively if they cause errors many times. 
 The <a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a> 
-directive can be used to do this. It defines <a href="glossary.html#limit">how often</a> a "block event" (the Apache 
+directive can be used to do this. It defines <a href="glossary.html#repeat">how often</a> a "block event" (the Apache 
 process environment variable <a href="index.html#QS_Block"><code>QS_Block</code></a>) 
 may occur during a defined period of time. This enhances the effect of the above limitations. 
 Incoming TCP connections are rejected if a client IP address reaches this threshold until 
@@ -278,7 +278,7 @@ Rules, limiting a clients number of requests to a resource, may be configured
 using the 
 <a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
 directive. This provides an event counter per IP address and you may specify 
-<a href="glossary.html#limit">how often</a> a client is allowed to
+<a href="glossary.html#repeat">how often</a> a client is allowed to
 trigger this event within a defined period of 
 time. Such a limitation might defense <i>HTTP GET/POST flood DoS attacks</i>, 
 especially if you know which requests are the most expensive ones / which 
