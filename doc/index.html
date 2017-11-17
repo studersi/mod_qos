@@ -122,7 +122,8 @@ The current release of the mod_qos module implements control
 mechanisms to manage:
 <ul>
 <li type=square>
-The maximum number of concurrent requests to a location/resource (URL) 
+The maximum number of <a href="glossary.html#concurrency">concurrent</a> 
+requests to a location/resource (URL) 
 or virtual host.
 </li>
 <li type=square>
@@ -133,7 +134,7 @@ per second to an URL or the maximum/minimum of downloaded kbytes per second.
 Limits the number of request events per second (special request conditions).
 </li>
 <li type=square>
-Limits the number of request events within a defined period of time.
+Limits the number of request <a href="glossary.html#repeat">events within a defined period of time</a>.
 </li>
 <li type=square>
 It can also detect very important persons (VIP) which may access the 
@@ -339,10 +340,11 @@ same URL string or regular expression.
 <li>
 <a name="QS_LocRequestLimitMatch"></a>
 <code>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
-Defines the number of concurrent requests for the specified request pattern 
-(applied to the unparsed URL). The rule with the lowest number of allowed 
-concurrent connections has the highest priority if multiple expressions 
-match the request. By default, no limitations are active.
+Defines the number of <a href="glossary.html#concurrency">concurrent</a> 
+requests for the specified request pattern (applied to the unparsed URL). 
+The rule with the lowest number of allowed concurrent connections has the 
+highest priority if multiple expressions match the request. 
+By default, no limitations are active.
 </li>
 <li>
 <a name="QS_LocRequestPerSecLimitMatch"></a>
@@ -375,9 +377,9 @@ concurrent requests.
 <li>
 <a name="QS_LocRequestLimit"></a>
 <code>QS_LocRequestLimit &lt;location&gt; &lt;number&gt;</code><br>
-Defines the number of concurrent requests for the specified location 
-(applied to the parsed path). By default, no limitations are active 
-for locations. Has lower priority than 
+Defines the number of <a href="glossary.html#concurrency">concurrent</a> 
+requests for the specified location (applied to the parsed path). 
+By default, no limitations are active for locations. Has lower priority than 
 <code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> 
 directives.
 </li>
@@ -963,7 +965,8 @@ execution to ensure that the necessary variables are set.
 <li>
 <a name="QS_EventRequestLimit"></a>
 <code>QS_EventRequestLimit &lt;env-variable&gt;[=&lt;regex&gt] &lt;number&gt;</code><br>
-Defines the number of concurrent events. Directive works similar to 
+Defines the number of <a href="glossary.html#concurrency">concurrent</a> events. 
+Directive works similar to 
 <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code>, but 
 counts the requests having the same environment variable (and optionally 
 matching its value, too) rather than those that have the same URL pattern.
@@ -998,7 +1001,7 @@ concurrent requests.
 <li>
 <a name="QS_EventLimitCount"></a>
 <code>QS_EventLimitCount &lt;env-variable&gt; &lt;number&gt; &lt;seconds&gt;</code><br>
-Defines the maximum <a href="glossary.html#limit">number of events allowed within the defined time</a>. 
+Defines the maximum <a href="glossary.html#repeat">number of events allowed within the defined time</a>. 
 Requests causing the event are denied when reaching this limitation for the specified time 
 (blocked at request level).<br>
 <small><i>Notes:<ul>
@@ -1705,8 +1708,8 @@ survives graceful server restart. The maximum value is 10'000'000.
 <li>
 <a name="QS_ClientEventRequestLimit"></a>
 <code>QS_ClientEventRequestLimit &lt;number&gt;</code><br>
-Defines the allowed number of concurrent requests coming from the same 
-client source IP address having the 
+Defines the allowed number of <a href="glossary.html#concurrency">concurrent</a> 
+requests coming from the same client source IP address having the 
 <code><a href="#QS_EventRequest">QS_EventRequest</a></code> variable set.
 </li>
 <li>
@@ -1725,7 +1728,7 @@ directive).
 <a name="QS_ClientEventBlockCount"></a>
 <a name="QS_ClientEventBlockExcludeIP"></a>
 <code>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</code><br>
-Defines the <a href="glossary.html#limit">maximum number</a> of <code><a href="#QS_Block">QS_Block</a></code> 
+Defines the <a href="glossary.html#repeat">maximum number</a> of <code><a href="#QS_Block">QS_Block</a></code> 
 events allowed within the defined time (default is 600 seconds). 
 Client IP is blocked when reaching this counter for the specified 
 time (blocked at connection level: user might not always get a 
@@ -1737,7 +1740,7 @@ to exclude an IP address from being processed by this limitation
 <li>
 <a name="QS_ClientEventLimitCount"></a>
 <code>QS_ClientEventLimitCount &lt;number&gt; [&lt;seconds&gt; [&lt;variable&gt;]]</code><br>
-Defines the <a href="glossary.html#limit">maximum number</a> of requests 
+Defines the <a href="glossary.html#repeat">maximum number</a> of requests 
 having the defined environment variables 
 (<code><a href="#QS_Limit">QS_Limit</a></code> by default) set allowed within 
 the defined time (default is 600 seconds). Requests from client IP's reaching 
