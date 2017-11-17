@@ -127,11 +127,11 @@ requests to a location/resource (URL)
 or virtual host.
 </li>
 <li type=square>
-Limitation of the bandwidth such as the maximum allowed number of requests 
+Limitation of the <a href="glossary.html#throughput">bandwidth</a> such as the maximum allowed number of requests 
 per second to an URL or the maximum/minimum of downloaded kbytes per second.
 </li>
 <li type=square>
-Limits the number of request events per second (special request conditions).
+Limits the number of request <a href="glossary.html#throughput">events per second</a> (special request conditions).
 </li>
 <li type=square>
 Limits the number of request <a href="glossary.html#repeat">events within a defined period of time</a>.
@@ -349,10 +349,10 @@ By default, no limitations are active.
 <li>
 <a name="QS_LocRequestPerSecLimitMatch"></a>
 <code>QS_LocRequestPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
-Defines the allowed number of requests per second to the URL (path and query) 
-pattern. Requests are limited by adding a delay to each request (linear). The 
-delay calculation is based on an average request rate measurement using a 
-sampling rate of 10 seconds. 
+Defines the allowed number of <a href="glossary.html#throughput">requests per second</a>
+to the URL (path and query) pattern. Requests are limited by
+adding a delay to each request (linear). The delay calculation is based on
+an average request rate measurement using a sampling rate of 10 seconds. 
 By default, no limitation is active. This directive should be used in 
 conjunction with <code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> 
 only (you must use the very same regex pattern with the 
@@ -363,8 +363,8 @@ directive) to avoid too many concurrent requests.
 <li>
 <a name="QS_LocKBytesPerSecLimitMatch"></a>
 <code>QS_LocKBytesPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
-Defines the allowed download bandwidth to the location matching the 
-defined URL (path and query) pattern.  Responses are slowed down by 
+Defines the allowed download <a href="glossary.html#throughput">bandwidth</a> to the location
+matching the defined URL (path and query) pattern. Responses are slowed down by 
 adding a delay to each response (every 8kbytes). Bandwidth calculation 
 is based on measuring the transferred data.
 By default, no limitation is active. This directive should be used 
@@ -395,8 +395,9 @@ requests to a virtual host.
 <li>
 <a name="QS_LocRequestPerSecLimit"></a>
 <code>QS_LocRequestPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
-Defines the allowed number of requests per second to a location, similar to 
-the <a href="#QS_LocRequestPerSecLimitMatch"><code>QS_LocRequestPerSecLimitMatch</code></a> 
+Defines the allowed number of <a href="glossary.html#throughput">requests per second</a>
+to a location, similar to the
+<a href="#QS_LocRequestPerSecLimitMatch"><code>QS_LocRequestPerSecLimitMatch</code></a> 
 directive. The maximum number of requests is limited by adding a delay to 
 each request (linear, each request gets the same delay). By default, 
 no limitation is active.
@@ -409,8 +410,9 @@ concurrent requests.. Has lower priority than
 <li>
 <a name="QS_LocKBytesPerSecLimit"></a>
 <code>QS_LocKBytesPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
-Throttles the download bandwidth to the defined kbytes per second. Works 
-simlar as the <a href="#QS_LocKBytesPerSecLimitMatch"><code>QS_LocKBytesPerSecLimitMatch</code></a> 
+Throttles the download <a href="glossary.html#throughput">bandwidth</a> to the defined
+kbytes per second. Works simlar as the
+<a href="#QS_LocKBytesPerSecLimitMatch"><code>QS_LocKBytesPerSecLimitMatch</code></a> 
 directive slowing down HTTP responses by adding a delay to each response. 
 By default, no limitation is active. This directive should be used in 
 conjunction with <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code> only 
@@ -976,8 +978,8 @@ matching its value, too) rather than those that have the same URL pattern.
 <code>QS_EventPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
 Defines how often requests may have the defined environment variable 
 (literal string) set. It measures the occurrences of the defined 
-environment variable on a request per seconds level and tries to 
-limit this occurrence to the defined number. It works similar as 
+environment variable on a <a href="glossary.html#throughput">request per seconds</a>
+level and tries to limit this occurrence to the defined number. It works similar as 
 <a href="#QS_LocRequestPerSecLimit"><code>QS_LocRequestPerSecLimit</code></a>, 
 but counts only the requests with the specified variable (or without it
 if the variable name is prefixed by a "!"). If a request matches 
@@ -988,9 +990,10 @@ event.
 <li>
 <a name="QS_EventKBytesPerSecLimit"></a>
 <code>QS_EventKBytesPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
-Throttles the download bandwidth of all requests having the defined 
-variable set to the defined kbytes per second. Responses are slowed 
-by adding a delay to each response (every 8kbytes). The delay calculation 
+Throttles the download <a href="glossary.html#throughput">bandwidth</a>
+of all requests having the defined variable set to the defined
+kbytes per second. Responses are slowed by adding a delay to each
+response (every 8kbytes). The delay calculation 
 is based on an average request rate measurement.
 By default, no limitation is active. 
 This directive should be used in conjunction with 
