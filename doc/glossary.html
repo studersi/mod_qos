@@ -88,8 +88,9 @@ The following graph shows the order in which the directives work.
 rules. The main component of a rule is its counter. A rule measures either 
 the <a href="#concurrency">concurrency</a> (how many times something happens 
 at the same time), the <a href="#repeat">occurrence </a> (how often does 
-something happen in a certain amount of time), or the throughput (sent amount 
-of data or number of request) and stores this information within that counter.</p>
+something happen in a certain amount of time), or the 
+<a href="#throughput">throughput</a> (sent amount of data or number of 
+request) and stores this information within that counter.</p>
 <p>
 Every rule has it's own threshold and maintains its own counter. A rule 
 is identified by either an URL pattern/matching string or by an 
@@ -143,7 +144,8 @@ request processing is completed.
 </p>
 <p>
 You have to configure a threshold and the rule's variable name resp. URL 
-pattern.
+pattern. Requests (or new connections) are denied as soon as the configured 
+threshold is reached.
 </p>
 <p>
 Directives using this counter type are:
@@ -196,16 +198,48 @@ The directives using this counter type are:
 </ul>
 </p>
 
-
-
-
-
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="throughput"></a>
+<h2>Throughput Control</h2>
+<p>
+Throughput control is implemented by measuring the current usage and
+calculating a necessary delay which needs to be applied to the
+data processing in order to achieve the desired limitation (closed
+loop control system).
+</p>
+<p>
+    <img src="images/ClosedLoop.png" height="220" width="310"/>
+</p>
+<p>
+<a href="index.html">mod_qos</a> can limit the bandwidth when downloading 
+data from your web server to the client. This throughput control can
+be configured by the following directives:
+<ul>
+<li><a href="index.html#QS_LocKBytesPerSecLimitMatch"><code>QS_LocKBytesPerSecLimitMatch</code></a></li>
+<li><a href="index.html#QS_LocKBytesPerSecLimit"><code>QS_LocKBytesPerSecLimit</code></a></li>
+<li><a href="index.html#QS_EventKBytesPerSecLimit"><code>QS_EventKBytesPerSecLimit</code></a></li>
+</ul>
+</p>
+<p>
+It is also possible to limit the number or requests per second to a 
+resource. This control function is less accurate than the bandwidth 
+limitation, since the measurement of the request rate takes longer 
+(several seconds) and the request delay is more coarse-grained.<br>
+The following directive can be used to limit the number of requests
+per second:
+<ul>
+<li><a href="index.html#QS_LocRequestPerSecLimitMatch"><code>QS_LocRequestPerSecLimitMatch</code></a></li>
+<li><a href="index.html#QS_LocRequestPerSecLimit"><code>QS_LocRequestPerSecLimit</code></a></li>
+<li><a href="index.html#QS_EventPerSecLimit"><code>QS_EventPerSecLimit</code></a></li>
+</ul>
+</p>
 
 
 </td></tr>
 </tbody>
 </table>
-<br><br><br>
+<br>
 <hr>
 <SMALL><SMALL>&copy; 2017, Pascal Buchbinder</SMALL></SMALL>
 </body>

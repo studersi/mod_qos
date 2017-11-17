@@ -14,6 +14,7 @@ scp ../images/download.jpg ${dest}/images/
 scp ../images/link.png ${dest}/images/
 scp ../images/SrvMinDataRate.png ${dest}/images/
 scp ../images/LimitCount.png ${dest}/images/
+scp ../images/ClosedLoop.png ${dest}/images/
 scp ../images/mod_qos_s.gif ${dest}/images/
 scp ../qsfilter2_process.gif ${dest}/
 scp ../favicon.ico ${dest}/
