@@ -75,7 +75,7 @@ connection, HTTP request, and response data in a pre-defined sequence.
 The following graph shows the order in which the directives work.
 </p>
 <p>
-<a href="images/mod_qos_seq.gif"><img src="images/mod_qos_seq.gif" height="335" width="458"/></a>
+<a href="images/mod_qos_seq.gif"><img src="images/mod_qos_seq.gif" height="335" width="458" title="directive sequence" alt="directive sequence"/></a>
 </p>
 
 
@@ -100,8 +100,8 @@ You can configure as many rules as you want. </p>
 <i>Note: Some counters are only available once. This applies to the counters of
 the rules using the
 <code><a href="index.html#QS_Block">QS_Block</a></code>, 
-<code><a href="index.html#QS_SrvSerialize">QS_SrvSerialize</a></code>, and 
-<code><a href="index.html#QS_ClientSerialize">QS_ClientSerialize</a></code> 
+<code><a href="index.html#QS_SrvSerialize_var">QS_SrvSerialize</a></code>, and 
+<code><a href="index.html#QS_Serialize">QS_Serialize</a></code> 
 environment variables.
 </i>
 </p>
@@ -176,7 +176,7 @@ until the timer expires. If the event counter reaches the defined limitation,
 requests are blocked until the time is up.
 </p>
 <p>
-    <img src="images/LimitCount.png" height="432" width="576"/>
+    <img src="images/LimitCount.png" height="432" width="576" alt="reapet counter"/>
 </p>
 <p>
 All repeat counters allow you to define an event which shall 
@@ -209,7 +209,7 @@ data processing in order to achieve the desired limitation (closed
 loop control system).
 </p>
 <p>
-    <img src="images/ClosedLoop.png" height="220" width="310"/>
+    <img src="images/ClosedLoop.png" height="220" width="310" alt="closed loop"/>
 </p>
 <p>
 <a href="index.html">mod_qos</a> can limit the bandwidth when downloading 
