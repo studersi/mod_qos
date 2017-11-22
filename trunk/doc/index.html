@@ -4,7 +4,7 @@
  <title>mod_qos</title>
 <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
 <meta name="author" content="Pascal Buchbinder" />
-<meta name="KeyWords" content="Quality of Service, Apache Web Server, Web application security, WAF, Open Source Software, Secure Reverse Proxy, Denial of Service DoS Prevention" />
+<meta name="KeyWords" content="Quality of Service, Apache Web Server, Throttling, Web application security, WAF, Open Source Software, Secure Reverse Proxy, Denial of Service DoS Prevention" />
 <link rel="shortcut icon" href="favicon.ico" />
 <style TYPE="text/css">
 <!--  
@@ -1652,7 +1652,8 @@ disabled for VIPs.
 <code>QS_SrvSerialize 'on'|'off' [&lt;timeout&gt;]</code><br>
 Ensures that not more than one request having the 
 <a href="#QS_SrvSerialize_var"><code>QS_SrvSerialize</code></a> 
-variable set is processed at the same time by serializing them 
+variable set is processed at the same time by 
+<a href="glossary.html#serialization">serializing</a> them 
 (process one request after each other). Default is "off".<br>
 <small><i>Note: Maximum wait time for a request is defined by the 
 optional timeout parameter (in seconds). The default is 300 seconds.
@@ -1784,7 +1785,8 @@ if you want to enforce a rule under certain conditions only.</li>
 <li>
 <a name="QS_ClientSerialize"></a>
 <code>QS_ClientSerialize</code><br>
-Serializes requests having the <a href="#QS_Serialize"><code>QS_Serialize</code></a> 
+<a href="glossary.html#serialization">Serializes</a> requests having the
+<a href="#QS_Serialize"><code>QS_Serialize</code></a> 
 variable set if they are comming from the same IP address.<br>
 <small><i>Notes:
 <ul>
