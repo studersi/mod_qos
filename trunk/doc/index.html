@@ -210,13 +210,16 @@ More information about mod_qos:
 <a name="build"></a>
 <h2>Build</h2>
 <p>
-mod_qos requires OpenSSL, PCRE (don't use the version which comes with the 
-Apache distribution), threading and shared memory support. mod_qos has been 
-developed and fully tested for Apache version 2.2 
-<a href="http://httpd.apache.org/docs/current/mod/worker.html">MPM worker <img src="images/link.png"/></a> 
-binaries and it is optimized to be used in a 
-reverse <a href="http://httpd.apache.org/docs/current/mod/mod_proxy.html">proxy <img src="images/link.png"/></a> 
-server.<br><br>
+mod_qos requires OpenSSL, PCRE, threading and shared memory support. mod_qos has 
+initially been developed and fully tested for Apache version 2.2 
+<a href="http://httpd.apache.org/docs/2.2/mod/worker.html">MPM worker <img src="images/link.png"/></a> 
+binaries, but works with Apache version 2.4 as well. It is 
+optimized to be used in a 
+<a href="http://httpd.apache.org/docs/current/mod/mod_proxy.html">reverse proxy <img src="images/link.png"/></a> 
+server.
+</p>
+<!--
+<p>
 Just copy the module into the <code>modules</code> directory of the Apache 
 server's source code and compile it using the following commands (all 
 examples are using Apache 2.2.31 and mod_qos 0.00):
@@ -246,11 +249,11 @@ LoadModule qos_module &lt;path to module&gt;/mod_qos.so
 </td></tr>
 </table>
 </p>
-
+-->
 <p>
-You can also compile the module using 
-<code><a href="http://httpd.apache.org/docs/current/programs/apxs.html">apxs <img src="images/link.png"/></a></code> 
-alternatively. Your httpd binary must support dynamically loaded objects 
+You can compile the module using 
+<code><a href="http://httpd.apache.org/docs/current/programs/apxs.html">apxs <img src="images/link.png"/></a></code>. 
+Your httpd binary must support dynamically loaded objects 
 (DSO). Verify this by checking the availability of mod_so: The command 
 <code>httpd -l</code> must list the mod_so.c module. 
 The following command compiles the module and installs mod_qos into the 
@@ -2177,7 +2180,7 @@ for automated actions. <br/>Examples:
 An example using <code><a href="qsexec.1.html">qsexec</a></code> 
 is available within the 
 <a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/test/sync.sh?format=raw">source code repository</a>.</li>
-<li><a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/tools/cc_sync.sh?format=raw">Download/upload</a> client status from one 
+<li><a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/tools/cc_sync_2k.sh?format=raw">Download/upload</a> client status from one 
 Apache instance to another (or to the same, e.g. when restarting an instance).</li>
 </ul>
 </p>

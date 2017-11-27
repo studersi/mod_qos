@@ -3,6 +3,8 @@
 # Copies the vip information of the most recent (max. 20'000)
 # clients from URLIN to URLOUT
 #
+# (requires mod_qos >= 11.37)
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
@@ -23,3 +25,4 @@ for IP in `cat cc_clients.txt`; do
     wget "${URLOUT}?action=setvip&address=$IP" -O /dev/null -o /dev/null
     echo "$IP\tsetvip"
 done
+
