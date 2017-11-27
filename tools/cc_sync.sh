@@ -22,3 +22,4 @@ for E in `sed < export.txt -e "s: :#:g"`; do
     echo "$IP\tsetvip"
   fi
 done
+
