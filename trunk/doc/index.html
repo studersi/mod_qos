@@ -218,38 +218,6 @@ optimized to be used in a
 <a href="http://httpd.apache.org/docs/current/mod/mod_proxy.html">reverse proxy <img src="images/link.png"/></a> 
 server.
 </p>
-<!--
-<p>
-Just copy the module into the <code>modules</code> directory of the Apache 
-server's source code and compile it using the following commands (all 
-examples are using Apache 2.2.31 and mod_qos 0.00):
-<table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#E2EDE2">
-<pre>
-tar xfz httpd-2.2.31.tar.gz
-tar xfz mod_qos-0.00-src.tar.gz
-ln -s httpd-2.2.31 httpd
-cd httpd
-mkdir modules/qos
-cp ../mod_qos-0.00/apache2/* modules/qos
-./buildconf
-./configure --with-mpm=worker --enable-so --enable-qos=shared --enable-ssl --enable-unique-id
-make
-cd ..
-</pre>
-</td></tr>
-</table>
-This creates a DSO module that can be loaded into the Apache server using the 
-following directive:
-<table border="0" cellspacing="5" cellpadding="10" width="100%">
-<tr><td bgcolor="#E2EDE2">
-<pre>
-LoadModule qos_module &lt;path to module&gt;/mod_qos.so
-</pre>
-</td></tr>
-</table>
-</p>
--->
 <p>
 You can compile the module using 
 <code><a href="http://httpd.apache.org/docs/current/programs/apxs.html">apxs <img src="images/link.png"/></a></code>. 
