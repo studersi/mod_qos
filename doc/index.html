@@ -2113,32 +2113,38 @@ has been enabled).
 <li>
 <code>action='block'|'unblock'|'limit'|'unlimit'|'inclimit'|'setvip'|'unsetvip'|'setlowprio'|'unsetlowprio'|'search'</code><br>Defines the command to be executed, or the attribute to be changed.
 <ul>
-<li><code>block</code>: <a href="#QS_ClientEventBlockCount">blocks</b> the client for the configured period of time, 
+<li><code>block</code>: <a href="#QS_ClientEventBlockCount">blocks</a> the client for the configured period of time, 
 see also <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>.</li>
 <li><code>unblock</code>: clears the <a href="#QS_ClientEventBlockCount">block</a> attribute of the client.</li>
-<li><code>limit</code>: <a href="#QS_ClientEventLimitCount">blocks</a> (friendly) the client for the configured period 
-of time, see also <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>.</li>
-<li><code>unlimit</code>: clears the <a href="#QS_ClientEventLimitCount">limit</a> attribute of the client.</li>
+<li><code>limit</code>: <a href="#QS_ClientEventLimitCount">denies requests</a> 
+from the client IP for the configured period of time, see also 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>.</li>
+<li><code>unlimit</code>: clears the <a href="#QS_ClientEventLimitCount">limit</a> 
+attribute of the client.</li>
 <li><code>inclimit</code>: increments the client's <a href="#QS_ClientEventLimitCount">limit</a> counter.</li>
 <li><code>setvip</code>: sets the client status to <a href="#privilegedusers">VIP</a>.</li>
 <li><code>unsetvip</code>: clears the <a href="#privilegedusers">VIP</a> status for a client.</li>
-<li><code>setlowprio</code>: sets the client's priority to 'low'.</li>
-<li><code>unsetlowprio</code>: clears the 'low' priority attribute of the client.</li>
+<li><code>setlowprio</code>: sets the client's <a href="#QS_ClientPrefer">priority</a> to 'low'.</li>
+<li><code>unsetlowprio</code>: clears the 'low' <a href="#QS_ClientPrefer">priority</a>
+attribute of the client.</li>
 <li><code>search</code>: verifies the availability of a client IP address. <br/>Use the asterisk (*) 
 for the <code>address</code> parameter in order to get a list of all available clients (dump).</li>
 </ul>
 </li>
 <li><code>event=&lt;name&gt;</code><br>Specifies the event name of the 
 <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
-directive which shall be shown or modified. Default is <code><a href="#QS_Limit">QS_Limit</a></code>.</li>
+directive <a href="glossary.html#repeat">counter</a> which shall be
+shown or modified (used in conjunction with the <code>limit</code>,
+<code>unlimit</code>, <code>inclimit</code>, and <code>search</code> action).
+Default is <code><a href="#QS_Limit">QS_Limit</a></code>.</li>
 </ul>
 </p>
 <p>
 The output (which is plain text) contains the following fields:
 <ul>
   <li>IP address</li>
-  <li>VIP status</li>
-  <li>low priority status</li>
+  <li><a href="#privilegedusers">VIP</a> status</li>
+  <li>low <a href="#QS_ClientPrefer">priority</a> status</li>
   <li><code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>
     counter (<a href="glossary.html#repeat">Cr</a>) and
     remaining time (<a href="glossary.html#repeat">Td</a>)</li>
@@ -2160,7 +2166,8 @@ An example using <code><a href="qsexec.1.html">qsexec</a></code>
 is available within the 
 <a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/test/sync.sh?format=raw">source code repository</a>.</li>
 <li><a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/tools/cc_sync_2k.sh?format=raw">Download/upload</a> client status from one 
-Apache instance to another (or to the same, e.g. when restarting an instance).</li>
+Apache instance to another (or to the same instance, 
+e.g., when restarting an instance).</li>
 </ul>
 </p>
 <p>
