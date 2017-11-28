@@ -2113,31 +2113,42 @@ has been enabled).
 <li>
 <code>action='block'|'unblock'|'limit'|'unlimit'|'inclimit'|'setvip'|'unsetvip'|'setlowprio'|'unsetlowprio'|'search'</code><br>Defines the command to be executed, or the attribute to be changed.
 <ul>
-<li><code>block</code>: blocks the client for the configured period of time, 
+<li><code>block</code>: <a href="#QS_ClientEventBlockCount">blocks</b> the client for the configured period of time, 
 see also <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>.</li>
-<li><code>unblock</code>: clears the block attribute of the client.</li>
-<li><code>limit</code>: blocks (friendly) the client for the configured period 
+<li><code>unblock</code>: clears the <a href="#QS_ClientEventBlockCount">block</a> attribute of the client.</li>
+<li><code>limit</code>: <a href="#QS_ClientEventLimitCount">blocks</a> (friendly) the client for the configured period 
 of time, see also <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>.</li>
-<li><code>unlimit</code>: clears the limit attribute of the client.</li>
-<li><code>inclimit</code>: increments the client's limit counter.</li>
+<li><code>unlimit</code>: clears the <a href="#QS_ClientEventLimitCount">limit</a> attribute of the client.</li>
+<li><code>inclimit</code>: increments the client's <a href="#QS_ClientEventLimitCount">limit</a> counter.</li>
 <li><code>setvip</code>: sets the client status to <a href="#privilegedusers">VIP</a>.</li>
-<li><code>unsetvip</code>: clears the VIP status for a client.</li>
+<li><code>unsetvip</code>: clears the <a href="#privilegedusers">VIP</a> status for a client.</li>
 <li><code>setlowprio</code>: sets the client's priority to 'low'.</li>
 <li><code>unsetlowprio</code>: clears the 'low' priority attribute of the client.</li>
-<li><code>search</code>: verifies the availability of a client IP address. <br/>Set '*' for the address 
-parameter in order to get a list of all available clients (dump).</li>
+<li><code>search</code>: verifies the availability of a client IP address. <br/>Use the asterisk (*) 
+for the <code>address</code> parameter in order to get a list of all available clients (dump).</li>
 </ul>
 </li>
 <li><code>event=&lt;name&gt;</code><br>Specifies the event name of the 
 <code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
-directive which shall be shown or modified. Default is <code><a href="#QS_Limit">QS_Limit</a></code>.
-</li>
+directive which shall be shown or modified. Default is <code><a href="#QS_Limit">QS_Limit</a></code>.</li>
 </ul>
-Example to access the console:<br/> <code>http://your.server.name/qos/console?action=setvip&amp;address=194.31.217.21</code>
 </p>
 <p>
-You may use the <a href="#statusviewer">status viewer</a> to verify the status of the client.<br>
-Example: <br/><code>http://your.server.name/qos?action=search&amp;address=194.31.217.21</code>
+The output (which is plain text) contains the following fields:
+<ul>
+  <li>IP address</li>
+  <li>VIP status</li>
+  <li>low priority status</li>
+  <li><code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>
+    counter (<a href="glossary.html#repeat">Cr</a>) and
+    remaining time (<a href="glossary.html#repeat">Td</a>)</li>
+  <li><code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>
+    counter (<a href="glossary.html#repeat">Cr</a>) and
+    remaining time (<a href="glossary.html#repeat">Td</a>)</li>
+</ul>
+The wildcard search (<code>address=*</code>) generates a by a newline separated list of
+all client IP entries. Each line is prefixed by an index and terminated
+by the time of the last entry update (seconds since epoch).
 </p>
 <p>
 The console may be used to manually update the status of a client (IP) or 
@@ -2151,6 +2162,20 @@ is available within the
 <li><a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/tools/cc_sync_2k.sh?format=raw">Download/upload</a> client status from one 
 Apache instance to another (or to the same, e.g. when restarting an instance).</li>
 </ul>
+</p>
+<p>
+Examples to access the console:
+<ul>
+<li>Sets VIP status for the IP 194.31.217.21:<br>
+<code>http://your.server.name/qos/console?action=setvip&amp;address=194.31.217.21</code></li>
+<li>Clears the QS_Limit counter for the IP 194.31.217.21:<br>
+<code>http://your.server.name/qos/console?action=unlimit&amp;address=194.31.217.21&event=QS_Limit</code></li>
+</ul>
+</p>
+<p>
+The <a href="#statusviewer">status viewer</a> may be used as well to 
+verify the status of the client. Example: <br/>
+<code>http://your.server.name/qos?action=search&amp;address=194.31.217.21</code>
 </p>
 
 <a name="utilities"></a>
