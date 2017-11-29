@@ -5014,6 +5014,8 @@ static qs_conn_ctx *qos_create_cconf(conn_rec *c, qos_srv_config *sconf) {
   qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
   qs_conn_ctx *cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
   cconf->c = c;
+  cconf->ip6[0] = 0;
+  cconf->ip6[1] = 0;
   cconf->evmsg = NULL;
   cconf->sconf = sconf;
   cconf->is_vip = 0;
