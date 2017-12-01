@@ -90,7 +90,7 @@ cp doc/CHANGES.txt mod_qos-${VERSION}/doc
 cp doc/glossary.html mod_qos-${VERSION}/doc
 sed <doc/index.html >mod_qos-${VERSION}/doc/index.html \
  -e "s/0\.00/${VERSION}/g"
-cp doc/images/mod_qos_s.gif mod_qos-${VERSION}/doc/images/
+cp doc/images/mod_qos.gif mod_qos-${VERSION}/doc/images/
 cp doc/images/mod_qos_seq.gif mod_qos-${VERSION}/doc/images/
 cp doc/images/SrvMinDataRate.png mod_qos-${VERSION}/doc/images/
 cp doc/images/LimitCount.png mod_qos-${VERSION}/doc/images/

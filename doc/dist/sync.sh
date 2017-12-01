@@ -16,7 +16,7 @@ scp ../images/SrvMinDataRate.png ${dest}/images/
 scp ../images/LimitCount.png ${dest}/images/
 scp ../images/ClosedLoop.png ${dest}/images/
 scp ../images/Serialization.png ${dest}/images/
-scp ../images/mod_qos_s.gif ${dest}/images/
+scp ../images/mod_qos.gif ${dest}/images/
 scp ../qsfilter2_process.gif ${dest}/
 scp ../favicon.ico ${dest}/
 echo "copy html files"
