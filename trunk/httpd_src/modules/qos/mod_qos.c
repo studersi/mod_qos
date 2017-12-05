@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.44";
+static const char g_revision[] = "11.45";
 
 
 /************************************************************************
@@ -1152,7 +1152,7 @@ static char *qos_ip_long2str(apr_pool_t *pool, const void *src) {
  * @param dst Pointer to array of unsigned long (2) (contains "{ 0, 0 }" on errror)
  * @return 1 on success, 0 on error
  */
-static int qos_ip_str2long(const char *src, void *dst) {
+static int qos_ip_str2long(const char *src, apr_uint64_t *dst) {
   char str[INET6_ADDRSTRLEN];
   const char *convert = src;
   apr_uint64_t *n = dst;
@@ -1896,6 +1896,78 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
     apr_table_set(r->subprocess_env, "UNIQUE_ID", uid);
   }
   return uid;
+}
+
+/**
+ * Returns the client IP, either from the connection
+ * of from the forwarded-for header if configured
+ *
+ * @param r Request to get the IP from the header
+ * @param sconf
+ * @param cconf (if available) to get the real IP from
+ * @param caller Which caller of the methode
+ * @param ip6 The client's IP address to be used (pointer to array of unsigned long (2))
+ * @return The client's IP address as a string (for logging)
+ */
+static const char *qos_get_clientIP(request_rec *r, qos_srv_config *sconf,
+                                    qs_conn_ctx *cconf, const char *caller,
+                                    apr_uint64_t *ip6) {
+  const char *forwardedForLogIP;
+  if(sconf->qos_cc_forwardedfor) {
+    const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
+    if(forwardedfor == NULL && r->prev) {
+      // internal redirect?
+      forwardedfor = apr_table_get(r->prev->headers_in, sconf->qos_cc_forwardedfor);
+    }
+    if(forwardedfor == NULL && r->main) {
+      // internal redirect?
+      forwardedfor = apr_table_get(r->main->headers_in, sconf->qos_cc_forwardedfor);
+    }
+    if(forwardedfor) {
+      if(qos_ip_str2long(forwardedfor, ip6) == 0) {
+        if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
+          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                        QOS_LOG_PFX(069)"no valid IP header found (@%s):"
+                        " invalid header value '%s',"
+                        " fallback to connection's IP %s, id=%s",
+                        caller,
+                        forwardedfor,
+                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
+                        QS_CONN_REMOTEIP(r->connection),
+                        qos_unique_id(r, "069"));
+          apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+          QS_INC_EVENT(sconf, 69);
+        }
+      } else {
+        // done
+        return forwardedfor;
+      }
+    } else {
+      if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
+        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                      QOS_LOG_PFX(069)"no valid IP header found (@%s):"
+                      " header '%s' not available,"
+                      " fallback to connection's IP %s, id=%s",
+                      caller,
+                      sconf->qos_cc_forwardedfor,
+                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                      qos_unique_id(r, "069"));
+        apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
+        QS_INC_EVENT(sconf, 69);
+      }
+    }
+  }
+  // use the real IP
+  forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
+  if(cconf) {
+    // works for real connections only (no HTTP/2)
+    ip6[0] = cconf->ip6[0];
+    ip6[1] = cconf->ip6[1];
+  } else {
+    // HTTP/2
+    qos_ip_str2long(forwardedForLogIP, ip6);
+  }
+  return forwardedForLogIP;
 }
 
 /**
@@ -5125,53 +5197,11 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
     rctx = qos_rctx_config_get(r);
   }
   if(u && cconf) {
-    const char *forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
     int loops = 0;
     int locked = 0;
-    
     qos_s_entry_t searchE;
-    searchE.ip6[0] = 0;
-    searchE.ip6[1] = 0;
-    if(sconf->qos_cc_forwardedfor) {
-      const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
-      if(forwardedfor) {
-        if(qos_ip_str2long(forwardedfor, &searchE.ip6) == 0) {
-          if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOS_LOG_PFX(069)"no valid IP header found (@hp):"
-                          " invalid header value '%s',"
-                          " fallback to connection's IP %s, id=%s",
-                          forwardedfor,
-                          QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
-                          QS_CONN_REMOTEIP(r->connection),
-                          qos_unique_id(r, "069"));
-            apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
-            QS_INC_EVENT(sconf, 69);
-          }
-        } else {
-          forwardedForLogIP = forwardedfor;
-        }
-      } else {
-        if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX(069)"no valid IP header found (@hp):"
-                        " header '%s' not available,"
-                        " fallback to connection's IP %s, id=%s",
-                        sconf->qos_cc_forwardedfor,
-                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" :
-                        QS_CONN_REMOTEIP(r->connection),
-                        qos_unique_id(r, "069"));
-          apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
-          QS_INC_EVENT(sconf, 69);
-        }
-      }
-    }
-    if((searchE.ip6[0] == 0) &&
-       (searchE.ip6[1] == 0)) {
-      // use real ip from the connection
-      searchE.ip6[0] = cconf->ip6[0];
-      searchE.ip6[1] = cconf->ip6[1];
-    }
+    const char *forwardedForLogIP = qos_get_clientIP(r, sconf, cconf,
+                                                     "hp", searchE.ip6);
 
     /* wait until we get a lock */
     while(!locked) {
@@ -5551,8 +5581,6 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   qos_s_entry_t **ef = NULL; // client ip entry from header
   qos_s_entry_t searchE;
   qos_s_entry_t searchEFromHeader;
-  searchEFromHeader.ip6[0] = 0;
-  searchEFromHeader.ip6[1] = 0;
  
   if(block_seen != NULL) {
     block_event = 0;
@@ -5585,61 +5613,24 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   } else {
     // HTTP/2
     apr_uint64_t ci6[2];
-    qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &ci6);
+    qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), ci6);
     searchE.ip6[0] = ci6[0];
     searchE.ip6[1] = ci6[1];
   }
-  if(sconf->qos_cc_forwardedfor) {
-    const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
-    if(forwardedfor == NULL && r->prev) {
-      // experimental (internal redirect?)
-      forwardedfor = apr_table_get(r->prev->headers_in, sconf->qos_cc_forwardedfor);
-    }
-    if(forwardedfor == NULL && r->main) {
-      // experimental (internal redirect?)
-      forwardedfor = apr_table_get(r->main->headers_in, sconf->qos_cc_forwardedfor);
-    }
-    if(forwardedfor) {
-      if(qos_ip_str2long(forwardedfor, &searchEFromHeader.ip6) == 0) {
-        if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX(069)"no valid IP header found (@logger):"
-                        " invalid header value '%s',"
-                        " fallback to connection's IP %s, id=%s",
-                        forwardedfor,
-                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
-                        QS_CONN_REMOTEIP(r->connection),
-                        qos_unique_id(r, "069"));
-          apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
-          QS_INC_EVENT(sconf, 69);
-        }
-      }
-    } else {
-      if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
-        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(069)"no valid IP header found (@logger):"
-                      " header '%s' not available,"
-                      " fallback to connection's IP %s, id=%s",
-                      sconf->qos_cc_forwardedfor,
-                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
-                      qos_unique_id(r, "069"));
-        apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
-        QS_INC_EVENT(sconf, 69);
-      }
-    }
-  }
+  qos_get_clientIP(r, sconf, cconf, "logger", searchEFromHeader.ip6);
+
   apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
   e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
   if(!e) {
     e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
   }
-  if(searchEFromHeader.ip6[0] || searchEFromHeader.ip6[1]) {
+  if(searchEFromHeader.ip6[0] == searchE.ip6[0] && searchEFromHeader.ip6[1] == searchE.ip6[1]) {
+    ef = e; // same as connection
+  } else {
     ef = qos_cc_get0(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
     if(!ef) {
       ef = qos_cc_set(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
     }
-  } else {
-    ef = e; // use either ip from header or connection
   }
   if(rctx->cc_event_req_set) {
     /* QS_ClientEventRequestLimit */
@@ -5805,46 +5796,14 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     } else {
       // HTTP/2
       apr_uint64_t ci6[2];
-      qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &ci6);
+      qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), ci6);
       searchE.ip6[0] = ci6[0];
       searchE.ip6[1] = ci6[1];
     }
-    searchEFromHeader.ip6[0] = 0;
-    searchEFromHeader.ip6[1] = 0;
 
-    if(sconf->qos_cc_forwardedfor) {
-      const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
-      if(forwardedfor) {
-        if(qos_ip_str2long(forwardedfor, &searchEFromHeader.ip6) == 0) {
-          if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
-            ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                          QOS_LOG_PFX(069)"no valid IP header found (@hp):"
-                          " invalid header value '%s', fallback to connection's IP %s, id=%s",
-                          forwardedfor,
-                          QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
-                          QS_CONN_REMOTEIP(r->connection),
-                          qos_unique_id(r, "069"));
-            apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
-            QS_INC_EVENT(sconf, 69);
-          }
-        } else {
-          forwardedForLogIP = forwardedfor;
-        }
-      } else {
-        if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
-          ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                        QOS_LOG_PFX(069)"no valid IP header found (@hp):"
-                        " header '%s' not available,"
-                        " fallback to connection's IP %s, id=%s",
-                        sconf->qos_cc_forwardedfor,
-                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
-                        QS_CONN_REMOTEIP(r->connection),
-                        qos_unique_id(r, "069"));
-          apr_table_set(r->notes, "QOS_LOG_PFX069", "log once");
-          QS_INC_EVENT(sconf, 69);
-        }
-      }
-    }
+    forwardedForLogIP = qos_get_clientIP(r, sconf, cconf, "hp",
+                                         searchEFromHeader.ip6);
+
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT17 */
     e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     if(!e) {
@@ -5853,7 +5812,9 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
       /* update time */
       (*e)->time = apr_time_sec(r->request_time);
     }
-    if(searchEFromHeader.ip6[0] || searchEFromHeader.ip6[1]) {
+    if(searchEFromHeader.ip6[0] == searchE.ip6[0] && searchEFromHeader.ip6[1] == searchE.ip6[1]) {
+      ef = e; // same as connection
+    } else {
       ef = qos_cc_get0(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
       if(!ef) {
         ef = qos_cc_set(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
@@ -5861,8 +5822,6 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         /* update time */
         (*ef)->time = apr_time_sec(r->request_time);
       }
-    } else {
-      ef = e; // use either ip from header or connection
     }
     if(sconf->qos_cc_event) {
       apr_time_t now = apr_time_sec(r->request_time);
@@ -6807,7 +6766,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
       if(address) {
         apr_uint64_t ip[2];
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-        if(qos_ip_str2long(address, &ip)) {
+        if(qos_ip_str2long(address, ip)) {
           unsigned long html;
           unsigned long cssjs;
           unsigned long img;
@@ -7108,7 +7067,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   {
     apr_uint64_t remoteip[2];
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
-    qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), &remoteip);
+    qos_ip_str2long(QS_CONN_REMOTEIP(r->connection), remoteip);
     if(cconf) {
       remoteip[0] = cconf->ip6[0];
       remoteip[1] = cconf->ip6[1];
@@ -7990,7 +7949,7 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
       qos_user_t *u = qos_get_user_conf(base->sconf->act->ppool);
       qos_s_entry_t **e = NULL;
       qos_s_entry_t searchE;
-      qos_ip_str2long(QS_CONN_REMOTEIP(base->c), &searchE.ip6); // no ip simulation here
+      qos_ip_str2long(QS_CONN_REMOTEIP(base->c), searchE.ip6); // no ip simulation here
       apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT40 */
       e = qos_cc_get0(u->qos_cc, &searchE, 0);
       if(!e) {
@@ -8103,13 +8062,13 @@ static int qos_pre_process_connection(conn_rec *c, void *skt) {
     }
 
     /* evaluates client ip */
-    qos_ip_str2long(QS_CONN_REMOTEIP(c), &cconf->ip6);
+    qos_ip_str2long(QS_CONN_REMOTEIP(c), cconf->ip6);
 #ifdef QS_INTERNAL_TEST
     /* use one of the predefined ip addresses */
     if(cconf->sconf->enable_testip) {
       char *testid = apr_psprintf(c->pool, "%d", rand()%(QS_SIM_IP_LEN-1));
       const char *testip = apr_table_get(cconf->sconf->testip, testid);
-      qos_ip_str2long(testip, &cconf->ip6);
+      qos_ip_str2long(testip, cconf->ip6);
     }
 #endif
 
@@ -8309,7 +8268,7 @@ static int qos_pre_connection(conn_rec *c, void *skt) {
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     qos_s_entry_t **e = NULL;
     qos_s_entry_t searchE;
-    qos_ip_str2long(QS_CONN_REMOTEIP(c), &searchE.ip6); // no ip simulation here
+    qos_ip_str2long(QS_CONN_REMOTEIP(c), searchE.ip6); // no ip simulation here
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT39 */
     e = qos_cc_get0(u->qos_cc, &searchE, 0);
     if(!e) {
@@ -9267,7 +9226,7 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
         qos_s_entry_t searchE;
         request_rec *r = f->r;
         apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
-        qos_ip_str2long(QS_CONN_REMOTEIP(inctx->c), &searchE.ip6);
+        qos_ip_str2long(QS_CONN_REMOTEIP(inctx->c), searchE.ip6);
         e = qos_cc_get0(u->qos_cc, &searchE, 0);
         if(!e) {
           e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
@@ -10748,7 +10707,7 @@ static int qos_handler_console(request_rec * r) {
   if((strcasecmp(cmd, "search") == 0) && (strcmp(ip, "*") == 0)) {
     return qos_console_dump(r, event);
   }
-  if(qos_ip_str2long(ip, &addr) == 0) {
+  if(qos_ip_str2long(ip, addr) == 0) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QOS_LOG_PFX(070)"console, not acceptable,"
                   " invalid ip/wrong format, id=%s",
