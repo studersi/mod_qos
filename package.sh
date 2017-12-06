@@ -94,6 +94,7 @@ cp doc/images/mod_qos.gif mod_qos-${VERSION}/doc/images/
 cp doc/images/mod_qos_seq.gif mod_qos-${VERSION}/doc/images/
 cp doc/images/SrvMinDataRate.png mod_qos-${VERSION}/doc/images/
 cp doc/images/LimitCount.png mod_qos-${VERSION}/doc/images/
+cp doc/images/LimitCountExample.png mod_qos-${VERSION}/doc/images/
 cp doc/images/ClosedLoop.png mod_qos-${VERSION}/doc/images/
 cp doc/images/Serialization.png mod_qos-${VERSION}/doc/images/
 cp doc/images/download.jpg mod_qos-${VERSION}/doc/images/

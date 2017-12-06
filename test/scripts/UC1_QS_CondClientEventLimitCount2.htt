@@ -36,7 +36,7 @@ _EXPECT . "==AS2=="
 _WAIT
 _CLOSE
 
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=QS_CondLimit, max=3, current=6.*127.0.0.2"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=QS_CondLimit, max=3, current=6, age=[01], c=127.0.0.2"
 _EXEC tail -1 logs/error_log
 
 _SLEEP 3000
