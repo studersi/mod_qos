@@ -32,7 +32,7 @@ _EXPECT . "_D3"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3"
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=3, age=[01], c=127.0.0.1"
 _EXEC tail -1 logs/error_log
 _SLEEP 950
 

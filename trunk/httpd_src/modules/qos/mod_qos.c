@@ -7749,7 +7749,7 @@ static void qos_version_check(server_rec *bs) {
   if(version.major != 2 || (version.minor != 2 && version.minor != 4)) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"server version is %d.%d"
-                 " but mod_qos should be used with Apache 2.2.",
+                 " but mod_qos should be used with Apache 2.2 or 2.4.",
                  version.major, version.minor);
   }
 }

@@ -51,7 +51,7 @@
 -->
 <table>
 <tbody>
-<tr><td><a href="index.html"><img src="images/mod_qos.gif" alt="mod_qos" /></a></td>
+<tr><td><a href="index.html"><img src="images/mod_qos.gif" alt="mod_qos" title="mod_qos" /></a></td>
     <td style="vertical-align: bottom;"><h1>Additional Information</h1></td></tr>
 <tr><td>&nbsp;</td>
     <td>
@@ -182,7 +182,11 @@ requests are blocked until the time is up.
 All repeat counters allow you to define an event which shall 
 increment the counter if they occur. You also have to configure a 
 duration Td and the threshold Cr, defining how many events are 
-allowed within the time Td.<br>
+allowed within the time Td.</p>
+<p>Directive parameter example:<br>
+<img src="images/LimitCountExample.png" height="165" width="574" alt="QS_ClientEventLimitCount" />
+</p>
+<p>
 While the counter is automatically cleared (set to 0) when the 
 time Td is up, you might also configure additional events to 
 decrement or clear the counter earlier.
