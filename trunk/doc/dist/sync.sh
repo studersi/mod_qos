@@ -9,7 +9,8 @@ dest=pbuchbinder,mod-qos@web.sourceforge.net:htdocs
 echo "copy manpages"
 scp ../*1.html ${dest}/
 echo "copy images"
-scp ../images/mod_qos_seq.gif ${dest}/images/
+scp ../images/directive_seq.gif ${dest}/images/
+scp ../images/directive_seq.gif ${dest}/images/mod_qos_seq.gif
 scp ../images/download.jpg ${dest}/images/
 scp ../images/link.png ${dest}/images/
 scp ../images/SrvMinDataRate.png ${dest}/images/
