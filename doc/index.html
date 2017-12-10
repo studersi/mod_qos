@@ -926,7 +926,8 @@ BrowserMatch             "googlebot"              <a href="#QS_Cond">QS_Cond</a>
 <a name="eventcontrol"></a>
 <h3>Events</h3>
 mod_qos may control the frequency of "events". An event may be any 
-request attribute which can be represented by an environment variable. 
+request attribute which can be represented by an
+<a href="glossary.html#variables">environment variable</a>. 
 Such variables may be set by 
 <a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a>, 
 <a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a>, or 
@@ -1880,8 +1881,8 @@ mod_qos writes <a href="MESSAGES.txt">messages</a> to Apache's error log when
 detecting a rule violation. Each error message is prefixed by an id: 
 <code>mod_qos(&lt;number&gt;)</code>. These error codes (number only) 
 are also written to the error notes (Apache's <code>error-notes</code> note 
-as well as the <code>QS_ErrorNotes</code> variable) in order to be 
-processed within error pages using 
+as well as the <a href="#QS_ErrorNotes"><code>QS_ErrorNotes</code></a>
+variable) in order to be processed within error pages using 
 <a href="http://httpd.apache.org/docs/current/howto/ssi.html">server-side includes <img src="images/link.png"/></a> 
 (SSI).
 <table border="0" cellspacing="5" cellpadding="10" width="100%">

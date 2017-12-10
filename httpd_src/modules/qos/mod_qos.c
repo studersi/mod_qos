@@ -7039,7 +7039,8 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
   const char *option = apr_table_get(qt, "option");
   if(sconf->disable_handler == 1) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(072)"handler has been disabled for this host");
+                  QOS_LOG_PFX(072)"handler has been disabled for this host, id=%s",
+                  qos_unique_id(r, "072"));
     return OK;
   }
   if (flags & AP_STATUS_SHORT) {
@@ -7724,7 +7725,7 @@ static void qos_deflate_contentlength(request_rec *r) {
  *
  * - old (2.0.x, 2.2.x) MPM Apache prefork versions do not unload the
  *   DSO properly or child exit may cause a segfault (pool cleanup)
- * - Apache 2.4 is experimental only and not yet fully tested
+ * - Apache 2.4 should work but is not yet fully tested
  *   (see CHANGES.txt for more informaton)
  * - Apache 2.0 does not support all directives (e.g. QS_ClientPrefer) and
  *   we do no longer test against this version (the module does probably
@@ -7737,7 +7738,7 @@ static void qos_version_check(server_rec *bs) {
     m_event_mpm = 1; // disable features like keep-alive control
   }
   if(strcasecmp(ap_show_mpm(), "prefork") == 0) {
-    // mod_qos is fully tested for MPM worker
+    // mod_qos is fully tested for MPM worker (and works with event)
     m_worker_mpm = 0; // disable child cleanup
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"loaded MPM is '%s'"
@@ -7747,9 +7748,10 @@ static void qos_version_check(server_rec *bs) {
 
   ap_get_server_revision(&version);
   if(version.major != 2 || (version.minor != 2 && version.minor != 4)) {
+    // 2.2 and 2.4 should be ok / older or newer versions are not tested
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"server version is %d.%d"
-                 " but mod_qos should be used with Apache 2.2 or 2.4.",
+                 " but mod_qos should be used with Apache 2.2 or 2.4 only.",
                  version.major, version.minor);
   }
 }
