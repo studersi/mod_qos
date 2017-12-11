@@ -1686,7 +1686,11 @@ survives graceful server restart. The maximum value is 10'000'000.
 <code>QS_ClientEventRequestLimit &lt;number&gt;</code><br>
 Defines the allowed number of <a href="glossary.html#concurrency">concurrent</a> 
 requests coming from the same client source IP address having the 
-<code><a href="#QS_EventRequest">QS_EventRequest</a></code> variable set.
+<code><a href="#QS_EventRequest">QS_EventRequest</a></code> variable set.<br>
+<small><i>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
+directive to override the client's IP address based on the value within the defined 
+HTTP request header (e.g., X-Forwarded-For) instead of taking the IP address of 
+the client which has opened the TCP connection.</i></small>
 </li>
 <li>
 <a name="QS_ClientEventPerSecLimit"></a>

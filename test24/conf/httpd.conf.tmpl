@@ -70,6 +70,8 @@ QS_SrvMinDataRate  120 3000 10
    QS_SrvMinDataRateIgnoreVIP on
 </IfDefine>
 
+QS_ClientEventRequestLimit 2
+
 QS_ClientEventLimitCount  3 10
 QS_SetEnvIfStatus  414 QS_Limit=1
 
@@ -131,6 +133,8 @@ Listen         ##QS_PORT_BASE##
 
    SetEnvIfPlus               User-Agent reDirectMe=(/errorpages/error.html) QS_RI=$1
    QS_RedirectIf              QS_RI ([a-z0-9_/.-]+) $1
+
+   SetEnvIfPlus               User-Agent ^QS_ClientEventRequestLimit QS_EventRequest=1
 
    SetEnvIfPlus               Request_Query DecrementLimitCounter=([0-9]+) QS_Limit_Decrement=$1
 
