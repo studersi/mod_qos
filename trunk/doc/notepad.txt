@@ -28,7 +28,7 @@
   - region, city. latitude/longitude
   - IPv6
 + doc: document VIP behavior (exact: which directive are affected)
-- add QS_ClientIpFromHeader support for QS_ClientEventRequestLimit 
++ add QS_ClientIpFromHeader support for QS_ClientEventRequestLimit 
 - more "dynamic" rules:
   - enforce rules on certain conditions only (e.g. overall server usage)
     + QS_SrvMinDataRate <bytes per second> [<max bytes per second> [ <free>% ] ]

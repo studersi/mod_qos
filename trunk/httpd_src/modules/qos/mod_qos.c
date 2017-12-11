@@ -891,6 +891,7 @@ typedef struct {
   int is_vip;
   apr_off_t maxpostcount;
   int cc_event_req_set;
+  apr_uint64_t cc_event_ip[2];
   int cc_serialize_set;
   int srv_serialize_set;
   char *body_window;
@@ -1993,6 +1994,8 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->event_entries = apr_table_make(r->pool, 1);
     rctx->maxpostcount = 0;
     rctx->cc_event_req_set = 0;
+    rctx->cc_event_ip[0] = 0;
+    rctx->cc_event_ip[1] = 0;
     rctx->cc_serialize_set = 0;
     rctx->srv_serialize_set = 0;
     rctx->body_window = NULL;
@@ -5283,10 +5286,13 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf,
     int count = 0;
     qos_s_entry_t **e = NULL;
     qos_s_entry_t searchE;
+    const char *forwardedForLogIP = qos_get_clientIP(r, sconf, cconf,
+                                                     "hp", rctx->cc_event_ip);
+    
     rctx->cc_event_req_set = 1;
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT33 */
-    searchE.ip6[0] = cconf->ip6[0];
-    searchE.ip6[1] = cconf->ip6[1];
+    searchE.ip6[0] = rctx->cc_event_ip[0];
+    searchE.ip6[1] = rctx->cc_event_ip[1];
     e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     if(!e) {
       e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
@@ -5313,8 +5319,8 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf,
                       sconf->log_only ? " (log only)" : "",
                       sconf->qos_cc_event_req,
                       count,
-                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
-                      QS_CONN_REMOTEIP(r->connection),
+                      forwardedForLogIP == NULL ? "-" : 
+                      forwardedForLogIP,
                       qos_unique_id(r, "065"));
         QS_INC_EVENT(sconf, 65);
         qs_set_evmsg(r, "D;"); 
@@ -5634,10 +5640,26 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   }
   if(rctx->cc_event_req_set) {
     /* QS_ClientEventRequestLimit */
+    qos_s_entry_t **eEvent = NULL;
     rctx->cc_event_req_set = 0;
-    if(e) {
-      if((*e)->event_req > 0) {
-        (*e)->event_req--;
+    if(rctx->cc_event_ip[0] == searchE.ip6[0] &&
+       rctx->cc_event_ip[1] == searchE.ip6[1]) {
+      // connection ip
+      eEvent = e;
+    } else if(rctx->cc_event_ip[0] == searchEFromHeader.ip6[0] &&
+              rctx->cc_event_ip[1] == searchEFromHeader.ip6[1]) {
+      // from header
+      eEvent = ef;
+    } else {
+      // looks like the header has changed or is no longer available
+      qos_s_entry_t searchEvent;
+      searchEvent.ip6[0] = rctx->cc_event_ip[0];
+      searchEvent.ip6[1] = rctx->cc_event_ip[1];
+      eEvent = qos_cc_get0(u->qos_cc, &searchEvent, apr_time_sec(r->request_time));
+    }
+    if(eEvent) {
+      if((*eEvent)->event_req > 0) {
+        (*eEvent)->event_req--;
       }
     }
   }

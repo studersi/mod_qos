@@ -1,3 +1,7 @@
+Version 11.45
+
+ - QS_ClientEventRequestLimit supports the QS_ClientIpFromHeader directive.
+
 Version 11.44
 
  - New directive QS_CondEventLimitCount.
