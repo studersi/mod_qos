@@ -29,8 +29,8 @@
 /* ----------------------------------
  * version info
  * ---------------------------------- */
-static const char man_version[] = "11.44";
-static const char man_date[] = "October 2017";
+static const char man_version[] = "11.45";
+static const char man_date[] = "December 2017";
 
 /* ----------------------------------
  * definitions
