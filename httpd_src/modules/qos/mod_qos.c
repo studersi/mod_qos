@@ -893,6 +893,7 @@ typedef struct {
   int cc_event_req_set;
   apr_uint64_t cc_event_ip[2];
   int cc_serialize_set;
+  apr_uint64_t cc_serialize_ip[2];
   int srv_serialize_set;
   char *body_window;
   apr_off_t response_delayed; // indicates, if the response has been delayed (T)
@@ -1997,6 +1998,8 @@ static qs_req_ctx *qos_rctx_config_get(request_rec *r) {
     rctx->cc_event_ip[0] = 0;
     rctx->cc_event_ip[1] = 0;
     rctx->cc_serialize_set = 0;
+    rctx->cc_serialize_ip[0] = 0;
+    rctx->cc_serialize_ip[1] = 0;
     rctx->srv_serialize_set = 0;
     rctx->body_window = NULL;
     rctx->response_delayed = 0;
@@ -5204,7 +5207,9 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
     int locked = 0;
     qos_s_entry_t searchE;
     const char *forwardedForLogIP = qos_get_clientIP(r, sconf, cconf,
-                                                     "hp", searchE.ip6);
+                                                     "hp", rctx->cc_serialize_ip);
+    searchE.ip6[0] = rctx->cc_serialize_ip[0];
+    searchE.ip6[1] = rctx->cc_serialize_ip[1];
 
     /* wait until we get a lock */
     while(!locked) {
@@ -5290,9 +5295,9 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf,
                                                      "hp", rctx->cc_event_ip);
     
     rctx->cc_event_req_set = 1;
-    apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT33 */
     searchE.ip6[0] = rctx->cc_event_ip[0];
     searchE.ip6[1] = rctx->cc_event_ip[1];
+    apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT33 */
     e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     if(!e) {
       e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
@@ -5638,6 +5643,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       ef = qos_cc_set(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
     }
   }
+
   if(rctx->cc_event_req_set) {
     /* QS_ClientEventRequestLimit */
     qos_s_entry_t **eEvent = NULL;
@@ -5663,11 +5669,31 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       }
     }
   }
+
   if(rctx->cc_serialize_set) {
     /* QS_ClientSerialize */
+    qos_s_entry_t **eSerialize = NULL;
     rctx->cc_serialize_set = 0;
-    (*ef)->serialize = 0;
+    if(rctx->cc_serialize_ip[0] == searchE.ip6[0] &&
+       rctx->cc_serialize_ip[1] == searchE.ip6[1]) {
+      // connection ip
+      eSerialize = e;
+    } else if(rctx->cc_serialize_ip[0] == searchEFromHeader.ip6[0] &&
+              rctx->cc_serialize_ip[1] == searchEFromHeader.ip6[1]) {
+      // from header
+      eSerialize = ef;
+    } else {
+      // looks like the header has changed or is no longer available
+      qos_s_entry_t searchSerialize;
+      searchSerialize.ip6[0] = rctx->cc_serialize_ip[0];
+      searchSerialize.ip6[1] = rctx->cc_serialize_ip[1];
+      eSerialize = qos_cc_get0(u->qos_cc, &searchSerialize, apr_time_sec(r->request_time));
+    }
+    if(eSerialize) {
+      (*eSerialize)->serialize = 0;
+    }
   }
+  
   if(sconf->qos_cc_prefer) {
     // QS_ClientPrefer is not enabled
     unusual_behavior = qos_content_type(r, sconf, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
