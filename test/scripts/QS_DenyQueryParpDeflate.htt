@@ -65,7 +65,7 @@ __Content-Encoding: x-gzip
 __Content-Type: application/x-www-form-urlencoded
 __
 _PIPE
-_EXEC grep -v "Content-Length" scripts/QS_DenyQueryParpDeflate.htt | gzip
+_EXEC grep -v -e "Content-Length" -e "DenyQueryParpDeflate" scripts/QS_DenyQueryParpDeflate.htt | gzip
 _EXPECT . "==AS1=="
 _WAIT
 
@@ -93,7 +93,7 @@ __
 __==AS1==
 
 _RES
-_EXPECT . "Content-Length: 2074"
+_EXPECT . "Content-Length: 1995"
 _EXPECT . "user=1234"
 _EXPECT . "INCLUDE scripts/ports"
 _EXPECT . "CLIENT"
