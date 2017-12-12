@@ -1,0 +1,56 @@
+#
+# $Id$
+#
+#
+# creates more than 1000000 bytes/sec
+# - different clients (not the same content length)
+#
+#HTTEST=/usr/local/bin/httest-2.4.9
+
+INCLUDE scripts/ports
+
+CLIENT 2
+_RAND 100 500 SLEEP
+_SLEEP $SLEEP
+
+_RPS 1000000000 160
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ggg/image.iso HTTP/1.1
+__Host: server1
+__
+_WAIT
+_CLOSE
+
+_END RPS
+
+END
+
+CLIENT 6
+_RAND 100 1500 SLEEP
+_SLEEP $SLEEP
+
+_RPS 1000000000 160
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ggg/index2.html HTTP/1.1
+__Host: server1
+__Connection: keep-alive
+__
+_MATCH headers "Connection: (.*)" CONNECTION
+_WAIT
+
+_IF "$CONNECTION" MATCH "close"
+_CLOSE
+_END IF
+
+_END RPS
+
+END
+
+CLIENT
+_SLEEP 160000
+# no more than 70'000 bytes/sec (and not the 1'000'000 bytes which would be generated without limitation)
+_EXPECT EXEC "b/s;4|5|6|7{0-9]{4};"
+_EXEC tail -2 logs/qs_log
+END

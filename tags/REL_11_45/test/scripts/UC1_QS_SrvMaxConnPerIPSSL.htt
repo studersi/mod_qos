@@ -1,0 +1,50 @@
+#
+# $Id$
+#
+# QS_SrvMaxConnPerIP      2
+#
+#   -----------------
+# << BLACK FRIDAY SSL >>
+#   -----------------
+#
+
+INCLUDE scripts/ports
+
+CLIENT 2
+
+_REQ 127.0.0.1 SSL:$QS_PORT_BASE2
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 500
+_EXPECT EXEC "!Segmentation fault"
+_EXEC tail -20 logs/error_log
+END
+
+CLIENT 5
+_SLEEP 500
+
+_REQ 127.0.0.1 $QS_PORT_BASE2
+__GET / HTTP/1.0
+_FLUSH
+_SLEEP 100
+_CLOSE
+
+END
+
+CLIENT 5
+_SLEEP 500
+
+_REQ 127.0.0.1 $QS_PORT_BASE2
+__GET / HTTP/1.0
+_FLUSH
+_SLEEP 100
+_CLOSE
+
+END
+
+

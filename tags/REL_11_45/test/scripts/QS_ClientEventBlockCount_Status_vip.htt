@@ -1,0 +1,52 @@
+#
+# $Id$
+#
+# allow vip client
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH headers "Set-Cookie: MODQOS=(.*); Path" QOS
+_WAIT
+
+_LOOP 3
+_REQ localhost $QS_PORT_BASE
+__GET /test/404/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: MODQOS=$QOS
+__
+_EXPECT . "404 Not Found"
+_WAIT
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /test/404/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: MODQOS=$QOS
+__
+_EXPECT . "!code=060"
+_EXPECT . "404 Not Found"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__mod-qos-vip: yes
+__
+__==AS1==
+
+END
+
