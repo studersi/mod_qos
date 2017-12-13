@@ -1788,9 +1788,10 @@ high and low priority clients is made based on different client attributes:
 <ul>
 <li>Data transfer behavior (clients sending data slowly / their transfer rate) (0x01).</li>
 <li>Accessing "unusual" content types (see <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> 
-and <code><a href="#QS_ClientContentTypes">QS_ClientContentTypes</a></code>) (0x02/0x04).</li>
+and <code><a href="#QS_ClientContentTypes">QS_ClientContentTypes</a></code>) 
+(0x00 unknown / 0x02 normal / 0x04 unusual).</li>
 <li>Causing events <a href="#QS_ClientEventBlockCount">blocking</a> / 
-<a href="#QS_ClientEventLimitCount">limiting</a> them (0x08/0x10).</li>
+<a href="#QS_ClientEventLimitCount">limiting</a> them (0x08 block / 0x10 limit).</li>
 <li>If their connections get closed due to timeouts (0x20).</li>
 </ul>
 HTTP requests causing a client to get marked as "low priority" have the 
