@@ -84,6 +84,11 @@ QS_ClientIpFromHeader X-Frwd-Address
 QS_ClientIpFromHeader X-Frwd-Address
 </IfDefine>
 
+<IfDefine SetHashHeaderPlus>
+QS_ClientIpFromHeader  X-Hash
+QS_ClientEventLimitCount  3 2 QS_Hash
+</IfDefine>
+
 <IfDefine usertrack_force>
 QS_UserTrackingCookieName _ckUT /errorpages/cookie.html
 </IfDefine>
@@ -122,6 +127,13 @@ Listen         ##QS_PORT_BASE##
 
    AddType                    text/html .shtml
    AddOutputFilter            INCLUDES .shtml
+
+<IfDefine SetHashHeaderPlus>
+   RequestHeaderPlus          unset X-Hash
+   SetEnvIfPlus               Authorization "^Basic (.*)" myhash=$1
+   SetHashHeaderPlus          X-Hash myhash
+   SetEnvIfPlus               User-Agent ^HASH QS_Hash=1
+</IfDefine>
 
 <IfDefine !pathwhitelist>
    QS_ErrorPage               /error-docs/error.shtml
