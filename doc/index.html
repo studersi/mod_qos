@@ -320,7 +320,7 @@ By default, no limitations are active.
 <li>
 <a name="QS_LocRequestPerSecLimitMatch"></a>
 <code>QS_LocRequestPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</code><br>
-Defines the allowed number of <a href="glossary.html#throughput">requests per second</a>
+Defines the allowed number of <a href="glossary.html#requestPerSecond">requests per second</a>
 to the URL (path and query) pattern. Requests are limited by
 adding a delay to each request (linear). The delay calculation is based on
 an average request rate measurement using a sampling rate of 10 seconds. 
@@ -366,7 +366,7 @@ requests to a virtual host.
 <li>
 <a name="QS_LocRequestPerSecLimit"></a>
 <code>QS_LocRequestPerSecLimit &lt;location&gt; &lt;number&gt;</code><br>
-Defines the allowed number of <a href="glossary.html#throughput">requests per second</a>
+Defines the allowed number of <a href="glossary.html#requestPerSecond">requests per second</a>
 to a location, similar to the
 <a href="#QS_LocRequestPerSecLimitMatch"><code>QS_LocRequestPerSecLimitMatch</code></a> 
 directive. The maximum number of requests is limited by adding a delay to 
@@ -950,7 +950,7 @@ matching its value, too) rather than those that have the same URL pattern.
 <code>QS_EventPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</code><br>
 Defines how often requests may have the defined environment variable 
 (literal string) set. It measures the occurrences of the defined 
-environment variable on a <a href="glossary.html#throughput">request per seconds</a>
+environment variable on a <a href="glossary.html#requestPerSecond">request per seconds</a>
 level and tries to limit this occurrence to the defined number. It works similar as 
 <a href="#QS_LocRequestPerSecLimit"><code>QS_LocRequestPerSecLimit</code></a>, 
 but counts only the requests with the specified variable (or without it
