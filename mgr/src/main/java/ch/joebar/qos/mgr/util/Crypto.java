@@ -15,7 +15,7 @@ import org.apache.log4j.Logger;
  * See http://sourceforge.net/projects/mod-qos/ for further
  * details.
  *
- * Copyright (C) 2017 Pascal Buchbinder
+ * Copyright (C) 2018 Pascal Buchbinder
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
