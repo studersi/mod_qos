@@ -106,10 +106,12 @@ the HTTP response code, history data (based on user session and source
 IP address), the number of concurrent requests to the 
 server (total or requests having similar attributes), the number 
 of concurrent TCP connections (total or from a single source IP), 
-and so forth.<br>
-The <a href="glossary.html#rules">rules</a> you want to configure are defined by the 
-<a href="glossary.html#directives">module's directives</a>, each reading 
-attributes from different sources and using its own counters to 
+and so forth.</p>
+<p>
+<a name="rules"></a>
+The <a href="glossary.html#rules">rules</a> you want to configure are defined 
+by the <a href="glossary.html#directives">module's directives</a>. Every rule
+reads attributes from different sources and using its own counters to 
 store their status.
 </p>
 <p>
@@ -119,7 +121,7 @@ throttling, and dropping of TCP connections.
 </p>
 <p>
 The current release of the mod_qos module implements control 
-mechanisms to manage:
+mechanisms:
 <ul>
 <li type=square>
 The maximum number of <a href="glossary.html#concurrency">concurrent</a> 
@@ -127,14 +129,16 @@ requests to a location/resource (URL)
 or virtual host.
 </li>
 <li type=square>
-Limitation of the <a href="glossary.html#throughput">bandwidth</a> such as the maximum allowed number of requests 
-per second to an URL or the maximum/minimum of downloaded kbytes per second.
+Limitation of the <a href="glossary.html#throughput">bandwidth</a> such as the maximum 
+allowed number of requests per second to an URL or the maximum/minimum of downloaded 
+kbytes per second.
 </li>
 <li type=square>
 Limits the number of request <a href="glossary.html#requestPerSecond">events per second</a> (special request conditions).
 </li>
 <li type=square>
-Limits the number of request <a href="glossary.html#repeat">events within a defined period of time</a>.
+Limits the number of request <a href="glossary.html#repeat">events within a defined 
+period of time</a>.
 </li>
 <li type=square>
 It can also detect very important persons (VIP) which may access the 
@@ -342,8 +346,8 @@ By default, no limitation is active. This directive should be used
 in conjunction with <code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> 
 only (you must use the very same regex pattern with the 
 <code><a href="#QS_LocKBytesPerSecLimitMatch">QS_LocKBytesPerSecLimitMatch</a></code> and 
-<code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> directive) to avoid too many 
-concurrent requests.
+<code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> directive) 
+to avoid too many concurrent requests.
 </li>
 <li>
 <a name="QS_LocRequestLimit"></a>
