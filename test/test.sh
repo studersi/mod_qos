@@ -470,10 +470,12 @@ fi
 ERRORS=`expr $ERRORS + $EXT_ERR`
 
 # -----------------------------------------------------------------
+export ENV_HTTEST=/usr/local/bin/httest-2.4.9
 ./prefer2.sh
 EXT_ERR=$?
 ERRORS=`expr $ERRORS + $EXT_ERR`
 sleep 1
+unset ENV_HTTEST
 
 # -----------------------------------------------------------------
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- QS_SetEnvResHeaders" >> logs/error_log

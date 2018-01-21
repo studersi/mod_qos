@@ -24,6 +24,7 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_lo
 echo "SET maxclients=60" > scripts/maxclients
 ./run.sh -s scripts/QS_ClientPrefer20.htt 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]; then
+    echo "QS_ClientPrefer20.htt FAILED - 1"
     exit 1
 fi
 messages=`../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep -c "mod_qos(066)" | awk '{print $1}'`
@@ -46,6 +47,7 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_lo
 echo "SET maxclients=58" > scripts/maxclients
 ./run.sh -s scripts/QS_ClientPrefer20.htt 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]; then
+    echo "QS_ClientPrefer20.htt FAILED - 2"
     exit 1
 fi
 messages=`../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep -c "mod_qos(066)"  | awk '{print $1}'`
@@ -67,6 +69,7 @@ echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_lo
 echo "SET maxclients=58" > scripts/maxclients
 ./run.sh -s scripts/QS_ClientPrefer20.htt 1>/dev/null 2>/dev/null
 if [ $? -ne 0 ]; then
+    echo "QS_ClientPrefer20.htt FAILED - 3"
     exit 1
 fi
 messages=`../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep -c "mod_qos(066)"  | awk '{print $1}'`
