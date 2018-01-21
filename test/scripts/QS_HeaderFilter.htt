@@ -46,6 +46,22 @@ _WAIT
 _CLOSE
 
 _REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: kolibry-123.mmmme.ch:$QS_PORT_BASE
+__Connection: Keep-Alive, TE
+__Accept-Encoding: gzip, deflate
+__CACHE-CONTROL: no-cache,max-age=0
+__
+_EXPECT . "200 OK"
+_EXPECT . "HTTP Headers:"
+_EXPECT . "HTTP_CACHE_CONTROL"
+_EXPECT . "HTTP_ACCEPT_ENCODING"
+_EXPECT . "HTTP_CONNECTION"
+_EXPECT . "HTTP_HOST"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
 __POST /cgi-local/index.cgi HTTP/1.1
 __Host: localhost
 __User-Agent: Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.8) Gecko/20071008 Firefox/2.0.0.8

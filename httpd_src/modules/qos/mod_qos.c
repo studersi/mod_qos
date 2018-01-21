@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.45";
+static const char g_revision[] = "11.46";
 
 
 /************************************************************************
@@ -1034,20 +1034,20 @@ static const qos_her_t qs_header_rules[] = {
 #define QS_H_IFMATCH       "[a-zA-Z0-9=@;\\.,\\*\"\\-]"
 #define QS_H_DATE          "[a-zA-Z0-9 :,]"
 #define QS_H_TE            "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
-  { "Accept", "^("QS_H_ACCEPT"){1}([ ]?,[ ]?"QS_H_ACCEPT")*$", QS_FLT_ACTION_DROP, 300 },
-  { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}([ ]?,[ ]?"QS_H_ACCEPT_C")*$", QS_FLT_ACTION_DROP, 300 },
-  { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}([ ]?,[ ]?"QS_H_ACCEPT_E")*$", QS_FLT_ACTION_DROP, 500 },
-  { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?"QS_H_ACCEPT_L")*$", QS_FLT_ACTION_DROP, 200 },
+  { "Accept", "^("QS_H_ACCEPT"){1}([ ]?,[ ]?("QS_H_ACCEPT"))*$", QS_FLT_ACTION_DROP, 300 },
+  { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}([ ]?,[ ]?("QS_H_ACCEPT_C"))*$", QS_FLT_ACTION_DROP, 300 },
+  { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}([ ]?,[ ]?("QS_H_ACCEPT_E"))*$", QS_FLT_ACTION_DROP, 500 },
+  { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?("QS_H_ACCEPT_L"))*$", QS_FLT_ACTION_DROP, 200 },
   { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 4000 },
-  { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?"QS_H_CACHE")*$", QS_FLT_ACTION_DROP, 100 },
-  { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?[teTE]+)?$", QS_FLT_ACTION_DROP, 100 },
+  { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?("QS_H_CACHE"))*$", QS_FLT_ACTION_DROP, 100 },
+  { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?([teTE]+))?$", QS_FLT_ACTION_DROP, 100 },
   { "Content-Encoding", "^[a-zA-Z0-9\\-]+(,[ ]*[a-zA-Z0-9\\-]+)*$", QS_FLT_ACTION_DENY, 100 },
   { "Content-Language", "^([0-9a-zA-Z]{0,8}(-[0-9a-zA-Z]{0,8})*)(,[ ]*([0-9a-zA-Z]{0,8}(-[0-9a-zA-Z]{0,8})*))*$", QS_FLT_ACTION_DROP, 100 },
   { "Content-Length", "^[0-9]+$", QS_FLT_ACTION_DENY, 10 },
   { "Content-Location", "^"QS_URL"+$", QS_FLT_ACTION_DENY, 200 },
   { "Content-md5", "^"QS_B64_SP"+$", QS_FLT_ACTION_DENY, 50 },
   { "Content-Range", "^(bytes[ ]+([0-9]+-[0-9]+)/([0-9]+|\\*))$", QS_FLT_ACTION_DENY, 50 },
-  { "Content-Type", "^("QS_H_CONTENT"){1}([ ]?,[ ]?"QS_H_CONTENT")*$", QS_FLT_ACTION_DENY, 200 },
+  { "Content-Type", "^("QS_H_CONTENT"){1}([ ]?,[ ]?("QS_H_CONTENT"))*$", QS_FLT_ACTION_DENY, 200 },
   { "Cookie", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 3000 },
   { "Cookie2", "^"QS_H_COOKIE"+$", QS_FLT_ACTION_DROP, 3000 },
   { "DNT", "^[0-9]+$", QS_FLT_ACTION_DROP, 3 },
@@ -1068,7 +1068,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Pragma", "^"QS_H_PRAGMA"+$", QS_FLT_ACTION_DROP, 200 },
   { "Range", "^[a-zA-Z0-9=_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 200 },
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
-  { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?"QS_H_TE")*$", QS_FLT_ACTION_DROP, 100 },
+  { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?("QS_H_TE"))*$", QS_FLT_ACTION_DROP, 100 },
   { "Transfer-Encoding", "^chunked|Chunked|compress|Compress|deflate|Deflate|gzip|Gzip|identity|Identity$", QS_FLT_ACTION_DENY, 100 },
   { "Unless-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "User-Agent", "^[a-zA-Z0-9]+[a-zA-Z0-9_.:;()\\[\\]@ /+!=,-]+$", QS_FLT_ACTION_DROP, 300 },
