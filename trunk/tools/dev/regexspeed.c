@@ -21,7 +21,7 @@
  *
  */
 
-static const char revision[] = "$Revision: 1.17 $";
+static const char revision[] = "$Revision$";
 
 /* system */
 #include <stdio.h>
