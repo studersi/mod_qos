@@ -1,3 +1,7 @@
+Version
+
+- Updates built-in filter pattern of QS_HeaderFilter.
+
 Version 11.46
 
 - Updates built-in filter pattern of QS_HeaderFilter.

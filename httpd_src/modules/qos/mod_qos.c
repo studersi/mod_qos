@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.46";
+static const char g_revision[] = "11.47";
 
 
 /************************************************************************
@@ -1069,7 +1069,7 @@ static const qos_her_t qs_header_rules[] = {
   { "Range", "^[a-zA-Z0-9=_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 200 },
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
   { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?("QS_H_TE"))*$", QS_FLT_ACTION_DROP, 100 },
-  { "Transfer-Encoding", "^chunked|Chunked|compress|Compress|deflate|Deflate|gzip|Gzip|identity|Identity$", QS_FLT_ACTION_DENY, 100 },
+  { "Transfer-Encoding", "^(chunked|Chunked|compress|Compress|deflate|Deflate|gzip|Gzip|identity|Identity)([ ]?,[ ]?(chunked|Chunked|compress|Compress|deflate|Deflate|gzip|Gzip|identity|Identity))*$", QS_FLT_ACTION_DENY, 100 },
   { "Unless-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "User-Agent", "^[a-zA-Z0-9]+[a-zA-Z0-9_.:;()\\[\\]@ /+!=,-]+$", QS_FLT_ACTION_DROP, 300 },
   { "Upgrade-Insecure-Requests", "^1$", QS_FLT_ACTION_DROP, 1 },
