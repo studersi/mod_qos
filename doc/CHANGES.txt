@@ -1,6 +1,6 @@
 Version
 
-- Updates built-in filter pattern of QS_HeaderFilter.
+- Updates built-in filter pattern of QS_HeaderFilter (Transfer-Encoding).
 
 Version 11.46
 
