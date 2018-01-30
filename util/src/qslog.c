@@ -160,6 +160,7 @@ typedef struct stat_rec_st {
   long average_count;
   unsigned long long averAge;
   long averAge_count;
+  unsigned long max;
 
   long status_1;
   long status_2;
@@ -714,10 +715,11 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   }
   if(m_customcounter) {
     // max len: 18446744073709551615
-    sprintf(custom, "s;%llu;a;%llu;A;%llu;",
+    sprintf(custom, "s;%llu;a;%llu;A;%llu;M;%llu;",
             stat_rec->sum,
             stat_rec->average / (stat_rec->average_count == 0 ? 1 : stat_rec->average_count),
-            stat_rec->averAge / (stat_rec->averAge_count == 0 ? 1 : stat_rec->averAge_count));
+            stat_rec->averAge / (stat_rec->averAge_count == 0 ? 1 : stat_rec->averAge_count),
+            stat_rec->max);
   }
   if(main) {
     sprintf(ip, "ip;%ld;", qs_countEventT(m_ip_list));
@@ -813,6 +815,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   stat_rec->average_count = 0;
   stat_rec->averAge = 0;
   stat_rec->averAge_count = 0;
+  stat_rec->max = 0;
   stat_rec->status_1 = 0;
   stat_rec->status_2 = 0;
   stat_rec->status_3 = 0;
@@ -1071,7 +1074,8 @@ static stat_rec_t *createRec(apr_pool_t *pool, const char *id, const char *patte
   rec->average_count = 0;
   rec->averAge = 0;
   rec->averAge_count = 0;
-
+  rec->max = 0;
+  
   rec->status_1 = 0;
   rec->status_2 = 0;
   rec->status_3 = 0;
@@ -1381,7 +1385,7 @@ static void updateClient(apr_pool_t *pool, char *T, char *t, char *D, char *S,
 static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
                       char *s, char *a, char *A,
                       char *BI, char *B, char *R, char *I, char *U, char *Q,
-                      char *E, char *k, char *C, long tme, long tmems) {
+                      char *E, char *k, char *C, char *M, long tme, long tmems) {
   if(Q != NULL) {
     if(strchr(Q, 'V') != NULL) {
       rec->qos_V++;
@@ -1449,6 +1453,13 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     rec->averAge += atol(A);
     rec->averAge_count++;
   }
+  if(M && M[0]) {
+    long max = atol(M);
+    if(max > rec->max) {
+      rec->max = max;
+    }
+  }
+
   if(S != NULL) {
     if(S[0] == '1') {
       rec->status_1++;
@@ -1682,9 +1693,9 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
     }
     updateUrl(pool, R, S, tmems);
   } else {
-    updateRec(m_stat_rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
+    updateRec(m_stat_rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, M, tme, tmems);
     if(rec) {
-      updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, tme, tmems);
+      updateRec(rec, T, t, D, S, s, a, A, BI, B, R, I, U, Q, E, k, C, M, tme, tmems);
     }
   }
   qs_csUnLock();
@@ -2047,7 +2058,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     s arbitrary counter to add up (sum within a minute)\n");
   qs_man_println(man, "     a arbitrary counter to build an average from (average per request)\n");
   qs_man_println(man, "     A arbitrary counter to build an average from (average per request)\n");
-  qs_man_println(man, "     M maximum of an ever reached value, available in -pc mode only\n");
+  qs_man_println(man, "     M arbitrary counter to measure the maximum value reached (peak)\n");
   qs_man_println(man, "     E comma separated list of event strings\n");
   qs_man_println(man, "     c content type (%%{content-type}o), available in -pc mode only\n");
   qs_man_println(man, "     m request method (GET/POST) (%%m), available in -pc mode only\n");
