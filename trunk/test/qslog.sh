@@ -62,9 +62,18 @@ case "$1" in
 	;;
         custom)
 	rm -f qs.log
- 	echo "$PFX > custom"
+ 	echo "$PFX > custom saA"
         (printf "2 4 6\n8 10 12\n3 4,000 -\n"; ./sleep.sh 1>/dev/null; sleep 2) | ../util/src/qslog -f saA -o qs.log
 	if [ `grep -c "s;13;a;6;A;9;" qs.log` -eq 0 ]; then
+	  cat qs.log
+	  echo "$PFX FAILED"
+	  exit 1
+	fi
+	echo "$PFX < OK"
+	rm -f qs.log
+ 	echo "$PFX > custom saAM"
+        (printf "2 4 6 19\n8 10 12 34\n3 4,000 6 12\n"; ./sleep.sh 1>/dev/null; sleep 2) | ../util/src/qslog -f saAM -o qs.log
+	if [ `grep -c "s;13;a;6;A;8;M;34;" qs.log` -eq 0 ]; then
 	  cat qs.log
 	  echo "$PFX FAILED"
 	  exit 1
