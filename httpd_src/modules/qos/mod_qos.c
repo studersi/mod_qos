@@ -1960,8 +1960,8 @@ static const char *qos_get_clientIP(request_rec *r, qos_srv_config *sconf,
     }
   }
   // use the real IP
-  forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
   if(cconf) {
+    forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
     // works for real connections only (no HTTP/2)
     ip6[0] = cconf->ip6[0];
     ip6[1] = cconf->ip6[1];

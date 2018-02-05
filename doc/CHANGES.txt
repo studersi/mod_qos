@@ -1,12 +1,12 @@
-Version
+Version 11.47
 
-- Updates built-in filter pattern of QS_HeaderFilter (Transfer-Encoding).
+ - Updates built-in filter pattern of QS_HeaderFilter (Transfer-Encoding).
 
  - qslog standard mode supports peak/max value counter (M).
 
 Version 11.46
 
-- Updates built-in filter pattern of QS_HeaderFilter.
+ - Updates built-in filter pattern of QS_HeaderFilter.
 
 Version 11.45
 
