@@ -3234,7 +3234,7 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
   sprintf(buf, "%p", inctx);
   inctx->id = apr_psprintf(c->pool, "%s%.16lx", buf, c->id);
   inctx->sconf = sconf;
-  apr_pool_pre_cleanup_register(c->pool, inctx, qos_cleanup_inctx, apr_pool_cleanup_null);
+  apr_pool_pre_cleanup_register(c->pool, inctx, qos_cleanup_inctx);
   return inctx;
 }
 
@@ -3261,7 +3261,7 @@ static qs_conn_base_ctx *qos_create_conn_base_ctx(conn_rec *c, qos_srv_config *s
   base->sconf = sconf;
   base->client_socket = NULL;
   ap_set_module_config(c->conn_config, &qos_module, base);
-  apr_pool_pre_cleanup_register(c->pool, base, qos_base_cleanup_conn, apr_pool_cleanup_null);
+  apr_pool_pre_cleanup_register(c->pool, base, qos_base_cleanup_conn);
   return base;
 }
 
@@ -5100,7 +5100,7 @@ static qs_conn_ctx *qos_create_cconf(conn_rec *c, qos_srv_config *sconf) {
   cconf->is_vip = 0;
   cconf->set_vip_by_header = 0;
   cconf->has_lowrate = 0;
-  apr_pool_pre_cleanup_register(c->pool, cconf, qos_cleanup_conn, apr_pool_cleanup_null);
+  apr_pool_pre_cleanup_register(c->pool, cconf, qos_cleanup_conn);
   if(base == NULL) {
     base = qos_create_conn_base_ctx(c, sconf);
   }
@@ -6271,8 +6271,7 @@ static void qos_init_status_thread(apr_pool_t *p, qos_srv_config *sconf, int max
   s->sconf = sconf;
   if(apr_threadattr_create(&tattr, pool) == APR_SUCCESS) {
     if(apr_thread_create(&s->thread, tattr, qos_status_thread, s, pool) == APR_SUCCESS) {
-      apr_pool_pre_cleanup_register(p, s, qos_cleanup_status_thread,
-                                    apr_pool_cleanup_null);
+      apr_pool_pre_cleanup_register(p, s, qos_cleanup_status_thread);
     }
   }
 }
@@ -10163,7 +10162,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
           qos_disable_req_rate(bs, "create thread");
         } else {
           server_rec *sn = bs->next;
-          apr_pool_pre_cleanup_register(p, bs, qos_cleanup_req_rate_thread, apr_pool_cleanup_null);
+          apr_pool_pre_cleanup_register(p, bs, qos_cleanup_req_rate_thread);
           while(sn) {
             qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(sn->module_config, &qos_module);
             sc->inctx_t = inctx_t;
@@ -10333,8 +10332,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   if(qos_init_shm(bs, sconf, sconf->act, sconf->location_t, net_prefer) != APR_SUCCESS) {
     return !OK;
   }
-  apr_pool_pre_cleanup_register(sconf->pool, sconf->act,
-                                qos_cleanup_shm, apr_pool_cleanup_null);
+  apr_pool_pre_cleanup_register(sconf->pool, sconf->act, qos_cleanup_shm);
 
   if((qos_module_check("mod_unique_id.c") != APR_SUCCESS) &&
      (qos_module_check("mod_navajo.cpp") != APR_SUCCESS)) {
@@ -10473,7 +10471,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
           return !OK;
         }
         apr_pool_pre_cleanup_register(ssconf->pool, ssconf->act,
-                                      qos_cleanup_shm, apr_pool_cleanup_null);
+                                      qos_cleanup_shm);
         if(ssconf->has_conn_counter == 0 && sconf->has_conn_counter == 1) {
           // shall use global counter because vhost has not QS_SrvMaxConn* directive
           ssconf->act->conn = sconf->act->conn;
