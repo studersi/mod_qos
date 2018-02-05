@@ -9,8 +9,8 @@
 TOP=`pwd`
 
 APACHE_VER=2.4.29
-MPM=event
-#MPM=worker
+#MPM=event
+MPM=worker
 
 echo "build Apache $APACHE_VER"
 if [ -d httpd-${APACHE_VER}-${MPM} ]; then
