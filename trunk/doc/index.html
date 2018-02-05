@@ -214,13 +214,18 @@ More information about mod_qos:
 <a name="build"></a>
 <h2>Build</h2>
 <p>
-mod_qos requires OpenSSL, PCRE, threading and shared memory support. mod_qos has 
-initially been developed and fully tested for Apache version 2.2 
+mod_qos requires OpenSSL, PCRE, threading and shared memory support. mod_qos 
+was originally developed and fully tested for Apache version 2.2 
 <a href="http://httpd.apache.org/docs/2.2/mod/worker.html">MPM worker <img src="images/link.png"/></a> 
-binaries, but works with Apache version 2.4 as well. It is 
-optimized to be used in a 
-<a href="http://httpd.apache.org/docs/current/mod/mod_proxy.html">reverse proxy <img src="images/link.png"/></a> 
-server.
+binaries, but works with Apache version 2.4 as well. The module is optimized to be used in a 
+<a href="http://httpd.apache.org/docs/current/mod/mod_proxy.html">reverse proxy 
+<img src="images/link.png"/></a> server.<p>
+<p>
+<small><i>Note: You should definitely choose the <a href="https://httpd.apache.org/docs/current/mod/worker.html">worker MPM <img src="images/link.png"/></a> 
+if your intend to use any <a href="#connectionlevelcontrol">connection level control</a> directive. 
+and if you decide to use <a href="https://httpd.apache.org/docs/current/howto/http2.html">HTTP/2 <img src="images/link.png"/></a>, 
+you should use the <a href="#requestlevelcontrol">request level control</a> directives only.
+</i></small>
 </p>
 <p>
 You can compile the module using 
