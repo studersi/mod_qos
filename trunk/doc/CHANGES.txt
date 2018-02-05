@@ -2,6 +2,8 @@ Version 11.47
 
  - Updates built-in filter pattern of QS_HeaderFilter (Transfer-Encoding).
 
+ - Fixed: segfault if connection ctx is null.
+
  - qslog standard mode supports peak/max value counter (M).
 
 Version 11.46
