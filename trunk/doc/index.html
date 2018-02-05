@@ -303,7 +303,8 @@ This may be used for test purposes.
 <a name="requestlevelcontrol"></a>
 <h3>Request Level Control</h3>
 The module features the following directives to control server access 
-on a per-URL level. Only one <code>QS_Loc*</code> rule (URL string or 
+on a per-URL level - basically the main function of mod_qos. 
+Only one <code>QS_Loc*</code> rule (URL string or 
 regular expression) of each type is evaluated per request where 
 regular expression rules (*Match) have higher priority 
 than the rules using a literal URL-string. A 

@@ -40,7 +40,7 @@ __aaaaaaaaaaaaaaaaaaaaa
 _EXPECT . "this is the root index.html"
 _WAIT
 _SLEEP 100
-_EXPECT EXEC "POST /index.html HTTP/1.1\" 200 ... \"QS_Timeout40\" 32"
+_EXPECT EXEC "POST /index.html HTTP/1.1\" 200 ... \"QS_Timeout40\" 3[12]"
 _EXEC tail -1 logs/access_log
 
 END
