@@ -23,7 +23,12 @@ StartServers             1
 MinSpareThreads         25
 MaxSpareThreads         75 
 ThreadsPerChild         25
+<IfDefine !QS_ClientPrefer>
 MaxRequestWorkers      150
+</IfDefine>
+<IfDefine QS_ClientPrefer>
+MaxRequestWorkers       50
+</IfDefine>
 MaxConnectionsPerChild   0
 
 LoadModule     setenvifplus_module ##ROOT##/../install/modules/.libs/mod_setenvifplus.so
@@ -155,9 +160,11 @@ Listen         ##QS_PORT_BASE##
 
    SetEnvIfPlus               Request_Query DecrementLimitCounter=([0-9]+) QS_Limit_Decrement=$1
 
+<IfDefine !QS_ClientPrefer>
    QS_SrvMaxConnClose         25
    QS_SrvMaxConnPerIP         30
    QS_SrvMaxConn              45
+</IfDefine>
 <IfDefine QS_SrvMaxConnPerIPIgnoreVIP>
    QS_SrvMaxConnPerIPIgnoreVIP on
 </IfDefine>
