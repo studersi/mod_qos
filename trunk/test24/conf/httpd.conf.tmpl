@@ -48,6 +48,10 @@ SSLRandomSeed startup    builtin
 QS_EnableInternalIPSimulation off
 </IfDefine>
 
+<IfDefine QS_ClientPrefer>
+QS_ClientPrefer 20
+</IfDefine>
+
 <IfDefine status>
 QS_Status on
 </IfDefine>
@@ -108,6 +112,7 @@ Listen         ##QS_PORT_BASE##
    </Proxy>
 
    ProxyPass                  /qos !
+   ProxyPass                  /console !
    ProxyPass                  /status !
    ProxyPass                  /info !
    ProxyPass                  /error-pages !
@@ -231,6 +236,9 @@ Listen         ##QS_PORT_BASE##
    </Location>
    <Location /qos>
       SetHandler qos-viewer
+   </Location>
+   <Location /console>
+      SetHandler qos-console
    </Location>
    <Location /status>
       SetHandler server-status
