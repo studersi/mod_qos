@@ -1,0 +1,110 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+SET DA=111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /support HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/xml
+__
+__<node>
+__<codeApplication>A1</codeApplication>
+_-<node>
+_EXPECT . "==OK1=="
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /support HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/xml
+__
+__<node>
+__<codeApplication>A4</codeApplication>
+_-<node>
+_EXPECT . "code=040"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /support HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/xml
+__
+__<node>
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__<codeApplication>A4</codeApplication>
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_-<node>
+_EXPECT . "code=040"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(040\): access denied, QS_DenyEvent rule id: BADCODEAPPLI \(!CODEAPPLI\)"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__POST /support HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/xml
+__
+__<node>
+__<codeApplication>A1</codeApplication>
+__<codeApplication>A1</codeApplication>
+_-<node>
+_EXPECT . "code=040"
+_EXPECT . "!==OK1=="
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(040\): access denied, QS_DenyEvent rule id: BADCODEAPPLI02 \(INVALIDCODEAPPL\)"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__POST /support HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/xml
+__
+__<node>
+__<codeApplication>A1</codeApplication>
+_-<node>
+_EXPECT . "==OK1=="
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==OK1==
+
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==OK1==
+
+END

@@ -1,0 +1,26 @@
+#
+# $Id$
+#
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /websocket.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "403 Forbidden"
+_EXPECT . "!WebSocket Echo"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(041\): access denied, no permit rule match, action=deny"
+_EXEC tail -1 logs/error_log
+
+END

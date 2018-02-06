@@ -1,0 +1,505 @@
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+# allowed headers
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: kolibry-123.mmmme.ch:$QS_PORT_BASE
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__Upgrade-Insecure-Requests: 1
+__MAX-forwards: 10
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__X-FORWARDED-FOR: 127.0.0.1
+__X-FORWARDED-HOST: localhost:5960
+__X-FORWARDED-SERVER: 127.0.0.1
+__Cookie: umt="123 abce"; q=22
+__myheader: static_content
+__
+_EXPECT . "200 OK"
+_EXPECT . "HTTP Headers:"
+_EXPECT . "HTTP_ACCEPT:"
+_EXPECT . "HTTP_ACCEPT_CHARSET"
+_EXPECT . "HTTP_ACCEPT_ENCODING"
+_EXPECT . "HTTP_ACCEPT_LANGUAGE"
+_EXPECT . "HTTP_CACHE_CONTROL"
+_EXPECT . "HTTP_COOKIE"
+_EXPECT . "HTTP_CONNECTION"
+_EXPECT . "HTTP_HOST"
+_EXPECT . "HTTP_MAX_FORWARDS"
+_EXPECT . "HTTP_USER_AGENT"
+_EXPECT . "HTTP_X_FORWARDED_FOR"
+_EXPECT . "HTTP_X_FORWARDED_HOST"
+_EXPECT . "HTTP_X_FORWARDED_SERVER"
+_EXPECT . "HTTP_MYHEADER"
+_EXPECT . "HTTP_UPGRADE_INSECURE_REQUESTS"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: kolibry-123.mmmme.ch:$QS_PORT_BASE
+__Connection: Keep-Alive, TE
+__Accept-Encoding: gzip, deflate
+__CACHE-CONTROL: no-cache,max-age=0
+__
+_EXPECT . "200 OK"
+_EXPECT . "HTTP Headers:"
+_EXPECT . "HTTP_CACHE_CONTROL"
+_EXPECT . "HTTP_ACCEPT_ENCODING"
+_EXPECT . "HTTP_CONNECTION"
+_EXPECT . "HTTP_HOST"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.8) Gecko/20071008 Firefox/2.0.0.8
+__Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+__Accept-Language: en-us,en;q=0.5
+__Accept-Encoding: gzip,deflate
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Keep-Alive: 300
+__Connection: keep-alive
+__Referer: https://localhost.server.ch/viewer/sample/print/__pm0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_view/__ws0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_normal/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_protocol/TCP/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_name/Link0x8A/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_stringNumbers/a-10a/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_port/80/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_foreignMappingValue/60/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_endDate/2007-10-310x812:46/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_struts.portlet.action/0x3view0x3view0x3showChangeServiceName/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_serviceName/test/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_struts.portlet.mode/view/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_bandwithOut/60000x20/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_protocolNumber/6/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_bandwithIn/60000x20/__rp0x3customer0x3portalapp0x3dataanalyzer0x2DataAnalyzerPortlet!1531126179%7C0_startDate/2007-10-300x812:46
+__X-lori-time-1: 1193603219265
+__Authorization: Basic Ukhasdhzgasdljsad76jgasHKdnacnQ=
+__Content-Type: multipart/form-data; boundary=---------------------------16009193506174
+__Content-Length: AUTO
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filename"
+__
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filepath"; filename="test pic _=n.JPG"
+__Content-Type: image/jpeg
+__
+__111111
+__-----------------------------16009193506174--
+_EXPECT . "HTTP Headers:"
+_EXPECT . " HTTP_ACCEPT"
+_EXPECT . " HTTP_ACCEPT_CHARSET"
+_EXPECT . " HTTP_ACCEPT_ENCODING"
+_EXPECT . " HTTP_ACCEPT_LANGUAGE"
+_EXPECT . " HTTP_CONNECTION"
+_EXPECT . " HTTP_HOST"
+_EXPECT . " HTTP_KEEP_ALIVE"
+_EXPECT . " HTTP_REFERER"
+_EXPECT . " HTTP_USER_AGENT"
+_EXPECT . " HTTP_X_LORI_TIME_1"
+_EXPECT . ". test pic _=n.JPG"
+_WAIT
+_CLOSE
+
+# drop headers
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/@html;level=2;q=0.4, */*;q=0.5
+__Keep-Alive: 3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+__Other: text
+__
+_EXPECT . "200 OK"
+_EXPECT . "HTTP Headers:"
+_EXPECT . "!HTTP_ACCEPT"
+_EXPECT . "!HTTP_OTHER"
+_EXPECT . "!HTTP_KEEP_ALIVE"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC " mod_qos\(042\): drop request header: 'Keep-Alive: 3000"
+_EXEC tail -3 logs/error_log
+
+# deny
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/@html;level=2;q=0.4, */*;q=0.5
+__myheader: deny
+__
+_EXPECT . "custom error page"
+_EXPECT . "code=043"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC " mod_qos\(043\): access denied, request header: 'myheader: deny'"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.1.8) Gecko/20071008 Firefox/2.0.0.8
+__Accept: text/xml,application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+__Accept-Language: en-us,en;q=0.5
+__Accept-Encoding: gzip,deflate
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Keep-Alive: 300
+__Connection: keep-alive
+__Referer: http://localhost.server.ch/bin/attach/view?show=all
+__X-lori-time-1: 1193603219265
+__Authorization: Basic Ukhasdhzgasdljsad76jgasHKdnacnQ=
+__Content-Type: multipart/form-@data; boundary=---------------------------16009193506174
+__Content-Length: AUTO
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filename"
+__
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filepath"; filename="test pic _=n.JPG"
+__Content-Type: image/jpeg
+__
+__111111
+__-----------------------------16009193506174--
+_EXPECT . "custom error page"
+_EXPECT . "code=043"
+_WAIT
+_CLOSE
+
+# drop headers (size check only)
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local_s/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/@html;level=2;q=0.4, */*;q=0.5
+__Keep-Alive: 3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+__Other: text
+__
+_EXPECT . "Date: .*"
+_EXPECT . "Server: Apache.*"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "200 OK"
+_EXPECT . "HTTP Headers:"
+_EXPECT . "HTTP_ACCEPT"
+_EXPECT . "!HTTP_OTHER"
+_EXPECT . "!HTTP_KEEP_ALIVE"
+_EXPECT . "!3000000000000000"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "==AS1=="
+_EXPECT . "Date: .*"
+_EXPECT . "Server: myApache"
+_EXPECT . "Content-Length: 9"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "X-PoweredBy: Special"
+_EXPECT . "ServerHeader: 10"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/resheaderfilter/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "==AS1=="
+_EXPECT . "Date: .*"
+_EXPECT . "Server: myApache"
+_EXPECT . "Content-Length: 9"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "!X-PoweredBy: Special"
+_EXPECT . "ServerHeader: 10"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'Other: text'"
+_EXPECT EXEC "mod_qos\(042\): drop response header: 'X-PoweredBy: Special'"
+_EXEC tail -2 logs/error_log
+
+_EXEC echo "[Fri Jan 15 07:23:30 2010] [notice] Apache/2.2.xx test QS_HeaderFilter.htt" >> ./logs/error_log
+_REQ localhost $QS_PORT_BASE
+__GET /htt/resheaderfilter/silent/index.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "==AS1=="
+_EXPECT . "!X-PoweredBy"
+_EXPECT . "ServerHeader: 10"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "!mod_qos\(042\): drop response header: 'X-PoweredBy"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/resheaderfilter/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "==AS1=="
+_EXPECT . "Date: .*"
+_EXPECT . "Server: myApache"
+_EXPECT . "Content-Length: 9"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "!ServerHeader: 10"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop response header: 'ServerHeader: 1000000000000000000000'"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/resheaderfilter/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__ACCEPT-LANGUAGE: en-us,en;q=0.5
+__CACHE-CONTROL: max-age=0
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "==AS1=="
+_EXPECT . "Date: .*"
+_EXPECT . "Server: myApache"
+_EXPECT . "Content-Length: 9"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "!ServerHeader: 10"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop response header: 'ServerHeader: aa'"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__Range: bytes=0-128
+__Unless-Modified-Since: Tue, 05 Apr 2005 20:39:53 GMT
+__Accept: image/gif, image/jpeg, image/pjpeg, application/x-ms-application, application/vnd.ms-xpsdocument, application/xaml+xml, application/x-ms-xbap, application/x-shockwave-flash, application/vnd.ms-excel, application/msword, application/vnd.ms-powerpoint, application/x-silverlight, */*
+__User-Agent: Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/532.5 (KHTML, like Gecko) Chrome/4.1.249.1059 Safari/532.5
+__
+_EXPECT . "HTTP_ACCEPT: image/gif"
+_EXPECT . "HTTP_USER_AGENT: Mozilla"
+_EXPECT . "HTTP_UNLESS_MODIFIED_SINCE"
+_EXPECT . "HTTP_RANGE"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; GTB0.0; .NET CLR 2.0.50727; eSobiSubscriber 2.0.4.16; InfoPath.2; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; OfficeLiveConnector.1.3; OfficeLivePatch.0.0)
+__Via: 1.1 proxyd.vaz.ru (squid/3.0.STABLE7)
+__X-Forwarded-For: 192.168.2.92, 127.0.0.1
+__
+_EXPECT . "HTTP_USER_AGENT: Mozilla"
+_EXPECT . "HTTP_VIA"
+_EXPECT . "X_FORWARDED_FOR"
+_WAIT
+_CLOSE
+
+# allowed headers
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__Accept: t\ext/*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, */*; q=0.5 , application/vnd.ms-powerpoint
+__
+_EXPECT . "200 OK"
+_EXPECT . "!ACCEPT:"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'Accept: t"
+_EXEC tail -1 logs/error_log
+
+# CVE-2010-4476
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: kolibry-123.mmmme.ch:$QS_PORT_BASE
+__Connection: Keep-Alive, TE
+__Accept: text/*;q=0.3, text/html;q=2.2250738585072012e-308
+__Accept-Language: en;q=2.2250738585072012e-308
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__
+_EXPECT . "200 OK"
+_EXPECT . "!HTTP_ACCEPT:"
+_EXPECT . "!HTTP_ACCEPT_LANGUAGE:"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'Accept: text/.;q=0.3, text/html;q=2.2250738585072012e-308"
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'Accept-Language: en;q=2.2250738585072012e-308"
+_EXEC tail -2 logs/error_log
+
+# CVE-2010-4476
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: kolibry-123.mmmme.ch:$QS_PORT_BASE
+__Connection: Keep-Alive, TE
+__Accept-Language: en;q=0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000022250738585072012
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Accept-Encoding: gzip,deflate
+__
+_EXPECT . "200 OK"
+_EXPECT . "!HTTP_ACCEPT_LANGUAGE:"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'Accept-Language: en;q=0.000000"
+_EXEC tail -1 logs/error_log
+
+# per server configuration (vs. per directory)
+# allowed headers
+_REQ localhost $QS_PORT_BASE9
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Content-Range: bytes 0-10/11
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE9
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Content-Range: ##
+__
+_EXPECT . "403 Forbidden"
+_EXPECT . "!this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE9
+__GET /ddd/index.html HTTP/1.1
+__Host: localhost
+__Content-Range: bytes 0-10/11
+__
+_EXPECT . "200 OK"
+_EXPECT . "ddd index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE9
+__GET /ddd/index.html HTTP/1.1
+__Host: localhost
+__Content-Range: ##
+__
+_EXPECT . "200 OK"
+_EXPECT . "ddd index.html"
+_WAIT
+_CLOSE
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "Host: localhost"
+_EXPECT . "Accept: text/\*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, \*/\*; q=0.5 , application/vnd.ms-powerpoint"
+_EXPECT . "Accept-Charset: ISO-8859-1,utf-8;q=0.7,\*;q=0.7"
+_EXPECT . "Accept-Encoding: gzip,deflate"
+_EXPECT . "ACCEPT-LANGUAGE: en-us,en;q=0.5"
+_EXPECT . "CACHE-CONTROL: max-age=0"
+_EXPECT . "User-Agent: Mozilla/5.0 \(X11; U; Linux i686; en-US; rv:1.8.1.5\) Gecko/20070713 Firefox/2.0.0.5"
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__X-PoweredBy: Special 
+__ServerHeader: 10
+__
+__==AS1==
+_CLOSE
+
+_RES
+_EXPECT . "Host: localhost"
+_EXPECT . "Accept: text/\*;q=0.3, text/html;q=0.7, text/html;level=1, text/html;level=2;q=0.4, \*/\*; q=0.5 , application/vnd.ms-powerpoint"
+_EXPECT . "Accept-Charset: ISO-8859-1,utf-8;q=0.7,\*;q=0.7"
+_EXPECT . "Accept-Encoding: gzip,deflate"
+_EXPECT . "ACCEPT-LANGUAGE: en-us,en;q=0.5"
+_EXPECT . "CACHE-CONTROL: max-age=0"
+_EXPECT . "User-Agent: Mozilla/5.0 \(X11; U; Linux i686; en-US; rv:1.8.1.5\) Gecko/20070713 Firefox/2.0.0.5"
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__X-PoweredBy: Special 
+__ServerHeader: 10
+__
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__X-PoweredBy: Special 
+__ServerHeader: 10
+__
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__ServerHeader: 1000000000000000000000
+__
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__ServerHeader: aa
+__
+__==AS1==
+_CLOSE
+
+END

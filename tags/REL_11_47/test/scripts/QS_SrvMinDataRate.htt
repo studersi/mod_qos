@@ -1,0 +1,134 @@
+#
+# $Id$
+#
+# QS_SrvMinDataRate.htt for 10 or more clients only
+#
+
+INCLUDE scripts/ports
+
+SET TME=1000
+
+CLIENT
+_REQ server1 SSL:$QS_PORT_BASE2
+_-GET /
+_-i
+_FLUSH
+_SLEEP $TME
+_-n
+_FLUSH
+_SLEEP $TME
+_-d
+_FLUSH
+_SLEEP $TME
+_-e
+_FLUSH
+_SLEEP $TME
+_-x
+_FLUSH
+_SLEEP $TME
+_-.
+_FLUSH
+_SLEEP $TME
+_-h
+_FLUSH
+_SLEEP $TME
+_-t
+_FLUSH
+_SLEEP $TME
+_-m
+__l HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT ERROR "Software caused connection abort"
+_WAIT
+_CLOSE
+
+_SLEEP 200
+_EXPECT EXEC "\[error\] mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in.*\): min=[0-9]+, this connection=[0-9]+, c="
+_EXEC tail -1 logs/error_log
+
+_SLEEP 5000
+
+_REQ server1 SSL:$QS_PORT_BASE2
+_-GET /
+_-i
+_FLUSH
+_SLEEP $TME
+_-n
+_FLUSH
+_SLEEP $TME
+_-d
+_FLUSH
+_SLEEP $TME
+_-e
+_FLUSH
+_SLEEP $TME
+_-x
+_FLUSH
+_SLEEP $TME
+_-.
+_FLUSH
+_SLEEP $TME
+_-h
+_FLUSH
+_SLEEP $TME
+_-t
+_FLUSH
+_SLEEP $TME
+_-m
+__l HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+END
+
+CLIENT 10
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=10 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+CLIENT
+_LOOP 11
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_END LOOP
+
+END
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=22 HTTP/1.1
+__Host: localhost
+__User-Agent: SLOW Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END

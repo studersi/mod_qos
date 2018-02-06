@@ -1,0 +1,36 @@
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /cgi100/sleep.cgi?s=3 HTTP/1.1
+__SLEEP 6000
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=3 HTTP/1.1
+__SLEEP 6000
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 4000
+_REQ localhost $QS_PORT_BASE
+__GET /status HTTP/1.1
+__Host: localhost
+__
+_EXPECT. "1 requests currently being processed"
+_WAIT
+
+
+END
