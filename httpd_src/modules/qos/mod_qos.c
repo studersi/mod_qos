@@ -43,8 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.47";
-
+static const char g_revision[] = "11.48";
 
 /************************************************************************
  * Includes
@@ -2714,7 +2713,8 @@ static void qos_clear_cc(qos_user_t *u) {
     apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT37 */
     u->qos_cc->connections = 0;
     if(m_generation > 0) {
-      u->qos_cc->generation_locked = m_generation; // this process generation must not dec. anymore
+      // this process generation must not update the connections counter anymore
+      u->qos_cc->generation_locked = m_generation;
     }
     entry = u->qos_cc->ipd;
     for(i = 0; i < u->qos_cc->max; i++) {
@@ -6351,7 +6351,15 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
 
     /* max connections */
     if(cconf->sconf->has_qos_cc && cconf->sconf->qos_cc_prefer) {
-      u->qos_cc->connections++;
+      if(m_generation != u->qos_cc->generation_locked) {
+        u->qos_cc->connections++;
+      } else {
+        ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, c->base_server,
+                     QOS_LOG_PFX(166)"unexpected connection dispatching, skipping"
+                     " connection counter update for QS_ClientPrefer rule, c=%s",
+                     QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
+                     QS_CONN_REMOTEIP(cconf->c));
+      }
       if((*e)->lowrate) {
         if(c->notes) {
           char *flags = apr_psprintf(c->pool, "0x%02x", (*e)->lowratestatus);
