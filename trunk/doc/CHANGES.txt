@@ -1,10 +1,15 @@
+Version 11.48
+
+ - Detects unexpected connection dispatching to old child process to avoid
+   invalid connection counter state for QS_ClientPrefer rules (msg id 166).
+
 Version 11.47
 
  - Updates built-in filter pattern of QS_HeaderFilter (Transfer-Encoding).
 
  - qslog standard mode supports peak/max value counter (M).
 
- - Fixed: potential segfault if connection ctx is null.
+ - Fixed: potential segfault if connection ctx is null when using h2.
 
 Version 11.46
 

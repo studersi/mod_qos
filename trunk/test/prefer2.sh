@@ -17,7 +17,7 @@ PFX=[`basename $0`]
 # 12	> 13	> 51
 
 ./ctl.sh restart -D max_clients -D cc > /dev/null
-
+sleep 1
 # ----------------------------------------------------------------------------------
 echo "$PFX dropping normal clients"
 echo "[`date '+%a %b %d %H:%M:%S %Y'`] [notice] -- prefer2.sh" >>  logs/error_log
@@ -32,7 +32,7 @@ type=`../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep "penalty=4 0x0
 echo "$PFX $messages connections blocked"
 if [ $messages -eq 0 ]; then
     ../util/src/qstail -i logs/error_log -p "prefer2.sh" | grep "mod_qos(066)"
-    echo "$PFX failed: got mod_qos(066) no errors ($messages)"
+    echo "$PFX failed: got NO mod_qos(066) errors ($messages)"
     exit 1
 fi
 if [ $type -ne $messages ]; then
