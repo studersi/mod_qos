@@ -92,6 +92,7 @@ sed <doc/index.html >mod_qos-${VERSION}/doc/index.html \
  -e "s/0\.00/${VERSION}/g"
 cp doc/images/mod_qos.gif mod_qos-${VERSION}/doc/images/
 cp doc/images/directive_seq.gif mod_qos-${VERSION}/doc/images/
+cp doc/images/ClientPrefer.png mod_qos-${VERSION}/doc/images/
 cp doc/images/SrvMinDataRate.png mod_qos-${VERSION}/doc/images/
 cp doc/images/LimitCount.png mod_qos-${VERSION}/doc/images/
 cp doc/images/LimitCountExample.png mod_qos-${VERSION}/doc/images/

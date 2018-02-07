@@ -13,6 +13,7 @@ scp ../images/directive_seq.gif ${dest}/images/
 scp ../images/directive_seq.gif ${dest}/images/mod_qos_seq.gif
 scp ../images/download.jpg ${dest}/images/
 scp ../images/link.png ${dest}/images/
+scp ../images/ClientPrefer.png ${dest}/images/
 scp ../images/SrvMinDataRate.png ${dest}/images/
 scp ../images/LimitCount.png ${dest}/images/
 scp ../images/LimitCountExample.png ${dest}/images/

@@ -439,8 +439,8 @@ directive.<br>
 <h3>Privileged Users</h3>
 Additional directives are used to identify VIPs (very important persons) 
 and to control the session life time and its cookie format. VIP users have 
-privileged access and less QoS restrictions than ordinary users. <br>
-VIP information is stored and evaluated at different levels.
+privileged access and less QoS restrictions than ordinary users. <br><br>
+VIP information is stored and evaluated at different levels:
 <ul>
 <li>
 Session: VIP identification is stored using a HTTP 
@@ -813,14 +813,15 @@ The variable is set for connections by clients which have been marked to be
 processed with low priority, see <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code>. 
 The variable's value is determined when the client opens a new connection and 
 its value represents the status flag of the tracked client attributes 
-(hexadecimal). VIP status is ignored and the variable is always set even 
-the IP has been marked as being VIP.
+(hexadecimal). <a href="#privilegedusers">VIP</a> status is ignored and
+the variable is always set even the IP has been marked as being VIP.
 </li>
 <li>
 <a name="QS_IsVipRequest"></a>
 <code>QS_IsVipRequest</code><br>
-Variable is set when detecting a VIP request (either by cookie, IP address 
-status, valid user, etc.). May be used by various event based directives.
+Variable is set when detecting a <a href="#privilegedusers">VIP</a> request
+(either by cookie, IP address status, valid user, etc.). May be used by
+various event based directives.
 </li>
 <li>
 <a name="_Counter"></a>
@@ -1789,12 +1790,14 @@ the TCP connection.
 <a name="QS_ClientPrefer"></a>
 <code>QS_ClientPrefer [&lt;percent&gt;]</code><br>
 Accepts only <a href="#privilegedusers">VIP</a> 
-and high priority clients when the server has less than 80% 
-(or the defined percentage) of free TCP connections. Use the 
+and high priority clients (<a href="images/ClientPrefer.png">few penalty points</a>)
+when the server has less than 80% (or the defined percentage) of
+free TCP connections. Use the 
 <code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code> or 
 <code><a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a></code> 
-directive in order to identify VIP clients. The distinction between 
-high and low priority clients is made based on different client attributes:
+directive in order to identify <a href="#privilegedusers">VIP</a> clients.
+The distinction between high and low priority clients is made
+based on different client attributes:
 <ul>
 <li>Data transfer behavior (clients sending data slowly / their transfer rate) (0x01).</li>
 <li>Accessing "unusual" content types (see <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> 
