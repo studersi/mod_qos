@@ -6,7 +6,7 @@
 
 INCLUDE scripts/ports
 
-EXEC ./ctl.sh restart -D QS_ClientPrefer
+EXEC ./ctl.sh restart -D QS_ClientPrefer -D MaxConnectionsPerChild
 SLEEP 1000
 
 CLIENT 10
@@ -21,16 +21,7 @@ _EXPECT . "done"
 _WAIT
 _CLOSE
 
-_LOOP 20
-_LOOP 10
-_REQ localhost $QS_PORT_BASE
-__GET /errorpages/cookie.html HTTP/1.1
-__Host: localhost
-__Connection: keep-alive
-__
-_EXPECT . "Cookie Check Page"
-_WAIT
-
+_LOOP 120
 _REQ localhost $QS_PORT_BASE
 __GET /errorpages/cookie.html HTTP/1.1
 __Host: localhost
@@ -40,12 +31,11 @@ _EXPECT . "Cookie Check Page"
 _WAIT
 _CLOSE
 _END LOOP
-_END LOOP
 
 END
 
 CLIENT
-_SLEEP 400
+_SLEEP 200
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1
 __Host: localhost
@@ -56,7 +46,7 @@ _EXPECT . "QS_ClientPrefer;10\[\]: 11"
 _WAIT
 _CLOSE
 
-_SLEEP 2500
+_SLEEP 13000
 
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1

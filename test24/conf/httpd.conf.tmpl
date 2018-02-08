@@ -29,7 +29,12 @@ MaxRequestWorkers      150
 <IfDefine QS_ClientPrefer>
 MaxRequestWorkers       50
 </IfDefine>
+<IfDefine MaxConnectionsPerChild>
+MaxConnectionsPerChild   128
+</IfDefine>
+<IfDefine !MaxConnectionsPerChild>
 MaxConnectionsPerChild   0
+</IfDefine>
 
 LoadModule     setenvifplus_module ##ROOT##/../install/modules/.libs/mod_setenvifplus.so
 
