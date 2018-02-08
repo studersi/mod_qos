@@ -1790,14 +1790,14 @@ the TCP connection.
 <a name="QS_ClientPrefer"></a>
 <code>QS_ClientPrefer [&lt;percent&gt;]</code><br>
 Accepts only <a href="#privilegedusers">VIP</a> 
-and high priority clients (<a href="images/ClientPrefer.png">few penalty points</a>)
-when the server has less than 80% (or the defined percentage) of
-free TCP connections. Use the 
+and high priority clients when the server has less than 80%
+(or the defined percentage) of free TCP connections. The server
+<a href="images/ClientPrefer.png">continues dropping more and more clients (also those with few penalty points) the higher the number of connections grows</a>. <br>Use the 
 <code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code> or 
 <code><a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a></code> 
-directive in order to identify <a href="#privilegedusers">VIP</a> clients.
+directive in order to identify <a href="#privilegedusers">VIP</a> clients.<br>
 The distinction between high and low priority clients is made
-based on different client attributes:
+based on penality points which are calculated based of these attributes:
 <ul>
 <li>Data transfer behavior (clients sending data slowly / their transfer rate) (0x01).</li>
 <li>Accessing "unusual" content types (see <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> 
