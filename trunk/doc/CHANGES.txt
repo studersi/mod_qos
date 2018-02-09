@@ -1,4 +1,7 @@
-Version 11.48
+Version 12.0
+
+ - Adapted connection handling to deal with master/slave connections
+   introduced by Apache 2.4.18.
 
  - Detects unexpected connection dispatching to old child process to avoid
    invalid connection counter state for QS_ClientPrefer rules (msg id 166).
