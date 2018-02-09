@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.48";
+static const char g_revision[] = "11.49";
 
 /************************************************************************
  * Includes
@@ -870,7 +870,7 @@ typedef struct {
  */
 typedef struct {
   apr_uint64_t ip6[2];
-  conn_rec *c;
+  conn_rec *mc; // master (real) connection
   char *evmsg;
   qos_srv_config *sconf;
   int is_vip;           /* is vip, either by request or by session or by ip */
@@ -1969,7 +1969,7 @@ static const char *qos_get_clientIP(request_rec *r, qos_srv_config *sconf,
   }
   // use the real IP
   if(cconf) {
-    forwardedForLogIP = QS_CONN_REMOTEIP(cconf->c);
+    forwardedForLogIP = QS_CONN_REMOTEIP(cconf->mc);
     // works for real connections only (no HTTP/2)
     ip6[0] = cconf->ip6[0];
     ip6[1] = cconf->ip6[1];
@@ -5094,7 +5094,7 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
 }
 
 static qs_conn_ctx *qos_get_cconf(conn_rec *connection) {
-  conn_rec *c = connection;
+  conn_rec *c = QS_CONN_MASTER(connection);
   qs_conn_ctx *cconf = NULL;
   qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
   if(base) {
@@ -5104,10 +5104,10 @@ static qs_conn_ctx *qos_get_cconf(conn_rec *connection) {
 }
 
 static qs_conn_ctx *qos_create_cconf(conn_rec *connection, qos_srv_config *sconf) {
-  conn_rec *c = connection;
+  conn_rec *c = QS_CONN_MASTER(connection);
   qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
   qs_conn_ctx *cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
-  cconf->c = c;
+  cconf->mc = c;
   cconf->ip6[0] = 0;
   cconf->ip6[1] = 0;
   cconf->evmsg = NULL;
@@ -6375,8 +6375,8 @@ static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, c->base_server,
                      QOS_LOG_PFX(166)"unexpected connection dispatching, skipping"
                      " connection counter update for QS_ClientPrefer rule, c=%s",
-                     QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
-                     QS_CONN_REMOTEIP(cconf->c));
+                     QS_CONN_REMOTEIP(cconf->mc) == NULL ? "-" : 
+                     QS_CONN_REMOTEIP(cconf->mc));
       }
       if((*e)->lowrate) {
         if(c->notes) {
@@ -6415,15 +6415,15 @@ static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t
           if((cconf->sconf->max_clients - u->qos_cc->connections) < reqSpare) {
             /* not enougth free connections */
             if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
-              *msg = apr_psprintf(cconf->c->pool, 
+              *msg = apr_psprintf(cconf->mc->pool, 
                                   QOS_LOG_PFX(066)"access denied%s, "
                                   "QS_ClientPrefer rule (penalty=%d 0x%02x): "
                                   "max=%d, concurrent connections=%d, c=%s",
                                   cconf->sconf->log_only ? " (log only)" : "",
                                   penalty, (*e)->lowratestatus,
                                   cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
-                                  QS_CONN_REMOTEIP(cconf->c) == NULL ? "-" : 
-                                  QS_CONN_REMOTEIP(cconf->c));
+                                  QS_CONN_REMOTEIP(cconf->mc) == NULL ? "-" : 
+                                  QS_CONN_REMOTEIP(cconf->mc));
               QS_INC_EVENT_LOCKED(cconf->sconf, 66);
               ret = m_retcode;
             }
@@ -8112,10 +8112,21 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
   qs_conn_ctx *cconf;
   int vip = 0;
   apr_socket_t *socket = skt;
+  
   if(c->sbh == NULL) {
     // proxy connections do NOT have any relation to the score board, don't handle them
     return DECLINED;
   }
+
+#if (AP_SERVER_MINORVERSION_NUMBER == 4)
+#if (AP_SERVER_PATCHLEVEL_NUMBER > 17)
+  if(connection->master) {
+    // skip slave connections / process "real" connections only
+    return DECLINED;
+  }
+#endif
+#endif
+
   cconf = qos_get_cconf(c);
   if(cconf == NULL) {
     int client_control = DECLINED;
@@ -8174,7 +8185,7 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
       apr_table_set(c->notes, "QS_IPConn", apr_psprintf(c->pool, "%d", current));
     }
     /* Check for vip (by ip) */
-    vip = qos_is_excluded_ip(cconf->c, sconf->exclude_ip);
+    vip = qos_is_excluded_ip(cconf->mc, sconf->exclude_ip);
     if(vip == 0) {
       // check if qos_cc_pc_filter() got vip status form the cc store
       vip = cconf->is_vip;
@@ -8320,6 +8331,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
   qos_srv_config *sconf;
   qs_conn_base_ctx *base;
   int excludeFromBlock;
+
   if(c->sbh == NULL) {
     // proxy connections do NOT have any relation to the score board, don't handle them
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, c->base_server, 
@@ -8328,6 +8340,18 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
                  c->local_ip ? c->local_ip : "UNKNOWN");
     return ret;
   }
+
+#if (AP_SERVER_MINORVERSION_NUMBER == 4)
+#if (AP_SERVER_PATCHLEVEL_NUMBER > 17)
+  if(connection->master) {
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, c->base_server, 
+                 QOS_LOGD_PFX"skip slave connection %s",
+                 QS_CONN_REMOTEIP(c) ? QS_CONN_REMOTEIP(c) : "UNKNOWN");
+    return ret;
+  }
+#endif
+#endif
+
   sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config, &qos_module);
   excludeFromBlock = qos_is_excluded_ip(c, sconf->cc_exclude_ip);
   base = qos_get_conn_base_ctx(c);
@@ -14348,16 +14372,21 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_post_config(qos_chroot, prelast, NULL, APR_HOOK_REALLY_LAST);
 #endif
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
+
   ap_hook_pre_connection(qos_pre_connection, NULL, pressl, APR_HOOK_FIRST);
   ap_hook_pre_connection(qos_pre_process_connection, prelast, NULL, APR_HOOK_LAST);
-  //  ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
+
   ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request_later, preuid, NULL, APR_HOOK_MIDDLE);
+
   ap_hook_header_parser(qos_header_parser0, NULL, post, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser1, post, parp, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);
+
   ap_hook_fixups(qos_fixup, pre, NULL, APR_HOOK_MIDDLE);
+
   ap_hook_handler(qos_handler, NULL, NULL, APR_HOOK_MIDDLE);
+
   ap_hook_log_transaction(qos_logger, NULL, NULL, APR_HOOK_FIRST);
   //ap_hook_error_log(qos_error_log, NULL, NULL, APR_HOOK_LAST);
 
@@ -14372,6 +14401,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_register_output_filter("qos-out-filter-body", qos_out_filter_body, NULL, AP_FTYPE_RESOURCE+1);
   ap_register_output_filter("qos-out-filter-brokencon", qos_out_filter_brokencon, NULL, AP_FTYPE_PROTOCOL+3);
   ap_register_output_filter("qos-out-err-filter", qos_out_err_filter, NULL, AP_FTYPE_RESOURCE+1);
+
   ap_hook_insert_filter(qos_insert_filter, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_insert_error_filter(qos_insert_err_filter, NULL, NULL, APR_HOOK_MIDDLE);
 

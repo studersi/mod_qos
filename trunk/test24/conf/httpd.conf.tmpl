@@ -290,6 +290,10 @@ Listen         ##QS_PORT_BASE2##
    Protocols h2 http/1.1
 </IfDefine>
 
+<IfDefine QS_SrvMaxConn>
+   QS_SrvMaxConn              4
+</IfDefine>
+
 <IfDefine bfs>
   QS_SrvMaxConnPerIP         10
   ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
@@ -311,6 +315,13 @@ Listen         ##QS_PORT_BASE2##
 
    ProxyPass                  /cgi2 http://127.0.0.1:##QS_PORT_BASE1##/cgi2 retry=0
    ProxyPassReverse           /cgi2 http://127.0.0.1:##QS_PORT_BASE1##/cgi2
+
+   ProxyPass                  /cgi3 http://127.0.0.1:##QS_PORT_BASE1##/cgi2 retry=0
+   ProxyPassReverse           /cgi3 http://127.0.0.1:##QS_PORT_BASE1##/cgi2
+
+   <Location /qos>
+      SetHandler qos-viewer
+   </Location>
 
 </VirtualHost>
 
