@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.48";
+static const char g_revision[] = "12.0";
 
 /************************************************************************
  * Includes
@@ -267,8 +267,15 @@ static const char *m_note_variables[] = {
 // Apache 2.4 compat (experimental)
 #if (AP_SERVER_MINORVERSION_NUMBER == 4)
 #define QS_APACHE_24 1
-#define QS_CONN_REMOTEIP(c) c->client_ip
+#if (AP_SERVER_PATCHLEVEL_NUMBER > 17)
+#define QS_CONN_REMOTEIP(c)  c->master ? c->master->client_ip : c->client_ip
+#define QS_CONN_REMOTEADDR(c) c->master ? c->master->client_addr : c->client_addr
+#define QS_CONN_MASTER(c) (c->master ? c->master : c)
+#else
+#define QS_CONN_REMOTEIP(c)  c->client_ip
 #define QS_CONN_REMOTEADDR(c) c->client_addr
+#define QS_CONN_MASTER(c) (c)
+#endif
 #define QOS_MY_GENERATION(g) ap_mpm_query(AP_MPMQ_GENERATION, &g)
 #define qos_unixd_set_global_mutex_perms ap_unixd_set_global_mutex_perms
 #define QS_ISDEBUG(s) APLOG_IS_LEVEL(s, APLOG_DEBUG)
@@ -276,6 +283,7 @@ static const char *m_note_variables[] = {
 #define QS_APACHE_22 1
 #define QS_CONN_REMOTEIP(c) c->remote_ip
 #define QS_CONN_REMOTEADDR(c) c->remote_addr
+#define QS_CONN_MASTER(c) (c)
 #define QOS_MY_GENERATION(g) g = ap_my_generation
 #define qos_unixd_set_global_mutex_perms unixd_set_global_mutex_perms
 #define QS_ISDEBUG(s) s->loglevel >= APLOG_DEBUG
@@ -1434,11 +1442,12 @@ static char *qos_strnstr(const char *s1, const char *s2, int len) {
 /**
  * Determines, if the client IP shall be excluded from rule enforcement
  *
- * @param c Connection to get the IP
+ * @param connection Connection to get the IP
  * @param exclude_ip Table containing the rules
  * @return 1 on match otherwise 0
  */
-static int qos_is_excluded_ip(conn_rec *c, apr_table_t *exclude_ip) {
+static int qos_is_excluded_ip(conn_rec *connection, apr_table_t *exclude_ip) {
+  conn_rec *c = connection;
   if(apr_table_elts(exclude_ip)->nelts > 0) {
     int i;
     apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(exclude_ip)->elts;
@@ -3216,7 +3225,8 @@ static apr_status_t qos_cleanup_inctx(void *p) {
 /**
  * creates a new connection ctx (remember to set the socket, connection and timeout)
  */
-static qos_ifctx_t *qos_create_ifctx(conn_rec *c, qos_srv_config *sconf) {
+static qos_ifctx_t *qos_create_ifctx(conn_rec *connection, qos_srv_config *sconf) {
+  conn_rec *c = connection;
   char buf[128];
   qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
   inctx->client_socket = NULL;
@@ -3253,7 +3263,8 @@ static qos_ifctx_t *qos_get_ifctx(ap_filter_t *f) {
   return inctx;
 }
 
-static qs_conn_base_ctx *qos_create_conn_base_ctx(conn_rec *c, qos_srv_config *sconf) {
+static qs_conn_base_ctx *qos_create_conn_base_ctx(conn_rec *connection, qos_srv_config *sconf) {
+  conn_rec *c = connection;
   qs_conn_base_ctx *base = apr_pcalloc(c->pool, sizeof(qs_conn_base_ctx));
   base->cconf = NULL;
   base->requests = 0;
@@ -3265,7 +3276,8 @@ static qs_conn_base_ctx *qos_create_conn_base_ctx(conn_rec *c, qos_srv_config *s
   return base;
 }
 
-static qs_conn_base_ctx *qos_get_conn_base_ctx(conn_rec *c) {
+static qs_conn_base_ctx *qos_get_conn_base_ctx(conn_rec *connection) {
+  conn_rec *c = connection;
   qs_conn_base_ctx *base = (qs_conn_base_ctx*)ap_get_module_config(c->conn_config, &qos_module);
   return base;
 }
@@ -3273,7 +3285,8 @@ static qs_conn_base_ctx *qos_get_conn_base_ctx(conn_rec *c) {
 /**
  * send server error, used for connection errors
  */
-static int qos_return_error_andclose(conn_rec *c, apr_socket_t *socket) {
+static int qos_return_error_andclose(conn_rec *connection, apr_socket_t *socket) {
+  conn_rec *c = connection;
   char *line = apr_pstrcat(c->pool, AP_SERVER_PROTOCOL, " ",
                            ap_get_status_line(500), CRLF CRLF, NULL);
   apr_bucket *e = apr_bucket_pool_create(line, strlen(line), c->pool, c->bucket_alloc);
@@ -4843,7 +4856,7 @@ static void qos_keepalive(request_rec *r, qos_srv_config *sconf) {
                       sconf->log_only ? " (log only)" : "",
                       qos_unique_id(r, NULL));
       }
-      /* copy the server record (I konw, but least this works ...) */
+      /* copy the server record (I know......., but this works) */
       if(!rctx->evmsg || !strstr(rctx->evmsg, "T;")) {
         /* copy it only once (@hp or @out-filter) */
         if(!sconf->log_only) {
@@ -5080,7 +5093,8 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
   return rv;
 }
 
-static qs_conn_ctx *qos_get_cconf(conn_rec *c) {
+static qs_conn_ctx *qos_get_cconf(conn_rec *connection) {
+  conn_rec *c = connection;
   qs_conn_ctx *cconf = NULL;
   qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
   if(base) {
@@ -5089,7 +5103,8 @@ static qs_conn_ctx *qos_get_cconf(conn_rec *c) {
   return cconf;
 }
 
-static qs_conn_ctx *qos_create_cconf(conn_rec *c, qos_srv_config *sconf) {
+static qs_conn_ctx *qos_create_cconf(conn_rec *connection, qos_srv_config *sconf) {
+  conn_rec *c = connection;
   qs_conn_base_ctx *base = qos_get_conn_base_ctx(c);
   qs_conn_ctx *cconf = apr_pcalloc(c->pool, sizeof(qs_conn_ctx));
   cconf->c = c;
@@ -5404,7 +5419,8 @@ static apr_size_t qos_packet_rate(qos_ifctx_t *inctx, apr_bucket_brigade *bb) {
 /**
  * start packet rate measure (if filter has not already been inserted)
  */
-static void qos_pktrate_pc(conn_rec *c, qos_srv_config *sconf) {
+static void qos_pktrate_pc(conn_rec *connection, qos_srv_config *sconf) {
+  conn_rec *c = connection;
   qos_ifctx_t *inctx = qos_get_ifctx(c->input_filters);
   if(inctx == NULL) {
     inctx = qos_create_ifctx(c, sconf);
@@ -5416,7 +5432,8 @@ static void qos_pktrate_pc(conn_rec *c, qos_srv_config *sconf) {
 /**
  * timeout control at process connection handler
  */
-static void qos_timeout_pc(conn_rec *c, qos_srv_config *sconf) {
+static void qos_timeout_pc(conn_rec *connection, qos_srv_config *sconf) {
+  conn_rec *c = connection;
   qos_ifctx_t *inctx = qos_get_ifctx(c->input_filters);
   if(inctx) {
     inctx->status = QS_CONN_STATE_HEAD;
@@ -6330,7 +6347,8 @@ static int qos_server_connections(qos_srv_config *sconf) {
 /**
  * client control rules at process connection handler
  */
-static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
+static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t *u, char **msg) {
+  conn_rec *c = connection;
   int ret = DECLINED;
   if(cconf && cconf->sconf->has_qos_cc) {
     qos_s_entry_t **e = NULL;
@@ -6373,7 +6391,7 @@ static int qos_cc_pc_filter(conn_rec *c, qs_conn_ctx *cconf, qos_user_t *u, char
           int reqSpare = 0;
           if((*e)->lowrate) {
             if((*e)->lowratestatus & QOS_LOW_FLAG_PKGRATE) {
-            penalty++;
+              penalty++;
             }
             if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_BAD) {
               penalty+=2;
@@ -7455,9 +7473,10 @@ static void qos_disable_req_rate(server_rec *bs, const char *msg) {
  * stores the IP of the connection into the array and
  * increments the array pointer (for QS_Block for connection errors)
  */
-static apr_uint64_t *qos_inc_block(conn_rec *c, qos_srv_config *sconf,
+static apr_uint64_t *qos_inc_block(conn_rec *connection, qos_srv_config *sconf,
                                    qs_conn_ctx *cconf, apr_uint64_t *ip) {
-  if(sconf->qos_cc_block &&
+  conn_rec *c = connection;
+ if(sconf->qos_cc_block &&
      apr_table_get(sconf->setenvstatus_t, QS_CLOSE) &&
      !apr_table_get(c->notes, QS_BLOCK_SEEN)) {
     apr_table_set(c->notes, QS_BLOCK_SEEN, "");
@@ -8088,7 +8107,8 @@ static apr_status_t qos_cleanup_conn(void *p) {
  * @param c
  * @return
  */
-static int qos_pre_process_connection(conn_rec *c, void *skt) {
+static int qos_pre_process_connection(conn_rec *connection, void *skt) {
+  conn_rec *c = connection;
   qs_conn_ctx *cconf;
   int vip = 0;
   apr_socket_t *socket = skt;
@@ -8294,7 +8314,8 @@ static int qos_pre_process_connection(conn_rec *c, void *skt) {
  * - constructs the connection ctx (stores socket ref)
  * - enforces block counter (as early as possible)
  */
-static int qos_pre_connection(conn_rec *c, void *skt) {
+static int qos_pre_connection(conn_rec *connection, void *skt) {
+  conn_rec *c = connection;
   int ret = DECLINED;
   qos_srv_config *sconf;
   qs_conn_base_ctx *base;
