@@ -1,0 +1,30 @@
+#
+# test QS_LocRequestLimit and SetEnvIf QS_ErrorPage directive
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT 5
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /cgi/sleep.cgi?s=4 HTTP/1.1
+__Host: server1:$QS_PORT_BASE2
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+CLIENT 1
+_SLEEP 2000
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: server1:$QS_PORT_BASE2
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "custom error page, SetEnvIf"
+_WAIT
+
+END
