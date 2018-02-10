@@ -176,22 +176,15 @@ mod_qos is an open source software licensed under the
 </p>
 </td></tr>
 <tr><td>&nbsp;</td><td>
-<p>
-<small><i>Note: mod_qos can only be used in conjunction with the hypertext transfer protocol
-version 1.0 or 1.1 (RFC 1945 and RFC 2616 ) although the Apache web server
-could be used to process other protocols as well. You should also choose the
-<a href="https://httpd.apache.org/docs/current/mod/worker.html">worker MPM <img src="images/link.png"/></a>
-binaries if you want to use mod_qos.</i></small>
 <hr>
-</p>
 <p>
 More information about mod_qos:
 <ul>
-<!-- BUILD START -->
 <li><a href="#build">Build</a></li>
+<!-- DIST START -->
 <li><a href="#source">Source Code</a></li>
 <li><a href="CHANGES.txt">Changes</a></li>
-<!-- BUILD END -->
+<!-- DIST END -->
 <li><a href="#configuration">Configuration</a></li>
 <ul>
 <li><a href="#requestlevelcontrol">Request Level Control</a></li>
@@ -217,7 +210,6 @@ More information about mod_qos:
 </p>
 
 <hr>
-<!-- BUILD START -->
 <a name="build"></a>
 <h2>Build</h2>
 <p>
@@ -231,7 +223,9 @@ binaries, but works with Apache version 2.4 as well. The module is optimized to 
 <small><i>Note: You should definitely choose the <a href="https://httpd.apache.org/docs/current/mod/worker.html">worker MPM <img src="images/link.png"/></a> 
 if your intend to use any <a href="#connectionlevelcontrol">connection level control</a> directive. 
 and if you decide to use <a href="https://httpd.apache.org/docs/current/howto/http2.html">HTTP/2 <img src="images/link.png"/></a>, 
-you should use the <a href="#requestlevelcontrol">request level control</a> directives only.
+you should use the <a href="#requestlevelcontrol">request level control</a> directives only 
+as mod_qos only works for the hypertext transfer protocol
+version 1.0 or 1.1 (RFC1945/RFC2616).
 </i></small>
 </p>
 <p>
@@ -281,13 +275,15 @@ If you have a different version of <code>aclocal</code> or
 </i></small>
 </p>
 
+<!-- DIST START -->
+
 <a name="source"></a>
 <h2>Source Code</h2>
 <p>
 <a href="../apache2">mod_qos</a> is available for Apache version 2.2 respectively 2.4.
 </p>
 
-<!-- BUILD END -->
+<!-- DIST END -->
 <!-- CONFIGURATION -->
 
 <a name="configuration"></a>
@@ -1238,7 +1234,11 @@ to sub-locations. If a rule should not be active for a sub-location, the
 very same rule must be defined, but instead, the rule id must be prefixed with a '-'. The filter rules are implemented as Perl-compatible regular expressions 
 (pcre) and are applied to the decoded URL components (un-escaped characters, 
 e.g., %20 is a space). The generic request filter ignores the 
-<a href="#privilegedusers">VIP</a> status of a client.
+<a href="#privilegedusers">VIP</a> status of a client.<br>
+<small><i>Note: Compile mod_qos with the preprocessor definition 
+<code>-DQS_MOD_EXT_HOOKS</code> to enable the decoding hooks defined 
+in <code>mod_qos.h</code> if you intend to implement additional
+decodings by other Apache modules.</i></small>
 <ul>
 <li>
 <a name="QS_DenyRequestLine"></a>
@@ -2098,7 +2098,7 @@ configuring <code>QS_EventCount on</code> and are using any
 <p>
 The status information is also provided on the server status page of 
 <a href="http://httpd.apache.org/docs/current/mod/mod_status.html">mod_status <img src="images/link.png"/></a>.<br>
-<small><i>Note: compile mod_qos with the preprocessor definition 
+<small><i>Note: Compile mod_qos with the preprocessor definition 
 <code>-DQS_NO_STATUS_HOOK</code> to disable its regisration to 
 the status page rendered by mod_status.</i></small>
 </p>
