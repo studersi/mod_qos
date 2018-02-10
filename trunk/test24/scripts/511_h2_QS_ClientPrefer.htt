@@ -10,42 +10,33 @@
 
 INCLUDE scripts/ports
 
-EXEC ./ctl.sh restart -D QS_ClientPrefer >/dev/null
+EXEC ./ctl.sh restart -D QS_ClientPrefer -D h2 >/dev/null
 SLEEP 1000
 
 CLIENT 30
 
-_REQ localhost $QS_PORT_BASE
-__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
-__Host: localhost
-__Connection: keep-alive
-__
-_EXPECT . "200 OK"
-_EXPECT . "done"
-_WAIT
-_CLOSE
+_EXPECT EXEC "ALPN, server accepted to use h2"
+_EXPECT EXEC "HTTP/2 confirmed"
+_EXPECT EXEC "done"
+_EXEC ./bin/curl -v --http2 --insecure https://server1:${QS_PORT_BASE2}/cgi-local/sleep.cgi?s=6 2>&1
 
 END
 
 CLIENT 7
-_SLEEP 300
-_REQ localhost $QS_PORT_BASE
-__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
-__Host: localhost
-__Connection: keep-alive
-__
-_EXPECT . "200 OK"
-_EXPECT . "done"
-_WAIT
-_CLOSE
+_SLEEP 2300
+
+_EXPECT EXEC "ALPN, server accepted to use h2"
+_EXPECT EXEC "HTTP/2 confirmed"
+_EXPECT EXEC "done"
+_EXEC ./bin/curl -v --http2 --insecure https://server1:${QS_PORT_BASE2}/cgi-local/sleep.cgi?s3 2>&1
 
 END
 
 CLIENT
-_SLEEP 200
-_REQ localhost $QS_PORT_BASE
+_SLEEP 2000
+_REQ server1 SSL:${QS_PORT_BASE2}
 __GET /qos?auto HTTP/1.1
-__Host: localhost
+__Host: server1
 __Connection: keep-alive
 __
 _EXPECT . "QS_AllConn: 31"
@@ -53,11 +44,11 @@ _EXPECT . "QS_ClientPrefer;10\[\]: 31"
 _WAIT
 _CLOSE
 
-_SLEEP 2500
+_SLEEP 6500
 
-_REQ localhost $QS_PORT_BASE
+_REQ server1 SSL:${QS_PORT_BASE2}
 __GET /qos?auto HTTP/1.1
-__Host: localhost
+__Host: server1
 __Connection: keep-alive
 __
 _EXPECT . "QS_AllConn: 1"
@@ -68,10 +59,9 @@ _CLOSE
 END
 
 CLIENT
-_SLEEP 400
-
+_SLEEP 4200
 _EXPECT ERROR "Connection refused"
-_REQ localhost $QS_PORT_BASE
+_REQ server1 SSL:${QS_PORT_BASE2}
 _CLOSE
 _SLEEP 100
 _EXPECT EXEC "mod_qos\(066\): access denied, QS_ClientPrefer rule \(penalty=4 0x00\): max=10, concurrent connections=38"

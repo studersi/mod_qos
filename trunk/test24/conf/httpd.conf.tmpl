@@ -313,11 +313,21 @@ Listen         ##QS_PORT_BASE2##
 
    QS_LocRequestLimitMatch       ^/cgi2/.*   2
 
+   ProxyPass                  /cgi-local !
+
    ProxyPass                  /cgi2 http://127.0.0.1:##QS_PORT_BASE1##/cgi2 retry=0
    ProxyPassReverse           /cgi2 http://127.0.0.1:##QS_PORT_BASE1##/cgi2
 
    ProxyPass                  /cgi3 http://127.0.0.1:##QS_PORT_BASE1##/cgi2 retry=0
    ProxyPassReverse           /cgi3 http://127.0.0.1:##QS_PORT_BASE1##/cgi2
+
+
+  ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
+  <Location /cgi-local>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
 
    <Location /qos>
       SetHandler qos-viewer
