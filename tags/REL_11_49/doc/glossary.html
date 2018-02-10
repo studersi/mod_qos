@@ -1,0 +1,285 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+ <title>mod_qos - Additional Information</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
+<meta name="author" content="Pascal Buchbinder" />
+<meta name="KeyWords" content="Quality of Service, Apache Web Server, mod_qos" />
+<link rel="shortcut icon" href="favicon.ico" />
+<style TYPE="text/css">
+<!--  
+  body {
+	background-color: white;
+	color: black;
+	font-family: sans-serif, arial, verdana;
+	font-weight: normal;
+	text-align: left;
+  }
+  a:link    { color:#00673F; text-decoration:none; }
+  a:visited { color:#00673F; text-decoration:none; }
+  a:focus   { color:black; text-decoration:underline; }
+  a:hover   { color:black; text-decoration:underline; }
+  a:active  { color:black; text-decoration:underline; }
+  .btable   { font-size:0.75em; }
+-->
+</style>
+</head>
+<body>
+<!--
+
+ Quality of service module for Apache Web Server.
+
+ See http://mod-qos.sourceforge.net/ for further details.
+
+ Copyright (C) 2018 Pascal Buchbinder
+
+ Licensed to the Apache Software Foundation (ASF) under one or more
+ contributor license agreements.  See the NOTICE file distributed with
+ this work for additional information regarding copyright ownership.
+ The ASF licenses this file to You under the Apache License, Version 2.0
+ (the "License"); you may not use this file except in compliance with
+ the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+
+-->
+<table>
+<tbody>
+<tr><td><a href="index.html"><img src="images/mod_qos.gif" alt="mod_qos" title="mod_qos" /></a></td>
+    <td style="vertical-align: bottom;"><h1>Additional Information</h1></td></tr>
+<tr><td>&nbsp;</td>
+    <td>
+
+
+<p>
+This page gives you additional information about certain aspects of 
+<a href="index.html">mod_qos</a> to get a better understanding how 
+to use the module.  
+</p>
+
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="directives"></a>
+<h2>Directives</h2>
+<p>
+The module is configured by directives. All directives process the 
+connection, HTTP request, and response data in a pre-defined sequence. 
+The following graph shows the order in which the directives work.
+</p>
+<p>
+<a href="images/directive_seq.gif"><img src="images/directive_seq.gif" height="335" width="458" title="directive sequence" alt="directive sequence"/></a>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="rules"></a>
+<h2>Rules</h2>
+<p>
+<a href="index.html">mod_qos</a> allows you to configure different kind of 
+rules. The main component of a rule is its counter. A rule measures either 
+the <a href="#concurrency">concurrency</a> (how many times something happens 
+at the same time), the <a href="#repeat">occurrence </a> (how often does 
+something happen in a certain amount of time), or the 
+<a href="#throughput">throughput</a> (sent amount of data or number of 
+request) and stores this information within that counter.</p>
+<p>
+Every rule has it's own threshold and maintains its own counter. A rule 
+is identified by either an URL pattern/matching string or by an 
+<a href="#variables">environment variable name</a>. 
+You can configure as many rules as you want. </p>
+<p>
+<i>Note: Some counters are only available once. This applies to the counters of
+the rules using the
+<code><a href="index.html#QS_Block">QS_Block</a></code>, 
+<code><a href="index.html#QS_SrvSerialize_var">QS_SrvSerialize</a></code>, and 
+<code><a href="index.html#QS_Serialize">QS_Serialize</a></code> 
+<a href="#variables">environment variables</a>.
+</i>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="variables"></a>
+<h2>Environment Variables</h2>
+<p>
+The Apache web server provides a mechanism for storing information 
+in so called <i>environment variables</i>. <a href="index.html">mod_qos</a> uses these 
+variables to exchange data respectively signalize events between different 
+<a href="#rules">rules defined by the corresponding directive</a>. These 
+variables can also be written or read by other Apache modules, such as
+<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a>.
+</p>
+<p>It is also possible to write the values of these variables to your log
+file using the format string <code>%{VARNAME}e</code> within the
+<code><a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">TransferLog/CustomLog <img src="images/link.png"/></a></code>
+directives. Or you can use them within error pages using
+<a href="http://httpd.apache.org/docs/current/howto/ssi.html">server-side includes <img src="images/link.png"/></a> 
+(SSI).
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="concurrency"></a>
+<h2>Concurrency Counter</h2>
+<p>
+A "concurrency counter" is used to determine how many times something 
+happens at the same time, e.g. HTTP requests accessing the same 
+resource/URL at the same time. The rules using this counter type are either 
+defined by an <a href="#variables">environment variable name</a> or an 
+URL pattern (regular expression of a string matching the request's URL). 
+Such a rule automatically increments the counter when the Apache web server 
+starts to process a matching request and decrements the counter when the 
+request processing is completed.
+</p>
+<p>
+You have to configure a threshold and the rule's variable name resp. URL 
+pattern. Requests (or new connections) are denied as soon as the configured 
+threshold is reached.
+</p>
+<p>
+Directives using this counter type are:
+<ul>
+<li><a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a></li>
+<li><a href="index.html#QS_LocRequestLimit"><code>QS_LocRequestLimit</code></a></li>
+<li><a href="index.html#QS_CondLocRequestLimitMatch"><code>QS_CondLocRequestLimitMatch</code></a></li>
+<li><a href="index.html#QS_EventRequestLimit"><code>QS_EventRequestLimit</code></a></li>
+<li><a href="index.html#QS_ClientEventRequestLimit"><code>QS_ClientEventRequestLimit</code></a></li>
+</ul>
+Also the 
+<a href="index.html#QS_SrvMaxConn"><code>QS_SrvMaxConn</code></a>, 
+<a href="index.html#QS_SrvMaxConnClose"><code>QS_SrvMaxConnClose</code></a>, and 
+<a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a>
+directives use this counter type, although with fewer parameter options.
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="repeat"></a>
+<h2>Repeat Counter</h2>
+<p>
+"Repeat counters" limit the number how often (Cr) something is allowed to 
+happen in a certain amount of time (Td). These rules trigger a timer whenever
+the defined event occurs the first time and start to count every subsequent event
+until the timer expires. If the event counter reaches the defined limitation,
+requests are blocked until the time is up.
+</p>
+<p>
+    <img src="images/LimitCount.png" height="432" width="576" alt="reapet counter"/>
+</p>
+<p>
+All repeat counters allow you to define an event which shall 
+increment the counter if they occur. You also have to configure a 
+duration Td and the threshold Cr, defining how many events are 
+allowed within the time Td.</p>
+<p>Directive parameter example:<br>
+<img src="images/LimitCountExample.png" height="165" width="574" alt="QS_ClientEventLimitCount" />
+</p>
+<p>
+While the counter is automatically cleared (set to 0) when the 
+time Td is up, you might also configure additional events to 
+<a href="index.html#_Decrement">decrement</a> or
+<a href="index.html#_Clear">clear</a> the counter earlier.
+</p>
+<p>
+The directives using this counter type are:
+<ul>
+<li><a href="index.html#QS_EventLimitCount"><code>QS_EventLimitCount</code></a></li>
+<li><a href="index.html#QS_CondEventLimitCount"><code>QS_CondEventLimitCount</code></a></li>
+<li><a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a></li>
+<li><a href="index.html#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></a></li>
+<li><a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a></li>
+</ul>
+<i>Note: Some directives support the increase of the counter by more than "1" 
+taking the variable's value into account.</i>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="throughput"></a>
+<h2>Throughput Control</h2>
+<p>
+Throughput control is implemented by measuring the current usage and
+calculating a necessary delay which needs to be applied to the
+data processing in order to achieve the desired limitation (closed
+loop control system).
+</p>
+<p>
+    <img src="images/ClosedLoop.png" height="216" width="478" alt="closed loop"/>
+</p>
+<p>
+<a href="index.html">mod_qos</a> can limit the bandwidth when downloading 
+data from your web server to the client. This throughput control can
+be configured by the following directives:
+<ul>
+<li><a href="index.html#QS_LocKBytesPerSecLimitMatch"><code>QS_LocKBytesPerSecLimitMatch</code></a></li>
+<li><a href="index.html#QS_LocKBytesPerSecLimit"><code>QS_LocKBytesPerSecLimit</code></a></li>
+<li><a href="index.html#QS_EventKBytesPerSecLimit"><code>QS_EventKBytesPerSecLimit</code></a></li>
+</ul>
+</p>
+<a name="requestPerSecond"></a>
+<h3>Requests per Second</h3>
+<p>
+It is also possible to limit the number or requests per second to a 
+resource. This control function is less accurate than the bandwidth 
+limitation, since the measurement of the request rate takes longer 
+(several seconds) and the request delay is more coarse-grained.<br>
+The following directive can be used to limit the number of requests
+per second:
+<ul>
+<li><a href="index.html#QS_LocRequestPerSecLimitMatch"><code>QS_LocRequestPerSecLimitMatch</code></a></li>
+<li><a href="index.html#QS_LocRequestPerSecLimit"><code>QS_LocRequestPerSecLimit</code></a></li>
+<li><a href="index.html#QS_EventPerSecLimit"><code>QS_EventPerSecLimit</code></a></li>
+</ul>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="serialization"></a>
+<h2>Serialization</h2>
+<p>
+<a href="index.html">mod_qos</a> offers you the option to serialize requests. 
+Serialization means, that requests are processed one after the other. Incomming
+requests are queued if another request is in process and have to wait until
+the previous request is finished.
+</p>
+<p>
+    <img src="images/Serialization.png" height="336" width="570" alt="serialization"/>
+</p>
+<p>
+Requests, which shall be serialized, are tagged by one of the following 
+<a href="#variables">environment variables</a>:
+<ul>
+<li><code><a href="index.html#QS_SrvSerialize_var">QS_SrvSerialize</a></code></li>
+<li><code><a href="index.html#QS_Serialize">QS_Serialize</a></code></li>
+</ul>
+</p>
+<p>
+Serialization might be applied on a per 
+<a href="index.html#QS_SrvSerialize">server level</a> (serializing all HTTP
+requests) or on a <a href="index.html#QS_ClientSerialize">per client level</a>
+(serializing multiple requests comming from the same client/IP address).
+</p>
+
+
+</td></tr>
+</tbody>
+</table>
+<br>
+<hr>
+<SMALL><SMALL>&copy; 2017, Pascal Buchbinder</SMALL></SMALL>
+</body>
+</html>

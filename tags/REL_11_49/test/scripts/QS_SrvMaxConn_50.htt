@@ -1,0 +1,40 @@
+#
+# test QS_SrvMaxConn directive
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT 40
+_REQ localhost $QS_PORT_BASE
+__GET /cgi100/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 10
+_RAND 0 500 SLEEP
+_SLEEP $SLEEP
+_SLEEP 3000
+_REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
+__GET /cgi100/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+#_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 5000
+_EXPECT EXEC "mod_qos\(030\): access denied, QS_SrvMaxConn rule: max=40, concurrent connections=4"
+_EXEC tail -1 logs/error_log
+END

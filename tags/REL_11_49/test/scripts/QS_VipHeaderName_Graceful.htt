@@ -1,0 +1,56 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /login/vip.cgi HTTP/1.1
+__Host: localhost
+__Req: 1
+__
+_MATCH headers "MODQOS=(.*); Path" COOKIE_VAL 
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Cookie: MODQOS=$COOKIE_VAL
+__Connection: keep-alive
+__Req: 2
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Cookie: MODQOS=$COOKIE_VAL
+__Connection: keep-alive
+__Req: 3
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 500
+_EXEC ./ctl.sh graceful >/dev/null
+END
+
+CLIENT 5
+_SLEEP 1000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Req: 4x
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END

@@ -1,0 +1,91 @@
+#
+# $Id$
+#
+# client which is not sending a complete request line
+#
+
+INCLUDE scripts/ports
+
+SET TME=1000
+SET LN="1234567890 1234567890 1234567890 1234567890 1234567890 1234567890 1234567890 1234567890"
+
+CLIENT
+_REQ server1 SSL:$QS_PORT_BASE2
+_-GET /
+_-i
+_FLUSH
+_SLEEP $TME
+_-n
+_FLUSH
+_SLEEP $TME
+_-d
+_FLUSH
+_SLEEP $TME
+_-e
+_FLUSH
+_SLEEP $TME
+_-x
+_FLUSH
+_SLEEP $TME
+_-.
+_FLUSH
+_SLEEP $TME
+_-h
+_FLUSH
+_SLEEP $TME
+_-t
+_FLUSH
+_SLEEP $TME
+_-m
+__l HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT ERROR "Software caused connection abort"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos.034.: access denied, QS_SrvMinDataRate rule .in:0.: min"
+_EXEC tail -1 logs/error_log
+
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+_-Hos
+_FLUSH
+_SLEEP $TME
+_-t
+_FLUSH
+_SLEEP $TME
+_-: l
+_FLUSH
+_SLEEP $TME
+_-o
+__FLUSH
+_SLEEP $TME
+_-c
+_FLUSH
+_SLEEP $TME
+_-a
+_FLUSH
+_SLEEP $TME
+_-
+_FLUSH
+_SLEEP $TME
+_-lho
+_FLUSH
+_SLEEP $TME
+__st.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT ERROR "Software caused connection abort"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos.034.: access denied, QS_SrvMinDataRate rule .in.: min"
+_EXEC tail -1 logs/error_log
+
+END
+
