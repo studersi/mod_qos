@@ -21,6 +21,6 @@ sed <doc/index.html >doc/dist/index.html \
     -e "s:Penetration of the web server by attackers (DoS):<a href='dos.html'>Penetration of the web server by attackers (DoS)</a>:g" \
     -e "s:defend against SSL DoS attacks:<a href='dos.html#NullConnection'>defend against SSL DoS attacks</a>:g" \
     -e "s/0\.00/${VERSION}/g" \
-    -e "s:BUILD START -->::g" \
-    -e "s:<!-- BUILD END::g"
+    -e "s:DIST START -->::g" \
+    -e "s:<!-- DIST END::g"
 

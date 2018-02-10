@@ -1,7 +1,7 @@
 Version 11.49
 
  - Adapted connection handling to deal with master/slave connections
-   introduced by Apache 2.4.18.
+   (introduced by Apache 2.4.18) avoiding inconsistent connection counters.
 
 Version 11.48
 
