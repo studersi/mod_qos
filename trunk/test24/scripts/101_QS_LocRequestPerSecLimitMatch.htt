@@ -7,10 +7,12 @@
 
 INCLUDE scripts/ports
 
+EXEC ./bin/sleep.sh
+
 # about 80 req/sec (without mod_qos
 CLIENT 4
 _AUTO_CLOSE on
-_RPS 20 120
+_RPS 20 60
 _REQ localhost $QS_PORT_BASE
 __GET /limitrs/index.html HTTP/1.1
 __Host: localhost
@@ -22,7 +24,7 @@ _END RPS
 END
 
 CLIENT
-_SLEEP 130000
+_SLEEP 63000
 _EXPECT EXEC "r/s;1[0-9]?;"
 _EXEC tail -1 logs/qslog.csv
 

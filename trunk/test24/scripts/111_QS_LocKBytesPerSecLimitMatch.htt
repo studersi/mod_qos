@@ -6,6 +6,8 @@
 
 INCLUDE scripts/ports
 
+EXEC ./bin/sleep.sh
+
 CLIENT 2
 
 _AUTO_CLOSE on
@@ -14,7 +16,7 @@ _SET counter=0
 _SET bytes=0
 _DATE:GET_TIME start
 
-_RPS 200 120
+_RPS 200 60
 _REQ localhost $QS_PORT_BASE
 __GET /limitbs/image.iso HTTP/1.1
 __Host: localhost
@@ -32,6 +34,8 @@ _DATE:GET_TIME end
 
 _MATH:OP $end SUB $start duration
 _MATH:OP $bytes DIV $duration bs
+
+_SLEEP 2000
 
 _MATCH EXEC "b/s;([0-9]+);" BS
 _EXEC tail -1 logs/qslog.csv
