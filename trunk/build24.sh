@@ -73,4 +73,7 @@ cp ../parp/httpd_src/modules/parp/mod_parp.c install/modules
 cp ../parp/httpd_src/modules/parp/mod_parp.h install/modules
 ./install/bin/apxs -c ./install/modules/mod_parp.c
 
+cp httpd_src/modules/qtest/mod_qtest.c install/modules
+./install/bin/apxs -DQOS_TEST_MOD -c ./install/modules/mod_qtest.c
+
 echo "END"

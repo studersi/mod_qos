@@ -38,6 +38,9 @@ MaxConnectionsPerChild   0
 
 LoadModule     setenvifplus_module ##ROOT##/../install/modules/.libs/mod_setenvifplus.so
 LoadModule     parp_module ##ROOT##/../install/modules/.libs/mod_parp.so
+<IfDefine qtest>
+LoadModule     qtest_module ##ROOT##/../install/modules/.libs/mod_qtest.so
+</IfDefine>
 
 Options        FollowSymLinks Indexes Includes
 
@@ -126,6 +129,7 @@ Listen         ##QS_PORT_BASE##
    ProxyPass                  /console !
    ProxyPass                  /status !
    ProxyPass                  /info !
+   ProxyPass                  /qsinfo !
    ProxyPass                  /errorpages !
    ProxyPass                  /error-docs !
    ProxyPass                  /limitrs !

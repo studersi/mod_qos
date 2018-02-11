@@ -17,11 +17,19 @@ static const char revision[] = "$Id$";
  ***********************************************************************/
 
 /* apache */
-#include <httpd.h>
-#include <http_main.h>
-#include <http_request.h>
-#include <http_connection.h>
-#include <http_protocol.h>
+#include "httpd.h"
+#include "http_config.h"
+#include "http_core.h"
+#include "http_log.h"
+#include "http_main.h"
+#include "http_protocol.h"
+#include "http_connection.h"
+#include "http_request.h"
+#include "util_script.h"
+#include "ap_mpm.h"
+#include "mpm_common.h"
+#include "ap_provider.h"
+
 #define CORE_PRIVATE
 #include <http_config.h>
 #undef CORE_PRIVATE
@@ -53,6 +61,49 @@ module AP_MODULE_DECLARE_DATA qtest_module;
 /************************************************************************
  * private
  ***********************************************************************/
+typedef apr_array_header_t *(* hook_get_t)      (void);
+typedef struct
+{
+    void (*pFunc) (void);       /* just to get the right size */
+    const char *szName;
+    const char *const *aszPredecessors;
+    const char *const *aszSuccessors;
+    int nOrder;
+} hook_struct_t;
+
+typedef struct
+{
+    const char *name;
+    hook_get_t get;
+} hook_lookup_t;
+
+static hook_lookup_t request_hooks[] = {
+    {"Pre-Connection", ap_hook_get_pre_connection},
+    {"Create Connection", ap_hook_get_create_connection},
+    {"Process Connection", ap_hook_get_process_connection},
+    {"Create Request", ap_hook_get_create_request},
+    //    {"Pre-Read Request", ap_hook_get_pre_read_request},
+    {"Post-Read Request", ap_hook_get_post_read_request},
+    {"Header Parse", ap_hook_get_header_parser},
+    {"HTTP Scheme", ap_hook_get_http_scheme},
+    {"Default Port", ap_hook_get_default_port},
+    {"Quick Handler", ap_hook_get_quick_handler},
+    {"Translate Name", ap_hook_get_translate_name},
+    {"Map to Storage", ap_hook_get_map_to_storage},
+    //    {"Check Access", ap_hook_get_access_checker_ex},
+    {"Check Access (legacy)", ap_hook_get_access_checker},
+    {"Verify User ID", ap_hook_get_check_user_id},
+    //    {"Note Authentication Failure", ap_hook_get_note_auth_failure},
+    {"Verify User Access", ap_hook_get_auth_checker},
+    {"Check Type", ap_hook_get_type_checker},
+    {"Fixups", ap_hook_get_fixups},
+    {"Insert Filters", ap_hook_get_insert_filter},
+    {"Content Handlers", ap_hook_get_handler},
+    {"Transaction Logging", ap_hook_get_log_transaction},
+    {"Insert Errors", ap_hook_get_insert_error_filter},
+    //    {"Generate Log ID", ap_hook_get_generate_log_id},
+    {NULL},
+};
 
 /************************************************************************
  * handlers
@@ -183,6 +234,26 @@ static int qtest_handler(request_rec * r) {
       ap_rprintf(r, "var %s=%s\n",
                  ap_escape_html(r->pool, e[i].key),
                  ap_escape_html(r->pool, e[i].val));
+    }
+    return OK;
+  }
+  
+  /**
+   * DEVELOPMENT MODE ONLY
+   * hook information
+   */
+  if(strcmp(r->parsed_uri.path, "/qsinfo/") == 0) {
+    int i;
+    ap_set_content_type(r, "text/plain");
+    for(i = 0; request_hooks[i].name; i++) {
+      apr_array_header_t *hooks = request_hooks[i].get();
+      hook_struct_t *elts = hooks->elts;
+      int j;
+      ap_rprintf(r, "hook %s: ", request_hooks[i].name);
+      for(j = 0; j < hooks->nelts; j++) {
+        ap_rprintf(r,"%02d %s ", elts[j].nOrder, elts[j].szName);
+      }
+      ap_rputs("\n", r);
     }
     return OK;
   }
