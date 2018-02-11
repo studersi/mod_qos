@@ -1,0 +1,74 @@
+# 
+# $Id$
+#
+# QS_ClientEventBlockCount 3 3
+# QS_SetEnvIfStatus        404 QS_Block
+# 
+
+INCLUDE scripts/ports
+
+CLIENT 
+_REQ localhost $QS_PORT_BASE
+__GET /gugus/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "404"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /gugus/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "404"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /gugus/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "404"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /gugus/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3, current=3, age=0|1, c=127.0.0.1"
+_EXEC tail -1 logs/error_log
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+_CLOSE
+
+_SLEEP 1100
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3, current=3, age=1|2, c=127.0.0.1"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 2500
+
+_REQ localhost $QS_PORT_BASE
+__GET /gugus/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "404"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_SLEEP 4500
+
+END

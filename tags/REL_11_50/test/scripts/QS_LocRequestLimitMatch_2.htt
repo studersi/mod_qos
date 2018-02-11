@@ -1,0 +1,30 @@
+#
+# test QS_LocRequestLimitMatch directive
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT 2
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/image.gif HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+CLIENT 1
+_SLEEP 2000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/image.gif HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "custom error page"
+_WAIT
+
+END

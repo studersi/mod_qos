@@ -1,0 +1,55 @@
+#
+# $Id$
+#
+# deny access to clients (clients from "LO" are NOT priviliged)
+#
+
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D geoprivdeny 2>/dev/null 1>/dev/null
+
+CLIENT 9
+
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 500
+
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 2
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+_EXPECT ERROR "Connection reset"
+__GET /cgi100/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "!done"
+#_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoCountryPriv rule: max=10, concurrent connections=.., c=127.0.0.1 country=LO"
+_EXEC tail -1 logs/error_log
+
+END
