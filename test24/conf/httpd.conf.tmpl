@@ -317,6 +317,9 @@ Listen         ##QS_PORT_BASE2##
    Include conf/demo.conf
 
    QS_LocRequestLimitMatch       ^/cgi2/.*   2
+<IfDefine h2>
+   QS_LocKBytesPerSecLimitMatch  ^/limitbs/.*    500
+</IfDefine>
 
    ProxyPass                  /cgi-local !
 

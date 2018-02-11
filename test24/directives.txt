@@ -8,15 +8,15 @@ QS_LocRequestLimitDefault
 + QS_LocRequestLimit
 QS_LocRequestPerSecLimit
 QS_LocKBytesPerSecLimit
-+ QS_LocRequestLimitMatch
++ QS_LocRequestLimitMatch (incl. h2)
 + QS_LocRequestPerSecLimitMatch
-+ QS_LocKBytesPerSecLimitMatch
++ QS_LocKBytesPerSecLimitMatch (incl. h2)
 QS_CondLocRequestLimitMatch
 + QS_EventRequestLimit
 + QS_EventPerSecLimit
 QS_EventKBytesPerSecLimit
 + QS_EventLimitCount
-+ QS_SrvMaxConn
++ QS_SrvMaxConn (incl. h2)
 + QS_SrvMaxConnClose
 + QS_SrvMaxConnPerIP
 QS_SrvMaxConnExcludeIP
@@ -51,7 +51,7 @@ QS_SessionKey
 QS_VipIPHeaderName
 QS_VipUser
 QS_VipIpUser
-+ QS_UserTrackingCookieName
++ QS_UserTrackingCookieName (incl. h2)
 + QS_SetEnvIf
 QS_SetEnvIfQuery
 QS_SetEnvIfParp
@@ -67,7 +67,7 @@ QS_SetEnvResHeaderMatch
 QS_SetEnvRes
 + QS_RedirectIf
 QS_ClientEntries
-QS_ClientPrefer
++QS_ClientPrefer (incl. h2)
 QS_ClientTolerance
 QS_ClientContentTypes
 + QS_ClientEventBlockCount
