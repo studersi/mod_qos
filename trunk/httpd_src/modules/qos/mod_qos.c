@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.49";
+static const char g_revision[] = "11.50";
 
 /************************************************************************
  * Includes
@@ -14364,8 +14364,10 @@ static void qos_register_hooks(apr_pool_t * p) {
   static const char *pressl[] = { "mod_ssl.c", NULL };
   static const char *preconf[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_parp.c", "mod_ssl.c", NULL };
   static const char *post[] = { "mod_setenvif.c", "mod_setenvifplus.c", NULL };
+  static const char *postlog[] = { "mod_logio.c", NULL };
   static const char *parp[] = { "mod_parp.c", NULL };
   static const char *prelast[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_ssl.c", NULL };
+  
   ap_hook_post_config(qos_post_config, preconf, NULL, APR_HOOK_MIDDLE);
 #ifndef QS_HAS_APACHE_PATH
   /* use post config hook only for non-patched Apache server (worker.c/prefork.c) */
@@ -14373,9 +14375,12 @@ static void qos_register_hooks(apr_pool_t * p) {
 #endif
   ap_hook_child_init(qos_child_init, NULL, NULL, APR_HOOK_MIDDLE);
 
-  ap_hook_pre_connection(qos_pre_connection, NULL, pressl, APR_HOOK_FIRST);
+  // before ssl_hook_pre_connection@APR_HOOK_MIDDLE but after logio_pre_conn@APR_HOOK_MIDDLE
+  ap_hook_pre_connection(qos_pre_connection, postlog, pressl, APR_HOOK_MIDDLE);
+  // after ssl_hook_pre_connection@APR_HOOK_MIDDLE (and a many others)
   ap_hook_pre_connection(qos_pre_process_connection, prelast, NULL, APR_HOOK_LAST);
 
+  // be before sp_post_read_request@APR_HOOK_MIDDLE
   ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);
   ap_hook_post_read_request(qos_post_read_request_later, preuid, NULL, APR_HOOK_MIDDLE);
 

@@ -69,4 +69,8 @@ cd ..
 cp ../setenvifplus/httpd_src/modules/metadataplus/mod_setenvifplus.c install/modules
 ./install/bin/apxs -c ./install/modules/mod_setenvifplus.c
 
+cp ../parp/httpd_src/modules/parp/mod_parp.c install/modules
+cp ../parp/httpd_src/modules/parp/mod_parp.h install/modules
+./install/bin/apxs -c ./install/modules/mod_parp.c
+
 echo "END"

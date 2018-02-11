@@ -1,3 +1,7 @@
+Version 11.50
+
+ - Changes pre-connection hook dependency (called later but still before mod_ssl).
+
 Version 11.49
 
  - Adapted connection handling to deal with master/slave connections
