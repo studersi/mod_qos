@@ -51,11 +51,12 @@ _EXPECT . "Service Unavailable"
 _WAIT
 _CLOSE
 _END LOOP
+_SLEEP 100
 
 _EXPECT ERROR "Connection reset by peer"
 _REQ localhost $QS_PORT_BASE
 _CLOSE
-_SLEEP 100
+_SLEEP 200
 _EXPECT EXEC "mod_qos.060.: access denied, QS_ClientEventBlockCount rule: max=20"
 _EXEC tail -6 logs/error_log
 
