@@ -89,7 +89,7 @@ __HTTP/1.1 200 OK
 __Content-Type: text/plain
 __Content-Length: 9
 __
-_SLEEP 1000
+_SLEEP 1050
 __==AS1==
 _CLOSE
 
