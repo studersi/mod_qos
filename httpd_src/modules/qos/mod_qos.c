@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.50";
+static const char g_revision[] = "11.51";
 
 /************************************************************************
  * Includes
@@ -3292,8 +3292,10 @@ static int qos_return_error_andclose(conn_rec *connection, apr_socket_t *socket)
   apr_bucket *e = apr_bucket_pool_create(line, strlen(line), c->pool, c->bucket_alloc);
   apr_bucket_brigade *bb = apr_brigade_create(c->pool, c->bucket_alloc);
 
-  if(qos_is_https && qos_is_https(c)) {
-    c->aborted = 1;   // prevents mod_ssl from crashing
+  c->keepalive = AP_CONN_CLOSE;
+  c->aborted = 1;
+  if(c->cs) {
+    c->cs->state = CONN_STATE_LINGER;
   }
 
   APR_BRIGADE_INSERT_HEAD(bb, e);
@@ -8207,7 +8209,6 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
                    "%s",
                    msg == NULL ? "-" : msg);
       if(!sconf->log_only) {
-        c->keepalive = AP_CONN_CLOSE;
         return qos_return_error_andclose(c, socket);
       }
     }
@@ -8238,7 +8239,6 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
                          pB != NULL ? pB->country : "--");
             QS_INC_EVENT(sconf, 101);
             if(!sconf->log_only) {
-              c->keepalive = AP_CONN_CLOSE;
               return qos_return_error_andclose(c, socket);
             }
           }
@@ -8257,7 +8257,6 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
                      QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         QS_INC_EVENT(sconf, 30);
         if(!sconf->log_only) {
-          c->keepalive = AP_CONN_CLOSE;
           return qos_return_error_andclose(c, socket);
         }
       }
@@ -8296,7 +8295,6 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
           }
         }
         if(!sconf->log_only) {
-          c->keepalive = AP_CONN_CLOSE;
           return qos_return_error_andclose(c, socket);
         }
       } else {
@@ -8408,6 +8406,10 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
         if(!sconf->log_only) {
           apr_table_set(c->notes, QS_BLOCK_SEEN, ""); // supress NullConnection messages
           c->keepalive = AP_CONN_CLOSE;
+          c->aborted = 1;
+          if(c->cs) {
+            c->cs->state = CONN_STATE_LINGER;
+          }
           ret = m_retcode;
         }
       } else {
