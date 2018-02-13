@@ -13,8 +13,8 @@
 # 1  0x00000000005051de in reqtimeout_filter (f=0x7f14380397f0, bb=0x7f142800e140, mode=AP_MODE_GETLINE, block=APR_BLOCK_READ, readbytes=0)
 #    at mod_reqtimeout.c:225
 #
-# Test is used to ensure we don't get discover the
-# same bug in future Apache versions for MPM Worker.
+# Test is used to ensure we don't trap into the same
+# bug in future Apache versions for MPM Worker.
 
 INCLUDE scripts/ports
 
