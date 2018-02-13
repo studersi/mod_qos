@@ -119,6 +119,10 @@ Listen         ##QS_PORT_BASE##
    Protocols h2c http/1.1
 </IfDefine>
 
+<IfDefine Event2429>
+   RequestReadTimeout header=20-40,MinRate=500 body=20,MinRate=500
+</IfDefine>
+
    ProxyRequests              Off
    <Proxy *>
       Order deny,allow
