@@ -43,7 +43,7 @@ _WAIT
 _CLOSE
 _SLEEP 100
 _EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=SlowRequest, max=20, current=20"
-_EXEC tail -1 logs/error_log
+_EXEC tail -2 logs/error_log
 
 _SLEEP 3500
 _END LOOP
@@ -73,6 +73,6 @@ _REQ localhost $QS_PORT_BASE
 _CLOSE
 _SLEEP 100
 _EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=20, current=23"
-_EXEC tail -1 logs/error_log
+_EXEC tail -2 logs/error_log
 
 END

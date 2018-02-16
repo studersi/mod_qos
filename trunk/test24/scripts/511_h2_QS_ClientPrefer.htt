@@ -65,7 +65,7 @@ _REQ server1 SSL:${QS_PORT_BASE2}
 _CLOSE
 _SLEEP 100
 _EXPECT EXEC "mod_qos\(066\): access denied, QS_ClientPrefer rule \(penalty=4 0x00\): max=10, concurrent connections=38"
-_EXEC tail -1 logs/error_log
+_EXEC tail -2 logs/error_log
 END
 
 BLOCK FINALLY

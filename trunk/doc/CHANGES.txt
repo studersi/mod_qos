@@ -1,6 +1,15 @@
+Version 11.51
+
+ - Adds process-connection handler to close the connection in the case
+   the abort by the pre-connect hook was ignored (workaround for bug in
+   Apache 2.4.28 Event MPM ignoring the connection abort) (msg id 167).
+
+ - Uses module name in log index.
+ 
 Version 11.50
 
- - Changes pre-connection hook dependency (called later but still before mod_ssl).
+ - Changes pre-connection hook dependency (called later but still before
+   mod_ssl).
 
 Version 11.49
 
@@ -172,7 +181,7 @@ Version 11.30
 
  - qslogger supports option "-x" (adding a prefix to every message).
 
- - Fixed: calculation of MaxClients for MPM prefork binary (bug reported by
+ - Fixed: calculation of MaxClients for MPM prefork binary (bug reported
    by Fergus - thanks!).
 
 Version 11.29

@@ -62,5 +62,5 @@ _WAIT
 _CLOSE
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(012\): access denied, QS_EventRequestLimit rule: var=\(QS_SrvSerialize\)\(4\)"
-_EXEC tail -1 logs/error_log
+_EXEC tail -2 logs/error_log
 END

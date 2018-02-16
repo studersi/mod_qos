@@ -46,7 +46,7 @@ _EXPECT ERROR "Broken pipe"
 _WAIT
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(030\): access denied, QS_SrvMaxConn rule: max=4, concurrent connections=5"
-_EXEC tail -1 logs/error_log
+_EXEC tail -2 logs/error_log
 
 _SLEEP 1000
 _REQ server1 SSL:$QS_PORT_BASE2

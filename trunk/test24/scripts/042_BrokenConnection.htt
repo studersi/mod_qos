@@ -54,7 +54,7 @@ __GET / HTTP/1.1
 _CLOSE
 _SLEEP 1000
 _EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=20"
-_EXEC tail -1 logs/error_log
+_EXEC tail -2 logs/error_log
 
 END
 
