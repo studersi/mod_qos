@@ -57,7 +57,7 @@ _WAIT
 _CLOSE
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=30, concurrent connections=31"
-_EXEC tail -1 logs/error_log
+_EXEC tail -2 logs/error_log
 
 END
 

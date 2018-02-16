@@ -127,6 +127,8 @@ static const char g_revision[] = "11.51";
 // split linear QS_SrvMaxConnPerIP* entry (conn->conn_ip) search:
 #define QS_MEM_SEG 1
 
+#define QS_CONN_ABORT "mod_qos_connection_aborted"
+
 #ifndef QSLOG_CLID
 #define QSLOG_CLID "mod_qos_user_id"
 #endif
@@ -993,6 +995,10 @@ static int m_qos_cc_partition = QSMOD;
 static qos_unique_id_t m_unique_id;
 static const char qos_basis_64[] =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+
+#ifdef QS_APACHE_24
+APLOG_USE_MODULE(qos);
+#endif
 
 /* mod_parp, forward and optional function */
 static apr_status_t qos_cleanup_conn(void *p);
@@ -3297,6 +3303,7 @@ static int qos_return_error_andclose(conn_rec *connection, apr_socket_t *socket)
   if(c->cs) {
     c->cs->state = CONN_STATE_LINGER;
   }
+  apr_table_set(c->notes, QS_CONN_ABORT, QS_CONN_ABORT);
 
   APR_BRIGADE_INSERT_HEAD(bb, e);
   e = apr_bucket_flush_create(c->bucket_alloc);
@@ -8104,6 +8111,33 @@ static apr_status_t qos_cleanup_conn(void *p) {
 }
 
 /**
+ * handler to close the connection in the case the abort
+ * by the pre-connect hook was ignored (Apache 2.4.28 Event MPM)
+ */
+static int qos_process_connection(conn_rec *connection) {
+#if (AP_SERVER_MINORVERSION_NUMBER == 4)
+#if (AP_SERVER_PATCHLEVEL_NUMBER > 17)
+  if(connection->master) {
+    // skip slave connections / process "real" connections only
+    return DECLINED;
+  }
+#endif
+#endif
+  if(connection->aborted == 1 && apr_table_get(connection->notes, QS_CONN_ABORT)) {
+    if(connection->cs) {
+      connection->cs->state = CONN_STATE_LINGER;
+    }
+    ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, connection->base_server,
+                 QOS_LOG_PFX(167)"closing connection at process connection hook, c=%s",
+                 QS_CONN_REMOTEIP(connection) == NULL ? "-" : 
+                 QS_CONN_REMOTEIP(connection));
+
+    return HTTP_INTERNAL_SERVER_ERROR;
+  }
+  return DECLINED;
+}
+
+/**
  * Connection constructor. Rules that are applied to established connections.
  *
  * @param c
@@ -8235,7 +8269,7 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
                          sconf->log_only ? " (log only)" : "",
                          sconf->geo_limit,
                          all_connections,
-                         QS_CONN_REMOTEIP(c),
+                         QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c),
                          pB != NULL ? pB->country : "--");
             QS_INC_EVENT(sconf, 101);
             if(!sconf->log_only) {
@@ -8410,6 +8444,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
           if(c->cs) {
             c->cs->state = CONN_STATE_LINGER;
           }
+          apr_table_set(c->notes, QS_CONN_ABORT, QS_CONN_ABORT);
           ret = m_retcode;
         }
       } else {
@@ -10233,7 +10268,7 @@ static void qos_child_init(apr_pool_t *p, server_rec *bs) {
   }
   if(!sconf->act->child_init) {
     sconf->act->child_init = 1;
-    /* propagate mutex to child process (required for certaing platforms) */
+    /* propagate mutex to child process (required by some platforms) */
     apr_global_mutex_child_init(&sconf->act->lock, sconf->act->lock_file, p);
   }
 #if APR_HAS_THREADS
@@ -14381,6 +14416,8 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_pre_connection(qos_pre_connection, postlog, pressl, APR_HOOK_MIDDLE);
   // after ssl_hook_pre_connection@APR_HOOK_MIDDLE (and a many others)
   ap_hook_pre_connection(qos_pre_process_connection, prelast, NULL, APR_HOOK_LAST);
+
+  ap_hook_process_connection(qos_process_connection, NULL, NULL, APR_HOOK_MIDDLE);
 
   // be before sp_post_read_request@APR_HOOK_MIDDLE
   ap_hook_post_read_request(qos_post_read_request, NULL, post, APR_HOOK_MIDDLE);

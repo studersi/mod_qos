@@ -1139,7 +1139,7 @@ fi
 
 # log messages
 eLogs=`ls logs/error*_log*`
-for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "mod_qos()" | grep -v "(02" | grep -v "(051" | grep -v "(045" | grep -v "(053" | grep -v "(036" | grep -v "(035" | grep -v "(037" | grep -v "(038" | grep -v "(062" | grep -v "(166" | grep -v "(071" | grep -v "(080" | grep -v "(081" | grep -v "(082" | grep -v "(083" | grep -v 'mod_qos(%03d)'`; do
+for E in `strings ../httpd/modules/qos/.libs/mod_qos.so | grep "mod_qos(" | awk -F':' '{print $1}' | sort -u | grep -v "(00" | grep -v "mod_qos()" | grep -v "(02" | grep -v "(051" | grep -v "(045" | grep -v "(053" | grep -v "(036" | grep -v "(035" | grep -v "(037" | grep -v "(038" | grep -v "(062" | grep -v "(166" | grep -v "(167" | grep -v "(071" | grep -v "(080" | grep -v "(081" | grep -v "(082" | grep -v "(083" | grep -v 'mod_qos(%03d)'`; do
     CO=0
     for L in $eLogs; do
 	C=`grep -c $E $L`

@@ -34,7 +34,11 @@ _CLOSE
 
 _SLEEP 200
 _EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=20, current=20"
-_EXEC tail -1 logs/error_log
+_EXEC tail -2 logs/error_log
+
+_EXPECT EXEC "!system.load"
+_EXPECT EXEC "Connection reset by peer"
+_EXEC ./qosauto.sh
 
 _SLEEP 33000
 
