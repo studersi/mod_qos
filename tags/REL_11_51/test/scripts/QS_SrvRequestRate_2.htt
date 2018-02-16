@@ -1,0 +1,117 @@
+#
+# $Id$
+#
+# slow post data, second request on the same connection
+#
+
+INCLUDE scripts/ports
+
+SET LN="1234567890 1234567890 1234567890 1234567890 1234567890 1234567890 1234567890 1234567890"
+
+CLIENT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__POST /index.html HTTP/1.1
+__Host: localhost
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: 1012
+__
+__==START==
+__$LN
+_FLUSH
+_SLEEP 3000
+__$LN
+_FLUSH
+_SLEEP 7000
+# 500/400 depends on the apache version
+_EXPECT . "(500 Internal Server Error)|(400 Bad Request)"
+_WAIT
+
+_CLOSE
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__POST /index.html HTTP/1.1
+__Host: localhost
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: 1012
+__
+__==START==
+__$LN
+_FLUSH
+_SLEEP 3000
+__$LN
+_FLUSH
+_SLEEP 7000
+__more
+_EXPECT ERROR "connection abort"
+_FLUSH
+
+
+END
+
+# a second client operates normal
+CLIENT
+
+_LOOP 12
+_REQ server1 SSL:$QS_PORT_BASE2
+__POST /index.html HTTP/1.1
+__Host: localhost
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__zzzzzzzzz
+__zzzzzzzzz
+__zzzzzzzzz
+__zzzzzzzzz
+__zzzzzzzzz
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_SLEEP 1000
+
+_END LOOP
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/error_log HTTP/1.1
+__Host: localhost
+__Connection: Mozilla
+__
+_EXPECT . "mod_qos.034.: access denied, QS_SrvMinDataRate rule .in."
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+_PIPE
+_EXEC tail -2 logs/error_log
+
+END

@@ -1,0 +1,55 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/hostheaderfilter HTTP/1.1
+__Host: kolibry-123.mmmme.ch:$QS_PORT_BASE
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC " mod_qos\(143\): access denied, HTTP Host header filter"
+_EXEC  tail -1 logs/error_log
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/hostheaderfilter HTTP/1.1
+__Host: 127.0.0.1:xx
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'Host: 127.0.0.1:xx'"
+_EXEC  tail -2 logs/error_log
+_EXPECT EXEC "mod_qos\(143\): access denied, HTTP Host header filter"
+_EXEC  tail -1 logs/error_log
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/hostheaderfilter HTTP/1.1
+__Host: 127.0.0.1:$QS_PORT_BASE
+__
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+END
+
+SERVER $QS_PORT_BASE6
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Server: myApache
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_CLOSE
+
+END

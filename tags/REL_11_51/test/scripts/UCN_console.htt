@@ -1,0 +1,464 @@
+#
+# $Id$
+#
+# QS_ClientIpFromHeader        Y-Forwarded-For
+# 
+# QS_ClientEntries             100
+# QS_ClientEventLimitCount     10 5        QS_Limit
+# SetEnvIfPlus Request_Query   id=([0-9]+) QS_Limit=$1
+#
+# SetEnvIfPlus Request_Query   product=([0-9]+) QS_LimitSP=$1
+# QS_ClientEventLimitCount     10 4        QS_LimitSP
+# 
+# ErrorLog                     "|##ROOT##/../util/src/qsexec -e \'mod_qos.067.: access denied, QS_ClientEventLimitCount rule: event=(.*), max=([0-9]+), current=([0-9]+), age=0, c=(.*), id=\' -p \'##ROOT##/sync.sh $1 $2 $3 $4\' |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/error_log"
+#
+# => adds ~90 and ~100 clients and verifies they are availabe
+#    within the client store
+# => manually locks a client (even before it performs any requests)
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.3
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_LOOP 2
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=1 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: fc00::112
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_END LOOP
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?product=1 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: fc00::112
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=fc00::112 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=2/5"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=fc00::112&event=gugus HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=0/0"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=limit&address=fc00::112&event=gugus HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=0/0"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=fc00::112&event=QS_Limit HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=2/5"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=fc00::112&event=gaga HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=0/0"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=fc00::112&event=QS_LimitSP HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=1/4"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=fc00::112&event=QS_Limit HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=2/5"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=unlimit&address=fc00::112&event=QS_Limit HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=0/0"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=fc00::112&event=QS_Limit HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=0/0"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=limit&address=fc00::112&event=QS_LimitSP HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=1012/."
+_WAIT
+_CLOSE
+
+_SET counter=7
+_LOOP 90
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.${counter}
+__User-Agent: Mozilla 127.0.0.${counter}
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+_OP $counter ADD 1 counter
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=*&event=QS_LimitSP HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "127.0.0.1 "
+_EXPECT . "127.0.0.3 "
+_EXPECT . "127.0.0.7 "
+_EXPECT . "127.0.0.8 "
+_EXPECT . "127.0.0.9 "
+_EXPECT . "127.0.0.10 "
+_EXPECT . "127.0.0.11 "
+_EXPECT . "127.0.0.94 "
+_EXPECT . "127.0.0.95 "
+_EXPECT . "127.0.0.96 "
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=1012/."
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=* HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "127.0.0.1 "
+_EXPECT . "127.0.0.3 "
+_EXPECT . "127.0.0.7 "
+_EXPECT . "127.0.0.8 "
+_EXPECT . "127.0.0.9 "
+_EXPECT . "127.0.0.10 "
+_EXPECT . "127.0.0.11 "
+_EXPECT . "127.0.0.94 "
+_EXPECT . "127.0.0.95 "
+_EXPECT . "127.0.0.96 "
+_EXPECT . "fc00::112 vip=no lowprio=no block=0/0 limit=0/0"
+_WAIT
+_CLOSE
+
+# we store only 100 entries
+# let the old entries expire...
+_SLEEP 2000
+# ...and add new 100 new entries
+_SET counter=90
+_LOOP 100
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.2.${counter}
+__User-Agent: Mozilla 127.0.2.${counter}
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+_OP $counter ADD 1 counter
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=search&address=* HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "!127.0.0.3 "
+_EXPECT . "!127.0.0.7 "
+_EXPECT . "!127.0.0.8 "
+_EXPECT . "!127.0.0.9 "
+_EXPECT . "!127.0.0.10 "
+_EXPECT . "!127.0.0.11 "
+_EXPECT . "!127.0.0.95 "
+_EXPECT . "!127.0.0.96 "
+_EXPECT . "127.0.2.90 "
+_EXPECT . "127.0.2.91 "
+_EXPECT . "127.0.2.96 "
+_EXPECT . "127.0.2.180 "
+_EXPECT . "127.0.2.181 "
+_EXPECT . "127.0.2.182 "
+_EXPECT . "127.0.2.185 "
+_EXPECT . "127.0.2.186 "
+_EXPECT . "127.0.2.188 "
+_EXPECT . "127.0.2.189 "
+_WAIT
+_CLOSE
+
+_LOOP 9
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=1 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 182.12.33.2
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_END LOOP
+
+# this request triggers the sync to the second Apache instance:
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=1 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 182.12.33.2
+__User-Agent: Mozilla
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "!this is the root index.html"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=10, age=0|1, c=182.12.33.2"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 1100
+# => don't sync again
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 182.12.33.2
+__User-Agent: Mozilla
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "!this is the root index.html"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=10, age=1|2, c=182.12.33.2"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.3.3
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=limit&address=127.0.3.3 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "127.0.3.3 vip=no lowprio=.* block=0/0 limit=1010/5"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.3.3
+__User-Agent: Mozilla
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "!this is the root index.html"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=10, current=1010, age=0|1, c=127.0.3.3"
+_EXEC tail -1 logs/error_log
+
+#_LOOP 20
+#_REQ localhost $QS_PORT_BASE
+#__GET /index.html?id=1 HTTP/1.1
+#__Host: localhost
+#__Y-Forwarded-For: 127.0.3.99
+#__User-Agent: Mozilla
+#__
+##_EXPECT . "500 Internal Server Error"
+##_EXPECT . "!this is the root index.html"
+#_WAIT
+#_CLOSE
+#_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=unlimit&address=127.0.3.3 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "127.0.3.3 vip=no lowprio=.* block=0/0 limit=0/0"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.3.3
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE6
+__GET /test HTTP/1.1
+__Host: httest
+__
+_EXPECT . "AS1-OK"
+_WAIT
+_CLOSE
+
+# inclimit
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=inclimit&address=194.31.217.21&event=QS_Limit HTTP/1.1
+__Host: httest
+__Req: limit 1
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=1/5"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?address=194.31.217.21&action=inclimit&event=QS_Limit HTTP/1.1
+__Host: httest
+__Req: limit 2
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=2/5"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /console?address=194.31.217.21&action=inclimit&event=QS_Limit HTTP/1.1
+__Host: httest
+__Req: limit 3
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=3/5"
+_WAIT
+_CLOSE
+
+_SLEEP 1200
+_REQ localhost $QS_PORT_BASE
+__GET /console?address=194.31.217.21&action=inclimit&event=QS_Limit HTTP/1.1
+__Host: httest
+__Req: limit 4
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=4/[34]"
+_WAIT
+_CLOSE
+
+_SLEEP 6000
+_REQ localhost $QS_PORT_BASE
+__GET /console?action=inclimit&address=194.31.217.21&event=QS_Limit HTTP/1.1
+__Host: httest
+__Req: limit 0
+__Y-Forwarded-For: 127.0.0.1
+__
+_EXPECT . "194.31.217.21 vip=no lowprio=no block=0/0 limit=1/5"
+_WAIT
+_CLOSE
+
+END
+
+# call by qsexec resp. sync.sh shows how to propagte events
+# to other Apache instances:
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "GET /console\?action=limit&address=182.12.33.2&event=QS_Limit HTTP/1.1"
+_EXPECT . "User-Agent: Wget"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__182.12.33.2 vip=no lowprio=no block=0/0 limit=1010/5
+_CLOSE
+
+# ensure we got only one sync call
+_RES
+_EXPECT . "GET /test HTTP/1.1"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__AS1-OK
+
+END

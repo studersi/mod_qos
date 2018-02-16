@@ -1,0 +1,176 @@
+#
+# $Header$
+#
+# mod_qos test configuration using mod_proxy
+#
+# See http://mod-qos.sourceforge.net/ for further
+# details about mod_qos.
+#
+
+ServerName              127.0.0.1
+StartServers            1
+ServerLimit             1
+MinSpareThreads         5
+MaxSpareThreads         16
+ThreadsPerChild         16
+MaxClients              16
+MaxRequestsPerChild     0
+
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/../test/htdocs/demo
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept.lock
+Timeout                 30
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        5
+
+LimitRequestFields      30
+LimitRequestLine        7168
+QS_LimitRequestBody     102400
+QS_EnableInternalIPSimulation off
+
+Options                 FollowSymLinks Indexes Includes
+DefaultType             text/plain
+AddType                 text/html .shtml
+AddOutputFilter         INCLUDES .shtml
+
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %D %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e #%P"
+
+LogLevel                warn
+ErrorLog                ##ROOT##/logs/error_log
+PidFile                 ##ROOT##/logs/apache.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+QS_ErrorPage            /error-docs/error.html
+
+TypesConfig             ../test/conf/mime.types
+LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
+LoadModule              unique_id_module ##ROOT##/../httpd/modules/metadata/.libs/mod_unique_id.so
+LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
+LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+LoadModule              parp_module ##ROOT##/../test/libexec/mod_parp.so
+LoadModule              setenvifplus_module ##ROOT##/../test/libexec/mod_setenvifplus.so
+LoadModule              logio_module ##ROOT##/../httpd/modules/loggers/.libs/mod_logio.so
+
+SSLProtocol             all -SSLv2
+SSLCipherSuite          RC4-SHA:RC4-MD5:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!SSLv2:!EXP
+SSLSessionCacheTimeout  864000
+SSLMutex                file:##ROOT##/logs/ssl_mutex
+SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
+SSLRandomSeed           startup builtin
+
+<IfDefine 03loic>
+QS_SrvMinDataRate       120 1500 10
+QS_SrvMaxConnPerIP      30
+QS_ClientEventBlockCount 20 300
+QS_SetEnvIfStatus 400   QS_Block
+QS_SetEnvIfStatus 401   QS_Block
+QS_SetEnvIfStatus 403   QS_Block
+QS_SetEnvIfStatus 404   QS_Block
+QS_SetEnvIfStatus 405   QS_Block
+QS_SetEnvIfStatus 406   QS_Block
+QS_SetEnvIfStatus 408   QS_Block
+QS_SetEnvIfStatus 411   QS_Block
+QS_SetEnvIfStatus 413   QS_Block
+QS_SetEnvIfStatus 414   QS_Block
+QS_SetEnvIfStatus 417   QS_Block
+QS_SetEnvIfStatus 500   QS_Block
+QS_SetEnvIfStatus 503   QS_Block
+QS_SetEnvIfStatus 505   QS_Block
+</IfDefine>
+
+<IfDefine 04session>
+QS_ClientEventLimitCount 200 300
+QS_SetEnvResHeaderMatch  Set-Cookie SESSIONID=
+QS_SetEnvIf              Set-Cookie !QSNOT QS_Limit=yes
+</IfDefine>
+
+<IfDefine 05bruteforce>
+QS_ClientEventLimitCount 100 300
+QS_SetEnvIfStatus 400   QS_Limit
+QS_SetEnvIfStatus 401   QS_Limit
+QS_SetEnvIfStatus 403   QS_Limit
+QS_SetEnvIfStatus 404   QS_Limit
+QS_SetEnvIfStatus 405   QS_Limit
+QS_SetEnvIfStatus 406   QS_Limit
+QS_SetEnvIfStatus 408   QS_Limit
+QS_SetEnvIfStatus 411   QS_Limit
+QS_SetEnvIfStatus 413   QS_Limit
+QS_SetEnvIfStatus 414   QS_Limit
+QS_SetEnvIfStatus 417   QS_Limit
+QS_SetEnvIfStatus 500   QS_Limit
+QS_SetEnvIfStatus 503   QS_Limit
+QS_SetEnvIfStatus 505   QS_Limit
+</IfDefine>
+
+Listen                  server1:##QS_PORT_BASE##
+<VirtualHost server1:##QS_PORT_BASE##>
+   SSLCertificateKeyFile  ../test/ssl/key.pem
+   SSLCertificateFile     ../test/ssl/cert.pem
+   SSLVerifyDepth         10
+   SSLEngine              on
+   ServerName             server1
+
+   TransferLog            "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -f -b 103833600"
+   CustomLog              "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/stat.csv -f ISBDUQC -c ##ROOT##/conf/applications" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
+   CustomLog              "|##ROOT##/../util/src/qssign -e -s password |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log_signed -z -g 2 -f -b 103833600" "{ \"@timestamp\":\"%{%Y-%m-%dT%H:%M:%S%z}t\", \"id\":\"%{UNIQUE_ID}e\", \"clientip\":\"%a\", \"duration\":%{ms}T, \"status\":%>s, \"request\":\"%U%q\", \"urlpath\":\"%U\", \"urlquery\":\"%q\", \"bytesout\":%O, \"bytesin\":%I, \"method\":\"%m\", \"site\":\"%v\", \"referer\":\"%{Referer}i\", \"useragent\":\"%{User-Agent}i\", \"contentIn\":\"%{Content-Type}i\", \"contentOut\":\"%{Content-Type}o\" }"
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /test !
+   ProxyPass                  /qos !
+   ProxyPass                  /console !
+   ProxyPass                  /a http://server1:##QS_PORT_BASE1##/a retry=0
+   ProxyPass                  /b http://server1:##QS_PORT_BASE1##/b retry=0
+   ProxyPass                  /c http://server1:##QS_PORT_BASE1##/c retry=0
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+<IfDefine 01slow>
+   # max 8 (50%) concurrent requests per application
+   QS_LocRequestLimit /  8
+   QS_LocRequestLimit /a 8
+   QS_LocRequestLimit /b 8
+   QS_LocRequestLimit /c 8
+</IfDefine>
+
+<IfDefine 02download>
+   # max 10 mbps
+   QS_LocKBytesPerSecLimitMatch "\.jpg$" 1280
+   QS_LocRequestLimitMatch "\.jpg$" 15
+   QS_LocKBytesPerSecLimitMatch "\.iso$" 1280
+   QS_LocRequestLimitMatch "\.iso$" 15
+</IfDefine>
+
+<IfDefine 05bruteforce>
+   <Location /c/login.cgi>
+        QS_SetEnvIfResBody "Login Failed" QS_Limit
+   </Location>
+</IfDefine>
+
+   <Location /qos>
+        SetHandler qos-viewer
+   </Location>
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
+
+   <Location /console>
+       SetHandler qos-console
+   </Location>
+
+</VirtualHost>

@@ -1,0 +1,117 @@
+#
+#  QS_LocRequestLimit         /echo           3
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT 3
+_REQ localhost $QS_PORT_BASE
+__GET /websocket.html HTTP/1.1
+__Host: localhost:${QS_PORT_BASE}
+__User-Agent: htt
+__
+_EXPECT . "WebSocket Echo"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /echo HTTP/1.1
+__Host: localhost:${QS_PORT_BASE}
+__User-Agent: htt
+__Sec-WebSocket-Version: 13
+__Sec-WebSocket-Key: qdAKkP/d7xGtDjYN4Mufdg==
+__Connection: keep-alive, Upgrade
+__Upgrade: websocket
+__
+_EXPECT . "101 Switching Protocols"
+_WAIT 0
+_SLEEP 500
+_WS:SEND FIN,TEXT AUTO "hi mod_qos" 0x12345678
+_EXPECT . "hi mod_qos"
+_WS:RECV OP LEN
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /mirror HTTP/1.1
+__Host: localhost:${QS_PORT_BASE}
+__User-Agent: htt
+__Sec-WebSocket-Version: 13
+__Sec-WebSocket-Key: qdAKkP/d7xGtDjYN4Mufdg==
+__Connection: keep-alive, Upgrade
+__Upgrade: websocket
+__
+_EXPECT . "101 Switching Protocols"
+_WAIT 0
+_SLEEP 500
+_WS:SEND FIN,TEXT AUTO "hi mod_qos" 0x12345678
+_EXPECT . "soq_dom ih"
+_WS:RECV OP LEN
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 200
+_REQ localhost $QS_PORT_BASE
+__GET /websocket.html HTTP/1.1
+__Host: localhost:${QS_PORT_BASE}
+__User-Agent: htt
+__
+_EXPECT . "WebSocket Echo"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /echo HTTP/1.1
+__Host: localhost:${QS_PORT_BASE}
+__User-Agent: htt
+__Sec-WebSocket-Version: 13
+__Sec-WebSocket-Key: qdAKkP/d7xGtDjYN4Mufdg==
+__Connection: keep-alive, Upgrade
+__Upgrade: websocket
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC " mod_qos\(010\): access denied, QS_LocRequestLimit. rule: /echo\(3\), concurrent requests=4"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 500
+_REQ localhost $QS_PORT_BASE
+__GET /echo HTTP/1.1
+__Host: localhost:${QS_PORT_BASE}
+__User-Agent: htt
+__Sec-WebSocket-Version: 13
+__Sec-WebSocket-Key: qdAKkP/d7xGtDjYN4Mufdg==
+__Connection: keep-alive, Upgrade
+__Upgrade: websocket
+__
+_EXPECT . "101 Switching Protocols"
+_WAIT 0
+_SLEEP 500
+_WS:SEND FIN,TEXT AUTO "hi mod_qos" 0x12345678
+_EXPECT . "hi mod_qos"
+_WS:RECV OP LEN
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /mirror HTTP/1.1
+__Host: localhost:${QS_PORT_BASE}
+__User-Agent: htt
+__Sec-WebSocket-Version: 13
+__Sec-WebSocket-Key: qdAKkP/d7xGtDjYN4Mufdg==
+__Connection: keep-alive, Upgrade
+__Upgrade: websocket
+__
+_EXPECT . "101 Switching Protocols"
+_WAIT 0
+_SLEEP 100
+_WS:SEND FIN,TEXT AUTO "hi mod_qos" 0x12345678
+_EXPECT . "soq_dom ih"
+_WS:RECV OP LEN
+_CLOSE
+
+END
