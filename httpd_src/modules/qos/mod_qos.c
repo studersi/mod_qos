@@ -320,6 +320,11 @@ typedef struct {
   unsigned long start;
   unsigned long end;
   char country[3];
+} qos_geo_entry_t;
+
+typedef struct {
+  qos_geo_entry_t *data;
+  int size;
 } qos_geo_t;
 
 typedef struct {
@@ -813,7 +818,6 @@ typedef struct {
   int cc_tolerance_min;       /* GLOBAL ONLY */
   int qs_req_rate_tm;         /* GLOBAL ONLY */
   qos_geo_t *geodb;           /* GLOBAL ONLY */
-  int geodb_size;             /* GLOBAL ONLY */
   int geo_limit;              /* GLOBAL ONLY */
   apr_table_t *geo_priv;      /* GLOBAL ONLY */
   qs_ip_type_e ip_type;       /* GLOBAL ONLY */
@@ -2961,7 +2965,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
  * @param errors Number of errors
  * @param Array with all enties
  */
-static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, 
+static qos_geo_entry_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, 
                               char **msg, int *errors) {
 #ifdef AP_REGEX_H
   ap_regmatch_t ma[AP_MAX_REG_MATCH];
@@ -2970,9 +2974,9 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size,
   regmatch_t ma[AP_MAX_REG_MATCH];
   regex_t *preg;
 #endif
-  qos_geo_t *geo = NULL;
-  qos_geo_t *g = NULL;
-  qos_geo_t *last = NULL;
+  qos_geo_entry_t *geo = NULL;
+  qos_geo_entry_t *g = NULL;
+  qos_geo_entry_t *last = NULL;
   int lines = 0;
   char line[HUGE_STRING_LEN];
   FILE *file;
@@ -3007,7 +3011,7 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size,
     }
   }
   *size = lines;
-  geo = apr_pcalloc(pool, sizeof(qos_geo_t) * lines);
+  geo = apr_pcalloc(pool, sizeof(qos_geo_entry_t) * lines);
   g = geo;
   fseek(file, 0, SEEK_SET);
   lines = 0;
@@ -6689,7 +6693,7 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
  */
 static int qos_geo_comp(const void *_pA, const void *_pB) {
   unsigned long *pA = (unsigned long *)_pA;
-  qos_geo_t *pB = (qos_geo_t *)_pB;
+  qos_geo_entry_t *pB = (qos_geo_entry_t *)_pB;
   unsigned long search = *pA;
   if((search >= pB->start) && (search <= pB->end)) return 0;
   if(search > pB->start) return 1;
@@ -8249,10 +8253,10 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
     /* Geo */
     if(sconf->geodb) {
       unsigned long ip = qos_geo_str2long(c->pool, QS_CONN_REMOTEIP(c));
-      qos_geo_t *pB = bsearch(&ip,
-                              sconf->geodb,
-                              sconf->geodb_size,
-                              sizeof(qos_geo_t),
+      qos_geo_entry_t *pB = bsearch(&ip,
+                              sconf->geodb->data,
+                              sconf->geodb->size,
+                              sizeof(qos_geo_entry_t),
                               qos_geo_comp);
       if(pB) {
         apr_table_set(c->notes, QS_COUNTRY, pB->country);
@@ -8561,10 +8565,10 @@ static int qos_post_read_request(request_rec *r) {
       if(forwardedfor) {
         unsigned long ip = qos_geo_str2long(r->pool, forwardedfor);
         if(ip) {
-          qos_geo_t *pB = bsearch(&ip,
-                                  sconf->geodb,
-                                  sconf->geodb_size,
-                                  sizeof(qos_geo_t),
+          qos_geo_entry_t *pB = bsearch(&ip,
+                                  sconf->geodb->data,
+                                  sconf->geodb->size,
+                                  sizeof(qos_geo_entry_t),
                                   qos_geo_comp);
           if(pB) {
             country = apr_pstrdup(r->pool, pB->country);
@@ -11323,7 +11327,6 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->cc_tolerance = atoi(QOS_CC_BEHAVIOR_TOLERANCE_STR);
   sconf->qs_req_rate_tm = QS_REQ_RATE_TM;
   sconf->geodb = NULL;
-  sconf->geodb_size = 0;
   sconf->geo_limit = -1;
   sconf->geo_priv = apr_table_make(p, 20);
   sconf->qslog_p = NULL;
@@ -11421,7 +11424,6 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->cc_tolerance = b->cc_tolerance;
   o->qs_req_rate_tm = b->qs_req_rate_tm;
   o->geodb = b->geodb;
-  o->geodb_size = b->geodb_size;
   o->geo_limit = b->geo_limit;
   o->geo_priv = b->geo_priv;
   o->qslog_p = b->qslog_p;
@@ -13238,14 +13240,17 @@ const char *qos_geodb_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   char *msg = NULL;
   char *path = NULL;
   int errors = 0;
+  qos_geo_t *geodb = apr_pcalloc(cmd->pool, sizeof(qos_geo_t));
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
     return err;
   }
+  
   path = ap_server_root_relative(cmd->pool, arg1);
-  sconf->geodb = qos_loadgeo(cmd->pool, path, &sconf->geodb_size,
-                             &msg, &errors);
-  if(sconf->geodb == NULL || msg != NULL) {
+  sconf->geodb = geodb;
+  sconf->geodb->data = qos_loadgeo(cmd->pool, path, &sconf->geodb->size,
+                                   &msg, &errors);
+  if(sconf->geodb->data == NULL || msg != NULL) {
     return apr_psprintf(cmd->pool, "%s: failed to load the database: %s"
                         " (total %d errors)",
                         cmd->directive->directive,
