@@ -79,7 +79,7 @@ QS_ClientEventPerSecLimit
 QS_ClientEventRequestLimit
 + QS_ClientSerialize
 QS_ClientIpFromHeader
-QS_ClientGeoCountryDB
++ QS_ClientGeoCountryDB
 QS_ClientGeoCountryPriv
 + QS_ErrorPage
 + QS_ErrorResponseCode
