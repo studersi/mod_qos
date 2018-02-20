@@ -323,8 +323,10 @@ typedef struct {
 } qos_geo_entry_t;
 
 typedef struct {
-  qos_geo_entry_t *data;
-  int size;
+  qos_geo_entry_t *data; // fist element
+  int size;              // number of elements
+  int max;               // limit (allocated memory)
+  const char *path;
 } qos_geo_t;
 
 typedef struct {
@@ -2959,14 +2961,13 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
 /**
  * Loads the geo database. See QS_GEO_PATTERN about the file format.
  * @param pool To allocate memory from
- * @param db Path to the database file (CSV)
- * @param size Number of entries in the db (size of the returned array)
+ * @param geodb Data structore to initialize
  * @param msg Error message if something went wrong while loading the db
  * @param errors Number of errors
- * @param Array with all enties
+ * @return APR_SUCCESS if data could be loaded resp. lines have been counted
  */
-static qos_geo_entry_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, 
-                              char **msg, int *errors) {
+static apr_status_t qos_loadgeo(apr_pool_t *pool, qos_geo_t *geodb,
+                                char **msg, int *errors) {
 #ifdef AP_REGEX_H
   ap_regmatch_t ma[AP_MAX_REG_MATCH];
   ap_regex_t *preg;
@@ -2974,13 +2975,13 @@ static qos_geo_entry_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size,
   regmatch_t ma[AP_MAX_REG_MATCH];
   regex_t *preg;
 #endif
-  qos_geo_entry_t *geo = NULL;
-  qos_geo_entry_t *g = NULL;
+  qos_geo_entry_t *entry = NULL;
   qos_geo_entry_t *last = NULL;
+
   int lines = 0;
   char line[HUGE_STRING_LEN];
   FILE *file;
-  *size = 0;
+
 #ifdef AP_REGEX_H
   preg = ap_pregcomp(pool, QS_GEO_PATTERN, AP_REG_EXTENDED);
 #else
@@ -2991,15 +2992,18 @@ static qos_geo_entry_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size,
     *msg = apr_pstrdup(pool, "failed to compile regular"
                        " expression "QS_GEO_PATTERN);
     (*errors)++;
-    return NULL;
+    return APR_INCOMPLETE;
   }
-  file = fopen(db, "r");
+  
+  file = fopen(geodb->path, "r");
   if(!file) {
     *msg = apr_psprintf(pool, "could not open file %s (%s)",
-                        db, strerror(errno));
+                        geodb->path, strerror(errno));
     (*errors)++;
-    return NULL;
+    return APR_INCOMPLETE;
   }
+
+  // check syntax and determine required memory size
   while(fgets(line, sizeof(line), file) != NULL) {
     if(strlen(line) > 0) {
       if(ap_regexec(preg, line, 0, NULL, 0) == 0) {
@@ -3010,9 +3014,16 @@ static qos_geo_entry_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size,
       }
     }
   }
-  *size = lines;
-  geo = apr_pcalloc(pool, sizeof(qos_geo_entry_t) * lines);
-  g = geo;
+  if(*errors != 0) {
+    return APR_INCOMPLETE;
+  }
+  
+  geodb->size = lines;
+  geodb->max = geodb->size;
+  geodb->data = apr_pcalloc(pool, sizeof(qos_geo_entry_t) * geodb->max);
+
+  // load the file into the memory
+  entry = geodb->data;
   fseek(file, 0, SEEK_SET);
   lines = 0;
   while(fgets(line, sizeof(line), file) != NULL) {
@@ -3022,23 +3033,28 @@ static qos_geo_entry_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size,
         line[ma[1].rm_eo] = '\0';
         line[ma[2].rm_eo] = '\0';
         line[ma[3].rm_eo] = '\0';
-        g->start = atoll(&line[ma[1].rm_so]);
-        g->end = atoll(&line[ma[2].rm_so]);
-        strncpy(g->country, &line[ma[3].rm_so], 2);
+        entry->start = atoll(&line[ma[1].rm_so]);
+        entry->end = atoll(&line[ma[2].rm_so]);
+        strncpy(entry->country, &line[ma[3].rm_so], 2);
         if(last) {
-          if(g->start < last->start) {
-            *msg = apr_psprintf(pool, "wrong order/lines"
-                                " not sorted (line %d)", lines);
+          if(entry->start < last->start) {
+            *msg = apr_psprintf(pool, "wrong order/lines not sorted (line %d)",
+                                lines);
             (*errors)++;
           }
         }
-        last = g;
-        g++;
+        last = entry;
+        entry++;
       }
     }
   }
+
   fclose(file);
-  return geo;
+  if(*errors == 0) {
+    return APR_SUCCESS;
+  } else {
+    return APR_INCOMPLETE;
+  }
 }
 
 /**
@@ -13238,7 +13254,6 @@ const char *qos_geodb_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *msg = NULL;
-  char *path = NULL;
   int errors = 0;
   qos_geo_t *geodb = apr_pcalloc(cmd->pool, sizeof(qos_geo_t));
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
@@ -13246,17 +13261,19 @@ const char *qos_geodb_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
     return err;
   }
   
-  path = ap_server_root_relative(cmd->pool, arg1);
   sconf->geodb = geodb;
-  sconf->geodb->data = qos_loadgeo(cmd->pool, path, &sconf->geodb->size,
-                                   &msg, &errors);
-  if(sconf->geodb->data == NULL || msg != NULL) {
+  sconf->geodb->data = NULL;
+  sconf->geodb->path = ap_server_root_relative(cmd->pool, arg1);
+  sconf->geodb->size = 0;
+
+  if(qos_loadgeo(cmd->pool, sconf->geodb, &msg, &errors) != APR_SUCCESS) {
     return apr_psprintf(cmd->pool, "%s: failed to load the database: %s"
                         " (total %d errors)",
                         cmd->directive->directive,
                         msg ? msg : "-",
                         errors);
   }
+  
   return NULL;
 }
 
