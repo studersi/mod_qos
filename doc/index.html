@@ -2496,15 +2496,15 @@ For more information about how mod_qos can help you in such situations, see the 
 # maximum number of active TCP connections is limited to 896 (limited
 # by the available memory, adjust the settings according to the used
 # hardware):
-MaxClients               896
+MaxClients              896
 
 # idle timeout:
-Timeout                  10
+Timeout                   5
 
 # keep alive (for up to 85% of all connections):
 KeepAlive                on
-MaxKeepAliveRequests     60
-KeepAliveTimeout         3
+MaxKeepAliveRequests     30
+KeepAliveTimeout          3
 <a href="#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a>       85%
 
 # name of the HTTP response header which marks preferred clients (this
