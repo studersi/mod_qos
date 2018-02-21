@@ -54,20 +54,22 @@ static const char revision[] = "$Id$";
 #include "qs_apo.h"
 
 #define SEQDIG "12"
+#define QS_END   "qssign---end-of-data"
+#define QS_START "qssign---------start"
 
-#define QS_END "qssign---end-of-data"
-
-static const char *m_fmt = "";
+static const char *m_start_fmt = "";
+static const char *m_end_fmt = "";
 static long m_nr = 1;
 static int  m_logend = 0;
-static void (*m_end)(const char *) = NULL;
+static void (*m_end)(const char *, int) = NULL;
 static int m_end_pos = 0;
 static const char *m_sec = NULL;
 static const EVP_MD *m_evp;
 static const pcre *m_filter = NULL;
 
 typedef struct {
-  const char* fmt;
+  const char* start_fmt;
+  const char* end_fmt;
   const char* pattern;
   const char* test;
 } qos_p_t;
@@ -76,21 +78,25 @@ typedef struct {
 
 static const qos_p_t pattern[] = {
   {
+    "%s | INFO  | "QS_START,
     "%s | INFO  | "QS_END,
     "^[0-9]{4}[-][0-9]{2}[-][0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}[ ]+[|][ ]+"severity"[ ]+[|][ ]+[a-zA-Z0-9]+",
     "2010-04-14 20:18:37,464 | INFO  | org.hibernate.cfg.Configuration"
   },
   {
+    "%s INFO  "QS_START,
     "%s INFO  "QS_END,
     "^[0-9]{4}[-][0-9]{2}[-][0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}[ ]+"severity"[ ]+",
     "2011-08-30 07:27:22,738 INFO  loginId='test'"
   },
   {
+    "%s qssign          start                                    INFO  "QS_START,
     "%s qssign          end                                      INFO  "QS_END,
     "^[0-9]{4}[-][0-9]{2}[-][0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}[ ]+[a-zA-Z0-9\\.-]+[ ]+[a-zA-Z0-9\\.-]+[ ]+"severity"[ ]+",
     "2011-09-01 07:37:17,275 main            org.apache.catalina.startup.Catalina     INFO  Server"
   },
   {
+    "%s INFO  "QS_START,
     "%s INFO  "QS_END,
     "^[0-9]{4}[-][0-9]{2}[-][0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}[ ]+",
     "2011-08-30 07:27:22,738 "
@@ -144,7 +150,7 @@ static void qs_write(char *line, int line_size, const char *sec, int sec_len) {
 /*
  * [Fri Dec 03 07:37:40 2010] [notice] .........
  */
-static void qs_end_apache_err(const char *sec) {
+static void qs_end_apache_err(const char *sec, int start) {
   int sec_len = strlen(sec);
   char line[MAX_LINE];
   int dig = atoi(SEQDIG);
@@ -154,7 +160,11 @@ static void qs_end_apache_err(const char *sec) {
   time_t tm = time(NULL);
   struct tm *ptr = localtime(&tm);
   strftime(time_string, sizeof(time_string), "%a %b %d %H:%M:%S %Y", ptr);
-  sprintf(line, "[%s] [notice] "QS_END, time_string);
+  if(start) {
+    sprintf(line, "[%s] [notice] "QS_START, time_string);
+  } else {
+    sprintf(line, "[%s] [notice] "QS_END, time_string);
+  }
   qs_write(line, line_size, sec, sec_len);
   return;
 }
@@ -162,7 +172,7 @@ static void qs_end_apache_err(const char *sec) {
 /*
  * 12.12.12.12 - - [03/Dec/2010:07:36:51 +0100] ...............
  */
-static void qs_end_apache_acc(const char *sec) {
+static void qs_end_apache_acc(const char *sec, int start) {
   int sec_len = strlen(sec);
   char line[MAX_LINE];
   int dig = atoi(SEQDIG);
@@ -183,7 +193,11 @@ static void qs_end_apache_acc(const char *sec) {
     sign = '+';
   }
   strftime(time_string, sizeof(time_string), "%d/%b/%Y:%H:%M:%S", ptr);
-  sprintf(line, "0.0.0.0 - - [%s %c%.2d%.2d] "QS_END, time_string, sign, timz / (60*60), (timz % (60*60)) / 60);
+  if(start) {
+    sprintf(line, "0.0.0.0 - - [%s %c%.2d%.2d] "QS_START, time_string, sign, timz / (60*60), (timz % (60*60)) / 60);
+  } else {
+    sprintf(line, "0.0.0.0 - - [%s %c%.2d%.2d] "QS_END, time_string, sign, timz / (60*60), (timz % (60*60)) / 60);
+  }
   qs_write(line, line_size, sec, sec_len);
   return;
 }
@@ -191,7 +205,7 @@ static void qs_end_apache_acc(const char *sec) {
 /*
  * 2010 12 03 17:00:30.425 qssign     end        0.0              5-NOTICE:  ..............
  */
-static void qs_end_nj(const char *sec) {
+static void qs_end_nj(const char *sec, int start) {
   int sec_len = strlen(sec);
   char line[MAX_LINE];
   int dig = atoi(SEQDIG);
@@ -207,7 +221,11 @@ static void qs_end_nj(const char *sec) {
   }
   buf[i] = '\0';
   strftime(time_string, sizeof(time_string), "%Y %m %d %H:%M:%S.000", ptr);
-  sprintf(line, "%s qssign     end        0.0%s 5-NOTICE:  "QS_END, time_string, buf);
+  if(start) {
+    sprintf(line, "%s qssign     start      0.0%s 5-NOTICE:  "QS_START, time_string, buf);
+  } else {
+    sprintf(line, "%s qssign     end        0.0%s 5-NOTICE:  "QS_END, time_string, buf);
+  }
   qs_write(line, line_size, sec, sec_len);
   return;
 }
@@ -215,7 +233,7 @@ static void qs_end_nj(const char *sec) {
 /*
  * 2010-04-14 20:18:37,464 ... (using m_fmt)
  */
-static void qs_end_lj(const char *sec) {
+static void qs_end_lj(const char *sec, int start) {
   int sec_len = strlen(sec);
   char line[MAX_LINE];
   int dig = atoi(SEQDIG);
@@ -225,7 +243,11 @@ static void qs_end_lj(const char *sec) {
   time_t tm = time(NULL);
   struct tm *ptr = localtime(&tm);
   strftime(time_string, sizeof(time_string), "%Y-%m-%d %H:%M:%S,000", ptr);
-  sprintf(line, m_fmt, time_string);
+  if(start) {
+    sprintf(line, m_start_fmt, time_string);
+  } else {
+    sprintf(line, m_end_fmt, time_string);
+  }
   qs_write(line, line_size, sec, sec_len);
   return;
 }
@@ -233,7 +255,7 @@ static void qs_end_lj(const char *sec) {
 /*
  * Dec  6 04:00:06 localhost kernel:
  */
-static void qs_end_lx(const char *sec) {
+static void qs_end_lx(const char *sec, int start) {
   char hostname[1024];
   int len = sizeof(hostname);
   int sec_len = strlen(sec);
@@ -249,7 +271,11 @@ static void qs_end_lx(const char *sec) {
     hostname[0] = '-';
     hostname[1] = '\0';
   }
-  sprintf(line, "%s %s qssign: "QS_END, time_string, hostname);
+  if(start) {
+    sprintf(line, "%s %s qssign: "QS_START, time_string, hostname);
+  } else {
+    sprintf(line, "%s %s qssign: "QS_END, time_string, hostname);
+  }
   qs_write(line, line_size, sec, sec_len);
   return;
 }
@@ -257,7 +283,7 @@ static void qs_end_lx(const char *sec) {
 /*
  * 2013/11/13 17:38:41 [error] 6577#0: *1 open()
  */
-static void qs_end_ngx(const char *sec) {
+static void qs_end_ngx(const char *sec, int start) {
   int sec_len = strlen(sec);
   char line[MAX_LINE];
   int dig = atoi(SEQDIG);
@@ -267,14 +293,18 @@ static void qs_end_ngx(const char *sec) {
   time_t tm = time(NULL);
   struct tm *ptr = localtime(&tm);
   strftime(time_string, sizeof(time_string), "%Y/%m/%d %H:%M:%S", ptr);
-  sprintf(line, "%s [notice] 0#0: "QS_END, time_string);
+  if(start) {
+    sprintf(line, "%s [notice] 0#0: "QS_END, time_string);
+  } else {
+    sprintf(line, "%s [notice] 0#0: "QS_END, time_string);
+  }
   qs_write(line, line_size, sec, sec_len);
   return;
 }
 
 void qs_signal_exit(int e) {
   if(m_logend && (m_end != NULL)) {
-    m_end(m_sec);
+    m_end(m_sec, 0);
   }
   exit(0);
 }
@@ -356,14 +386,15 @@ static void qs_set_format(char *s) {
   // search within the generic yyyy-mm-dd hh-mm-ss,mmm patterns
   if(!m_end) {
     const qos_p_t *p = pattern;
-    while(p->fmt) {
+    while(p->end_fmt) {
       regex_t r_j;
       if(regcomp(&r_j, p->pattern, REG_EXTENDED) != 0) {
 	fprintf(stderr, "failed to compile regex (%s)\n", p->pattern);
 	exit(1);
       }
       if(regexec(&r_j, s, 0, NULL, 0) == 0) {
-	m_fmt = p->fmt;
+	m_start_fmt = p->start_fmt;
+	m_end_fmt = p->end_fmt;
 	m_end = &qs_end_lj;      
 	break;
       }
@@ -400,6 +431,7 @@ static void qs_sign(const char *sec) {
     }
     if(m_logend && (m_end == NULL)) {
       qs_set_format(line);
+      m_end(m_sec, 1);
     }
     if(pcre_exec(m_filter, NULL, line, line_size, 0, 0, NULL, 0) >= 0) {
       printf("%s\n", line);
@@ -411,20 +443,34 @@ static void qs_sign(const char *sec) {
   return;
 }
 
+static int isSpecialLine(const char *line, const char *marker) {
+  char *se_marker = strstr(line, marker);
+  if(se_marker != NULL) {
+    /* QS_END/START + " " + SEQDIG */
+    int sz = strlen(marker) + 1 + atoi(SEQDIG);
+    if(sz == (strlen(line) - (se_marker - line))) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
 static long qs_verify(const char *sec) {
   int end_seen = 0;
   int sec_len = strlen(sec);
   long err = 0; // errors
-  long lnr = 0; // line number
+  long lineNumber = 0; // line number of the file / input data
   char *line = calloc(1, MAX_LINE_BUFFER+1);
   int line_size = MAX_LINE_BUFFER;
   int line_len;
-  m_nr = -1; // sequence number
-  long nr_alt = -1;
-  long nr_alt_lnr = -1;
+  m_nr = -1;        // expected sequence number (start with any)
+  long nr_alt = -1; // alternatively expected sequence number (if a line was injected)
+  long nr_alt_lineNumber = -1;
+  long nr_usr1_lineNumber = -1; // we may have lines written by a prev. qssign binary (while graceful restart)
   while(fgets(line, line_size, stdin) != NULL) {
     int valid = 0;
-    long ns = 0;
+    long msgSeqNr = 0;
+    int isOldProcess = 0;
 #if OPENSSL_VERSION_NUMBER < 0x10100000L
     HMAC_CTX hmac;
     HMAC_CTX *hmac_p = &hmac;
@@ -447,7 +493,7 @@ static long qs_verify(const char *sec) {
     }
     sig = strrchr(line, '#');
     seq = strrchr(line, ' ');
-    lnr++;
+    lineNumber++;
     if(seq && sig) {
       sig[0] = '\0';
       sig++;
@@ -470,68 +516,85 @@ static long qs_verify(const char *sec) {
       m[data_len] = '\0';
       if(strcmp(m, sig) != 0) {
 	err++;
-	fprintf(stderr, "ERROR on line %ld: invalid signature\n", lnr);
+	fprintf(stderr, "ERROR on line %ld: invalid signature\n", lineNumber);
 	/* message may be modified/currupt or inserted: next line may have
 	   the next sequence number (modified) or the same (inserted) */
 	nr_alt = m_nr + 1;
-	nr_alt_lnr = lnr + 1;
+	nr_alt_lineNumber = lineNumber + 1;
       } else {
 	valid = 1;
       }
       free(m);
       /* verify sequence */
       seq++;
-      ns = atol(seq);
-      if(ns == 0) {
+      msgSeqNr = atol(seq);
+      if(msgSeqNr == 0) {
 	err++;
-	fprintf(stderr, "ERROR on line %ld: invalid sequence\n", lnr);
+	fprintf(stderr, "ERROR on line %ld: invalid sequence\n", lineNumber);
       } else {
 	if(m_nr != -1) {
-	  if(lnr == nr_alt_lnr) {
+	  if(lineNumber == nr_alt_lineNumber) {
 	    // last line was modfied
-	    if(m_nr != ns) {
+	    if(m_nr != msgSeqNr) {
 	      // and therefore, we also accept the next seqence number
 	      m_nr = nr_alt;
 	    }
 	    nr_alt = -1;
-	    nr_alt_lnr = -1;
+	    nr_alt_lineNumber = -1;
 	  }
-	  if(m_nr != ns) {
-	    if(ns == 1) {
-	      if(!end_seen) {
+	  if(valid && isSpecialLine(line, QS_START)) {
+	    // new start line (graceful restart)
+	    // we expect now msg nummber 1
+	    // but still acept the old until we get the end marker
+	    nr_usr1_lineNumber = m_nr;
+	    m_nr = 1; 
+	  }
+	  if(valid && nr_usr1_lineNumber == msgSeqNr) {
+	    // msg from old process is okay...
+	    nr_usr1_lineNumber++;
+	    isOldProcess = 1;
+	  } else {
+	    if(m_nr != msgSeqNr) {
+	      if(msgSeqNr == 1) {
+		if(!end_seen) {
+		  err++;
+		  fprintf(stderr, "ERROR on line %ld: wrong sequence, server restart? (expect %."SEQDIG"ld)\n",
+			  lineNumber, m_nr);
+		}
+	      } else {
 		err++;
-		fprintf(stderr, "ERROR on line %ld: wrong sequence, server restart? (expect %."SEQDIG"ld)\n",
-			lnr, m_nr);
+		fprintf(stderr, "ERROR on line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lineNumber, m_nr);
 	      }
 	    } else {
-	      err++;
-	      fprintf(stderr, "ERROR on line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lnr, m_nr);
+	      // well done - this is the sequence number we expet
 	    }
 	  }
 	} else if(m_logend) {
-	  // log should (if not rotated) start with message 0
-	  if(ns != 1) {
+	  // log should (if not rotated) start with message 1
+	  if(msgSeqNr != 1) {
 	    fprintf(stderr, "NOTICE: log starts with sequence %."SEQDIG"ld, log rotation?"
-		    " (expect %."SEQDIG"d)\n", ns, 1);
+		    " (expect %."SEQDIG"d)\n", msgSeqNr, 1);
 	  }
 	}
-	if(valid) {
-	  m_nr = ns;
+	if(valid && !isOldProcess) {
+	  // adjust
+	  m_nr = msgSeqNr;
 	}
       }
     } else {
       err++;
-      fprintf(stderr, "ERROR on line %ld: missing signature/sequence\n", lnr);
+      fprintf(stderr, "ERROR on line %ld: missing signature/sequence\n", lineNumber);
     }
     end_seen = 0;
     if(valid) {
-      char *end_marker = strstr(line, QS_END);
-      m_nr++;
-      if(end_marker != NULL) {
-	/* QS_END + " " + SEQDIG */
-	int sz = strlen(QS_END) + 1 + atoi(SEQDIG);
-	if(sz == (strlen(line) - (end_marker - line))) {
+      if(!isOldProcess) {
+	m_nr++;
+      }
+      if(isSpecialLine(line, QS_END)) {
+	if(nr_usr1_lineNumber == -1) {
 	  end_seen = 1;
+	} else {
+	  nr_usr1_lineNumber = -1; // no more messages from an old process
 	}
       }
     }
@@ -584,7 +647,7 @@ static void usage(char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -e\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Writes end marker when stopping data signing.\n");
+  qs_man_print(man, "     Writes start/end marker when starting/stopping data signing.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -v\n");
   if(man) printf("\n");
@@ -729,7 +792,7 @@ int main(int argc, const char * const argv[]) {
     }
     qs_sign(m_sec);
     if(m_logend && (m_end != NULL)) {
-      m_end(m_sec);
+      m_end(m_sec, 0);
     }
   }
 

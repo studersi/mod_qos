@@ -1,3 +1,8 @@
+Version
+
+ - qssign supports graceful restart (sigusr1) where two qssign processes are
+   running (one with the old sequence counter and the new starting at 1).
+   
 Version 11.51
 
  - Adds process-connection handler to close the connection in the case
