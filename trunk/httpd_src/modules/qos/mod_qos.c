@@ -3027,7 +3027,7 @@ static apr_status_t qos_loadgeo(apr_pool_t *pool, qos_geo_t *geodb,
   
   geodb->size = lines;
   //geodb->data = calloc(geodb->size, sizeof(qos_geo_entry_t));
-  geodb->data = apr_pcalloc(pool, sizeof(qos_geo_entry_t) * geodb->max);
+  geodb->data = apr_pcalloc(pool, sizeof(qos_geo_entry_t) * geodb->size);
 
   // load the file into the memory
   entry = geodb->data;
