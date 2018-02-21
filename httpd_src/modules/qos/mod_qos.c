@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.51";
+static const char g_revision[] = "11.52";
 
 /************************************************************************
  * Includes
@@ -325,7 +325,6 @@ typedef struct {
 typedef struct {
   qos_geo_entry_t *data; // fist element
   int size;              // number of elements
-  int max;               // limit (allocated memory)
   const char *path;
 } qos_geo_t;
 
@@ -2958,6 +2957,14 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   return APR_SUCCESS;
 }
 
+//static apr_status_t qos_cleanup_geodb(void *p) {
+//  qos_geo_t *geodb = p;
+//  if(geodb->data) {
+//    free(geodb->data);
+//  }
+//  return APR_SUCCESS;
+//}
+
 /**
  * Loads the geo database. See QS_GEO_PATTERN about the file format.
  * @param pool To allocate memory from
@@ -3019,7 +3026,7 @@ static apr_status_t qos_loadgeo(apr_pool_t *pool, qos_geo_t *geodb,
   }
   
   geodb->size = lines;
-  geodb->max = geodb->size;
+  //geodb->data = calloc(geodb->size, sizeof(qos_geo_entry_t));
   geodb->data = apr_pcalloc(pool, sizeof(qos_geo_entry_t) * geodb->max);
 
   // load the file into the memory
@@ -7533,7 +7540,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   // list of ip addr. for whose we shall inc. block count
-  apr_uint64_t *ips = calloc(1, sconf->max_clients * sizeof(apr_uint64_t) * 2);
+  apr_uint64_t *ips = calloc(sconf->max_clients, sizeof(apr_uint64_t) * 2);
   while(!sconf->inctx_t->exit) {
     apr_uint64_t *ip = ips;
     int currentcon = 0;
@@ -13273,7 +13280,9 @@ const char *qos_geodb_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
                         msg ? msg : "-",
                         errors);
   }
-  
+
+  //apr_pool_pre_cleanup_register(cmd->pool, geodb, qos_cleanup_geodb);
+
   return NULL;
 }
 
