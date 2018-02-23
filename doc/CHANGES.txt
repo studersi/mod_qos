@@ -1,7 +1,8 @@
 Version
 
- - qssign supports graceful restart (sigusr1) where two qssign processes are
-   running (one with the old sequence counter and the new starting at 1).
+ - qssign's verification mode supports graceful restart (sigusr1)
+   where two qssign processes are running (one with the old sequence
+   counter and the new one starting at 1).
    
 Version 11.51
 
