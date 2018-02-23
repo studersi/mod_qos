@@ -3027,7 +3027,7 @@ static apr_status_t qos_loadgeo(apr_pool_t *pool, qos_geo_t *geodb,
   
   geodb->size = lines;
   //geodb->data = calloc(geodb->size, sizeof(qos_geo_entry_t));
-  geodb->data = apr_pcalloc(pool, sizeof(qos_geo_entry_t) * geodb->size);
+  geodb->data = apr_pcalloc(pool, APR_ALIGN_DEFAULT(sizeof(qos_geo_entry_t)) * geodb->size);
 
   // load the file into the memory
   entry = geodb->data;
@@ -7540,7 +7540,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   server_rec *bs = selfv;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   // list of ip addr. for whose we shall inc. block count
-  apr_uint64_t *ips = calloc(sconf->max_clients, sizeof(apr_uint64_t) * 2);
+  apr_uint64_t *ips = calloc(sconf->max_clients * 2, APR_ALIGN_DEFAULT(sizeof(apr_uint64_t)));
   while(!sconf->inctx_t->exit) {
     apr_uint64_t *ip = ips;
     int currentcon = 0;
