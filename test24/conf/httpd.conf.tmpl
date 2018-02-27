@@ -158,6 +158,11 @@ Listen         ##QS_PORT_BASE##
    AddType                    text/html .shtml
    AddOutputFilter            INCLUDES .shtml
 
+   SetEnvIfNoCase Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=131072
+   SetEnvIfNoCase Content-Type multipart/form-data               QS_LimitRequestBody=131072
+   SetEnvIfNoCase Content-Type multipart/mixed                   QS_LimitRequestBody=131072
+   SetEnvIfNoCase Content-Type application/json                  QS_LimitRequestBody=65536
+
 <IfDefine SetHashHeaderPlus>
    RequestHeaderPlus          unset X-Hash
    SetEnvIfPlus               Authorization "^Basic (.*)" myhash=$1
