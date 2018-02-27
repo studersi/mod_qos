@@ -135,7 +135,7 @@ Version 11.37
 
  - Console: dump shows time of last db access (seconds since epoch).
 
- - Add clientContentTypes to QS_Status.
+ - Adds clientContentTypes to QS_Status.
 
 Version 11.36
 
@@ -168,7 +168,7 @@ Version 11.33
 
 Version 11.32
 
- - Header filter: accept reagion specific language codes in 
+ - Header filter: accepts region specific language codes in 
    Accept-Language request header by default.
 
  - Compiles also against OpenSSL 1.1.0b.

@@ -4,6 +4,8 @@ variables: + QS_Delay
            + QS_MaxKeepAliveRequests (worker)
            + QS_Timeout
            QS_ErrorPage
+           + QS_LimitRequestBody
+           _Decrement
 QS_LocRequestLimitDefault
 + QS_LocRequestLimit
 QS_LocRequestPerSecLimit
@@ -21,10 +23,12 @@ QS_EventKBytesPerSecLimit
 + QS_SrvMaxConnClose
 + QS_SrvMaxConnPerIP
 QS_SrvMaxConnExcludeIP
+QS_SrvMaxConnPerIPIgnoreVIP
 + QS_SrvDataRateOff
 QS_SrvRequestRate
 + QS_SrvMinDataRate
 QS_SrvMinDataRateOffEvent
+QS_SrvMinDataRateIgnoreVIP
 + QS_SrvSerialize
 + QS_DenyRequestLine
 + QS_DenyPath
@@ -78,7 +82,7 @@ QS_ClientEventBlockExcludeIP
 QS_ClientEventPerSecLimit
 QS_ClientEventRequestLimit
 + QS_ClientSerialize
-QS_ClientIpFromHeader
++ QS_ClientIpFromHeader
 + QS_ClientGeoCountryDB
 QS_ClientGeoCountryPriv
 + QS_ErrorPage
@@ -88,4 +92,6 @@ QS_SupportIPv6
 QS_SemMemFile
 QS_SrvSampleRate
 QS_DisableHandler
+QS_EventCount
+QS_Status
 x QS_Chroot
