@@ -6285,7 +6285,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
                    );
         }
       }
-      ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, NULL,
+      ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s->sconf->base_server,
                    QOS_LOG_PFX(200)"{ \"scoreboard\": { "
                    "\"open\": %d, \"waiting\": %d, \"read\": %d, "
                    "\"write\": %d, \"keepalive\": %d, "
@@ -8752,7 +8752,19 @@ static apr_status_t qos_limitrequestbody_ctl(request_rec *r, qos_srv_config *sco
         return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
     } else {
-      ap_add_input_filter("qos-in-filter3", NULL, r, r->connection);
+      int read_chunked = 0;
+      if(r->read_chunked) {
+        read_chunked = 1;
+      } else {
+        // Apache 2.4
+        const char *tenc = apr_table_get(r->headers_in, "Transfer-Encoding");
+        if(tenc && strcasecmp(tenc, "chunked") == 0) {
+          read_chunked = 1;
+        }
+      }
+      if(ap_is_initial_req(r) && read_chunked) {
+        ap_add_input_filter("qos-in-filter3", NULL, r, r->connection);
+      }
     }
   }
   return APR_SUCCESS;
@@ -9219,44 +9231,42 @@ static apr_status_t qos_in_filter3(ap_filter_t *f, apr_bucket_brigade *bb,
                                   apr_off_t nbytes) {
   apr_status_t rv = ap_get_brigade(f->next, bb, mode, block, nbytes);
   request_rec *r = f->r;
+  
+  qos_srv_config *sconf = ap_get_module_config(r->server->module_config, &qos_module);
+  qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
+  apr_off_t maxpost = qos_maxpost(r, sconf, dconf);
+  
   if(rv != APR_SUCCESS) {
     return rv;
   }
-  if(!ap_is_initial_req(r) || !r->read_chunked) {
-    ap_remove_input_filter(f);
-    return APR_SUCCESS;
-  } else {
-    qos_srv_config *sconf = ap_get_module_config(r->server->module_config, &qos_module);
-    qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
-    apr_off_t maxpost = qos_maxpost(r, sconf, dconf);
-    if(maxpost != -1) {
-      apr_size_t bytes = 0;
-      apr_bucket *b;
+  
+  if(maxpost != -1) {
+    apr_size_t bytes = 0;
+    apr_bucket *b;
+    qs_req_ctx *rctx = qos_rctx_config_get(r);
+    for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
+      bytes = bytes + b->length;
+    }
+    rctx->maxpostcount += bytes;
+    if(rctx->maxpostcount > maxpost) {
+      int rc;
+      const char *error_page = sconf->error_page;
       qs_req_ctx *rctx = qos_rctx_config_get(r);
-      for(b = APR_BRIGADE_FIRST(bb); b != APR_BRIGADE_SENTINEL(bb); b = APR_BUCKET_NEXT(b)) {
-        bytes = bytes + b->length;
-      }
-      rctx->maxpostcount += bytes;
-      if(rctx->maxpostcount > maxpost) {
-        int rc;
-        const char *error_page = sconf->error_page;
-        qs_req_ctx *rctx = qos_rctx_config_get(r);
-        ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                      QOS_LOG_PFX(044)"access denied%s, QS_LimitRequestBody:"
-                      " max=%"APR_OFF_T_FMT" this=%"APR_OFF_T_FMT", c=%s, id=%s",
-                      sconf->log_only ? " (log only)" : "",
-                      maxpost, rctx->maxpostcount,
-                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
-                      qos_unique_id(r, "044"));
-        QS_INC_EVENT(sconf, 44);
-        qs_set_evmsg(r, "D;"); 
-        if(!sconf->log_only) {
-          rc = qos_error_response(r, error_page);
-          if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
-            return rc;
-          }
-          return HTTP_REQUEST_ENTITY_TOO_LARGE;
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                    QOS_LOG_PFX(044)"access denied%s, QS_LimitRequestBody:"
+                    " max=%"APR_OFF_T_FMT" this=%"APR_OFF_T_FMT", c=%s, id=%s",
+                    sconf->log_only ? " (log only)" : "",
+                    maxpost, rctx->maxpostcount,
+                    QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                    qos_unique_id(r, "044"));
+      QS_INC_EVENT(sconf, 44);
+      qs_set_evmsg(r, "D;"); 
+      if(!sconf->log_only) {
+        rc = qos_error_response(r, error_page);
+        if((rc == DONE) || (rc == HTTP_MOVED_TEMPORARILY)) {
+          return rc;
         }
+        return HTTP_REQUEST_ENTITY_TOO_LARGE;
       }
     }
   }

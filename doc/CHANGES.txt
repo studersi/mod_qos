@@ -1,5 +1,12 @@
-Version
+Version 11.52
 
+ - Fixed: QS_LimitRequestBody did not work for chunked requests
+   when used in Apache 2.4.
+
+ - QS_Status uses the server's base configuration settings while
+   logging allowing to configure a custom log format using
+   ErrorLogFormat.
+   
  - qssign's verification mode supports graceful restart (sigusr1)
    where two qssign processes are running (one with the old sequence
    counter and the new one starting at 1).
