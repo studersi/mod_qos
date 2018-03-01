@@ -95,6 +95,12 @@ int main(int argc, const char *const argv[]) {
     { "Hm_lvt_ef1299edab2ff5d2f13e859…d=GA1.2.1594867574.1516566392", 0 },
     { "If-Modified-Since", 0 },
     { "Fri, 05 Jan 2018 02:34:41 GMT", 0 },
+    { "[Wed Feb 28 22:08:09 2018] [notice] Apache/2.2.34 (Unix) mod_ssl/2.2.34 OpenSSL/1.0.2g mod_qos/11.52 configured -- resuming normal operations", 0 },
+    { "127.0.0.1 - - [28/Feb/2018:21:03:37 +0100] \"GET /console?action=inclimit&address=194.31.217.21&event=QS_Limit HTTP/1.1\" 200 52 \"-\" 0 - - - id=wWkYPUtmBQARFAABEAAAAAAX-yQgC5d2 - - #5230", 0 },
+    { "2013/11/07 17:44:07 [error] 4640#0: *55 auth_token_module(014): request not authorized: invalid signature, client: 127.0.0.1, server: localhost, request: \"GET /app/index.html?req=1 HTTP/1.1\", host: \"127.0.0.1:8204\" 000000000002#IPhzBRn7cuuGdqBI7T4OSIjXx7JGliUokCk8dFIU9n0=", 0 },
+    { "2010 12 04 20:46:45.118 dispatch   IWWWauthCo 07148.4046314384 3-ERROR :  AuthsessClient_1_0::execute: no valid 000000000002#5jYHrFBotkZwAs5EyfVQVgNZb3M=", 0 },
+    { "2011-09-01 07:37:17,275 main            org.apache.catalina.startup.Catalina     INFO  Server startup in 5770 ms 000000000002#LQ/h2UbJ2HzdZyf8BqnB7TB8LZM=", 0 },
+    { "2010-04-14 20:18:37,464 | INFO  | org.hibernate.cfg         ::getInputStream:1081  resource: /hibernate.cfg.xml 000000000002#9lpZof9jvdMRrIebCM7rbKzJ7aY=", 0 },
     { "http://mod-qos.sourceforge.net/", 0 },
     { "Mozilla/5.0 (X11; Ubuntu; Linu…) Gecko/20100101 Firefox/57.0", 0 },
     { "           Whether 'tis nobler in the mind to suffer The slings and arrows of outrageous fortune, Or to take arms against a sea of troubles, And by opposing end them? To die: to sleep; No more; and by a sleep to say we end The heart-ache and the thousand natural shocks That flesh is heir to, 'tis a consummation Devoutly to be wish'd.", 0 },
@@ -158,7 +164,9 @@ int main(int argc, const char *const argv[]) {
 	readline[len] = '\0';
 	len--;
       }
-      if(strlen(readline) > 0) {
+      if((strlen(readline) > 0) &&
+	 (readline[0] != 10) &&
+	 (readline[0] != 13)) {
 	p = readline;
 	if(strncmp(p, "ch.nev", 6) == 0) {
 	  int itr = 4;
