@@ -1,0 +1,37 @@
+#
+# $Id$
+#
+# reaches MaxRequestsPerChild (terminating supervisor thread)
+#
+
+INCLUDE scripts/ports
+
+CLIENT 30
+
+_BPS 1024 31
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: 127.0.0.1
+_SLEEP 150
+__Connection: keep-alive
+__
+#_MATCH headers "Connection: (.*)" CONNECTION
+_EXPECT . "this is the root index"
+_WAIT
+_SLEEP 100
+#_IF "$CONNECTION" MATCH "close"
+_CLOSE
+#_END IF
+
+_END BPS
+
+END
+
+CLIENT
+
+_LOOP 9
+_SLEEP 2000
+_EXEC ./ctl.sh graceful 2>/dev/null 1>/dev/null
+_END LOOP
+
+END

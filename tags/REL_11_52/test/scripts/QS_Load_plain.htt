@@ -1,0 +1,24 @@
+
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT 20
+
+_LOOP 50
+_LOOP 90
+_REQ localhost $QS_PORT_BASE5
+__GET /appl/hh/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "this is the appl hh"
+_WAIT
+_END LOOP
+
+_CLOSE
+_END LOOP
+
+END

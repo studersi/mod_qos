@@ -1,0 +1,90 @@
+#
+# $Id$
+#
+# inserts  50'000 client entries and verifies that they are available
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+# add entries
+_SET H=125
+_SET G=0
+_SET F=0
+_SET E=1
+
+_LOOP 4
+_LOOP 10
+_LOOP 50
+_LOOP 23
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /console?action=setvip&address=$H.$G.$F.$E HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_OP $E ADD 1 E
+_END LOOP
+_CLOSE
+_OP $F ADD 1 F
+_SET E=1
+_END LOOP
+_OP $G ADD 1 G
+_SET F=0
+_END LOOP
+_OP $H ADD 1 H
+_SET G=0
+_END LOOP
+
+# veriy they exist
+_SET H=125
+_SET G=0
+_SET F=0
+_SET E=1
+
+_LOOP 4
+_LOOP 10
+_LOOP 50
+_LOOP 23
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /console?action=search&address=$H.$G.$F.$E HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "$H.$G.$F.$E vip=yes lowprio=no block=0/0 limit=0/0"
+_WAIT
+
+_OP $E ADD 1 E
+_END LOOP
+_CLOSE
+_OP $F ADD 1 F
+_SET E=1
+_END LOOP
+_OP $G ADD 1 G
+_SET F=0
+_END LOOP
+_OP $H ADD 1 H
+_SET G=0
+_END LOOP
+
+# test the test (192.33.87.12 is not in the store)
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /console?action=search&address=192.33.87.12 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "!192.33.87.12 vip=.* lowprio=.* block=.* limit=.*"
+_EXPECT . "not available"
+_WAIT
+
+END
