@@ -58,9 +58,9 @@
 
 
 <p>
-This page gives you additional information about certain aspects of 
-<a href="index.html">mod_qos</a> to get a better understanding how 
-to use the module.  
+This page gives you additional information on certain aspects of 
+<a href="index.html">mod_qos</a> to get a better understanding about
+how to use the module.  
 </p>
 
 
@@ -123,8 +123,7 @@ variables can also be written or read by other Apache modules, such as
 file using the format string <code>%{VARNAME}e</code> within the
 <code><a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">TransferLog/CustomLog <img src="images/link.png"/></a></code>
 directives. Or you can use them within error pages using
-<a href="http://httpd.apache.org/docs/current/howto/ssi.html">server-side includes <img src="images/link.png"/></a> 
-(SSI).
+<a href="#ssi">server-side includes (SSI)</a>.
 </p>
 
 
@@ -275,11 +274,102 @@ requests) or on a <a href="index.html#QS_ClientSerialize">per client level</a>
 </p>
 
 
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="ssi"></a>
+<a name="SSI"></a>
+<h2>Error Pages and Server Side Includes (SSI)</h2>
+<p>
+Custom error documents to be used by <a href="index.html">mod_qos</a> 
+are either configured using the 
+<code><a href="index.html#QS_ErrorPage">QS_ErrorPage</a></code> directive 
+or the <code><a href="index.html#QS_ErrorPage_Var">QS_ErrorPage</a></code> 
+variable.<br>
+You may also use Apache's <a href="http://httpd.apache.org/docs/current/howto/ssi.html">server-side includes (SSI) <img src="images/link.png"/></a> to generate the content 
+of the error document dynamically. The <a href="index.html#errorlog">error codes</a> and 
+other <a href="index.html#variables">variables</a> set by mod_qos can be used.
+</p>
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+AddType                  text/html .shtml
+AddOutputFilter          INCLUDES .shtml
+QS_ErrorPage             <a href="#qs_error.shtml">/errorpages/qs_error.shtml</a>
+</pre>
+</td></tr>
+</table>
+</p>
+
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2"><a name="qs_error.shtml"></a>
+Sample page:<br>
+<pre>
+&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;!-- 
+      --  mod_qos sample SSI error page (Apache 2.4)
+      --&gt;
+    &lt;meta http-equiv="Cache-Control" content="no-cache, no-store"/&gt;
+    &lt;meta http-equiv="expires" content="0" /&gt;
+    &lt;title&gt;ERROR - &lt;!--#echo var="REDIRECT_ERROR_NOTES" --&gt;&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+&lt;p&gt;
+&lt;b&gt;&lt;i&gt;sorry - the server was unable to complete your request&lt;/i&gt;&lt;/b&gt;
+&lt;/p&gt;
+&lt;p&gt;
+        code: mod_qos(&lt;!--#echo var="<a href="index.html#QS_ErrorNotes">QS_ErrorNotes</a>" --&gt;)&lt;br&gt;
+    &lt;!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /00[0-9]/" --&gt;
+        reason: initialisation failure
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /0[18][0-9]/" --&gt;
+        reason: request rule
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /03[0-9]/" --&gt;
+        reason: connection rule
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /[01]4[0-9]/" --&gt;
+        reason: request filter
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /05[0-9]/" --&gt;
+        reason: bandwidth limitation
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /[01]6[0-9]/" --&gt;
+        reason: client limitation &lt;br&gt;
+        remaining time: &lt;span id="remaining"&gt;&lt;!--#echo var="<a href="index.html#QS_Limit_Remaining">QS_Limit_Remaining</a>" --&gt;&lt;/span&gt; seconds
+&lt;script type="text/javascript"&gt;
+&lt;!--
+setInterval(function () {
+  var msg = document.getElementById('remaining');
+  if(msg) {
+    var value = msg.innerHTML;
+    var remainTime = value - 1;
+    if(remainTime &lt; 0) {
+      window.location = window.location.pathname;
+    } else {
+      msg.innerHTML = remainTime;
+    }
+  }
+}, 1000);
+//--&gt;
+&lt;/script&gt;
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /10[0-9]/" --&gt;
+        reason: GEO location limitation
+    &lt;!--#else --&gt;
+        reason: generic failure
+    &lt;!--#endif --&gt;
+&lt;/p&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</td></tr>
+</table>
+</p>
+
 </td></tr>
 </tbody>
 </table>
 <br>
 <hr>
-<SMALL><SMALL>&copy; 2017, Pascal Buchbinder</SMALL></SMALL>
+<SMALL><SMALL>&copy; 2018, Pascal Buchbinder</SMALL></SMALL>
 </body>
 </html>

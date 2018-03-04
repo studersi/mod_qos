@@ -12,17 +12,18 @@
 <b><i>sorry - the server was unable to complete your request</i></b>
 </p>
 <p>
+        code: mod_qos(<!--#echo var="QS_ErrorNotes" -->)<br>
     <!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /00[0-9]/" -->
         reason: initialisation failure
     <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /0[18][0-9]/" -->
         reason: request rule
     <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /03[0-9]/" -->
         reason: connection rule
-    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /04[0-9]/" -->
+    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /[01]4[0-9]/" -->
         reason: request filter
     <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /05[0-9]/" -->
         reason: bandwidth limitation
-    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /06[0-9]/" -->
+    <!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /[01]6[0-9]/" -->
         reason: client limitation <br>
         remaining time: <span id="remaining"><!--#echo var="QS_Limit_Remaining" --></span> seconds
 <script type="text/javascript">

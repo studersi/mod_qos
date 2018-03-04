@@ -109,8 +109,9 @@ of concurrent TCP connections (total or from a single source IP),
 and so forth.</p>
 <p>
 <a name="rules"></a>
-The <a href="glossary.html#rules">rules</a> you want to configure are defined 
-by the <a href="glossary.html#directives">module's directives</a>. Every rule
+The <u><a href="glossary.html#rules">rules</a></u> you want to configure
+are defined by the
+<u><a href="glossary.html#directives">module's directives</a></u>. Every rule
 reads attributes from different sources and using its own counters to 
 store their status.
 </p>
@@ -289,8 +290,8 @@ If you have a different version of <code>aclocal</code> or
 <a name="configuration"></a>
 <h2>Configuration</h2>
 <p>Configuration is done on a per-server basis (except the generic request 
-filter). Commands within a virtual host are merged with the settings in 
-the global configuration.
+filter). <a href="glossary.html#directives">Directives</a> within a virtual 
+host are merged with the settings in the global configuration.
 </p> 
 <p>
 The <code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code>, 
@@ -310,8 +311,8 @@ This may be used for test purposes.
 <p>
 <a name="requestlevelcontrol"></a>
 <h3>Request Level Control</h3>
-The module features the following directives to control server access 
-on a per-URL level - basically the main function of mod_qos. 
+The module features directives to control server access 
+on a per-URL level - basically the main function of mod_qos. <br>
 Only one <code>QS_Loc*</code> rule (URL string or 
 regular expression) of each type is evaluated per request where 
 regular expression rules (*Match) have higher priority 
@@ -413,8 +414,8 @@ given to clients whose requests have been denied.
 <code>QS_ErrorPage &lt;URL&gt;</code><br>Defines an error page to be 
 returned when a request is denied. The defined URL must be a (S)HTML 
 document accessible by the client. 
-You may enable <a href="http://httpd.apache.org/docs/current/howto/ssi.html">server-side includes <img src="images/link.png"/></a> 
-(SSI) in order to present detailed error messages based on the 
+You may enable <a href="glossary.html#ssi">server-side includes (SSI)</a> 
+in order to present detailed error messages based on the 
 <a href="#errorlog">error codes</a> provided by mod_qos.<br>
 Alternatively, a HTTP redirect (302) to a dedicated error page may be 
 defined using an absolute URL defining schema, hostname, and path.
@@ -620,7 +621,7 @@ The following table shows if a rules may be deactivated for VIPs:
 <a href="#QS_VipRequest">QS_VipRequest</a> and 
 <a href="#QS_IsVipRequest">QS_IsVipRequest</a> variables to decide 
 if the rule should be applied.</i></small>
-
+<br>
 <a name="variables"></a>
 <h3>Variables</h3>
 <a href="glossary.html#variables">Environment variables</a> are used on a per
@@ -1582,7 +1583,7 @@ receiving request data (<i>in</i>: request line, header fields, or body), sendin
 The client connection is closed if the client does not fulfill this required minimal 
 data rate and the IP address of the causing client is marked in order to be handled 
 with low priority (see the <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code> directive). 
-The "max bytes per second" activates <a href="images/SrvMinDataRate.png">dynamic minimum throughput control</a>: 
+The "max bytes per second" activates <u><a href="images/SrvMinDataRate.png">dynamic minimum throughput control</a></u>: 
 The required minimal throughput is increased in parallel to the number of concurrent clients 
 sending/receiving data (starts increasing when reaching the "connections" threshold). 
 The "max bytes per second" setting is reached when the number of 
@@ -1760,9 +1761,10 @@ request attributes.
 <li>The current value of this counter is stored within the variable suffixed 
 by <code><a href="#_Counter">_Counter</a></code>, e.g. <code>QS_Limit_Counter</code> for further 
 processing by other rules. </li>
+<a name="QS_Limit_Remaining"></a>
 <li>The remaining time (in seconds) is stored within the variabled suffixed 
 by <code>_Remaining</code>, e.g. <code>QS_Limit_Remaining</code> to be 
-used within SSI error pages.</li>
+used within <a href="glossary.html#ssi">SSI</a> error pages.</li>
 <li>The counter can be reset by setting the environment variable which name is 
 suffixed by <code><a href="#_Clear">_Clear</a></code>, e.g. <code>QS_Limit_Clear</code>.
 <li>The counter can be decremented by setting the environment variable which name is 
@@ -1797,9 +1799,12 @@ the TCP connection.
 <a name="QS_ClientPrefer"></a>
 <code>QS_ClientPrefer [&lt;percent&gt;]</code><br>
 Accepts only <a href="#privilegedusers">VIP</a> 
-and high priority clients when the server has less than 80%
-(or the defined percentage) of free TCP connections. The server
-<a href="images/ClientPrefer.png">continues dropping more and more clients (also those with few penalty points) the higher the number of connections grows</a>. <br>Use the 
+and high priority clients when the server has less than 80% 
+(or the defined percentage) of free TCP connections. The server 
+<u><a href="images/ClientPrefer.png">continues dropping more and more clients</a></u> 
+(also those with few penalty points) the higher the number of connections 
+grows.
+<br>Use the 
 <code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code> or 
 <code><a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a></code> 
 directive in order to identify <a href="#privilegedusers">VIP</a> clients.<br>
@@ -1908,8 +1913,7 @@ detecting a rule violation. Each error message is prefixed by an id:
 are also written to the error notes (Apache's <code>error-notes</code> note 
 as well as the <a href="#QS_ErrorNotes"><code>QS_ErrorNotes</code></a>
 variable) in order to be processed within error pages using 
-<a href="http://httpd.apache.org/docs/current/howto/ssi.html">server-side includes <img src="images/link.png"/></a> 
-(SSI).
+<a href="glossary.html#ssi">server-side includes (SSI)</a>.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
 <pre>
