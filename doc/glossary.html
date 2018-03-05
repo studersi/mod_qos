@@ -114,10 +114,22 @@ the rules using the
 <p>
 The Apache web server provides a mechanism for storing information 
 in so called <i>environment variables</i>. <a href="index.html">mod_qos</a> uses these 
-variables to exchange data respectively signalize events between different 
-<a href="#rules">rules defined by the corresponding directive</a>. These 
+variables to exchange data respectively signalize events between 
+<a href="#rules">different rules</a> defined by the 
+<a href="#directives">corresponding directive</a>. These 
 variables can also be written or read by other Apache modules, such as
-<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a>.
+<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a> 
+or <a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a>.
+</p>
+<p>Example:<br>
+The <code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> directive 
+is used to set the <i>LimitLogin</i> variable if the request line matches 
+the <code>^/wp-login.php</code> pattern. The 
+<a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
+directives increments the <a href="#repeat">repeat counter</a> having the same name
+if the variable is present.
+<br>
+<img src="images/Events.png" height="396" width="795" alt="Event set by SetEnvIf and processed by QS_ClientEventLimitCount" />
 </p>
 <p>It is also possible to write the values of these variables to your log
 file using the format string <code>%{VARNAME}e</code> within the
@@ -287,7 +299,8 @@ or the <code><a href="index.html#QS_ErrorPage_Var">QS_ErrorPage</a></code>
 variable.<br>
 You may also use Apache's <a href="http://httpd.apache.org/docs/current/howto/ssi.html">server-side includes (SSI) <img src="images/link.png"/></a> to generate the content 
 of the error document dynamically. The <a href="index.html#errorlog">error codes</a> and 
-other <a href="index.html#variables">variables</a> set by mod_qos can be used.
+other <a href="index.html#variables">variables</a> set by
+<a href="index.html">mod_qos</a> can be used.
 </p>
 <p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
