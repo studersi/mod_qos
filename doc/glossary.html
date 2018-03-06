@@ -96,6 +96,7 @@ Every rule has it's own threshold and maintains its own counter. A rule
 is identified by either an URL pattern/matching string or by an 
 <a href="#variables">environment variable name</a>. 
 You can configure as many rules as you want. </p>
+<img src="images/Rule.png" height="166" width="514" alt="Rule" />
 <p>
 <i>Note: Some counters are only available once. This applies to the counters of
 the rules using the
@@ -124,7 +125,7 @@ or <a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html">mod_sete
 <p>Example:<br>
 The <code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> directive 
 is used to set the <i>LimitLogin</i> variable if the request line matches 
-the <code>^/wp-login.php</code> pattern. The 
+the <code>^/wp-login.php</code> pattern while the 
 <a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
 directives increments the <a href="#repeat">repeat counter</a> having the same name
 if the variable is present.
@@ -148,7 +149,7 @@ A "concurrency counter" is used to determine how many times something
 happens at the same time, e.g. HTTP requests accessing the same 
 resource/URL at the same time. The rules using this counter type are either 
 defined by an <a href="#variables">environment variable name</a> or an 
-URL pattern (regular expression of a string matching the request's URL). 
+URL pattern (regular expression or a string matching the request's URL). 
 Such a rule automatically increments the counter when the Apache web server 
 starts to process a matching request and decrements the counter when the 
 request processing is completed.
