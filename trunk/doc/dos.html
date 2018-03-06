@@ -61,7 +61,7 @@
 <a href="index.html">mod_qos</a> cannot only be used to implement QoS by controlling your Apache 
 web server's traffic but may also help you to protect 
 your web site against denial of service (DoS) attacks. The two features 
-of mod_qos which are particularly suitable to help you in doing this, 
+of <a href="index.html">mod_qos</a> which are particularly suitable to help you in doing this, 
 are the possibility to measure the bandwidth used for a TCP connection 
 (and the possibility to enforce that the requirements concerning the 
 minimum bandwidth is fulfilled) and the existence of event counters 
@@ -76,7 +76,7 @@ This is especially true for B2B applications.
 </i>
 </p>
 <p>
-This documentation shall give you an idea on how you could use mod_qos 
+This documentation shall give you an idea on how you could use <a href="index.html">mod_qos</a> 
 within your Apache web server to defense against the following DoS attacks:
 <ul>
 <li><i>Low-bandwidth DoS attacks</i><br>
@@ -105,10 +105,10 @@ build an additional protective layer against DoS attacks.
 <p>
 <i>
 Note: If you are under an attack, it's no a question whether someone 
-is blocked or not, but who. mod_qos helps your web server to make 
-the right decision. Your job is to set the thresholds matching your 
-infrastructure. You might either decide to have these rules active 
-all the time or just as part ot your incident response plan.
+is blocked or not, but who. <a href="index.html">mod_qos</a> helps your 
+web server to make the right decision. Your job is to set the thresholds 
+matching your infrastructure. You might either decide to have these 
+rules active all the time or just as part ot your incident response plan.
 </i>
 </p>
 
@@ -193,7 +193,7 @@ and the second parameter defines the throughput a client must achive when
 the server reaches its <code>MaxClients</code> setting. The third parameter 
 defines the number of busy connections to enable this restriction.
 </p>
-<img src="images/SrvMinDataRate.png"/>
+<img src="images/SrvMinDataRate.png" height="344" width="620"/>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # minimum request/response data reate if the server has 500 or more
 # open connections:
@@ -389,17 +389,18 @@ Example (extract) of a database file:
 <a name="prefer"></a>
 <h3>Prefer Known Clients</h3>
 <p>
-mod_qos may prefer "known" client IP addresses in the case that too 
-many clients access the server. "Known" clients are those 
-which have once been identified by the application by setting 
-the corresponding HTTP response header. Such identification 
-may happen at successful user login. Connections from clients 
-which are not known to mod_qos (never marked by the corresponding 
-response header) are denied if the server runs on low TCP connection 
-resources.
+<a href="index.html">mod_qos</a> may prefer "known" client IP 
+addresses in the case that too many clients access the server. 
+"Known" clients are those which have once been identified by 
+the application by setting the corresponding HTTP response header. 
+Such identification may happen at successful user login. Connections 
+from clients which are not known to <a href="index.html">mod_qos</a> 
+(never marked by the corresponding response header) are denied if 
+the server runs on low TCP connection resources.
+<a href="images/ClientPrefer.png"><img align="right" src="images/ClientPrefer.png" height="272" width="214" /></a>
 </p>
 <p>
-Unknown clients may get blocked. mod_qos prefers clients 
+Unknown clients may get blocked. <a href="index.html">mod_qos</a> prefers clients 
 which communicate with the server instantaneously and fast, 
 and denies access to slow clients sending data irregularly, 
 violating other rules or loading different content types than 
@@ -452,7 +453,7 @@ may lay open clients exceeding these limits exposing attackers trying
 to hide themslef. The other one is that you don't want allow a client to 
 send too many data. 
 Three <a href="https://httpd.apache.org/docs/current/mod/core.html">Apache core <img src="images/link.png"></a> 
-and one mod_qos directives may be used to set limitations.
+and one <a href="index.html">mod_qos</a> directives may be used to set limitations.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # limits request line, header and body:

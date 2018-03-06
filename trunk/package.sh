@@ -99,6 +99,7 @@ cp doc/images/LimitCountExample.png mod_qos-${VERSION}/doc/images/
 cp doc/images/ClosedLoop.png mod_qos-${VERSION}/doc/images/
 cp doc/images/Serialization.png mod_qos-${VERSION}/doc/images/
 cp doc/images/Events.png mod_qos-${VERSION}/doc/images/
+cp doc/images/Rule.png mod_qos-${VERSION}/doc/images/
 cp doc/images/download.jpg mod_qos-${VERSION}/doc/images/
 cp doc/favicon.ico mod_qos-${VERSION}/doc/
 cp doc/*.1.html mod_qos-${VERSION}/doc/
