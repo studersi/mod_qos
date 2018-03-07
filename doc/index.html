@@ -1563,7 +1563,8 @@ is always enabled, even the server is idle).
 <a name="QS_SrvMaxConnExcludeIP"></a>
 <code>QS_SrvMaxConnExcludeIP &lt;address&gt;</code><br>
 Defines an IP address or address range to be excluded from connection 
-level control restrictions. An address range must end with a ".".
+level control restrictions (trusted proxy servers). An address range 
+must end with a "." or ":".
 </li>
 <li>
 <a name="QS_SrvMaxConnPerIPIgnoreVIP"></a>
@@ -1734,7 +1735,8 @@ time (blocked at connection level: user might not always get a
 user friendly error response).<br/>
 You may use <code>QS_ClientEventBlockExcludeIP &lt;addr&gt;</code> 
 to exclude an IP address from being processed by this limitation 
-(e.g. for trusted clients connecting via a proxy server).
+(e.g. for trusted clients connecting via a proxy server). An address 
+range must end with a "." or ":".
 </li>
 <li>
 <a name="QS_ClientEventLimitCount"></a>
