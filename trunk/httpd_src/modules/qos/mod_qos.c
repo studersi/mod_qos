@@ -1465,7 +1465,6 @@ static int qos_is_excluded_ip(conn_rec *connection, apr_table_t *exclude_ip) {
     for(i = 0; i < apr_table_elts(exclude_ip)->nelts; i++) {
       if(entry[i].val[0] == 'r') {
         if(strncmp(entry[i].key, QS_CONN_REMOTEIP(c), strlen(entry[i].key)) == 0) {
-          // todo: ipv6 support
           return 1;
         }
       } else {
