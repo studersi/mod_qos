@@ -291,14 +291,16 @@ If you have a different version of <code>aclocal</code> or
 
 <a name="configuration"></a>
 <h2>Configuration</h2>
-<p>Configuration is done on a per-server basis (except the generic request 
-filter). <a href="glossary.html#directives">Directives</a> within a virtual 
+<p>Configuration is mostly done on a per-server basis (except the 
+<a href="#filter">generic request</a> filter and a few other directives). 
+<a href="glossary.html#directives">Directives</a> within a virtual 
 host are merged with the settings in the global configuration.
 </p> 
 <p>
 The <code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code>, 
 <code><a href="#QS_SrvRequestRate">QS_SrvRequestRate</a></code>, 
-<code><a href="#QS_RequestHeaderFilterRule">QS_RequestHeaderFilterRule</a></code> 
+<code><a href="#QS_RequestHeaderFilterRule">QS_RequestHeaderFilterRule</a></code>, 
+<code><a href="#QS_ResponseHeaderFilterRule">QS_ResponseHeaderFilterRule</a></code>, 
 and all <code><a href="#clientlevelcontrol">QS_Client*</a></code> 
 directives may be used outside of virtual host configurations only.
 </p>
@@ -373,7 +375,7 @@ directives.
 <li>
 <a name="QS_LocRequestLimitDefault"></a>
 <syntax>QS_LocRequestLimitDefault &lt;number&gt;</syntax><br>Defines the 
-default limitation for the maximum of concurrent requests per location 
+default limitation for the maximum of concurrent requests per-location 
 for those locations not defined by any 
 <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code> 
 directive. It could also be used to limit the number of concurrent 
@@ -646,7 +648,7 @@ Defines the error page overriding the setting made by the
 <li>
 <a name="QS_VipRequest"></a>
 <syntax>QS_VipRequest=yes</syntax><br>
-Disables the per location restrictions for this request. 
+Disables some restrictions for this request (see <a href="#privilegedusers">privileged Users</a>). 
 Requires the definition of a VIP header using the 
 <code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code> directive 
 (this activates VIP verification). However, such an event does 
@@ -1094,7 +1096,7 @@ defined regex pattern. The regular expressions is case insensitive.
 Sets the defined variable in the request environment if the HTTP 
 response status code matches the defined code. Default value is the status code, but 
 you might override this by any other value. 
-Directive may be used on a per server or per location basis. <br>
+Directive may be used on a per-server or per-location basis. <br>
 A possible use case for this directive is the prevention of 
 repetitive occurrence of unwanted response status codes in 
 conjunction with the 
@@ -1137,7 +1139,7 @@ the response too slow.</i></small></li>
 Adds the defined environment variable (e.g., <code><a href="#QS_Block">QS_Block</a></code>) 
 if the response body contains the defined literal string. Used on a per-
 <a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
-level. Only one directive may be defined per location 
+level. Only one directive may be defined per-location 
 (one search string per response). Prefixing the variably by a "!" 
 lets the variable being removed (unset). You may set the <code>QS_SetEnvIfResBodyIgnore</code> 
 environment variable if you want mod_qos to skip (not parsing) a request's response 
@@ -1184,7 +1186,7 @@ within the url are replaced by parenthesized subexpressions of the
 regular expression. The default status code used by this directive is 302
 but you may prefix the url parameter by <i>307:</i> or <i>301:</i> to change 
 it to a "307 Temporary Redirect" or "301 Moved Permanently" response. 
-Directive may be used on a per server or per location basis.
+Directive may be used on a per-server or per-location basis.
 </li>
 </ul>
 
@@ -1317,27 +1319,34 @@ directives (pattern definitions) to a location.
 <li>
 <a name="QS_RequestHeaderFilter"></a>
 <syntax>QS_RequestHeaderFilter 'on'|'off'|'size'</syntax><br>
-Filters request headers using validation rules provided by mod_qos. Suspicious 
-headers (not matching the pattern or those which are too long) are normally 
-dropped (removed from the request). Abnormal content-* headers cause 
+Filters request headers using validation rules provided by mod_qos. 
+Suspicious headers (not matching the pattern or those which are too long) are normally 
+dropped (removed from the request). Abnormal <code>content-*</code> headers cause 
 request blocking. Only the defined headers are allowed (whitelist). Custom 
 rules (additional headers or different pattern/size definitions) may be 
 added using the 
 <code><a href="#QS_RequestHeaderFilterRule">QS_RequestHeaderFilterRule</a></code> 
-directive. Filter is activated ('on') or deactivated ('off'). The mode 'size' 
-does not verify the pattern but limits the maximum length of request header 
-values (similar to the Apache directive <code>LimitRequestFieldsize</code> but 
-with an individual rule for each header field). Header validation is also useful 
-to avoid bypassing of 
-<code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> 
-directive settings.
+directive.<br> 
+This directive has three different operation modes: 'on' (activated), 'off' (disabled), 
+and 'size' (activated). The operation mode enabled by 'size' does not check the header 
+values against the patterns but limits the maximum length of request header 
+values only (similar to the Apache directive <code>LimitRequestFieldsize</code> 
+but with an individual rule for each header field). 
+This directive may be used on a per-server or per-location level.<br>
+<small><i>Note: Header validation is also useful to avoid bypassing of 
+<code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> / 
+<code><a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus <img src="images/link.png"/></a></code> 
+(if configured on a per-location level) directive settings as request headers have higher priority than 
+<a href="glossary.html#variables">environment variables</a> for those 
+directives and therefore a header sent a by client 
+can override an environment variable having the same name.</i></small>
 </li>
 <li>
 <a name="QS_RequestHeaderFilterRule"></a>
 <syntax>QS_RequestHeaderFilterRule &lt;header name&gt; 'drop'|'deny' &lt;pcre&gt; &lt;size&gt;</syntax><br>
 Used to add custom request header filter rules, e.g., to override the internal 
 rules (different pcre or size) or to add additional headers which should be allowed. 
-Definitions are made globally (outside VirtualHost). A list of all rules 
+Definitions are made globally (outside VirtualHost). A <a href="headerfilterrules.txt">list of all rules</a> 
 is shown at server startup when using <code><a href="http://httpd.apache.org/docs/current/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a> debug</code>. pcre is 
 case sensitive. The size parameter defines the maximum length of a header value. 
 The action 'drop' removes a header not matching the pcre, the action 'deny' 
@@ -1346,8 +1355,8 @@ rejects a request including such a header not matching the pcre.
 <li>
 <a name="QS_ResponseHeaderFilter"></a>
 <syntax>QS_ResponseHeaderFilter 'on'|'silent'|'off'</syntax><br>
-Filters response headers using validation rules provided by mod_qos. Suspicious 
-headers (not matching the pattern or those which are too long) are removed 
+Filters response headers using validation rules provided by mod_qos.
+Suspicious headers (not matching the pattern or those which are too long) are removed 
 from the response. Only the defined headers are allowed. Filter 
 is activated ('on' or 'silent') or deactivated ('off').
 </li>
@@ -1356,7 +1365,7 @@ is activated ('on' or 'silent') or deactivated ('off').
 <syntax>QS_ResponseHeaderFilterRule &lt;header name&gt; &lt;pcre&gt; &lt;size&gt;</syntax><br>
 Used to add custom response header filter rules, e.g., to override the internal 
 rules (different pcre or size) or to add additional headers which should be allowed. 
-Definitions are made globally (outside VirtualHost). A list of all rules 
+Definitions are made globally (outside VirtualHost). A <a href="headerfilterrules.txt">list of all rules</a> 
 is shown at server startup when using <code><a href="http://httpd.apache.org/docs/current/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a> debug</code>. pcre is 
 case sensitive. The size parameter defines the maximum length of a header value. 
 </li>
@@ -1503,7 +1512,7 @@ any other resource not covered by a milestone in between requests to milestones)
 Defines request line patterns a client must access in the defined order as
 they are defined in the configuration file. The optional 'thinktime' parameter
 defines the minimal elapse time (in seconds) between two milestones.
-Milestones are defined on a per server basis, outside
+Milestones are defined on a per-server basis, outside
 <a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a>. 
 Access to milestones is tracked by a dedicated
 <a href="#QS_SessionKey">session cookie</a> (QSSCD).
@@ -1616,7 +1625,8 @@ Disables the <code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code> or
 <code><a href="#QS_SrvRequestRate">QS_SrvRequestRate</a></code> enforcement 
 for a connection when the defined process environment variable is set. 
 The '+' prefix is used to add a variable to the configuration while the '-' prefix 
-is used to remove a variable. Directive may be used on a per-<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> basis.
+is used to remove a variable. Directive may be used on a per-server or a 
+per-<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> basis.
 </li>
 <li>
 <a name="QS_SrvSampleRate"></a>

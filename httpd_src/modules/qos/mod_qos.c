@@ -4823,7 +4823,7 @@ static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
 static int qos_hp_header_filter(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   qs_headerfilter_mode_e mode = sconf->headerfilter;
   if(dconf->headerfilter > QS_HEADERFILTER_OFF_DEFAULT) {
-    // override serve configuration
+    // overrides server configuration
     mode = dconf->headerfilter;
   }
   if(mode > QS_HEADERFILTER_OFF) {
@@ -10794,9 +10794,42 @@ static int qos_console_dump(request_rec * r, const char *event) {
 }
 
 #ifdef QS_INTERNAL_TEST
+static int qos_handler_headerfilter(request_rec * r) {
+  int i;
+  apr_table_entry_t *entry;
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
+  if(strcmp(r->handler, "qos-headerfilter") != 0) {
+    return DECLINED;
+  }
+  ap_set_content_type(r, "text/plain");
+
+  ap_rprintf(r, "mod_qos %s\n",  g_revision);
+  
+  ap_rprintf(r, "\nQS_RequestHeaderFilter rules:\n\n");
+  entry = (apr_table_entry_t *)apr_table_elts(sconf->hfilter_table)->elts;
+  for(i = 0; i < apr_table_elts(sconf->hfilter_table)->nelts; i++) {
+    qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
+    ap_rprintf(r, " name=%s, action=%s, size=%d, pattern=%s\n",
+               entry[i].key,
+               he->action == QS_FLT_ACTION_DROP ? "drop" : "deny",
+               he->size, he->text);
+  }
+  ap_rprintf(r, "\nQS_ResponseHeaderFilter rules:\n\n");
+  entry = (apr_table_entry_t *)apr_table_elts(sconf->reshfilter_table)->elts;
+  for(i = 0; i < apr_table_elts(sconf->reshfilter_table)->nelts; i++) {
+    qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
+    ap_rprintf(r, " name=%s, action=%s, size=%d, pattern=%s\n",
+               entry[i].key,
+               he->action == QS_FLT_ACTION_DROP ? "drop" : "deny",
+               he->size, he->text);
+  }
+  
+  return OK;
+}
+  
 static int qos_handler_man1(request_rec * r) {
   module *modp = NULL;
-  if (strcmp(r->handler, "qos-man1") != 0) {
+  if(strcmp(r->handler, "qos-man1") != 0) {
     return DECLINED;
   }
   ap_set_content_type(r, "text/plain");
@@ -11156,6 +11189,10 @@ static int qos_handler(request_rec * r) {
   }
 #ifdef QS_INTERNAL_TEST
   status = qos_handler_man1(r);
+  if(status != DECLINED) {
+    return status;
+  }
+  status = qos_handler_headerfilter(r);
   if(status != DECLINED) {
     return status;
   }
