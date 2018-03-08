@@ -283,6 +283,7 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ProxyPass                  /a !
    ProxyPass                  /b !
    ProxyPass                  /c !
+   ProxyPass                  /headerfilter !
    ProxyPass                  /cgi-local !
    ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
@@ -295,6 +296,10 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
    ScriptAlias /b/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
    ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
+
+   <Location /headerfilter>
+       SetHandler qos-headerfilter
+   </Location>
 
 <IfDefine globalmaxconn>
   QS_SrvMaxConn          3

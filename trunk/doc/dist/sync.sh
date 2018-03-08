@@ -36,4 +36,5 @@ scp ../dos.html ${dest}/
 scp ../glossary.html ${dest}/
 scp ../MESSAGES.txt ${dest}/
 scp ../LICENSE.txt ${dest}/
+scp ../headerfilterrules.txt ${dest}/
 

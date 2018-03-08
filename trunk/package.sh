@@ -129,10 +129,17 @@ cp util/src/*.c ${DES}/src/
 cp util/src/*.h ${DES}/src/
 cp util/man1/*.1 ${DES}/man1/
 if [ -f test/mod_qos.1 ]; then
-  cp test/mod_qos.1 ${DES}/man1/
+    cp test/mod_qos.1 ${DES}/man1/
 else
-  echo "FAILED, module's man page is missing"
-  exit 1
+    echo "FAILED, module's man page is missing"
+    exit 1
+fi
+if [ -f test/headerfilterrules.txt ]; then
+    cp test/headerfilterrules.txt ${DES}/doc
+    cp test/headerfilterrules.txt doc/
+else
+    echo "FAILED, header filter rule list is missing"
+    exit 1
 fi
 
 ## standard distribution
