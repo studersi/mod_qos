@@ -1344,8 +1344,9 @@ can override an environment variable having the same name.</i></small>
 <li>
 <a name="QS_RequestHeaderFilterRule"></a>
 <syntax>QS_RequestHeaderFilterRule &lt;header name&gt; 'drop'|'deny' &lt;pcre&gt; &lt;size&gt;</syntax><br>
-Used to add custom request header filter rules, e.g., to override the internal 
-rules (different pcre or size) or to add additional headers which should be allowed. 
+Used to add custom request header filter rules, e.g., to override the 
+<a href="headerfilterrules.txt">internal rules</a> (different pcre or size) 
+or to add additional headers which should be allowed. 
 Definitions are made globally (outside VirtualHost). A <a href="headerfilterrules.txt">list of all rules</a> 
 is shown at server startup when using <code><a href="http://httpd.apache.org/docs/current/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a> debug</code>. pcre is 
 case sensitive. The size parameter defines the maximum length of a header value. 
@@ -1363,8 +1364,9 @@ is activated ('on' or 'silent') or deactivated ('off').
 <li>
 <a name="QS_ResponseHeaderFilterRule"></a>
 <syntax>QS_ResponseHeaderFilterRule &lt;header name&gt; &lt;pcre&gt; &lt;size&gt;</syntax><br>
-Used to add custom response header filter rules, e.g., to override the internal 
-rules (different pcre or size) or to add additional headers which should be allowed. 
+Used to add custom response header filter rules, e.g., to override the 
+<a href="headerfilterrules.txt">internal rules</a> 
+(different pcre or size) or to add additional headers which should be allowed. 
 Definitions are made globally (outside VirtualHost). A <a href="headerfilterrules.txt">list of all rules</a> 
 is shown at server startup when using <code><a href="http://httpd.apache.org/docs/current/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a> debug</code>. pcre is 
 case sensitive. The size parameter defines the maximum length of a header value. 
