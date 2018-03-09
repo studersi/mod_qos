@@ -158,6 +158,10 @@ Listen         ##QS_PORT_BASE##
    AddType                    text/html .shtml
    AddOutputFilter            INCLUDES .shtml
 
+<IfDefine QS_RequestHeaderFilter>
+   QS_RequestHeaderFilter on
+</IfDefine>
+
    SetEnvIfNoCase Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=131072
    SetEnvIfNoCase Content-Type multipart/form-data               QS_LimitRequestBody=131072
    SetEnvIfNoCase Content-Type multipart/mixed                   QS_LimitRequestBody=131072
@@ -258,6 +262,15 @@ Listen         ##QS_PORT_BASE##
       SetOutputFilter RATE_LIMIT
       SetEnv rate-limit 500
    </Location>
+
+<IfDefine QS_RequestHeaderFilter>
+   <Location /htt/headerfilteroff>
+      QS_RequestHeaderFilter off
+   </Location>
+   <Location /htt/headerfiltersize>
+      QS_RequestHeaderFilter size
+   </Location>
+</IfDefine>
 
    <Location /htt/limit>
       QS_SetEnvIfResBody "Login Failed" QS_Limit
