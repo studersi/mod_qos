@@ -75,6 +75,11 @@ QS_ClientPrefer 20
 QS_Status on
 </IfDefine>
 
+<IfDefine QS_RequestHeaderFilterRule>
+QS_RequestHeaderFilterRule X-QOS deny "[a-z]+" 20
+QS_RequestHeaderFilterRule User-Agent drop "^[a-zA-Z0-9]+[a-zA-Z0-9_.:;()\[\]@ /+!=,-]+$" 100
+</IfDefine>
+
 <IfDefine !pathwhitelist>
 QS_ErrorResponseCode   503
 </IfDefine>
