@@ -1,3 +1,8 @@
+Version
+
+  - Adds CORS headers to the default QS_RequestHeaderFilter and
+    QS_ResponseHeaderFilter rule set.
+  
 Version 11.52
 
  - Fixed: QS_LimitRequestBody did not work for chunked requests

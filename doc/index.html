@@ -1319,7 +1319,7 @@ directives (pattern definitions) to a location.
 <li>
 <a name="QS_RequestHeaderFilter"></a>
 <syntax>QS_RequestHeaderFilter 'on'|'off'|'size'</syntax><br>
-Filters request headers using validation rules provided by mod_qos. 
+Filters request headers using validation rules <a href="headerfilterrules.txt">provided by mod_qos</a>. 
 Suspicious headers (not matching the pattern or those which are too long) are normally 
 dropped (removed from the request). Abnormal <code>content-*</code> headers cause 
 request blocking. Only the defined headers are allowed (whitelist). Custom 
@@ -1356,7 +1356,7 @@ rejects a request including such a header not matching the pcre.
 <li>
 <a name="QS_ResponseHeaderFilter"></a>
 <syntax>QS_ResponseHeaderFilter 'on'|'silent'|'off'</syntax><br>
-Filters response headers using validation rules provided by mod_qos.
+Filters response headers using validation rules <a href="headerfilterrules.txt">provided by mod_qos</a>.
 Suspicious headers (not matching the pattern or those which are too long) are removed 
 from the response. Only the defined headers are allowed. Filter 
 is activated ('on' or 'silent') or deactivated ('off').

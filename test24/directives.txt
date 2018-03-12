@@ -43,7 +43,7 @@ QS_LimitRequestBody
 QS_DenyDecoding
 QS_DenyInheritanceOff
 + QS_RequestHeaderFilter
-QS_ResponseHeaderFilter
++ QS_ResponseHeaderFilter
 + QS_RequestHeaderFilterRule
 QS_ResponseHeaderFilterRule
 + QS_MileStone

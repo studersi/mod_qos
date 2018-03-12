@@ -1056,6 +1056,8 @@ static const qos_her_t qs_header_rules[] = {
   { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}([ ]?,[ ]?("QS_H_ACCEPT_C"))*$", QS_FLT_ACTION_DROP, 300 },
   { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}([ ]?,[ ]?("QS_H_ACCEPT_E"))*$", QS_FLT_ACTION_DROP, 500 },
   { "Accept-Language", "^("QS_H_ACCEPT_L"){1}([ ]?,[ ]?("QS_H_ACCEPT_L"))*$", QS_FLT_ACTION_DROP, 200 },
+  { "Access-Control-Request-Method", "^[a-zA-Z]+$", QS_FLT_ACTION_DROP, 10 },
+  { "Access-Control-Request-Headers", "^([a-zA-Z0-9-]+){1}([ ]?,[ ]?([a-zA-Z0-9-]+))*$", QS_FLT_ACTION_DROP, 500 },
   { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 4000 },
   { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?("QS_H_CACHE"))*$", QS_FLT_ACTION_DROP, 100 },
   { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?([teTE]+))?$", QS_FLT_ACTION_DROP, 100 },
@@ -1105,6 +1107,11 @@ static const qos_her_t qs_res_header_rules[] = {
   { "Age", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Accept-Ranges", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Access-Control-Allow-Origin", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Access-Control-Allow-Methods", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Access-Control-Allow-Headers", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Access-Control-Max-Age", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Access-Control-Allow-Credentials", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
+  { "Access-Control-Expose-Headers", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Allow", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Cache-Control", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
   { "Content-Disposition", "^[\\x20-\\xFF]*$", QS_FLT_ACTION_DROP, 4000 },
@@ -10802,8 +10809,6 @@ static int qos_handler_headerfilter(request_rec * r) {
     return DECLINED;
   }
   ap_set_content_type(r, "text/plain");
-
-  ap_rprintf(r, "mod_qos %s\n",  g_revision);
   
   ap_rprintf(r, "\nQS_RequestHeaderFilter rules:\n\n");
   entry = (apr_table_entry_t *)apr_table_elts(sconf->hfilter_table)->elts;
@@ -10823,7 +10828,9 @@ static int qos_handler_headerfilter(request_rec * r) {
                he->action == QS_FLT_ACTION_DROP ? "drop" : "deny",
                he->size, he->text);
   }
-  
+
+  ap_rprintf(r, "\nmod_qos %s\n",  g_revision);
+
   return OK;
 }
   
