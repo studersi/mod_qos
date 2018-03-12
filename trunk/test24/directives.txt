@@ -45,7 +45,7 @@ QS_DenyInheritanceOff
 + QS_RequestHeaderFilter
 + QS_ResponseHeaderFilter
 + QS_RequestHeaderFilterRule
-QS_ResponseHeaderFilterRule
++ QS_ResponseHeaderFilterRule
 + QS_MileStone
 QS_MileStoneTimeout
 QS_SessionCookieName
