@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex regexspeed b64 qnc crs mem json pws qssearch vszl stack2 rand qssyslog net2range
+PROGRAMS = regex regexspeed b64 qnc crs mem json pws qssearch vszl stack2 rand qssyslog net2range VMB
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -94,6 +94,9 @@ wlsg: $(wlsg_OBJECTS)
 stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
+VMB: VMB.c
+	cc -O3 -o $@ $<
+
 clean:
-	rm -f *.o stack stack2 regex regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog net2range
+	rm -f *.o stack stack2 regex regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog net2range VMB
 
