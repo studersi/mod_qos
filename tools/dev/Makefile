@@ -95,7 +95,7 @@ stack: stack.c
 	cc -Wall -O3 -o $@ $<
 
 VMB: VMB.c
-	cc -O3 -o $@ $<
+	cc -O3 -pthread -o $@ $<
 
 clean:
 	rm -f *.o stack stack2 regex regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog net2range VMB
