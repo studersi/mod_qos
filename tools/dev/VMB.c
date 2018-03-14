@@ -34,6 +34,46 @@
 
 static const char revision[] = "$Revision$";
 
+static void cinfo() {
+  FILE *file;
+  
+
+  file = fopen("/proc/cpuinfo", "r");
+  if(file) {
+    int lineNR=0;
+    char line[1024];
+    while(fgets(line, 1023, file) != NULL) {
+      if(lineNR == 0 && strncasecmp(line, "model name", strlen("model name")) == 0) {
+	char *v = strchr(line, ':');
+	lineNR++;
+	if(v) {
+	  v++;
+	  printf("model name: %s", v);
+	}
+      }
+      if(strncasecmp(line, "bogomips", strlen("bogomips")) == 0) {
+	line[strlen(line)-1] = '\0';
+	if(lineNR == 1) {
+	  char *v = strchr(line, ':');
+	  lineNR++;
+	  if(v) {
+	    v++;
+	    printf("bogimips:   %s", v);
+	  }
+	} else {
+	  char *v = strchr(line, ':');
+	  if(v) {
+	    v++;
+	    printf("%s", v);
+	  }
+	}
+      }
+    }
+    fclose(file);
+    printf("\n");
+  }
+}
+
 static int add(int in) {
   return in + 1;
 }
@@ -97,6 +137,7 @@ int main(int argc, const char *const argv[]) {
   int inx = 0;
   char *ar[MAX];
   
+  double av[3];
   char hostname[1024];
   char timeBuff[64];
   struct timeval tv;
@@ -124,7 +165,9 @@ int main(int argc, const char *const argv[]) {
   strftime(timeBuff, 26, "%Y:%m:%d %H:%M:%S", tm_info);
   gethostname(hostname, 1023);
   printf("VMB@%s %s %s\n", hostname, timeBuff, revision);
-
+  getloadavg(av, 3);
+  printf("load average: %.2f %.2f %.2f\n", av[0], av[1], av[2]);
+  
   // alloc and write memory
   printf("memory alloc/write %dx%d bytes (%dMB) ",
 	 MAX, maxSize, (MAX*maxSize)/1024/1024);
@@ -169,10 +212,12 @@ int main(int argc, const char *const argv[]) {
   end = tv.tv_sec * 1000000 + tv.tv_usec;
   cpu = (end - start)/1000;
   
+  cinfo();
+
   printf("========================\n");
   printf("memory:     %10lldms\n", memory);
   printf("processing: %10lldms\n", cpu);
   printf("========================\n");
-	 
+
   return 0;
 }
