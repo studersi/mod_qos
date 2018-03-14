@@ -29,15 +29,14 @@
 #include <sys/time.h>
 #include <pthread.h>
 
-#define MAX 3
-#define MSIZE 1048576
+#define MAX 2
+#define MSIZE 268435456
 
 static const char revision[] = "$Revision$";
 
 static void cinfo() {
   FILE *file;
   
-
   file = fopen("/proc/cpuinfo", "r");
   if(file) {
     int lineNR=0;
@@ -71,6 +70,38 @@ static void cinfo() {
     }
     fclose(file);
     printf("\n");
+  }
+}
+
+
+static void cmem(int maxSize) {
+  int inx = 0;
+  char *ar[MAX];
+  for(inx = 0; inx<MAX; inx++) {
+    printf(".");
+    fflush(stdout);
+    ar[inx] = calloc(maxSize, sizeof(char));
+  }
+  for(inx = 0; inx<MAX; inx++) {
+    char *c = ar[inx];
+    int j;
+    sprintf(c, "[%d]", inx);
+    // write the block
+    for(j = 4; j<maxSize-1; j++) {
+      c[j] = 55;
+    }
+    // read the block
+    j = strlen(&c[4]);
+    c[j] = '\0';
+  }
+  for(inx = 0; inx<MAX; inx++) {
+    char *c = ar[inx];
+    printf("%s", c);
+    fflush(stdout);
+    memset(c, maxSize-1, 1);
+  }
+  for(inx = 0; inx<MAX; inx++) {
+    free(ar[inx]);
   }
 }
 
@@ -134,8 +165,6 @@ int main(int argc, const char *const argv[]) {
   char hx;
   int i;
   int maxSize = MSIZE;
-  int inx = 0;
-  char *ar[MAX];
   
   double av[3];
   char hostname[1024];
@@ -173,28 +202,7 @@ int main(int argc, const char *const argv[]) {
 	 MAX, maxSize, (MAX*maxSize)/1024/1024);
   gettimeofday(&tv, NULL);
   start = tv.tv_sec * 1000000 + tv.tv_usec;
-  for(inx = 0; inx<MAX; inx++) {
-    printf(".");
-    fflush(stdout);
-    ar[inx] = calloc(maxSize, sizeof(char));
-  }
-  for(inx = 0; inx<MAX; inx++) {
-    char *c = ar[inx];
-    int j;
-    sprintf(c, "[%d]", inx);
-    for(j = 4; j<maxSize-1; j++) {
-      c[j] = 55;
-    }
-  }
-  for(inx = 0; inx<MAX; inx++) {
-    char *c = ar[inx];
-    printf("%s", c);
-    fflush(stdout);
-    memset(c, maxSize-1, 1);
-  }
-  for(inx = 0; inx<MAX; inx++) {
-    free(ar[inx]);
-  }
+  cmem(maxSize);
   printf("\n");
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
@@ -217,6 +225,9 @@ int main(int argc, const char *const argv[]) {
   printf("========================\n");
   printf("memory:     %10lldms\n", memory);
   printf("processing: %10lldms\n", cpu);
+  if(maxSize == MSIZE) {
+    printf("VMB index:  %10lld\n", (60000/cpu) + (60000/memory));
+  }
   printf("========================\n");
 
   return 0;
