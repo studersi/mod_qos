@@ -182,8 +182,8 @@ int main(int argc, const char *const argv[]) {
     char *c = ar[inx];
     int j;
     sprintf(c, "[%d]", inx);
-    for(j = 3; j<maxSize-1; j++) {
-      c[j] = 5;
+    for(j = 4; j<maxSize-1; j++) {
+      c[j] = 55;
     }
   }
   for(inx = 0; inx<MAX; inx++) {
