@@ -74,15 +74,15 @@ static void cinfo() {
 }
 
 
-static void cmem(int maxSize) {
+static void cmem(int number, int maxSize) {
   int inx = 0;
-  char *ar[MAX];
-  for(inx = 0; inx<MAX; inx++) {
+  char *ar[number];
+  for(inx = 0; inx<number; inx++) {
     printf(".");
     fflush(stdout);
     ar[inx] = calloc(maxSize, sizeof(char));
   }
-  for(inx = 0; inx<MAX; inx++) {
+  for(inx = 0; inx<number; inx++) {
     char *c = ar[inx];
     int j;
     sprintf(c, "[%d]", inx);
@@ -94,13 +94,13 @@ static void cmem(int maxSize) {
     j = strlen(&c[4]);
     c[j] = '\0';
   }
-  for(inx = 0; inx<MAX; inx++) {
+  for(inx = 0; inx<number; inx++) {
     char *c = ar[inx];
     printf("%s", c);
     fflush(stdout);
     memset(c, maxSize-1, 1);
   }
-  for(inx = 0; inx<MAX; inx++) {
+  for(inx = 0; inx<number; inx++) {
     free(ar[inx]);
   }
 }
@@ -162,9 +162,8 @@ static void *calcThread(void *argv) {
 }
 
 int main(int argc, const char *const argv[]) {
-  char hx;
-  int i;
   int maxSize = MSIZE;
+  int number = MAX;
   
   double av[3];
   char hostname[1024];
@@ -180,12 +179,26 @@ int main(int argc, const char *const argv[]) {
   argv++;
   argc--;
   while(argc >= 1) {
-    maxSize = atoi(*argv);
+    if(strcmp(*argv,"-s") == 0) {
+      if (--argc >= 1) {
+	maxSize = atoi(*(++argv));
+      }
+    } else if(strcmp(*argv,"-n") == 0) {
+      if (--argc >= 1) {
+	number = atoi(*(++argv));
+      }
+    } else if(strcmp(*argv,"-h") == 0) {
+      printf("Usage: VMB [-s <size>] [-n <2..9>]\n");
+      exit(1);
+    }
     argc--;
     argv++;
   }
-  if(maxSize < MSIZE) {
-    maxSize = MSIZE;
+  if(maxSize < 8192) {
+    maxSize = 8192;
+  }
+  if(number < 2 || number > 9) {
+    number = MAX;
   }
 
   printf("========================\n");
@@ -199,10 +212,10 @@ int main(int argc, const char *const argv[]) {
   
   // alloc and write memory
   printf("memory alloc/write %dx%d bytes (%dMB) ",
-	 MAX, maxSize, (MAX*maxSize)/1024/1024);
+	 number, maxSize, (number*maxSize)/1024/1024);
   gettimeofday(&tv, NULL);
   start = tv.tv_sec * 1000000 + tv.tv_usec;
-  cmem(maxSize);
+  cmem(number, maxSize);
   printf("\n");
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
