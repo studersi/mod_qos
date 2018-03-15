@@ -30,7 +30,7 @@
 #include <pthread.h>
 
 #define MAX 2
-#define MSIZE 268435456
+#define MSIZE 134217728
 
 static const char revision[] = "$Revision$";
 
@@ -238,8 +238,8 @@ int main(int argc, const char *const argv[]) {
   printf("========================\n");
   printf("memory:     %10lldms\n", memory);
   printf("processing: %10lldms\n", cpu);
-  if(maxSize == MSIZE) {
-    printf("VMB index:  %10lld\n", (60000/cpu) + (60000/memory));
+  if(maxSize == MSIZE && number == MAX) {
+    printf("VMB index:  %10lld\n", (60000/cpu) + (30000/memory));
   }
   printf("========================\n");
 
