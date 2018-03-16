@@ -74,9 +74,45 @@ static void cinfo() {
 }
 
 
+static void eightK(int maxSize) {
+  int inx,j;
+  int number = (maxSize - 1048576)/8192/2;
+  char *ar[number];
+  if(number < 0) {
+    return;
+  }
+  printf("memory alloc/write %dx%d bytes (%dMB) ", number, 8192, number*8192/1024/1024);
+  printf("a");
+  for(inx = 0; inx<number; inx++) {
+    ar[inx] = calloc(8192, sizeof(char));
+  }
+  printf("w");
+  for(inx = 0; inx<number; inx++) {
+    char *c = ar[inx];
+    for(j = 0; j<8100; j++) {
+      c[j] = 65;
+    }
+  }
+  printf("r");
+  for(inx = 0; inx<number; inx++) {
+    char *c = ar[inx];
+    j = strlen(c);
+    c[j] = '\0';
+  }
+  printf("f");
+  for(inx = 0; inx<number; inx++) {
+    free(ar[inx]);
+  }
+  printf("\n");
+}
+
 static void cmem(int number, int maxSize) {
   int inx = 0;
   char *ar[number];
+  
+  printf("memory alloc/write %dx%d bytes (%dMB) ",
+	 number, maxSize, (number*maxSize)/1024/1024);
+
   for(inx = 0; inx<number; inx++) {
     printf(".");
     fflush(stdout);
@@ -103,6 +139,7 @@ static void cmem(int number, int maxSize) {
   for(inx = 0; inx<number; inx++) {
     free(ar[inx]);
   }
+  printf("\n");
 }
 
 static int add(int in) {
@@ -211,12 +248,10 @@ int main(int argc, const char *const argv[]) {
   printf("load average: %.2f %.2f %.2f\n", av[0], av[1], av[2]);
   
   // alloc and write memory
-  printf("memory alloc/write %dx%d bytes (%dMB) ",
-	 number, maxSize, (number*maxSize)/1024/1024);
   gettimeofday(&tv, NULL);
   start = tv.tv_sec * 1000000 + tv.tv_usec;
+  eightK(maxSize);
   cmem(number, maxSize);
-  printf("\n");
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
   memory = (end - start)/1000;
