@@ -68,18 +68,28 @@ int main(int argc, const char *const argv[]) {
   apr_pool_create(&pool, NULL);
   inmsg = apr_table_make(pool, 100);
 
-  if(argc < 2) {
-    // todo: args to define msg pattern
+  if(argc < 4) {
+    printf("\n");
     printf("Usage: duration <path> <start pattern> <end pattern>\n");
+    printf("\n");
+    printf("Messsage start/end pattern must contain 3 sub-expressions:\n");
+    printf(" - HH:MM:SS\n");
+    printf(" - milliseconds\n");
+    printf(" - id (transaction, thread, or similar id for correaltion)\n");
+    printf("\n");
+    printf(" Sample pattern:\n");
+    printf("  "START"\n");
+    printf("  "END"\n");
+    printf("\n");
     exit(1);
   }
 
-  if(regcomp(&pregstart, START, REG_EXTENDED)) {
-    fprintf(stderr, "ERROR, could not compile %s\n", START);
+  if(regcomp(&pregstart, argv[2], REG_EXTENDED)) {
+    fprintf(stderr, "ERROR, could not compile %s\n", argv[2]);
     exit(1);
   };
-  if(regcomp(&pregend, END, REG_EXTENDED)) {
-    fprintf(stderr, "ERROR, could not compile %s\n", END);
+  if(regcomp(&pregend, argv[3], REG_EXTENDED)) {
+    fprintf(stderr, "ERROR, could not compile %s\n", argv[3]);
     exit(1);
   };
 
@@ -118,7 +128,9 @@ int main(int argc, const char *const argv[]) {
 	//printf("END [%s][%s][%s] %lu %d\n", hms, ms, id, entry.seconds, entry.milliseconds);
 	start = (entry_t *)apr_table_get(inmsg, id);
 	if(start) {
-	  printf("%lu [ms]\n", (entry.seconds-start->seconds)*1000 + entry.milliseconds-start->milliseconds);
+	  printf("%10lu [ms] @%s\n",
+		 (entry.seconds-start->seconds)*1000 + entry.milliseconds-start->milliseconds,
+		 line);
 	  apr_table_unset(inmsg, id);
 	  free(start->id);
 	  free(start);
@@ -126,6 +138,9 @@ int main(int argc, const char *const argv[]) {
       }
     }
     fclose(file);
+  } else {
+    fprintf(stderr, "ERROR, faild to open the log file '%s'\n", argv[1]);
+    exit(1);
   }
   return 0;
 }
