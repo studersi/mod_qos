@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex regexspeed b64 qnc crs mem json pws qssearch vszl stack2 rand qssyslog net2range VMB
+PROGRAMS = regex regexspeed duration b64 qnc crs mem json pws qssearch vszl stack2 rand qssyslog net2range VMB
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -42,6 +42,12 @@ regexspeed_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 regexspeed: $(regexspeed_OBJECTS)
 	$(LINK) $(regexspeed_LTFLAGS) -static $(regexspeed_OBJECTS) $(regexspeed_LDADD)
 	strip regexspeed
+
+duration_OBJECTS = duration.lo
+duration_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+duration: $(duration_OBJECTS)
+	$(LINK) $(duration_LTFLAGS) -static $(duration_OBJECTS) $(duration_LDADD)
+	strip duration
 
 b64_OBJECTS = b64.lo
 b64_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
@@ -98,5 +104,5 @@ VMB: VMB.c
 	cc -O3 -pthread -o $@ $<
 
 clean:
-	rm -f *.o stack stack2 regex regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog net2range VMB
+	rm -f *.o stack stack2 regex duration regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog net2range VMB
 
