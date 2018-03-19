@@ -89,6 +89,12 @@ typedef struct {
 } counter_rec_t;
 
 typedef struct {
+  unsigned long long lines;
+  unsigned long long ms;
+  unsigned long long pivot[21];
+} duration_t;
+
+typedef struct {
   long request_count;
   long status_1;
   long status_2;
@@ -162,6 +168,8 @@ typedef struct stat_rec_st {
   long averAge_count;
   unsigned long max;
 
+  duration_t total;
+
   long status_1;
   long status_2;
   long status_3;
@@ -218,6 +226,7 @@ static regex_t m_trx_g;
 /* real time mode (default) or offline */
 static int   m_off = 0;
 static int   m_offline = 0;
+static int   m_offline_s = 0;
 static int   m_offline_data = 0;
 static char  m_date_str[MAX_LINE];
 static int   m_mem = 0;
@@ -715,7 +724,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   }
   if(m_customcounter) {
     // max len: 18446744073709551615
-    sprintf(custom, "s;%llu;a;%llu;A;%llu;M;%llu;",
+    sprintf(custom, "s;%llu;a;%llu;A;%llu;M;%lu;",
             stat_rec->sum,
             stat_rec->average / (stat_rec->average_count == 0 ? 1 : stat_rec->average_count),
             stat_rec->averAge / (stat_rec->averAge_count == 0 ? 1 : stat_rec->averAge_count),
@@ -1075,6 +1084,15 @@ static stat_rec_t *createRec(apr_pool_t *pool, const char *id, const char *patte
   rec->averAge = 0;
   rec->averAge_count = 0;
   rec->max = 0;
+
+  rec->total.lines = 0;
+  rec->total.ms = 0;
+  {
+    int p = 0;
+    for(p = 0; p < 21; p++) {
+      rec->total.pivot[p] = 0;
+    }
+  }
   
   rec->status_1 = 0;
   rec->status_2 = 0;
@@ -1479,6 +1497,26 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
     /* response duration */
     rec->duration_count += tme;
     rec->duration_count_ms += tmems;
+    if(m_offline_s) {
+      long min = 0;
+      long max = 50;
+      int p;
+      rec->total.lines++;
+      rec->total.ms += tmems;
+      for(p = 0; p < 20; p++) {
+        // 0ms <= time < 50ms etc.
+        if((min <= tmems) && (tmems < max)) {
+          rec->total.pivot[p]++;
+          break;
+        }
+        min = max;
+        max += 50;
+      }
+      if(tmems >= 1000) {
+        // time >= 1000ms (20x50ms)
+        rec->total.pivot[20]++;
+      }
+    }
     if(tme < 1) {
       rec->duration_0++;
     } else if(tme == 1) {
@@ -2306,6 +2344,10 @@ int main(int argc, const char *const argv[]) {
     } else if(strcmp(*argv,"-p") == 0) {   /* activate offline analysis */
       m_offline = 1;
       qs_set2OfflineMode();
+    } else if(strcmp(*argv,"-ps") == 0) {   /* activate offline analysis (inckl. summary) */
+      m_offline = 1;
+      m_offline_s = 1;
+      qs_set2OfflineMode();
     } else if(strcmp(*argv,"-pc") == 0) {  /* activate offline counting analysis */
       m_offline_count = 1;
       qs_set2OfflineMode();
@@ -2570,6 +2612,20 @@ int main(int argc, const char *const argv[]) {
     readStdinOffline(pool, config);
     if(!m_verbose) {
       fprintf(stdout, "\n");
+    }
+    if(m_offline_s) {
+      int p;
+      int min = 0;
+      int max = 50;
+      printf("\n");
+      printf("      requests: %llu\n", m_stat_rec->total.lines);
+      printf("       average: %llums\n", m_stat_rec->total.ms/m_stat_rec->total.lines);
+      for(p = 0; p <20; p++) {
+        printf("%3dms - %4dms: %lld\n", min, max, m_stat_rec->total.pivot[p]);
+        min = max;
+        max += 50;
+      }
+      printf("1000ms+       : %lld\n", m_stat_rec->total.pivot[20]);
     }
   } else {
     /* standard mode reads data from
