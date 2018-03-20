@@ -34,6 +34,55 @@
 
 static const char revision[] = "$Revision$";
 
+// e.g. "SwapFree:        3868164 kB"
+static long lvalue(char *line) {
+  long value = 0;
+  char *p = line;
+  while(p[0] && (p[0] < 48 || p[0] > 57)) {
+    p++;
+  }
+  if(p[0]) {
+    char *e = strchr(p, ' ');
+    if(e) {
+      e[0] = '\0';
+      value = atol(p);
+    }
+  }
+  return value;
+}
+
+static void minfo() {
+  FILE *file;
+  
+  file = fopen("/proc/meminfo", "r");
+  if(file) {
+    long total = 0;
+    long free = 0;
+    long memto = 0;
+    int lineNR=0;
+    char line[1024];
+    while(fgets(line, 1023, file) != NULL) {
+      if(strncasecmp(line, "SwapFree", strlen("SwapFree")) == 0) {
+	free = lvalue(line);
+      }
+      if(strncasecmp(line, "SwapTotal", strlen("SwapTotal")) == 0) {
+	total = lvalue(line);
+      }
+      if(strncasecmp(line, "MemTotal", strlen("MemTotal")) == 0) {
+	memto = lvalue(line);
+      }
+    }
+    fclose(file);
+    if(memto > 0) {
+      printf("memory:      %ld\n", memto);
+    }
+    if(total > 0) {
+      printf("used swap:   %ld\n", total - free);
+    }
+  }
+  return;
+}
+
 static void cinfo() {
   FILE *file;
   
@@ -71,6 +120,7 @@ static void cinfo() {
     fclose(file);
     printf("\n");
   }
+  return;
 }
 
 
@@ -269,7 +319,8 @@ int main(int argc, const char *const argv[]) {
   cpu = (end - start)/1000;
   
   cinfo();
-
+  minfo();
+  
   printf("========================\n");
   printf("memory:     %10lldms\n", memory);
   printf("processing: %10lldms\n", cpu);
