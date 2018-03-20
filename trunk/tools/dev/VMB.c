@@ -51,6 +51,41 @@ static long lvalue(char *line) {
   return value;
 }
 
+static void pinfo() {
+  FILE *file;
+  char fname[1024];
+  sprintf(fname, "/proc/%d/stat", getpid());
+  file = fopen(fname, "r");
+  if(file) {
+    char line[1024];
+    if(fgets(line, 1023, file) != NULL) {
+      int i;
+      char *p = line;
+      char *end;
+      for(i = 0; i<11; i++) {
+	p = strchr(p, ' ');
+	if(p == NULL) {
+	  return;
+	}
+	p++;
+      }
+      end = strchr(p, ' ');
+      if(end) {
+	end[0] = '\0';
+	/* major page faults (postition 12 of stat file)
+	   Occurs when the system has to synchronize mem buffers 
+	   with the disk, swap memory of other processes, or requires
+	   IO to free memory. Happens for references of virtual memory
+	   that has no physical page allocated to it.
+	   Memory allocation is required which increases VMB latency. */
+	printf("page faults: %s\n", p);
+      }
+    }
+    fclose(file);
+  }
+  return;
+}
+
 static void minfo() {
   FILE *file;
   
@@ -320,6 +355,7 @@ int main(int argc, const char *const argv[]) {
   
   cinfo();
   minfo();
+  pinfo();
   
   printf("========================\n");
   printf("memory:     %10lldms\n", memory);
