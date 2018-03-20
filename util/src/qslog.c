@@ -2091,6 +2091,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - average response duration in milliseconds ("NAVMS")\n");
   qs_man_println(man, "  - distribution of response durations in seconds within the last minute\n");
   qs_man_print(man, "    (<1s,1s,2s,3s,4s,5s,>5s)\n");
+  if(man) printf("\n");
   qs_man_println(man, "  - distribution of response durations faster than a second within the last minute\n");
   qs_man_print(man, "    (0-49ms,50-99ms,100-499ms,500-999ms)\n");
   if(man) printf("\n");
