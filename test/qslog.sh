@@ -138,7 +138,7 @@ case "$1" in
 	  exit 1
 	fi
 	# first detailed: 2x A01, 1x A02 for application 01 (/a)
-	if [ `grep -c "18:12:00;01;r/s;0;req;2;b/s;50;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;102;av;0;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;2;A02;1" qs.log.detailed` -ne 1 ]; then
+	if [ `grep -c "18:12:00;01;r/s;0;req;2;b/s;50;1xx;0;2xx;2;3xx;0;4xx;0;5xx;0;avms;102;av;0;0-49ms;0;50-99ms;1;100-499ms;1;500-999ms;0;<1s;2;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;2;A02;1" qs.log.detailed` -ne 1 ]; then
 	  echo "$PFX failed, wrong detailed"
 	  exit 1
 	fi
@@ -148,7 +148,7 @@ case "$1" in
 	  exit 1
 	fi
 	# detailed: one request, 1x A01, 1x X02 att application 02 (/b)
-	if [ `grep -c "24.08.2011 18:13:00;02;r/s;0;req;1;b/s;16;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;52;av;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;1;X02;1" qs.log.detailed` -ne 1 ]; then
+	if [ `grep -c "24.08.2011 18:13:00;02;r/s;0;req;1;b/s;16;1xx;0;2xx;1;3xx;0;4xx;0;5xx;0;avms;52;av;0;0-49ms;0;50-99ms;1;100-499ms;0;500-999ms;0;<1s;1;1s;0;2s;0;3s;0;4s;0;5s;0;>5s;0;A01;1;X02;1" qs.log.detailed` -ne 1 ]; then
 	  echo "$PFX failed, wrong detailed 2"
 	  exit 1
 	fi
@@ -357,7 +357,7 @@ case "$1" in
 	#   cat qslog.data | awk '{print $(NF-8)}' |  awk '{total+=$NF/1000} END{print total/106}'
 	rm -f qs.log
 	cat qslog.data  | ../util/src/qslog -f I....RSB.D -p -o qs.log 2>/dev/null 1>/dev/null
-	if [ `grep -c "r/s;1;req;106;b/s;1019[12];1xx;0;2xx;101;3xx;5;4xx;0;5xx;0;avms;2206;av;2;<1s;59;1s;0;2s;0;3s;16;4s;4;5s;21;>5s;6;ip;1;usr;0;" qs.log` -ne 1 ]; then
+	if [ `grep -c "r/s;1;req;106;b/s;1019[12];1xx;0;2xx;101;3xx;5;4xx;0;5xx;0;avms;2206;av;2;0-49ms;6;50-99ms;12;100-499ms;41;500-999ms;0;<1s;59;1s;0;2s;0;3s;16;4s;4;5s;21;>5s;6;ip;1;usr;0;" qs.log` -ne 1 ]; then
 	  echo "$PFX FAILED"
 	  exit 1
 	fi

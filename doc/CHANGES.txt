@@ -1,7 +1,14 @@
-Version
+Version 11.53
 
   - Adds CORS headers to the default QS_RequestHeaderFilter and
     QS_ResponseHeaderFilter rule set.
+
+  - qslog: shows also the distribution of response durations faster
+    than a second within the following intervals:
+    * 0-49ms
+    * 50-99ms
+    * 100-499ms
+    * 500-999ms
   
 Version 11.52
 

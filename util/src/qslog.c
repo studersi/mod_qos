@@ -152,6 +152,10 @@ typedef struct stat_rec_st {
   long long byte_count;
   long long duration_count;
   long long duration_count_ms;
+  long duration_49;
+  long duration_99;
+  long duration_499;
+  long duration_999;
   long duration_0;
   long duration_1;
   long duration_2;
@@ -751,17 +755,7 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
           "4xx;%ld;"
           "5xx;%ld;"
           "%s"
-          NAV";%lld;"
-          "<1s;%ld;"
-          "1s;%ld;"
-          "2s;%ld;"
-          "3s;%ld;"
-          "4s;%ld;"
-          "5s;%ld;"
-          ">5s;%ld;"
-          "%s"
-          "%s"
-          ,
+          NAV";%lld;",
           timeStr,
           main ? "" : stat_rec->id,
           stat_rec->line_count/LOG_INTERVAL,
@@ -775,7 +769,29 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
           stat_rec->status_4,
           stat_rec->status_5,
           avms,
-          stat_rec->duration_count/(stat_rec->line_count == 0 ? 1 : stat_rec->line_count),
+          stat_rec->duration_count/(stat_rec->line_count == 0 ? 1 : stat_rec->line_count));
+  if(m_avms) {
+    fprintf(f,
+            "0-49ms;%ld;"
+            "50-99ms;%ld;"
+            "100-499ms;%ld;"
+            "500-999ms;%ld;",
+            stat_rec->duration_49,
+            stat_rec->duration_99,
+            stat_rec->duration_499,
+            stat_rec->duration_999);
+  }
+  fprintf(f,
+          "<1s;%ld;"
+          "1s;%ld;"
+          "2s;%ld;"
+          "3s;%ld;"
+          "4s;%ld;"
+          "5s;%ld;"
+          ">5s;%ld;"
+          "%s"
+          "%s"
+          ,
           stat_rec->duration_0,
           stat_rec->duration_1,
           stat_rec->duration_2,
@@ -832,6 +848,10 @@ static void printStat2File(FILE *f, char *timeStr, stat_rec_t *stat_rec,
   stat_rec->status_5 = 0;
   stat_rec->duration_count = 0;
   stat_rec->duration_count_ms = 0;
+  stat_rec->duration_49 = 0;
+  stat_rec->duration_99 = 0;
+  stat_rec->duration_499 = 0;
+  stat_rec->duration_999 = 0;
   stat_rec->duration_0 = 0;
   stat_rec->duration_1 = 0;
   stat_rec->duration_2 = 0;
@@ -1069,6 +1089,10 @@ static stat_rec_t *createRec(apr_pool_t *pool, const char *id, const char *patte
   rec->byte_count = 0;
   rec->duration_count = 0;
   rec->duration_count_ms = 0;
+  rec->duration_49 = 0;
+  rec->duration_99 = 0;
+  rec->duration_499 = 0;
+  rec->duration_999 = 0;
   rec->duration_0 = 0;
   rec->duration_1 = 0;
   rec->duration_2 = 0;
@@ -1517,6 +1541,17 @@ static void updateRec(stat_rec_t *rec, char *T, char *t, char *D, char *S,
         rec->total.pivot[20]++;
       }
     }
+    if(m_avms) {
+      if(tmems < 49) {
+        rec->duration_49++;
+      } else if(50 <= tmems && tmems < 99) {
+        rec->duration_99++;
+      } else if(100 <= tmems && tmems < 499) {
+        rec->duration_499++;
+      } else if(500 <= tmems && tmems < 999) {
+        rec->duration_999++;
+      }
+    }
     if(tme < 1) {
       rec->duration_0++;
     } else if(tme == 1) {
@@ -1705,24 +1740,26 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
     stripNum(&M);
     qsNoFloat(M);
   }
+
+  /* request duration */
   tme = 0;
-  if(T != NULL || t != NULL || D != NULL) {
-    /* response duration */
-    tmems = 0;
-    if(T) {
-      stripNum(&T);
-      tme = atol(T);
-    } else if(t) {
-      stripNum(&t);
-      tmems= atol(t);
-      tme = tmems / 1000;
-    } else if(D) {
-      stripNum(&D);
-      tmems = atol(D);
-      tmems = tmems / 1000;
-      tme = tmems / 1000;
-    }
+  tmems = 0;
+  if(T) {
+    stripNum(&T);
+    tme = atol(T);
   }
+  if(t) {
+    stripNum(&t);
+    tmems= atol(t);
+    tme = tmems / 1000;
+  }
+  if(D) {
+    stripNum(&D);
+    tmems = atol(D);
+    tmems = tmems / 1000;
+    tme = tmems / 1000;
+  }
+
   if(m_offline_count) {
     updateClient(pool, T, t, D, S, BI, B, R, I, U, Q, E, k, C, M, ct, tme, tmems, m);
   } else if(m_offline_url) {
@@ -2052,8 +2089,10 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");
   qs_man_println(man, "  - average response duration ("NAV")\n");
   qs_man_println(man, "  - average response duration in milliseconds ("NAVMS")\n");
-  qs_man_println(man, "  - distribution of response durations within the last minute\n");
-  qs_man_print(man, "    (<1s,1s,2s,3s,4s,5s,>5)\n");
+  qs_man_println(man, "  - distribution of response durations in seconds within the last minute\n");
+  qs_man_print(man, "    (<1s,1s,2s,3s,4s,5s,>5s)\n");
+  qs_man_println(man, "  - distribution of response durations faster than a second within the last minute\n");
+  qs_man_print(man, "    (0-49ms,50-99ms,100-499ms,500-999ms)\n");
   if(man) printf("\n");
   qs_man_println(man, "  - number of established (new) connections within the measured time (esco)\n");
   qs_man_println(man, "  - average system load (sl)\n");
@@ -2086,9 +2125,9 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "     S defines HTTP response status code (%%s)\n");
   qs_man_println(man, "     B defines the transferred bytes (%%b or %%O)\n");
   qs_man_println(man, "     i defines the received bytes (%%I)\n");
-  qs_man_println(man, "     T defines the request duration (%%T)\n");
-  qs_man_println(man, "     t defines the request duration in milliseconds (may be used instead of T)\n");
-  qs_man_println(man, "     D defines the request duration in microseconds (may be used instead of T) (%%D)\n");
+  qs_man_println(man, "     D defines the request duration in microseconds (%%D)\n");
+  qs_man_println(man, "     t defines the request duration in milliseconds (may be used instead of D)\n");
+  qs_man_println(man, "     T defines the request duration in seconds (may be used instead of D or t) (%%T)\n");
   qs_man_println(man, "     k defines the number of keepalive requests on the connection (%%k)\n");
   qs_man_println(man, "     U defines the user tracking id (%%{mod_qos_user_id}e)\n");
   qs_man_println(man, "     Q defines the mod_qos_ev event message (%%{mod_qos_ev}e)\n");
