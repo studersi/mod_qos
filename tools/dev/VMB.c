@@ -77,8 +77,8 @@ static void pinfo() {
 	   with the disk, swap memory of other processes, or requires
 	   IO to free memory. Happens for references of virtual memory
 	   that has no physical page allocated to it.
-	   Memory allocation is required which increases VMB latency. */
-	printf("page faults: %s\n", p);
+	   Memory allocation was required which increased VMB latency. */
+	printf("page faults:   %s\n", p);
       }
     }
     fclose(file);
@@ -93,26 +93,39 @@ static void minfo() {
   if(file) {
     long total = 0;
     long free = 0;
-    long memto = 0;
     int lineNR=0;
     char line[1024];
     while(fgets(line, 1023, file) != NULL) {
-      if(strncasecmp(line, "SwapFree", strlen("SwapFree")) == 0) {
+      if(strncasecmp(line, "SwapFree:", strlen("SwapFree:")) == 0) {
 	free = lvalue(line);
       }
-      if(strncasecmp(line, "SwapTotal", strlen("SwapTotal")) == 0) {
+      if(strncasecmp(line, "SwapTotal:", strlen("SwapTotal:")) == 0) {
 	total = lvalue(line);
       }
-      if(strncasecmp(line, "MemTotal", strlen("MemTotal")) == 0) {
-	memto = lvalue(line);
+      if(strncasecmp(line, "MemTotal:", strlen("MemTotal:")) == 0) {
+	long value = lvalue(line);
+	printf("MemTotal:      %ld\n", value);
+      }
+      if(strncasecmp(line, "MemFreel:", strlen("MemFree:")) == 0) {
+	long value = lvalue(line);
+	printf("MemFree:       %ld\n", value);
+      }
+      if(strncasecmp(line, "MemAvailable:", strlen("MemAvailable:")) == 0) {
+	long value = lvalue(line);
+	printf("MemAvailable:  %ld\n", value);
+      }
+      if(strncasecmp(line, "Buffers:", strlen("Buffers:")) == 0) {
+	long value = lvalue(line);
+	printf("Buffers:       %ld\n", value);
+      }
+      if(strncasecmp(line, "Cached:", strlen("Cached:")) == 0) {
+	long value = lvalue(line);
+	printf("Cached:        %ld\n", value);
       }
     }
     fclose(file);
-    if(memto > 0) {
-      printf("memory:      %ld\n", memto);
-    }
     if(total > 0) {
-      printf("used swap:   %ld\n", total - free);
+      printf("used swap:     %ld\n", total - free);
     }
   }
   return;
@@ -131,7 +144,7 @@ static void cinfo() {
 	lineNR++;
 	if(v) {
 	  v++;
-	  printf("model name: %s", v);
+	  printf("model name:   %s", v);
 	}
       }
       if(strncasecmp(line, "bogomips", strlen("bogomips")) == 0) {
@@ -141,7 +154,7 @@ static void cinfo() {
 	  lineNR++;
 	  if(v) {
 	    v++;
-	    printf("bogimips:   %s", v);
+	    printf("bogimips:     %s", v);
 	  }
 	} else {
 	  char *v = strchr(line, ':');
