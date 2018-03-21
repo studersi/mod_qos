@@ -34,6 +34,20 @@
 
 static const char revision[] = "$Revision$";
 
+typedef struct {
+  const char *print;
+  const char *name;
+} mem_t;
+
+static const mem_t mem_param[] = {
+  { "MemTotal:      ", "MemTotal:" },
+  { "MemFree:       ", "MemFree:" },
+  { "MemAvailable:  ", "MemAvailable:" },
+  { "Buffers:       ", "Buffers:" },
+  { "Cached:        ", "Cached:" },
+  { NULL, NULL }
+};
+
 // e.g. "SwapFree:        3868164 kB"
 static long lvalue(char *line) {
   long value = 0;
@@ -96,31 +110,19 @@ static void minfo() {
     int lineNR=0;
     char line[1024];
     while(fgets(line, 1023, file) != NULL) {
+      const mem_t *m = mem_param;
       if(strncasecmp(line, "SwapFree:", strlen("SwapFree:")) == 0) {
 	free = lvalue(line);
       }
       if(strncasecmp(line, "SwapTotal:", strlen("SwapTotal:")) == 0) {
 	total = lvalue(line);
       }
-      if(strncasecmp(line, "MemTotal:", strlen("MemTotal:")) == 0) {
-	long value = lvalue(line);
-	printf("MemTotal:      %ld\n", value);
-      }
-      if(strncasecmp(line, "MemFreel:", strlen("MemFree:")) == 0) {
-	long value = lvalue(line);
-	printf("MemFree:       %ld\n", value);
-      }
-      if(strncasecmp(line, "MemAvailable:", strlen("MemAvailable:")) == 0) {
-	long value = lvalue(line);
-	printf("MemAvailable:  %ld\n", value);
-      }
-      if(strncasecmp(line, "Buffers:", strlen("Buffers:")) == 0) {
-	long value = lvalue(line);
-	printf("Buffers:       %ld\n", value);
-      }
-      if(strncasecmp(line, "Cached:", strlen("Cached:")) == 0) {
-	long value = lvalue(line);
-	printf("Cached:        %ld\n", value);
+      while(m->name) {
+	if(strncasecmp(line, m->name, strlen(m->name)) == 0) {
+	  long value = lvalue(line);
+	  printf("%s%ld\n", m->print, value);
+	}
+	m++;
       }
     }
     fclose(file);
