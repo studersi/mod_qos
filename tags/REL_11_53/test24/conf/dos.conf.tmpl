@@ -1,0 +1,105 @@
+
+ServerRoot     ##ROOT##
+User           ##USR##
+Group          users
+ServerName     127.0.0.1
+
+ServerAdmin    ##USR##@example.com
+DocumentRoot   ##ROOT##/htdocs
+ErrorLog       logs/error_log
+LogLevel       warn
+
+LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T cr=%{mod_qos_cr}e ev=%{mod_qos_ev}e con=%{mod_qos_con}e id=%{UNIQUE_ID}e sp=%{qs_special}e cl=%{content-length}i uid=%{mod_qos_user_id}e k=%k country=%{QS_Country}e srcConn=%{QS_SrvConn}e allConn=%{QS_AllConn}e ipConn=%{QS_IPConn}e vip=%{QS_IsVipRequest}e #%P"
+TransferLog    "|$##ROOT##/../util/src/qssign -a sha256 -s 1234567890 -e |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
+CustomLog      "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qslog.csv -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o"
+
+TypesConfig    conf/mime.types
+
+PidFile        logs/apache.pid
+StartServers             1
+MinSpareThreads         25
+MaxSpareThreads         50 
+ThreadsPerChild         25
+MaxRequestWorkers      100
+MaxConnectionsPerChild   0
+
+LoadModule     setenvifplus_module ##ROOT##/../install/modules/.libs/mod_setenvifplus.so
+
+Options        FollowSymLinks Indexes Includes
+
+Timeout                 10
+KeepAlive               on
+MaxKeepAliveRequests   100
+KeepAliveTimeout         5
+RequestReadTimeout       header=0 body=0
+
+SSLProtocol              all -SSLv2 -SSLv3
+SSLCipherSuite           EDH:EECDH:!aNULL:!eNULL:!LOW:!MD5:!EXP:!ADH:!DSS:!ECDSA:!3DES:!RC4:!SEED:!CAMELLIA+SHA1
+SSLSessionCacheTimeout   864000
+SSLRandomSeed startup    builtin
+
+QS_EnableInternalIPSimulation off
+
+QS_Status                on
+QS_SrvMaxConnClose       80%
+QS_SrvMaxConnPerIP       30 50
+QS_SrvMinDataRate        120 1500 50
+
+QS_ClientEventBlockCount 20 300
+QS_SetEnvIfStatus        400                QS_Block
+QS_SetEnvIfStatus        405                QS_Block
+QS_SetEnvIfStatus        406                QS_Block
+QS_SetEnvIfStatus        408                QS_Block
+QS_SetEnvIfStatus        413                QS_Block
+QS_SetEnvIfStatus        414                QS_Block
+QS_SetEnvIfStatus        500                QS_Block
+QS_SetEnvIfStatus        503                QS_Block
+QS_SetEnvIfStatus        QS_SrvMinDataRate  QS_Block
+QS_SetEnvIfStatus        QS_SrvMaxConnPerIP QS_Block
+QS_SetEnvIfStatus        BrokenConnection   QS_Block
+
+#QS_SetEnvIf QS_AllConn=(^1[012345][0-9]{2}$)|(^[0-9]{1,3}$) LowConnection
+QS_SetEnvIf QS_AllConn=^[0-9]$ LowConnection=yes
+QS_SetEnvIf LowConnection QS_IsVipRequest !QS_Block
+QS_VipIPHeaderName       login=valid drop
+
+<IfDefine prefer>
+QS_ClientPrefer 80%
+</IfDefine>
+
+Listen         ##QS_PORT_BASE##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE##>
+   ServerName   127.0.0.1
+
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+   ProxyPass                  /qos !
+   ProxyPass                  /status !
+   ProxyPass                  /error-pages !
+   ProxyPass                  /cgi-local !
+
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
+   ProxyPass                  /xxx http://127.0.0.1:##QS_PORT_BASE5##/xxx retry=0
+   ProxyPassReverse           /xxx http://127.0.0.1:##QS_PORT_BASE5##/xxx
+
+   <Location /qos>
+      SetHandler qos-viewer
+   </Location>
+   <Location /status>
+      SetHandler server-status
+   </Location>
+
+  ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
+  <Location /cgi-local>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
+
+
+</VirtualHost>

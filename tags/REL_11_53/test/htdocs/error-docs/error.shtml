@@ -1,0 +1,71 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<meta>
+<meta http-equiv="Cache-Control" content="no-cache, no-store"/>
+<meta http-equiv="expires" content="0" />
+</head>
+<body>
+custom error page
+<p>
+<b><i>failed to serve your request</i></b>
+</p>
+<p>
+   code=<!--#echo var="REDIRECT_ERROR_NOTES" --></p>
+
+    <!--#if expr="\"${REDIRECT_ERROR_NOTES}\" = /\"00[0-9]{1}\"/" -->
+        message: initialisation failure
+    <!--#endif -->
+    <!--#if expr="\"${REDIRECT_ERROR_NOTES}\" = /\"01[0-9]{1}\"/" -->
+        message: request rule
+    <!--#endif -->
+    <!--#if expr="\"${REDIRECT_ERROR_NOTES}\" = /\"02[0-9]{1}\"/" -->
+        message: vip event
+    <!--#endif -->
+    <!--#if expr="\"${REDIRECT_ERROR_NOTES}\" = /\"03[0-9]{1}\"/" -->
+        message: connection rule
+    <!--#endif -->
+    <!--#if expr="\"${REDIRECT_ERROR_NOTES}\" = /\"04[0-9]{1}\"/" -->
+        message: request filter
+    <!--#endif -->
+    <!--#if expr="\"${REDIRECT_ERROR_NOTES}\" = /\"05[0-9]{1}\"/" -->
+        message: bandwidth limitation
+    <!--#endif -->
+
+<pre>
+    _1<!--#echo var="NAME" -->
+    _2<!--#echo var="VALUE" -->
+    _3<!--#echo var="EMPTY" -->
+    _4<!--#echo var="BODY" -->
+    _5<!--#echo var="PARP_PATTERN" -->
+    _6<!--#echo var="QS_SrvConn" -->
+    _7<!--#echo var="QS_AllConn" -->
+    _8<!--#echo var="QS_ClientLowPrio" -->
+    _9<!--#echo var="QS_IsVipRequest" -->
+    _A<!--#echo var="QS_Country" -->
+    _B<!--#echo var="QS_Limit" -->
+    _C<!--#echo var="QS_Limit_Counter" -->
+    _D<!--#echo var="QS_Limit_Remaining" -->
+</pre>
+</p>
+<p>Remaining time: <span id="remaining"><!--#echo var="QS_Limit_Remaining" --></span> seconds</p>
+<hr>
+<pre>
+$Revision: 1.9 $
+</pre>
+<script type="text/javascript">
+<!--
+setInterval(function () {
+  var msg = document.getElementById('remaining');
+  var value = msg.innerHTML;
+  var remainTime = value - 1;
+  if(remainTime < 0) {
+    window.location = window.location.pathname;
+  } else {
+    msg.innerHTML = remainTime;
+  }
+}, 1000);
+//-->
+</script>
+
+</body>
+</html>

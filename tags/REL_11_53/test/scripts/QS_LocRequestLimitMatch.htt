@@ -1,0 +1,38 @@
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /app/a/1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "AS1"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 500
+_REQ localhost $QS_PORT_BASE
+__GET /app/b/1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "custom error page"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_SLEEP 2000
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+END

@@ -1,0 +1,8 @@
+531c531
+<     if (((s + 1) != NULL) && (*s == '\\')) {
+---
+>     if (*s == '\\') {
+533c533
+<         if (apr_isascii(c)) {
+---
+>         if (c && apr_isascii(c)) {
