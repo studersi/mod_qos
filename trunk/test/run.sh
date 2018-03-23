@@ -40,4 +40,9 @@ else
     $HTTEST $@
     RC=$?
 fi
+
+if [ $RC -ne 0 ]; then
+    sleep 3
+fi
+
 exit $RC

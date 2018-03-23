@@ -40,11 +40,11 @@ typedef struct {
 } mem_t;
 
 static const mem_t mem_param[] = {
-  { "MemTotal:      ", "MemTotal:" },
-  { "MemFree:       ", "MemFree:" },
-  { "MemAvailable:  ", "MemAvailable:" },
-  { "Buffers:       ", "Buffers:" },
-  { "Cached:        ", "Cached:" },
+  { "MemTotal:          ", "MemTotal:" },
+  { "MemFree:           ", "MemFree:" },
+  { "MemAvailable:      ", "MemAvailable:" },
+  { "Buffers:           ", "Buffers:" },
+  { "Cached:            ", "Cached:" },
   { NULL, NULL }
 };
 
@@ -91,8 +91,8 @@ static void pinfo() {
 	   with the disk, swap memory of other processes, or requires
 	   IO to free memory. Happens for references of virtual memory
 	   that has no physical page allocated to it.
-	   Memory allocation was required which increased VMB latency. */
-	printf("page faults:   %s\n", p);
+	   => memory allocation was required which increased VMB latency. */
+	printf("major page faults: %s\n", p);
       }
     }
     fclose(file);
@@ -127,7 +127,7 @@ static void minfo() {
     }
     fclose(file);
     if(total > 0) {
-      printf("used swap:     %ld\n", total - free);
+      printf("used swap:         %ld\n", total - free);
     }
   }
   return;
@@ -146,7 +146,7 @@ static void cinfo() {
 	lineNR++;
 	if(v) {
 	  v++;
-	  printf("model name:   %s", v);
+	  printf("model name:       %s", v);
 	}
       }
       if(strncasecmp(line, "bogomips", strlen("bogomips")) == 0) {
@@ -156,7 +156,7 @@ static void cinfo() {
 	  lineNR++;
 	  if(v) {
 	    v++;
-	    printf("bogimips:     %s", v);
+	    printf("bogimips:         %s", v);
 	  }
 	} else {
 	  char *v = strchr(line, ':');

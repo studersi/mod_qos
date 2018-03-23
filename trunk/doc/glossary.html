@@ -349,10 +349,10 @@ Sample page:<br>
     &lt;title&gt;ERROR - &lt;!--#echo var="REDIRECT_ERROR_NOTES" --&gt;&lt;/title&gt;
   &lt;/head&gt;
   &lt;body&gt;
-&lt;p&gt;
-&lt;b&gt;&lt;i&gt;sorry - the server was unable to complete your request&lt;/i&gt;&lt;/b&gt;
-&lt;/p&gt;
-&lt;p&gt;
+  &lt;p&gt;
+    &lt;b&gt;&lt;i&gt;sorry - the server was unable to complete your request&lt;/i&gt;&lt;/b&gt;
+  &lt;/p&gt;
+  &lt;p&gt;
         code: mod_qos(&lt;!--#echo var="<a href="index.html#QS_ErrorNotes">QS_ErrorNotes</a>" --&gt;)&lt;br&gt;
     &lt;!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /00[0-9]/" --&gt;
         reason: initialisation failure
@@ -367,28 +367,28 @@ Sample page:<br>
     &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /[01]6[0-9]/" --&gt;
         reason: client limitation &lt;br&gt;
         remaining time: &lt;span id="remaining"&gt;&lt;!--#echo var="<a href="index.html#QS_Limit_Remaining">QS_Limit_Remaining</a>" --&gt;&lt;/span&gt; seconds
-&lt;script type="text/javascript"&gt;
-&lt;!--
-setInterval(function () {
-  var msg = document.getElementById('remaining');
-  if(msg) {
-    var value = msg.innerHTML;
-    var remainTime = value - 1;
-    if(remainTime &lt; 0) {
-      window.location = window.location.pathname;
-    } else {
-      msg.innerHTML = remainTime;
-    }
-  }
-}, 1000);
-//--&gt;
-&lt;/script&gt;
+        &lt;script type="text/javascript"&gt;
+        &lt;!--
+        setInterval(function () {
+          var msg = document.getElementById('remaining');
+          if(msg) {
+            var value = msg.innerHTML;
+            var remainTime = value - 1;
+            if(remainTime &lt; 0) {
+              window.location = window.location.pathname;
+            } else {
+              msg.innerHTML = remainTime;
+            }
+          }
+        }, 1000);
+        //--&gt;
+        &lt;/script&gt;
     &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /10[0-9]/" --&gt;
         reason: GEO location limitation
     &lt;!--#else --&gt;
         reason: generic failure
     &lt;!--#endif --&gt;
-&lt;/p&gt;
+  &lt;/p&gt;
   &lt;/body&gt;
 &lt;/html&gt;
 </pre>
