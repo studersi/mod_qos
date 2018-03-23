@@ -139,7 +139,7 @@ if [ -f test/headerfilterrules.txt ]; then
 	echo "version check for headerfilterrules FAILED"
 	exit 1
     fi
-    cp test/headerfilterrules.txt ${DES}/doc
+    cp test/headerfilterrules.txt mod_qos-${VERSION}/doc
     cp test/headerfilterrules.txt doc/
 else
     echo "FAILED, header filter rule list is missing"
