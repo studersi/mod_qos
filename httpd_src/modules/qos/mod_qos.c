@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.52";
+static const char g_revision[] = "11.53";
 
 /************************************************************************
  * Includes

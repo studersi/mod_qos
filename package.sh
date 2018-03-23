@@ -135,6 +135,10 @@ else
     exit 1
 fi
 if [ -f test/headerfilterrules.txt ]; then
+    if [ `grep -c "mod_qos $VERSION" test/headerfilterrules.txt` -eq 0 ]; then
+	echo "version check for headerfilterrules FAILED"
+	exit 1
+    fi
     cp test/headerfilterrules.txt ${DES}/doc
     cp test/headerfilterrules.txt doc/
 else
