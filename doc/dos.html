@@ -242,7 +242,7 @@ Clients closing/aborting the TCP connection before reading the the HTTP response
 </ul>
 </p>
 These limitations do not only increase the DoS defense efficiency. <a href="index.html#BrokenConnection"><code>BrokenConnection</code></a> in particular can be used to detect clients performing a <i>HTTP GET/POST flood DoS attack</i>.
-<p>
+<p><a name="blockevents"></a>
 The following example blocks clients if they cause more than 20 events within 5 minutes.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
@@ -323,10 +323,7 @@ variable tells you the number of busy TCP connections and the
 <a href="index.html#QS_SetEnvIf"><code>QS_SetEnvIf</code></a> directive 
 allows you to set or unset variables. The following example unset the
 <code>SlowRequest</code> variable as long as the server has less than 499 
-connections.<br>
-Clients which violates this request violation may be blocked for an even 
-longer period of time. This is implemented by a second counter 
-<code>SlowRepeatedlySlow</code>.
+connections.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # don't allow a client IP to access a "handler" (not a static resource like
@@ -338,7 +335,21 @@ longer period of time. This is implemented by a second counter
 
 # disable any event counting if the server has less than 499 connections:
 <a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>               <a href="index.html#QS_AllConn">QS_AllConn</a>=^[1234]?[0-9]{1,2}$ !SlowRequest
+</pre></td></tr></table> 
 
+<p>
+Clients violating these rules may times can be blocked for an even 
+longer period of time. This is implemented by a second counter, called 
+<code>SlowRepeatedlySlow</code> in this example.<br>Alternatively, the
+<a href="index.html#QS_Block"><code>QS_Block</code></a> variable 
+could be set to incremented the 
+<a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a> 
+counter in the case of a repeated rule violation (to block clients at a 
+connection level extending the list of events defined 
+<a href="#blockevents">above</a>).
+</p>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # deny a client IP for 10 minutes if he violates the rule above 3 times:
 <a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          3 600 <a href="index.html#QS_Limit">SlowRepeatedlySlow</a>
 <a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>      <a href="index.html#_Counter">SlowRequest_Counter</a>=20 SlowRepeatedlySlow=1
@@ -352,7 +363,8 @@ unimportant application can be prone to a <i>HTTP GET/POST flood DoS attack</i>.
 To minimize the influence of such an application on others, you can limit the 
 allocable resources using the 
 <a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a> 
-directive. This directive allows you to limit the number of concurrent 
+directive. This directive allows you to limit the number of 
+<a href="glossary.html#concurrency">concurrent</a> 
 requests to certain URLs and thus limit with how many simultaneous request 
 one or multiple attacker can try to slowdown your server.
 </p>
@@ -423,7 +435,7 @@ from which someone has successfully been authenticated. </p>
 <p>
 It is also recommended to configure a static value for the 
 <a href="index.html#QS_ClientContentTypes"><code>QS_ClientContentTypes</code></a> 
-directive in order to avoid distortions of the reference values during an attack.
+directive in order to avoid falsification of the reference values during an attack.
 </p>
 
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
@@ -519,7 +531,8 @@ iptables -A INPUT -p tcp --syn --dport 80,443 -m connlimit \
 You may want to inform other systems about client IP addresses which shall 
 be blocked, e.g., to synchronize multiple Apache instances (using the 
 <a href="index.html#webconsole">web console</a>), to configure 
-<i>iptables</i> rules, or to inform your ISP about clients which shall no 
+<i>iptables</i> rules (to apply an IP address blacklist for example), 
+or to inform your ISP about clients which shall no 
 longer be routed to your site. Watch your server's 
 <a href="index.html#errorlog">logs</a>! The directives mentioned on this 
 page may write event <a href="MESSAGES.txt">messages</a> using the 
