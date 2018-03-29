@@ -1860,9 +1860,11 @@ receives when accessing the server. Can only be used in conjunction with the
 <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> defines 
 the allowed deviation from these values. mod_qos normally learns the average 
 behavior automatically by default (you can see the learned values within 
-the <a href="#statusviewer">status viewer</a>) but you may specify a 
-static configuration using this directive in order to avoid influences 
-by a high number of abnormal clients. Default is automatic self-learning.
+the <a href="#statusviewer">status viewer</a> or by enabling the 
+<a href="#QS_Status"><code>QS_Status</code></a> log messages) but 
+you may specify a static configuration using this directive in order 
+to avoid influences by a high number of abnormal clients. Default is 
+automatic self-learning.
 </li>
 <li>
 <a name="QS_ClientGeoCountryDB"></a>
