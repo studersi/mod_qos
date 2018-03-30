@@ -1967,9 +1967,10 @@ due to an available <a href="#privilegedusers">VIP</a> session,
 "V"=create VIP session (cookie), "v"=marks an IP as VIP, 
 "K"=connection closed (no keep-alive), "T"=dynamic keep-alive, 
 "r"=IP is marked as a slow/bad client, "L"=means a request slowdown, 
-"u"=request without a user tracking cookie, and "s" is used for 
-serialized requests. The letter "A" for connection abort is set if 
-the status code detection <a href="#BrokenConnection"><code>BrokenConnection</code></a> 
+"u"=request without a <a href="#QS_UserTrackingCookieName">user tracking cookie</a>, 
+and "s" is used for serialized requests. The letter "A" for connection abort 
+is set if the status code detection 
+<a href="#BrokenConnection"><code>BrokenConnection</code></a> 
 has been configured.
 </li>
 <li>

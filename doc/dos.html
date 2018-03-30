@@ -405,30 +405,39 @@ Example (extract) of a database file:
 <a name="prefer"></a>
 <h3>Prefer Known Clients</h3>
 <p>
-<a href="index.html">mod_qos</a> may prefer "known" client IP 
+<a href="index.html">mod_qos</a> may prefer "known" (aka 
+<a href="index.html#privilegedusers">VIP</a>) client IP 
 addresses in the case that too many clients access the server. 
 "Known" clients are those which have once been identified by 
 the application by setting the corresponding HTTP response header. 
-Such identification may happen at successful user login. Connections 
-from clients which are not known to <a href="index.html">mod_qos</a> 
-(never marked by the corresponding response header) are denied if 
-the server runs on low TCP connection resources.
+</p>
+<p>
 <a href="images/ClientPrefer.png"><img align="right" src="images/ClientPrefer.png" height="272" width="214" /></a>
+Such identification may happen at successful user login. If your 
+application does not authenticate users (anonymous access only), 
+you might decide to identify known/friendly IP addresses by any 
+other attributes, e.g., if your application can confirm that 
+the client interprets JavaScript. Connections from clients 
+which are not known to <a href="index.html">mod_qos</a> 
+(never marked by the corresponding response header) are denied 
+if the server runs on low TCP connection resources.
 </p>
 <p>
-Unknown clients may get blocked. <a href="index.html">mod_qos</a> prefers clients 
+<a href="index.html">mod_qos</a> prefers clients 
 which communicate with the server instantaneously and fast, 
-and denies access to slow clients sending data irregularly, 
+and denies access for slow clients sending data irregularly, 
 violating other rules or loading different content types than 
-the majority of the other clients do.
+the majority of the other clients do. If the threshold to block 
+unknown clients has been reached, the clients with the "worst" 
+behavior are denied first.
 </p>
 <p>
-The directive to enable this is called 
+The directive to enable this is feature called 
 <a href="index.html#QS_ClientPrefer"><code>QS_ClientPrefer</code></a>. When 
 using this feature, you should define how to detect the "good" clients 
 using the <a href="index.html#QS_VipIPHeaderName"><code>QS_VipIPHeaderName</code></a> 
-directive (e.g., let your application add a special response header if a user 
-successfully authenticates). Alternatively, you can use the 
+directive (as mentioned above: let your application add a special response header
+if a user successfully authenticates). Alternatively, you can use the 
 <a href="#QS_VipIPUser"><code>QS_VipIPUser</code></a> directive if you are using 
 an Apache authentication module such as mod_auth_basic to mark IP addresses 
 from which someone has successfully been authenticated. </p>
