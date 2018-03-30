@@ -7,6 +7,7 @@
   attributes such as
   - requests per single TCP connection (keep-alive)
   + 304 responses
+  - check if the client supports JavaScript (check by a test page, e.g. UserTracking extension)
   + respone content types (html/css/js/image/...)
     - store/configure "normal" behavoir (stop learning after a while)
   - elapse time between requests
