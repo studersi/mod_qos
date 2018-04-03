@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.53";
+static const char g_revision[] = "11.54";
 
 /************************************************************************
  * Includes
@@ -162,6 +162,7 @@ static const char g_revision[] = "11.53";
 #define QS_ErrorNotes     "QS_ErrorNotes"
 #define QS_BLOCK          "QS_Block"
 #define QS_BLOCK_SEEN     "QS_Block_seen"
+#define QS_BLOCK_DEC      "QS_Block_Decrement"
 #define QS_LIMIT_NAME_PFX "QS_Limit_VAR_NAME_IDX"
 #define QS_LIMIT_DEFAULT  "QS_Limit"
 #define QS_LIMIT_SEEN     "QS_Limit_seen"
@@ -200,6 +201,7 @@ static const char *m_env_variables[] = {
   QS_SRVSERIALIZE,
   QS_BLOCK,
   QS_BLOCK_SEEN,
+  QS_BLOCK_DEC,
   QS_LIMIT_DEFAULT,
   QS_LIMIT_SEEN,
   QS_EVENT,
@@ -2351,6 +2353,7 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
                                          const char *value) {
   const char *uid = qos_unique_id(r, NULL);
   const char *verified = NULL;
+  const char *newUID = NULL;
   if(value != NULL) {
     int buf_len = 0;
     unsigned char *buf;
@@ -2360,8 +2363,8 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
     }
   }
   if(verified == NULL) {
-    verified = uid;
-    apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
+    newUID = uid;
+    apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, newUID);
     qs_set_evmsg(r, "u;"); 
   } else if(strlen(verified) > 2) {
     apr_size_t retcode;
@@ -2373,12 +2376,12 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
       /* renew, if not from this month */
       apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, &verified[2]);
     }
-    verified = &verified[2];
+    newUID = &verified[2];
   } else {
-    verified = uid;
-    apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, verified);
+    newUID = uid;
+    apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, newUID);
   }
-  apr_table_set(r->subprocess_env, QOS_USER_TRACKING, verified);
+  apr_table_set(r->subprocess_env, QOS_USER_TRACKING, newUID);
   return;
 }
 
@@ -5605,7 +5608,7 @@ static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
       if(entry->action == QS_EVENT_ACTION_DENY) {
         int decEvent = get_qs_event(r, entry->eventDecStr);
         if(decEvent > 0) {
-          if(decEvent > entry->limit) {
+          if(decEvent >= entry->limit) {
             entry->limit = 0;
             entry->limit_time = 0;
           } else {
@@ -5645,6 +5648,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   int unusual_behavior = -1;
   int block_event = get_qs_event(r, QS_BLOCK);
   const char *block_seen = apr_table_get(r->subprocess_env, QS_BLOCK_SEEN);
+  int block_dec = get_qs_event(r, QS_BLOCK_DEC);
   qs_conn_ctx *cconf = qos_get_cconf(r->connection);
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
   apr_time_t now = apr_time_sec(r->request_time);
@@ -5766,7 +5770,8 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
       (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
     }
   }
-  if(block_event || lowrate || (unusual_behavior > 0)) {
+
+  if(block_event || block_dec || lowrate || (unusual_behavior > 0)) {
     if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
       /* reset expired events */
       if((*e)->blockMsg > QS_LOG_REPEAT) {
@@ -5799,6 +5804,14 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
       }
       qs_set_evmsg(r, "r;"); 
+    }
+    if(block_dec > 0) {
+      if(block_dec >= (*e)->block) {
+        (*e)->block = 0;
+        (*e)->block_time = 0;
+      } else {
+        (*e)->block = (*e)->block - block_dec;
+      }
     }
     if(block_event) {
       if((*e)->block == 0) {
@@ -10470,8 +10483,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   if((qos_module_check("mod_unique_id.c") != APR_SUCCESS) &&
      (qos_module_check("mod_navajo.cpp") != APR_SUCCESS)) {
     ap_log_error(APLOG_MARK, APLOG_WARNING, 0, bs, 
-                 QOS_LOG_PFX(009)"mod_unique_id not available (mod_qos generates simple"
-                 " request id if required)");
+                 QOS_LOG_PFX(009)"mod_unique_id not available"
+                 " (mod_qos generates simple request id if required)");
   }
   qos_audit_check(ap_conftree);
   qos_is_https = APR_RETRIEVE_OPTIONAL_FN(ssl_is_https);

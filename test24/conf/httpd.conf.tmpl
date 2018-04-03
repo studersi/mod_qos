@@ -191,6 +191,8 @@ Listen         ##QS_PORT_BASE##
    SetEnvIf                   User-Agent serializeme QS_SrvSerialize=1
    SetEnvIf                   User-Agent serialClient QS_Serialize=1
 
+   SetEnvIfPlus               User-Agent QS_BOCK_DECREMENT=([0-9]+) QS_Block_Decrement=$1
+
    SetEnvIfPlus               User-Agent reDirectMe=(/errorpages/error.html) QS_RI=$1
    QS_RedirectIf              QS_RI ([a-z0-9_/.-]+) $1
 

@@ -742,8 +742,9 @@ e.g. <code>QS_Limit_Clear</code>.
 The counter of the variable processed by the
 <code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code>, 
 <code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code>, 
-<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>, and 
-<code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code>
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>, 
+<code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code>, and
+<code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> 
 directives 
 is decremented by the value set in the same variable suffixed by <code>_Decrement</code>, 
 e.g. <code>QS_Limit_Decrement=1</code> decrements the value of the <code>QS_Limit</code>
@@ -1750,7 +1751,13 @@ user friendly error response).<br/>
 You may use <code>QS_ClientEventBlockExcludeIP &lt;addr&gt;</code> 
 to exclude an IP address from being processed by this limitation 
 (e.g. for trusted clients connecting via a proxy server). An address 
-range must end with a "." or ":".
+range must end with a "." or ":".<br/>
+<small><i>Notes:
+<ul>
+<li>The counter can be decremented by setting the environment
+variable <code><a href="#_Decrement">QS_Block_Decrement</a></code>.
+</li>
+</ul>
 </li>
 <li>
 <a name="QS_ClientEventLimitCount"></a>
