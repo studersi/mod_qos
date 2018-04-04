@@ -1,0 +1,44 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "<!--0-->.*free ip entries.*896"
+_EXPECT . "<!--0-->.*current connections.*colspan=.3.>0</td>"
+_EXPECT . "<!--3-->.*free ip entries.*896"
+_EXPECT . "<!--3-->.*current connections.*colspan=.3.>0</td>"
+_EXPECT . "<!--3--><td>/no</a></td><td>200</td><td >0</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>"
+_EXPECT . "<!--3--><td>/cgi</a></td><td>200</td><td >0</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>"
+_EXPECT . "<!--3--><td>/aaa</a></td><td>200</td><td >0</td><td >0&nbsp;ms</td><td>100</td><td >0</td><td>-</td><td>-</td><td>-</td></tr>"
+_EXPECT . "<!--3--><td>/bbb</a></td><td>200</td><td >0</td><td>-</td><td>-</td><td>-</td><td >0&nbsp;ms</td><td>1000</td><td >0</td></tr>"
+_EXPECT . "<!--3--><td>/ccc/.*</a></td><td>200</td><td >0</td><td >0&nbsp;ms</td><td>75</td><td >0</td><td>-</td><td>-</td><td>-</td></tr>"
+_EXPECT . "<!--3--><td>/ddd/ddd/ddd/ddd</a></td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td >0&nbsp;ms</td><td>1000</td><td >0</td></tr>"
+_EXPECT . "<!--4-->.*free ip entries.*895"
+_EXPECT . "<!--4-->.*current connections.*colspan=.3.>1</td>"
+_EXPECT . "<!--4-->.*<td>30</td><td >1</td>"
+_EXPECT . "<!--4-->.*<td>5</td><td >0</td>"
+_EXPECT . "<!--4-->.*<td>100</td><td >0</td>"
+_EXPECT . "<!--4-->.*<td>50</td><td >0</td>"
+_EXPECT . "<!--4-->.*<td>2</td><td >0</td>"
+_EXPECT . "<!--4-->.*conditional.*<td>2</td>.*>0</td>"
+_EXPECT . "<!--4--><td>var=.CODEAPPLI=A1.</a></td><td>1</td><td >0</td>"
+_EXPECT . "<!--4--><td>var=.CODEAPPLI=A2.</a></td><td>5</td><td >0</td>"
+_EXPECT . "<!--4--><td>var=.CODEAPPLI=A3.</a></td><td>10</td><td >0</td>"
+_EXPECT . "<!--4--><td>var=.qsmin.</a></td><td>-</td><td>-</td><td >0&nbsp;ms</td><td>5</td><td >0</td><td>-</td><td>-</td><td>-</td></tr>"
+_EXPECT . "<!--4--><td>var=.query.</a></td><td>3</td><td >0</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>"
+_EXPECT . "<!--4--><td>var=.queryv=abc.</a></td><td>3</td><td >0</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>"
+_EXPECT . "<!--4--><td>var=.PARP_PATTERN.</a></td><td>3</td><td >0</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>"
+_EXPECT . "<!--4--><td>var=.query.</a></td><td>-</td><td>-</td><td >0&nbsp;ms</td><td>100</td><td >0</td><td>-</td><td>-</td><td>-</td></tr>"
+_EXPECT . "<!--4--><td>var=.argmatch.</a></td><td>-</td><td>-</td><td >0&nbsp;ms</td><td>1</td><td >0</td><td>-</td><td>-</td><td>-</td></tr>"
+
+_WAIT
+
+END

@@ -1,0 +1,37 @@
+#
+# $Id$
+#
+# ensure the module can be used in a forward proxy (HTTP)
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_SLEEP 100
+_REQ 127.0.0.1 $QS_PORT_BASE3
+__GET http://127.0.0.1:${QS_PORT_BASE6}/index.html?req=forward HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+_SLEEP 200
+
+_EXPECT EXEC "GET http://127.0.0.1:${QS_PORT_BASE6}/index.html\?req=forward HTTP/1.1\" 200 9"
+_EXEC tail -1 logs/access_log
+
+END
+
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: 9
+__
+__==AS1==
+_CLOSE
+
+END

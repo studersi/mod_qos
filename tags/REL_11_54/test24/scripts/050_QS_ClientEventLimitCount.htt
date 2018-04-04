@@ -1,0 +1,76 @@
+#
+# $Id$
+#
+#  
+#  QS_ClientEventLimitCount  3 10
+#
+#     <Location /htt/limit>
+#        QS_SetEnvIfResBody "Login Failed" QS_Limit
+#     </Location>
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D real_ip >/dev/null
+
+CLIENT
+
+_LOOP 3
+_REQ localhost $QS_PORT_BASE
+__GET /htt/limit/index.html HTTP/1.1
+__Host: localhost
+__Req: 01
+__
+_EXPECT . "<head><title>Login Failed</title></head>"
+_WAIT
+_CLOSE
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/limit/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Req: 01
+__
+_EXPECT . "code=067"
+_EXPECT . "custom error page"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=3, current=3, age=., c=127.0.0.1"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 12000
+_REQ localhost $QS_PORT_BASE
+__GET /htt/limit/index.html HTTP/1.1
+__Host: localhost
+__Req: 01
+__
+_EXPECT . "<head><title>Login Failed</title></head>"
+_WAIT
+_CLOSE
+
+END
+
+SERVER $QS_PORT_BASE6
+
+_LOOP 4
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/html
+__Content-Length: AUTO
+__
+__<html>
+__<head><title>Login Failed</title></head>
+__<body>
+__</body>
+__</html>
+_CLOSE
+_END LOOP
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END
+

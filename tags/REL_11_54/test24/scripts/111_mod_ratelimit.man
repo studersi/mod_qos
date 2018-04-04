@@ -1,0 +1,56 @@
+#
+# $Id$
+#
+#      SetOutputFilter RATE_LIMIT
+#      SetEnv rate-limit 500
+#
+INCLUDE scripts/ports
+
+CLIENT 2
+
+_AUTO_CLOSE on
+
+_SET counter=0
+_SET bytes=0
+_DATE:GET_TIME start
+
+_RPS 200 120
+_REQ localhost $QS_PORT_BASE
+__GET /ratelimit/image.iso HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH headers "Content-Length: ([0-9]*)" ct
+_EXPECT . "200 OK"
+_WAIT
+_SLEEP 50
+_MATH:OP $counter ADD 1 counter
+_MATH:OP $bytes ADD $ct bytes
+_END RPS
+
+_DATE:GET_TIME end
+
+_MATH:OP $end SUB $start duration
+_MATH:OP $bytes DIV $duration bs
+
+_MATCH EXEC "b/s;([0-9]+);" BS
+_EXEC tail -1 logs/qs_log
+
+# 5000 +/-10% 
+_IF "$BS" LT "9000000"
+_EXIT FAILED
+_END IF
+_IF "$BS" GT "1100000"
+_EXIT FAILED
+_END IF
+
+# 500/2clients +/-10%
+_IF "$bs" LT "400"
+_EXIT FAILED
+_END IF
+_IF "$bs" GT "600"
+_EXIT FAILED
+_END IF
+
+END
+

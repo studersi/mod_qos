@@ -1,0 +1,125 @@
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/parp/permit HTTP/1.1
+__Host: localhost
+__Req: 1
+__
+_EXPECT . "!code=04"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/parp/permit?name=value&id=abc HTTP/1.1
+__Host: localhost
+__Req: 2
+__
+_EXPECT . "!code=04"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/permit HTTP/1.1
+__Host: localhost
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: AUTO
+__Req: 3
+__
+_-name=value&id=abc
+_EXPECT . "!code=04"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/permit HTTP/1.1
+__Host: localhost
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: AUTO
+__Req: 4
+__
+_-name=value&id=12c
+_EXPECT . "code=041"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/parp/permit?name=va1ue&id=abc HTTP/1.1
+__Host: localhost
+__Req: 6
+__
+_EXPECT . "code=041"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+_CLOSE
+
+# body off
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/permit/off HTTP/1.1
+__Host: localhost
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: AUTO
+__Req: 7
+__
+_-name=value&id=abc
+_EXPECT . "!code=04"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/permit/off HTTP/1.1
+__Host: localhost
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: AUTO
+__Req: 8
+__
+_-name=value&id=12c
+_EXPECT . "!code=04"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/parp/permit/off?name=va1ue&id=abc HTTP/1.1
+__Host: localhost
+__Req: 9
+__
+_EXPECT . "code=041"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/parp/permit/off?name=value&id=abc HTTP/1.1
+__Host: localhost
+__Req: 10
+__
+_EXPECT . "!code=041"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+_CLOSE
+
+_SLEEP 100
+
+_EXEC cat logs/qsaudit_log | awk '{print $4}' > logs/qsaudit_log.2
+_EXPECT EXEC "\^\[/a\-zA\-Z\]\+/permit..\(name=\[a\-zA\-Z\]\{0,15\}\[&\]\?\)\?\(id=\[0\-9a\-zA\-Z\]\{0,13\}\[&\]\?\)\?\$"
+_EXEC ../util/src/qsfilter2 -i logs/qsaudit_log.2 -v 0 2>&1
+
+
+END

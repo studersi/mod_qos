@@ -1,0 +1,63 @@
+#
+# $Id$
+#
+#   QS_ClientEventBlockCount 20 30
+#   QS_SetEnvIfStatus  BrokenConnection QS_Block
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D real_ip >/dev/null
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1&l=10 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla 1
+__
+_EXPECT . "data data data"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "Mozilla 1\" . cr=. ev=\-"
+_EXEC tail -1 logs/access_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1&l=200 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla 2
+__
+_CLOSE
+_SLEEP 1500
+
+_ERROR .*
+_LOOP 50
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1&l=1200 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla 2
+__
+_CLOSE
+_SLEEP 100
+_END LOOP
+_SLEEP 3000
+_END ERROR
+_EXPECT EXEC "Mozilla 2\" . cr=. ev=A;"
+_EXEC tail -10 logs/access_log
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+__GET / HTTP/1.1
+_CLOSE
+_SLEEP 1000
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=20"
+_EXEC tail -2 logs/error_log
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END
