@@ -417,9 +417,10 @@ Such identification may happen at successful user login. If your
 application does not authenticate users (anonymous access only), 
 you might decide to identify known/friendly IP addresses by any 
 other attributes, e.g., if your application can confirm that 
-the client interprets JavaScript. Connections from clients 
-which are not known to <a href="index.html">mod_qos</a> 
-(never marked by the corresponding response header) are denied 
+the client interprets JavaScript or by using a captcha. 
+Connections from clients which are not known to 
+<a href="index.html">mod_qos</a> (never marked by 
+the corresponding response header) are denied 
 if the server runs on low TCP connection resources.
 </p>
 <p>
