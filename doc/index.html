@@ -4,7 +4,7 @@
  <title>mod_qos</title>
 <meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
 <meta name="author" content="Pascal Buchbinder" />
-<meta name="KeyWords" content="Quality of Service, Apache Web Server, Throttling, Web application security, WAF, Open Source Software, Secure Reverse Proxy, Denial of Service DoS Prevention" />
+<meta name="KeyWords" content="mod_qos, Quality of Service, Apache Web Server, Throttling, Web application security, WAF, Open Source Software, Secure Reverse Proxy, Denial of Service Prevention, DoS, DDoS" />
 <link rel="shortcut icon" href="favicon.ico" />
 <style TYPE="text/css">
 <!--  
@@ -1748,16 +1748,18 @@ events allowed within the defined time (default is 600 seconds).
 Client IP is blocked when reaching this counter for the specified 
 time (blocked at connection level: user might not always get a 
 user friendly error response).<br/>
+<small><i>Notes:
+<ul>
+<li>
 You may use <code>QS_ClientEventBlockExcludeIP &lt;addr&gt;</code> 
 to exclude an IP address from being processed by this limitation 
 (e.g. for trusted clients connecting via a proxy server). An address 
-range must end with a "." or ":".<br/>
-<small><i>Notes:
-<ul>
+range must end with a "." or ":".
+</li>
 <li>The counter can be decremented by setting the environment
 variable <code><a href="#_Decrement">QS_Block_Decrement</a></code>.
 </li>
-</ul>
+</ul></i></small>
 </li>
 <li>
 <a name="QS_ClientEventLimitCount"></a>

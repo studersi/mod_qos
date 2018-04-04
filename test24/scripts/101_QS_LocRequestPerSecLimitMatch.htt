@@ -10,7 +10,7 @@ INCLUDE scripts/ports
 # about 80 req/sec (without mod_qos
 CLIENT 4
 _AUTO_CLOSE on
-_RPS 20 122
+_RPS 20 125
 _REQ localhost $QS_PORT_BASE
 __GET /limitrs/index.html HTTP/1.1
 __Host: localhost
