@@ -8,6 +8,8 @@
   - requests per single TCP connection (keep-alive)
   + 304 responses
   - check if the client supports JavaScript (check by a test page, e.g. UserTracking extension)
+    verification may be performed when server becomes busy/in conjunction with QS_ClientPrefer
+    and we could also blacklist clients which are redirected to the test page multiple times
   + respone content types (html/css/js/image/...)
     - store/configure "normal" behavoir (stop learning after a while)
   - elapse time between requests
@@ -166,6 +168,6 @@ September 2009, Version 9: Anomaly detection using client characteristic measure
 Februar 2012, Version 10: Adds geolocation features (ISO 3166 country codes).
 May 2014, Version 11: Highly improves bytes/sec limitation (response throttling)
 July 2015, Version 11.15: Client and server serialization 
-May 2016, Version 1128: IP differentiated services code points
+May 2016, Version 11.28: IP differentiated services code points
 
 ----------------
