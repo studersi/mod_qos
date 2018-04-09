@@ -2423,15 +2423,19 @@ SetEnvIf                 Request_URI ^/download/mod_qos.so.gz <a href="#QS_Delay
 <a name="Limit_per_IP"></a>
 <p>
 mod_qos can also restrict the access to an URL by limiting the number 
-of requests from a single IP address.
+of requests from a single IP address (<code>LimitDownloadCounter</code> is 
+the <a href="glossary.html#repeat">counter</a> to use while the 
+<code>LimitDownloadNow</code> pattern is used to limit access to this 
+specific resource only still allowing the IP address to access 
+other resources).
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
 <pre>
-# does not allow more than 4 downloads per minute from a single IP address:
-SetEnvIf                     Request_URI ^/download/mod_qos.so.gz LimitDownload
-SetEnvIf                     Request_URI ^/download/mod_qos.so.gz <a href="#QS_Cond">QS_Cond</a>=LimitDownload
-<a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a> 4 60 LimitDownload LimitDownload
+# does not allow more than 4 downloads of mod_qos.so.gz per minute from a single IP address:
+SetEnvIf                     Request_URI ^/download/mod_qos.so.gz LimitDownloadCounter
+SetEnvIf                     Request_URI ^/download/mod_qos.so.gz <a href="#QS_Cond">QS_Cond</a>=LimitDownloadNow
+<a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a> 4 60 LimitDownloadCounter LimitDownloadNow
 </pre>
 </td></tr>
 </table>
