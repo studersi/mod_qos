@@ -78,6 +78,7 @@ how to use the module.
     </ul>
     <li><a href="#serialization">Serialization</a></li>
     <li><a href="#ssi">Error Pages and Server Side Includes (SSI)</a></li>
+    <li><a href="#UserTracking">User Tracking</a></li>
   </ul>
 </p>
 
@@ -325,9 +326,9 @@ other <a href="index.html#variables">variables</a> set by
 <tr><td bgcolor="#E2EDE2">
 Sample configuration:<br>
 <pre>
-AddType                  text/html .shtml
-AddOutputFilter          INCLUDES .shtml
-QS_ErrorPage             <a href="#qs_error.shtml">/errorpages/qs_error.shtml</a>
+AddType                   text/html .shtml
+AddOutputFilter           INCLUDES .shtml
+QS_ErrorPage              <a href="#qs_error.shtml">/errorpages/qs_error.shtml</a>
 </pre>
 </td></tr>
 </table>
@@ -396,6 +397,86 @@ Sample page:<br>
 </table>
 </p>
 
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="UserTracking"></a>
+<h2>User Tracking</h2>
+<p>
+It might be necessary to identify individual users to define appropriate QoS
+rules. For this reason, <a href="index.html">mod_qos</a> can set a cookie
+containing a unique identifier. This identifier is then written to the
+<code><a href="index.html#mod_qos_user_id">mod_qos_user_id</a></code>
+environment variable and you can add it to your log files by the
+format string <code>%{mod_qos_user_id}e</code>. This allows you to identify
+all requests issued by a user.</p>
+<p>
+This feature is enabled by the following directive:
+<ul>
+<li><syntax>QS_UserTrackingCookieName &lt;name&gt; [&lt;path&gt;] [&lt;domain&gt;] ['session']</syntax><br>
+The parameter "name" defines the cookie's name and "domain" (optional) 
+the domain attribute for the Set-Cookie header. The string "session" can 
+be defined if the cookie should not be stored by the session (but can 
+be deleted when the user closes this browser).
+</li>
+</ul>
+You can also enforce the browser to support cookies by specifying the 
+"path" parameter for the <code>QS_UserTrackingCookieName</code> directive. 
+This parameter defines an error document and mod_qos 
+answers the request with a redirect (302) to this document when setting 
+the cookie initially. The browser will follow the redirect and mod_qos 
+redirects the browser back to the initially requested page if the request 
+to this error document contains the tracking cookie. If the browser did not 
+send the cookie, the error document is shown.
+</p>
+<p>
+<i>Note: You can exclude certain clients from this enforcement by 
+setting the <code>DISABLE_UTC_ENFORCEMENT</code> 
+<a href="#variables">environment variable</a> 
+at server level (outside Location), e.g., to allow crawlers not 
+supporting cookies to access your site.</i>
+</p>
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+<a href="index.html#QS_UserTrackingCookieName">QS_UserTrackingCookieName</a> qstrack <a href="#cookiecheck">/errorpages/cookiecheck.html</a> session
+<a href="index.html#QS_SessionKey">QS_SessionKey</a>             sB.F4_0%D700ahLK1
+</pre>
+</td></tr>
+</table>
+</p>
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2"><a name="cookiecheck"></a>
+Sample page:<br>
+<pre>
+&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;meta http-equiv="Cache-Control" content="no-cache, no-store"/&gt;
+    &lt;meta http-equiv="expires" content="0" /&gt;
+    &lt;title&gt;Cookie Check Page&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;h1&gt;Cookie Check Failed&lt;/h1&gt;
+     &lt;p&gt;
+       Please enable cookies in your browser.&lt;br&gt;
+       Bitte schalten Sie in Ihrem Browser Cookies ein.&lt;br&gt;
+       Activez les cookies dans votre navigateur, s'il vous pla&amp;icirc;t.&lt;br&gt;
+       Por favor active las cookies en su navegador.&lt;br&gt;
+       Si prega di attivare i cookies nel proprio browser.&lt;br&gt;
+     &lt;/p&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</td></tr>
+</table>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
 </td></tr>
 </tbody>
 </table>
