@@ -191,6 +191,7 @@ More information about mod_qos:
 <li><a href="#configuration">Configuration</a></li>
 <ul>
 <li><a href="#requestlevelcontrol">Request Level Control</a></li>
+<li><a href="#statuscode">Status Code and Error Page</a></li>
 <li><a href="#privilegedusers">Privileged Users</a></li>
 <li><a href="#variables">Variables</a></li>
 <li><a href="#conditionalrules">Conditional Rules</a></li>
@@ -410,6 +411,32 @@ concurrent requests.. Has lower priority than
 <code><a href="#QS_LocKBytesPerSecLimitMatch">QS_LocKBytesPerSecLimitMatch</a></code>.
 </li>
 </ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+# maximum number of active TCP connections is limited to 512
+MaxClients                    512
+
+# limits concurrent requests to the locations:
+# - /app/a  max. 200 concurrent requests
+# - /app/b and /app/c (together) max. 300 concurrent requests
+# - /images max. 100 concurrent requests
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>            /app/a                   200
+<a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a>       ^(/app/b/|/app/c/).*$    300
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>            /images                  100
+# limits download bandwidth to 5Mbit/sec (resp. 640kbytes/sec)
+# for downloads from /app/a:
+<a href="#QS_LocKBytesPerSecLimit">QS_LocKBytesPerSecLimit</a>       /app/a                   640
+</pre>
+</td></tr>
+</table>
+<br>
+
+
+<a name="statuscode"></a>
+<h3>Status Code and Error Page</h3>
 The <code>QS_Error*</code> directives are used to control the response 
 given to clients whose requests have been denied.
 <ul>
@@ -1465,7 +1492,7 @@ SetEnvIfNoCase Content-Type multipart/mixed                   <a href="#QS_Limit
 SetEnvIfNoCase Content-Type application/json                  <a href="#QS_LimitRequestBody">QS_LimitRequestBody</a>=65536
 
 # enable mod_deflate input filter for compressed request body data:
-SetEnvIfNoCase Content-Encoding (gzip)|(compress)|(deflate)   <a href="#QS_DeflateReqBody">QS_DeflateReqBody</a>
+SetEnvIfNoCase Content-Encoding (gzip|compress|deflate)       <a href="#QS_DeflateReqBody">QS_DeflateReqBody</a>
 
 &lt;Location /app&gt;
    # don't allow a certain string pattern within the request query or
