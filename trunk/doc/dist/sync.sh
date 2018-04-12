@@ -25,6 +25,9 @@ sleep $T
 #scp ../images/Serialization.png ${dest}/images/
 #scp ../images/Events.png ${dest}/images/
 #scp ../images/Rule.png ${dest}/images/
+#scp ../images/qsloc1.png ${dest}/images/
+#scp ../images/qsloc2.png ${dest}/images/
+#scp ../images/qsloc3.png ${dest}/images/
 scp ../images/*.png ${dest}/images/
 scp ../images/mod_qos.gif ${dest}/images/
 scp ../qsfilter2_process.gif ${dest}/
