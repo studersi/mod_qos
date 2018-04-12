@@ -100,6 +100,7 @@ cp doc/images/ClosedLoop.png mod_qos-${VERSION}/doc/images/
 cp doc/images/Serialization.png mod_qos-${VERSION}/doc/images/
 cp doc/images/Events.png mod_qos-${VERSION}/doc/images/
 cp doc/images/Rule.png mod_qos-${VERSION}/doc/images/
+cp doc/images/qsloc.png mod_qos-${VERSION}/doc/images/
 cp doc/images/qsloc1.png mod_qos-${VERSION}/doc/images/
 cp doc/images/qsloc2.png mod_qos-${VERSION}/doc/images/
 cp doc/images/qsloc3.png mod_qos-${VERSION}/doc/images/
