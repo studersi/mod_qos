@@ -362,11 +362,14 @@ Your site might hosts multiple web applications of different importance. An
 unimportant application can be prone to a <i>HTTP GET/POST flood DoS attack</i>. 
 To minimize the influence of such an application on others, you can limit the 
 allocable resources using the 
-<a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a> 
-directive. This directive allows you to limit the number of 
+<a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a> or 
+<a href="index.html#QS_LocRequestLimit"><code>QS_LocRequestLimit</code></a> 
+directive. These directives allow you to limit the number of 
 <a href="glossary.html#concurrency">concurrent</a> 
-requests to certain URLs and thus limit with how many simultaneous request 
-one or multiple attacker can try to slowdown your server.
+requests to certain URLs.
+</p>
+<p>
+  <img src="images/qsloc.png" height="201" width="650"/>
 </p>
 
 <a name="country"></a>
