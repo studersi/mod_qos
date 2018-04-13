@@ -193,6 +193,7 @@ Also the
 directives use this counter type, although with fewer parameter options.
 </p>
 <p>
+<a name="QS_LocRequestLimit_Example"></a>
 <h4>Sample Use Case</h4>
 Now let us look at an example to show where these rules can be used. 
 Let's assume that you have two applications. We call them 
@@ -200,7 +201,7 @@ Let's assume that you have two applications. We call them
 Application "<font color="green">A</font>" has been deployed on 
 path <code>/app/a</code> and "<font color="blue">B</font>" 
 on <code>/app/b</code>.
-<table width="640px">
+<table width="670px">
   <tr>
 <td>
 As long as the server has enough resources, users can access both 
@@ -210,7 +211,7 @@ again to serve new requests.
 <br><br>
 </td>
 <td>
-  <img src="images/qsloc1.png" height="220" width="412" alt="trouble-free"/>
+  <img src="images/qsloc1.png" height="212" width="439" alt="trouble-free"/>
 </td>
   </tr>
   <tr>
@@ -222,7 +223,7 @@ There are no free workers left and application
 <br><br>
 </td>
 <td>
-  <img src="images/qsloc2.png" height="225" width="415" alt="disruption"/>
+  <img src="images/qsloc2.png" height="223" width="439" alt="disruption"/>
 </td>
   </tr>
   <tr>
@@ -236,7 +237,7 @@ available even application "<font color="blue">B</font>"
 has problems.
 </td>
 <td>
-  <img src="images/qsloc3.png" height="238" width="411" alt="disruption"/>
+  <img src="images/qsloc3.png" height="241" width="439" alt="disruption"/>
 </td>
   </tr>
 </table>
