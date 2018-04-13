@@ -67,7 +67,8 @@ of <a href="index.html">mod_qos</a> which are particularly suitable to help you 
 are the possibility to measure the bandwidth used for a TCP connection 
 (and the possibility to enforce that the requirements concerning the 
 minimum bandwidth is fulfilled) and the existence of event counters 
-per client's IP addresses (allowing you to limit the number of events 
+per client's IP addresses (allowing you to limit the 
+<a href="glossary.html#repeat">number of events</a> 
 a client is allowed cause on your web site).
 </p>
 <p>
@@ -161,10 +162,18 @@ TimeOut                               5
 
 # keep alive (enabled, but only until 80% of all connections are busy):
 KeepAlive                            on
-KeepAliveTimeout                      3
-MaxKeepAliveRequests                 30
+KeepAliveTimeout                      2
+MaxKeepAliveRequests                 40
 <a href="index.html#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a>                   80%
 </pre></td></tr></table>
+<p>
+<i>Note: It's also possible to control the Keep-Alive settings dynamically using 
+the <code><a href="index.html#QS_KeepAliveTimeout">QS_KeepAliveTimeout</a></code> 
+and <code><a href="index.html#QS_MaxKeepAliveRequests">QS_MaxKeepAliveRequests</a></code> 
+environment <a href="glossary.html#variables">variables</a>, e.g., enabling 
+this feature for "known" (aka <a href="index.html#privilegedusers">VIP</a>)
+clients only.</i>
+</p>
 
 <a name="connections"></a>
 <h3>Connections per IP</h3>
@@ -217,9 +226,11 @@ A very effective means of protection is the possibility to block client
 IP addresses automatically for a certain period if they violate a rule 
 multiple times respectively if they cause errors many times. 
 The <a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a> 
-directive can be used to do this. It defines <a href="glossary.html#repeat">how often</a> a "block event" (the Apache 
-process environment variable <a href="index.html#QS_Block"><code>QS_Block</code></a>) 
-may occur during a defined period of time. This enhances the effect of the above limitations. 
+directive can be used to do this. 
+It defines <a href="glossary.html#repeat">how often</a> a "block event" (the Apache 
+process <a href="glossary.html#variables">environment variable</a> 
+<a href="index.html#QS_Block"><code>QS_Block</code></a>) may occur during a 
+defined period of time. This enhances the effect of the above limitations. 
 Incoming TCP connections are rejected if a client IP address reaches this threshold until 
 the limitation expires.
 </p>
@@ -321,9 +332,9 @@ in this example) if the server has less connections.
 The <a href="index.html#QS_AllConn"><code>QS_AllConn</code></a> 
 variable tells you the number of busy TCP connections and the 
 <a href="index.html#QS_SetEnvIf"><code>QS_SetEnvIf</code></a> directive 
-allows you to set or unset variables. The following example unset the
-<code>SlowRequest</code> variable as long as the server has less than 499 
-connections.
+allows you to <a href="glossary.html#variables">set or unset variables</a>. 
+The following example unset the <code>SlowRequest</code> variable 
+as long as the server has less than 499 connections.
 </p>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # don't allow a client IP to access a "handler" (not a static resource like
