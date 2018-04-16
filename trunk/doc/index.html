@@ -1590,7 +1590,11 @@ Defines the maximum number of concurrent TCP connections for this server (virtua
 Defines the maximum number of connections for this server (virtual host) supporting 
 HTTP keep-alive. If the number of concurrent connections exceeds this threshold, the 
 TCP connection gets closed after each request. You may specify the number of 
-connections as a percentage of MaxClients if adding the suffix '%' to the specified value.
+connections as a percentage of MaxClients if adding the suffix '%' to the specified value.<br>
+<small><i>Note: It's also possible to control the Keep-Alive settings dynamically using 
+the <code><a href="#QS_KeepAliveTimeout">QS_KeepAliveTimeout</a></code> 
+and <code><a href="#QS_MaxKeepAliveRequests">QS_MaxKeepAliveRequests</a></code> 
+environment <a href="glossary.html#variables">variables</a>.</i></small>
 </li>
 <li>
 <a name="QS_SrvMaxConnPerIP"></a>

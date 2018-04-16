@@ -67,8 +67,7 @@ of <a href="index.html">mod_qos</a> which are particularly suitable to help you 
 are the possibility to measure the bandwidth used for a TCP connection 
 (and the possibility to enforce that the requirements concerning the 
 minimum bandwidth is fulfilled) and the existence of event counters 
-per client's IP addresses (allowing you to limit the 
-<a href="glossary.html#repeat">number of events</a> 
+per client's IP addresses (allowing you to limit the number of events 
 a client is allowed cause on your web site).
 </p>
 <p>
@@ -166,14 +165,6 @@ KeepAliveTimeout                      2
 MaxKeepAliveRequests                 40
 <a href="index.html#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a>                   80%
 </pre></td></tr></table>
-<p>
-<i>Note: It's also possible to control the Keep-Alive settings dynamically using 
-the <code><a href="index.html#QS_KeepAliveTimeout">QS_KeepAliveTimeout</a></code> 
-and <code><a href="index.html#QS_MaxKeepAliveRequests">QS_MaxKeepAliveRequests</a></code> 
-environment <a href="glossary.html#variables">variables</a>, e.g., enabling 
-this feature for "known" (aka <a href="index.html#privilegedusers">VIP</a>)
-clients only.</i>
-</p>
 
 <a name="connections"></a>
 <h3>Connections per IP</h3>
