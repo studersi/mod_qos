@@ -812,7 +812,8 @@ rules, e.g.,
 <li>
 <a name="QS_SrvConn"></a>
 <syntax>QS_SrvConn</syntax><br>
-Number of concurrent connections for this server/virtual host. Value is set 
+Number of <a href="glossary.html#concurrency">concurrent</a> 
+connections for this server/virtual host. Value is set 
 when using either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, 
 <code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code>, 
 <code><a href="#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a></code>, or 
@@ -1582,14 +1583,16 @@ and for port based virtual hosts (don't use them for name based virtual hosts).
 <li>
 <a name="QS_SrvMaxConn"></a>
 <syntax>QS_SrvMaxConn &lt;number&gt;</syntax><br>
-Defines the maximum number of concurrent TCP connections for this server (virtual host).
+Defines the maximum allowed number of <a href="glossary.html#concurrency">concurrent</a>
+TCP connections for this server (virtual host).
 </li>
 <li>
 <a name="QS_SrvMaxConnClose"></a>
 <syntax>QS_SrvMaxConnClose &lt;number&gt;[%]</syntax><br>
 Defines the maximum number of connections for this server (virtual host) supporting 
-HTTP keep-alive. If the number of concurrent connections exceeds this threshold, the 
-TCP connection gets closed after each request. You may specify the number of 
+HTTP keep-alive. If the number of <a href="glossary.html#concurrency">concurrent</a> 
+connections exceeds this threshold, the TCP connections 
+gets closed after each request. You may specify the number of 
 connections as a percentage of MaxClients if adding the suffix '%' to the specified value.<br>
 <small><i>Note: It's also possible to control the Keep-Alive settings dynamically using 
 the <code><a href="#QS_KeepAliveTimeout">QS_KeepAliveTimeout</a></code> 
