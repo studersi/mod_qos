@@ -71,6 +71,9 @@ how to use the module.
     <li><a href="#rules">Rules</a></li>
     <li><a href="#variables">Environment Variables</a></li>
     <li><a href="#concurrency">Concurrency Counter</a></li>
+    <ul>
+      <li><a href="#QS_LocRequestLimit_Example">Sample Use Case</a></li>
+    </ul>
     <li><a href="#repeat">Repeat Counter</a></li>
     <li><a href="#throughput">Throughput Control</a></li>
     <ul>
@@ -93,7 +96,7 @@ connection, HTTP request, and response data in a pre-defined sequence.
 The following graph shows the order in which the directives work.
 </p>
 <p>
-<a href="images/directive_seq.gif"><img src="images/directive_seq.gif" height="335" width="458" title="directive sequence" alt="directive sequence"/></a>
+<a href="images/directive_seq.gif"><img src="images/directive_seq.gif" height="435" width="558" title="directive sequence" alt="directive sequence"/></a>
 </p>
 
 
@@ -201,8 +204,9 @@ Let's assume that you have two applications. We call them
 Application "<font color="green">A</font>" has been deployed on 
 path <code>/app/a</code> and "<font color="blue">B</font>" 
 on <code>/app/b</code>.
-<table width="670px">
+<table width="780px">
   <tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 <td>
 As long as the server has enough resources, users can access both 
 applications the same time without influencing each other.<br> 
@@ -215,6 +219,7 @@ again to serve new requests.
 </td>
   </tr>
   <tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 <td>
 But if the application "<font color="blue">B</font>" becomes slow, 
 the duration of request processing increases and all workers become busy. 
@@ -227,6 +232,7 @@ There are no free workers left and application
 </td>
   </tr>
   <tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
 <td>
 A <a href="index.html#QS_LocRequestLimit"><code>QS_LocRequestLimit</code></a> or 
 <a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a>
@@ -488,6 +494,7 @@ redirects the browser back to the initially requested page if the request
 to this error document contains the tracking cookie. If the browser did not 
 send the cookie, the error document is shown.
 </p>
+<p>  <img src="images/UserTracking.png" height="386" width="410" alt="user tracking cookie enforcement"/></p>
 <p>
 <i>Note: You can exclude certain clients from this enforcement by 
 setting the <code>DISABLE_UTC_ENFORCEMENT</code> 
