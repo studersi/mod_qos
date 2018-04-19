@@ -96,7 +96,8 @@ static const char g_revision[] = "11.54";
 /* additional modules */
 #include "mod_status.h"
 
-/* this */
+/* Preprocessor Definitions
+ * this (optional header file allowing other modules to register to our hoos: */
 #ifdef QS_MOD_EXT_HOOKS
 #include "mod_qos.h"
 #endif
@@ -129,6 +130,8 @@ static const char g_revision[] = "11.54";
 
 #define QS_CONN_ABORT "mod_qos_connection_aborted"
 
+/* Preprocessor Definitions
+ * QSLOG_CLID, QSLOG_EVENT, QSLOG_AVERAGE define parameters for QSLog: */
 #ifndef QSLOG_CLID
 #define QSLOG_CLID "mod_qos_user_id"
 #endif
@@ -139,6 +142,8 @@ static const char g_revision[] = "11.54";
 #define QSLOG_AVERAGE "QS_AllConn"
 #endif
 
+/* Preprocessor Definitions
+ * logs repeating messages only once: */
 #ifndef QS_LOG_REPEAT
 #define QS_LOG_REPEAT     20
 #endif
@@ -225,7 +230,8 @@ static const char *m_note_variables[] = {
 
 #define QS_INCTX_ID inctx->id
 
-/* This is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
+/* Preprocessor Definitions
+   This is the measure rate for QS_SrvRequestRate/QS_SrvMinDataRate which may
    be increased to 10 or 30 seconds in order to compensate bandwidth variations.
    You may also use the QS_SrvSampleRate directive to override this default.
    Set it greater than the Apache Timeout directive to prevent from closing
@@ -234,6 +240,8 @@ static const char *m_note_variables[] = {
 #define QS_REQ_RATE_TM    5
 #endif
 
+/* Preprocessor Definitions
+ * match_limt for PCRE extra limits in study() */
 #ifndef QS_EXTRA_MATCH_LIMIT
 #define QS_EXTRA_MATCH_LIMIT 1500
 #endif
