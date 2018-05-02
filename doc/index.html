@@ -23,6 +23,7 @@
   li { margin: 4px 0; }
   syntax { font-family: monospace; font-size: 14; line-height: 1.8; }
   .btable   { font-size:0.75em; }
+  .prept { font-size:0.75em; }
 -->
 </style>
 </head>
@@ -255,8 +256,62 @@ the directory where header files can be found and if any of the required
 libraries cannot be found (may happen if you use mod_qos without mod_ssl), 
 add the <code>-L</code> option to specify the directory where libraries 
 can be found.
+<br>
+<small><i>Note: you may customize the code using the following preprocessor directives:</i></small>
+<table class="prept" width="780px">
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td bgcolor="#E2EDE2">Name</td>
+ <td bgcolor="#E2EDE2">Description</td>
+ <td bgcolor="#E2EDE2">Default</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QS_MOD_EXT_HOOKS</td>
+ <td>Enables the optional hooks defined in mod_qos.h</td>
+ <td><i>not set</i></td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QSLOG_CLID</td>
+ <td>Defines the environment variable which shall be used for the "user tracking id" (U)
+within the format string used by the <a href="#QSLog"><code>QSLog</code></a> directive.</td>
+ <td>mod_qos_user_id</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QSLOG_EVENT</td>
+ <td>Defines the environment variable which shall be used for the "event" (Q)
+within the format string used by the <a href="#QSLog"><code>QSLog</code></a> directive.</td>
+ <td>Event</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QSLOG_AVERAGE</td>
+ <td>Defines the environment variable which shall be used for the "average" (a)
+within the format string used by the <a href="#QSLog"><code>QSLog</code></a> directive.</td>
+ <td>QS_AllConn</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QS_LOG_REPEAT</td>
+ <td>Counter used to define how many repetitive messages are summarized.</td>
+ <td>20</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QS_REQ_RATE_TM</td>
+ <td>Default for the <a href="#QS_SrvSampleRate"><code>QS_SrvSampleRate</code></a> directive.</td>
+ <td>5</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QS_EXTRA_MATCH_LIMIT</td>
+ <td>Match limit field used for PCRE data processing.</td>
+ <td>1500</td>
+</tr>
+</table>
 </p>
-
 <p>
 The <a href="#utilities">support tools</a> may be built (at least on some 
 Linux platforms) using the GNU autotools. Some of these 
