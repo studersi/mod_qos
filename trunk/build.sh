@@ -18,17 +18,18 @@ MPM=worker
 #MPM=event
 
 echo "build Apache $APACHE_VER ($MPM)"
-if [ ! -d httpd-${APACHE_VER}-${MPM} ]; then
-    gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
+
+rm -f httpd
+rm -rf httpd-${APACHE_VER}-${MPM}
+rm -rf httpd-${APACHE_VER}
+
+gzip -c -d $TOP/3thrdparty/httpd-${APACHE_VER}.tar.gz | tar xf -
 #    echo "apply security patches"
 #    for E in `(cd 3thrdparty/patch22/; find . -name "*patch")`; do
 #	srcFile=`echo $E | sed "s/.patch//"`
 #	patch httpd-${APACHE_VER}/$srcFile  3thrdparty/patch22/$E 
 #    done
-fi
 
-rm -f httpd
-rm -rf httpd-${APACHE_VER}-${MPM}
 mv httpd-${APACHE_VER} httpd-${APACHE_VER}-${MPM}
 ln -s httpd-${APACHE_VER}-${MPM} httpd
 
