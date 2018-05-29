@@ -1,3 +1,7 @@
+Version
+
+ - qslog: "-l" supports files with huge gaps (missing lines).
+
 Version 11.54
 
  - Introduces the QS_Block_Decrement variable.
@@ -685,7 +689,7 @@ Version 10.7
 
  - Writes notice message at server startup if the Apache version is not
    supported (mod_qos has been implemented for Apache 2.2 worker
-   binaries only).
+   binaries only resp. Apache 2.0 is no longer supported).
 
  - Use pcre_study() API call only if QOS_EXTRA_USE_PCRE_STUDY has been
    defined while compiling mod_qos.

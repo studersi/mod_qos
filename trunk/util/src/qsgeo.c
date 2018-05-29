@@ -360,8 +360,10 @@ static qos_geo_t *qos_loadgeo(apr_pool_t *pool, const char *db, int *size, char 
 	g->c[0] = '\0';
         if(m_inject) {
           if(inj->start && (g->start > inj->start)) {
-            printf("%s\n", inj->c);
-            inj++;
+            while(inj->start && (g->start > inj->start)) {
+              printf("%s\n", inj->c);
+              inj++;
+            }
           } else if(g->start != inj->start) {
             if(missingAddr) {
               /* some databases do not include IP address 
