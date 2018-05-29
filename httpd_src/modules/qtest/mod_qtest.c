@@ -244,6 +244,7 @@ static int qtest_handler(request_rec * r) {
    */
   if(strcmp(r->parsed_uri.path, "/qsinfo/") == 0) {
     int i;
+    ap_filter_t *f;
     ap_set_content_type(r, "text/plain");
     for(i = 0; request_hooks[i].name; i++) {
       apr_array_header_t *hooks = request_hooks[i].get();
@@ -255,6 +256,52 @@ static int qtest_handler(request_rec * r) {
       }
       ap_rputs("\n", r);
     }
+
+    ap_rputs("std input-filter: ", r);
+    f = r->input_filters;
+     while(f) {
+      ap_rprintf(r, "%s ", f->frec->name);
+      f = f->next;
+    }
+    ap_rputs("\n", r);
+    ap_rputs("std output-filter: ", r);
+    f = r->output_filters;
+    while(f) {
+      ap_rprintf(r, "%s ", f->frec->name);
+      f = f->next;
+    }
+    ap_rputs("\n", r);
+
+    ap_rputs("protocol input-filter: ", r);
+    f = r->proto_input_filters;
+     while(f) {
+      ap_rprintf(r, "%s ", f->frec->name);
+      f = f->next;
+    }
+    ap_rputs("\n", r);
+    ap_rputs("protocol output-filter: ", r);
+    f = r->proto_output_filters;
+    while(f) {
+      ap_rprintf(r, "%s ", f->frec->name);
+      f = f->next;
+    }
+    ap_rputs("\n", r);
+
+    ap_rputs("connection input-filter: ", r);
+    f = r->connection->input_filters;
+     while(f) {
+      ap_rprintf(r, "%s ", f->frec->name);
+      f = f->next;
+    }
+    ap_rputs("\n", r);
+    ap_rputs("connection output-filter: ", r);
+    f = r->connection->output_filters;
+    while(f) {
+      ap_rprintf(r, "%s ", f->frec->name);
+      f = f->next;
+    }
+    ap_rputs("\n", r);
+
     return OK;
   }
 

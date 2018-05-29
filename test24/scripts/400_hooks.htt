@@ -126,6 +126,18 @@ _CLOSE
 #    10 mod_logio.c
 #    30 mod_log_forensic.c
 
+
+# Request level output (response) filter
+
+_REQ localhost $QS_PORT_BASE
+__GET /qsinfo/ HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "std output-filter: .*sp_out_filter qos-out-filter.* qos-out-filter-brokencon core"
+_WAIT
+_CLOSE
+
 END
 
 

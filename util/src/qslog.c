@@ -2236,7 +2236,7 @@ static void usage(const char *cmd, int man) {
   } else {
     printf("Example configuration using pipped logging:\n");
   }
-  qs_man_println(man, "  CustomLog \"|/bin/%s -f ISBTQ -x -o /var/logs/stat.csv\" \"%%h %%>s %%b %%T %%{mod_qos_ev}e\"\n", cmd);
+  qs_man_println(man, "  CustomLog \"|/bin/%s -f ISBDQ -x -o /var/logs/stat.csv\" \"%%h %%>s %%b %%D %%{mod_qos_ev}e\"\n", cmd);
   printf("\n");
   if(man) {
     printf("Post processing:\n");
