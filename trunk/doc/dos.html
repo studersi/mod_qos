@@ -224,6 +224,8 @@ process <a href="glossary.html#variables">environment variable</a>
 defined period of time. This enhances the effect of the above limitations. 
 Incoming TCP connections are rejected if a client IP address reaches 
 this threshold until the limitation expires.
+<img align="right" src="images/QS_ClientEventBlockCount.png" height="308" width="422" />
+
 </p>
 <p>
 The <a href="index.html#QS_SetEnvIfStatus"><code>QS_SetEnvIfStatus</code></a> is one of mod_qos's 
@@ -386,7 +388,7 @@ rules for those URLs which are particularly vulnerable to be exploited
 <p>
 Some web sites may have content that is only of regional interest, e.g., a 
 site whose content is written in German has probably most visitors from 
-countries where German is an officially spoken language. This allows you 
+countries where German is a national language. This allows you 
 to prefer clients connecting from one of those country only in the case 
 your server runs out of free TCP connections.
 </p>
@@ -480,6 +482,14 @@ default. You can use
 <a href="index.html#QS_SrvMinDataRateIgnoreVIP"><code>QS_SrvMinDataRateIgnoreVIP</code></a> and
 <a href="index.html#QS_SrvMaxConnPerIPIgnoreVIP"><code>QS_SrvMaxConnPerIPIgnoreVIP</code></a>
 if you want to change this.</i>
+</p>
+<p>
+Preferring known clients also increases your server's resistance against 
+distributed denial of service (DDoS) attacks. 
+You might use the <code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code> 
+directive in addtion to configure limitations only affecting unknown 
+clients while known clients might continue to access your server even 
+the configured threshold is reached.
 </p>
 
 <a name="request"></a>

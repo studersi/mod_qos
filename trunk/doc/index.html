@@ -2587,7 +2587,16 @@ user authentication / login, e.g. by setting the variable
 <code><a href="#_Decrement">LimitLogin_Decrement=1</a></code>.
 </i></small>
 </p>
-
+<p>
+A brute force attack might also be performed by many distributed 
+clients (thousands of clients, but every client performs a few 
+requests only). To add protection to your server, you might configure an 
+overall limitation for critical resources allowing only known clients 
+(<a href="#privilegedusers">VIPs</a>) 
+to access your server without any restrictions. The 
+<code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code> 
+directive might be used to achieve this.
+</p>
 <a name="ddos"></a>
 <a name="Too_Many_Client_Connections"></a>
 <h3>Too Many Client Connections</h3>
