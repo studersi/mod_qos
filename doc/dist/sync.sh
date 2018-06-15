@@ -30,6 +30,7 @@ sleep $T
 #scp ../images/qsloc2.png ${dest}/images/
 #scp ../images/qsloc3.png ${dest}/images/
 #scp ../images/UserTracking.png ${dest}/images/
+#scp ../images/QS_ClientEventBlockCount.png ${dest}/images/
 scp ../images/*.png ${dest}/images/
 scp ../images/mod_qos.gif ${dest}/images/
 scp ../qsfilter2_process.gif ${dest}/
