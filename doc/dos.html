@@ -116,6 +116,24 @@ rules active all the time or just as part ot your incident response plan.
 </i>
 </p>
 
+<hr>
+<p>
+<ul>
+<li><a href="#basic">Basic Settings</a></li>
+<li><a href="#connections">Connections per IP</a></li>
+<li><a href="#datarate">Minimum Data Rate</a></li>
+<li><a href="#block">Repeat Offender</a></li>
+<li><a href="#clients">Requests per IP</a></li>
+<li><a href="#separation">Separation</a></li>
+<li><a href="#country">Country Specific Rules</a></li>
+<li><a href="#prefer">Prefer Known Clients</a></li>
+<li><a href="#request">Size Restrictions</a></li>
+<li><a href="#kernel">Kernel and iptables</a></li>
+<li><a href="#sync">Inform Others</a></li>
+</ul>
+</p>
+<hr>
+
 <a name="basic"></a>
 <h3>Basic Settings</h3>
 <p>
@@ -293,7 +311,8 @@ especially if you know which requests are the most expensive ones / which
 URLs provide the greatest risk of being attacked.
 </p>
 <p>You may use any request attributes to distinguish between "expensive" 
-(resources your server takes long to process) and "inexpensive" (like static 
+(resources your server takes long to process, e.g. a search function 
+requiring a query running against a database) and "inexpensive" (like static 
 resource files which can be send to the client immediately). You can also 
 define different attribues and configure more than one counter per IP 
 (each counter is idenitfied by the specified name). 
