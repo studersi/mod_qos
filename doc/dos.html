@@ -493,15 +493,6 @@ directive in order to avoid falsification of the reference values during an atta
 <a href="index.html#QS_ClientContentTypes">QS_ClientContentTypes</a>   40     15    150    10  40
 </pre></td></tr></table> 
 
-<p><i>Note: Clients marked as <a href="index.html#privilegedusers">VIP</a> 
-can pass the restrictions defined by the 
-<a href="index.html#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> and 
-<a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> by 
-default. You can use 
-<a href="index.html#QS_SrvMinDataRateIgnoreVIP"><code>QS_SrvMinDataRateIgnoreVIP</code></a> and
-<a href="index.html#QS_SrvMaxConnPerIPIgnoreVIP"><code>QS_SrvMaxConnPerIPIgnoreVIP</code></a>
-if you want to change this.</i>
-</p>
 <p>
 Preferring known clients also increases your server's resistance against 
 distributed denial of service (DDoS) attacks. 
@@ -509,6 +500,15 @@ You might use the <code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount
 directive in addtion to configure limitations only affecting unknown 
 clients while known clients might continue to access your server even 
 the configured threshold is reached.
+</p>
+<p><i>Note: Clients marked as <a href="index.html#privilegedusers">VIP</a> 
+can pass the restrictions defined by the 
+<a href="index.html#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> and 
+<a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> by 
+default.<br> You can use 
+<a href="index.html#QS_SrvMinDataRateIgnoreVIP"><code>QS_SrvMinDataRateIgnoreVIP</code></a> and
+<a href="index.html#QS_SrvMaxConnPerIPIgnoreVIP"><code>QS_SrvMaxConnPerIPIgnoreVIP</code></a>
+if you want to change this (which is recommended in most cases).</i>
 </p>
 
 <a name="request"></a>
