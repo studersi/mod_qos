@@ -226,7 +226,7 @@ static int qtest_handler(request_rec * r) {
    * DEVELOPMENT MODE ONLY
    * writes the variables to the response
    */
-  if(strcmp(r->parsed_uri.path, "/dumpvar/") == 0) {
+  if(strncmp(r->parsed_uri.path, "/dumpvar/", 9) == 0) {
     int i;
     apr_table_entry_t *e = (apr_table_entry_t *) apr_table_elts(r->subprocess_env)->elts;
     ap_set_content_type(r, "text/plain");

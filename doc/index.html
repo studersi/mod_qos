@@ -1104,7 +1104,10 @@ event variable processing could be configured using
 Sets (or unsets) the environment "variable=value" (literal string) if variable1 (literal 
 string) AND variable2 (literal string) are set in the request environment 
 variable list (not case sensitive). This is used to combine multiple 
-variables to a new event type.
+variables to a new event type.<br>
+This directive may be used on a per-server or a 
+<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+basis.
 </li>
 <li>
 <a name="QS_SetEnvIfMatch"></a>
@@ -1112,7 +1115,10 @@ variables to a new event type.
 Sets the environment variable if the environment variable1's value 
 matches the defined regular expression. <code>$1</code>..<code>$9</code> 
 within the value and are replaced by parenthesized subexpressions 
-of the regular expression.
+of the regular expression.<br>
+This directive may be used on a per-server or a 
+<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+basis.
 </li>
 <li>
 <a name="QS_SetEnv"></a>

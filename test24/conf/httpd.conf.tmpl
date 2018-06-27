@@ -153,7 +153,8 @@ Listen         ##QS_PORT_BASE##
    ProxyPass                  /limitrs !
    ProxyPass                  /limitbs !
    ProxyPass                  /cgi-local !
-
+   ProxyPass                  /dumpvar !
+   
    ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
 
@@ -199,6 +200,9 @@ Listen         ##QS_PORT_BASE##
    SetEnvIfPlus               User-Agent ^QS_ClientEventRequestLimit QS_EventRequest=1
 
    SetEnvIfPlus               Request_Query DecrementLimitCounter=([0-9]+) QS_Limit_Decrement=$1
+
+   SetEnvIfPlus               Request_Query QS_SetEnvIf=([a-zA-Z0-9]+) QS_SetEnvIf_IN=$1
+   QS_SetEnvIf                QS_SetEnvIf_IN=(SRV[a-z]*) QS_SetEnvIf_IN=$1_VHOST
 
 <IfDefine !QS_ClientPrefer>
    QS_SrvMaxConnClose         25
@@ -261,6 +265,15 @@ Listen         ##QS_PORT_BASE##
      QS_DenyEvent +pathwhitelist deny !PATHALLOWED
    </Location>
 </IfDefine>
+
+
+  <Location /dumpvar/s0>
+     QS_SetEnvIf                QS_SetEnvIf_IN=(LOC0[a-z]*) QS_SetEnvIf_IN=$1_LOC0
+  </Location>
+
+  <Location /dumpvar/s0/s1>
+     QS_SetEnvIf                QS_SetEnvIf_IN=(LOC1[a-z]*) QS_SetEnvIf_IN=$1_LOC1
+  </Location>
 
   ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
   <Location /cgi-local>

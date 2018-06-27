@@ -2,6 +2,8 @@ Version
 
  - qslog: "-l" supports files with huge gaps (missing lines).
 
+ - QS_SetEnvIf directive can be used within Location configuration.
+ 
 Version 11.54
 
  - Introduces the QS_Block_Decrement variable.

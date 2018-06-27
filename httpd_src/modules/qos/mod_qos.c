@@ -720,6 +720,7 @@ typedef struct {
   int decodings; 
   apr_table_t *disable_reqrate_events;
   apr_table_t *setenvstatus_t;
+  apr_table_t *setenvif_t;
 } qos_dir_config;
 
 /**
@@ -4763,12 +4764,12 @@ static void qos_setreqheader(request_rec *r, apr_table_t *header_t) {
 /**
  * QS_SetEnvIf (hp and logger)
  * @param r
- * @param sconf
+ * @param setenvif_t
  */
-static void qos_setenvif(request_rec *r, qos_srv_config *sconf) {
+static void qos_setenvif(request_rec *r, apr_table_t *setenvif_t) {
   int i;
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvif_t)->elts;
-  for(i = 0; i < apr_table_elts(sconf->setenvif_t)->nelts; i++) {
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(setenvif_t)->elts;
+  for(i = 0; i < apr_table_elts(setenvif_t)->nelts; i++) {
     qos_setenvif_t *setenvif = (qos_setenvif_t *)entry[i].val;
     if(setenvif->preg == NULL) {
       // mode 1 (boolean AND operator)
@@ -8952,7 +8953,10 @@ static int qos_header_parser(request_rec * r) {
       qos_setenvifquery(r, sconf);
     }
     if(apr_table_elts(sconf->setenvif_t)->nelts > 0) {
-      qos_setenvif(r, sconf);
+      qos_setenvif(r, sconf->setenvif_t);
+    }
+    if(apr_table_elts(dconf->setenvif_t)->nelts > 0) {
+      qos_setenvif(r, dconf->setenvif_t);
     }
     if(apr_table_elts(sconf->setenv_t)->nelts > 0) {
       qos_setenv(r, sconf);
@@ -10123,7 +10127,10 @@ static int qos_logger(request_rec *r) {
   qos_propagate_events(r);
   qos_end_res_rate(r, sconf);
   if(apr_table_elts(sconf->setenvif_t)->nelts > 0) {
-    qos_setenvif(r, sconf);
+    qos_setenvif(r, sconf->setenvif_t);
+  }
+  if(apr_table_elts(dconf->setenvif_t)->nelts > 0) {
+    qos_setenvif(r, dconf->setenvif_t);
   }
   if(sconf->has_qos_cc) {
     qos_logger_cc(r, sconf, rctx);
@@ -11269,6 +11276,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->redirectif = apr_array_make(p, 20, sizeof(qos_redirectif_entry_t));
   dconf->disable_reqrate_events = apr_table_make(p, 1);
   dconf->setenvstatus_t = apr_table_make(p, 5);
+  dconf->setenvif_t = apr_table_make(p, 1);
   return dconf;
 }
 
@@ -11333,8 +11341,13 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   dconf->disable_reqrate_events = qos_table_merge_create(p, b->disable_reqrate_events,
                                                          o->disable_reqrate_events);
   dconf->redirectif = apr_array_append(p, b->redirectif, o->redirectif);
+
   dconf->setenvstatus_t = apr_table_copy(p, b->setenvstatus_t);
   qos_table_merge(dconf->setenvstatus_t, o->setenvstatus_t);
+
+  dconf->setenvif_t = apr_table_copy(p, b->setenvif_t);
+  qos_table_merge(dconf->setenvif_t, o->setenvif_t);
+
   return dconf;
 }
 
@@ -12266,6 +12279,7 @@ const char *qos_setenvres_cmd(cmd_parms *cmd, void *dcfg, const char *var,
   return NULL;
 }
 
+/** QS_SetEnvIf */
 const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, const char *v2,
                                    const char *a3) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
@@ -12324,7 +12338,12 @@ const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, c
       setenvif->value++;
     }
   }
-  apr_table_setn(sconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
+  if(cmd->path) {
+    qos_dir_config *dconf = (qos_dir_config*)dcfg;
+    apr_table_setn(dconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
+  } else {
+    apr_table_setn(sconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
+  }
   return NULL;
 }
 
@@ -14186,8 +14205,8 @@ static const command_rec qos_config_cmds[] = {
 
   /* env vars */
   AP_INIT_TAKE23("QS_SetEnvIf", qos_event_setenvif_cmd, NULL,
-                 RSRC_CONF,
-                 "QS_SetEnvIf [!]<variable1>[=<regex>] [!]<variable2> [!]<variable=value>,"
+                 RSRC_CONF|ACCESS_CONF,
+                 "QS_SetEnvIf [!]<variable1>[=<regex>] [[!]<variable2>] [!]<variable=value>,"
                  " sets (or unsets) the 'variable=value' (literal string) if"
                  " variable1 (literal string) AND variable2 (literal string)"
                  " are set in the request environment variable list (not case"
