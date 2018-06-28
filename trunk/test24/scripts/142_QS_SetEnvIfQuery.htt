@@ -1,0 +1,52 @@
+#
+#   QS_SetEnvIfQuery           ^QueryServer QS_SetEnvIfQuery_SRV=1
+#
+#  <Location /dumpvar/s0>
+#     QS_SetEnvIfQuery           ^QueryLocation QS_SetEnvIfQuery_LOC=S0
+#  </Location>
+#
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D qtest >/dev/null
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/?QueryServer HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "var QS_SetEnvIfQuery_SRV=1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/s0/?QueryServer HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "var QS_SetEnvIfQuery_SRV=1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/s0/?QueryLocation HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "var QS_SetEnvIfQuery_LOC=S0"
+_EXPECT . "!var QS_SetEnvIfQuery_SRV=1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/?QueryLocation HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "!var QS_SetEnvIfQuery_LOC=S0"
+_EXPECT . "!var QS_SetEnvIfQuery_SRV=1"
+_WAIT
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END

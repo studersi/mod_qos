@@ -204,6 +204,8 @@ Listen         ##QS_PORT_BASE##
    SetEnvIfPlus               Request_Query QS_SetEnvIf=([a-zA-Z0-9]+) QS_SetEnvIf_IN=$1
    QS_SetEnvIf                QS_SetEnvIf_IN=(SRV[a-z]*) QS_SetEnvIf_IN=$1_VHOST
 
+   QS_SetEnvIfQuery           ^QueryServer QS_SetEnvIfQuery_SRV=1
+   
 <IfDefine !QS_ClientPrefer>
    QS_SrvMaxConnClose         25
    QS_SrvMaxConnPerIP         30
@@ -269,6 +271,7 @@ Listen         ##QS_PORT_BASE##
 
   <Location /dumpvar/s0>
      QS_SetEnvIf                QS_SetEnvIf_IN=(LOC0[a-z]*) QS_SetEnvIf_IN=$1_LOC0
+     QS_SetEnvIfQuery           ^QueryLocation QS_SetEnvIfQuery_LOC=S0
   </Location>
 
   <Location /dumpvar/s0/s1>

@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.54";
+static const char g_revision[] = "11.55";
 
 /************************************************************************
  * Includes
@@ -721,6 +721,7 @@ typedef struct {
   apr_table_t *disable_reqrate_events;
   apr_table_t *setenvstatus_t;
   apr_table_t *setenvif_t;
+  apr_table_t *setenvifquery_t;
 } qos_dir_config;
 
 /**
@@ -4714,9 +4715,11 @@ static int qos_reslove_variable(apr_pool_t *p, apr_table_t *vars, char **string)
  * QS_SetEnvIfQuery (hp)
  * @param r
  * @param sconf
+ * @param dconf
  */
-static void qos_setenvifquery(request_rec *r, qos_srv_config *sconf) {
+static void qos_setenvifquery(request_rec *r, qos_srv_config *sconf, qos_dir_config *dconf) {
   qos_setenvif_ex(r, r->parsed_uri.query, sconf->setenvifquery_t);
+  qos_setenvif_ex(r, r->parsed_uri.query, dconf->setenvifquery_t);
 }
 
 /**
@@ -8950,7 +8953,7 @@ static int qos_header_parser(request_rec * r) {
       qos_parp_hp_body(r, sconf);
     }
     if(r->parsed_uri.query) {
-      qos_setenvifquery(r, sconf);
+      qos_setenvifquery(r, sconf, dconf);
     }
     if(apr_table_elts(sconf->setenvif_t)->nelts > 0) {
       qos_setenvif(r, sconf->setenvif_t);
@@ -11277,6 +11280,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->disable_reqrate_events = apr_table_make(p, 1);
   dconf->setenvstatus_t = apr_table_make(p, 5);
   dconf->setenvif_t = apr_table_make(p, 1);
+  dconf->setenvifquery_t = apr_table_make(p, 1);
   return dconf;
 }
 
@@ -11347,6 +11351,9 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
 
   dconf->setenvif_t = apr_table_copy(p, b->setenvif_t);
   qos_table_merge(dconf->setenvif_t, o->setenvif_t);
+
+  dconf->setenvifquery_t = apr_table_copy(p, b->setenvifquery_t);
+  qos_table_merge(dconf->setenvifquery_t, o->setenvifquery_t);
 
   return dconf;
 }
@@ -12347,6 +12354,7 @@ const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, c
   return NULL;
 }
 
+/** QS_SetEnvIfQuery */
 const char *qos_event_setenvifquery_cmd(cmd_parms *cmd, void *dcfg, const char *rx, const char *v) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -12374,7 +12382,12 @@ const char *qos_event_setenvifquery_cmd(cmd_parms *cmd, void *dcfg, const char *
     p++;
     setenvif->value = p;
   }
-  apr_table_setn(sconf->setenvifquery_t, apr_pstrdup(cmd->pool, rx), (char *)setenvif);
+  if(cmd->path) {
+    qos_dir_config *dconf = (qos_dir_config*)dcfg;
+    apr_table_setn(dconf->setenvifquery_t, apr_pstrdup(cmd->pool, rx), (char *)setenvif);
+  } else {
+    apr_table_setn(sconf->setenvifquery_t, apr_pstrdup(cmd->pool, rx), (char *)setenvif);
+  }
   return NULL;
 }
 
@@ -14217,7 +14230,7 @@ static const command_rec qos_config_cmds[] = {
                  " the regular expression matches."),
 
   AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
-                RSRC_CONF,
+                RSRC_CONF|ACCESS_CONF,
                 "QS_SetEnvIfQuery <regex> [!]<variable>[=value],"
                 " directive works quite similar to the SetEnvIf directive"
                 " of the Apache module mod_setenvif, but the specified regex"

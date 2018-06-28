@@ -1,8 +1,9 @@
-Version
+Version 11.55
 
  - qslog: "-l" supports files with huge gaps (missing lines).
 
- - QS_SetEnvIf directive can be used within Location configuration.
+ - QS_SetEnvIf and QS_SetEnvIfQuery directives can be used within
+   Location configuration.
  
 Version 11.54
 
