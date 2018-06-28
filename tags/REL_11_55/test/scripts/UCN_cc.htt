@@ -1,0 +1,35 @@
+# 
+# $Id$
+# 
+# QS_SrvMaxConn                 10000
+# SetEnvIf                      QS_SrvConn [0-9]{2,} MaxConnections
+# QS_DenyEvent                  +max deny MaxConnections
+# 
+
+INCLUDE scripts/ports
+
+CLIENT 9
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 1
+_SLEEP 100
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "403 Forbidden"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(040\): access denied, QS_DenyEvent rule id: max \(MaxConnections\), action=deny"
+_EXEC tail -1 logs/error_log
+END
+

@@ -1,0 +1,23 @@
+#
+# $Header$
+#
+# calculate max keep alive using percentage of MaxClients
+# 67% of MaxClients 896 = 600
+# QS_SrvMaxConnClose      67%
+
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /qos?ip HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "<div title=\"QS_SrvMaxConnClose\">max connections with keep-alive</div></td><td colspan=\"3\">600</td></tr>"
+_EXPECT . "<div title=\"QS_SrvMaxConnClose\">max connections with keep-alive</div></td><td colspan=\"3\">20</td></tr>"
+_WAIT
+_CLOSE
+
+END

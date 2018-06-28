@@ -1,0 +1,68 @@
+#
+# $Id$
+#
+# QS_ClientEventBlockCount     10 2
+# QS_SetEnvIfStatus            404               QS_Block
+# QS_SetEnvIfStatus            403               QS_Block=5
+# QS_SetEnvIfStatus            NullConnection    QS_Block
+# QS_DenyQuery +id1 deny .*blockme.*
+# 
+INCLUDE scripts/ports
+
+CLIENT
+_LOOP 10
+_REQ server1 $QS_PORT_BASE
+__GET /index_404.html HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla
+__
+_EXPECT . "404 Not Found"
+_WAIT
+_CLOSE
+_END LOOP
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ server1 $QS_PORT_BASE
+__GET /index_404.html HTTP/1.1
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=10, current=10"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 3000
+_REQ server1 $QS_PORT_BASE
+__GET /index_404.html HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla
+__
+_EXPECT . "404 Not Found"
+_WAIT
+_CLOSE
+
+_REQ server1 $QS_PORT_BASE
+__GET /index_404.html?blockme HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla
+__
+_EXPECT . "403 Forbidden"
+_WAIT
+_CLOSE
+
+_REQ server1 $QS_PORT_BASE
+__GET /index_404.html?blockme HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla
+__
+_EXPECT . "403 Forbidden"
+_WAIT
+_CLOSE
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ server1 $QS_PORT_BASE
+__GET /index_404.html HTTP/1.1
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=10, current=11"
+_EXEC tail -1 logs/error_log
+
+END

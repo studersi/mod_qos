@@ -1,0 +1,48 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D cc >/dev/null
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /killme/ HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 500
+_REQ localhost $QS_PORT_BASE
+__GET /qos?option=ip&action=enable&auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_SrvMaxConn;800..: 0"
+_EXPECT . "QS_SrvMaxConn;40..: 2"
+_EXPECT . "QS_ClientPrefer;716\[\]: 2"
+_WAIT
+_CLOSE
+
+_EXEC ./ctl.sh graceful >/dev/null
+_SLEEP 500
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?option=ip&action=enable&auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_SrvMaxConn;800..: 0"
+_EXPECT . "QS_SrvMaxConn;40..: 1"
+_EXPECT . "QS_ClientPrefer;716\[\]: 1"
+_WAIT
+_CLOSE
+
+_SLEEP 1000
+
+END

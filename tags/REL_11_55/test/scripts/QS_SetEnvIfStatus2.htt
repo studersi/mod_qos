@@ -1,0 +1,41 @@
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_LOOP 3
+_REQ localhost $QS_PORT_BASE
+__GET /hadsu HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "404"
+_WAIT                                                         
+_CLOSE
+_END LOOP
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+#__GET /hadsu HTTP/1.1
+#__Host: localhost
+#__
+#_EXPECT . "500"
+#_WAIT                                               
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC " mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3, current=3"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 12000
+
+_REQ localhost $QS_PORT_BASE
+__GET /hadsu HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "404"
+_WAIT                                                         
+
+END

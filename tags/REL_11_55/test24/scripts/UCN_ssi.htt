@@ -1,0 +1,112 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+#
+# QS_PermitUri +QSF001 deny "^/$"
+# QS_PermitUri +QSF002 deny "^/[a-zA-Z0-9]+\.html$"
+#
+
+_REQ localhost $QS_PORT_BASE
+__GET /demo/favicon.ico HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "!200 OK"
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "<title>ERROR - 041</title>"
+_EXPECT . "code: mod_qos\(041\)"
+_EXPECT . "reason: request filter"
+_EXPECT . "!connection rule"
+_EXPECT . "!client limitation"
+_EXPECT . "!bandwidth limitation"
+_EXPECT . "!GEO location limitation"
+_EXPECT . "!generic failure"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(041\): access denied"
+_EXEC tail -1 logs/error_log
+
+# 
+# QS_ClientEventLimitCount 20 10
+# SetEnvIfPlus Request_URI / QS_Limit
+# SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !QS_Limit
+# 
+_LOOP 18
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_WAIT
+_END LOOP
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "!200 OK"
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "<title>ERROR - 067</title>"
+_EXPECT . "code: mod_qos\(067\)"
+_EXPECT . "reason: client limitation"
+_EXPECT . "<span id=\"remaining\">(10|9)</span>"
+_EXPECT . "!initialisation failure"
+_EXPECT . "!request rule"
+_EXPECT . "!connection rule"
+_EXPECT . "!request filter"
+_EXPECT . "!bandwidth limitation"
+_EXPECT . "!GEO location limitation"
+_EXPECT . "!generic failure"
+_WAIT
+_CLOSE
+_SLEEP 1000
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=20, current=20, age=(0|1)"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "!200 OK"
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "<title>ERROR - 067</title>"
+_EXPECT . "code: mod_qos\(067\)"
+_EXPECT . "reason: client limitation"
+_EXPECT . "<span id=\"remaining\">[89]</span>"
+_WAIT
+_CLOSE
+_SLEEP 1000
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=20, current=21, age=(1|2)"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "!200 OK"
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "<title>ERROR - 067</title>"
+_EXPECT . "code: mod_qos\(067\)"
+_EXPECT . "reason: client limitation"
+_EXPECT . "<span id=\"remaining\">[78]</span>"
+_WAIT
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=20, current=22, age=(2|3)"
+_EXEC tail -1 logs/error_log
+
+END

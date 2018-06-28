@@ -1,0 +1,27 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+# 10 clients (10x10 req/sec = 100 req/sec)
+CLIENT 10
+
+# for 12 seconds
+_LOOP 22
+
+# 10 req/sec by each client
+_LOOP 10
+_REQ server1 $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_SLEEP 80
+_END LOOP
+_CLOSE
+_END LOOP
+
+END
