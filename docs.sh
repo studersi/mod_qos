@@ -4,6 +4,11 @@
 cd `dirname $0`
 
 VERSION=`grep "char g_revision" httpd_src/modules/qos/mod_qos.c | awk '{print $6}' | awk -F'"' '{print $2}'`
+DOC_V=`head -1 doc/CHANGES.txt | grep Version | awk '{print $2}'`
+if [ "$VERSION" != "$DOC_V" ]; then
+    echo "FAILED, version missmatch"
+    exit f
+fi
 
 A_V=`./httpd/httpd -v | grep "Server version" | awk -F'/' '{print $2}' | awk -F'.' '{print $1 "." $2}'`
 if [ "$A_V" != "2.2" ]; then
