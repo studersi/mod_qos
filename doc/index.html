@@ -1137,7 +1137,10 @@ directive of the Apache module
 but the specified regex is applied against the query string 
 portion of the request line. The directive recognizes 
 the occurrences of $1..$9 within value and replaces them 
-by the sub-expressions of the defined regex pattern.
+by the sub-expressions of the defined regex pattern.<br>
+This directive may be used on a per-server or a 
+<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+basis.
 </li>
 <li>
 <a name="QS_SetEnvIfParp"></a>

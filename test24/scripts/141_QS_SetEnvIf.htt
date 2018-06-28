@@ -63,6 +63,11 @@ __Host: localhost
 __Connection: close
 __
 _EXPECT . "!var QS_SetEnvIf_IN=LOC1a_LOC1"
+_WAIT
 _CLOSE
 
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
 END
