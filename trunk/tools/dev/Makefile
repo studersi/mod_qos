@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = regex regexspeed duration b64 qnc crs mem json pws qssearch vszl stack2 rand qssyslog net2range VMB
+PROGRAMS = qsgrep qslog regex regexspeed duration b64 qnc crs mem json pws qssearch vszl stack2 rand qssyslog net2range VMB
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -16,6 +16,28 @@ regex_OBJECTS = regex.lo
 regex_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 regex: $(regex_OBJECTS)
 	$(LINK) $(regex_LTFLAGS) -static $(regex_OBJECTS) $(regex_LDADD)
+
+qslog.c: qs_util.h qs_util.o
+	if [ ! -r qslog.c ]; then ln -s ../../util/src/qslog.c .; fi
+
+qsgrep.c: qs_util.h qs_util.o
+	if [ ! -r qsgrep.c ]; then ln -s ../../util/src/qsgrep.c .; fi
+
+qs_util.h:
+	if [ ! -r qs_util.h ]; then ln -s ../../util/src/qs_util.h .; fi
+
+qs_util.o:
+	if [ ! -r qs_util.o ]; then ln -s ../../util/src/qs_util.o .; fi
+
+qsgrep_OBJECTS = qsgrep.lo
+qsgrep_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+qsgrep: $(qsgrep_OBJECTS)
+	$(LINK) $(qsgrep_LTFLAGS) -static qs_util.o $(qsgrep_OBJECTS) $(qsgrep_LDADD)
+
+qslog_OBJECTS = qslog.lo
+qslog_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+qslog: $(qslog_OBJECTS)
+	$(LINK) $(qslog_LTFLAGS) -static qs_util.o $(qslog_OBJECTS) $(qslog_LDADD)
 
 rand_OBJECTS = rand.lo
 rand_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
@@ -104,5 +126,5 @@ VMB: VMB.c
 	cc -O3 -pthread -o $@ $<
 
 clean:
-	rm -f *.o stack stack2 regex duration regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog net2range VMB
+	rm -f *.o stack stack2 regex duration regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog net2range VMB qsgrep qsgrep.c qslog qslog.c
 
