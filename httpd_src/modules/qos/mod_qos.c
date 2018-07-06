@@ -6233,11 +6233,10 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
     worker_score ws_record;
     int c, i, e;
     time_t now = time(NULL);
-    int run = 1;
+    int run = 0;
     e = 60 - (now % 60);
     e = e * 10;
     for(c = 0; c < e; c++) {
-      //sleep(1);
       usleep(100000);
       if(s->exit) {
         run = 0;
@@ -6246,9 +6245,11 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
     }
     if(!s->exit) {
       apr_global_mutex_lock(s->lock);          /* @CRT47 */
-      if(*s->qsstatustimer < (now + 62)) {
+      now = time(NULL);
+      if(*s->qsstatustimer <= now) {
         // set next and fetch the data
-        *s->qsstatustimer = (now + 70);
+        *s->qsstatustimer = (now/60*60 + 60);
+        run = 1;
       } else {
         // another child already did the job
         run = 0;
