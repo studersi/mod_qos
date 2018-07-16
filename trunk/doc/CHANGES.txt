@@ -1,9 +1,13 @@
+Version
+
+ - Non-functional: Changed QS_Status invocation timer implementation.
+
 Version 11.55
 
  - qslog: "-l" supports files with huge gaps (missing lines).
 
- - QS_SetEnvIf and QS_SetEnvIfQuery directives can be used within
-   Location configuration.
+ - QS_SetEnvIf and QS_SetEnvIfQuery directives can be used within Location
+   configuration.
  
 Version 11.54
 
@@ -14,8 +18,8 @@ Version 11.53
  - Adds CORS headers to the default QS_RequestHeaderFilter and
    QS_ResponseHeaderFilter rule set.
 
- - qslog: shows also the distribution of response durations faster
-   than a second within the following intervals:
+ - qslog: shows also the distribution of response durations faster than
+   a second within the following intervals:
    * 0-49ms
    * 50-99ms
    * 100-499ms
@@ -26,18 +30,17 @@ Version 11.52
  - Fixed: QS_LimitRequestBody did not work for chunked requests
    when used in Apache 2.4.
 
- - QS_Status uses the server's base configuration settings while
-   logging allowing to configure a custom log format using
-   ErrorLogFormat.
+ - QS_Status uses the server's base configuration settings while logging
+   allowing to configure a custom log format using ErrorLogFormat.
    
- - qssign's verification mode supports graceful restart (sigusr1)
-   where two qssign processes are running (one with the old sequence
+ - qssign's verification mode supports graceful restart (sigusr1) where
+   two qssign processes are running (one with the old sequence
    counter and the new one starting at 1).
    
 Version 11.51
 
- - Adds process-connection handler to close the connection in the case
-   the abort by the pre-connect hook was ignored (workaround for bug in
+ - Adds process-connection handler to close the connection in the case the
+   abort by the pre-connect hook was ignored (workaround for bug in
    Apache 2.4.28 Event MPM ignoring the connection abort) (msg id 167).
 
  - Uses module name in log index.
@@ -222,31 +225,30 @@ Version 11.30
 
 Version 11.29
 
- - mod_qos_ev variable sets character "u" if server is accessed by 
-   a client wihout a user tracking cookie (but QS_UserTrackingCookieName
+ - mod_qos_ev variable sets character "u" if server is accessed by a
+   client wihout a user tracking cookie (but QS_UserTrackingCookieName
    has been configured).
 
- - Minor (non-functional) DSCP implementation code changes (incl. new
-   log messages).
+ - Minor (non-functional) DSCP implementation code changes (incl. new log
+   messages).
 
  - Adds mod_qos events "qA" and "qu" to qslog and the output of event
    counters (q*) has been made optional.
 
 Version 11.28
 
- - New variable "QS_Set_DSCP" to set the IP differentiated services
-   code points (DiffServ / RFC 2474).
+ - New variable "QS_Set_DSCP" to set the IP differentiated services code
+   points (DiffServ / RFC 2474).
 
  - QS_RedirectIf also supports 301.
 
 Version 11.26
 
- - Changed: QS_SrvMaxConn* directive counter's inheritance from the
-   base server to virtual hosts is no longer coupled to other QS_*
-   directive rules. This means, that a virtual host uses the very
-   same counters as the base server as long as neither QS_SrvMaxConn,
-   QS_SrvMaxConnClose, nor QS_SrvMaxConnPerIP has been configured
-   within the virtual host.
+ - Changed: QS_SrvMaxConn* directive counter's inheritance from the base
+   server to virtual hosts is no longer coupled to other QS_* directive
+   rules. This means, that a virtual host uses the very same counters
+   as the base server as long as neither QS_SrvMaxConn, QS_SrvMaxConnClose,
+   nor QS_SrvMaxConnPerIP has been configured within the virtual host.
 
 Version 11.25
 
@@ -345,9 +347,9 @@ Version 11.15
  - Set *_Counter variable of QS_EventLimitCount within post read request
    handler.
 
- - QS_ClientSerialize honors the sequence of receiving requests (fifo)
-   in order to support requests from different clients accessing the
-   server via a proxy.
+ - QS_ClientSerialize honors the sequence of receiving requests (fifo) in
+   order to support requests from different clients accessing the server
+   via a proxy.
 
  - Fixed: potential deadlock (when reaching the 5min timeout) when using
    the QS_SrvSerialize directive.
@@ -365,13 +367,13 @@ Version 11.13
 
 Version 11.12
 
- - Propagates the variables used by QS_ClientEventLimitCount to 
-   sub-requests making them available within SSI pages.
+ - Propagates the variables used by QS_ClientEventLimitCount to sub-requests
+   making them available within SSI pages.
 
- - New QS_ClientEventLimitCount variable suffixed by "_Remaining"
-   containing the remaining time in seconds a client is still blocked
-   (to be used within error pages to show a client how long he has to
-   wait until he might proceed).
+ - New QS_ClientEventLimitCount variable suffixed by "_Remaining" containing
+   the remaining time in seconds a client is still blocked (to be used
+   within error pages to show a client how long he has to wait until he
+   might proceed).
 
  - New variable QS_MaxKeepAliveRequests.
 
@@ -841,8 +843,8 @@ Version 9.71
  - QS_ResponseHeaderFilterRule features the action "silent" which drops 
    header silently without writing a log message.
 
- - Headers X-Content-Type-Options and X-XSS-Protection has been added
-   to the default response header rules.
+ - Headers X-Content-Type-Options and X-XSS-Protection has been added to
+   the default response header rules.
 
  - Fixed: Bug in JSON parser.
 
