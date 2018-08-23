@@ -128,10 +128,10 @@ int main(int argc, const char *const argv[]) {
 	//printf("END [%s][%s][%s] %lu %d\n", hms, ms, id, entry.seconds, entry.milliseconds);
 	start = (entry_t *)apr_table_get(inmsg, id);
 	if(start) {
-	  printf("%10lu [ms] @%s %s\n",
-		 (entry.seconds-start->seconds)*1000 + entry.milliseconds-start->milliseconds,
+	  printf("@%s %s %10lu [ms]\n",
 		 line,
-		 id);
+		 id,
+		 (entry.seconds-start->seconds)*1000 + entry.milliseconds-start->milliseconds);
 	  apr_table_unset(inmsg, id);
 	  free(start->id);
 	  free(start);
