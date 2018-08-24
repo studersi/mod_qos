@@ -81,6 +81,10 @@ int main(int argc, const char *const argv[]) {
     printf("  "START"\n");
     printf("  "END"\n");
     printf("\n");
+    printf(" for those sample log messages:\n");
+    printf("  2018-03-12 16:34:08.653 threadid23 INFO Received HTTPRequest\n");
+    printf("  2018-03-13 16:35:09.891 threadid23 DEBUG MessageHandler Received response\n");
+    printf("\n");
     exit(1);
   }
 
