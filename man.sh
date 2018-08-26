@@ -16,7 +16,7 @@ mkdir -p ../man1
 make clean 1>/dev/null
 make 2>/dev/null 1>/dev/null
 
-tools="qsexec qsfilter2 qsgrep qslog qslogger qspng qsrotate qssign qstail qsgeo qshead"
+tools="qsexec qsfilter2 qsgrep qslog qslogger qspng qsrotate qssign qstail qsgeo qshead qsela"
 
 for t in $tools; do
   echo "./$t --man"

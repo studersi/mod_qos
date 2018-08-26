@@ -2,6 +2,8 @@ Version
 
  - Non-functional: Changed QS_Status invocation timer implementation.
 
+ - Adds qsela to the support tools.
+
 Version 11.55
 
  - qslog: "-l" supports files with huge gaps (missing lines).
