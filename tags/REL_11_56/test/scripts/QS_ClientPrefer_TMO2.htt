@@ -1,0 +1,28 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /htt/error_log HTTP/1.1
+__Host: localhost
+__Connection: Mozilla
+__
+_EXPECT . "TMO. 30 - r; -"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+_PIPE
+_EXEC tail -1 logs/access_log
+
+END

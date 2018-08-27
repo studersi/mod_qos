@@ -1,0 +1,32 @@
+#
+# $Id$
+#
+# MaxKeepAliveRequests   100
+#   SetEnvIf                     User-Agent maxKeepAliveReq150  QS_MaxKeepAliveRequests=150
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: maxKeepAliveReq150
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=150"
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_LOOP 120
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: maxKeepAliveReq150
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_END LOOP
+END

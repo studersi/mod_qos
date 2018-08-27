@@ -1,0 +1,143 @@
+#
+# $Id$
+#
+# ensures that the cpu usage of qslog does not significant
+# increase if we have thousends of client events
+# => a slow qslog may slow down the web server
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_SET ID=10000000000
+_MATH:RAND 1000000 9000000 RND
+
+_EXEC ./ctl.sh stop
+_SLEEP 1000
+_EXEC ../httpd/httpd -d `pwd` -f conf/ucn.conf -D ucnu
+
+# pre => get a refernce value
+_RPS 1000 140
+_LOOP 10
+_SET STDID=${RND}AAABBCCDDEEFFGGHH${ID}
+_REQ localhost $QS_PORT_BASE $counter
+__GET /index.html?A${STDID} HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_END LOOP
+_CLOSE
+_END RPS
+_MATCH EXEC "r/s;([0-9]+);" REFE
+_EXEC tail -1 logs/qs_log
+# tolerance: 100
+_MATH:OP $REFE SUB 100 REF
+
+# inc => adds 10000 user
+_LOOP 1000
+_MATH:RAND 1000000 9000000 RND
+_LOOP 10
+_SET STDID=${RND}AAABBCCDDEEFFGGHH${ID}
+_REQ localhost $QS_PORT_BASE $counter
+__GET /index.html?B${STDID} HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_MATH:OP $ID ADD 1 ID
+_END LOOP
+_CLOSE
+_END LOOP
+
+# post => compare the reference
+_RPS 1000 140
+_LOOP 10
+_REQ localhost $QS_PORT_BASE $counter
+_SET STDID=${RND}AAABBCCDDEEFFGGHH${ID}
+__GET /index.html?C${STDID} HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_END LOOP
+_CLOSE
+_END RPS
+_MATCH EXEC "r/s;([0-9]+);" NEWV
+_EXPECT EXEC "usr;10002;"
+_EXEC tail -1 logs/qs_log
+
+# inc => adds another 10000 user
+_LOOP 1000
+_MATH:RAND 1000000 9000000 RND
+_LOOP 10
+_SET STDID=${RND}AAABBCCDDEEFFGGHH${ID}
+_REQ localhost $QS_PORT_BASE $counter
+__GET /index.html?B${STDID} HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_MATH:OP $ID ADD 1 ID
+_END LOOP
+_CLOSE
+_END LOOP
+
+# post => compare the reference
+_RPS 1000 140
+_LOOP 10
+_REQ localhost $QS_PORT_BASE $counter
+_SET STDID=${RND}AAABBCCDDEEFFGGHH${ID}
+__GET /index.html?C${STDID} HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_END LOOP
+_CLOSE
+_END RPS
+_MATCH EXEC "r/s;([0-9]+);" NEWV
+_EXPECT EXEC "usr;20003;"
+_EXEC tail -1 logs/qs_log
+
+END
+
+CLIENT
+
+_SLEEP 60000
+_MATCH EXEC "([0-9]+)" CPU
+_EXEC ./bin/top.sh qslog
+_IF $CPU GT 20
+_EXIT FAILED
+_END IF
+_MATCH EXEC "([0-9]+)" ACPU
+_EXEC ./bin/top.sh httpd
+_IF $CPU GT $ACPU
+_EXIT FAILED
+_END IF
+
+_SLEEP 120000
+_MATCH EXEC "([0-9]+)" CPU
+_EXEC ./bin/top.sh qslog
+_IF $CPU GT 20
+_EXIT FAILED
+_END IF
+_MATCH EXEC "([0-9]+)" ACPU
+_EXEC ./bin/top.sh httpd
+_IF $CPU GT $ACPU
+_EXIT FAILED
+_END IF
+
+_SLEEP 120000
+_MATCH EXEC "([0-9]+)" CPU
+_EXEC ./bin/top.sh qslog
+_IF $CPU GT 20
+_EXIT FAILED
+_END IF
+_MATCH EXEC "([0-9]+)" ACPU
+_EXEC ./bin/top.sh httpd
+_IF $CPU GT $ACPU
+_EXIT FAILED
+_END IF
+
+END
