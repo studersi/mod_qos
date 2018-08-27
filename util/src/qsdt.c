@@ -1,8 +1,8 @@
 /**
  * Filter utility for the quality of service module mod_qos.
  *
- * qsela.c: simple tool to measure the elapse time between 
- *          related log messages
+ * qsdt.c: simple tool to measure the elapse time between 
+ *         related log messages
  *
  * See http://mod-qos.sourceforge.net/ for further
  * details.
@@ -71,7 +71,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "b%s%s [-t <regex>] -i <regex> -s <regex> -e <regex> [-v] <path>\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s [-t <regex>] -i <regex> -s <regex> -e <regex> [-v] <path>\n", man ? "" : "Usage: ", cmd);
   printf("\n");
 
   if(man) {
@@ -79,7 +79,7 @@ static void usage(const char *cmd, int man) {
   } else {
     printf("Summary\n");
   }
-  qs_man_print(man, "%s is a very simple tool to search two different messages\n", cmd);
+  qs_man_print(man, "%s is a simple tool to search two different messages\n", cmd);
   qs_man_print(man, "in a log file and calculates the elapsed time between these\n");
   qs_man_print(man, "lines. The two log messages need a common identifier such an\n");
   qs_man_print(man, "unique request id (UNIQUE_ID), a thread id, or a transaction\n");
@@ -97,27 +97,27 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     timestamp. The pattern must include two sub-expressions, one matching\n");
   qs_man_print(man, "     hours, minutes and seconds the other matching the milliseconds.\n");
   qs_man_print(man, "     Default pattern is "TIMEEX"\n");
-  if(man) printf(".TP\n");
+  if(man) printf("\n.TP\n");
   qs_man_print(man, "  -i <regex>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Pattern (regular expression) matching the identifier which the two\n");
   qs_man_print(man, "     messages have in common. The sub-expression defines the part which\n");
   qs_man_print(man, "     needs to be extracted from the matching string.\n");
-  if(man) printf(".TP\n");
+  if(man) printf("\n.TP\n");
   qs_man_print(man, "  -s <regex>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Defines the pattern (regular expression or literal string)\n");
   qs_man_print(man, "     identifying the first (start) of the two messages.\n");
-  if(man) printf(".TP\n");
+  if(man) printf("\n.TP\n");
   qs_man_print(man, "  -e <regex>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Defines the pattern (regular expression or literal string)\n");
   qs_man_print(man, "     identifying the second (end) of the two messages.\n");
-  if(man) printf(".TP\n");
+  if(man) printf("\n.TP\n");
   qs_man_print(man, " -v\n");
   if(man) printf("\n");
   qs_man_print(man, "     Verbose mode.\n");
-  if(man) printf(".TP\n");
+  if(man) printf("\n.TP\n");
   qs_man_print(man, "  <path>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Defines the input file to process.\n");
