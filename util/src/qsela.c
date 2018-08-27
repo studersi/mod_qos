@@ -55,44 +55,94 @@ typedef struct {
 
 
 static void usage(const char *cmd, int man) {
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
+  }
   printf("\n");
-  printf("%s calculates the elapsed time between two related log messages. \n", cmd);
+
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  qs_man_print(man, "%s calculates the elapsed time between two related log messages. \n", cmd);
   printf("\n");
-  printf("Usage: %s [-t <regex>] -i <regex> -s <regex> -e <regex> [-v] <path>\n", cmd);
+
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  qs_man_print(man, "b%s%s [-t <regex>] -i <regex> -s <regex> -e <regex> [-v] <path>\n", man ? "" : "Usage: ", cmd);
   printf("\n");
-  printf("Summary\n");
-  printf("%s is a very simple tool to search two different messages\n", cmd);
-  printf("in a log file and calculates the elapsed time between these lines.\n");
-  printf("The two log messages need a common identifier such a unique request id\n");
-  printf("(UNIQUE_ID), a thread id, or a transaction code.\n");
+
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
+  qs_man_print(man, "%s is a very simple tool to search two different messages\n", cmd);
+  qs_man_print(man, "in a log file and calculates the elapsed time between these\n");
+  qs_man_print(man, "lines. The two log messages need a common identifier such an\n");
+  qs_man_print(man, "unique request id (UNIQUE_ID), a thread id, or a transaction\n");
+  qs_man_print(man, "code.\n");
   printf("\n");
-  printf("Options\n");
-  printf("  -t <regex>\n");
-  printf("     Defines a pattern matching the log line's timestamp. The pattern must\n");
-  printf("     include two sub-expressions, one matching hours, minutes and secondes\n");
-  printf("     the other matching the milliseconds.\n");
-  printf("     Default pattern is "TIMEEX"\n");
-  printf("  -i <regex>\n");
-  printf("     Pattern matching the identifier which the two messages have in common.\n");
-  printf("     The sub-expression defines the part which needs to be extracted from the\n");
-  printf("     matching string.\n");
-  printf("  -s <regex>\n");
-  printf("     Defines the pattern identifying the first (start) of the two messages.\n");
-  printf("  -e <regex>\n");
-  printf("     Defines the pattern identifying the second (end) of the two messages.\n");
-  printf(" -v\n");
-  printf("     Verbose mode.\n");
-  printf("  <path>\n");
-  printf("     Defines the input file to process.\n");
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -t <regex>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines a pattern (regular expression) matching the log line's\n");
+  qs_man_print(man, "     timestamp. The pattern must include two sub-expressions, one matching\n");
+  qs_man_print(man, "     hours, minutes and seconds the other matching the milliseconds.\n");
+  qs_man_print(man, "     Default pattern is "TIMEEX"\n");
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -i <regex>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Pattern (regular expression) matching the identifier which the two\n");
+  qs_man_print(man, "     messages have in common. The sub-expression defines the part which\n");
+  qs_man_print(man, "     needs to be extracted from the matching string.\n");
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -s <regex>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the pattern (regular expression or literal string)\n");
+  qs_man_print(man, "     identifying the first (start) of the two messages.\n");
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  -e <regex>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the pattern (regular expression or literal string)\n");
+  qs_man_print(man, "     identifying the second (end) of the two messages.\n");
+  if(man) printf(".TP\n");
+  qs_man_print(man, " -v\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Verbose mode.\n");
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  <path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the input file to process.\n");
   printf("\n");
-  printf(" Sample arguments:\n");
-  printf("  -i ' ([a-z0-9]+) [A-Z]+ ' -s 'Received Request' -e 'Received response'\n");
+  if(man) {
+    printf(".SH EXAMPLE\n");
+    printf("Sample command line arguments:\n");
+    printf("\n");
+  } else {
+    printf(" Sample arguments:\n");
+  }
+  qs_man_println(man, "  -i ' ([a-z0-9]+) [A-Z]+ ' -s 'Received Request' -e 'Received Response'\n");
   printf("\n");
-  printf(" matching those sample log messages:\n");
-  printf("  2018-03-12 16:34:08.653 threadid23 INFO Received Request\n");
-  printf("  2018-03-13 16:35:09.891 threadid23 DEBUG MessageHandler Received response\n");
+  qs_man_println(man, " matching those sample log messages:\n");
+  qs_man_println(man, "  2018-03-12 16:34:08.653 threadid23 INFO Received Request\n");
+  qs_man_println(man, "  2018-03-13 16:35:09.891 threadid23 DEBUG MessageHandler Received Response\n");
   printf("\n");
-  exit(1);
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
+  } else {
+    printf("See http://mod-qos.sourceforge.net/ for further details.\n");
+  }
   if(man) {
     exit(0);
   } else {
