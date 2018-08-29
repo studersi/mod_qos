@@ -66,7 +66,7 @@ typedef struct {
 static void usage2() {
   printf("usage: regexspeed <path to pattern file>\n");
   printf("\n");
-  printf("Tool to compare / estimate the processing time of regular expressions.\n");
+  printf("Tool to compare / estimate the processing time of (Perl-compatible) regular expressions.\n");
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
@@ -92,6 +92,7 @@ int main(int argc, const char *const argv[]) {
     { "lajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfhdklfhslkdfhlskhdklsjhdflskfhlsh", 0 },
     { "ajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfljsdahsdznvztbasmuiwmereizfrbizvnsdmovosduvnuztbvzucxzvmpmvdzubtfrmeirmrnbewrJHJSBNUAIMSODMAINBSUDTAZSUDIOASMDNBAGZDTSZBUANIMOINSAUBZDGTZUIOIMSKNABJDHT9807765243567283992039209376526368799230827836526789 ç%&/\"(><<<-.,:;)*=)()(&%\"ç", 0 },
     { "text/html,application/xhtml+xm…plication/xml;q=0.9,*/*;q=0.8", 0 },
+    { "Accept-Language: fr-CH, fr;q=0.9, en;q=0.8, de;q=0.7, *;q=0.5", 0},
     { "Hm_lvt_ef1299edab2ff5d2f13e859…d=GA1.2.1594867574.1516566392", 0 },
     { "If-Modified-Since", 0 },
     { "Fri, 05 Jan 2018 02:34:41 GMT", 0 },
