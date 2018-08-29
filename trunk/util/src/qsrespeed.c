@@ -31,30 +31,18 @@ static const char revision[] = "$Revision$";
 #include <unistd.h>
 #include <time.h>
 
-/* OpenSSL  */
-#include <openssl/stack.h>
-
 /* apr */
 #include <pcre.h>
 #include <apr.h>
-#include <apr_uri.h>
-#include <apr_signal.h>
 #include <apr_strings.h>
-#include <apr_network_io.h>
-#include <apr_file_io.h>
 #include <apr_time.h>
-#include <apr_getopt.h>
 #include <apr_general.h>
 #include <apr_lib.h>
 #include <apr_portable.h>
-#include <apr_thread_proc.h>
-#include <apr_thread_cond.h>
-#include <apr_thread_mutex.h>
 #include <apr_support.h>
 
-#define MAX_LINE 32768
-#define CR 13
-#define LF 10
+#include "qs_util.h"
+
 #define LOOPS 100
 
 typedef struct {
@@ -66,7 +54,8 @@ typedef struct {
 static void usage2() {
   printf("usage: regexspeed <path to pattern file>\n");
   printf("\n");
-  printf("Tool to compare / estimate the processing time of (Perl-compatible) regular expressions.\n");
+  printf("Tool to compare / estimate the processing time for (Perl-compatible)\n");
+  printf("regular expressions (PCRE).\n");
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
@@ -189,9 +178,7 @@ int main(int argc, const char *const argv[]) {
 	    }
 	  }
 	}
-	//p++;
-	//len = strlen(p);
-	//p[len-1] = '\0';
+
 	rule->pc = pcre_compile(p, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
 	if(rule->pc == NULL) {
 	  printf("faild to compile pattern [%s], reason: %s\n", p, errptr);
@@ -247,12 +234,12 @@ int main(int argc, const char *const argv[]) {
   }
   gettimeofday(&tv, NULL);
   end = tv.tv_sec * 1000000 + tv.tv_usec;
-  printf("match all rules (%d) against the test variables (%lu strings, %d characters) took: %lld usec (%s)\n",
+  printf("match all rules (%d) against the test variables (%lu strings, %d characters) took: %lld usec (%s/PCRE %s)\n",
 	 apr_table_elts(rules)->nelts,
 	 sizeof(data)/sizeof(qs_r_t)-1,
 	 datalen,
 	 (end - start) / LOOPS,
-	 revision);
+	 revision, pcre_version());
   return 0;
 
 }
