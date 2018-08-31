@@ -1,3 +1,7 @@
+
+
+ - Adds qsrespeed (previous "regexspeed" dev tool) to the support utilities.
+
 Version 11.56
 
  - Non-functional: Changed QS_Status invocation timer implementation.

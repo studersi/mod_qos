@@ -26,6 +26,9 @@ qsdt.c: qs_util.h qs_util.o
 qsgrep.c: qs_util.h qs_util.o
 	if [ ! -r qsgrep.c ]; then ln -s ../../util/src/qsgrep.c .; fi
 
+regexspeed.c: qs_util.h qs_util.o
+	if [ ! -r regexspeed.c ]; then ln -s ../../util/src/qsrespeed.c regexspeed.c; fi
+
 qs_util.h:
 	if [ ! -r qs_util.h ]; then ln -s ../../util/src/qs_util.h .; fi
 
@@ -69,7 +72,7 @@ stack2: $(stack2_OBJECTS)
 
 regexspeed_OBJECTS = regexspeed.lo
 regexspeed_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
-regexspeed: $(regexspeed_OBJECTS)
+regexspeed: $(regexspeed_OBJECTS) regexspeed.c
 	$(LINK) $(regexspeed_LTFLAGS) -static $(regexspeed_OBJECTS) $(regexspeed_LDADD)
 	strip regexspeed
 

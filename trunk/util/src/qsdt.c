@@ -1,5 +1,5 @@
 /**
- * Filter utility for the quality of service module mod_qos.
+ * Utility for the quality of service module mod_qos.
  *
  * qsdt.c: simple tool to measure the elapse time between 
  *         related log messages
@@ -85,6 +85,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "unique request id (UNIQUE_ID), a thread id, or a transaction\n");
   qs_man_print(man, "code.\n");
   printf("\n");
+
   if(man) {
     printf(".SH OPTIONS\n");
   } else {
@@ -137,7 +138,7 @@ static void usage(const char *cmd, int man) {
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
-    printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsrespeed(1), qsrotate(1), qssign(1), qstail(1)\n");
     printf(".SH AUTHOR\n");
     printf("Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
   } else {
@@ -177,7 +178,7 @@ int main(int argc, const char *const argv[]) {
   apr_pool_create(&pool, NULL);
   inmsg = apr_table_make(pool, 100);
 
-    if(cmd == NULL) {
+  if(cmd == NULL) {
     cmd = (char *)argv[0];
   } else {
     cmd++;

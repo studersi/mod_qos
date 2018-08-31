@@ -1,4 +1,9 @@
 /**
+ * Utility for the quality of service module mod_qos.
+ *
+ * qsrespeed.c: tool to measure the processing time
+ *              of regular expressions
+ *
  * See http://mod-qos.sourceforge.net/ for further
  * details.
  *
@@ -48,17 +53,65 @@ static const char revision[] = "$Revision$";
 typedef struct {
   pcre *pc;
   pcre_extra *extra;
-  const char *id;
 } rule_t;
 
-static void usage2() {
-  printf("usage: regexspeed <path to pattern file>\n");
+static void usage(const char *cmd, int man) {
+    if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
+  }
   printf("\n");
-  printf("Tool to compare / estimate the processing time for (Perl-compatible)\n");
-  printf("regular expressions (PCRE).\n");
+
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  qs_man_print(man, "Tool to compare / estimate the processing time for (Perl-compatible)\n");
+  qs_man_print(man, "regular expressions (PCRE).\n");
   printf("\n");
-  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
-  exit(1);
+  
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  qs_man_print(man, "%s%s <path>\n", man ? "" : "Usage: ", cmd);
+  printf("\n");
+
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
+  qs_man_print(man, "%s loads regular expressions from the provided file and matches\n", cmd);
+  qs_man_print(man, "them against a build-in set of strings measuring the time needed to\n");
+  qs_man_print(man, "process them. It's a benchmark too to judge the expressions you have\n");
+  qs_man_print(man, "defined regarding the potential CPU consumption.\n");
+  printf("\n");
+
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  <path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     Defines the input file to process. The file consists a list of\n");
+  qs_man_print(man, "     (separated by a newline character) regular expressions to test\n");
+  printf("\n");
+
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsdt(1), qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
+  } else {
+    printf("See http://mod-qos.sourceforge.net/ for further details.\n");
+  }
+  if(man) {
+    exit(0);
+  } else {
+    exit(1);
+  }
 }
 
 typedef struct {
@@ -78,6 +131,7 @@ int main(int argc, const char *const argv[]) {
     { "888 888-888-777", 0 },
     { "name=value&id=kAfBFLJaBQB-AAABBQAAAAZgAAAA9--DwnTUWct-AAA2&host=me.main.org&key=121213122aaaaaaaaaaMMMM123&tex=emb+ed", 0 },
     { "<x:ml><node attribute=\"value\" attr2=\"99999999\">text shows_this!</node></x:ml>", 0 },
+    { "<html lang=\"en\"><meta charset=\"utf-8\"><meta property=\"og:type\"               content=\"website\"></html>", 0 },
     { "lajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfhdklfhslkdfhlskhdklsjhdflskfhlsh", 0 },
     { "ajksdfhjklasdhfaskdjfhklasjdlfaksdhfasjkdflsajkdflkdflhdjklfadhfksdjfhklasjdhfskljdfhsklajdhflskjdfhlskjhdflksjdhlfksjdhfjklsdhfklsdhfklsjdhklshlksfljsdahsdznvztbasmuiwmereizfrbizvnsdmovosduvnuztbvzucxzvmpmvdzubtfrmeirmrnbewrJHJSBNUAIMSODMAINBSUDTAZSUDIOASMDNBAGZDTSZBUANIMOINSAUBZDGTZUIOIMSKNABJDHT9807765243567283992039209376526368799230827836526789 ç%&/\"(><<<-.,:;)*=)()(&%\"ç", 0 },
     { "text/html,application/xhtml+xm…plication/xml;q=0.9,*/*;q=0.8", 0 },
@@ -117,18 +171,46 @@ int main(int argc, const char *const argv[]) {
 
   int i;
   FILE *file;
+  char readline[MAX_LINE];
+
+  const char *cmd = strrchr(argv[0], '/');
+
   apr_pool_t *pool;
   apr_table_t *rules;
   long long start;
   long long end;
   struct timeval tv;
+
+  const char *filename = NULL;
+
+  if(cmd == NULL) {
+    cmd = (char *)argv[0];
+  } else {
+    cmd++;
+  }
+
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
   rules = apr_table_make(pool, 100);
 
-  if(argc != 2) {
-    usage2();
+  argc--;
+  argv++;
+  while(argc >= 1) {
+    if(strcmp(*argv,"-h") == 0) {
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--help") == 0) {
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"-?") == 0) {
+      usage(cmd, 0);
+    } else if(strcmp(*argv,"--man") == 0) {
+      usage(cmd, 1);
+    } else {
+      filename = *argv;
+    }
+    argc--;
+    argv++;
   }
+
 
   {
     // init
@@ -140,62 +222,47 @@ int main(int argc, const char *const argv[]) {
     }
   }
 
-  file = fopen(argv[1], "r");
-  if(file) {
-    char readline[MAX_LINE];
-    while(fgets(readline, MAX_LINE-1, file) != NULL) {
-      char *p;
-      int len = strlen(readline);
-      const char *errptr = NULL;
-      int erroffset;
-      rule_t *rule = apr_pcalloc(pool, sizeof(rule_t));
-      rule->id = NULL;
-      while(len > 0 && readline[len] < 32) {
-	readline[len] = '\0';
-	len--;
-      }
-      if((strlen(readline) > 0) &&
-	 (readline[0] != 10) &&
-	 (readline[0] != 13)) {
-	p = readline;
-	if(strncmp(p, "ch.nev", 6) == 0) {
-	  int itr = 4;
-	  if(strstr(p, "DecodingRules") == 0) {
-	    itr = 2;
-	  }
-	  for(; itr > 0; itr--) {
-	    char *px = strchr(p, ':');
-	    if(px) {
-	      p = &px[1];
-	      if(rule->id == NULL) {
-		char *end;
-		rule->id = apr_pstrdup(pool, p);
-		end = strchr(rule->id, ':');
-		if(end) {
-		  end[0] = '\0';
-		}
-	      }
-	    }
-	  }
-	}
-
-	rule->pc = pcre_compile(p, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
-	if(rule->pc == NULL) {
-	  printf("faild to compile pattern [%s], reason: %s\n", p, errptr);
-	  exit(1);
-	}
-	rule->extra = pcre_study(rule->pc, 0, &errptr);
-	if(rule->extra == NULL) {
-	  rule->extra = apr_pcalloc(pool, sizeof(pcre_extra));
-	}
-	rule->extra->match_limit = 1500;
-	rule->extra->flags |= PCRE_EXTRA_MATCH_LIMIT;
-	apr_table_addn(rules, apr_pstrdup(pool, p), (char *)rule);
-      }
-    }
-  } else {
-    usage2();
+  if(filename == NULL) {
+    usage(cmd, 0);
   }
+
+  file = fopen(filename, "r");
+  if(!file) {
+    fprintf(stderr, "ERROR, failed to open the log file '%s'\n", filename);
+    exit(1);
+  }
+  while(fgets(readline, MAX_LINE-1, file) != NULL) {
+    char *p;
+    int len = strlen(readline);
+    const char *errptr = NULL;
+    int erroffset;
+    rule_t *rule = apr_pcalloc(pool, sizeof(rule_t));
+
+    while(len > 0 && readline[len] < 32) {
+      readline[len] = '\0';
+      len--;
+    }
+    if((strlen(readline) > 0) &&
+       (readline[0] != CR) &&
+       (readline[0] != LF)) {
+
+      p = readline;
+      
+      rule->pc = pcre_compile(p, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
+      if(rule->pc == NULL) {
+	printf("faild to compile pattern [%s], reason: %s\n", p, errptr);
+	exit(1);
+      }
+      rule->extra = pcre_study(rule->pc, 0, &errptr);
+      if(rule->extra == NULL) {
+	rule->extra = apr_pcalloc(pool, sizeof(pcre_extra));
+      }
+      rule->extra->match_limit = 1500;
+      rule->extra->flags |= PCRE_EXTRA_MATCH_LIMIT;
+      apr_table_addn(rules, apr_pstrdup(pool, p), (char *)rule);
+    }
+  }
+
 
   { // per rule
       int k;
@@ -213,7 +280,7 @@ int main(int argc, const char *const argv[]) {
 	}
 	gettimeofday(&tv, NULL);
 	end = tv.tv_sec * 1000000 + tv.tv_usec;
-	printf("%lld usec for %s\n", (end - start)/LOOPS, rule->id != NULL ? rule->id : entry[k].key);	
+	printf("%lld usec for %s\n", (end - start)/LOOPS, entry[k].key);	
       }
   }
 
