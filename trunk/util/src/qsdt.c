@@ -71,7 +71,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH SYNOPSIS\n");
   }
-  qs_man_print(man, "%s%s [-t <regex>] -i <regex> -s <regex> -e <regex> [-v] <path>\n", man ? "" : "Usage: ", cmd);
+  qs_man_print(man, "%s%s [-t <regex>] -i <regex> -s <regex> -e <regex> [-v] [<path>]\n", man ? "" : "Usage: ", cmd);
   printf("\n");
 
   if(man) {
@@ -121,7 +121,8 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  <path>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Defines the input file to process.\n");
+  qs_man_print(man, "     Defines the input file to process. %s reads from\n", cmd);
+  qs_man_print(man, "     from standard input if this parameter is omitted.\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
@@ -220,9 +221,20 @@ int main(int argc, const char *const argv[]) {
     argv++;
   }
 
-  if(idex == NULL || startex == NULL || endex == NULL || filename == NULL) {
+  if(idex == NULL || startex == NULL || endex == NULL) {
     usage(cmd, 0);
   }
+
+  if(filename) {
+    file = fopen(filename, "r");
+    if(!file) {
+      fprintf(stderr, "ERROR, failed to open the log file '%s'\n", filename);
+      exit(1);
+    }
+  } else {
+    file = stdin;
+  }
+
 
   regexStr = apr_psprintf(pool, "%s.*%s.*%s", timeex, idex, startex);
   if(verbose) {
@@ -240,12 +252,6 @@ int main(int argc, const char *const argv[]) {
     fprintf(stderr, "ERROR, could not compile %s\n", regexStr);
     exit(1);
   };
-
-  file = fopen(filename, "r");
-  if(!file) {
-    fprintf(stderr, "ERROR, failed to open the log file '%s'\n", filename);
-    exit(1);
-  }
 
   while(fgets(line, MAX_LINE-1, file) != NULL) {
     char *hms;
