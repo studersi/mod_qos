@@ -65,7 +65,7 @@ static void usage(const char *cmd, int man) {
   if(man) {
     printf(".SH NAME\n");
   }
-  qs_man_print(man, "%s calculates the elapsed time between two related log messages. \n", cmd);
+  qs_man_print(man, "%s calculates the elapsed time between two related log messages.\n", cmd);
   printf("\n");
 
   if(man) {
@@ -139,7 +139,7 @@ static void usage(const char *cmd, int man) {
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
-    printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsrespeed(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsre(1), qsrespeed(1), qsrotate(1), qssign(1), qstail(1)\n");
     printf(".SH AUTHOR\n");
     printf("Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
   } else {

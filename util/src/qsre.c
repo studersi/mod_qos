@@ -1,5 +1,5 @@
 /**
- * regex.c: pcre expression test tool
+ * qsre.c: pcre expression match test tool
  *
  * See http://mod-qos.sourceforge.net/ for further
  * details.
@@ -33,40 +33,83 @@ static const char revision[] = "$Id$";
 #include <unistd.h>
 #include <time.h>
 
-/* OpenSSL  */
-#include <openssl/stack.h>
-
 /* apr */
 #include <pcre.h>
 #include <apr.h>
-#include <apr_uri.h>
-#include <apr_signal.h>
 #include <apr_strings.h>
-#include <apr_network_io.h>
-#include <apr_file_io.h>
 #include <apr_time.h>
-#include <apr_getopt.h>
 #include <apr_general.h>
 #include <apr_lib.h>
 #include <apr_portable.h>
-#include <apr_thread_proc.h>
-#include <apr_thread_cond.h>
-#include <apr_thread_mutex.h>
 #include <apr_support.h>
 
-#define MAX_LINE 32768
-#define CR 13
-#define LF 10
+#include "qs_util.h"
+
 #define QS_OVECCOUNT 100
 
 
-static void usage() {
-  printf("usage: regex <string>|<path> <pcre>|<path>\n");
+static void usage(const char *cmd, int man) {
+  if(man) {
+    //.TH [name of program] [section number] [center footer] [left footer] [center header]
+    printf(".TH %s 1 \"%s\" \"mod_qos utilities %s\" \"%s man page\"\n", qs_CMD(cmd), man_date,
+	   man_version, cmd);
+  }
   printf("\n");
-  printf("Regular expression matching test tool (pcre pattern, case less).\n");
+
+  if(man) {
+    printf(".SH NAME\n");
+  }
+  qs_man_print(man, "%s matches a regular expression against test strings.\n", cmd);
   printf("\n");
-  printf("See http://mod-qos.sourceforge.net/ for further details.\n");
-  exit(1);
+
+  if(man) {
+    printf(".SH SYNOPSIS\n");
+  }
+  qs_man_print(man, "%s%s <string>|<path> <pcre>|<path>\n", man ? "" : "Usage: ", cmd);
+  printf("\n");
+
+  if(man) {
+    printf(".SH DESCRIPTION\n");
+  } else {
+    printf("Summary\n");
+  }
+  qs_man_print(man, "Regular expression test tool.\n");
+  qs_man_print(man, "The provided regular expression (pcre, caseless matching, \".\" matches anything\n");
+  qs_man_print(man, "incl. newline) is appplied against the provided test strings to verify if the\n");
+  qs_man_print(man, "pattern matches.\n");
+  printf("\n");
+
+  if(man) {
+    printf(".SH OPTIONS\n");
+  } else {
+    printf("Options\n");
+  }
+  if(man) printf(".TP\n");
+  qs_man_print(man, "  <string>|<path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     The first argument either defines a sinlge test string of a path to\n");
+  qs_man_print(man, "     a file containing either multiple test strings or a test pattern with\n");
+  qs_man_print(man, "     newline characters (text).\n");
+  if(man) printf("\n.TP\n");
+  qs_man_print(man, "  <pcre>|<path>\n");
+  if(man) printf("\n");
+  qs_man_print(man, "     The second argument either defines a regular expression or a path to\n");
+  qs_man_print(man, "     a file containing the expression.\n");
+  printf("\n");
+
+  if(man) {
+    printf(".SH SEE ALSO\n");
+    printf("qsdt(1), qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsrespeed(1), qsrotate(1), qssign(1), qstail(1)\n");
+    printf(".SH AUTHOR\n");
+    printf("Pascal Buchbinder, http://mod-qos.sourceforge.net/\n");
+  } else {
+    printf("See http://mod-qos.sourceforge.net/ for further details.\n");
+  }
+  if(man) {
+    exit(0);
+  } else {
+    exit(1);
+  }
 }
 
 static int rmatch(const char *line, pcre *pcre) {
@@ -75,8 +118,12 @@ static int rmatch(const char *line, pcre *pcre) {
   do {
     int rc = pcre_exec(pcre, NULL, line, strlen(line), 0, 0, ovector, QS_OVECCOUNT);
     if(rc >= 0) {
+      int ix;
       rc_c = 0;
-      printf("[%.*s]\n", ovector[1] - ovector[0], &line[ovector[0]]);
+      printf("[%.*s]", ovector[1] - ovector[0], &line[ovector[0]]);
+      for(ix = 1; ix < rc; ix++) {
+	printf(" $%d=%.*s", ix, ovector[ix*2+1] - ovector[ix*2], &line[ovector[ix*2]]);
+      }
       line = &line[ovector[1]];
       if(ovector[1] - ovector[0] == 0) {
 	line++;
@@ -100,13 +147,26 @@ int main(int argc, const char *const argv[]) {
   apr_pool_t *pool;
   char *raw = "";
   int linenr = 0;
+
+  const char *cmd = strrchr(argv[0], '/');
+
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
+
+  if(cmd == NULL) {
+    cmd = (char *)argv[0];
+  } else {
+    cmd++;
+  }
 
   argc--;
   argv++;
   if(argc != 2) {
-    usage();
+    if(argc  == 1 && strcmp(argv[0], "--man") == 0) {
+      usage(cmd, 1);
+    } else {
+      usage(cmd, 0);
+    }
   }
   in = argv[0];
   pattern = argv[1];
@@ -124,9 +184,8 @@ int main(int argc, const char *const argv[]) {
     }
     fclose(file);
   }
-  printf("pattern: %s\n", pattern);
+  printf("expression: %s\n", pattern);
 
-  //pcre = pcre_compile(pattern, PCRE_CASELESS, &errptr, &erroffset, NULL);
   pcre = pcre_compile(pattern, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(pcre == NULL) {
     fprintf(stderr, "ERROR, rule <%s> could not compile pcre at position %d,"
@@ -140,7 +199,7 @@ int main(int argc, const char *const argv[]) {
     while(fgets(readline, MAX_LINE-1, file) != NULL) {
       int len = strlen(readline);
       linenr++;
-      printf("line %.3d:\n", linenr);
+      printf("line %.3d: ", linenr);
       raw = apr_pstrcat(pool, raw, readline, NULL);
       while(len > 0 && readline[len] < 32) {
 	readline[len] = '\0';
@@ -150,13 +209,16 @@ int main(int argc, const char *const argv[]) {
 	line = readline;
 	rc_c = rmatch(line, pcre);
       }
+      printf("\n");
     }
     fclose(file);
-    printf("all:\n");
+    printf("entire content match:\n");
     rc_c = rmatch(raw, pcre);
+    printf("\n");
   } else {
     line = in;
     rc_c = rmatch(line, pcre);
+    printf("\n");
   }
   if(rc_c < 0) {
     printf("no match\n");

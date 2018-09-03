@@ -15,7 +15,7 @@ include $(top_builddir)/build/rules.mk
 regex_OBJECTS = regex.lo
 regex_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 regex: $(regex_OBJECTS)
-	$(LINK) $(regex_LTFLAGS) -static $(regex_OBJECTS) $(regex_LDADD)
+	$(LINK) $(regex_LTFLAGS) -static qs_util.o $(regex_OBJECTS) $(regex_LDADD)
 
 qslog.c: qs_util.h qs_util.o
 	if [ ! -r qslog.c ]; then ln -s ../../util/src/qslog.c .; fi
@@ -28,6 +28,9 @@ qsgrep.c: qs_util.h qs_util.o
 
 regexspeed.c: qs_util.h qs_util.o
 	if [ ! -r regexspeed.c ]; then ln -s ../../util/src/qsrespeed.c regexspeed.c; fi
+
+regex.c: qs_util.h qs_util.o
+	if [ ! -r regex.c ]; then ln -s ../../util/src/qsre.c regex.c; fi
 
 qs_util.h:
 	if [ ! -r qs_util.h ]; then ln -s ../../util/src/qs_util.h .; fi
@@ -73,7 +76,7 @@ stack2: $(stack2_OBJECTS)
 regexspeed_OBJECTS = regexspeed.lo
 regexspeed_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 regexspeed: $(regexspeed_OBJECTS) regexspeed.c
-	$(LINK) $(regexspeed_LTFLAGS) -static $(regexspeed_OBJECTS) $(regexspeed_LDADD)
+	$(LINK) $(regexspeed_LTFLAGS) -static qs_util.o $(regexspeed_OBJECTS) $(regexspeed_LDADD)
 	strip regexspeed
 
 b64_OBJECTS = b64.lo
