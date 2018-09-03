@@ -1,6 +1,6 @@
 # $Id$
 
-bin_PROGRAMS=qsfilter2 qslog qspng qsrotate qssign qstail qsgrep qsexec qscheck qsgeo qslogger qshead qsdt qsrespeed
+bin_PROGRAMS=qsfilter2 qslog qspng qsrotate qssign qstail qsgrep qsexec qscheck qsgeo qslogger qshead qsdt qsrespeed qsre
 
 qsfilter2_SOURCES= \
 	qsfilter2.c qs_util.c
@@ -43,4 +43,7 @@ qsdt_SOURCES= \
 
 qsrespeed_SOURCES= \
 	qsrespeed.c qs_util.c
+
+qsre_SOURCES= \
+	qsre.c qs_util.c
 

@@ -75,7 +75,10 @@ set -u
 
 echo "update man pages"
 ./man.sh 1>/dev/null
-
+if [ $? -ne 0 ]; then
+    echo "WARNING: failed to create man pages"
+    exit 1
+fi
 rm -rf mod_qos-${VERSION}*
 mkdir -p mod_qos-${VERSION}/doc/images
 mkdir -p mod_qos-${VERSION}/apache2
