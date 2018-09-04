@@ -1,0 +1,199 @@
+#
+# $Id$
+#
+# remove_cookie() tests
+# Set-Cookie: MODQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=; Path=/; Max-Age=3600
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.txt HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Cookie: MODQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=; $Path=/;
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.txt HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Cookie: MODQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=; $Path=/
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.txt HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Cookie: MODQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=;
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.txt HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Cookie: MODQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.txt HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Cookie: name=value; MODQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.txt HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Cookie: name=value; MODQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=;
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.txt HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Cookie: MODqos=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=; name=value;
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.txt HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Cookie: MoDQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=; name=value
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /htt/index.txt HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Cookie: this=that; MoDQOS=hEA558dZ+hO9Bf6RgKzmg3QIZZA2eSFRgNHbWw8yhvo=; $path=/; name=value
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "!Cookie"
+_EXPECT . "!MODQOS"
+_EXPECT . "!hEA558dZ"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+_RES
+_EXPECT . "!Cookie"
+_EXPECT . "!MODQOS"
+_EXPECT . "!hEA558dZ"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+_RES
+_EXPECT . "!Cookie"
+_EXPECT . "!MODQOS"
+_EXPECT . "!hEA558dZ"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+_RES
+_EXPECT . "!Cookie"
+_EXPECT . "!MODQOS"
+_EXPECT . "!hEA558dZ"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+_RES
+_EXPECT . "Cookie: name=value;"
+_EXPECT . "!MODQOS"
+_EXPECT . "!hEA558dZ"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+_RES
+_EXPECT . "Cookie: name=value;"
+_EXPECT . "!MODQOS"
+_EXPECT . "!hEA558dZ"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+_RES
+_EXPECT . "Cookie: name=value;"
+_EXPECT . "!MODQOS"
+_EXPECT . "!hEA558dZ"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_CLOSE
+
+_RES
+_EXPECT . "Cookie: name=value"
+_EXPECT . "!MoDQOS"
+_EXPECT . "!MODQOS"
+_EXPECT . "!hEA558dZ"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+_RES
+_EXPECT . "Cookie: this=that; name=value"
+_EXPECT . "!MoDQOS"
+_EXPECT . "!MODQOS"
+_EXPECT . "!hEA558dZ"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+END

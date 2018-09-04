@@ -1,0 +1,23 @@
+#
+# $Id$
+#
+# SetEnvIf                   Request_URI /qos/parp/err302  QS_ErrorPage=http://server1/error.html
+# QS_DenyQuery       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/err302/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=;DECLARE%20@S%20NVARCHAR(4000);SET%20@S=CAST(0x4400450006F007200%20AS%20NVARCHAR(4000));EXEC(@S);--
+_EXPECT . "302 Found"
+_EXPECT . "Location: http://server1/error.html"
+_WAIT
+
+END

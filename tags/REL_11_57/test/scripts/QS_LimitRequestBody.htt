@@ -1,0 +1,168 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+SET DA=111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /support HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/xml
+__
+__<node>
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_-<node>
+_EXPECT . "code=044"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi/sleep.cgi?s=20 HTTP/1.1
+__Host: localhost
+__Transfer-Encoding: chunked
+__Content-Type: text/xml
+_FLUSH
+__<node>
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNKED
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__</node>
+_CHUNKED
+_CHUNKED
+__
+_EXPECT . "code=044"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(044\): access denied, QS_LimitRequestBody: max=65536"
+_EXEC tail -2 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__POST /cgi-local/sleep.cgi?s=20 HTTP/1.1
+__Host: localhost
+__Transfer-Encoding: chunked
+__Content-Type: text/xml
+_FLUSH
+__<node>
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+_CHUNK
+_FLUSH
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__$DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA $DA
+__</node>
+_CHUNK
+__
+__0
+__
+_EXPECT . "code=044"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /app/a/maxpost/dynamic HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+_-field=1234567890
+_EXPECT . "code=044"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /htt/handler HTTP/1.1
+__Host: localhost
+__Transfer-Encoding: chunked
+__Content-Type: text/xml
+_FLUSH
+__<node>
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+_CHUNK
+_FLUSH
+__$DA
+__</node>
+_CHUNK
+__
+__0
+__
+_EXPECT . "==AS1=="
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+END
