@@ -1,4 +1,4 @@
-Version 11.56
+Version 11.57
 
  - Adds qsrespeed and qsre (previous "regexspeed" and "regex" dev tool)
    to the support utilities.
