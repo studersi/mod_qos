@@ -329,8 +329,10 @@ make
 <small><i>Note: 
 If you have a different version of <code>aclocal</code> or 
 <code>automake</code> on your system (you get a message like 
-"aclocal-1.11 is missing on your system"), try to execute 
-<code>aclocal</code> manually and execute <code>make</code> again.
+"aclocal-x.y is missing on your system"), try to execute 
+<code>aclocal</code> manually and execute <code>make</code> again. 
+Or patch the configure script (change the am__api_version variable 
+to match the version you have installed).
 </i></small>
 </p>
 

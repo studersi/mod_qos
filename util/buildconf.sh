@@ -17,6 +17,8 @@ automake -ac
 
 echo "create configure"
 autoconf
+echo "patch configure"
+sed -i configure -e "s:-\${am__api_version}::g"
 
 # test
 #DES=../_u

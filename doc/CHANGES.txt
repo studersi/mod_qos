@@ -1,3 +1,7 @@
+Version
+
+ - Removes automake configure script (removes version information).
+
 Version 11.57
 
  - Adds qsrespeed and qsre (previous "regexspeed" and "regex" dev tool)
