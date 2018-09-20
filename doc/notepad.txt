@@ -24,6 +24,7 @@
     + combine these counters (if c1>n AND c2>m then c3++)
 - new machine-readable status viewer (json,xml,...)
   - add statistics, e.g. how often a limit had been reached
+    + error event counter
   - implement plugins to read the status viewer (e.g. for nagios)
   + scoreboard log message once every minute (json)
 + geo location
