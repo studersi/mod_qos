@@ -1252,9 +1252,9 @@ the value are replaced by parenthesized subexpressions of the regular expression
 <li>
 <a name="QS_SetReqHeader"></a>
 <syntax>QS_SetReqHeader [!]&lt;header name&gt; &lt;env-variable&gt; [late]</syntax><br>
-Sets the defined HTTP request header to the request if the specified 
-environment variable is set. The header is unset (removed from the request) 
-if the header name is prefixed by a "!".
+Sets the defined HTTP request header with the value of the specified 
+environment variable if the variable is available.<br>
+The header is unset (removed from the request) if the header name is prefixed by a "!".
 </li>
 <li>
 <a name="QS_SetEnvResHeader"></a>
@@ -1270,9 +1270,14 @@ the specified regular expression (pcre, not case sensitive) matches
 the header value.
 </li>
 <li>
+<a name="QS_UnsetReqHeader"></a>
+<syntax>QS_UnsetReqHeader &lt;header name&gt;</syntax><br>
+The request header of this name is removed.
+</li>
+<li>
 <a name="QS_UnsetResHeader"></a>
 <syntax>QS_UnsetResHeader &lt;header name&gt;</syntax><br>
-Removes the specified response header.
+The response header of this name is removed.
 </li>
 <li>
 <a name="QS_RedirectIf"></a>

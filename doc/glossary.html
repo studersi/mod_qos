@@ -165,8 +165,9 @@ directives. Or you can use them within error pages using
 as HTTP headers) or environment variables, you must make sure that 
 a client can not bypass your rules by sending a request header 
 with the same name as the variable used. 
-The <a href="index.html#QS_RequestHeaderFilter">request header filter</a> 
-may be helpful to achieve this.
+Use either the <a href="index.html#QS_RequestHeaderFilter">request header filter</a> 
+or the <code><a href="index.html#QS_UnsetReqHeader">QS_UnsetReqHeader</a></code> directive 
+to prevent this.
 </i></p>
 
 <!-- --------------------------------------------------------- -->

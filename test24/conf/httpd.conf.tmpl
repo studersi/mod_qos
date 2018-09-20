@@ -168,6 +168,8 @@ Listen         ##QS_PORT_BASE##
    AddType                    text/html .shtml
    AddOutputFilter            INCLUDES .shtml
 
+   QS_UnsetReqHeader          X-Internal-Header
+
 <IfDefine QS_RequestHeaderFilter>
    QS_RequestHeaderFilter on
 </IfDefine>
