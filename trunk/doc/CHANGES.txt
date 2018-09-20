@@ -1,5 +1,7 @@
 Version
 
+ - Adds directive QS_UnsetReqHeader.
+
  - Removes automake configure script (removes version information).
 
 Version 11.57

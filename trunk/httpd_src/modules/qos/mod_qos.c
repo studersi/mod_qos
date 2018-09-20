@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.57";
+static const char g_revision[] = "11.58";
 
 /************************************************************************
  * Includes
@@ -740,6 +740,7 @@ typedef struct {
   apr_table_t *setreqheader_t;
   apr_table_t *setreqheaderlate_t;
   apr_table_t *unsetresheader_t;
+  apr_table_t *unsetreqheader_t;
   apr_table_t *setenvif_t;
   apr_table_t *setenvifquery_t;
   apr_table_t *setenvifparp_t;
@@ -8058,6 +8059,28 @@ static void qos_propagate_notes(request_rec *r) {
   }
 }
 
+
+/* QS_UnsetReqHeader */
+static void qos_unset_reqheader(request_rec *r, qos_srv_config *sconf) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->unsetreqheader_t)->elts;
+  for(i = 0; i < apr_table_elts(sconf->unsetreqheader_t)->nelts; i++) {
+    apr_table_unset(r->headers_in, entry[i].key);
+  }
+  return;
+}
+
+/* QS_UnsetResHeader */
+static void qos_unset_resheader(request_rec *r, qos_srv_config *sconf) {
+  int i;
+  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->unsetresheader_t)->elts;
+  for(i = 0; i < apr_table_elts(sconf->unsetresheader_t)->nelts; i++) {
+    apr_table_unset(r->headers_out, entry[i].key);
+    apr_table_unset(r->err_headers_out, entry[i].key);
+  }
+  return;
+}
+
 /************************************************************************
  * handlers
  ***********************************************************************/
@@ -8541,8 +8564,9 @@ static int qos_post_read_request_later(request_rec *r) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                 &qos_module);
   if(ap_is_initial_req(r)) {
+
     /* QS_UserTrackingCookieName */
-    if(sconf && sconf->user_tracking_cookie) {
+    if(sconf->user_tracking_cookie) {
       char *value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
       qos_get_create_user_tracking(r, sconf, value);
       if(sconf->user_tracking_cookie_force) {
@@ -8612,6 +8636,9 @@ static int qos_post_read_request(request_rec *r) {
   const char *connectionid = apr_table_get(r->connection->notes, QS_CONNID);
   const char *lowPrioFlags = apr_table_get(r->connection->notes, "QS_ClientLowPrio");
   const char *isVipIP = apr_table_get(r->connection->notes, QS_ISVIPREQ);
+
+  /* QS_UnsetReqHeader */
+  qos_unset_reqheader(r, sconf);
 
   if(sconf->geodb) {
     if(sconf->qos_cc_forwardedfor) {
@@ -9851,17 +9878,6 @@ static void qos_set_dscp(request_rec *r) {
   }
 }
 
-/* QS_UnsetResHeader */
-static void qos_unset_header(request_rec *r, qos_srv_config *sconf) {
-  int i;
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->unsetresheader_t)->elts;
-  for(i = 0; i < apr_table_elts(sconf->unsetresheader_t)->nelts; i++) {
-    apr_table_unset(r->headers_out, entry[i].key);
-    apr_table_unset(r->err_headers_out, entry[i].key);
-  }
-  return;
-}
-
 static void qos_end_res_rate(request_rec *r, qos_srv_config *sconf) {
   if((sconf->req_rate != -1) && (sconf->min_rate != -1)) {
     qos_ifctx_t *inctx = qos_get_ifctx(r->connection->input_filters);
@@ -9995,7 +10011,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
       apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
     }
   }
-  qos_unset_header(r, sconf);
+  qos_unset_resheader(r, sconf);
   /* don't handle response status since response header filter use "drop" action only */
   mode = sconf->resheaderfilter;
   if(dconf->resheaderfilter > QS_HEADERFILTER_OFF_DEFAULT) {
@@ -11371,6 +11387,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->setenv_t = apr_table_make(sconf->pool, 1);
   sconf->setreqheader_t = apr_table_make(sconf->pool, 5);
   sconf->setreqheaderlate_t = apr_table_make(sconf->pool, 5);
+  sconf->unsetreqheader_t = apr_table_make(sconf->pool, 5);
   sconf->unsetresheader_t = apr_table_make(sconf->pool, 5);
   sconf->setenvifquery_t = apr_table_make(sconf->pool, 1);
   sconf->setenvifparp_t = apr_table_make(sconf->pool, 1);
@@ -11570,6 +11587,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   qos_table_merge(o->setenv_t, b->setenv_t);
   qos_table_merge(o->setreqheader_t, b->setreqheader_t);
   qos_table_merge(o->setreqheaderlate_t, b->setreqheaderlate_t);
+  qos_table_merge(o->unsetreqheader_t, b->unsetreqheader_t);
   qos_table_merge(o->unsetresheader_t, b->unsetresheader_t);
   qos_table_merge(o->setenvifquery_t, b->setenvifquery_t);
   qos_table_merge(o->setenvifparp_t, b->setenvifparp_t);
@@ -12189,6 +12207,14 @@ const char *qos_setreqheader_cmd(cmd_parms *cmd, void *dcfg, const char *header,
     apr_table_set(sconf->setreqheader_t, 
                   apr_pstrcat(cmd->pool, header, "=", variable, NULL), header);
   }
+  return NULL;
+}
+
+/* QS_UnsetReqHeader */
+const char *qos_unsetreqheader_cmd(cmd_parms *cmd, void *dcfg, const char *header) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  apr_table_set(sconf->unsetreqheader_t, header, "");
   return NULL;
 }
 
@@ -14315,9 +14341,13 @@ static const command_rec qos_config_cmds[] = {
                 " HTTP request header to the request if the specified"
                 " environment variable is set."),
 
+  AP_INIT_TAKE1("QS_UnsetReqHeader", qos_unsetreqheader_cmd, NULL,
+                RSRC_CONF,
+                "QS_UnsetReqHeader <header name>, Removes the specified header from the request."),
+  
   AP_INIT_TAKE1("QS_UnsetResHeader", qos_unsetresheader_cmd, NULL,
                 RSRC_CONF,
-                "QS_UnsetResHeader <header name>, Removes the specified response header."),
+                "QS_UnsetResHeader <header name>, Removes the specified header from the response."),
 
   AP_INIT_TAKE12("QS_SetEnvResHeader", qos_event_setenvresheader_cmd, NULL,
                  RSRC_CONF,
