@@ -159,7 +159,15 @@ file using the format string <code>%{VARNAME}e</code> within the
 directives. Or you can use them within error pages using
 <a href="#ssi">server-side includes (SSI)</a>.
 </p>
-
+<p>
+<i>Note: Whenever you use a directive (such as 
+<code><a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus <img src="images/link.png"/></a></code>) which can either process request attributes (such 
+as HTTP headers) or environment variables, you must make sure that 
+a client can not bypass your rules by sending a request header 
+with the same name as the variable used. 
+The <a href="index.html#QS_RequestHeaderFilter">request header filter</a> 
+may be helpful to achieve this.
+</i></p>
 
 <!-- --------------------------------------------------------- -->
 <hr>
