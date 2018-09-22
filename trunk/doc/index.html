@@ -970,7 +970,7 @@ SetEnvIf     Remote_Addr 192.168.10.              <a href="#QS_VipRequest">QS_Vi
 BrowserMatch             "(MSIE 5\.)"             <a href="#QS_KeepAliveTimeout">QS_KeepAliveTimeout</a>=65
 
 # dynamic error page URL (per host error page):
-SetEnvIf     Host        (.*)                     <a href="#QS_ErrorPage">QS_ErrorPage</a>=/error-docs/$1.html
+SetEnvIf     Host        ^([a-zA-Z0-9_\.\-]+)     <a href="#QS_ErrorPage">QS_ErrorPage</a>=/error-docs/$1.html
 # external redirect to a sever hosting the error page:
 SetEnvIf     Request_URI /app                     <a href="#QS_ErrorPage">QS_ErrorPage</a>=http://your.server.name/error.html
 </pre>
