@@ -164,10 +164,11 @@ directives. Or you can use them within error pages using
 <code><a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus <img src="images/link.png"/></a></code>) which can either process request attributes (such 
 as HTTP headers) or environment variables, you must make sure that 
 a client can not bypass your rules by sending a request header 
-with the same name as the variable used. 
+with the same name as the environment variable used in your configuration. 
 Use either the <a href="index.html#QS_RequestHeaderFilter">request header filter</a> 
-or the <code><a href="index.html#QS_UnsetReqHeader">QS_UnsetReqHeader</a></code> directive 
-to prevent this.
+or the <code><a href="index.html#QS_UnsetReqHeader">QS_UnsetReqHeader</a></code> 
+directive to prevent anyone from sending a request header with the same name as 
+the variable you have defined.
 </i></p>
 
 <!-- --------------------------------------------------------- -->
