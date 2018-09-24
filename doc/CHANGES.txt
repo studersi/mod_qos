@@ -2,7 +2,7 @@ Version 11.58
 
  - Adds directive QS_UnsetReqHeader.
 
- - Removes automake configure script (removes version information).
+ - Removes version information in automake configure script (utilities).
 
 Version 11.57
 
