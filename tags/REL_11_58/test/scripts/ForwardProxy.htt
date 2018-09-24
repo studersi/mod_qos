@@ -1,0 +1,18 @@
+#
+# $Id$
+#
+# ensure the module can be used in a forward proxy (HTTP)
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ server1 $QS_PORT_BASE11
+__GET http://server1:$QS_PORT_BASE1/index.html HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__
+_WAIT
+
+END

@@ -1,0 +1,100 @@
+#   QS_ErrorResponseCode   503
+#   SetEnvIfNoCase Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=131072
+#   SetEnvIfNoCase Content-Type multipart/form-data               QS_LimitRequestBody=131072
+#   SetEnvIfNoCase Content-Type multipart/mixed                   QS_LimitRequestBody=131072
+#   SetEnvIfNoCase Content-Type application/json                  QS_LimitRequestBody=65536
+#
+
+SET DATA=ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /index.html?1 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla 1
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: AUTO
+__
+_-name=value&data=${DATA}
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /index.html?2 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla 1
+__Content-Type: application/x-www-form-urlencoded
+__Transfer-Encoding: chunked
+_FLUSH
+_-name=value&data=${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+_FLUSH
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+_FLUSH
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+_FLUSH
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+_FLUSH
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+__
+__0
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /index.html?3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla 1
+__Content-Type: application/x-www-form-urlencoded
+__Transfer-Encoding: chunked
+_FLUSH
+_-name=value&data=${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+_FLUSH
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+_FLUSH
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+_FLUSH
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+_FLUSH
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_-${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}${DATA}
+_CHUNK
+__
+__0
+__
+_EXPECT . "!this is the root index.html"
+_EXPECT . "custom error page"
+_EXPECT . "503 Service Unavailable"
+_WAIT
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(044\): access denied, QS_LimitRequestBody: max=131072"
+_EXEC tail logs/error_log
+
+END
+
+
+

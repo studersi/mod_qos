@@ -1,0 +1,170 @@
+#   # max five requests to /htt/service posting more than 9 bytes
+#   SetEnvIf                      Content-Length [0-9]{2,} MaxPostSize
+#   SetEnvIf                      Request_URI /htt/service MaxPostURL
+#   QS_SetEnvIf                   MaxPostSize MaxPostURL   MaxPost=yes
+#   QS_EventRequestLimit          MaxPost                  4
+#   # no chunked post here (otherwise, we can't limit the req body size)
+#   SetEnvIf                      Request_Method POST      IsPost
+#   SetEnvIf                      Content-Length [0-9]     HasContentLength
+#   QS_SetEnvIf                   IsPost !HasContentLength ChunkedPost=yes
+#   <Location /htt>
+#     QS_DenyEvent                +denychunked deny        ChunkedPost
+#   </Location>
+
+INCLUDE scripts/ports
+
+CLIENT 4
+_REQ localhost $QS_PORT_BASE
+__POST /htt/index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 1.1
+__Content-Type: text/xml
+__Content-Length: AUTO
+__
+__<xml>data</xml>
+_EXPECT . "200 OK"
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /htt/service HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 1.2
+__Content-Type: text/xml
+__Content-Length: AUTO
+__
+__<x></x>
+_EXPECT . "200 OK"
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /htt/service HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 1.3
+__Content-Type: text/xml
+__Content-Length: AUTO
+__
+__<xml>data</xml>
+_EXPECT . "200 OK"
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 1
+
+_SLEEP 200
+# allowed for other URL
+_REQ localhost $QS_PORT_BASE
+__POST /htt/index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 2.1
+__Content-Type: text/xml
+__Content-Length: AUTO
+__
+__<xml>data</xml>
+_EXPECT . "200 OK"
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+# allowed for small POST (<10 bytes)
+_REQ localhost $QS_PORT_BASE
+__POST /htt/service HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 2.2
+__Content-Type: text/xml
+__Content-Length: AUTO
+__
+__<x></x>
+_EXPECT . "200 OK"
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+# not allowed (>= 10 bytes)
+_REQ localhost $QS_PORT_BASE
+__POST /htt/service HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 2.3
+__Content-Type: text/xml
+__Content-Length: AUTO
+__
+__<xml>data</xml>
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "!==AS1=="
+_WAIT
+_CLOSE
+_SLEEP 500
+_EXPECT EXEC "mod_qos\(012\): access denied, QS_EventRequestLimit rule: var=\(MaxPost\)\(4\), concurrent requests=5"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__POST /htt/service HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 2.4
+__Content-Type: text/xml
+__Content-Length: AUTO
+__
+__<xml>data</xml>
+_EXPECT . "200 OK"
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /htt/service HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 2.4
+__Content-Type: text/xml
+__Transfer-Encoding: chunked
+_FLUSH
+__<xml>data</xml>
+_CHUNKED
+_CHUNKED
+__
+_EXPECT . "403 Forbidden"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(040\): access denied, QS_DenyEvent rule id: denychunked \(ChunkedPost\), action=deny"
+_EXEC tail -1 logs/error_log
+
+END
+
+SERVER $QS_PORT_BASE6 5
+_RES
+_WAIT
+_SLEEP 500
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+_SLEEP 500
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+_SLEEP 500
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+_CLOSE
+
+END

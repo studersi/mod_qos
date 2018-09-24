@@ -1,0 +1,89 @@
+#
+# $Id$
+#
+# QS_LocKBytesPerSecLimitMatch ^/myimages/  3000
+#
+#HTTEST=/usr/local/bin/httest-2.4.9
+
+INCLUDE scripts/ports
+
+CLIENT
+_SLEEP 1500
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/dvd2.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 6000
+
+_RPS 20 10
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/dvd.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_END RPS
+
+END
+
+CLIENT
+_SLEEP 12000
+
+_RPS 100 10
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_END RPS
+
+END
+
+CLIENT 3
+_SLEEP 35000
+
+_RPS 100 1
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_END RPS
+
+END
+
+CLIENT
+_RPS 10 60
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg?measure HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 500
+_END RPS
+_EXEC echo "bytes;us;wait;kbyte/sec"  > UC1.csv
+_EXEC grep "GET /myimages/images/_1.jpg?measure" logs/access_log | awk '{total+=1; print $(NF-3) ";" $(NF-2) ";" $(NF-1) ";=A" total+1 "/B" total+1 "*1000*1000/1024"}' >> UC1.csv
+
+END

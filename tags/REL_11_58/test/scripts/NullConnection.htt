@@ -1,0 +1,59 @@
+#
+# $Id$
+#
+# <IfDefine BlockNullConn>
+# QS_ClientEventBlockCount 3 40
+# QS_SetEnvIfStatus       NullConnection QS_Block
+# </IfDefine>
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET / HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+# three connections without any request => client is blocked for 40 seconds
+_LOOP 3
+_REQ localhost $QS_PORT_BASE
+_CLOSE
+_END LOOP
+_SLEEP 10
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=3"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 42000
+# after 40 sec, normal requests are allowed again
+_LOOP 10
+_LOOP 10
+_REQ localhost $QS_PORT_BASE
+__GET / HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+_END LOOP
+
+_LOOP 10
+_REQ localhost $QS_PORT_BASE
+__GET / HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_END LOOP
+_END LOOP
+
+END

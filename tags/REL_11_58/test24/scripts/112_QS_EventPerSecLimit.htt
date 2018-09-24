@@ -1,0 +1,30 @@
+#
+#   SetEnvIf User-Agent        limipersec limit=a
+#   QS_EventPerSecLimit        limit 10
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_EXEC ../test/sleep.sh
+
+_LOOP 40
+_LOOP 20
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: limipersec
+__
+_EXPECT . "root index"
+_WAIT
+_END LOOP
+_CLOSE
+_SLEEP 1000
+_END LOOP
+
+_EXPECT EXEC "mod_qos\(050\): request rate limit, rule: var=\[limit\]\(10\), req/sec=[0-9]+, delay=[0-9]+ms"
+_EXEC tail -1 logs/error_log
+_EXPECT EXEC ";r/s;1[0-2];"
+_EXEC tail -1 logs/qslog.csv
+
+END

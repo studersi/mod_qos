@@ -1,0 +1,174 @@
+
++ study pcre and set match_limit
+- re-implement (again) the per connection/ip list (supporting thousands of
+  connections per server) (QS_SrvMaxConnPerIP)
+- limit number of parameters (better to be implemented in mod_parp)
+- improved anomaly detection, collecting additional client/connection
+  attributes such as
+  - requests per single TCP connection (keep-alive)
+  + 304 responses
+  - check if the client supports JavaScript (check by a test page, e.g. UserTracking extension)
+    verification may be performed when server becomes busy/in conjunction with QS_ClientPrefer
+    and we could also blacklist clients which are redirected to the test page multiple times
+  + respone content types (html/css/js/image/...)
+    - store/configure "normal" behavoir (stop learning after a while)
+  - elapse time between requests
+    + milestoes with min. time between req (think time of the user)
+  - request/response length (body)
+  - request/response headers (types, length)
+  - request/response duration
+  - other
+  - log event
+  - per user-agent (categories)
+  + multiple "per client" event counter
+    + combine these counters (if c1>n AND c2>m then c3++)
+- new machine-readable status viewer (json,xml,...)
+  - add statistics, e.g. how often a limit had been reached
+    + error event counter
+  - implement plugins to read the status viewer (e.g. for nagios)
+  + scoreboard log message once every minute (json)
++ geo location
+  + country
+  - region, city. latitude/longitude
+  - IPv6
++ doc: document VIP behavior (exact: which directive are affected)
++ add QS_ClientIpFromHeader support for QS_ClientEventRequestLimit 
+- more "dynamic" rules:
+  - enforce rules on certain conditions only (e.g. overall server usage)
+    + QS_SrvMinDataRate <bytes per second> [<max bytes per second> [ <free>% ] ]
+    + QS_SrvMaxConnPerIP <number> [<onnections>]
+    + QS_CondClientEventLimitCount
+    + QS_CondEventLimitCount
+  - adjust metrics dynamically
+  - learning and permissive mode
+    + server wide (global)
+    - per function
+  + store metrics as environment variables (used by QS_EventRequestLimit,
+    QS_CondLocRequestLimitMatch and others)
+    + QS_SrvConn 
+    + QS_ClientEventLimitCount value
+    + counter used by QS_ClientEventLimitCount
+    + counter used by QS_EventLimitCount
+    + QS_ResponseDelayTime (logger only)
+    - more variables
+- dynamic rule adjustment for the generic request filter
+  - "in module" learing (instead of qsfilter2)
+  - or use separate application (java?) to generate rules (ICAP?)
+  - automatic rule adjustment
+    - privileged users/ip/??? to learn from automatically
+  - crawler
+  + reset of QS_ClientEventLimitCount counters
+- request filter:
+  + json in request query (not body)
+  - gwt parser (req id to build parameter names?)
+  - xml parser
+  - qsfilter2 improvements
+    - avoid certain pattern
+    - different output formats
+    - built-in (preferred) pattern ("expert mode")
+- response filter (e.g. detecting "bad" js code)
+  - try to enforce content security header settings
+- support milestones on a per Location basis
++ Set IP differentiated services code points (DSCP)
+- Change log message severity of errors caused by QS_SrvMinDataRate
+  (mod_qos(034) events) if we did not receive any byte to avoid too 
+  many event messages caused by browser's speculative preconnect requests
++ serialize requets per client
++ serialize requets per server
+- more user friendly error handling for QS_ClientEventBlockCount directive
+  - show the error page for more than only the first occurence
+    - e.g. answer the next 5 (or more) requests with an error page too
+      (instead of closing the TCP connection)
+    - detect, if counter was incremented at http response, e.g. session cookie
+       => show error page at next request
+  - add more (user defined variable) QS_Block counter?
+    + implemented for QS_ClientEventLimitCount
+- re-design/re-implementation of some parts/functions
+  + maybe dropping some features
+    + remove QS_SrvPreferNet
+    - other
+  - maybe start the implementation of a separate module.
+    + see mod_setenvifplus
+    - mod_qos "light"
+    - sepatate modules for some function sets
+- web interface (handler) to configure mod_qos dynamically
+  - improved viewer
+  - console:
+    + clear per client stats
+    + block clients/IPs
+    + mark clients as vip
+- management tool (sep. application)
+  - configuration guidance
+    - documentation, mobile app?
+  - topics:
+    - concurrency limitation (QS_LocRequestLimitMatch)
+    - response throttling (QS_LocKBytesPerSecLimitMatch (+QS_LocRequestLimitMatch))
+    + denial of service defense: dos.html
+    - session dos/brute foce attack defense
+    - user tracking cookie for stats and to ensure client accepts cookies
+    - ...
+  - log data management
+  - rule generation
+  - utilities (ha/lb/...)
+  + log data signing (using pipe: "|sig |qsrotate <file>")
+    - for other software (java)
+      + log4j 1.2
+  - nms plugin (OpenNMS? Nagios?)
+    - see https://github.com/dimovelev/metrics-sampler
+- support IPv6
+  + "real" IPv6 support
+  - net vs host address rules
+    + use "Remote_Net" provided by mod_setenvifplus
+- propagate client information via request header (set additional variables)
+  + using mod_setenvifplus
+  + QS_SetReqHeader late
+- decoding functions (UTF-8, non-standard MS/IIS %uXXYY, HTML, ANSI C, charset, other)
+  - enhance qos_unescaping() (partial done)
+  - document path_decode_hook()/query_decode_hook()
+x initial socket timeout for new connections (tcp open only and no initial request)
+  + QS_Timeout for reading the req body
++ QS_SrvMaxConnClose to support "percentage" of the MaxClient settings instead of abs. value
+  - set variable mod_qos_con_ip (see mod_qos_con)
++ user tracking cookie (for statistics and cookie-check)
+  + timeout/renew
++ gnu autotools to build tools
+- full Apache 2.4 support
+  - all features/directives
+  - MPM "worker" and "event"
++ create request id if mod_unique_id is not available
++ enforce cookie support (redirect until client sends cookie), option for
+  user tracking cookie or seperate cookie?
+  + disable for certain user-agent headers (or X-Do-Not-Track header)
++ OpenSSL 1.0 support for qsfilter2 (safestack).
+- make mod_qos more portable
+  - use apr types and functions everywhere
+  - e.g. use apr_time_t instead of time_t
++ qsrotate: daylight saving time support
+x headerfilter: no duplicate req headers -> merged by Apache
++ fix regsub (2.2.22)
+
+----------------
+legend:
+- to be documented/not yet decided to implement
+* documented but not implememted
++ implemented
+. definition/open issue/option
+x we are not going implement this
+
+----------------
+scp index.html pbuchbinder,mod-qos@web.sourceforge.net:htdocs
+----------------
+May 2007, Version 1: Limits concurrent requests on a per URL path basis.
+July 2007, Version 2.2: Introduction of support utilities.
+August 2007, Version 3: Cnnection level controls and a status viewer.
+September 2007, Version 4: Rquest/response throttling and generic request filtering.
+December 2007, Version 5: User defined event limitation features.
+March 2008, Version 6: Per client (IP) control mechanisms.
+May 2008, Version 7: Enforces minimum upload/download throughput a client must generate.
+September 2009, Version 9: Anomaly detection using client characteristic measurement.
+Februar 2012, Version 10: Adds geolocation features (ISO 3166 country codes).
+May 2014, Version 11: Highly improves bytes/sec limitation (response throttling)
+July 2015, Version 11.15: Client and server serialization 
+May 2016, Version 11.28: IP differentiated services code points
+
+----------------

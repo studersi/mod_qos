@@ -1,0 +1,106 @@
+# 
+# QS_ClientEventBlockCount 20 30
+# QS_SetEnvIfStatus  400 QS_Block
+# SetEnvIfPlus User-Agent QS_BOCK_DECREMENT=([0-9]+) QS_Block_Decrement=$1
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D real_ip >/dev/null
+
+CLIENT
+
+_LOOP 10
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET 
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__Connection: keep-alive
+__Req: 01
+__
+_EXPECT . "400 Bad Request"
+_WAIT
+_CLOSE
+_END LOOP
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /console?action=search&address=127.0.0.1 HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__Connection: keep-alive
+__Req: 02
+__
+_EXPECT . "block=10/"
+_WAIT
+_CLOSE
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: QS_BOCK_DECREMENT=3
+__Connection: keep-alive
+__Req: 03
+__
+_WAIT
+_CLOSE
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /console?action=search&address=127.0.0.1 HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__Connection: keep-alive
+__Req: 04
+__
+_EXPECT . "block=7/"
+_WAIT
+_CLOSE
+
+_LOOP 10
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET 
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__Connection: keep-alive
+__Req: 05
+__
+_EXPECT . "400 Bad Request"
+_WAIT
+_CLOSE
+_END LOOP
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /console?action=search&address=127.0.0.1 HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__Connection: keep-alive
+__Req: 06
+__
+_EXPECT . "block=17/"
+_WAIT
+_CLOSE
+
+_LOOP 3
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET 
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__Connection: keep-alive
+__Req: 07
+__
+_EXPECT . "400 Bad Request"
+_WAIT
+_CLOSE
+_END LOOP
+
+_EXPECT EXEC "Connection reset by peer"
+_EXEC ./qosauto.sh
+
+_SLEEP 200
+_EXPECT EXEC "\[qos:error\] .* mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=20"
+_EXEC tail -1 logs/error_log
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END
