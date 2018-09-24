@@ -1,4 +1,0 @@
-177c177
-< #define MODULE_MAGIC_NUMBER_MINOR 42                    /* 0...n */
----
-> #define MODULE_MAGIC_NUMBER_MINOR 43                    /* 0...n */

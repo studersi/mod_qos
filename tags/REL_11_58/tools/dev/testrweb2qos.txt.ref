@@ -1,6 +1,0 @@
-QS_PermitUri +RW0011 deny "^/request$"
-QS_PermitUri +RW0012 deny "^/login\?((url=[/a-zA-Z0-9]+[&]?)|(command=(login|logout)[&]?))*$"
-QS_PermitUri +RW0013 deny "^/index.html$"
-QS_PermitUri +RW0014 deny "^/login\?((url=[/a-zA-Z0-9]+[&]?)|(command=(login|logout)[&]?)|(cuser=[0-9]{0,10}[&]?)|(password=[a-zA-Z0-9]+[&]?))*$"
-QS_PermitUri +RW0015 deny "^/oth\?((url=[/a-zA-Z0-9]+[&]?)|(command=(login|logout)[&]?)|(cuser=[0-9]{0,10}[&]?)|(password=[a-zA-Z0-9]+[&]?))*$"
-QS_PermitUri +RW0016 deny "^/query\?((id=[a-zA-Z0-9]+[&]?))*$"
