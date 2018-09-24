@@ -1,0 +1,78 @@
+#
+# $Id$
+#
+# QS_ClientSerialize
+# QS_ClientIpFromHeader X-Frwd-Address
+#
+# SetEnvIf                   User-Agent serialClient QS_Serialize=1
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D serialize 2>/dev/null 1>/dev/null
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: serialClient 1
+__Connection: keep-alive
+__X-Frwd-Address: 193.12.23.1
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 100
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: serialClient 2
+__Connection: keep-alive
+__X-Frwd-Address: 193.12.23.1
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 200
+_DATE:TIMER GET DSTART
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: serialClient x
+__Connection: keep-alive
+__X-Frwd-Address: 193.12.23.1
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_DATE:TIMER GET DEND
+_OP $DEND SUB $DSTART DELTA
+_IF "$DELTA" GT "4500"
+_EXIT FAILED
+_END IF
+_IF "$DELTA" LT "3000"
+_EXIT FAILED
+_END IF
+
+_SLEEP 100
+_EXPECT EXEC "GET /cgi/sleep.cgi\?s=1 HTTP/1.1\" 200 [0-9]+ \"serialClient x\" 3 cr=. ev=s;"
+_EXEC tail -1 logs/access_log
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh stop 2>/dev/null 1>/dev/null
+_SLEEP 1000
+_EXEC ./ctl.sh start 2>/dev/null 1>/dev/null
+_SLEEP 1000
+END

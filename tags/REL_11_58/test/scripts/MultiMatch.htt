@@ -1,0 +1,122 @@
+#
+# $Id$
+#
+#   # mutiple rule match
+#   BrowserMatch  "yoda"          YODA
+#   QS_EventRequestLimit          YODA 4
+#   QS_LocRequestLimitMatch       .*YODA.* 4
+#   QS_CondLocRequestLimitMatch   .*YODA.* 4 YODA
+#
+#   xx....xxxx
+#    ^  ^   ^  ^
+INCLUDE scripts/ports
+
+CLIENT 2
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/YODA/index.txt HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: yoda
+__
+_WAIT
+_CLOSE
+_SLEEP 500
+_SLEEP 500
+_SLEEP 500
+_SLEEP 500
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.txt HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: yoda
+__
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+
+_SLEEP 500
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "QS_EventRequestLimit;4\[var=\(YODA\)\]: 2"
+_EXPECT . "QS_LocRequestLimitMatch;4\[.*YODA.*\]: 2"
+_EXPECT . "QS_CondLocRequestLimitMatch;4\[.*YODA.*\]: 2"
+_WAIT
+_CLOSE
+_SLEEP 500
+_SLEEP 500
+_SLEEP 500
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "QS_EventRequestLimit;4\[var=\(YODA\)\]: 0"
+_EXPECT . "QS_LocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_EXPECT . "QS_CondLocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_WAIT
+_CLOSE
+_SLEEP 500
+_SLEEP 500
+_SLEEP 500
+_SLEEP 500
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "QS_EventRequestLimit;4\[var=\(YODA\)\]: 2"
+_EXPECT . "QS_LocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_EXPECT . "QS_CondLocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_WAIT
+_CLOSE
+_SLEEP 500
+_SLEEP 500
+_SLEEP 500
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "QS_EventRequestLimit;4\[var=\(YODA\)\]: 0"
+_EXPECT . "QS_LocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_EXPECT . "QS_CondLocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_WAIT
+_CLOSE
+
+END
+
+SERVER $QS_PORT_BASE6 2
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: 9
+__Content-Type: text/plain
+__
+_SLEEP 500
+_SLEEP 500
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: 9
+__Content-Type: text/plain
+__
+_SLEEP 500
+_SLEEP 500
+_SLEEP 500
+_SLEEP 500
+__==AS1==
+_CLOSE
+
+END

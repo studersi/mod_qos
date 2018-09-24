@@ -1,0 +1,53 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT 50
+_REQ server1 $QS_PORT_BASE1
+__GET /login/vip.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "MODQOS"
+_WAIT
+
+_CLOSE
+
+_SLEEP 1000
+_ERROR .*
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_END ERROR
+END
+
+CLIENT 10
+_SLEEP 1000
+_ERROR .*
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_END ERROR
+END
+
+CLIENT 10
+_SLEEP 1200
+_ERROR .*
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi/sleep.cgi?s=5 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_END ERROR
+END
+

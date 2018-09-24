@@ -1,0 +1,24 @@
+#
+# $Id$
+#
+#   KeepAliveTimeout         5
+#   SetEnvIf                     User-Agent keepAliveTimeout10 QS_KeepAliveTimeout=10
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: keepAliveTimeout10
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(037\): loaded MPM is 'event' and the QS_KeepAliveTimeout/QS_MaxKeepAliveRequests directives can't be used."
+_EXEC tail -1 logs/error_log
+
+END

@@ -1,0 +1,41 @@
+#
+# $Id$
+#
+#   QS_SrvMaxConnClose         25
+#
+
+INCLUDE scripts/ports
+
+CLIENT 25
+#_SLEEP 5000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_EXPECT . "Keep-Alive: timeout"
+_EXPECT . "Connection: Keep-Alive"
+_WAIT
+_CLOSE
+
+END
+
+# 25+1
+CLIENT
+
+#_SLEEP 6200
+_SLEEP 1200
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "root index.html"
+_EXPECT . "!Keep-Alive: timeout"
+_EXPECT . "!Connection: Keep-Alive"
+_EXPECT . "Connection: close"
+_WAIT
+_CLOSE
+
+END

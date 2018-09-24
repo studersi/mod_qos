@@ -1,0 +1,93 @@
+
+INCLUDE scripts/ports
+
+CLIENT
+
+# milestone require access id=1, id=2, id=3
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=2 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.3
+__User-Agent: Mozilla
+__
+_EXPECT . "403 Forbidden"
+_EXPECT . "!root index"
+_WAIT
+_CLOSE
+_SLEEP 1100
+_EXPECT EXEC "] mod_qos\(047\): access denied, reached milestone '1' .*id=2.*, user has already passed 'none', action=deny"
+_EXEC tail -1 logs/error_log
+
+# client event don't allow more than one request per id
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=1 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.2
+__User-Agent: Mozilla
+__
+_EXPECT . "root index"
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path=/;" COOKIE
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=1 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.2
+__User-Agent: Mozilla
+__Cookie: QSSCD=$COOKIE
+__
+_EXPECT . "!root index"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=ClientLimit1, max=2, current=2, age=[0-9]+, c=127.0.0.2"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=2 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.2
+__User-Agent: Mozilla
+__Cookie: QSSCD=$COOKIE
+__
+_EXPECT . "root index"
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path=/;" COOKIE
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=3 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.2
+__User-Agent: Mozilla
+__Cookie: QSSCD=$COOKIE
+__
+_EXPECT . "root index"
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path=/;" COOKIE
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=2 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.2
+__User-Agent: Mozilla
+__Cookie: QSSCD=$COOKIE
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "!root index"
+_WAIT
+_CLOSE
+_SLEEP 1100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=ClientLimit2, max=2, current=2, age=[0-9]+, c=127.0.0.2"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=4 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 127.0.0.2
+__User-Agent: Mozilla
+__Cookie: QSSCD=$COOKIE
+__
+_EXPECT . "root index"
+_WAIT
+
+END

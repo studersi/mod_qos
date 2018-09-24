@@ -1,0 +1,78 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_LOOP 3
+_LOOP 30
+_REQ localhost $QS_PORT_BASE
+__GET /images/link.png HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_WAIT
+_END LOOP
+_CLOSE
+
+_LOOP 19
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_WAIT
+_END LOOP
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "!200 OK"
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=SlowRequest, max=20, current=20"
+_EXEC tail -2 logs/error_log
+
+_SLEEP 3500
+_END LOOP
+
+_LOOP 19
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_WAIT
+_END LOOP
+_CLOSE
+
+# 3x 500
+# 4x SlowRequest_Counter 19 QS_Block=5
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+#__GET /index.html HTTP/1.1
+#__Host: localhost
+#__Connection: keep-alive
+#__User-Agent: Mozilla
+#__
+#_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=20, current=23"
+_EXEC tail -2 logs/error_log
+
+END
