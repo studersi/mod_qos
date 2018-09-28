@@ -42,25 +42,25 @@ LoadModule     parp_module ##ROOT##/../install/modules/.libs/mod_parp.so
 LoadModule     qtest_module ##ROOT##/../install/modules/.libs/mod_qtest.so
 </IfDefine>
 
-Options        FollowSymLinks Indexes Includes
+Options                       FollowSymLinks Indexes Includes
 
-Timeout                 30
-KeepAlive               on
-MaxKeepAliveRequests   100
-KeepAliveTimeout         5
-RequestReadTimeout       header=0 body=0
+Timeout                       30
+KeepAlive                     on
+MaxKeepAliveRequests          100
+KeepAliveTimeout              5
+RequestReadTimeout            header=0 body=0
 
-SSLProtocol              all -SSLv2 -SSLv3
-SSLCipherSuite           EDH:EECDH:!aNULL:!eNULL:!LOW:!MD5:!EXP:!ADH:!DSS:!ECDSA:!3DES:!RC4:!SEED:!CAMELLIA+SHA1
-#SSLCipherSuite           ALL:!DH
-SSLSessionCacheTimeout   864000
-SSLRandomSeed startup    builtin
-#SSLRandomSeed startup    file:/dev/random
-#SSLRandomSeed startup    file:/dev/urandom 1024
+SSLProtocol                   all -SSLv2 -SSLv3
+SSLCipherSuite                EDH:EECDH:!aNULL:!eNULL:!LOW:!MD5:!EXP:!ADH:!DSS:!ECDSA:!3DES:!RC4:!SEED:!CAMELLIA+SHA1
+#SSLCipherSuite               ALL:!DH
+SSLSessionCacheTimeout        864000
+SSLRandomSeed startup         builtin
+#SSLRandomSeed startup        file:/dev/random
+#SSLRandomSeed startup        file:/dev/urandom 1024
 
 <IfDefine QS_ClientGeoCountryDB>
-QS_ClientGeoCountryDB conf/GeoIPCountryWhois.csv
-QS_RedirectIf         QS_Country DE http://qos.de/
+QS_ClientGeoCountryDB         conf/GeoIPCountryWhois.csv
+QS_RedirectIf                 QS_Country DE http://qos.de/
 </IfDefine>
 
 <IfDefine real_ip>
@@ -68,73 +68,73 @@ QS_EnableInternalIPSimulation off
 </IfDefine>
 
 <IfDefine QS_ClientPrefer>
-QS_ClientPrefer 20
+QS_ClientPrefer               20
 </IfDefine>
 
 <IfDefine status>
-QS_Status on
+QS_Status                     on
 </IfDefine>
 
 <IfDefine QS_RequestHeaderFilterRule>
-QS_RequestHeaderFilterRule X-QOS deny "[a-z]+" 20
-QS_RequestHeaderFilterRule User-Agent drop "^[a-zA-Z0-9]+[a-zA-Z0-9_.:;()\[\]@ /+!=,-]+$" 100
+QS_RequestHeaderFilterRule    X-QOS deny "[a-z]+" 20
+QS_RequestHeaderFilterRule    User-Agent drop "^[a-zA-Z0-9]+[a-zA-Z0-9_.:;()\[\]@ /+!=,-]+$" 100
 </IfDefine>
 
 <IfDefine QS_ResponseHeaderFilterRule>
-QS_ResponseHeaderFilterRule X-QOS "[a-zA-Z]+" 20
+QS_ResponseHeaderFilterRule   X-QOS "[a-zA-Z]+" 20
 </IfDefine>
 
 <IfDefine !pathwhitelist>
-QS_ErrorResponseCode   503
+QS_ErrorResponseCode          503
 </IfDefine>
 
-QS_ClientEventBlockCount 20 30
-QS_SetEnvIfStatus  400 QS_Block
+QS_ClientEventBlockCount      20 30
+QS_SetEnvIfStatus             400 QS_Block
 <IfDefine !h2>
-QS_SetEnvIfStatus  BrokenConnection QS_Block
+QS_SetEnvIfStatus             BrokenConnection QS_Block
 </IfDefine>
 
-SetEnvIfPlus Request_Query QS_Set_DSCP=([0-9]+) QS_Set_DSCP=$1
+SetEnvIfPlus                  Request_Query QS_Set_DSCP=([0-9]+) QS_Set_DSCP=$1
 
-QS_SrvMinDataRate  120 3000 10
+QS_SrvMinDataRate             120 3000 10
 
 <IfDefine QS_SrvMinDataRateIgnoreVIP>
    QS_SrvMinDataRateIgnoreVIP on
 </IfDefine>
 
-QS_ClientEventRequestLimit 2
+QS_ClientEventRequestLimit    2
 
-QS_ClientEventLimitCount  3 10
-QS_SetEnvIfStatus  414 QS_Limit=1
+QS_ClientEventLimitCount      3 10
+QS_SetEnvIfStatus             414 QS_Limit=1
 
 <IfDefine serialize>
 QS_ClientSerialize
-QS_ClientIpFromHeader X-Frwd-Address
+QS_ClientIpFromHeader         X-Frwd-Address
 </IfDefine>
 
 <IfDefine fromHeader>
-QS_ClientIpFromHeader X-Frwd-Address
+QS_ClientIpFromHeader         X-Frwd-Address
 </IfDefine>
 
 <IfDefine SetHashHeaderPlus>
-QS_ClientIpFromHeader  X-Hash
-QS_ClientEventLimitCount  3 2 QS_Hash
+QS_ClientIpFromHeader         X-Hash
+QS_ClientEventLimitCount      3 2 QS_Hash
 </IfDefine>
 
 <IfDefine usertrack_force>
-QS_UserTrackingCookieName _ckUT /errorpages/cookie.html
+QS_UserTrackingCookieName     _ckUT /errorpages/cookie.html
 </IfDefine>
 
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
-   ServerName   127.0.0.1
+   ServerName  127.0.0.1
 
 <IfDefine h2>
-   Protocols h2c http/1.1
+   Protocols                  h2c http/1.1
 </IfDefine>
 
 <IfDefine Event2429>
-   RequestReadTimeout header=20-40,MinRate=500 body=20,MinRate=500
+   RequestReadTimeout         header=20-40,MinRate=500 body=20,MinRate=500
 </IfDefine>
 
    ProxyRequests              Off
@@ -236,27 +236,27 @@ Listen         ##QS_PORT_BASE##
    QS_LocKBytesPerSecLimitMatch  ^/limitbs/.*    500
    QS_LocRequestLimitMatch       ^/index.html    200
    QS_LocRequestLimitMatch       ^/cgi2/.*   2
-   SetEnvIf                     User-Agent delayme QS_Delay=100
-   SetEnvIf                     User-Agent delay1000 QS_Delay=1000
-   SetEnvIf                     User-Agent delay2100 QS_Delay=2100
-   SetEnvIf                     User-Agent keepAliveTimeout10 QS_KeepAliveTimeout=10
-   SetEnvIf                     User-Agent maxKeepAliveReq150  QS_MaxKeepAliveRequests=150
-   SetEnvIf                     User-Agent QS_Timeout40 QS_Timeout=40
+   SetEnvIf                   User-Agent delayme QS_Delay=100
+   SetEnvIf                   User-Agent delay1000 QS_Delay=1000
+   SetEnvIf                   User-Agent delay2100 QS_Delay=2100
+   SetEnvIf                   User-Agent keepAliveTimeout10 QS_KeepAliveTimeout=10
+   SetEnvIf                   User-Agent maxKeepAliveReq150  QS_MaxKeepAliveRequests=150
+   SetEnvIf                   User-Agent QS_Timeout40 QS_Timeout=40
 <IfDefine milestone302>
 <Location />
-   RedirectMatch                ^/index.html http://127.0.0.1:##QS_PORT_BASE##/htt/milestone/index.html
-   #RewriteEngine                on
-   #RewriteCond                  %{REQUEST_URI} ^/index.html$
-   #RewriteRule                  ^(.*)? /htt/milestone/index.html [NC,R=302]
+   RedirectMatch              ^/index.html http://127.0.0.1:##QS_PORT_BASE##/htt/milestone/index.html
+   #RewriteEngine             on
+   #RewriteCond               %{REQUEST_URI} ^/index.html$
+   #RewriteRule               ^(.*)? /htt/milestone/index.html [NC,R=302]
 </Location>
-   QS_MileStone                 deny "^GET /index.html"
-   QS_MileStone                 deny "^POST /htt/milestone/register*"
-   QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
+   QS_MileStone               deny "^GET /index.html"
+   QS_MileStone               deny "^POST /htt/milestone/register*"
+   QS_MileStone               deny "^GET /htt/milestone/.*\.zip HTTP/...$"
 </IfDefine>
 <IfDefine !milestone302>
-   QS_MileStone                 deny "^GET /htt/milestone/index.html"
-   QS_MileStone                 deny "^POST /htt/milestone/register*"
-   QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
+   QS_MileStone               deny "^GET /htt/milestone/index.html"
+   QS_MileStone               deny "^POST /htt/milestone/register*"
+   QS_MileStone               deny "^GET /htt/milestone/.*\.zip HTTP/...$"
 </IfDefine>
 
    Include conf/demo.conf
@@ -272,12 +272,12 @@ Listen         ##QS_PORT_BASE##
 
 
   <Location /dumpvar/s0>
-     QS_SetEnvIf                QS_SetEnvIf_IN=(LOC0[a-z]*) QS_SetEnvIf_IN=$1_LOC0
-     QS_SetEnvIfQuery           ^QueryLocation QS_SetEnvIfQuery_LOC=S0
+     QS_SetEnvIf              QS_SetEnvIf_IN=(LOC0[a-z]*) QS_SetEnvIf_IN=$1_LOC0
+     QS_SetEnvIfQuery         ^QueryLocation QS_SetEnvIfQuery_LOC=S0
   </Location>
 
   <Location /dumpvar/s0/s1>
-     QS_SetEnvIf                QS_SetEnvIf_IN=(LOC1[a-z]*) QS_SetEnvIf_IN=$1_LOC1
+     QS_SetEnvIf              QS_SetEnvIf_IN=(LOC1[a-z]*) QS_SetEnvIf_IN=$1_LOC1
   </Location>
 
   ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
@@ -294,31 +294,31 @@ Listen         ##QS_PORT_BASE##
 
 <IfDefine QS_RequestHeaderFilter>
    <Location /htt/headerfilteroff>
-      QS_RequestHeaderFilter off
+      QS_RequestHeaderFilter  off
    </Location>
    <Location /htt/headerfiltersize>
-      QS_RequestHeaderFilter size
+      QS_RequestHeaderFilter  size
    </Location>
 </IfDefine>
 
 <IfDefine QS_ResponseHeaderFilter>
    <Location /htt/headerfilteron>
-     QS_ResponseHeaderFilter on
+     QS_ResponseHeaderFilter  on
    </Location>
    <Location /htt/headerfiltersilent>
-     QS_ResponseHeaderFilter silent
+     QS_ResponseHeaderFilter  silent
    </Location>
    <Location /htt/headerfilteroff>
-     QS_ResponseHeaderFilter off
+     QS_ResponseHeaderFilter  off
    </Location>
 </IfDefine>
 
    <Location /htt/limit>
-      QS_SetEnvIfResBody "Login Failed" QS_Limit
+      QS_SetEnvIfResBody      "Login Failed" QS_Limit
    </Location>
 
    <Location /htt/filter>
-     QS_DenyRequestLine +printable deny [\x00-\x1f\xf7-\xff]
+     QS_DenyRequestLine       +printable deny [\x00-\x1f\xf7-\xff]
    </Location>
    <Location /qos>
       SetHandler qos-viewer
@@ -327,9 +327,9 @@ Listen         ##QS_PORT_BASE##
       SetHandler qos-console
    </Location>
    <Location /status>
-      SetHandler server-status
-      QS_DenyPath +d1 deny /status/deny
-      QS_DenyQuery +q1 deny denyme
+      SetHandler              server-status
+      QS_DenyPath             +d1 deny /status/deny
+      QS_DenyQuery            +q1 deny denyme
    </Location>
    <Location /info>
       SetHandler server-info
