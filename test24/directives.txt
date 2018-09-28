@@ -66,6 +66,7 @@ QS_SetEnvStatus
 + QS_SetEnvIfResBody
 QS_SetEnv
 QS_SetReqHeader
++ QS_UnsetReqHeader
 QS_UnsetResHeader
 QS_SetEnvResHeader
 QS_SetEnvResHeaderMatch
