@@ -82,6 +82,7 @@ how to use the module.
     <li><a href="#serialization">Serialization</a></li>
     <li><a href="#ssi">Error Pages and Server Side Includes (SSI)</a></li>
     <li><a href="#UserTracking">User Tracking</a></li>
+    <li><a href="#RequestStatistics">Request Statistics Using <i>qslog</i></a></li>
   </ul>
 </p>
 
@@ -551,6 +552,41 @@ Sample page:<br>
 </table>
 </p>
 
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="qslog"></a>
+<a name="RequestStatistics"></a>
+<h2>Request Statistics Using <i>qslog</i></h2>
+<p>
+<code><a href="qslog.1.html">qslog</a></code> is a command line tool to 
+generate usage statistics data from log files. It can generate the data in
+real time if defined within your Apache's server configuration.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+CustomLog "|/usr/bin/qslog -o logs/qslog.csv -x -f ISBDk" "%h %&gt;s %b %D %k"
+</pre>
+</td></tr>
+</table>
+</p><p>
+Or you can use it to process any existing log file using the post processing 
+optin <code>-p</code>. This does not only work for 
+<a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">Apache log  <img src="images/link.png"/></a> files but for any other log file as well. You just have to know what's in the log 
+and configure the format string argument <code>-f</code> of the 
+<code><a href="qslog.1.html">qslog</a></code> command accordingly.
+</p>
+<p>
+Example:<br>
+<img src="images/qslogFormat.png" height="381" width="738" alt="log format definition"/>  
+</p>
+<p>
+The ouput shows the data as a function of time: a summary of what happened every minute. 
+Each line includes all measured values as semicolon spearated name/value pairs (CSV).
+</p>
+<p>
+You can Use the spreadsheet program of your choice to process the output:<br><br>
+<img src="images/qslog_spreadsheet_example.png" height="463" width="850" alt="spreadsheet"/>  
+</p>
 
 <!-- --------------------------------------------------------- -->
 </td></tr>

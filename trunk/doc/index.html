@@ -2190,12 +2190,13 @@ statistics from Apache's access log data. This includes data such
 as the number of denied requests or new VIP session creations per 
 minute but also total requests per second and other data. Refer 
 to the usage text of the <code><a href="qslog.1.html">qslog</a></code> 
-utility for further details.
+utility or read <a href="glossary.html#RequestStatistics">"Request Statistics Using qslog"</a> 
+for further details.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
 <pre>
 CustomLog "|/usr/bin/qslog -o logs/qslog.csv -x -f ISBDQkU" \
-          "%h %>s %b %D %{mod_qos_ev}e %k %{mod_qos_user_id}e"
+          "%h %&gt;s %b %D %{mod_qos_ev}e %k %{mod_qos_user_id}e"
 </pre>
 </td></tr>
 </table>
@@ -2657,7 +2658,7 @@ directive and you can <a href="#HTTP_Keep-Alive">disable HTTP keep-alive</a>
 dynamically.</p>
 <p>
 For more information about how mod_qos can help you in such situations, see the article 
-<a href="http://mod-qos.sourceforge.net/dos.html">Denial of Service Defense</a>.
+<a href="http://mod-qos.sourceforge.net/dos.html">"Denial of Service Defense"</a>.
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
