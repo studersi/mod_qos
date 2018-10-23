@@ -16,6 +16,9 @@ static const char revision[] = "$Id$";
  * Includes
  ***********************************************************************/
 
+#include <sys/types.h>
+#include <unistd.h>
+
 /* apache */
 #include "httpd.h"
 #include "http_config.h"
@@ -248,7 +251,7 @@ static int qtest_handler(request_rec * r) {
     ap_set_content_type(r, "text/plain");
     for(i = 0; request_hooks[i].name; i++) {
       apr_array_header_t *hooks = request_hooks[i].get();
-      hook_struct_t *elts = hooks->elts;
+      hook_struct_t *elts = (hook_struct_t *)hooks->elts;
       int j;
       ap_rprintf(r, "hook %s: ", request_hooks[i].name);
       for(j = 0; j < hooks->nelts; j++) {

@@ -7596,6 +7596,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
         apr_socket_timeout_get(inctx->client_socket, &current_timeout);
         /* add 5sec tolerance to receive the request line 
            or let Apache close the connection */
+        /* ignored by event MPM ! */
         if(!m_event_mpm && 
            (now > (apr_time_sec(current_timeout) + 5 + inctx->time))) {
           qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
@@ -7865,7 +7866,7 @@ static void qos_deflate_contentlength(request_rec *r) {
  * for incompatibel version/type.
  *
  * Apache 2.2 MPM worker binaries is the only configuration which
- * has been tested (as mentioned in the documentation, see index.html).
+ * has been fully tested (as mentioned in the documentation, see index.html).
  *
  * - old (2.0.x, 2.2.x) MPM Apache prefork versions do not unload the
  *   DSO properly or child exit may cause a segfault (pool cleanup)

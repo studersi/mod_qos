@@ -563,6 +563,7 @@ generate usage statistics data from log files. It can generate the data in
 real time if defined within your Apache's server configuration.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
 <pre>
 CustomLog "|/usr/bin/qslog -o logs/qslog.csv -x -f ISBDk" "%h %&gt;s %b %D %k"
 </pre>
@@ -584,7 +585,7 @@ The ouput shows the data as a function of time: a summary of what happened every
 Each line includes all measured values as semicolon spearated name/value pairs (CSV).
 </p>
 <p>
-You can Use the spreadsheet program of your choice to process the output:<br><br>
+You can use the spreadsheet program of your choice to process the output:<br><br>
 <img src="images/qslog_spreadsheet_example.png" height="463" width="850" alt="spreadsheet"/>  
 </p>
 
