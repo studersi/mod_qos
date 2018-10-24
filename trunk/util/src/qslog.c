@@ -2236,7 +2236,7 @@ static void usage(const char *cmd, int man) {
   } else {
     printf("Example configuration using pipped logging:\n");
   }
-  qs_man_println(man, "  CustomLog \"|/bin/%s -f ISBDQ -x -o /var/logs/stat.csv\" \"%%h %%>s %%b %%D %%{mod_qos_ev}e\"\n", cmd);
+  qs_man_println(man, "  CustomLog \"|/usr/bin/%s -f ISBDQ -x -o /var/log/apache/stat.csv\" \"%%h %%>s %%b %%D %%{mod_qos_ev}e\"\n", cmd);
   printf("\n");
   if(man) {
     printf("Post processing:\n");
@@ -2245,7 +2245,7 @@ static void usage(const char *cmd, int man) {
     printf("Example for post processing:\n");
   }
   qs_man_println(man, "  LogFormat \"%%t %%h \\\"%%r\\\" %%>s %%b \\\"%%{User-Agent}i\\\" %%T\"\n");
-  qs_man_println(man, "  cat access_log | /bin/%s -f ..IRSB.T -o /var/logs/stat.csv -p\n", cmd);
+  qs_man_println(man, "  cat access.log | %s -f ..IRSB.T -o stat.csv -p\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");

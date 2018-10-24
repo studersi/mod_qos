@@ -673,7 +673,7 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Example (sign):\n");
   }
-  qs_man_println(man, " TransferLog \"|/bin/%s -s password -e |/bin/qsrotate -o /var/log/apache/access_log\"\n", cmd);
+  qs_man_println(man, " TransferLog \"|/usr/bin/%s -s password -e |/usr/bin/qsrotate -o /var/log/apache/access.log\"\n", cmd);
   printf("\n");
   if(man) {
     printf("\n");
@@ -682,7 +682,7 @@ static void usage(char *cmd, int man) {
   } else {
     qs_man_print(man, "Example (verify):\n");
   }
-  qs_man_println(man, " cat access_log | %s -s password -v\n", cmd);
+  qs_man_println(man, " cat access.log | %s -s password -v\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");

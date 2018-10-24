@@ -131,7 +131,7 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "client causing a mod_qos(031) messages whenever the log message\n");
   qs_man_print(man, "appears 10 times within at most one minute:\n");
   if(man) printf("\n");
-  qs_man_println(man, "  ErrorLog \"|%s -e \\'mod_qos\\(031\\).*, c=([0-9a-zA-Z:.]*)\\' -t 10:60 \\'/bin/deny.sh $1\\'\"\n", cmd);
+  qs_man_println(man, "  ErrorLog \"|/usr/bin/%s -e \\'mod_qos\\(031\\).*, c=([0-9a-zA-Z:.]*)\\' -t 10:60 \\'/usr/local/bin/deny.sh $1\\'\"\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");
