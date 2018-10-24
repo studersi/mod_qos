@@ -528,7 +528,7 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Sample Usage and Output\n");
   }
-  qs_man_println(man, "  ./%s -i loc.txt -c httpd.conf -m -e\n", cmd);
+  qs_man_println(man, "  %s -i loc.txt -c httpd.conf -m -e\n", cmd);
   qs_man_println(man, "  ...\n");
   qs_man_println(man, "  # ADD line 1: /aaa/index.do\n");
   qs_man_println(man, "  # 003 ^(/[a-zA-Z0-9\\-_]+)+[/]?\\.?[a-zA-Z]{0,4}$\n");

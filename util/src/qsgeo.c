@@ -214,21 +214,21 @@ static void usage(const char *cmd, int man) {
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");
-    printf("Reading the file access_log and adding the country code to the IP address field:\n");
+    printf("Reading the file access.log and adding the country code to the IP address field:\n");
     printf("\n");
   } else {
-    printf("Example reading the file access_log and adding the country code to\n");
+    printf("Example reading the file access.log and adding the country code to\n");
     printf("the IP address field:\n");
   }
-  qs_man_println(man, "  cat access_log | %s -d GeoIPCountryWhois.csv\n", cmd);
+  qs_man_println(man, "  cat access.log | %s -d GeoIPCountryWhois.csv\n", cmd);
   printf("\n");
   if(man) {
-    printf("Reading the file access_log and showing a summary only:\n");
+    printf("Reading the file access.log and showing a summary only:\n");
     printf("\n");
   } else {
-    printf("Example reading the file access_log and showing a summary only:\n");
+    printf("Example reading the file access.log and showing a summary only:\n");
   }
-  qs_man_println(man, "  cat access_log | %s -d GeoIPCountryWhois.csv -s\n", cmd);
+  qs_man_println(man, "  cat access.log | %s -d GeoIPCountryWhois.csv -s\n", cmd);
   printf("\n");
   if(man) {
     printf("Resolving a single IP address:\n");

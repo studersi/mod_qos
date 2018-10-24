@@ -296,7 +296,7 @@ static void usage(const char *cmd, int man) {
   } else {
     printf("Example:\n");
   }
-  qs_man_println(man, "  ErrorLog \"|./%s -t apache -f local7\"\n", cmd);
+  qs_man_println(man, "  ErrorLog \"|/usr/bin/%s -t apache -f local7\"\n", cmd);
   printf("\n");
   if(man) {
     printf(".SH SEE ALSO\n");

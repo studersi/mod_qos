@@ -151,7 +151,7 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Example:\n");
   }
-  qs_man_println(man, "  TransferLog \"|%s -f -z -g 3 -o /dest/file -s 86400\"\n", cmd);
+  qs_man_println(man, "  TransferLog \"|/usr/bin/%s -f -z -g 3 -o /var/log/apache/access.log -s 86400\"\n", cmd);
   printf("\n");
   qs_man_print(man, "The name of the rotated file will be /dest/filee.YYYYmmddHHMMSS\n");
   qs_man_print(man, "where YYYYmmddHHMMSS is the system time at which the data has been\n");
