@@ -14,6 +14,7 @@ sleep $T
 echo "copy images"
 scp ../images/directive_seq.gif ${dest}/images/
 scp ../images/directive_seq.gif ${dest}/images/mod_qos_seq.gif
+scp ../images/directive_seq.gif ${dest}/mod_qos_seq.gif
 scp ../images/download.jpg ${dest}/images/
 sleep $T
 #scp ../images/link.png ${dest}/images/
