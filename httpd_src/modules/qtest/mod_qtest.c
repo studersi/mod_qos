@@ -162,7 +162,22 @@ static int qtest_fixup(request_rec * r) {
   }
   return DECLINED;
 }
-  
+
+static int qtest_logger(request_rec *r) {
+  const char *dumphdr = apr_table_get(r->headers_in, "X-dumpvar");
+  if(dumphdr) {
+    char *msg = "";
+    int i;
+    apr_table_entry_t *e = (apr_table_entry_t *) apr_table_elts(r->subprocess_env)->elts;
+    for (i = 0; i < apr_table_elts(r->subprocess_env)->nelts; ++i) {
+      msg = apr_psprintf(r->pool, "%s=%s;%s",  e[i].key, e[i].val, msg);
+    }
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QTEST_LOG_PFX(001)"VAR %s %s", r->unparsed_uri, msg);
+  }
+  return DECLINED;
+}
+
 static int qtest_handler(request_rec * r) {
 
   /**
@@ -347,6 +362,7 @@ static void qtest_register_hooks(apr_pool_t * p) {
 #endif
   ap_hook_fixups(qtest_fixup, pre, NULL, APR_HOOK_MIDDLE);
   ap_hook_post_config(qtest_post_config, pre, NULL, APR_HOOK_MIDDLE);
+  ap_hook_log_transaction(qtest_logger, pre, NULL, APR_HOOK_LAST);
 }
 
 /************************************************************************

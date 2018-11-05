@@ -1,3 +1,10 @@
+Version 11.59
+
+ - QS_EventRequestLimit writes the current counter value to the
+   QS_EventRequestLimit_<env-variable>_Counter envrionment variable.
+
+ - New directive QS_SetEnvIfCmp.
+
 Version 11.58
 
  - Adds directive QS_UnsetReqHeader.

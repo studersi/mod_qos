@@ -13,6 +13,7 @@ CLIENT 4
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /serialize/cgi/sleep.cgi?s=4 HTTP/1.1
 __Host: 127.0.0.1
+__X-dumpvar: 1
 __
 _WAIT
 END
@@ -22,6 +23,7 @@ _SLEEP 1000
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /serialize/cgi/sleep.cgi?s=3 HTTP/1.1
 __Host: 127.0.0.1
+__X-dumpvar: 1
 __
 _WAIT
 END
@@ -29,24 +31,26 @@ END
 CLIENT 1
 _SLEEP 200
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /index.html?1 HTTP/1.1
+__GET /serialize/index.html?1 HTTP/1.1
 __Host: 127.0.0.1
+__X-dumpvar: 1
 __
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "GET /index.html\?1 HTTP/1.1\" 200 ... \".\" 0 cr=. ev=. "
+_EXPECT EXEC "GET /serialize/index.html\?1 HTTP/1.1\" 200 ... \".\" 0 cr=. ev=. "
 _EXEC tail -3 logs/access_log
 
 _SLEEP 1000
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /index.html?2 HTTP/1.1
+__GET /serialize/index.html?2 HTTP/1.1
 __Host: 127.0.0.1
+__X-dumpvar: 1
 __
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "GET /index.html\?2 HTTP/1.1\" 200 ... \".\" 2 cr=. ev=s;"
+_EXPECT EXEC "GET /serialize/index.html\?2 HTTP/1.1\" 200 ... \".\" 2 cr=. ev=s;"
 _EXEC tail -3 logs/access_log
 
 END
@@ -54,13 +58,14 @@ END
 CLIENT 1
 _SLEEP 1400
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /index.html?3 HTTP/1.1
+__GET /serialize/index.html?3 HTTP/1.1
 __Host: 127.0.0.1
+__X-dumpvar: 1
 __
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "GET /index.html\?3 HTTP/1.1\" 200 ... \".\" 2 cr=. ev=s;"
+_EXPECT EXEC "GET /serialize/index.html\?3 HTTP/1.1\" 200 ... \".\" 2 cr=. ev=s;"
 _EXEC tail -3 logs/access_log
 
 END

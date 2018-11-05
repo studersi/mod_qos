@@ -511,6 +511,21 @@ typedef enum  {
   QS_OFF
 } qs_rfilter_action_e;
 
+enum qos_cmp {
+  QS_CMP_EQ,
+  QS_CMP_NE,
+  QS_CMP_GT,
+  QS_CMP_LT
+};
+
+typedef struct {
+  enum qos_cmp cmp;
+  const char *left;
+  const char *right;
+  const char *variable;
+  const char *value;
+} qos_cmp_entry_t;
+
 typedef struct {
   char *variable1;
   char *variable2;
@@ -722,6 +737,7 @@ typedef struct {
   apr_table_t *setenvstatus_t;
   apr_table_t *setenvif_t;
   apr_table_t *setenvifquery_t;
+  apr_array_header_t* setenvcmp;
 } qos_dir_config;
 
 /**
@@ -1778,6 +1794,20 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->notmodified = 1;
   (*pB)->events = 0;
   return pB;
+}
+
+static int qos_isnum(const char *x) {
+  const char *p = x;
+  if(x == NULL || x[0] == 0) {
+    return 0;
+  }
+  while(p && p[0]) {
+    if(!apr_isdigit(p[0])) {
+      return 0;
+    }
+    p++;
+  }
+  return 1;
 }
 
 /* 000-255 */
@@ -5127,6 +5157,9 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
                 apr_table_set(r->notes, QS_R012_ALREADY_BLOCKED, "");
                 QS_INC_EVENT_LOCKED(sconf, 12);
               }
+              apr_table_add(r->subprocess_env,
+                            apr_psprintf(r->pool, "QS_EventRequestLimit_%s_Counter", e->event),
+                            apr_psprintf(r->pool, "%d", e->counter));
             }
           }
         }
@@ -5414,6 +5447,78 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf,
     }
   }
   return DECLINED;
+}
+
+/* QS_SetEnvIfCmp */
+static void qos_setenvifcmp(request_rec *r, apr_array_header_t *cmps) {
+  int i;
+  qos_cmp_entry_t *entries = (qos_cmp_entry_t *)cmps->elts;
+  for(i = 0; i < cmps->nelts; ++i) {
+    qos_cmp_entry_t *b = &entries[i];
+    const char *leftStr = apr_table_get(r->subprocess_env, b->left);
+    const char *rightStr = apr_table_get(r->subprocess_env, b->right);
+    if(leftStr != NULL && rightStr != NULL) {
+      int set = 0;
+      if(qos_isnum(leftStr) && qos_isnum(rightStr)) {
+        int left = atoi(leftStr);
+        int right = atoi(rightStr);
+        switch (b->cmp) {
+        case QS_CMP_EQ:
+          if(left == right) {
+            set = 1;
+          }
+          break;
+        case QS_CMP_NE:
+          if(left != right) {
+            set = 1;
+          }
+          break;
+        case QS_CMP_GT:
+          if(left > right) {
+            set = 1;
+          }
+          break;
+        case QS_CMP_LT:
+          if(left < right) {
+            set = 1;
+          }
+          break;
+        }
+      } else {
+        int c = strcasecmp(leftStr, rightStr);
+        switch (b->cmp) {
+        case QS_CMP_EQ:
+          if(c == 0) {
+            set = 1;
+          }
+          break;
+        case QS_CMP_NE:
+          if(c != 0) {
+            set = 1;
+          }
+          break;
+        case QS_CMP_GT:
+          if(c < 0) {
+            set = 1;
+          }
+          break;
+        case QS_CMP_LT:
+          if(c > 0) {
+            set = 1;
+          }
+          break;
+        }
+      }
+      if(set) {
+        if(b->variable[0] == '!') {
+          apr_table_unset(r->subprocess_env, &b->variable[1]);
+        } else {
+          apr_table_set(r->subprocess_env, b->variable, b->value);
+        }
+      }
+    }
+  }
+  return;
 }
 
 /*
@@ -9043,11 +9148,16 @@ static int qos_header_parser(request_rec * r) {
     }
 
     /*
-     * QS_EventPerSecLimit
+     * QS_EventPerSecLimit/QS_EventKBytesPerSecLimit
      */
     if(sconf->has_event_limit) {
       event_kbytes_per_sec = qos_hp_event_count(r, &req_per_sec_block, &kbytes_per_sec_limit);
     }
+
+    /*
+     * QS_SetEnvIfCmp
+     */
+    qos_setenvifcmp(r, dconf->setenvcmp);
 
     /*
      * QS_ClientEventRequestLimit
@@ -11299,6 +11409,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->setenvstatus_t = apr_table_make(p, 5);
   dconf->setenvif_t = apr_table_make(p, 1);
   dconf->setenvifquery_t = apr_table_make(p, 1);
+  dconf->setenvcmp = apr_array_make(p, 2, sizeof(qos_cmp_entry_t));
   return dconf;
 }
 
@@ -11372,6 +11483,8 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
 
   dconf->setenvifquery_t = apr_table_copy(p, b->setenvifquery_t);
   qos_table_merge(dconf->setenvifquery_t, o->setenvifquery_t);
+
+  dconf->setenvcmp = apr_array_append(p, b->setenvcmp, o->setenvcmp);
 
   return dconf;
 }
@@ -12378,6 +12491,41 @@ const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, c
     apr_table_setn(dconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
   } else {
     apr_table_setn(sconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
+  }
+  return NULL;
+}
+
+/** QS_SetEnvIfCmp */
+const char *qos_cmp_cmd(cmd_parms *cmd, void *dcfg, int argc, char *const argv[]) {
+  qos_cmp_entry_t *new;
+  qos_dir_config *conf = dcfg;
+  char *del;
+  if(argc != 4) {
+    return apr_psprintf(cmd->pool, "%s: requires 4 arguments",
+                        cmd->directive->directive);
+  }
+  new = apr_array_push(conf->setenvcmp);
+  new->left = apr_pstrdup(cmd->pool, argv[0]);
+  if(strcasecmp(argv[1], "eq") == 0) {
+    new->cmp = QS_CMP_EQ;
+  } else if(strcasecmp(argv[1], "ne") == 0) {
+    new->cmp = QS_CMP_NE;
+  } else if(strcasecmp(argv[1], "lt") == 0) {
+    new->cmp = QS_CMP_LT;
+  } else if(strcasecmp(argv[1], "gt") == 0) {
+    new->cmp = QS_CMP_GT;
+  } else {
+    return apr_psprintf(cmd->pool, "%s: invalid operator '%s",
+                        cmd->directive->directive, argv[1]);
+  }
+  new->right = apr_pstrdup(cmd->pool, argv[2]);
+  new->variable = apr_pstrdup(cmd->pool, argv[3]);
+  del = strchr(new->variable, '=');
+  if(del) {
+    new->value = &del[1];
+    del[0] = '\0';
+  } else {
+    new->value = apr_pstrdup(cmd->pool, "");
   }
   return NULL;
 }
@@ -14256,6 +14404,13 @@ static const command_rec qos_config_cmds[] = {
                  " can be specifed for variable1's value and variable2 must be"
                  " omitted in order to simply set a new variable if"
                  " the regular expression matches."),
+
+  AP_INIT_TAKE_ARGV("QS_SetEnvIfCmp", qos_cmp_cmd, NULL,
+                    ACCESS_CONF,
+                    "QS_SetEnvIfCmpP <env-variable1> eq|ne|gt|lt <env-variable2> [!]<env-variable>[=<value>],"
+                    " sets the specifed environment variable if the specifed env-variables"
+                    " are alphabetically or numerical equal (eq), not equal (ne),"
+                    " greater (gt), less (lt)."),
 
   AP_INIT_TAKE2("QS_SetEnvIfQuery", qos_event_setenvifquery_cmd, NULL,
                 RSRC_CONF|ACCESS_CONF,

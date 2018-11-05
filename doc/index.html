@@ -1050,7 +1050,10 @@ Defines the number of <a href="glossary.html#concurrency">concurrent</a> events.
 Directive works similar to 
 <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code>, but 
 counts the requests having the same environment variable (and optionally 
-matching its value, too) rather than those that have the same URL pattern.
+matching its value, too) rather than those that have the same URL pattern. 
+<br><small><i>Note: The counter's value is stored in the enviroment variable 
+QS_EventRequestLimit_&lt;env-variable&gt;_Counter.
+</i></small>
 </li>
 <li>
 <a name="QS_EventPerSecLimit"></a>
@@ -1146,6 +1149,14 @@ This directive may be used on a per-server or
 <a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
 basis.
 </li>
+<a name="QS_SetEnvIfCmp"></a>
+<li>
+<syntax>QS_SetEnvIfCmp &lt;env-variable1&gt; eq|ne|gt|lt &lt;env-variable2&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</syntax><br>
+Sets the defined environment variable if the specifed env-variables[1|2] 
+are numerical or alphabetically (case insensitive) equal (<code>eq</code>), 
+not equal (<code>ne</code>) greater (<code>gt</code>), or less (<code>lt</code>).<br> 
+This directive may be used on a per-<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+basis only.</li>
 <li>
 <a name="QS_SetEnvIfParp"></a>
 <syntax>QS_SetEnvIfParp &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</syntax><br>
