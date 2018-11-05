@@ -9,11 +9,14 @@ DocumentRoot   ##ROOT##/htdocs
 ErrorLog       logs/error_log
 LogLevel       warn
 
-LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T cr=%{mod_qos_cr}e ev=%{mod_qos_ev}e con=%{mod_qos_con}e id=%{UNIQUE_ID}e sp=%{qs_special}e cl=%{content-length}i uid=%{mod_qos_user_id}e k=%k country=%{QS_Country}e srcConn=%{QS_SrvConn}e allConn=%{QS_AllConn}e QS_SrvSerialize=%{QS_SrvSerialize}e #%P"
+LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T cr=%{mod_qos_cr}e ev=%{mod_qos_ev}e con=%{mod_qos_con}e id=%{UNIQUE_ID}e sp=%{qs_special}e cl=%{content-length}i uid=%{mod_qos_user_id}e k=%k country=%{QS_Country}e srcConn=%{QS_SrvConn}e allConn=%{QS_AllConn}e #%P"
 TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
 CustomLog      "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qslog.csv -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o"
 
 LoadModule     setenvifplus_module ##ROOT##/../install/modules/.libs/mod_setenvifplus.so
+<IfDefine qtest>
+LoadModule     qtest_module ##ROOT##/../install/modules/.libs/mod_qtest.so
+</IfDefine>
 TypesConfig    conf/mime.types
 Options        FollowSymLinks Indexes Includes
 PidFile        logs/apache.pid
@@ -59,6 +62,10 @@ SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !QS_Limit
  QS_SrvMaxConnClose       85%
  SetEnvIfPlus REQUEST_URI / SerialLimt=5
  SetEnvIfCmpPlus          QS_SrvConn gt SerialLimt QS_SrvSerialize=1
+ QS_SrvSerialize          on
+</IfDefine>
+
+<IfDefine serializeReq>
  QS_SrvSerialize          on
 </IfDefine>
 
@@ -143,6 +150,7 @@ Listen         ##QS_PORT_BASE##
 </IfDefine>
 
    ProxyPass                  /cgi-local !
+   ProxyPass                  /serialize !
 
    ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
    ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
@@ -152,12 +160,21 @@ Listen         ##QS_PORT_BASE##
 
 
   ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
-  ScriptAlias /serialize/ ##ROOT##/htdocs/cgi/
+  ScriptAlias /serialize/cgi/ ##ROOT##/htdocs/cgi/
   <Location /cgi-local>
     Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
     Order allow,deny
     Allow from all
   </Location>
+
+<IfDefine serializeReq>
+  QS_EventRequestLimit     LimitLocation 20
+  SetEnvIfPlus             REQUEST_URI /serialize SerialLimtCfg=5
+  SetEnvIfPlus             REQUEST_URI /serialize LimitLocation=on
+  <Location /serialize>
+    QS_SetEnvIfCmp         QS_EventRequestLimit_LimitLocation_Counter gt SerialLimtCfg QS_SrvSerialize=1
+  </Location>
+</IfDefine>
 
 </VirtualHost>
 

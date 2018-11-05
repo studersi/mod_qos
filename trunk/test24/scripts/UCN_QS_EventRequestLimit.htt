@@ -75,6 +75,7 @@ __GET /cgi/sleep.cgi HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __User-Agent: EL5
+__X-dumpvar: 1
 __
 _EXPECT . "!200 OK"
 _EXPECT . "!done"
@@ -82,9 +83,10 @@ _EXPECT . "500 Internal Server Error"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(012\): access denied, QS_EventRequestLimit rule: var=\(EL=1\)\(5\), concurrent requests=6"
-_EXEC tail -1 logs/error_log
-
+_EXPECT EXEC "mod_qos\(012\): access denied, QS_EventRequestLimit rule: var=\(EL=1\)\(5\), concurrent requests=6,"
+_EXEC tail -2 logs/error_log
+_EXPECT EXEC ";QS_EventRequestLimit_EL_Counter=6;"
+_EXEC tail -2 logs/error_log
 _SLEEP 3000
 
 _SLEEP 400

@@ -59,6 +59,7 @@ QS_VipIpUser
 + QS_UserTrackingCookieName (incl. h2)
 + QS_SetEnvIf
 + QS_SetEnvIfQuery
++ QS_SetEnvIfCmp
 QS_SetEnvIfParp
 QS_SetEnvIfBody
 QS_SetEnvStatus
