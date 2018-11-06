@@ -280,6 +280,13 @@ Listen         ##QS_PORT_BASE##
      QS_SetEnvIf              QS_SetEnvIf_IN=(LOC1[a-z]*) QS_SetEnvIf_IN=$1_LOC1
   </Location>
 
+  <Location /dumpvar/sc>
+     SetEnvIf                 REQUEST_URI / QS_CMPTEST=10
+     QS_SetEnvIfCmp           QS_SetEnvIf_IN gt QS_CMPTEST QS_CMPTEST_RES=GT
+     QS_SetEnvIfCmp           QS_SetEnvIf_IN lt QS_CMPTEST QS_CMPTEST_RES=LT
+     QS_SetEnvIfCmp           QS_SetEnvIf_IN eq QS_CMPTEST !QS_SetEnvIf_IN
+  </Location>
+
   ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
   <Location /cgi-local>
     Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
