@@ -35,6 +35,7 @@ static const char revision[] = "$Id$";
 /* apr */
 #include <apr_base64.h>
 #include <apr_strings.h>
+#include <apr_escape.h>
 
 #define CR 13
 #define LF 10
@@ -64,9 +65,11 @@ static int qs_getLine(char *s, int n, int *len) {
 }
 
 static void usage() {
-  printf("usage: b64 -e|-d|-he|-hd [-b] <string>\n");
+  printf("usage: b64 -e|-d[ -b]|-he|-hd|-ue|-ud [<string>]\n");
   printf("\n");
-  printf("Base64 (-e/-d) or hex (-he/-hd) encoder/decoder.\n");
+  printf("Base64 (-e/-d) or hex (-he/-hd) or url (-ue/-ud) encoder/decoder.\n");
+  printf("\n");
+  printf("Use '-b' in conjunction with '-d' not suppressing non-printable data.\n");
   printf("\n");
   printf("See http://mod-qos.sourceforge.net/ for further details.\n");
   exit(1);
@@ -203,6 +206,16 @@ static void code(const char *mode, const char *line, int len) {
     while(i < len) {
       printf("\\x%02x", p[i]);
       i++;
+    }
+  } else if(strcmp(mode, "-ud") == 0) {
+    char *out = apr_punescape_url(pool, line, "", "", 1);
+    if(out) {
+      printf("%s", out);
+    }
+  } else if(strcmp(mode, "-ue") == 0) {
+    char *out = apr_pescape_urlencoded(pool, line);
+    if(out) {
+      printf("%s", out);
     }
   } else {
     usage();
