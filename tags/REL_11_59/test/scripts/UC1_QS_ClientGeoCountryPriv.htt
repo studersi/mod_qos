@@ -1,0 +1,74 @@
+# 
+# QS_ClientGeoCountryPriv  DE,FR,CH 5
+# QS_ClientGeoCountryDB    conf/GeoIPCountryWhois.csv
+# 
+
+INCLUDE scripts/ports
+
+CLIENT 3
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "done"
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+
+_SLEEP 100
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "done"
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+
+_SLEEP 300
+_REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 174.132.97.19
+__
+#_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoCountryPriv rule: max=5, concurrent connections=5, c=127.0.0.1 country=LO"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__Y-Forwarded-For: 174.132.97.19
+__
+#_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoCountryPriv rule: max=5, concurrent connections=5, c=127.0.0.1 country=LO"
+_EXEC tail -1 logs/error_log
+
+_SLEEP 1000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "done"
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END

@@ -1,0 +1,69 @@
+# 
+# MaxRequestWorkers      50
+# QS_ClientPrefer        20
+#
+# doing graceful restart while having open connections
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D QS_ClientPrefer >/dev/null
+SLEEP 1000
+
+CLIENT 30
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 400
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_AllConn: 31"
+_EXPECT . "QS_ClientPrefer;10\[\]: 31"
+_WAIT
+_CLOSE
+
+_EXEC ./ctl.sh graceful
+
+_SLEEP 4500
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_AllConn: 1"
+_EXPECT . "QS_ClientPrefer;10\[\]: 1"
+_WAIT
+_CLOSE
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh stop 2>/dev/null 1>/dev/null
+_SLEEP 1000
+_EXEC ./ctl.sh start 2>/dev/null 1>/dev/null
+END

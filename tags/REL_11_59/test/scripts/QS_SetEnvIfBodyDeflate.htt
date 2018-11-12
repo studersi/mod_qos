@@ -1,0 +1,67 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /error-docs/error.shtml HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/html; charset=utf-8
+__
+_-<data>value1</data>
+_EXPECT . "_5value1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /error-docs/error.shtml HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: text/html; charset=utf-8
+__
+__<node>
+__<data>valUe1</data></node>
+_EXPECT . "_5valUe1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /error-docs/error.shtml HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Encoding: gzip
+__Content-Type: text/html; charset=utf-8
+__
+_PIPE
+_EXEC echo "<data>value1</data>" | gzip
+_EXPECT . "_5value1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /htt/index.shtml HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Encoding: gzip
+__Content-Type: text/html; charset=utf-8
+__
+_PIPE
+_EXEC echo "<data>value1</data>" | gzip
+_EXPECT . "==AS1=="
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "Content-Length: 20"
+_EXPECT . "value1"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+END

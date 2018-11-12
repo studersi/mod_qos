@@ -1,0 +1,30 @@
+# 
+# $Id$
+# 
+
+INCLUDE scripts/ports
+
+CLIENT
+_AUTO_CLOSE on
+_LOOP 99
+_REQ localhost $QS_PORT_BASE
+__GET /fleet-service/Tracking/index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "!Retry-After: 1"
+_EXPECT . "fleet page"
+_EXPECT . "200 OK"
+_WAIT
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /fleet-service/Tracking/index.html HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "Retry-After: 1"
+_EXPECT . "!fleet page"
+_EXPECT . "!200 OK"
+_EXPECT . "509 unused"
+_WAIT
+
+END
