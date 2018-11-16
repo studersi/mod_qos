@@ -1295,30 +1295,31 @@ static int qos_encode64_binary(char *encoded, const char *string,
  * loads the default header rules into the server configuration (see rules
  * above).
  * @param pool To allocate memory
- * @param hfilter_table Table to add rules to
- * @param hs built-in header rules
+ * @param outHdrFltTable Table to add rules to
+ * @param hdrFltRuleDefArray built-in header rules
  * @return error message (NULL on success)
  */
-static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *hfilter_table,
-                                   const qos_her_t *hs) {
+static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *outHdrFltTable,
+                                   const qos_her_t *hdrFltRuleDefArray
+                                   ) {
   const char *errptr = NULL;
   int erroffset;
-  const qos_her_t* elt;
-  for(elt = hs; elt->name != NULL ; ++elt) {
-    qos_fhlt_r_t *he = apr_pcalloc(pool, sizeof(qos_fhlt_r_t));
-    he->text = apr_pstrdup(pool, elt->pcre);
-    he->pcre = pcre_compile(elt->pcre, PCRE_DOTALL, &errptr, &erroffset, NULL);
-    he->action = elt->action;
-    he->size = elt->size;
-    if(he->pcre == NULL) {
+  const qos_her_t* hdrFltRuleDefEntry;
+  for(hdrFltRuleDefEntry = hdrFltRuleDefArray; hdrFltRuleDefEntry->name != NULL ; ++hdrFltRuleDefEntry) {
+    qos_fhlt_r_t *hdrFltElement = apr_pcalloc(pool, sizeof(qos_fhlt_r_t));
+    hdrFltElement->text = apr_pstrdup(pool, hdrFltRuleDefEntry->pcre);
+    hdrFltElement->pcre = pcre_compile(hdrFltRuleDefEntry->pcre, PCRE_DOTALL, &errptr, &erroffset, NULL);
+    hdrFltElement->action = hdrFltRuleDefEntry->action;
+    hdrFltElement->size = hdrFltRuleDefEntry->size;
+    if(hdrFltElement->pcre == NULL) {
       return apr_psprintf(pool, "could not compile pcre %s at position %d,"
                           " reason: %s", 
-                          elt->name,
+                          hdrFltRuleDefEntry->name,
                           erroffset, errptr);
     }
-    he->extra = qos_pcre_study(pool, he->pcre);
-    apr_table_setn(hfilter_table, elt->name, (char *)he);
-    apr_pool_cleanup_register(pool, he->pcre, (int(*)(void*))pcre_free, 
+    hdrFltElement->extra = qos_pcre_study(pool, hdrFltElement->pcre);
+    apr_table_setn(outHdrFltTable, hdrFltRuleDefEntry->name, (char *)hdrFltElement);
+    apr_pool_cleanup_register(pool, hdrFltElement->pcre, (int(*)(void*))pcre_free, 
                               apr_pool_cleanup_null);
   }
   return NULL;
@@ -1558,28 +1559,28 @@ static int qos_cc_comp_time(const void *_pA, const void *_pB) {
 static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
                            apr_table_t *limitTable) {
   char *file = "-";
-  apr_shm_t *m;  // per client memory table
-  apr_shm_t *lm; // "limit" memory table
+  apr_shm_t *clientMem;  // per client memory table
+  apr_shm_t *limitMem; // "limit" memory table
   apr_status_t res;
   int limitTableSize = apr_table_elts(limitTable)->nelts;
-  int lsize = 0;
-  int msize = APR_ALIGN_DEFAULT(sizeof(qos_s_t)) + 
+  int limitMemSize = 0;
+  int clientMemSize = APR_ALIGN_DEFAULT(sizeof(qos_s_t)) + 
     (APR_ALIGN_DEFAULT(sizeof(qos_s_entry_t)) * size) + 
     (2 * APR_ALIGN_DEFAULT(sizeof(qos_s_entry_t *)) * size);
   int i;
-  qos_s_t *s;
-  qos_s_entry_t *e;
+  qos_s_t *clientDataArray;
+  qos_s_entry_t *clientDataEntry;
   qos_s_entry_limit_t *limitTableEntry = NULL;
-  msize = msize + 1024;
+  clientMemSize = clientMemSize + 1024;
   if(limitTableSize > 0) {
-    lsize = APR_ALIGN_DEFAULT(sizeof(qos_s_entry_limit_t)) * limitTableSize * size;
-    lsize = lsize + 1024;
+    limitMemSize = APR_ALIGN_DEFAULT(sizeof(qos_s_entry_limit_t)) * limitTableSize * size;
+    limitMemSize = limitMemSize + 1024;
   }
   /* use anonymous shm by default */
   if(limitTableSize > 0) {
-    apr_shm_create(&lm, lsize, NULL, pool);
+    apr_shm_create(&limitMem, limitMemSize, NULL, pool);
   }
-  res = apr_shm_create(&m, msize, NULL, pool);
+  res = apr_shm_create(&clientMem, clientMemSize, NULL, pool);
   if(APR_STATUS_IS_ENOTIMPL(res)) {
     char *lfile = apr_psprintf(pool, "%s_cc_ml.mod_qos",
                                qos_tmpnam(pool, srec));
@@ -1593,29 +1594,29 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
     apr_shm_remove(file, pool);
 #endif
     if(limitTableSize > 0) {
-      apr_shm_create(&lm, lsize, lfile, pool);
+      apr_shm_create(&limitMem, limitMemSize, lfile, pool);
     }
-    res = apr_shm_create(&m, msize, file, pool);
+    res = apr_shm_create(&clientMem, clientMemSize, file, pool);
   }
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, srec, 
                QOS_LOGD_PFX"create shared memory (client control)(%s): %d bytes",
-               file, msize + lsize);
+               file, clientMemSize + limitMemSize);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, srec,
                  QOS_LOG_PFX(002)"failed to create shared memory (client control)(%s): "
                  "%s (%d bytes)",
-                 file, buf, msize);
+                 file, buf, clientMemSize);
     return NULL;
   }
-  s = apr_shm_baseaddr_get(m);
-  s->m = m;
-  s->generation_locked = -1;
+  clientDataArray = apr_shm_baseaddr_get(clientMem);
+  clientDataArray->m = clientMem;
+  clientDataArray->generation_locked = -1;
   if(limitTableSize > 0) {
     apr_table_entry_t *te = (apr_table_entry_t *)apr_table_elts(limitTable)->elts;
-    limitTableEntry = apr_shm_baseaddr_get(lm);
-    s->limitTable = apr_table_make(pool, limitTableSize+10);
+    limitTableEntry = apr_shm_baseaddr_get(limitMem);
+    clientDataArray->limitTable = apr_table_make(pool, limitTableSize+10);
     for(i = 0; i < limitTableSize; i++) {
       char *eventName = apr_pstrdup(pool, te[i].key);
       qos_s_entry_limit_conf_t *eventLimitConf = apr_pcalloc(pool, sizeof(qos_s_entry_limit_conf_t));
@@ -1634,58 +1635,58 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
         eventLimitConf->preg = ap_pregcomp(pool, src->condStr, REG_EXTENDED);
 #endif
       }
-      apr_table_addn(s->limitTable, eventName, (char *)eventLimitConf);
+      apr_table_addn(clientDataArray->limitTable, eventName, (char *)eventLimitConf);
     }
   } else {
-    s->limitTable = NULL;
+    clientDataArray->limitTable = NULL;
   }
-  s->lock_file = apr_psprintf(pool, "%s_ccl.mod_qos", 
+  clientDataArray->lock_file = apr_psprintf(pool, "%s_ccl.mod_qos", 
                               qos_tmpnam(pool, srec));
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, srec, 
                QOS_LOGD_PFX"create mutex (client control)(%s)",
-               s->lock_file);
-  res = apr_global_mutex_create(&s->lock, s->lock_file, APR_LOCK_DEFAULT, pool);
+               clientDataArray->lock_file);
+  res = apr_global_mutex_create(&clientDataArray->lock, clientDataArray->lock_file, APR_LOCK_DEFAULT, pool);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
     ap_log_error(APLOG_MARK, APLOG_EMERG, 0, srec,
                  QOS_LOG_PFX(004)"failed to create mutex (client control)(%s): %s", 
-                 s->lock_file, buf);
-    apr_shm_destroy(s->m);
+                 clientDataArray->lock_file, buf);
+    apr_shm_destroy(clientDataArray->m);
     return NULL;
   }
 #ifdef AP_NEED_SET_MUTEX_PERMS
-  qos_unixd_set_global_mutex_perms(s->lock);
+  qos_unixd_set_global_mutex_perms(clientDataArray->lock);
 #endif
-  e = (qos_s_entry_t *)&s[1];
-  s->ipd = (qos_s_entry_t **)&e[size];
-  s->timed = (qos_s_entry_t **)&s->ipd[size];
-  s->num = 0;
-  s->max = size;
-  s->msize = msize;
-  s->connections = 0;
-  s->html = 0;
-  s->cssjs = 0;
-  s->img = 0;
-  s->other = 0;
-  s->notmodified = 0;
+  clientDataEntry = (qos_s_entry_t *)&clientDataArray[1];
+  clientDataArray->ipd = (qos_s_entry_t **)&clientDataEntry[size];
+  clientDataArray->timed = (qos_s_entry_t **)&clientDataArray->ipd[size];
+  clientDataArray->num = 0;
+  clientDataArray->max = size;
+  clientDataArray->msize = clientMemSize;
+  clientDataArray->connections = 0;
+  clientDataArray->html = 0;
+  clientDataArray->cssjs = 0;
+  clientDataArray->img = 0;
+  clientDataArray->other = 0;
+  clientDataArray->notmodified = 0;
   for(i = 0; i < size; i++) {
-    s->ipd[i] = e;
-    s->timed[i] = e;
+    clientDataArray->ipd[i] = clientDataEntry;
+    clientDataArray->timed[i] = clientDataEntry;
     if(limitTableSize > 0) {
-      e->limit = limitTableEntry;
+      clientDataEntry->limit = limitTableEntry;
       limitTableEntry += limitTableSize;
     } else {
-      e->limit = NULL;
+      clientDataEntry->limit = NULL;
     }
-    e++;
+    clientDataEntry++;
   }
-  s->t = time(NULL);
+  clientDataArray->t = time(NULL);
   for(i = 0; i < QOS_LOG_MSGCT; i++) {
-    s->eventTotal[i] = 0;
-    s->eventLast[i] = 0;
+    clientDataArray->eventTotal[i] = 0;
+    clientDataArray->eventLast[i] = 0;
   }
-  return s;
+  return clientDataArray;
 }
 
 /**
@@ -2344,34 +2345,34 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
                                           int status) {
   const char *new_user = apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW);
   if(new_user) {
-    char *sc;
+    char *setCookieVal;
     apr_size_t retcode;
-    char tstr[MAX_STRING_LEN];
-    apr_time_exp_t n;
+    char timeString[MAX_STRING_LEN];
+    apr_time_exp_t timeEx;
     int new_user_len = strlen(new_user);
     int len = 2 + new_user_len;
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
-    char *c;
+    char *encryptedVal;
     char *domain = NULL;
-    apr_time_exp_gmt(&n, r->request_time);
-    apr_strftime(tstr, &retcode, sizeof(tstr), "%m", &n);
+    apr_time_exp_gmt(&timeEx, r->request_time);
+    apr_strftime(timeString, &retcode, sizeof(timeString), "%m", &timeEx);
 
-    memcpy(value, tstr, 2);
+    memcpy(value, timeString, 2);
     memcpy(&value[2], new_user, new_user_len);
     value[len] = '\0';
-    c = qos_encrypt(r, sconf, value, len + 1);
+    encryptedVal = qos_encrypt(r, sconf, value, len + 1);
     if(sconf->user_tracking_cookie_domain != NULL) {
       domain = apr_pstrcat(r->pool, "; Domain=", sconf->user_tracking_cookie_domain, NULL);
     }
     /* set cookie valid for 300 days or for this session only */
-    sc = apr_psprintf(r->pool, "%s=%s; Path=/%s%s",
-                      sconf->user_tracking_cookie, c,
+    setCookieVal = apr_psprintf(r->pool, "%s=%s; Path=/%s%s",
+                      sconf->user_tracking_cookie, encryptedVal,
                       sconf->user_tracking_cookie_session < 1 ? "; Max-Age=25920000" : "",
                       domain != NULL ? domain : "");
     if(status != HTTP_MOVED_TEMPORARILY) {
-      apr_table_add(r->headers_out, "Set-Cookie", sc);
+      apr_table_add(r->headers_out, "Set-Cookie", setCookieVal);
     } else {
-      apr_table_add(r->err_headers_out, "Set-Cookie", sc);
+      apr_table_add(r->err_headers_out, "Set-Cookie", setCookieVal);
     }
   }
   return;
@@ -2409,11 +2410,11 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
     qs_set_evmsg(r, "u;"); 
   } else if(strlen(verified) > 2) {
     apr_size_t retcode;
-    char tstr[MAX_STRING_LEN];
-    apr_time_exp_t n;
-    apr_time_exp_gmt(&n, r->request_time);
-    apr_strftime(tstr, &retcode, sizeof(tstr), "%m", &n);
-    if(strncmp(tstr, verified, 2) != 0) {
+    char timeString[MAX_STRING_LEN];
+    apr_time_exp_t timeEx;
+    apr_time_exp_gmt(&timeEx, r->request_time);
+    apr_strftime(timeString, &retcode, sizeof(timeString), "%m", &timeEx);
+    if(strncmp(timeString, verified, 2) != 0) {
       /* renew, if not from this month */
       apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, &verified[2]);
     }
@@ -2438,16 +2439,16 @@ static void qos_update_milestone(request_rec *r, qos_srv_config* sconf) {
     int new_ms_len = strlen(new_ms);
     int len = sizeof(apr_time_t) + new_ms_len;
     unsigned char *value = apr_pcalloc(r->pool, len + 1);
-    char *c;
+    char *encryptedVal;
 
     apr_table_unset(r->subprocess_env, QOS_MILESTONE_COOKIE);
     memcpy(value, &now, sizeof(apr_time_t));
     memcpy(&value[sizeof(apr_time_t)], new_ms, new_ms_len);
     value[len] = '\0';
-    c = qos_encrypt(r, sconf, value, len);
+    encryptedVal = qos_encrypt(r, sconf, value, len);
     apr_table_add(r->headers_out, "Set-Cookie",
                   apr_psprintf(r->pool, "%s=%s; Path=/;",
-                               QOS_MILESTONE_COOKIE, c));
+                               QOS_MILESTONE_COOKIE, encryptedVal));
   }
   return;
 }
@@ -2547,18 +2548,18 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
 /**
  * Extracts the cookie from the request.
  * @param r
- * @param cooke_name Name of the cookie to remove from the request headers
+ * @param cookieName Name of the cookie to remove from the request headers
  * @param Cookie if available of NULL if not
  */
-static char *qos_get_remove_cookie(request_rec *r, const char *cookie_name) {
-  const char *cookie_h = apr_table_get(r->headers_in, "cookie");
-  if(cookie_h) {
-    char *cn = apr_pstrcat(r->pool, cookie_name, "=", NULL);
-    char *pt = ap_strcasestr(cookie_h, cn);
+static char *qos_get_remove_cookie(request_rec *r, const char *cookieName) {
+  const char *cookieHdr = apr_table_get(r->headers_in, "cookie");
+  if(cookieHdr) {
+    char *cn = apr_pstrcat(r->pool, cookieName, "=", NULL);
+    char *pt = ap_strcasestr(cookieHdr, cn);
     char *p = NULL;
     while(pt && !p) {
       // ensure we found the real cookie (and not an ending b64 str)
-      if(pt == cookie_h) {
+      if(pt == cookieHdr) {
         // @beginning of the header
         p = pt;
         pt = NULL;
@@ -2581,7 +2582,7 @@ static char *qos_get_remove_cookie(request_rec *r, const char *cookie_name) {
       char *value = NULL;
       p[0] = '\0'; /* terminates the beginning of the cookie header */
       sp--; /* deletes spaces "in front" of the qos cookie */
-      while((sp > cookie_h) && (sp[0] == ' ')) {
+      while((sp > cookieHdr) && (sp[0] == ' ')) {
         sp[0] = '\0';
         sp--;
       }
@@ -2594,25 +2595,25 @@ static char *qos_get_remove_cookie(request_rec *r, const char *cookie_name) {
       }
       /* restore cookie header appending the part left*/
       if(p && p[0]) {
-        if(cookie_h[0]) {
+        if(cookieHdr[0]) {
           if(p[0] == ' ') {
-            cookie_h = apr_pstrcat(r->pool, cookie_h, p, NULL);
+            cookieHdr = apr_pstrcat(r->pool, cookieHdr, p, NULL);
           } else {
-            cookie_h = apr_pstrcat(r->pool, cookie_h, " ", p, NULL);
+            cookieHdr = apr_pstrcat(r->pool, cookieHdr, " ", p, NULL);
           }
         } else {
-          cookie_h = apr_pstrcat(r->pool, p, NULL);
+          cookieHdr = apr_pstrcat(r->pool, p, NULL);
         }
       }
-      if(strlen(cookie_h) == 0) {
+      if(strlen(cookieHdr) == 0) {
         apr_table_unset(r->headers_in, "cookie");
       } else {
-        if((strncasecmp(cookie_h, "$Version=", strlen("$Version=")) == 0) &&
-           (strlen(cookie_h) <= strlen("$Version=X; "))) {
+        if((strncasecmp(cookieHdr, "$Version=", strlen("$Version=")) == 0) &&
+           (strlen(cookieHdr) <= strlen("$Version=X; "))) {
           /* nothing left */
           apr_table_unset(r->headers_in, "cookie");
         } else {
-          apr_table_set(r->headers_in, "cookie", cookie_h);
+          apr_table_set(r->headers_in, "cookie", cookieHdr);
         }
       }
       return value;
@@ -2859,14 +2860,14 @@ static apr_status_t qos_cleanup_shm(void *p) {
  *                      + [event_limit_entries]
  */
 static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actable_t *act,
-                                 apr_table_t *table, int maxclients) {
+                                 apr_table_t *locRuleCfgTable, int maxclients) {
   char *file = "-";
   apr_status_t res;
   int i;
-  int rule_entries = apr_table_elts(table)->nelts;
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(table)->elts;
+  int ruleEntries = apr_table_elts(locRuleCfgTable)->nelts;
+  apr_table_entry_t *locRuleEntry = (apr_table_entry_t *)apr_table_elts(locRuleCfgTable)->elts;
   int event_limit_entries = sconf->event_limit_a->nelts;
-  qs_acentry_t *e = NULL;
+  qs_acentry_t *actEntry = NULL;
   int max_ip;
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &sconf->server_limit);
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &sconf->thread_limit);
@@ -2874,7 +2875,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   max_ip = sconf->thread_limit * sconf->server_limit;
   max_ip = maxclients > 0 ? maxclients : max_ip;
   act->size = (max_ip * QS_MEM_SEG * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
-    (rule_entries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
+    (ruleEntries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (event_limit_entries * APR_ALIGN_DEFAULT(sizeof(qos_event_limit_entry_t))) +
     APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
     APR_ALIGN_DEFAULT(sizeof(qs_serial_t)) +
@@ -2898,7 +2899,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
                s->is_virtual ? "v" : "b",
                file,
                act->size,
-               rule_entries, max_ip);
+               ruleEntries, max_ip);
   if(res != APR_SUCCESS) {
     char buf[MAX_STRING_LEN];
     apr_strerror(res, buf, sizeof(buf));
@@ -2910,8 +2911,8 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   } else {
     qs_serial_t *sp = apr_shm_baseaddr_get(act->m); 
     time_t *qsstatustimer = (time_t *)&sp[1];
-    qs_conn_t *cp = (qs_conn_t *)&qsstatustimer[1];
-    qs_ip_entry_t *ce = (qs_ip_entry_t *)&cp[1];
+    qs_conn_t *connEntryP = (qs_conn_t *)&qsstatustimer[1];
+    qs_ip_entry_t *conn_ip = (qs_ip_entry_t *)&connEntryP[1];
     apr_time_t now = apr_time_now();
     act->serialize = sp;
     act->serialize->q1 = 0;
@@ -2919,88 +2920,88 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     act->serialize->locked = 0;
     act->qsstatustimer = qsstatustimer;
     *act->qsstatustimer = 0;
-    act->conn = cp;
+    act->conn = connEntryP;
     act->conn->conn_ip_len = max_ip * QS_MEM_SEG;
-    act->conn->conn_ip = ce;
+    act->conn->conn_ip = conn_ip;
     act->conn->connections = 0;
     for(i = 0; i < act->conn->conn_ip_len; i++) {
-      ce->ip6[0] = 0;
-      ce->ip6[1] = 0;
-      ce->counter = 0;
-      ce->error = 0;
-      ce++;
+      conn_ip->ip6[0] = 0;
+      conn_ip->ip6[1] = 0;
+      conn_ip->counter = 0;
+      conn_ip->error = 0;
+      conn_ip++;
     }
-    if(rule_entries) {
-      act->entry = (qs_acentry_t *)ce;
-      e = act->entry;
+    if(ruleEntries) {
+      act->entry = (qs_acentry_t *)conn_ip;
+      actEntry = act->entry;
     } else {
       act->entry = NULL;
     }
     /* init rule entries (link data, init mutex) */
-    for(i = 0; i < rule_entries; i++) {
-      qs_rule_ctx_t *rule = (qs_rule_ctx_t *)entry[i].val;
-      e->next = &e[1];
-      e->id = i;
-      e->url = rule->url;
-      e->url_len = strlen(e->url);
-      e->event = rule->event;
-      if(e->event) {
+    for(i = 0; i < ruleEntries; i++) {
+      qs_rule_ctx_t *rule = (qs_rule_ctx_t *)locRuleEntry[i].val;
+      actEntry->next = &actEntry[1];
+      actEntry->id = i;
+      actEntry->url = rule->url;
+      actEntry->url_len = strlen(actEntry->url);
+      actEntry->event = rule->event;
+      if(actEntry->event) {
         act->has_events++;
       }
-      e->regex = rule->regex;
-      e->condition = rule->condition;
-      e->regex_var = rule->regex_var;
-      e->limit = rule->limit;
-      if(e->limit == 0 ) {
-        if((e->condition == NULL) && (e->event == NULL)) {
+      actEntry->regex = rule->regex;
+      actEntry->condition = rule->condition;
+      actEntry->regex_var = rule->regex_var;
+      actEntry->limit = rule->limit;
+      if(actEntry->limit == 0 ) {
+        if((actEntry->condition == NULL) && (actEntry->event == NULL)) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, s,
                        QOS_LOG_PFX(003)"request level rule %s has no "
                        "concurrent request limitations",
-                       e->url);
+                       actEntry->url);
         }
       }
-      e->kbytes_interval_us = now;
-      e->interval = apr_time_sec(now);
-      e->bytes = 0;
-      e->req_per_sec_limit = rule->req_per_sec_limit;
-      e->kbytes_per_sec_limit = rule->kbytes_per_sec_limit;
-      e->kbytes_per_sec = 0;
-      e->counter = 0;
-      e->lock = act->lock;
-      if(i < rule_entries - 1) {
-        e = e->next;
+      actEntry->kbytes_interval_us = now;
+      actEntry->interval = apr_time_sec(now);
+      actEntry->bytes = 0;
+      actEntry->req_per_sec_limit = rule->req_per_sec_limit;
+      actEntry->kbytes_per_sec_limit = rule->kbytes_per_sec_limit;
+      actEntry->kbytes_per_sec = 0;
+      actEntry->counter = 0;
+      actEntry->lock = act->lock;
+      if(i < ruleEntries - 1) {
+        actEntry = actEntry->next;
       } else {
-        e->next = NULL;
+        actEntry->next = NULL;
       }
     }
     if(event_limit_entries == 0) {
       act->event_entry = NULL;
     } else {
       // source (config) event limit array
-      qos_event_limit_entry_t *eves = (qos_event_limit_entry_t *)sconf->event_limit_a->elts;
+      qos_event_limit_entry_t *eventEntrySrc = (qos_event_limit_entry_t *)sconf->event_limit_a->elts;
       // target (act) event limit array
-      qos_event_limit_entry_t *evet;
-      if(e) {
+      qos_event_limit_entry_t *eventEntryDst;
+      if(actEntry) {
         // end of the last act rule entry
-        act->event_entry = (qos_event_limit_entry_t *)&e[1];
+        act->event_entry = (qos_event_limit_entry_t *)&actEntry[1];
       } else {
         // end of the last connection entry
-        act->event_entry = (qos_event_limit_entry_t *)ce;
+        act->event_entry = (qos_event_limit_entry_t *)conn_ip;
       }
-      evet = act->event_entry;
+      eventEntryDst = act->event_entry;
       // set config
       for(i = 0; i < event_limit_entries; i++) {
-        evet->env_var = eves->env_var;
-        evet->eventDecStr = eves->eventDecStr;
-        evet->max = eves->max;
-        evet->seconds = eves->seconds;
-        evet->limit = 0;
-        evet->limit_time = 0;
-        evet->action = eves->action;
-        evet->condStr = eves->condStr;
-        evet->preg = eves->preg;
-        evet++;
-        eves++;
+        eventEntryDst->env_var = eventEntrySrc->env_var;
+        eventEntryDst->eventDecStr = eventEntrySrc->eventDecStr;
+        eventEntryDst->max = eventEntrySrc->max;
+        eventEntryDst->seconds = eventEntrySrc->seconds;
+        eventEntryDst->limit = 0;
+        eventEntryDst->limit_time = 0;
+        eventEntryDst->action = eventEntrySrc->action;
+        eventEntryDst->condStr = eventEntrySrc->condStr;
+        eventEntryDst->preg = eventEntrySrc->preg;
+        eventEntryDst++;
+        eventEntrySrc++;
       }
     }
   }
@@ -3449,23 +3450,23 @@ static int qos_error_response(request_rec *r, const char *error_page) {
 static qs_acentry_t *qos_getrule_byregex(request_rec *r, qos_srv_config *sconf) {
   qs_acentry_t *ret = NULL;
   qs_actable_t *act = sconf->act;
-  qs_acentry_t *e = act->entry;
+  qs_acentry_t *actEntry = act->entry;
   int limit = -1;
-  while(e) {
-    if((e->event == NULL) && (e->regex != NULL) && (e->condition == NULL)) {
-      if((limit == -1) || (e->limit < limit)) {
-        if(ap_regexec(e->regex, r->unparsed_uri, 0, NULL, 0) == 0) {
+  while(actEntry) {
+    if((actEntry->event == NULL) && (actEntry->regex != NULL) && (actEntry->condition == NULL)) {
+      if((limit == -1) || (actEntry->limit < limit)) {
+        if(ap_regexec(actEntry->regex, r->unparsed_uri, 0, NULL, 0) == 0) {
           if(limit == -1) {
-            ret = e;
-            limit = e->limit;
-          } else if(e->limit < limit) {
-            ret = e;
-            limit = e->limit;
+            ret = actEntry;
+            limit = actEntry->limit;
+          } else if(actEntry->limit < limit) {
+            ret = actEntry;
+            limit = actEntry->limit;
           }
         }
       }
     }
-    e = e->next;
+    actEntry = actEntry->next;
   }
   return ret;
 }
@@ -3476,23 +3477,23 @@ static qs_acentry_t *qos_getrule_byregex(request_rec *r, qos_srv_config *sconf) 
 static qs_acentry_t *qos_getcondrule_byregex(request_rec *r, qos_srv_config *sconf) {
   qs_acentry_t *ret = NULL;
   qs_actable_t *act = sconf->act;
-  qs_acentry_t *e = act->entry;
+  qs_acentry_t *actEntry = act->entry;
   int limit = -1;
-  while(e) {
-    if((e->event == NULL) && (e->regex != NULL) && (e->condition != NULL)) {
-      if((limit == -1) || (e->limit < limit)) {
-        if(ap_regexec(e->regex, r->unparsed_uri, 0, NULL, 0) == 0) {
+  while(actEntry) {
+    if((actEntry->event == NULL) && (actEntry->regex != NULL) && (actEntry->condition != NULL)) {
+      if((limit == -1) || (actEntry->limit < limit)) {
+        if(ap_regexec(actEntry->regex, r->unparsed_uri, 0, NULL, 0) == 0) {
           if(limit == -1) {
-            ret = e;
-            limit = e->limit;
-          } else if(e->limit < limit) {
-            ret = e;
-            limit = e->limit;
+            ret = actEntry;
+            limit = actEntry->limit;
+          } else if(actEntry->limit < limit) {
+            ret = actEntry;
+            limit = actEntry->limit;
           }
         }
       }
     }
-    e = e->next;
+    actEntry = actEntry->next;
   }
   return ret;
 }
@@ -3503,20 +3504,20 @@ static qs_acentry_t *qos_getcondrule_byregex(request_rec *r, qos_srv_config *sco
 static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sconf) {
   qs_acentry_t *ret = NULL;
   qs_actable_t *act = sconf->act;
-  qs_acentry_t *e = act->entry;
+  qs_acentry_t *actEntry = act->entry;
   int match_len = 0;
-  while(e) {
-    if((e->event == NULL) && (e->regex == NULL) && (r->parsed_uri.path != NULL)) {
+  while(actEntry) {
+    if((actEntry->event == NULL) && (actEntry->regex == NULL) && (r->parsed_uri.path != NULL)) {
       /* per location limitation */
-      if(e->url && (strncmp(e->url, r->parsed_uri.path, e->url_len) == 0)) {
+      if(actEntry->url && (strncmp(actEntry->url, r->parsed_uri.path, actEntry->url_len) == 0)) {
         /* best match */
-        if(e->url_len > match_len) {
-          match_len = e->url_len;
-          ret = e;
+        if(actEntry->url_len > match_len) {
+          match_len = actEntry->url_len;
+          ret = actEntry;
         }
       }
     }
-    e = e->next;
+    actEntry = actEntry->next;
   }
   return ret;
 }
@@ -4369,14 +4370,14 @@ static void qos_setenvresheader(request_rec *r, qos_srv_config *sconf) {
   apr_table_t *headers = r->headers_out;
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->setenvresheader_t)->elts;
-  apr_table_entry_t *entrym = (apr_table_entry_t *)apr_table_elts(sconf->setenvresheadermatch_t)->elts;
+  apr_table_entry_t *entryMatch = (apr_table_entry_t *)apr_table_elts(sconf->setenvresheadermatch_t)->elts;
   while(headers) {
     for(i = 0; i < apr_table_elts(sconf->setenvresheadermatch_t)->nelts; i++) {
-      const char *val = apr_table_get(headers, entrym[i].key);
+      const char *val = apr_table_get(headers, entryMatch[i].key);
       if(val) {
-        pcre *pr = (pcre *)entrym[i].val;
+        pcre *pr = (pcre *)entryMatch[i].val;
         if(pcre_exec(pr, NULL, val, strlen(val), 0, 0, NULL, 0) == 0) {
-          apr_table_set(r->subprocess_env, entrym[i].key, val);
+          apr_table_set(r->subprocess_env, entryMatch[i].key, val);
         }
       }
     }
@@ -4981,27 +4982,27 @@ static void qos_lg_event_update(request_rec *r, apr_time_t *t) {
   qs_actable_t *act = sconf->act;
   if(act->has_events && (apr_table_get(r->notes, QS_R012_ALREADY_BLOCKED) == NULL)) {
     apr_time_t now = apr_time_sec(r->request_time);
-    qs_acentry_t *e = act->entry;
+    qs_acentry_t *actEntry = act->entry;
     *t = now;
-    if(e) {
+    if(actEntry) {
       apr_global_mutex_lock(act->lock);     /* @CRT13 */
-      while(e) {
-        if(e->event) {
-          if(((e->event[0] != '!') && apr_table_get(r->subprocess_env, e->event)) ||
-             ((e->event[0] == '!') && !apr_table_get(r->subprocess_env, &e->event[1]))) {
-            e->req++;
-            if(now > (e->interval + QS_BW_SAMPLING_RATE)) {
-              if(e->req_per_sec_limit) {
+      while(actEntry) {
+        if(actEntry->event) {
+          if(((actEntry->event[0] != '!') && apr_table_get(r->subprocess_env, actEntry->event)) ||
+             ((actEntry->event[0] == '!') && !apr_table_get(r->subprocess_env, &actEntry->event[1]))) {
+            actEntry->req++;
+            if(now > (actEntry->interval + QS_BW_SAMPLING_RATE)) {
+              if(actEntry->req_per_sec_limit) {
                 /* QS_EventPerSecLimit */
-                e->req_per_sec = e->req / (now - e->interval);
-                e->req = 0;
-                e->interval = now;
-                qos_cal_req_sec(sconf, r, e);
+                actEntry->req_per_sec = actEntry->req / (now - actEntry->interval);
+                actEntry->req = 0;
+                actEntry->interval = now;
+                qos_cal_req_sec(sconf, r, actEntry);
               }
             }
           }
         }
-        e = e->next;
+        actEntry = actEntry->next;
       }
       apr_global_mutex_unlock(act->lock);   /* @CRT13 */
     }
@@ -5127,23 +5128,23 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
   qs_req_ctx *rctx = qos_rctx_config_get(r);
   qs_actable_t *act = sconf->act;
   if(act->has_events) {
-    qs_acentry_t *e = act->entry;
-    if(e) {
+    qs_acentry_t *actEntry = act->entry;
+    if(actEntry) {
       apr_global_mutex_lock(act->lock);   /* @CRT31 */
-      while(e) {
-        if(e->event && (e->limit != -1)) {
-          const char *var = apr_table_get(r->subprocess_env, e->event);
+      while(actEntry) {
+        if(actEntry->event && (actEntry->limit != -1)) {
+          const char *var = apr_table_get(r->subprocess_env, actEntry->event);
           if(var) {
             int match = 1;
-            if(e->regex_var) {
-              if(ap_regexec(e->regex_var, var, 0, NULL, 0) != 0) {
+            if(actEntry->regex_var) {
+              if(ap_regexec(actEntry->regex_var, var, 0, NULL, 0) != 0) {
                 match = 0;
               }
             }
             if(match) {
-              apr_table_addn(rctx->event_entries, e->url, (char *)e);
-              e->counter++;
-              if(e->counter > e->limit) {
+              apr_table_addn(rctx->event_entries, actEntry->url, (char *)actEntry);
+              actEntry->counter++;
+              if(actEntry->counter > actEntry->limit) {
                 rv = m_retcode;
                 ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                               QOS_LOG_PFX(012)"access denied%s,"
@@ -5151,19 +5152,19 @@ static int qos_hp_event_filter(request_rec *r, qos_srv_config *sconf) {
                               " concurrent requests=%d,"
                               " c=%s, id=%s",
                               sconf->log_only ? " (log only)" : "",
-                              e->url, e->limit, e->counter,
+                              actEntry->url, actEntry->limit, actEntry->counter,
                               QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                               qos_unique_id(r, "012"));
                 apr_table_set(r->notes, QS_R012_ALREADY_BLOCKED, "");
                 QS_INC_EVENT_LOCKED(sconf, 12);
               }
               apr_table_add(r->subprocess_env,
-                            apr_psprintf(r->pool, "QS_EventRequestLimit_%s_Counter", e->event),
-                            apr_psprintf(r->pool, "%d", e->counter));
+                            apr_psprintf(r->pool, "QS_EventRequestLimit_%s_Counter", actEntry->event),
+                            apr_psprintf(r->pool, "%d", actEntry->counter));
             }
           }
         }
-        e = e->next;
+        actEntry = actEntry->next;
       }
       apr_global_mutex_unlock(act->lock); /* @CRT31 */
     }
@@ -5320,29 +5321,29 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
 
     /* wait until we get a lock */
     while(!locked) {
-      qos_s_entry_t **e = NULL;
+      qos_s_entry_t **clientEntry = NULL;
       apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36 */
-      e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-      if(!e) {
-        e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+      clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+      if(!clientEntry) {
+        clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
       }
-      if((*e)->serialize == 0) {
+      if((*clientEntry)->serialize == 0) {
         // free! check if this request is the next in the queue */
-        if(((*e)->serialize_queue == 0) || (r->request_time <= (*e)->serialize_queue)) {
-          (*e)->serialize = 1;
-          (*e)->serialize_queue = 0;
+        if(((*clientEntry)->serialize_queue == 0) || (r->request_time <= (*clientEntry)->serialize_queue)) {
+          (*clientEntry)->serialize = 1;
+          (*clientEntry)->serialize_queue = 0;
           rctx->cc_serialize_set = 1;
           locked = 1;
         }
       } else {
         // put the request into the queue
-        if((*e)->serialize_queue == 0) {
+        if((*clientEntry)->serialize_queue == 0) {
           // the only waiting req
-          (*e)->serialize_queue = r->request_time;
+          (*clientEntry)->serialize_queue = r->request_time;
         } else {
-          if((*e)->serialize_queue > r->request_time) {
+          if((*clientEntry)->serialize_queue > r->request_time) {
             // this request is waiting for a longer time
-            (*e)->serialize_queue = r->request_time;
+            (*clientEntry)->serialize_queue = r->request_time;
           }
         }
       }
@@ -5369,11 +5370,11 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
         /* remove this request from the queue resp. clear the queue
            to avaoid a deadlock */
         apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36.1 */
-        e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-        if(!e) {
-          e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+        clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+        if(!clientEntry) {
+          clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
         }
-        (*e)->serialize_queue = 0;
+        (*clientEntry)->serialize_queue = 0;
         apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT36.1 */      
         break;
       }
@@ -5396,7 +5397,7 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf,
      r->subprocess_env && apr_table_get(r->subprocess_env, "QS_EventRequest")) {
     int vip = 0;
     int count = 0;
-    qos_s_entry_t **e = NULL;
+    qos_s_entry_t **clientEntry = NULL;
     qos_s_entry_t searchE;
     const char *forwardedForLogIP = qos_get_clientIP(r, sconf, cconf,
                                                      "hp", rctx->cc_event_ip);
@@ -5405,13 +5406,13 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf,
     searchE.ip6[0] = rctx->cc_event_ip[0];
     searchE.ip6[1] = rctx->cc_event_ip[1];
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT33 */
-    e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-    if(!e) {
-      e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+    clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+    if(!clientEntry) {
+      clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     }
-    (*e)->event_req++;
-    count = (*e)->event_req;
-    if((*e)->vip || rctx->is_vip) {
+    (*clientEntry)->event_req++;
+    count = (*clientEntry)->event_req;
+    if((*clientEntry)->vip || rctx->is_vip) {
       vip = 1;
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT33 */
@@ -5536,31 +5537,31 @@ static qs_acentry_t *qos_hp_event_count(request_rec *r,
   *req_per_sec_block = 0;
   *kbytes_per_sec_limit = 0;
   if(act->has_events) {
-    qs_acentry_t *e = act->entry;
-    if(e) {
+    qs_acentry_t *actEntry = act->entry;
+    if(actEntry) {
       apr_global_mutex_lock(act->lock);   /* @CRT12 */
-      while(e) {
-        if(e->event && (e->limit == -1)) {
-          if(((e->event[0] != '!') && apr_table_get(r->subprocess_env, e->event)) ||
-             ((e->event[0] == '!') && !apr_table_get(r->subprocess_env, &e->event[1]))) {
-            if(e->req_per_sec_limit) {
+      while(actEntry) {
+        if(actEntry->event && (actEntry->limit == -1)) {
+          if(((actEntry->event[0] != '!') && apr_table_get(r->subprocess_env, actEntry->event)) ||
+             ((actEntry->event[0] == '!') && !apr_table_get(r->subprocess_env, &actEntry->event[1]))) {
+            if(actEntry->req_per_sec_limit) {
               /* QS_EventPerSecLimit */
-              if(e->req_per_sec_block_rate > *req_per_sec_block) {
-                *req_per_sec_block = e->req_per_sec_block_rate;
+              if(actEntry->req_per_sec_block_rate > *req_per_sec_block) {
+                *req_per_sec_block = actEntry->req_per_sec_block_rate;
               }
             } else {
               /* QS_EventKBytesPerSecLimit */
-              if(e->kbytes_per_sec_limit) {
+              if(actEntry->kbytes_per_sec_limit) {
                 if((*kbytes_per_sec_limit == 0) ||
-                   (e->kbytes_per_sec_limit < *kbytes_per_sec_limit)) {
-                  *kbytes_per_sec_limit = e->kbytes_per_sec_limit;
-                  event_kbytes_limit = e;
+                   (actEntry->kbytes_per_sec_limit < *kbytes_per_sec_limit)) {
+                  *kbytes_per_sec_limit = actEntry->kbytes_per_sec_limit;
+                  event_kbytes_limit = actEntry;
                 }
               }
             }
           }
         }
-        e = e->next;
+        actEntry = actEntry->next;
       }
       apr_global_mutex_unlock(act->lock); /* @CRT12 */
     }
@@ -5720,39 +5721,39 @@ static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
   if(act->event_entry && (sconf->event_limit_a->nelts > 0)) {
     apr_time_t now = apr_time_sec(r->request_time);
     int i;
-    qos_event_limit_entry_t *entry = act->event_entry;
+    qos_event_limit_entry_t *actEntry = act->event_entry;
     apr_global_mutex_lock(act->lock);     /* @CRT42 */
     for(i = 0; i < sconf->event_limit_a->nelts; i++) {
-      if(entry->action == QS_EVENT_ACTION_DENY) {
-        int decEvent = get_qs_event(r, entry->eventDecStr);
+      if(actEntry->action == QS_EVENT_ACTION_DENY) {
+        int decEvent = get_qs_event(r, actEntry->eventDecStr);
         if(decEvent > 0) {
-          if(decEvent >= entry->limit) {
-            entry->limit = 0;
-            entry->limit_time = 0;
+          if(decEvent >= actEntry->limit) {
+            actEntry->limit = 0;
+            actEntry->limit_time = 0;
           } else {
-            entry->limit = entry->limit - decEvent;
+            actEntry->limit = actEntry->limit - decEvent;
           }
         }
-        if(apr_table_get(r->subprocess_env, entry->env_var) != NULL) {
+        if(apr_table_get(r->subprocess_env, actEntry->env_var) != NULL) {
           // increment only once
-          char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, entry->env_var, NULL);
+          char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, actEntry->env_var, NULL);
           if(apr_table_get(r->notes, eventLimitId) == NULL) {
             // reset required (expired)?
-            if(entry->limit_time + entry->seconds < now) {
-              entry->limit = 0;
-              entry->limit_time = 0;
+            if(actEntry->limit_time + actEntry->seconds < now) {
+              actEntry->limit = 0;
+              actEntry->limit_time = 0;
             }
             /* increment limit event */
-            entry->limit++;
-            if(entry->limit == 1) {
+            actEntry->limit++;
+            if(actEntry->limit == 1) {
               /* ... and start timer */
-              entry->limit_time = now;
+              actEntry->limit_time = now;
             }
           }
         }
       }
       // next rule
-      entry++;
+      actEntry++;
     }
     apr_global_mutex_unlock(act->lock);   /* @CRT42 */
   }
@@ -5770,10 +5771,10 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   qs_conn_ctx *cconf = qos_get_cconf(r->connection);
   qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
   apr_time_t now = apr_time_sec(r->request_time);
-  qos_s_entry_t **e = NULL;
-  qos_s_entry_t **ef = NULL; // client ip entry from header
+  qos_s_entry_t **clientEntry = NULL;
+  qos_s_entry_t **clientEntryFromHdr = NULL; // client ip entry from header
   qos_s_entry_t searchE;
-  qos_s_entry_t searchEFromHeader;
+  qos_s_entry_t searchEFromHdr;
  
   if(block_seen != NULL) {
     block_event = 0;
@@ -5810,19 +5811,19 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     searchE.ip6[0] = ci6[0];
     searchE.ip6[1] = ci6[1];
   }
-  qos_get_clientIP(r, sconf, cconf, "logger", searchEFromHeader.ip6);
+  qos_get_clientIP(r, sconf, cconf, "logger", searchEFromHdr.ip6);
 
   apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
-  e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-  if(!e) {
-    e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+  clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+  if(!clientEntry) {
+    clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
   }
-  if(searchEFromHeader.ip6[0] == searchE.ip6[0] && searchEFromHeader.ip6[1] == searchE.ip6[1]) {
-    ef = e; // same as connection
+  if(searchEFromHdr.ip6[0] == searchE.ip6[0] && searchEFromHdr.ip6[1] == searchE.ip6[1]) {
+    clientEntryFromHdr = clientEntry; // same as connection
   } else {
-    ef = qos_cc_get0(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
-    if(!ef) {
-      ef = qos_cc_set(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
+    clientEntryFromHdr = qos_cc_get0(u->qos_cc, &searchEFromHdr, apr_time_sec(r->request_time));
+    if(!clientEntryFromHdr) {
+      clientEntryFromHdr = qos_cc_set(u->qos_cc, &searchEFromHdr, apr_time_sec(r->request_time));
     }
   }
 
@@ -5833,11 +5834,11 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     if(rctx->cc_event_ip[0] == searchE.ip6[0] &&
        rctx->cc_event_ip[1] == searchE.ip6[1]) {
       // connection ip
-      eEvent = e;
-    } else if(rctx->cc_event_ip[0] == searchEFromHeader.ip6[0] &&
-              rctx->cc_event_ip[1] == searchEFromHeader.ip6[1]) {
+      eEvent = clientEntry;
+    } else if(rctx->cc_event_ip[0] == searchEFromHdr.ip6[0] &&
+              rctx->cc_event_ip[1] == searchEFromHdr.ip6[1]) {
       // from header
-      eEvent = ef;
+      eEvent = clientEntryFromHdr;
     } else {
       // looks like the header has changed or is no longer available
       qos_s_entry_t searchEvent;
@@ -5859,11 +5860,11 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     if(rctx->cc_serialize_ip[0] == searchE.ip6[0] &&
        rctx->cc_serialize_ip[1] == searchE.ip6[1]) {
       // connection ip
-      eSerialize = e;
-    } else if(rctx->cc_serialize_ip[0] == searchEFromHeader.ip6[0] &&
-              rctx->cc_serialize_ip[1] == searchEFromHeader.ip6[1]) {
+      eSerialize = clientEntry;
+    } else if(rctx->cc_serialize_ip[0] == searchEFromHdr.ip6[0] &&
+              rctx->cc_serialize_ip[1] == searchEFromHdr.ip6[1]) {
       // from header
-      eSerialize = ef;
+      eSerialize = clientEntryFromHdr;
     } else {
       // looks like the header has changed or is no longer available
       qos_s_entry_t searchSerialize;
@@ -5878,21 +5879,21 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   
   if(sconf->qos_cc_prefer) {
     // QS_ClientPrefer is not enabled
-    unusual_behavior = qos_content_type(r, sconf, u->qos_cc, *e, sconf->qos_cc_prefer_limit);
+    unusual_behavior = qos_content_type(r, sconf, u->qos_cc, *clientEntry, sconf->qos_cc_prefer_limit);
     if(unusual_behavior == 0) {
       // normal behavior
-      (*e)->lowratestatus |= QOS_LOW_FLAG_BEHAVIOR_OK;
-      (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_BAD;
+      (*clientEntry)->lowratestatus |= QOS_LOW_FLAG_BEHAVIOR_OK;
+      (*clientEntry)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_BAD;
     } else {
       // unknown or bad behavior
-      (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
+      (*clientEntry)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
     }
   }
 
   if(block_event || block_dec || lowrate || (unusual_behavior > 0)) {
-    if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
+    if(((*clientEntry)->block_time + sconf->qos_cc_block_time) < now) {
       /* reset expired events */
-      if((*e)->blockMsg > QS_LOG_REPEAT) {
+      if((*clientEntry)->blockMsg > QS_LOG_REPEAT) {
         // write remaining log lines
         ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r->connection->base_server,
                      QOS_LOG_PFX(060)"access denied (previously), "
@@ -5901,52 +5902,52 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
                      "message repeated %d times, "
                      "c=%s",
                      sconf->qos_cc_block,
-                     (*e)->block,
-                     (*e)->blockMsg % QS_LOG_REPEAT,
+                     (*clientEntry)->block,
+                     (*clientEntry)->blockMsg % QS_LOG_REPEAT,
                      QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                      QS_CONN_REMOTEIP(r->connection)/*no id here, this r is okay*/);
         QS_INC_EVENT_LOCKED(sconf, 60);
-        (*e)->blockMsg = 0;
+        (*clientEntry)->blockMsg = 0;
       }
-      (*e)->block = 0;
-      (*e)->block_time = 0;
+      (*clientEntry)->block = 0;
+      (*clientEntry)->block_time = 0;
     }
     /* mark lowpkt client */
     if(lowrate || (unusual_behavior > 0)) {
-      (*e)->lowrate = apr_time_sec(r->request_time);
+      (*clientEntry)->lowrate = apr_time_sec(r->request_time);
       if(lowrate) {
-        (*e)->lowratestatus |= QOS_LOW_FLAG_PKGRATE;
+        (*clientEntry)->lowratestatus |= QOS_LOW_FLAG_PKGRATE;
       }
       if(unusual_behavior > 1) {
-        (*e)->lowratestatus |= QOS_LOW_FLAG_BEHAVIOR_BAD;
-        (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
+        (*clientEntry)->lowratestatus |= QOS_LOW_FLAG_BEHAVIOR_BAD;
+        (*clientEntry)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
       }
       qs_set_evmsg(r, "r;"); 
     }
     if(block_dec > 0) {
-      if(block_dec >= (*e)->block) {
-        (*e)->block = 0;
-        (*e)->block_time = 0;
+      if(block_dec >= (*clientEntry)->block) {
+        (*clientEntry)->block = 0;
+        (*clientEntry)->block_time = 0;
       } else {
-        (*e)->block = (*e)->block - block_dec;
+        (*clientEntry)->block = (*clientEntry)->block - block_dec;
       }
     }
     if(block_event) {
-      if((*e)->block == 0) {
+      if((*clientEntry)->block == 0) {
         /* start timer */
-        (*e)->block_time = now;
+        (*clientEntry)->block_time = now;
       }
       /* ...and increment/increase block event counter */
-      (*e)->block += block_event;
+      (*clientEntry)->block += block_event;
     }
-  } else if((*e)->lowrate) {
+  } else if((*clientEntry)->lowrate) {
     /* reset low prio client after 24h (resp. QOS_LOW_TIMEOUT seconds) */
-    if(((*e)->lowrate + QOS_LOW_TIMEOUT) < now) {
-      (*e)->lowrate = 0;
-      if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
-        (*e)->lowratestatus = QOS_LOW_FLAG_BEHAVIOR_OK;
+    if(((*clientEntry)->lowrate + QOS_LOW_TIMEOUT) < now) {
+      (*clientEntry)->lowrate = 0;
+      if((*clientEntry)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+        (*clientEntry)->lowratestatus = QOS_LOW_FLAG_BEHAVIOR_OK;
       } else {
-        (*e)->lowratestatus = 0;
+        (*clientEntry)->lowratestatus = 0;
       }
     }
   }
@@ -5968,16 +5969,16 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
        * reset expired events, clear event counter, decrement event counter
        */
       if(clearEvent ||
-         (((*ef)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now)) {
-        (*ef)->limit[limitTableIndex].limit = 0;
-        (*ef)->limit[limitTableIndex].limit_time = 0;
+         (((*clientEntryFromHdr)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now)) {
+        (*clientEntryFromHdr)->limit[limitTableIndex].limit = 0;
+        (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = 0;
       }
       if(decEvent > 0) {
-        if(decEvent >= (*ef)->limit[limitTableIndex].limit) {
-          (*ef)->limit[limitTableIndex].limit = 0;
-          (*ef)->limit[limitTableIndex].limit_time = 0;
+        if(decEvent >= (*clientEntryFromHdr)->limit[limitTableIndex].limit) {
+          (*clientEntryFromHdr)->limit[limitTableIndex].limit = 0;
+          (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = 0;
         } else {
-          (*ef)->limit[limitTableIndex].limit = (*ef)->limit[limitTableIndex].limit - decEvent;
+          (*clientEntryFromHdr)->limit[limitTableIndex].limit = (*clientEntryFromHdr)->limit[limitTableIndex].limit - decEvent;
         }
       }
 
@@ -5996,12 +5997,12 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         if(apr_table_get(r->subprocess_env, seenEvent) == NULL) {
           /* only once per request */
           apr_table_set(r->subprocess_env, seenEvent, "");
-          if((*ef)->limit[limitTableIndex].limit == 0) {
+          if((*clientEntryFromHdr)->limit[limitTableIndex].limit == 0) {
             /* start timer... */
-            (*ef)->limit[limitTableIndex].limit_time = now;
+            (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = now;
           }
           /* ... and increase limit event */
-          (*ef)->limit[limitTableIndex].limit += eventSet;
+          (*clientEntryFromHdr)->limit[limitTableIndex].limit += eventSet;
         }
       }
     }
@@ -6021,10 +6022,10 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
   int ret = DECLINED;
   if(sconf->has_qos_cc) {
     int req_per_sec_block_rate = 0;
-    qos_s_entry_t **e = NULL;
-    qos_s_entry_t **ef = NULL;
+    qos_s_entry_t **clientEntry = NULL;
+    qos_s_entry_t **clientEntryFromHdr = NULL;
     qos_s_entry_t searchE;
-    qos_s_entry_t searchEFromHeader;
+    qos_s_entry_t searchEFromHdr;
     qs_conn_ctx *cconf = qos_get_cconf(r->connection);
     const char *forwardedForLogIP = QS_CONN_REMOTEIP(r->connection);
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
@@ -6041,43 +6042,43 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     }
 
     forwardedForLogIP = qos_get_clientIP(r, sconf, cconf, "hp",
-                                         searchEFromHeader.ip6);
+                                         searchEFromHdr.ip6);
 
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT17 */
-    e = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-    if(!e) {
-      e = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+    clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+    if(!clientEntry) {
+      clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     } else {
       /* update time */
-      (*e)->time = apr_time_sec(r->request_time);
+      (*clientEntry)->time = apr_time_sec(r->request_time);
     }
-    if(searchEFromHeader.ip6[0] == searchE.ip6[0] && searchEFromHeader.ip6[1] == searchE.ip6[1]) {
-      ef = e; // same as connection
+    if(searchEFromHdr.ip6[0] == searchE.ip6[0] && searchEFromHdr.ip6[1] == searchE.ip6[1]) {
+      clientEntryFromHdr = clientEntry; // same as connection
     } else {
-      ef = qos_cc_get0(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
-      if(!ef) {
-        ef = qos_cc_set(u->qos_cc, &searchEFromHeader, apr_time_sec(r->request_time));
+      clientEntryFromHdr = qos_cc_get0(u->qos_cc, &searchEFromHdr, apr_time_sec(r->request_time));
+      if(!clientEntryFromHdr) {
+        clientEntryFromHdr = qos_cc_set(u->qos_cc, &searchEFromHdr, apr_time_sec(r->request_time));
       } else {
         /* update time */
-        (*ef)->time = apr_time_sec(r->request_time);
+        (*clientEntryFromHdr)->time = apr_time_sec(r->request_time);
       }
     }
     if(sconf->qos_cc_event) {
       apr_time_t now = apr_time_sec(r->request_time);
       const char *v = apr_table_get(r->subprocess_env, QS_EVENT);
       if(v) {
-        (*e)->req++;
-        if(now > (*e)->interval + QS_BW_SAMPLING_RATE) {
+        (*clientEntry)->req++;
+        if(now > (*clientEntry)->interval + QS_BW_SAMPLING_RATE) {
           /* calc req/sec */
-          (*e)->req_per_sec = (*e)->req / (now - (*e)->interval);
-          (*e)->req = 0;
-          (*e)->interval = now;
+          (*clientEntry)->req_per_sec = (*clientEntry)->req / (now - (*clientEntry)->interval);
+          (*clientEntry)->req = 0;
+          (*clientEntry)->interval = now;
           /* calc block rate */
-          if((*e)->req_per_sec > sconf->qos_cc_event) {
-            int factor = (((*e)->req_per_sec * 100) / sconf->qos_cc_event) - 100;
-            (*e)->req_per_sec_block_rate = (*e)->req_per_sec_block_rate + factor;
-            if((*e)->req_per_sec_block_rate > QS_MAX_DELAY/1000) {
-              (*e)->req_per_sec_block_rate = QS_MAX_DELAY/1000;
+          if((*clientEntry)->req_per_sec > sconf->qos_cc_event) {
+            int factor = (((*clientEntry)->req_per_sec * 100) / sconf->qos_cc_event) - 100;
+            (*clientEntry)->req_per_sec_block_rate = (*clientEntry)->req_per_sec_block_rate + factor;
+            if((*clientEntry)->req_per_sec_block_rate > QS_MAX_DELAY/1000) {
+              (*clientEntry)->req_per_sec_block_rate = QS_MAX_DELAY/1000;
             }
             /* QS_ClientEventPerSecLimit */
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
@@ -6085,34 +6086,34 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                           " rule: "QS_EVENT"(%d), req/sec=%ld,"
                           " delay=%dms%s",
                           sconf->qos_cc_event,
-                          (*e)->req_per_sec, (*e)->req_per_sec_block_rate,
-                          (*e)->req_per_sec_block_rate == QS_MAX_DELAY/1000 ? " (max)" : "");
+                          (*clientEntry)->req_per_sec, (*clientEntry)->req_per_sec_block_rate,
+                          (*clientEntry)->req_per_sec_block_rate == QS_MAX_DELAY/1000 ? " (max)" : "");
             QS_INC_EVENT_LOCKED(sconf, 61);
-          } else if((*e)->req_per_sec_block_rate > 0) {
-            if((*e)->req_per_sec_block_rate < 50) {
-              (*e)->req_per_sec_block_rate = 0;
+          } else if((*clientEntry)->req_per_sec_block_rate > 0) {
+            if((*clientEntry)->req_per_sec_block_rate < 50) {
+              (*clientEntry)->req_per_sec_block_rate = 0;
             } else {
-              int factor = (*e)->req_per_sec_block_rate / 4;
-              (*e)->req_per_sec_block_rate = (*e)->req_per_sec_block_rate - factor;
+              int factor = (*clientEntry)->req_per_sec_block_rate / 4;
+              (*clientEntry)->req_per_sec_block_rate = (*clientEntry)->req_per_sec_block_rate - factor;
             }
             ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
                           QOS_LOG_PFX(062)"request rate limit,"
                           " rule: "QS_EVENT"(%d), req/sec=%ld,"
                           " delay=%dms",
                           sconf->qos_cc_event,
-                          (*e)->req_per_sec, (*e)->req_per_sec_block_rate);
+                          (*clientEntry)->req_per_sec, (*clientEntry)->req_per_sec_block_rate);
             QS_INC_EVENT_LOCKED(sconf, 62);
           }
         }
-        req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
+        req_per_sec_block_rate = (*clientEntry)->req_per_sec_block_rate;
       }
     }
     if(sconf->qos_cc_block && !excludeFromBlock) {
       apr_time_t now = apr_time_sec(r->request_time);
       int block_event = get_qs_event(r, QS_BLOCK);
-      if(((*e)->block_time + sconf->qos_cc_block_time) < now) {
+      if(((*clientEntry)->block_time + sconf->qos_cc_block_time) < now) {
         /* reset expired events */
-        if((*e)->blockMsg > QS_LOG_REPEAT) {
+        if((*clientEntry)->blockMsg > QS_LOG_REPEAT) {
           // write remaining log lines
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r->connection->base_server,
                        QOS_LOG_PFX(060)"access denied (previously), "
@@ -6121,28 +6122,28 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                        "message repeated %d times, "
                        "c=%s",
                        sconf->qos_cc_block,
-                       (*e)->block,
-                       (*e)->blockMsg % QS_LOG_REPEAT,
+                       (*clientEntry)->block,
+                       (*clientEntry)->blockMsg % QS_LOG_REPEAT,
                        QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                        QS_CONN_REMOTEIP(r->connection)/*no id here, this r is okay*/);
           QS_INC_EVENT_LOCKED(sconf, 60);
-          (*e)->blockMsg = 0;
+          (*clientEntry)->blockMsg = 0;
         }
-        (*e)->block = 0;
-        (*e)->block_time = 0;
+        (*clientEntry)->block = 0;
+        (*clientEntry)->block_time = 0;
       }
       if(block_event) {
-        if((*e)->block == 0) {
+        if((*clientEntry)->block == 0) {
           /* start timer */
-          (*e)->block_time = now;
+          (*clientEntry)->block_time = now;
         }
         /* ... and increment block event */
-        (*e)->block += block_event;
+        (*clientEntry)->block += block_event;
         /* only once per request */
         apr_table_set(r->subprocess_env, QS_BLOCK_SEEN, "");
         apr_table_set(r->connection->notes, QS_BLOCK_SEEN, "");
       }
-      if((*e)->block >= sconf->qos_cc_block) {
+      if((*clientEntry)->block >= sconf->qos_cc_block) {
         *uid = apr_pstrdup(r->connection->pool, "060");
         *msg = apr_psprintf(r->connection->pool, 
                             QOS_LOG_PFX(060)"access denied%s, "
@@ -6150,14 +6151,14 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                             "max=%d, current=%d, age=%"APR_TIME_T_FMT", c=%s",
                             sconf->log_only ? " (log only)" : "",
                             sconf->qos_cc_block,
-                            (*e)->block,
-                            now - (*e)->block_time,
+                            (*clientEntry)->block,
+                            now - (*clientEntry)->block_time,
                             QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                             QS_CONN_REMOTEIP(r->connection));
         QS_INC_EVENT_LOCKED(sconf, 60);
         ret = m_retcode;
-        (*e)->lowrate = apr_time_sec(r->request_time);
-        (*e)->lowratestatus |= QOS_LOW_FLAG_EVENTBLOCK;
+        (*clientEntry)->lowrate = apr_time_sec(r->request_time);
+        (*clientEntry)->lowratestatus |= QOS_LOW_FLAG_EVENTBLOCK;
         qs_set_evmsg(r, "r;"); 
       }
     }
@@ -6178,9 +6179,9 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
          * reset expired events or clear event counter
          */
         if(clearEvent ||
-           (((*ef)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now)) {
-          (*ef)->limit[limitTableIndex].limit = 0;
-          (*ef)->limit[limitTableIndex].limit_time = 0;
+           (((*clientEntryFromHdr)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now)) {
+          (*clientEntryFromHdr)->limit[limitTableIndex].limit = 0;
+          (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = 0;
         }
 
         /*
@@ -6198,12 +6199,12 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
           if(apr_table_get(r->subprocess_env, seenEvent) == NULL) {
             // first occurance
             apr_table_set(r->subprocess_env, seenEvent, "");
-            if((*ef)->limit[limitTableIndex].limit == 0) {
+            if((*clientEntryFromHdr)->limit[limitTableIndex].limit == 0) {
               /* .start timer */
-              (*ef)->limit[limitTableIndex].limit_time = now;
+              (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = now;
             }
             /* increment limit event */
-            (*ef)->limit[limitTableIndex].limit += eventSet;
+            (*clientEntryFromHdr)->limit[limitTableIndex].limit += eventSet;
           }
         }
 
@@ -6215,9 +6216,9 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                       eventName);
         apr_table_set(r->subprocess_env,
                       apr_pstrcat(r->pool, eventName, QS_COUNTER_SUFFIX, NULL),
-                      apr_psprintf(r->pool, "%d", (*ef)->limit[limitTableIndex].limit));
+                      apr_psprintf(r->pool, "%d", (*clientEntryFromHdr)->limit[limitTableIndex].limit));
         
-        remaining = ((*ef)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) - now;
+        remaining = ((*clientEntryFromHdr)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) - now;
         apr_table_set(r->subprocess_env,
                       apr_pstrcat(r->pool, eventName, QS_LIMIT_REMAINING, NULL),
                       apr_psprintf(r->pool, "%"APR_TIME_T_FMT, remaining > 0 ? remaining : 0));
@@ -6225,7 +6226,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
         /*
          * enforce limit
          */
-        if((*ef)->limit[limitTableIndex].limit >= eventLimitConf->limit) {
+        if((*clientEntryFromHdr)->limit[limitTableIndex].limit >= eventLimitConf->limit) {
           int block = 1;
           char *conditional = "";
           if(eventLimitConf->condStr != NULL) {
@@ -6241,7 +6242,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
             }
           }
           if(block) {
-            if(ret == DECLINED || ef != e) {
+            if(ret == DECLINED || clientEntryFromHdr != clientEntry) {
               /* log only one error (either block or limit) */
               *uid = apr_pstrdup(r->connection->pool, "067");
               *msg = apr_psprintf(r->connection->pool, 
@@ -6253,16 +6254,16 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                                   conditional,
                                   eventName,
                                   eventLimitConf->limit,
-                                  (*ef)->limit[limitTableIndex].limit,
-                                  now - (*ef)->limit[limitTableIndex].limit_time,
+                                  (*clientEntryFromHdr)->limit[limitTableIndex].limit,
+                                  now - (*clientEntryFromHdr)->limit[limitTableIndex].limit_time,
                                   forwardedForLogIP == NULL ? "-" : forwardedForLogIP);
               QS_INC_EVENT_LOCKED(sconf, 67);
               ret = m_retcode;
             }
           }
-          if(ef == e) {
-            (*e)->lowrate = apr_time_sec(r->request_time);
-            (*e)->lowratestatus |= QOS_LOW_FLAG_EVENTLIMIT;
+          if(clientEntryFromHdr == clientEntry) {
+            (*clientEntry)->lowrate = apr_time_sec(r->request_time);
+            (*clientEntry)->lowratestatus |= QOS_LOW_FLAG_EVENTLIMIT;
             qs_set_evmsg(r, "r;"); 
           }
         }
@@ -6270,14 +6271,14 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     }
     
     /* reset low prio client after 24h */
-    if(e && sconf->qos_cc_prefer) { 
+    if(clientEntry && sconf->qos_cc_prefer) { 
       apr_time_t now = apr_time_sec(r->request_time); 
-      if(((*e)->lowrate + QOS_LOW_TIMEOUT) < now) {
-        (*e)->lowrate = 0;
-        if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
-          (*e)->lowratestatus = QOS_LOW_FLAG_BEHAVIOR_OK;
+      if(((*clientEntry)->lowrate + QOS_LOW_TIMEOUT) < now) {
+        (*clientEntry)->lowrate = 0;
+        if((*clientEntry)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+          (*clientEntry)->lowratestatus = QOS_LOW_FLAG_BEHAVIOR_OK;
         } else {
-          (*e)->lowratestatus = 0;
+          (*clientEntry)->lowratestatus = 0;
         }
       }
     }
@@ -6525,18 +6526,18 @@ static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t
   conn_rec *c = connection;
   int ret = DECLINED;
   if(cconf && cconf->sconf->has_qos_cc) {
-    qos_s_entry_t **e = NULL;
+    qos_s_entry_t **clientEntry = NULL;
     qos_s_entry_t searchE;
     searchE.ip6[0] = cconf->ip6[0];
     searchE.ip6[1] = cconf->ip6[1];
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT14 */
-    e = qos_cc_get0(u->qos_cc, &searchE, 0);
-    if(!e) {
-      e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
+    clientEntry = qos_cc_get0(u->qos_cc, &searchE, 0);
+    if(!clientEntry) {
+      clientEntry = qos_cc_set(u->qos_cc, &searchE, time(NULL));
     }
 
     /* early vip detection */
-    if((*e)->vip) {
+    if((*clientEntry)->vip) {
       cconf->is_vip = 1;
       apr_table_set(c->notes, QS_ISVIPREQ, "yes");
     }
@@ -6552,35 +6553,35 @@ static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t
                      QS_CONN_REMOTEIP(cconf->mc) == NULL ? "-" : 
                      QS_CONN_REMOTEIP(cconf->mc));
       }
-      if((*e)->lowrate) {
+      if((*clientEntry)->lowrate) {
         if(c->notes) {
-          char *flags = apr_psprintf(c->pool, "0x%02x", (*e)->lowratestatus);
+          char *flags = apr_psprintf(c->pool, "0x%02x", (*clientEntry)->lowratestatus);
           apr_table_set(c->notes, "QS_ClientLowPrio", flags);
         }
       }
       /* non vip (allow all vip addresses - no restrictions) */
-      if(!(*e)->vip) {
+      if(!(*clientEntry)->vip) {
         if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
           int penalty = 4; // 2 to 12 points
           int reqSpare = 0;
-          if((*e)->lowrate) {
-            if((*e)->lowratestatus & QOS_LOW_FLAG_PKGRATE) {
+          if((*clientEntry)->lowrate) {
+            if((*clientEntry)->lowratestatus & QOS_LOW_FLAG_PKGRATE) {
               penalty++;
             }
-            if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_BAD) {
+            if((*clientEntry)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_BAD) {
               penalty+=2;
             }
-            if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTBLOCK) {
+            if((*clientEntry)->lowratestatus & QOS_LOW_FLAG_EVENTBLOCK) {
               penalty+=2;
             }
-            if((*e)->lowratestatus & QOS_LOW_FLAG_EVENTLIMIT) {
+            if((*clientEntry)->lowratestatus & QOS_LOW_FLAG_EVENTLIMIT) {
               penalty+=2;
             }
-            if((*e)->lowratestatus & QOS_LOW_FLAG_TIMEOUT) {
+            if((*clientEntry)->lowratestatus & QOS_LOW_FLAG_TIMEOUT) {
               penalty++;
             }
           }
-          if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+          if((*clientEntry)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
             // normal behavior
             penalty-=2;
           }
@@ -6594,7 +6595,7 @@ static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t
                                   "QS_ClientPrefer rule (penalty=%d 0x%02x): "
                                   "max=%d, concurrent connections=%d, c=%s",
                                   cconf->sconf->log_only ? " (log only)" : "",
-                                  penalty, (*e)->lowratestatus,
+                                  penalty, (*clientEntry)->lowratestatus,
                                   cconf->sconf->qos_cc_prefer_limit, u->qos_cc->connections,
                                   QS_CONN_REMOTEIP(cconf->mc) == NULL ? "-" : 
                                   QS_CONN_REMOTEIP(cconf->mc));
@@ -6721,61 +6722,61 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
       ap_rprintf(r, "%s"QOS_DELIM"QS_AllConn: %s\n", sn, all_connections);
     }
     if((s->is_virtual && (sconf != bsconf)) || !s->is_virtual) {
-      qs_acentry_t *e;
+      qs_acentry_t *actEntry;
       if(!s->is_virtual && sconf->has_qos_cc && sconf->qos_cc_prefer_limit) {
         int hc = u->qos_cc->connections; /* not synchronized ... */
         ap_rprintf(r, "%s"QOS_DELIM"QS_ClientPrefer"QOS_DELIM"%d[]: %d\n", sn,
                    sconf->qos_cc_prefer_limit, hc);
       }
       /* request level */
-      e = sconf->act->entry;
-      while(e) {
-        if((e->limit > 0) && !e->condition && !e->event) {
+      actEntry = sconf->act->entry;
+      while(actEntry) {
+        if((actEntry->limit > 0) && !actEntry->condition && !actEntry->event) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_LocRequestLimit%s"QOS_DELIM"%d[%s]: %d\n", sn,
-                     e->regex == NULL ? "" : "Match", 
-                     e->limit,
-                     e->url, 
-                     e->counter);
+                     actEntry->regex == NULL ? "" : "Match", 
+                     actEntry->limit,
+                     actEntry->url, 
+                     actEntry->counter);
         }
-        if((e->req_per_sec_limit > 0) && !e->event) {
+        if((actEntry->req_per_sec_limit > 0) && !actEntry->event) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_LocRequestPerSecLimit%s"QOS_DELIM"%ld[%s]: %ld\n", sn,
-                     e->regex == NULL ? "" : "Match", 
-                     e->req_per_sec_limit,
-                     e->url,
-                     e->req_per_sec);
+                     actEntry->regex == NULL ? "" : "Match", 
+                     actEntry->req_per_sec_limit,
+                     actEntry->url,
+                     actEntry->req_per_sec);
         }
-        if((e->kbytes_per_sec_limit > 0) && !e->event) {
+        if((actEntry->kbytes_per_sec_limit > 0) && !actEntry->event) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_LocKBytesPerSecLimit%s"QOS_DELIM"%"APR_OFF_T_FMT"[%s]: %"APR_OFF_T_FMT"\n", sn,
-                     e->regex == NULL ? "" : "Match",
-                     e->kbytes_per_sec_limit,
-                     e->url, 
-                     e->kbytes_per_sec);
+                     actEntry->regex == NULL ? "" : "Match",
+                     actEntry->kbytes_per_sec_limit,
+                     actEntry->url, 
+                     actEntry->kbytes_per_sec);
         }
-        if(e->condition && !e->event) {
+        if(actEntry->condition && !actEntry->event) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_CondLocRequestLimitMatch"QOS_DELIM"%d[%s]: %d\n", sn,
-                     e->limit,
-                     e->url, 
-                     e->counter);
+                     actEntry->limit,
+                     actEntry->url, 
+                     actEntry->counter);
         }
-        if(e->event && (e->limit != -1)) {
+        if(actEntry->event && (actEntry->limit != -1)) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_EventRequestLimit"QOS_DELIM"%d[%s]: %d\n", sn,
-                     e->limit,
-                     e->url, 
-                     e->counter);
+                     actEntry->limit,
+                     actEntry->url, 
+                     actEntry->counter);
         }
-        if(e->event && (e->kbytes_per_sec_limit != 0)) {
+        if(actEntry->event && (actEntry->kbytes_per_sec_limit != 0)) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_EventKBytesPerSecLimit"QOS_DELIM"%"APR_OFF_T_FMT"[%s]: %"APR_OFF_T_FMT"\n", sn,
-                     e->kbytes_per_sec_limit,
-                     e->url, 
-                     now > (apr_time_sec(e->kbytes_interval_us) + (QS_BW_SAMPLING_RATE*10)) ? 0 : e->kbytes_per_sec);
+                     actEntry->kbytes_per_sec_limit,
+                     actEntry->url, 
+                     now > (apr_time_sec(actEntry->kbytes_interval_us) + (QS_BW_SAMPLING_RATE*10)) ? 0 : actEntry->kbytes_per_sec);
         }
-        if(e->event && (e->req_per_sec_limit > 0)) {
+        if(actEntry->event && (actEntry->req_per_sec_limit > 0)) {
           ap_rprintf(r, "%s"QOS_DELIM"QS_EventPerSecLimit"QOS_DELIM"%ld[%s]: %ld\n", sn,
-                     e->req_per_sec_limit,
-                     e->url, 
-                     now > (e->interval + (QS_BW_SAMPLING_RATE*3)) ? 0 : e->req_per_sec);
+                     actEntry->req_per_sec_limit,
+                     actEntry->url, 
+                     now > (actEntry->interval + (QS_BW_SAMPLING_RATE*3)) ? 0 : actEntry->req_per_sec);
         }
-        e = e->next;
+        actEntry = actEntry->next;
       }
       /* event limit */
       if(sconf->event_limit_a->nelts > 0) {
@@ -7020,7 +7021,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           unsigned long img;
           unsigned long other;
           unsigned long notmodified;
-          qos_s_entry_t **e = NULL;
+          qos_s_entry_t **clientEntry = NULL;
           qos_s_entry_t searchE;
           int found = 0;
           apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT20 */
@@ -7031,24 +7032,24 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
           notmodified = u->qos_cc->notmodified;
           searchE.ip6[0] = ip[0];
           searchE.ip6[1] = ip[1];
-          e = qos_cc_get0(u->qos_cc, &searchE, 0);
-          if(e) {
+          clientEntry = qos_cc_get0(u->qos_cc, &searchE, 0);
+          if(clientEntry) {
             found = 1;
-            searchE.vip = (*e)->vip;
-            searchE.lowrate = (*e)->lowrate;
-            searchE.lowratestatus = (*e)->lowratestatus;
-            searchE.time = (*e)->time;
-            searchE.block = (*e)->block;
-            searchE.block_time = (*e)->block_time;
-            searchE.limit = (*e)->limit;
-            searchE.req_per_sec = (*e)->req_per_sec;
-            searchE.req_per_sec_block_rate = (*e)->req_per_sec_block_rate;
-            searchE.other = (*e)->other - 1;
-            searchE.html = (*e)->html - 1;
-            searchE.cssjs = (*e)->cssjs - 1;
-            searchE.img = (*e)->img - 1;
-            searchE.notmodified = (*e)->notmodified - 1;
-            searchE.event_req = (*e)->event_req;
+            searchE.vip = (*clientEntry)->vip;
+            searchE.lowrate = (*clientEntry)->lowrate;
+            searchE.lowratestatus = (*clientEntry)->lowratestatus;
+            searchE.time = (*clientEntry)->time;
+            searchE.block = (*clientEntry)->block;
+            searchE.block_time = (*clientEntry)->block_time;
+            searchE.limit = (*clientEntry)->limit;
+            searchE.req_per_sec = (*clientEntry)->req_per_sec;
+            searchE.req_per_sec_block_rate = (*clientEntry)->req_per_sec_block_rate;
+            searchE.other = (*clientEntry)->other - 1;
+            searchE.html = (*clientEntry)->html - 1;
+            searchE.cssjs = (*clientEntry)->cssjs - 1;
+            searchE.img = (*clientEntry)->img - 1;
+            searchE.notmodified = (*clientEntry)->notmodified - 1;
+            searchE.event_req = (*clientEntry)->event_req;
           }
           apr_global_mutex_unlock(u->qos_cc->lock);            /* @CRT20 */
           ap_rputs("    <tr class=\"rowt\">\n", r);
@@ -7337,7 +7338,7 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
     ap_rputs(" <tr><td>\n", r);
   }
   while(s) {
-    qs_acentry_t *e;
+    qs_acentry_t *actEntry;
     if(strcmp(r->handler, "qos-viewer") == 0) {
       ap_rputs("  <table border=\"0\" cellpadding=\"2\" "
                "cellspacing=\"2\" style=\"width: 100%\"><tbody>\n",r);
@@ -7399,8 +7400,8 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
         */
       }
       /* request level */
-      e = sconf->act->entry;
-      if(e) {
+      actEntry = sconf->act->entry;
+      if(actEntry) {
         ap_rputs("    <tr class=\"rowt\">"
                  "<td colspan=\"1\">rule</td>"
                  "<td colspan=\"2\">"
@@ -7427,50 +7428,50 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                  "<td >current</td>", r);
           ap_rputs("</tr>\n", r);
       }
-      while(e) {
+      while(actEntry) {
         char *red = "style=\"background-color: rgb(240,153,155);\"";
         ap_rputs("    <tr class=\"rows\">", r);
         ap_rprintf(r, "<!--%d--><td>%s%s</a></td>", i,
-                   ap_escape_html(r->pool, qos_crline(r, e->url)),
-                   e->condition == NULL ? "" : " <small>(conditional)</small>");
-        if((e->limit == 0) || (e->limit == -1)) {
+                   ap_escape_html(r->pool, qos_crline(r, actEntry->url)),
+                   actEntry->condition == NULL ? "" : " <small>(conditional)</small>");
+        if((actEntry->limit == 0) || (actEntry->limit == -1)) {
           ap_rprintf(r, "<td>-</td>");
           ap_rprintf(r, "<td>-</td>");
         } else {
-          ap_rprintf(r, "<td>%d</td>", e->limit);
+          ap_rprintf(r, "<td>%d</td>", actEntry->limit);
           ap_rprintf(r, "<td %s>%d</td>",
-                     ((e->counter * 100) / e->limit) > 90 ? red : "",
-                     e->counter);
+                     ((actEntry->counter * 100) / actEntry->limit) > 90 ? red : "",
+                     actEntry->counter);
         }
-        if(e->req_per_sec_limit == 0) {
+        if(actEntry->req_per_sec_limit == 0) {
           ap_rprintf(r, "<td>-</td>");
           ap_rprintf(r, "<td>-</td>");
           ap_rprintf(r, "<td>-</td>");
           } else {
           ap_rprintf(r, "<td %s>%d&nbsp;ms</td>",
-                     e->req_per_sec_block_rate ? red : "",
-                     e->req_per_sec_block_rate);
-          ap_rprintf(r, "<td>%ld</td>", e->req_per_sec_limit);
+                     actEntry->req_per_sec_block_rate ? red : "",
+                     actEntry->req_per_sec_block_rate);
+          ap_rprintf(r, "<td>%ld</td>", actEntry->req_per_sec_limit);
           ap_rprintf(r, "<td %s>%ld</td>",
-                     ((e->req_per_sec * 100) / e->req_per_sec_limit) > 90 ? red : "",
-                     now > (e->interval + (QS_BW_SAMPLING_RATE*3)) ? 0 : e->req_per_sec);
+                     ((actEntry->req_per_sec * 100) / actEntry->req_per_sec_limit) > 90 ? red : "",
+                     now > (actEntry->interval + (QS_BW_SAMPLING_RATE*3)) ? 0 : actEntry->req_per_sec);
         }
-        if(e->kbytes_per_sec_limit == 0) {
+        if(actEntry->kbytes_per_sec_limit == 0) {
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
             ap_rprintf(r, "<td>-</td>");
         } else {
-          int hasActualData = now > (apr_time_sec(e->kbytes_interval_us) + QS_BW_SAMPLING_RATE) ? 0 : 1;
+          int hasActualData = now > (apr_time_sec(actEntry->kbytes_interval_us) + QS_BW_SAMPLING_RATE) ? 0 : 1;
           ap_rprintf(r, "<td %s>%"APR_OFF_T_FMT"&nbsp;ms</td>",
-                     hasActualData && (e->kbytes_per_sec_block_rate >= 1000) ? red : "",
-                     e->kbytes_per_sec_block_rate / 1000);
-          ap_rprintf(r, "<td>%"APR_OFF_T_FMT"</td>", e->kbytes_per_sec_limit);
+                     hasActualData && (actEntry->kbytes_per_sec_block_rate >= 1000) ? red : "",
+                     actEntry->kbytes_per_sec_block_rate / 1000);
+          ap_rprintf(r, "<td>%"APR_OFF_T_FMT"</td>", actEntry->kbytes_per_sec_limit);
           ap_rprintf(r, "<td %s>%"APR_OFF_T_FMT"</td>",
-                     hasActualData && (((e->kbytes_per_sec * 100) / e->kbytes_per_sec_limit) > 90) ? red : "",
-                     hasActualData ? e->kbytes_per_sec : 0);
+                     hasActualData && (((actEntry->kbytes_per_sec * 100) / actEntry->kbytes_per_sec_limit) > 90) ? red : "",
+                     hasActualData ? actEntry->kbytes_per_sec : 0);
         }
         ap_rputs("</tr>\n", r);
-        e = e->next;
+        actEntry = actEntry->next;
       }
       /* event limit */
       if(sconf->event_limit_a->nelts > 0) {
@@ -7818,22 +7819,22 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
     /* QS_Block for connection errors */
     while(ip != ips) {
       qos_user_t *u = qos_get_user_conf(sconf->act->ppool);    
-      qos_s_entry_t **e = NULL;
+      qos_s_entry_t **clientEntry = NULL;
       qos_s_entry_t searchE;
       apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT38 */
       ip--;
       searchE.ip6[1] = *ip;
       ip--;
       searchE.ip6[0] = *ip;
-      e = qos_cc_get0(u->qos_cc, &searchE, 0);
-      if(!e) {
-        e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
+      clientEntry = qos_cc_get0(u->qos_cc, &searchE, 0);
+      if(!clientEntry) {
+    	  clientEntry = qos_cc_set(u->qos_cc, &searchE, time(NULL));
       }
       /* increment block event */
-      (*e)->block++;
-      if((*e)->block == 1) {
+      (*clientEntry)->block++;
+      if((*clientEntry)->block == 1) {
         /* ... and start timer */
-        (*e)->block_time = apr_time_sec(apr_time_now());
+        (*clientEntry)->block_time = apr_time_sec(apr_time_now());
       }
       apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT38 */
     }
@@ -8261,7 +8262,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
   qs_conn_ctx *cconf = p;
   if(cconf->sconf->has_qos_cc || cconf->sconf->qos_cc_prefer) {
     qos_user_t *u = qos_get_user_conf(cconf->sconf->act->ppool);
-    qos_s_entry_t **e = NULL;
+    qos_s_entry_t **clientEntry = NULL;
     qos_s_entry_t searchE;
     searchE.ip6[0] = cconf->ip6[0];
     searchE.ip6[1] = cconf->ip6[1];
@@ -8270,17 +8271,17 @@ static apr_status_t qos_cleanup_conn(void *p) {
     if((m_generation != u->qos_cc->generation_locked) && u->qos_cc->connections > 0) {
       u->qos_cc->connections--;
     }
-    e = qos_cc_get0(u->qos_cc, &searchE, 0);
-    if(!e) {
-      e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
+    clientEntry = qos_cc_get0(u->qos_cc, &searchE, 0);
+    if(!clientEntry) {
+      clientEntry = qos_cc_set(u->qos_cc, &searchE, time(NULL));
     }
-    (*e)->events++; // update event activity even there is no valid request (logger)
+    (*clientEntry)->events++; // update event activity even there is no valid request (logger)
     if(cconf->set_vip_by_header) {
-      (*e)->vip = 1;
+      (*clientEntry)->vip = 1;
     }
     if(cconf->has_lowrate) {
-      (*e)->lowrate = time(NULL);
-      (*e)->lowratestatus |= QOS_LOW_FLAG_PKGRATE;
+      (*clientEntry)->lowrate = time(NULL);
+      (*clientEntry)->lowratestatus |= QOS_LOW_FLAG_PKGRATE;
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT15 */
   }
@@ -8357,7 +8358,7 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
     int connections = 0;
     int all_connections = 0;
     int current = 0;
-    qs_ip_entry_t *e = NULL;
+    qs_ip_entry_t *conn_ip = NULL;
     char *msg = NULL;
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(c->base_server->module_config,
                                                                   &qos_module);
@@ -8405,7 +8406,7 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
 
     /* single source ip */
     if(sconf->max_conn_per_ip != -1) {
-      current = qos_inc_ip(sconf, cconf, &e);
+      current = qos_inc_ip(sconf, cconf, &conn_ip);
       apr_table_set(c->notes, "QS_IPConn", apr_psprintf(c->pool, "%d", current));
     }
     /* Check for vip (by ip) */
@@ -8487,13 +8488,13 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
     if((sconf->max_conn_per_ip != -1) && (!vip || sconf->max_conn_per_ip_ignore_vip == 1)) {
       if((current > sconf->max_conn_per_ip) &&
          (all_connections >= sconf->max_conn_per_ip_connections)) {
-        e->error++;
+        conn_ip->error++;
         if(apr_table_get(sconf->setenvstatus_t, QS_MAXIP)) {
           apr_table_set(c->notes, QS_MAXIP, "1");
         }
         /* only print the first 20 messages for this client */
         QS_INC_EVENT(sconf, 31);
-        if(e->error <= QS_LOG_REPEAT) {
+        if(conn_ip->error <= QS_LOG_REPEAT) {
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                        QOS_LOG_PFX(031)"access denied%s,"
                        " QS_SrvMaxConnPerIP rule: max=%d,"
@@ -8503,7 +8504,7 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
                        sconf->max_conn_per_ip, current,
                        QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         } else {
-          if((e->error % QS_LOG_REPEAT) == 0) {
+          if((conn_ip->error % QS_LOG_REPEAT) == 0) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                          QOS_LOG_PFX(031)"access denied%s,"
                          " QS_SrvMaxConnPerIP rule: max=%d,"
@@ -8520,8 +8521,8 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
           return qos_return_error_andclose(c, socket);
         }
       } else {
-        if(e) {
-          if(e->error > QS_LOG_REPEAT) {
+        if(conn_ip) {
+          if(conn_ip->error > QS_LOG_REPEAT) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                          QOS_LOG_PFX(031)"access denied (previously),"
                          " QS_SrvMaxConnPerIP rule: max=%d,"
@@ -8529,10 +8530,10 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
                          " message repeated %d times,"
                          " c=%s",
                          sconf->max_conn_per_ip, current,
-                         e->error % QS_LOG_REPEAT,
+                         conn_ip->error % QS_LOG_REPEAT,
                          QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
           }
-          e->error = 0;
+          conn_ip->error = 0;
         }
       }
     }
@@ -8589,22 +8590,22 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
   /* blocked by event (block only, no limit) - very aggressive */
   if(sconf->qos_cc_block && !excludeFromBlock) {
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-    qos_s_entry_t **e = NULL;
+    qos_s_entry_t **clientEntry = NULL;
     qos_s_entry_t searchE;
     qos_ip_str2long(QS_CONN_REMOTEIP(c), searchE.ip6); // no ip simulation here
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT39 */
-    e = qos_cc_get0(u->qos_cc, &searchE, 0);
-    if(!e) {
-      e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
+    clientEntry = qos_cc_get0(u->qos_cc, &searchE, 0);
+    if(!clientEntry) {
+      clientEntry = qos_cc_set(u->qos_cc, &searchE, time(NULL));
     }
-    if((*e)->block >= sconf->qos_cc_block) {
+    if((*clientEntry)->block >= sconf->qos_cc_block) {
       apr_time_t now = time(NULL);
-      if(((*e)->block_time + sconf->qos_cc_block_time) > now) {
-        (*e)->blockMsg++;;
+      if(((*clientEntry)->block_time + sconf->qos_cc_block_time) > now) {
+        (*clientEntry)->blockMsg++;;
         // stop logging every event if we have logged it many times
         QS_INC_EVENT_LOCKED(sconf, 60);
-        if((*e)->blockMsg > QS_LOG_REPEAT) {
-          if(((*e)->blockMsg % QS_LOG_REPEAT) == 0) {
+        if((*clientEntry)->blockMsg > QS_LOG_REPEAT) {
+          if(((*clientEntry)->blockMsg % QS_LOG_REPEAT) == 0) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                          QOS_LOG_PFX(060)"access denied, "
                          "QS_ClientEventBlockCount rule: "
@@ -8612,7 +8613,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
                          "message repeated %d times, "
                          "c=%s",
                          sconf->qos_cc_block,
-                         (*e)->block,
+                         (*clientEntry)->block,
                          QS_LOG_REPEAT,
                          QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
           }
@@ -8621,8 +8622,8 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
                        QOS_LOG_PFX(060)"access denied, QS_ClientEventBlockCount rule: "
                        "max=%d, current=%d, age=%"APR_TIME_T_FMT", c=%s",
                        sconf->qos_cc_block,
-                       (*e)->block,
-                       now - (*e)->block_time,
+                       (*clientEntry)->block,
+                       now - (*clientEntry)->block_time,
                        QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         }
         if(!sconf->log_only) {
@@ -8637,7 +8638,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
         }
       } else {
         /* release */
-        if((*e)->blockMsg > QS_LOG_REPEAT) {
+        if((*clientEntry)->blockMsg > QS_LOG_REPEAT) {
           // write remaining log lines
           ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                        QOS_LOG_PFX(060)"access denied (previously), QS_ClientEventBlockCount rule: "
@@ -8645,13 +8646,13 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
                        "message repeated %d times, "
                        "c=%s",
                        sconf->qos_cc_block,
-                       (*e)->block,
-                       (*e)->blockMsg % QS_LOG_REPEAT,
+                       (*clientEntry)->block,
+                       (*clientEntry)->blockMsg % QS_LOG_REPEAT,
                        QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));          
-          (*e)->blockMsg = 0;
+          (*clientEntry)->blockMsg = 0;
         }
-        (*e)->block = 0;
-        (*e)->block_time = 0;
+        (*clientEntry)->block = 0;
+        (*clientEntry)->block_time = 0;
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT39 */
@@ -9022,9 +9023,9 @@ static int qos_header_parser(request_rec * r) {
     qs_acentry_t *event_kbytes_per_sec = NULL;
     int status;
     const char *tmostr = NULL;
-    qs_acentry_t *e = NULL;
-    qs_acentry_t *e_cond = NULL;
-    qs_acentry_t *ex = NULL; // either e or e_cond (used for locking)
+    qs_acentry_t *actEntry = NULL;
+    qs_acentry_t *actEntryCond = NULL;
+    qs_acentry_t *actEntryMain = NULL; // either e or e_cond (used for locking)
     qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config,
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
@@ -9205,48 +9206,48 @@ static int qos_header_parser(request_rec * r) {
      * Request level control
      * get rule with conditional enforcement
      */
-    e_cond = qos_getcondrule_byregex(r, sconf);
+    actEntryCond = qos_getcondrule_byregex(r, sconf);
     /* 1st prio has "Match" rule */
-    e = qos_getrule_byregex(r, sconf);
+    actEntry = qos_getrule_byregex(r, sconf);
     /* 2th prio has "URL" rule */
-    if(!e) e = qos_getrule_bylocation(r, sconf);
-    if(e) {
-      ex = e;
-    } else if(e_cond) {
-      ex = e_cond;
+    if(!actEntry) actEntry = qos_getrule_bylocation(r, sconf);
+    if(actEntry) {
+      actEntryMain = actEntry;
+    } else if(actEntryCond) {
+      actEntryMain = actEntryCond;
     }
 
     if(!rctx) {
       rctx = qos_rctx_config_get(r);
     }
     // optimistic locking (write only)
-    if(ex) {
-      rctx->entry_cond = e_cond;
-      rctx->entry = e;
+    if(actEntryMain) {
+      rctx->entry_cond = actEntryCond;
+      rctx->entry = actEntry;
       
-      apr_global_mutex_lock(ex->lock);   /* @CRT5 */
+      apr_global_mutex_lock(actEntryMain->lock);   /* @CRT5 */
 
-      if(e_cond) {
-        e_cond->counter++;
+      if(actEntryCond) {
+        actEntryCond->counter++;
       }
 
-      if(e) {
-        e->counter++;
-        if(e->req_per_sec_block_rate > req_per_sec_block) {
+      if(actEntry) {
+        actEntry->counter++;
+        if(actEntry->req_per_sec_block_rate > req_per_sec_block) {
           /* update req_per_sec_block if event restriction has returned worse block rate */
-          req_per_sec_block = e->req_per_sec_block_rate;
+          req_per_sec_block = actEntry->req_per_sec_block_rate;
         }
       }
 
-      apr_global_mutex_unlock(ex->lock); /* @CRT5 */
+      apr_global_mutex_unlock(actEntryMain->lock); /* @CRT5 */
 
     }
 
-    if(e) {
+    if(actEntry) {
       /*
        * QS_LocRequestLimitMatch/QS_LocRequestLimit/QS_LocRequestLimitDefault enforcement
        */
-      if(e->limit && (e->counter > e->limit)) {
+      if(actEntry->limit && (actEntry->counter > actEntry->limit)) {
         /* vip session has no limitation */
         if(rctx->is_vip) {
           qs_set_evmsg(r, "S;"); 
@@ -9258,7 +9259,7 @@ static int qos_header_parser(request_rec * r) {
                         " concurrent requests=%d,"
                         " c=%s, id=%s",
                         sconf->log_only ? " (log only)" : "",
-                        e->url, e->limit, e->counter,
+                        actEntry->url, actEntry->limit, actEntry->counter,
                         QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                         qos_unique_id(r, "010"));
           QS_INC_EVENT(sconf, 10);
@@ -9298,16 +9299,16 @@ static int qos_header_parser(request_rec * r) {
       /*
        * QS_LocKBytesPerSecLimit selection
        */
-      if(e->kbytes_per_sec_limit) {
+      if(actEntry->kbytes_per_sec_limit) {
         if(kbytes_per_sec_limit) {
-          if(e->kbytes_per_sec_limit < kbytes_per_sec_limit) {
+          if(actEntry->kbytes_per_sec_limit < kbytes_per_sec_limit) {
             // this is lower than the event limitation
-            kbytes_per_sec_limit = e->kbytes_per_sec_limit;
-            event_kbytes_per_sec = e;
+            kbytes_per_sec_limit = actEntry->kbytes_per_sec_limit;
+            event_kbytes_per_sec = actEntry;
           }
         } else {
-          kbytes_per_sec_limit = e->kbytes_per_sec_limit;
-          event_kbytes_per_sec = e;
+          kbytes_per_sec_limit = actEntry->kbytes_per_sec_limit;
+          event_kbytes_per_sec = actEntry;
         }
       }
     }
@@ -9326,15 +9327,15 @@ static int qos_header_parser(request_rec * r) {
       }
     }
     
-    if(e_cond) {
+    if(actEntryCond) {
       /*
        * QS_CondLocRequestLimitMatch
        */
-      if(e_cond->limit && (e_cond->counter > e_cond->limit)) {
+      if(actEntryCond->limit && (actEntryCond->counter > actEntryCond->limit)) {
         /* check condition */
         const char *condition = apr_table_get(r->subprocess_env, QS_COND);
         if(condition) {
-          if(ap_regexec(e_cond->condition, condition, 0, NULL, 0) == 0) {
+          if(ap_regexec(actEntryCond->condition, condition, 0, NULL, 0) == 0) {
             /* vip session has no limitation */
             if(rctx->is_vip) {
               qs_set_evmsg(r, "S;"); 
@@ -9346,7 +9347,7 @@ static int qos_header_parser(request_rec * r) {
                             " rule: %s(%d),"
                             " concurrent requests=%d,"
                             " c=%s, id=%s",
-                            e_cond->url, e_cond->limit, e_cond->counter,
+                            actEntryCond->url, actEntryCond->limit, actEntryCond->counter,
                             QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
                             qos_unique_id(r, "011"));
               QS_INC_EVENT(sconf, 11);
@@ -10238,16 +10239,16 @@ static int qos_fixup(request_rec * r) {
  */
 static int qos_logger(request_rec *r) {
   qs_req_ctx *rctx = qos_rctx_config_get(r);
-  qs_acentry_t *e = rctx->entry;
-  qs_acentry_t *e_cond = rctx->entry_cond;
-  qs_acentry_t *ex = e;
+  qs_acentry_t *actEntry = rctx->entry;
+  qs_acentry_t *actEntryCond = rctx->entry_cond;
+  qs_acentry_t *actEntryMain = actEntry;
   qs_conn_base_ctx *base = qos_get_conn_base_ctx(r->connection);
   qs_conn_ctx *cconf = qos_get_cconf(r->connection);
   apr_time_t now = 0;
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(r->server->module_config, &qos_module);
   qos_dir_config *dconf = ap_get_module_config(r->per_dir_config, &qos_module);
-  if(ex == NULL) {
-    ex = e_cond;
+  if(actEntryMain == NULL) {
+    actEntryMain = actEntryCond;
   }
   if(rctx->response_delayed) {
     qs_set_evmsg(r, "L;"); 
@@ -10284,35 +10285,35 @@ static int qos_logger(request_rec *r) {
   if(sconf->has_event_limit) {
     qos_lg_event_update(r, &now);
   }
-  if(ex) {
+  if(actEntryMain) {
     char *h;
     if(!now) {
       now = apr_time_sec(r->request_time);
     }
-    apr_global_mutex_lock(ex->lock);   /* @CRT6 */
-    h = apr_psprintf(r->pool, "%d", ex->counter);
-    if(e_cond) {
-      if(e_cond->counter > 0) {
-        e_cond->counter--;
+    apr_global_mutex_lock(actEntryMain->lock);   /* @CRT6 */
+    h = apr_psprintf(r->pool, "%d", actEntryMain->counter);
+    if(actEntryCond) {
+      if(actEntryCond->counter > 0) {
+        actEntryCond->counter--;
       }
     }
-    if(e) {
-      if(e->counter > 0) {
-        e->counter--;
+    if(actEntry) {
+      if(actEntry->counter > 0) {
+        actEntry->counter--;
       }
       if(apr_table_get(r->notes, QS_R010_ALREADY_BLOCKED) == NULL) {
-        e->req++;
-        if(now > (e->interval + QS_BW_SAMPLING_RATE)) {
-          e->req_per_sec = e->req / (now - e->interval);
-          e->req = 0;
-          e->interval = now;
-          if(e->req_per_sec_limit) {
-            qos_cal_req_sec(sconf, r, e);
+        actEntry->req++;
+        if(now > (actEntry->interval + QS_BW_SAMPLING_RATE)) {
+          actEntry->req_per_sec = actEntry->req / (now - actEntry->interval);
+          actEntry->req = 0;
+          actEntry->interval = now;
+          if(actEntry->req_per_sec_limit) {
+            qos_cal_req_sec(sconf, r, actEntry);
           }
         }
       }
     }
-    apr_global_mutex_unlock(ex->lock); /* @CRT6 */
+    apr_global_mutex_unlock(actEntryMain->lock); /* @CRT6 */
     /* allow logging of the current location usage */
     apr_table_set(r->subprocess_env, "mod_qos_cr", h);
     if(r->next) {
@@ -10907,17 +10908,17 @@ static int qos_console_dump(request_rec * r, const char *event) {
   if(sconf && sconf->has_qos_cc) {
     int i = 0;
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-    qos_s_entry_t **e = NULL;
+    qos_s_entry_t **clientEntry = NULL;
     /* table requires heap (100'000 ~ 4MB) but we avaoid io with drawn lock */
     apr_table_t *iptable = apr_table_make(r->pool, u->qos_cc->max);
     apr_table_entry_t *entry;
     apr_time_t now = apr_time_sec(r->request_time);
     ap_set_content_type(r, "text/plain");
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT35 */
-    e = u->qos_cc->ipd;
+    clientEntry = u->qos_cc->ipd;
     for(i = 0; i < u->qos_cc->max; i++) {
-      if((e[i]->ip6[0] != 0) ||
-         (e[i]->ip6[1] != 0)) {
+      if((clientEntry[i]->ip6[0] != 0) ||
+         (clientEntry[i]->ip6[1] != 0)) {
         char *k;
         int limit = 0;
         time_t limit_time = 0;
@@ -10925,23 +10926,23 @@ static int qos_console_dump(request_rec * r, const char *event) {
           int limitTableIndex;
           qos_s_entry_limit_conf_t *eventLimitConf = qos_getQSLimitEvent(u, event, &limitTableIndex);
           if(eventLimitConf) {
-            limit = e[i]->limit[limitTableIndex].limit;
-            limit_time = (eventLimitConf->limit_time >= (time(NULL) - e[i]->limit[limitTableIndex].limit_time)) ? 
-              (eventLimitConf->limit_time - (time(NULL) - e[i]->limit[limitTableIndex].limit_time)) : 0;
+            limit = clientEntry[i]->limit[limitTableIndex].limit;
+            limit_time = (eventLimitConf->limit_time >= (time(NULL) - clientEntry[i]->limit[limitTableIndex].limit_time)) ? 
+              (eventLimitConf->limit_time - (time(NULL) - clientEntry[i]->limit[limitTableIndex].limit_time)) : 0;
           }
         }
         k = apr_psprintf(r->pool,
                          "%010d %s vip=%s lowprio=%s block=%d/%ld limit=%d/%ld %ld",
                          i,
-                         qos_ip_long2str(r->pool, e[i]->ip6),
-                         e[i]->vip ? "yes" : "no",
-                         (e[i]->lowrate + QOS_LOW_TIMEOUT) > now ? "yes" : "no",
-                         e[i]->block,
-                         (sconf->qos_cc_block_time >= (time(NULL) - e[i]->block_time)) ? 
-                         (sconf->qos_cc_block_time - (time(NULL) - e[i]->block_time)) : 0,
+                         qos_ip_long2str(r->pool, clientEntry[i]->ip6),
+                         clientEntry[i]->vip ? "yes" : "no",
+                         (clientEntry[i]->lowrate + QOS_LOW_TIMEOUT) > now ? "yes" : "no",
+                         clientEntry[i]->block,
+                         (sconf->qos_cc_block_time >= (time(NULL) - clientEntry[i]->block_time)) ? 
+                         (sconf->qos_cc_block_time - (time(NULL) - clientEntry[i]->block_time)) : 0,
                          limit,
                          limit_time,
-                         e[i]->time);
+                         clientEntry[i]->time);
         apr_table_addn(iptable, k, NULL);
       }
     }
@@ -11091,20 +11092,20 @@ static int qos_handler_console(request_rec * r) {
   if(sconf->has_qos_cc) {
     char *msg = "not available";
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-    qos_s_entry_t **e = NULL;
-    qos_s_entry_t new;
+    qos_s_entry_t **clientEntry = NULL;
+    qos_s_entry_t searchE;
     int limitTableIndex = 0;
     qos_s_entry_limit_conf_t *eventLimitConf = NULL;
     int limit = 0;
     time_t limit_time = 0;
     apr_time_t now = apr_time_sec(r->request_time);
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT34 */
-    new.ip6[0] = addr[0];
-    new.ip6[1] = addr[1];
-    e = qos_cc_get0(u->qos_cc, &new, apr_time_sec(r->request_time));
-    if(!e) {
+    searchE.ip6[0] = addr[0];
+    searchE.ip6[1] = addr[1];
+    clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
+    if(!clientEntry) {
       if(strcasecmp(cmd, "search") != 0) {
-        e = qos_cc_set(u->qos_cc, &new, time(NULL));
+        clientEntry = qos_cc_set(u->qos_cc, &searchE, time(NULL));
         ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_INFO, 0, r,
                       QOS_LOG_PFX(071)"console, add new client ip entry '%s', is=%s",
                       ip, qos_unique_id(r, "071"));
@@ -11115,48 +11116,48 @@ static int qos_handler_console(request_rec * r) {
       eventLimitConf = qos_getQSLimitEvent(u, event, &limitTableIndex);
     }
     if(strcasecmp(cmd, "setvip") == 0) {
-      (*e)->vip = 1;
+      (*clientEntry)->vip = 1;
     } else if(strcasecmp(cmd, "unsetvip") == 0) {
-      (*e)->vip = 0;
+      (*clientEntry)->vip = 0;
     } else if(strcasecmp(cmd, "setlowprio") == 0) {
-      (*e)->lowrate = time(NULL);
-      (*e)->lowratestatus = 0xff;
-      (*e)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
+      (*clientEntry)->lowrate = time(NULL);
+      (*clientEntry)->lowratestatus = 0xff;
+      (*clientEntry)->lowratestatus &= ~QOS_LOW_FLAG_BEHAVIOR_OK;
     } else if(strcasecmp(cmd, "unsetlowprio") == 0) {
-      (*e)->lowrate = 0;
-      if((*e)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
-        (*e)->lowratestatus = QOS_LOW_FLAG_BEHAVIOR_OK;
+      (*clientEntry)->lowrate = 0;
+      if((*clientEntry)->lowratestatus & QOS_LOW_FLAG_BEHAVIOR_OK) {
+        (*clientEntry)->lowratestatus = QOS_LOW_FLAG_BEHAVIOR_OK;
       } else {
-        (*e)->lowratestatus = 0;
+        (*clientEntry)->lowratestatus = 0;
       }
     } else if(strcasecmp(cmd, "unblock") == 0) {
-      (*e)->block_time = 0;
-      (*e)->block = 0;
+      (*clientEntry)->block_time = 0;
+      (*clientEntry)->block = 0;
     } else if(strcasecmp(cmd, "block") == 0) {
-      (*e)->block_time = time(NULL);
-      (*e)->block = sconf->qos_cc_block + 1000;
+      (*clientEntry)->block_time = time(NULL);
+      (*clientEntry)->block = sconf->qos_cc_block + 1000;
     } else if(strcasecmp(cmd, "unlimit") == 0) {
       if(eventLimitConf) {
-        (*e)->limit[limitTableIndex].limit_time = 0;
-        (*e)->limit[limitTableIndex].limit = 0;
+        (*clientEntry)->limit[limitTableIndex].limit_time = 0;
+        (*clientEntry)->limit[limitTableIndex].limit = 0;
       }
     } else if(strcasecmp(cmd, "limit") == 0) {
       if(eventLimitConf) {
-        (*e)->limit[limitTableIndex].limit_time = time(NULL);
-        (*e)->limit[limitTableIndex].limit = eventLimitConf->limit + 1000;
+        (*clientEntry)->limit[limitTableIndex].limit_time = time(NULL);
+        (*clientEntry)->limit[limitTableIndex].limit = eventLimitConf->limit + 1000;
       }
     } else if(strcasecmp(cmd, "inclimit") == 0) {
       if(eventLimitConf) {
-        if(((*e)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now) {
+        if(((*clientEntry)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now) {
           // expired
-          (*e)->limit[limitTableIndex].limit = 0;
-          (*e)->limit[limitTableIndex].limit_time = 0;
+          (*clientEntry)->limit[limitTableIndex].limit = 0;
+          (*clientEntry)->limit[limitTableIndex].limit_time = 0;
         }
         // increment limit event
-        (*e)->limit[limitTableIndex].limit++;
-        if((*e)->limit[limitTableIndex].limit == 1) {
+        (*clientEntry)->limit[limitTableIndex].limit++;
+        if((*clientEntry)->limit[limitTableIndex].limit == 1) {
           // first, start timer
-          (*e)->limit[limitTableIndex].limit_time = now;
+          (*clientEntry)->limit[limitTableIndex].limit_time = now;
         }
       }
     } else if(strcasecmp(cmd, "search") == 0) {
@@ -11167,18 +11168,18 @@ static int qos_handler_console(request_rec * r) {
                     cmd, qos_unique_id(r, "070"));
       status = HTTP_NOT_ACCEPTABLE;
     }
-    if(e) {
+    if(clientEntry) {
       if(eventLimitConf) {
-        limit = (*e)->limit[limitTableIndex].limit;
-        limit_time = (eventLimitConf->limit_time >= (time(NULL) - (*e)->limit[limitTableIndex].limit_time)) ? 
-          (eventLimitConf->limit_time - (time(NULL) - (*e)->limit[limitTableIndex].limit_time)) : 0;
+        limit = (*clientEntry)->limit[limitTableIndex].limit;
+        limit_time = (eventLimitConf->limit_time >= (time(NULL) - (*clientEntry)->limit[limitTableIndex].limit_time)) ? 
+          (eventLimitConf->limit_time - (time(NULL) - (*clientEntry)->limit[limitTableIndex].limit_time)) : 0;
       }
       msg = apr_psprintf(r->pool, "%s vip=%s lowprio=%s block=%d/%ld limit=%d/%ld", ip,
-                         (*e)->vip ? "yes" : "no",
-                         ((*e)->lowrate + QOS_LOW_TIMEOUT) > now ? "yes" : "no",
-                         (*e)->block,
-                         (sconf->qos_cc_block_time >= (time(NULL) - (*e)->block_time)) ? 
-                         (sconf->qos_cc_block_time - (time(NULL) - (*e)->block_time)) : 0,
+                         (*clientEntry)->vip ? "yes" : "no",
+                         ((*clientEntry)->lowrate + QOS_LOW_TIMEOUT) > now ? "yes" : "no",
+                         (*clientEntry)->block,
+                         (sconf->qos_cc_block_time >= (time(NULL) - (*clientEntry)->block_time)) ? 
+                         (sconf->qos_cc_block_time - (time(NULL) - (*clientEntry)->block_time)) : 0,
                          limit,
                          limit_time);
     }
