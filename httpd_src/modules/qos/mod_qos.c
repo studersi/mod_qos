@@ -386,12 +386,12 @@ static const qos_dscp_t m_dscp_desc[] = {
 
 typedef struct {
   short int limit;
-  time_t limit_time;
+  time_t limitTime;
 } qos_s_entry_limit_t;
 
 typedef struct {
   short int limit;
-  time_t limit_time;
+  time_t limitTime;
   const char *eventClearStr; // name of the var clearing the counter
   const char *eventDecStr; // name of the var decrementing the counter
   const char *condStr;
@@ -415,14 +415,14 @@ typedef struct {
   unsigned int events;
   /* serialization flag */
   unsigned int serialize;
-  apr_time_t serialize_queue;
+  apr_time_t serializeQueue;
   /* prefer */
   short int vip;
   /* ev block */
   short int block;
   short int blockMsg;
   time_t time;
-  time_t block_time;
+  time_t blockTime;
   qos_s_entry_limit_t *limit;
   /* ev/sec */
   time_t interval;
@@ -621,7 +621,7 @@ typedef struct {
   int max;            // configured max. num
   int seconds;        // configured duration
   int limit;          // event counter
-  time_t limit_time;  // timer
+  time_t limitTime;  // timer
   qs_event_action_e action;
   const char *condStr;
 #ifdef AP_REGEX_H
@@ -838,7 +838,7 @@ typedef struct {
   int qos_cc_event;           /* GLOBAL ONLY */
   int qos_cc_event_req;       /* GLOBAL ONLY */
   int qos_cc_block;           /* GLOBAL ONLY */
-  int qos_cc_block_time;      /* GLOBAL ONLY */
+  int qos_cc_blockTime;      /* GLOBAL ONLY */
   apr_table_t *qos_cc_limitTable;    /* GLOBAL ONLY */
   char *qos_cc_forwardedfor;  /* GLOBAL ONLY */
   int qos_cc_serialize;       /* GLOBAL ONLY */
@@ -856,7 +856,7 @@ typedef struct {
   int server_limit;
   int thread_limit;
   apr_array_header_t *milestones;
-  time_t milestone_timeout;
+  time_t milestoneTimeout;
   /* predefined client behavior */
   int static_on;
   unsigned long long static_html;
@@ -884,7 +884,7 @@ typedef struct {
  * in_filter ctx
  */
 typedef struct {
-  apr_socket_t *client_socket;
+  apr_socket_t *clientSocket;
   qs_conn_state_e status;
   apr_off_t cl_val;
   conn_rec *c;
@@ -920,7 +920,7 @@ typedef struct {
   conn_rec *c;
   qos_srv_config *sconf;
   int requests; // number of requests processed (received) by this connection  
-  apr_socket_t *client_socket;
+  apr_socket_t *clientSocket;
 } qs_conn_base_ctx;
 
 /**
@@ -1622,7 +1622,7 @@ static qos_s_t *qos_cc_new(apr_pool_t *pool, server_rec *srec, int size,
       qos_s_entry_limit_conf_t *eventLimitConf = apr_pcalloc(pool, sizeof(qos_s_entry_limit_conf_t));
       qos_s_entry_limit_conf_t *src = (qos_s_entry_limit_conf_t*)te[i].val;
       eventLimitConf->limit = src->limit;
-      eventLimitConf->limit_time = src->limit_time;
+      eventLimitConf->limitTime = src->limitTime;
       eventLimitConf->eventClearStr = apr_pstrcat(pool, eventName, QS_LIMIT_CLEAR, NULL);
       eventLimitConf->eventDecStr = apr_pstrcat(pool, eventName, QS_LIMIT_DEC, NULL);
       eventLimitConf->condStr = NULL;
@@ -1773,12 +1773,12 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->lowratestatus = 0;
   (*pB)->block = 0;
   (*pB)->blockMsg = 0;
-  (*pB)->block_time = 0;
+  (*pB)->blockTime = 0;
   if(s->limitTable) {
     int i;
     for(i = 0; i < apr_table_elts(s->limitTable)->nelts; i++) {
       (*pB)->limit[i].limit = 0;
-      (*pB)->limit[i].limit_time = 0;
+      (*pB)->limit[i].limitTime = 0;
     }
   }
   (*pB)->interval = now;
@@ -1787,7 +1787,7 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   (*pB)->req_per_sec_block_rate = 0;
   (*pB)->event_req = 0;
   (*pB)->serialize = 0;
-  (*pB)->serialize_queue = 0;
+  (*pB)->serializeQueue = 0;
   (*pB)->html = 1;
   (*pB)->cssjs = 1;
   (*pB)->img = 1;
@@ -2484,7 +2484,7 @@ static int qos_verify_milestone(request_rec *r, qos_srv_config* sconf, const cha
       apr_time_t *t = (apr_time_t *)buf;
       apr_time_t now = apr_time_sec(r->request_time);
       age = now - *t;
-      if(now <= (*t + sconf->milestone_timeout)) {
+      if(now <= (*t + sconf->milestoneTimeout)) {
         ms = atoi((char *)&buf[sizeof(apr_time_t)]);
       }
     }
@@ -2996,7 +2996,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
         eventEntryDst->max = eventEntrySrc->max;
         eventEntryDst->seconds = eventEntrySrc->seconds;
         eventEntryDst->limit = 0;
-        eventEntryDst->limit_time = 0;
+        eventEntryDst->limitTime = 0;
         eventEntryDst->action = eventEntrySrc->action;
         eventEntryDst->condStr = eventEntrySrc->condStr;
         eventEntryDst->preg = eventEntrySrc->preg;
@@ -3313,12 +3313,12 @@ static qos_ifctx_t *qos_create_ifctx(conn_rec *connection, qos_srv_config *sconf
   conn_rec *c = connection;
   char buf[128];
   qos_ifctx_t *inctx = apr_pcalloc(c->pool, sizeof(qos_ifctx_t));
-  inctx->client_socket = NULL;
+  inctx->clientSocket = NULL;
   inctx->status = QS_CONN_STATE_NEW;
   inctx->cl_val = 0;
   inctx->c = c;
   inctx->r = NULL;
-  inctx->client_socket = NULL;
+  inctx->clientSocket = NULL;
   inctx->time = 0;
   inctx->nbytes = 0;
   inctx->hasBytes = 0;
@@ -3354,7 +3354,7 @@ static qs_conn_base_ctx *qos_create_conn_base_ctx(conn_rec *connection, qos_srv_
   base->requests = 0;
   base->c = c;
   base->sconf = sconf;
-  base->client_socket = NULL;
+  base->clientSocket = NULL;
   ap_set_module_config(c->conn_config, &qos_module, base);
   apr_pool_pre_cleanup_register(c->pool, base, qos_base_cleanup_conn);
   return base;
@@ -5022,7 +5022,7 @@ static void qos_pr_event_limit(request_rec *r, qos_srv_config *sconf) {
     for(i = 0; i < sconf->event_limit_a->nelts; i++) {
       if(entry->action == QS_EVENT_ACTION_DENY) {
         // propagte to environment (previous value)
-        if(entry->limit_time + entry->seconds >= now) {
+        if(entry->limitTime + entry->seconds >= now) {
           apr_table_set(r->subprocess_env,
                         apr_pstrcat(r->pool, entry->env_var, QS_COUNTER_SUFFIX, NULL),
                         apr_psprintf(r->pool, "%d", entry->limit));
@@ -5052,15 +5052,15 @@ static int qos_hp_event_limit(request_rec *r, qos_srv_config *sconf) {
           char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, entry->env_var, NULL);
           apr_table_set(r->notes, eventLimitId, "");
           // reset required (expired)?
-          if(entry->limit_time + entry->seconds < now) {
+          if(entry->limitTime + entry->seconds < now) {
             entry->limit = 0;
-            entry->limit_time = 0;
+            entry->limitTime = 0;
           }
           /* increment limit event */
           entry->limit++;
           if(entry->limit == 1) {
             /* ... and start timer */
-            entry->limit_time = now;
+            entry->limitTime = now;
           }
           // check limit
           if(entry->limit > entry->max) {
@@ -5329,21 +5329,21 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
       }
       if((*clientEntry)->serialize == 0) {
         // free! check if this request is the next in the queue */
-        if(((*clientEntry)->serialize_queue == 0) || (r->request_time <= (*clientEntry)->serialize_queue)) {
+        if(((*clientEntry)->serializeQueue == 0) || (r->request_time <= (*clientEntry)->serializeQueue)) {
           (*clientEntry)->serialize = 1;
-          (*clientEntry)->serialize_queue = 0;
+          (*clientEntry)->serializeQueue = 0;
           rctx->cc_serialize_set = 1;
           locked = 1;
         }
       } else {
         // put the request into the queue
-        if((*clientEntry)->serialize_queue == 0) {
+        if((*clientEntry)->serializeQueue == 0) {
           // the only waiting req
-          (*clientEntry)->serialize_queue = r->request_time;
+          (*clientEntry)->serializeQueue = r->request_time;
         } else {
-          if((*clientEntry)->serialize_queue > r->request_time) {
+          if((*clientEntry)->serializeQueue > r->request_time) {
             // this request is waiting for a longer time
-            (*clientEntry)->serialize_queue = r->request_time;
+            (*clientEntry)->serializeQueue = r->request_time;
           }
         }
       }
@@ -5374,7 +5374,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
         if(!clientEntry) {
           clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
         }
-        (*clientEntry)->serialize_queue = 0;
+        (*clientEntry)->serializeQueue = 0;
         apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT36.1 */      
         break;
       }
@@ -5729,7 +5729,7 @@ static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
         if(decEvent > 0) {
           if(decEvent >= actEntry->limit) {
             actEntry->limit = 0;
-            actEntry->limit_time = 0;
+            actEntry->limitTime = 0;
           } else {
             actEntry->limit = actEntry->limit - decEvent;
           }
@@ -5739,15 +5739,15 @@ static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
           char *eventLimitId = apr_pstrcat(r->pool, QS_R013_ALREADY_BLOCKED, actEntry->env_var, NULL);
           if(apr_table_get(r->notes, eventLimitId) == NULL) {
             // reset required (expired)?
-            if(actEntry->limit_time + actEntry->seconds < now) {
+            if(actEntry->limitTime + actEntry->seconds < now) {
               actEntry->limit = 0;
-              actEntry->limit_time = 0;
+              actEntry->limitTime = 0;
             }
             /* increment limit event */
             actEntry->limit++;
             if(actEntry->limit == 1) {
               /* ... and start timer */
-              actEntry->limit_time = now;
+              actEntry->limitTime = now;
             }
           }
         }
@@ -5891,7 +5891,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   }
 
   if(block_event || block_dec || lowrate || (unusual_behavior > 0)) {
-    if(((*clientEntry)->block_time + sconf->qos_cc_block_time) < now) {
+    if(((*clientEntry)->blockTime + sconf->qos_cc_blockTime) < now) {
       /* reset expired events */
       if((*clientEntry)->blockMsg > QS_LOG_REPEAT) {
         // write remaining log lines
@@ -5910,7 +5910,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
         (*clientEntry)->blockMsg = 0;
       }
       (*clientEntry)->block = 0;
-      (*clientEntry)->block_time = 0;
+      (*clientEntry)->blockTime = 0;
     }
     /* mark lowpkt client */
     if(lowrate || (unusual_behavior > 0)) {
@@ -5927,7 +5927,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     if(block_dec > 0) {
       if(block_dec >= (*clientEntry)->block) {
         (*clientEntry)->block = 0;
-        (*clientEntry)->block_time = 0;
+        (*clientEntry)->blockTime = 0;
       } else {
         (*clientEntry)->block = (*clientEntry)->block - block_dec;
       }
@@ -5935,7 +5935,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
     if(block_event) {
       if((*clientEntry)->block == 0) {
         /* start timer */
-        (*clientEntry)->block_time = now;
+        (*clientEntry)->blockTime = now;
       }
       /* ...and increment/increase block event counter */
       (*clientEntry)->block += block_event;
@@ -5969,14 +5969,14 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
        * reset expired events, clear event counter, decrement event counter
        */
       if(clearEvent ||
-         (((*clientEntryFromHdr)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now)) {
+         (((*clientEntryFromHdr)->limit[limitTableIndex].limitTime + eventLimitConf->limitTime) < now)) {
         (*clientEntryFromHdr)->limit[limitTableIndex].limit = 0;
-        (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = 0;
+        (*clientEntryFromHdr)->limit[limitTableIndex].limitTime = 0;
       }
       if(decEvent > 0) {
         if(decEvent >= (*clientEntryFromHdr)->limit[limitTableIndex].limit) {
           (*clientEntryFromHdr)->limit[limitTableIndex].limit = 0;
-          (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = 0;
+          (*clientEntryFromHdr)->limit[limitTableIndex].limitTime = 0;
         } else {
           (*clientEntryFromHdr)->limit[limitTableIndex].limit = (*clientEntryFromHdr)->limit[limitTableIndex].limit - decEvent;
         }
@@ -5999,7 +5999,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
           apr_table_set(r->subprocess_env, seenEvent, "");
           if((*clientEntryFromHdr)->limit[limitTableIndex].limit == 0) {
             /* start timer... */
-            (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = now;
+            (*clientEntryFromHdr)->limit[limitTableIndex].limitTime = now;
           }
           /* ... and increase limit event */
           (*clientEntryFromHdr)->limit[limitTableIndex].limit += eventSet;
@@ -6111,7 +6111,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
     if(sconf->qos_cc_block && !excludeFromBlock) {
       apr_time_t now = apr_time_sec(r->request_time);
       int block_event = get_qs_event(r, QS_BLOCK);
-      if(((*clientEntry)->block_time + sconf->qos_cc_block_time) < now) {
+      if(((*clientEntry)->blockTime + sconf->qos_cc_blockTime) < now) {
         /* reset expired events */
         if((*clientEntry)->blockMsg > QS_LOG_REPEAT) {
           // write remaining log lines
@@ -6130,12 +6130,12 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
           (*clientEntry)->blockMsg = 0;
         }
         (*clientEntry)->block = 0;
-        (*clientEntry)->block_time = 0;
+        (*clientEntry)->blockTime = 0;
       }
       if(block_event) {
         if((*clientEntry)->block == 0) {
           /* start timer */
-          (*clientEntry)->block_time = now;
+          (*clientEntry)->blockTime = now;
         }
         /* ... and increment block event */
         (*clientEntry)->block += block_event;
@@ -6152,7 +6152,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                             sconf->log_only ? " (log only)" : "",
                             sconf->qos_cc_block,
                             (*clientEntry)->block,
-                            now - (*clientEntry)->block_time,
+                            now - (*clientEntry)->blockTime,
                             QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : 
                             QS_CONN_REMOTEIP(r->connection));
         QS_INC_EVENT_LOCKED(sconf, 60);
@@ -6179,9 +6179,9 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
          * reset expired events or clear event counter
          */
         if(clearEvent ||
-           (((*clientEntryFromHdr)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now)) {
+           (((*clientEntryFromHdr)->limit[limitTableIndex].limitTime + eventLimitConf->limitTime) < now)) {
           (*clientEntryFromHdr)->limit[limitTableIndex].limit = 0;
-          (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = 0;
+          (*clientEntryFromHdr)->limit[limitTableIndex].limitTime = 0;
         }
 
         /*
@@ -6201,7 +6201,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
             apr_table_set(r->subprocess_env, seenEvent, "");
             if((*clientEntryFromHdr)->limit[limitTableIndex].limit == 0) {
               /* .start timer */
-              (*clientEntryFromHdr)->limit[limitTableIndex].limit_time = now;
+              (*clientEntryFromHdr)->limit[limitTableIndex].limitTime = now;
             }
             /* increment limit event */
             (*clientEntryFromHdr)->limit[limitTableIndex].limit += eventSet;
@@ -6218,7 +6218,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                       apr_pstrcat(r->pool, eventName, QS_COUNTER_SUFFIX, NULL),
                       apr_psprintf(r->pool, "%d", (*clientEntryFromHdr)->limit[limitTableIndex].limit));
         
-        remaining = ((*clientEntryFromHdr)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) - now;
+        remaining = ((*clientEntryFromHdr)->limit[limitTableIndex].limitTime + eventLimitConf->limitTime) - now;
         apr_table_set(r->subprocess_env,
                       apr_pstrcat(r->pool, eventName, QS_LIMIT_REMAINING, NULL),
                       apr_psprintf(r->pool, "%"APR_TIME_T_FMT, remaining > 0 ? remaining : 0));
@@ -6255,7 +6255,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
                                   eventName,
                                   eventLimitConf->limit,
                                   (*clientEntryFromHdr)->limit[limitTableIndex].limit,
-                                  now - (*clientEntryFromHdr)->limit[limitTableIndex].limit_time,
+                                  now - (*clientEntryFromHdr)->limit[limitTableIndex].limitTime,
                                   forwardedForLogIP == NULL ? "-" : forwardedForLogIP);
               QS_INC_EVENT_LOCKED(sconf, 67);
               ret = m_retcode;
@@ -6784,7 +6784,7 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
         qos_event_limit_entry_t *event_limit = sconf->act->event_entry;
         for(ie = 0; ie < sconf->event_limit_a->nelts; ie++) {
           int elimit = event_limit->limit;
-          if(event_limit->limit_time + event_limit->seconds <= now) {
+          if(event_limit->limitTime + event_limit->seconds <= now) {
             elimit = 0;
           }
           if(event_limit->action == QS_EVENT_ACTION_DENY) {
@@ -7040,7 +7040,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             searchE.lowratestatus = (*clientEntry)->lowratestatus;
             searchE.time = (*clientEntry)->time;
             searchE.block = (*clientEntry)->block;
-            searchE.block_time = (*clientEntry)->block_time;
+            searchE.blockTime = (*clientEntry)->blockTime;
             searchE.limit = (*clientEntry)->limit;
             searchE.req_per_sec = (*clientEntry)->req_per_sec;
             searchE.req_per_sec_block_rate = (*clientEntry)->req_per_sec_block_rate;
@@ -7076,9 +7076,9 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
             strftime(buf, sizeof(buf), "%d.%m.%Y %H:%M:%S", ptr);
             ap_rprintf(r, "<td colspan=\"2\">%s</td>", buf);
             ap_rprintf(r, "<td colspan=\"1\">%s</td>", searchE.vip ? "yes" : "no");
-            if(sconf->qos_cc_block_time > (time(NULL) - searchE.block_time)) {
+            if(sconf->qos_cc_blockTime > (time(NULL) - searchE.blockTime)) {
               ap_rprintf(r, "<td colspan=\"1\">%d, %ld&nbsp;sec</td>",
-                         searchE.block, time(NULL) - searchE.block_time);
+                         searchE.block, time(NULL) - searchE.blockTime);
             } else {
               ap_rprintf(r, "<td colspan=\"1\">no</td>");
             }
@@ -7087,9 +7087,9 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
               int limitTableIndex;
               qos_s_entry_limit_conf_t *eventLimitConf = qos_getQSLimitEvent(u, QS_LIMIT_DEFAULT, &limitTableIndex);
               if(eventLimitConf) {
-                if(eventLimitConf->limit_time > (time(NULL) - searchE.limit[limitTableIndex].limit_time)) {
+                if(eventLimitConf->limitTime > (time(NULL) - searchE.limit[limitTableIndex].limitTime)) {
                   ap_rprintf(r, "<td colspan=\"1\">%d, %ld&nbsp;sec</td>",
-                             searchE.limit[limitTableIndex].limit, time(NULL) - searchE.limit[limitTableIndex].limit_time);
+                             searchE.limit[limitTableIndex].limit, time(NULL) - searchE.limit[limitTableIndex].limitTime);
                 } else {
                   ap_rprintf(r, "<td colspan=\"1\">no</td>");
                 }
@@ -7485,9 +7485,9 @@ static int qos_ext_status_hook(request_rec *r, int flags) {
                  "<td colspan=\"2\">current</td>", r);
         ap_rputs("</tr>\n", r);
         for(ie = 0; ie < sconf->event_limit_a->nelts; ie++) {
-          int edelta = event_limit->limit_time + event_limit->seconds - now;
+          int edelta = event_limit->limitTime + event_limit->seconds - now;
           int elimit = event_limit->limit;
-          if(event_limit->limit_time + event_limit->seconds <= now) {
+          if(event_limit->limitTime + event_limit->seconds <= now) {
             elimit = 0;
             edelta = 0;
           }
@@ -7699,7 +7699,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
       if(inctx->status == QS_CONN_STATE_KEEP) {
         /* enforce keep alive */
         apr_interval_time_t current_timeout = 0;
-        apr_socket_timeout_get(inctx->client_socket, &current_timeout);
+        apr_socket_timeout_get(inctx->clientSocket, &current_timeout);
         /* add 5sec tolerance to receive the request line 
            or let Apache close the connection */
         /* ignored by event MPM ! */
@@ -7737,7 +7737,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
             inctx->nbytes = 0;
             if((level == APLOG_ERR) &&
                !sconf->log_only) {
-              apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+              apr_socket_shutdown(inctx->clientSocket, APR_SHUTDOWN_READ);
             }
             /* mark slow clients (QS_ClientPrefer) even they are VIP */
             inctx->shutdown = 1;
@@ -7750,7 +7750,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
         if(interval > inctx->time) {
           int rate = inctx->nbytes / sconf->qs_req_rate_tm;
           if(rate < req_rate) {
-            if(inctx->client_socket) {
+            if(inctx->clientSocket) {
               qs_conn_ctx *cconf = qos_get_cconf(inctx->c);
               int level = APLOG_ERR;
               int notUsed = 0;
@@ -7794,11 +7794,11 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                 inctx->nbytes = 0;
                 if((level == APLOG_ERR) && !sconf->log_only) {
                   if(inctx->status == QS_CONN_STATE_RESPONSE) {
-                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_WRITE);
+                    apr_socket_shutdown(inctx->clientSocket, APR_SHUTDOWN_WRITE);
                     /* close out socket (the hard way) */
-                    apr_socket_close(inctx->client_socket);
+                    apr_socket_close(inctx->clientSocket);
                   } else {
-                    apr_socket_shutdown(inctx->client_socket, APR_SHUTDOWN_READ);
+                    apr_socket_shutdown(inctx->clientSocket, APR_SHUTDOWN_READ);
                   }
                 }
                 /* mark slow clients (QS_ClientPrefer) even they are VIP */
@@ -7834,7 +7834,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
       (*clientEntry)->block++;
       if((*clientEntry)->block == 1) {
         /* ... and start timer */
-        (*clientEntry)->block_time = apr_time_sec(apr_time_now());
+        (*clientEntry)->blockTime = apr_time_sec(apr_time_now());
       }
       apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT38 */
     }
@@ -8234,7 +8234,7 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
       (*e)->block++;
       if((*e)->block == 1) {
         /* ... and start timer */
-        (*e)->block_time = apr_time_sec(apr_time_now());
+        (*e)->blockTime = apr_time_sec(apr_time_now());
       }
       apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT40 */
       if(QS_ISDEBUG(base->c->base_server)) {
@@ -8578,12 +8578,12 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
   base = qos_get_conn_base_ctx(c);
   if(base == NULL) {
     base = qos_create_conn_base_ctx(c, sconf);
-    base->client_socket = skt;
+    base->clientSocket = skt;
   }
 
   if(sconf && (sconf->req_rate != -1)) {
     qos_ifctx_t *inctx = qos_create_ifctx(c, sconf);
-    inctx->client_socket = skt;
+    inctx->clientSocket = skt;
     ap_add_input_filter("qos-in-filter", inctx, NULL, c);
   }
 
@@ -8600,7 +8600,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
     }
     if((*clientEntry)->block >= sconf->qos_cc_block) {
       apr_time_t now = time(NULL);
-      if(((*clientEntry)->block_time + sconf->qos_cc_block_time) > now) {
+      if(((*clientEntry)->blockTime + sconf->qos_cc_blockTime) > now) {
         (*clientEntry)->blockMsg++;;
         // stop logging every event if we have logged it many times
         QS_INC_EVENT_LOCKED(sconf, 60);
@@ -8623,7 +8623,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
                        "max=%d, current=%d, age=%"APR_TIME_T_FMT", c=%s",
                        sconf->qos_cc_block,
                        (*clientEntry)->block,
-                       now - (*clientEntry)->block_time,
+                       now - (*clientEntry)->blockTime,
                        QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         }
         if(!sconf->log_only) {
@@ -8652,7 +8652,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
           (*clientEntry)->blockMsg = 0;
         }
         (*clientEntry)->block = 0;
-        (*clientEntry)->block_time = 0;
+        (*clientEntry)->blockTime = 0;
       }
     }
     apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT39 */
@@ -9107,13 +9107,13 @@ static int qos_header_parser(request_rec * r) {
       apr_interval_time_t timeout = apr_time_from_sec(atoi(tmostr));
       if(timeout > 0) {
         qs_conn_base_ctx *bctx = qos_get_conn_base_ctx(r->connection);
-        if(bctx && bctx->client_socket) {
+        if(bctx && bctx->clientSocket) {
           if(QS_ISDEBUG(r->server)) {
             ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
                           QOS_LOGD_PFX"set connection timeout to %s seconds, id=%s",
                           tmostr, qos_unique_id(r, NULL));
           }
-          apr_socket_timeout_set(bctx->client_socket, timeout);
+          apr_socket_timeout_set(bctx->clientSocket, timeout);
         }
       }
     }
@@ -9948,8 +9948,8 @@ static void qos_set_dscp(request_rec *r) {
     qs_conn_base_ctx *base = qos_get_conn_base_ctx(r->connection);
     int rc = -2;
     int hasSocket = 0;
-    if(base!=NULL && base->client_socket!=NULL) {
-      apr_socket_t *sock = base->client_socket;
+    if(base!=NULL && base->clientSocket!=NULL) {
+      apr_socket_t *sock = base->clientSocket;
       int fd;
       int dscp = atoi(dscpStr);
       hasSocket = 1;
@@ -10683,7 +10683,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
           qos_s_entry_limit_conf_t *entryConf = (qos_s_entry_limit_conf_t *)apr_table_get(u->qos_cc->limitTable, name);
           if(entryConf) {
             entryConf->limit = newentry->limit;
-            entryConf->limit_time = newentry->limit_time;
+            entryConf->limitTime = newentry->limitTime;
             entryConf->condStr = NULL;
             entryConf->preg = NULL;
             if(newentry->condStr) {
@@ -10921,14 +10921,14 @@ static int qos_console_dump(request_rec * r, const char *event) {
          (clientEntry[i]->ip6[1] != 0)) {
         char *k;
         int limit = 0;
-        time_t limit_time = 0;
+        time_t limitTime = 0;
         if(u->qos_cc->limitTable) {
           int limitTableIndex;
           qos_s_entry_limit_conf_t *eventLimitConf = qos_getQSLimitEvent(u, event, &limitTableIndex);
           if(eventLimitConf) {
             limit = clientEntry[i]->limit[limitTableIndex].limit;
-            limit_time = (eventLimitConf->limit_time >= (time(NULL) - clientEntry[i]->limit[limitTableIndex].limit_time)) ? 
-              (eventLimitConf->limit_time - (time(NULL) - clientEntry[i]->limit[limitTableIndex].limit_time)) : 0;
+            limitTime = (eventLimitConf->limitTime >= (time(NULL) - clientEntry[i]->limit[limitTableIndex].limitTime)) ? 
+              (eventLimitConf->limitTime - (time(NULL) - clientEntry[i]->limit[limitTableIndex].limitTime)) : 0;
           }
         }
         k = apr_psprintf(r->pool,
@@ -10938,10 +10938,10 @@ static int qos_console_dump(request_rec * r, const char *event) {
                          clientEntry[i]->vip ? "yes" : "no",
                          (clientEntry[i]->lowrate + QOS_LOW_TIMEOUT) > now ? "yes" : "no",
                          clientEntry[i]->block,
-                         (sconf->qos_cc_block_time >= (time(NULL) - clientEntry[i]->block_time)) ? 
-                         (sconf->qos_cc_block_time - (time(NULL) - clientEntry[i]->block_time)) : 0,
+                         (sconf->qos_cc_blockTime >= (time(NULL) - clientEntry[i]->blockTime)) ? 
+                         (sconf->qos_cc_blockTime - (time(NULL) - clientEntry[i]->blockTime)) : 0,
                          limit,
-                         limit_time,
+                         limitTime,
                          clientEntry[i]->time);
         apr_table_addn(iptable, k, NULL);
       }
@@ -11097,7 +11097,7 @@ static int qos_handler_console(request_rec * r) {
     int limitTableIndex = 0;
     qos_s_entry_limit_conf_t *eventLimitConf = NULL;
     int limit = 0;
-    time_t limit_time = 0;
+    time_t limitTime = 0;
     apr_time_t now = apr_time_sec(r->request_time);
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT34 */
     searchE.ip6[0] = addr[0];
@@ -11131,33 +11131,33 @@ static int qos_handler_console(request_rec * r) {
         (*clientEntry)->lowratestatus = 0;
       }
     } else if(strcasecmp(cmd, "unblock") == 0) {
-      (*clientEntry)->block_time = 0;
+      (*clientEntry)->blockTime = 0;
       (*clientEntry)->block = 0;
     } else if(strcasecmp(cmd, "block") == 0) {
-      (*clientEntry)->block_time = time(NULL);
+      (*clientEntry)->blockTime = time(NULL);
       (*clientEntry)->block = sconf->qos_cc_block + 1000;
     } else if(strcasecmp(cmd, "unlimit") == 0) {
       if(eventLimitConf) {
-        (*clientEntry)->limit[limitTableIndex].limit_time = 0;
+        (*clientEntry)->limit[limitTableIndex].limitTime = 0;
         (*clientEntry)->limit[limitTableIndex].limit = 0;
       }
     } else if(strcasecmp(cmd, "limit") == 0) {
       if(eventLimitConf) {
-        (*clientEntry)->limit[limitTableIndex].limit_time = time(NULL);
+        (*clientEntry)->limit[limitTableIndex].limitTime = time(NULL);
         (*clientEntry)->limit[limitTableIndex].limit = eventLimitConf->limit + 1000;
       }
     } else if(strcasecmp(cmd, "inclimit") == 0) {
       if(eventLimitConf) {
-        if(((*clientEntry)->limit[limitTableIndex].limit_time + eventLimitConf->limit_time) < now) {
+        if(((*clientEntry)->limit[limitTableIndex].limitTime + eventLimitConf->limitTime) < now) {
           // expired
           (*clientEntry)->limit[limitTableIndex].limit = 0;
-          (*clientEntry)->limit[limitTableIndex].limit_time = 0;
+          (*clientEntry)->limit[limitTableIndex].limitTime = 0;
         }
         // increment limit event
         (*clientEntry)->limit[limitTableIndex].limit++;
         if((*clientEntry)->limit[limitTableIndex].limit == 1) {
           // first, start timer
-          (*clientEntry)->limit[limitTableIndex].limit_time = now;
+          (*clientEntry)->limit[limitTableIndex].limitTime = now;
         }
       }
     } else if(strcasecmp(cmd, "search") == 0) {
@@ -11171,17 +11171,17 @@ static int qos_handler_console(request_rec * r) {
     if(clientEntry) {
       if(eventLimitConf) {
         limit = (*clientEntry)->limit[limitTableIndex].limit;
-        limit_time = (eventLimitConf->limit_time >= (time(NULL) - (*clientEntry)->limit[limitTableIndex].limit_time)) ? 
-          (eventLimitConf->limit_time - (time(NULL) - (*clientEntry)->limit[limitTableIndex].limit_time)) : 0;
+        limitTime = (eventLimitConf->limitTime >= (time(NULL) - (*clientEntry)->limit[limitTableIndex].limitTime)) ? 
+          (eventLimitConf->limitTime - (time(NULL) - (*clientEntry)->limit[limitTableIndex].limitTime)) : 0;
       }
       msg = apr_psprintf(r->pool, "%s vip=%s lowprio=%s block=%d/%ld limit=%d/%ld", ip,
                          (*clientEntry)->vip ? "yes" : "no",
                          ((*clientEntry)->lowrate + QOS_LOW_TIMEOUT) > now ? "yes" : "no",
                          (*clientEntry)->block,
-                         (sconf->qos_cc_block_time >= (time(NULL) - (*clientEntry)->block_time)) ? 
-                         (sconf->qos_cc_block_time - (time(NULL) - (*clientEntry)->block_time)) : 0,
+                         (sconf->qos_cc_blockTime >= (time(NULL) - (*clientEntry)->blockTime)) ? 
+                         (sconf->qos_cc_blockTime - (time(NULL) - (*clientEntry)->blockTime)) : 0,
                          limit,
-                         limit_time);
+                         limitTime);
     }
     apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT34 */
     if(status == OK) {
@@ -11584,13 +11584,13 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->qsevents = 0;
   sconf->qslog_str = NULL;
   sconf->ip_type = QS_IP_V6_DEFAULT;
-  sconf->qos_cc_block_time = 600;
+  sconf->qos_cc_blockTime = 600;
   sconf->qos_cc_limitTable = apr_table_make(p, 5);
   sconf->qos_cc_forwardedfor = NULL;
   sconf->disable_handler = -1;
   sconf->maxpost = -1;
   sconf->milestones = NULL;
-  sconf->milestone_timeout = QOS_MILESTONE_TIMEOUT;
+  sconf->milestoneTimeout = QOS_MILESTONE_TIMEOUT;
   sconf->static_on = -1;
   sconf->static_html = 0;
   sconf->static_cssjs = 0;
@@ -11667,7 +11667,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->qos_cc_event = b->qos_cc_event;
   o->qos_cc_event_req = b->qos_cc_event_req;
   o->qos_cc_block = b->qos_cc_block;
-  o->qos_cc_block_time = b->qos_cc_block_time;
+  o->qos_cc_blockTime = b->qos_cc_blockTime;
   o->qos_cc_limitTable = b->qos_cc_limitTable;
   o->qos_cc_forwardedfor = b->qos_cc_forwardedfor;
   o->qos_cc_serialize = b->qos_cc_serialize;
@@ -11791,7 +11791,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   }
   if(o->milestones == NULL) {
     o->milestones = b->milestones;
-    o->milestone_timeout = b->milestone_timeout;
+    o->milestoneTimeout = b->milestoneTimeout;
   }
   if(o->static_on == -1) {
     /* use base settings if not configured per vhost */
@@ -13273,8 +13273,8 @@ const char *qos_deny_urlenc_cmd(cmd_parms *cmd, void *dcfg, const char *mode) {
 
 const char *qos_milestone_tmo_cmd(cmd_parms *cmd, void *dcfg, const char *sec) {
   qos_srv_config *sconf = ap_get_module_config(cmd->server->module_config, &qos_module);
-  sconf->milestone_timeout = atoi(sec);
-  if(sconf->milestone_timeout <= 0) {
+  sconf->milestoneTimeout = atoi(sec);
+  if(sconf->milestoneTimeout <= 0) {
     return apr_psprintf(cmd->pool, "%s: timeout must be numeric value >0",
                         cmd->directive->directive);
   }
@@ -13729,9 +13729,9 @@ const char *qos_client_block_cmd(cmd_parms *cmd, void *dcfg, const char *arg1,
                         cmd->directive->directive);
   }
   if(arg2) {
-    sconf->qos_cc_block_time = atoi(arg2);
+    sconf->qos_cc_blockTime = atoi(arg2);
   }
-  if(sconf->qos_cc_block_time == 0) {
+  if(sconf->qos_cc_blockTime == 0) {
     return apr_psprintf(cmd->pool, "%s: time must be numeric value >0", 
                         cmd->directive->directive);
   }
@@ -13745,7 +13745,7 @@ const char *qos_client_limit_int_cmd(cmd_parms *cmd, void *dcfg, const char *arg
                                                                 &qos_module);
   char *limit_name = QS_LIMIT_DEFAULT;
   int limit;
-  time_t limit_time = 600;
+  time_t limitTime = 600;
   qos_s_entry_limit_conf_t *entry = apr_pcalloc(cmd->pool, sizeof(qos_s_entry_limit_conf_t));
   const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
   if (err != NULL) {
@@ -13758,9 +13758,9 @@ const char *qos_client_limit_int_cmd(cmd_parms *cmd, void *dcfg, const char *arg
                         cmd->directive->directive);
   }
   if(arg_sec) {
-    limit_time = atoi(arg_sec);
+    limitTime = atoi(arg_sec);
   }
-  if(limit_time == 0) {
+  if(limitTime == 0) {
     return apr_psprintf(cmd->pool, "%s: time must be numeric value >0", 
                         cmd->directive->directive);
   }
@@ -13768,7 +13768,7 @@ const char *qos_client_limit_int_cmd(cmd_parms *cmd, void *dcfg, const char *arg
     limit_name = apr_pstrdup(cmd->pool, arg_varname);
   }
   entry->limit = limit;
-  entry->limit_time = limit_time;
+  entry->limitTime = limitTime;
   entry->condStr = NULL;
   entry->preg = NULL;
   if(arg_condition) {
