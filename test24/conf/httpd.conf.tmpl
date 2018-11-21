@@ -225,6 +225,10 @@ Listen         ##QS_PORT_BASE##
    SetEnvIfPlusNoCase         User-Agent CEL QS_Cond=CEL
    QS_CondEventLimitCount     CEL 10 2 CEL
 
+   SetEnvIfPlusNoCase         User-Agent QCLR QS_Cond=QCLR
+   ScriptAlias                 /images/QS_CondLocRequestLimitMatch.jpg ##ROOT##/htdocs/cgi/sleep.cgi
+   QS_CondLocRequestLimitMatch /images/QS_CondLocRequestLimitMatch.jpg 5 QCLR
+
    SetEnvIf User-Agent        limipersec limit=a
    QS_EventPerSecLimit        limit 10
 
