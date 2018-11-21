@@ -6,6 +6,7 @@ variables: + QS_Delay
            QS_ErrorPage
            + QS_LimitRequestBody
            _Decrement
+	   + QS_EventRequestLimit_<var>_Counter
 QS_LocRequestLimitDefault
 + QS_LocRequestLimit
 QS_LocRequestPerSecLimit
@@ -13,7 +14,7 @@ QS_LocKBytesPerSecLimit
 + QS_LocRequestLimitMatch (incl. h2)
 + QS_LocRequestPerSecLimitMatch
 + QS_LocKBytesPerSecLimitMatch (incl. h2)
-QS_CondLocRequestLimitMatch
++ QS_CondLocRequestLimitMatch
 + QS_EventRequestLimit
 + QS_EventPerSecLimit
 QS_CondEventLimitCount
@@ -74,7 +75,7 @@ QS_SetEnvResHeaderMatch
 QS_SetEnvRes
 + QS_RedirectIf
 QS_ClientEntries
-+QS_ClientPrefer (incl. h2)
++ QS_ClientPrefer (incl. h2)
 QS_ClientTolerance
 QS_ClientContentTypes
 + QS_ClientEventBlockCount

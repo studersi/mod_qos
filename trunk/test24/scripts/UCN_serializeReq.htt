@@ -1,10 +1,14 @@
 #
 # Example: serialize requests if server has more then 5 connections
 #
-# QS_SrvMaxConnClose       85%
-# SetEnvIfPlus REQUEST_URI / SerialLimt=5
-# SetEnvIfCmpPlus          QS_SrvConn gt SerialLimt QS_SrvSerialize=1
-# QS_SrvSerialize          on
+#  QS_SrvSerialize          on
+#  QS_EventRequestLimit     LimitLocation 20
+#  SetEnvIfPlus             REQUEST_URI /serialize SerialLimtCfg=5
+#  SetEnvIfPlus             REQUEST_URI /serialize LimitLocation=on
+#  <Location /serialize>
+#    QS_SetEnvIfCmp         QS_EventRequestLimit_LimitLocation_Counter gt SerialLimtCfg QS_SrvSerialize=1
+#  </Location>
+#
 #
 
 INCLUDE scripts/ports
