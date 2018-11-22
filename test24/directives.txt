@@ -17,7 +17,7 @@ QS_LocKBytesPerSecLimit
 + QS_CondLocRequestLimitMatch
 + QS_EventRequestLimit
 + QS_EventPerSecLimit
-QS_CondEventLimitCount
++ QS_CondEventLimitCount
 QS_EventKBytesPerSecLimit
 + QS_EventLimitCount
 + QS_SrvMaxConn (incl. h2)
