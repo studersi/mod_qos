@@ -2437,7 +2437,8 @@ In case of a very slow application (e.g., at location /ccc), requests wait
 until a timeout occurs. Due to many waiting requests, there are no free TCP 
 connections left and the web sever is not able to process other requests 
 to applications still working fine, e.g., to /aaa, /bbb /dd1, and /dd2. 
-mod_qos limits the number of concurrent requests to an application in order to 
+mod_qos limits the number of <a href="glossary.html#concurrency">concurrent</a> 
+requests to an application in order to 
 assure the availability of other resources.
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -2458,7 +2459,7 @@ MaxClients              256
 </table>
 The <code><a href="qslog.1.html">qslog</a></code> tool may be used 
 to analyze your log files in order to idenitify "slow" resources by 
-using the <code>-pu</code> or <code>-puc</code> option.
+using the <code>-pu</code>, <code>-puc</code>, or <code>-c</code> option.
 </p>
 
 <a name="HTTP_Keep-Alive"></a>
