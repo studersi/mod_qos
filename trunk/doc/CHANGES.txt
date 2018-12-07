@@ -1,3 +1,8 @@
+Version 11.60
+
+ - Fixed: Wrong connection counter in certain vhost configurations using
+   SrvMaxConn* directives.
+
 Version 11.59
 
  - QS_EventRequestLimit writes the current counter value to the
