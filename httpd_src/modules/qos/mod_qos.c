@@ -1797,6 +1797,21 @@ static qos_s_entry_t **qos_cc_set(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
   return pB;
 }
 
+/**
+ * searches or inserts (if not available) an entry from/to the client data store
+ * @param s Client store (locked)
+ * @param pA IP to insert
+ * @param now Current time (last access)
+ * @return inserted entry
+ */
+static qos_s_entry_t **qos_cc_getOrSet(qos_s_t *s, qos_s_entry_t *pA, time_t now) {
+  qos_s_entry_t **clientEntry = clientEntry = qos_cc_get0(s, pA, now);
+  if(!clientEntry) {
+    clientEntry = qos_cc_set(s, pA, now != 0 ? now : time(NULL));
+  }
+  return clientEntry;
+}
+
 static int qos_isnum(const char *x) {
   const char *p = x;
   if(x == NULL || x[0] == 0) {
@@ -5323,10 +5338,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
     while(!locked) {
       qos_s_entry_t **clientEntry = NULL;
       apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36 */
-      clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-      if(!clientEntry) {
-        clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-      }
+      clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, apr_time_sec(r->request_time));
       if((*clientEntry)->serialize == 0) {
         // free! check if this request is the next in the queue */
         if(((*clientEntry)->serializeQueue == 0) || (r->request_time <= (*clientEntry)->serializeQueue)) {
@@ -5370,10 +5382,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
         /* remove this request from the queue resp. clear the queue
            to avaoid a deadlock */
         apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36.1 */
-        clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-        if(!clientEntry) {
-          clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-        }
+        clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, apr_time_sec(r->request_time));
         (*clientEntry)->serializeQueue = 0;
         apr_global_mutex_unlock(u->qos_cc->lock);        /* @CRT36.1 */      
         break;
@@ -5406,10 +5415,7 @@ static int qos_hp_cc_event_count(request_rec *r, qos_srv_config *sconf,
     searchE.ip6[0] = rctx->cc_event_ip[0];
     searchE.ip6[1] = rctx->cc_event_ip[1];
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT33 */
-    clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-    if(!clientEntry) {
-      clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-    }
+    clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, apr_time_sec(r->request_time));
     (*clientEntry)->event_req++;
     count = (*clientEntry)->event_req;
     if((*clientEntry)->vip || rctx->is_vip) {
@@ -5814,17 +5820,11 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
   qos_get_clientIP(r, sconf, cconf, "logger", searchEFromHdr.ip6);
 
   apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT19 */
-  clientEntry = qos_cc_get0(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-  if(!clientEntry) {
-    clientEntry = qos_cc_set(u->qos_cc, &searchE, apr_time_sec(r->request_time));
-  }
+  clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, apr_time_sec(r->request_time));
   if(searchEFromHdr.ip6[0] == searchE.ip6[0] && searchEFromHdr.ip6[1] == searchE.ip6[1]) {
     clientEntryFromHdr = clientEntry; // same as connection
   } else {
-    clientEntryFromHdr = qos_cc_get0(u->qos_cc, &searchEFromHdr, apr_time_sec(r->request_time));
-    if(!clientEntryFromHdr) {
-      clientEntryFromHdr = qos_cc_set(u->qos_cc, &searchEFromHdr, apr_time_sec(r->request_time));
-    }
+    clientEntryFromHdr = qos_cc_getOrSet(u->qos_cc, &searchEFromHdr, apr_time_sec(r->request_time));
   }
 
   if(rctx->cc_event_req_set) {
@@ -6531,10 +6531,7 @@ static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t
     searchE.ip6[0] = cconf->ip6[0];
     searchE.ip6[1] = cconf->ip6[1];
     apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT14 */
-    clientEntry = qos_cc_get0(u->qos_cc, &searchE, 0);
-    if(!clientEntry) {
-      clientEntry = qos_cc_set(u->qos_cc, &searchE, time(NULL));
-    }
+    clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, 0);
 
     /* early vip detection */
     if((*clientEntry)->vip) {
@@ -7826,10 +7823,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
       searchE.ip6[1] = *ip;
       ip--;
       searchE.ip6[0] = *ip;
-      clientEntry = qos_cc_get0(u->qos_cc, &searchE, 0);
-      if(!clientEntry) {
-    	  clientEntry = qos_cc_set(u->qos_cc, &searchE, time(NULL));
-      }
+      clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, 0);
+
       /* increment block event */
       (*clientEntry)->block++;
       if((*clientEntry)->block == 1) {
@@ -8222,19 +8217,17 @@ static apr_status_t qos_base_cleanup_conn(void *p) {
     }
     if(connRuleViolation) {
       qos_user_t *u = qos_get_user_conf(base->sconf->act->ppool);
-      qos_s_entry_t **e = NULL;
+      qos_s_entry_t **clientEntry = NULL;
       qos_s_entry_t searchE;
       qos_ip_str2long(QS_CONN_REMOTEIP(base->c), searchE.ip6); // no ip simulation here
       apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT40 */
-      e = qos_cc_get0(u->qos_cc, &searchE, 0);
-      if(!e) {
-        e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
-      }
+      clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, 0);
+
       /* increment block event */
-      (*e)->block++;
-      if((*e)->block == 1) {
+      (*clientEntry)->block++;
+      if((*clientEntry)->block == 1) {
         /* ... and start timer */
-        (*e)->blockTime = apr_time_sec(apr_time_now());
+        (*clientEntry)->blockTime = apr_time_sec(apr_time_now());
       }
       apr_global_mutex_unlock(u->qos_cc->lock);         /* @CRT40 */
       if(QS_ISDEBUG(base->c->base_server)) {
@@ -8271,10 +8264,7 @@ static apr_status_t qos_cleanup_conn(void *p) {
     if((m_generation != u->qos_cc->generation_locked) && u->qos_cc->connections > 0) {
       u->qos_cc->connections--;
     }
-    clientEntry = qos_cc_get0(u->qos_cc, &searchE, 0);
-    if(!clientEntry) {
-      clientEntry = qos_cc_set(u->qos_cc, &searchE, time(NULL));
-    }
+    clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, 0);
     (*clientEntry)->events++; // update event activity even there is no valid request (logger)
     if(cconf->set_vip_by_header) {
       (*clientEntry)->vip = 1;
@@ -8594,10 +8584,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
     qos_s_entry_t searchE;
     qos_ip_str2long(QS_CONN_REMOTEIP(c), searchE.ip6); // no ip simulation here
     apr_global_mutex_lock(u->qos_cc->lock);           /* @CRT39 */
-    clientEntry = qos_cc_get0(u->qos_cc, &searchE, 0);
-    if(!clientEntry) {
-      clientEntry = qos_cc_set(u->qos_cc, &searchE, time(NULL));
-    }
+    clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, 0);
     if((*clientEntry)->block >= sconf->qos_cc_block) {
       apr_time_t now = time(NULL);
       if(((*clientEntry)->blockTime + sconf->qos_cc_blockTime) > now) {
@@ -9573,17 +9560,14 @@ static apr_status_t qos_in_filter(ap_filter_t *f, apr_bucket_brigade *bb,
       /* mark clients causing a timeout */
       if(sconf && sconf->has_qos_cc) {
         qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
-        qos_s_entry_t **e = NULL;
+        qos_s_entry_t **clientEntry = NULL;
         qos_s_entry_t searchE;
         request_rec *r = f->r;
         apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT18 */
         qos_ip_str2long(QS_CONN_REMOTEIP(inctx->c), searchE.ip6);
-        e = qos_cc_get0(u->qos_cc, &searchE, 0);
-        if(!e) {
-          e = qos_cc_set(u->qos_cc, &searchE, time(NULL));
-        }
-        (*e)->lowrate = time(NULL);
-        (*e)->lowratestatus |= QOS_LOW_FLAG_TIMEOUT;
+        clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, 0);
+        (*clientEntry)->lowrate = time(NULL);
+        (*clientEntry)->lowratestatus |= QOS_LOW_FLAG_TIMEOUT;
         if(r) {
           qs_set_evmsg(r, "r;"); 
         }
