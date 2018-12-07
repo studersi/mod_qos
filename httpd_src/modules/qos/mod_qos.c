@@ -6499,8 +6499,8 @@ static int qos_server_connections(qos_srv_config *sconf) {
   s = s->next;
   while(s) {
     qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    char *scId = apr_psprintf(ptemp, "%p", sc->act);
-    if(sc->act != bsconf->act && apr_table_get(recTable, scId) == NULL) {
+    char *scId = apr_psprintf(ptemp, "%"APR_UINT64_T_HEX_FMT, (long unsigned int)sc->act->conn);
+    if(sc->act->conn != bsconf->act->conn && apr_table_get(recTable, scId) == NULL) {
       apr_table_add(recTable, scId, "");
       connections += sc->act->conn->connections;
     }
