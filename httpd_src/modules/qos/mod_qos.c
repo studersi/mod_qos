@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.59";
+static const char g_revision[] = "11.60";
 
 /************************************************************************
  * Includes
@@ -6492,14 +6492,21 @@ static int qos_server_connections(qos_srv_config *sconf) {
   server_rec *s = sconf->base_server;
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
   int connections = bsconf->act->conn->connections;
+  apr_pool_t *ptemp;
+  apr_table_t *recTable;
+  apr_pool_create(&ptemp, NULL);
+  recTable = apr_table_make(ptemp, 10);
   s = s->next;
   while(s) {
     qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    if(sc != bsconf) {
+    char *scId = apr_psprintf(ptemp, "%p", sc->act);
+    if(sc->act != bsconf->act && apr_table_get(recTable, scId) == NULL) {
+      apr_table_add(recTable, scId, "");
       connections += sc->act->conn->connections;
     }
     s = s->next;
   }
+  apr_pool_destroy(ptemp);
   return connections;
   /*
   int i, j;
@@ -6615,17 +6622,7 @@ static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t
 static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
   int req_rate = sconf->req_rate;
   if(sconf->min_rate_max != -1) {
-    server_rec *s = sconf->base_server;
-    qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    int connections = bsconf->act->conn->connections;
-    s = s->next;
-    while(s) {
-      qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-      if(sc != bsconf) {
-        connections = connections + sc->act->conn->connections;
-      }
-      s = s->next;
-    }
+    int connections = qos_server_connections(sconf);
     if(connections > sconf->req_rate_start) {
       /* keep the minimal rate until reaching the min connections */
       req_rate = req_rate + ((sconf->min_rate_max / sconf->max_clients) * connections);
