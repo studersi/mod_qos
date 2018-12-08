@@ -1,0 +1,196 @@
+#
+# $Id$
+#
+# html	css/js	images	other	304
+# 30	10	40	6	12
+#
+INCLUDE scripts/ports
+
+CLIENT
+
+_EXEC ./ctl.sh restart -D cc -D QS_ClientContentTypes 2>/dev/null 1>/dev/null
+
+# ----------------------
+#
+# first client is okay
+#
+
+# 9 requests per loop
+_LOOP 10
+
+# 2x html
+_REQ localhost $QS_PORT_BASE
+__GET /content/index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 01
+__
+_EXPECT . "200 OK"
+_MATCH headers "ETag: (.*)" ETAG
+_WAIT
+
+# 1x css
+_REQ localhost $QS_PORT_BASE
+__GET /content/style.css HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 02
+__
+_EXPECT . "200 OK"
+_WAIT
+
+# 4x img
+_LOOP 4
+_REQ localhost $QS_PORT_BASE
+__GET /content/mod_qos_s.gif HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 03
+__
+_EXPECT . "200 OK"
+_WAIT
+_END LOOP
+
+# 1x other
+_REQ localhost $QS_PORT_BASE
+__GET /content/document.pdf HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 04
+__
+_EXPECT . "200 OK"
+_WAIT
+
+# 1x 304
+_REQ localhost $QS_PORT_BASE
+__GET /content/index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__If-None-Match: $ETAG
+__Req: 05
+__
+_EXPECT . "304 Not Modified"
+_WAIT
+
+# 1x html
+_REQ localhost $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 06
+__
+_EXPECT . "200 OK"
+_MATCH body "client ip=(.*)</p>" IP
+_WAIT
+
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?address=$IP&action=search HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 07
+__
+_EXPECT . "200 OK"
+# client behavior: 30	10	40	10	10
+_EXPECT . "30.*10.*40.*10.*10"
+_WAIT
+
+_CLOSE
+_SLEEP 500
+_EXPECT EXEC "GET /qos\?address=.*&action=search HTTP/1.1\" 200 .* \"Mozilla\" 0 1 - 1 id"
+_EXEC tail -1 logs/access_log
+
+
+# ----------------------
+#
+# second client: no 304, no images
+#
+# 9 requests per loop
+_LOOP 10
+
+# 2x html
+_REQ localhost $QS_PORT_BASE
+__GET /content/index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 08
+__
+_EXPECT . "200 OK"
+_MATCH headers "ETag: (.*)" ETAG
+_WAIT
+
+# 1x css
+_REQ localhost $QS_PORT_BASE
+__GET /content/style.css HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 09
+__
+_EXPECT . "200 OK"
+_WAIT
+
+# 4x html (instaed of img)
+_LOOP 4
+_REQ localhost $QS_PORT_BASE
+__GET /content/index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 10
+__
+_EXPECT . "200 OK"
+_WAIT
+_END LOOP
+
+# 1x other
+_REQ localhost $QS_PORT_BASE
+__GET /content/document.pdf HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 11
+__
+_EXPECT . "200 OK"
+_WAIT
+
+# 1x 304
+_REQ localhost $QS_PORT_BASE
+__GET /content/index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 12
+#__If-None-Match: $ETAG
+__
+#_EXPECT . "304 Not Modified"
+_EXPECT . "200 OK"
+_WAIT
+
+# 1x html
+_REQ localhost $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 13
+__
+_EXPECT . "200 OK"
+_MATCH body "client ip=(.*)</p>" IP
+_WAIT
+
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?address=$IP&action=search HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__Req: 14
+__
+_EXPECT . "200 OK"
+# client behavior: 70	10	0	10	0
+_EXPECT . "70.*10.*0.*10.*0"
+_WAIT
+
+_CLOSE
+_SLEEP 500
+_EXPECT EXEC "GET /qos\?address=.*&action=search HTTP/1.1\" 200 .* \"Mozilla\" 0 1 r; 1 id"
+_EXEC tail -1 logs/access_log
+
+END

@@ -1,0 +1,120 @@
+#
+# $Header$
+#
+# mod_qos test configuration using mod_proxy
+#
+# See http://mod-qos.sourceforge.net/ for further
+# details about mod_qos.
+#
+
+ServerName              127.0.0.1
+<IfModule worker.c> 
+StartServers            1
+ServerLimit             16
+MinSpareThreads         5
+MaxSpareThreads         75
+ThreadsPerChild         64
+</IfModule>
+<IfModule prefork.c>
+StartServers            4
+MinSpareServers         4
+MaxSpareServers         16
+ServerLimit             896
+</IfModule>
+
+MaxClients              896
+MaxRequestsPerChild     0
+
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/htdocs
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept.lock
+Timeout                 30
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        5
+
+LimitRequestFields      30
+<IfDefine !no_qos>
+QS_LimitRequestBody     65536
+QS_SrvMinDataRate       120 3000
+QS_ClientPrefer         80
+QS_ClientEventBlockCount 3 10
+</IfDefine>
+
+Options                 FollowSymLinks Indexes Includes
+DefaultType             text/plain
+AddType                 text/html .shtml
+AddOutputFilter         INCLUDES .shtml
+
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i #%P"
+
+LogLevel                warn
+ErrorLog                ##ROOT##/logs/error_log
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 3600 -f"
+TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
+PidFile                 ##ROOT##/logs/apache.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+
+TypesConfig             conf/mime.types
+LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
+LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
+<IfDefine phone>
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+</IfDefine>
+<IfDefine !no_qos>
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+</IfDefine>
+LoadModule              parp_module libexec/mod_parp.so
+
+NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
+Listen                  127.0.0.1:##QS_PORT_BASE##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE##>
+   ServerName                 127.0.0.1
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /test !
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+<IfDefine phone>
+   BrowserMatchNoCase   Phone Phone
+   QS_EventRequestLimit Phone 20
+   QS_EventPerSecLimit  Phone 15 
+</IfDefine>
+
+<IfDefine !no_qos>
+   QS_ErrorPage               /error-docs/error.shtml
+
+   QS_LocRequestLimitDefault                                  200
+   QS_LocRequestLimit         /htt                            200
+   QS_LocRequestLimit         /test                           100
+   QS_LocRequestLimitMatch    "^(/app/a/|/app/b/|/app/c/).*$" 100
+
+   QS_SetEnvStatus  404       QS_Block
+
+   # -----------------------------------------------------------------
+   # connection level control
+   # -----------------------------------------------------------------
+   QS_SrvMaxConn              800
+   QS_SrvMaxConnClose         700
+   QS_SrvMaxConnPerIP         300
+
+   Include                    conf/qos_viewer.conf
+</IfDefine>
+
+</VirtualHost>

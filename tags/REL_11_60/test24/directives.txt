@@ -1,0 +1,100 @@
+variables: + QS_Delay
+           QS_VipRequest
+           + QS_KeepAliveTimeout (worker)
+           + QS_MaxKeepAliveRequests (worker)
+           + QS_Timeout
+           QS_ErrorPage
+           + QS_LimitRequestBody
+           _Decrement
+	   + QS_EventRequestLimit_<var>_Counter
+QS_LocRequestLimitDefault
++ QS_LocRequestLimit
+QS_LocRequestPerSecLimit
+QS_LocKBytesPerSecLimit
++ QS_LocRequestLimitMatch (incl. h2)
++ QS_LocRequestPerSecLimitMatch
++ QS_LocKBytesPerSecLimitMatch (incl. h2)
++ QS_CondLocRequestLimitMatch
++ QS_EventRequestLimit
++ QS_EventPerSecLimit
++ QS_CondEventLimitCount
+QS_EventKBytesPerSecLimit
++ QS_EventLimitCount
++ QS_SrvMaxConn (incl. h2)
++ QS_SrvMaxConnClose
++ QS_SrvMaxConnPerIP
+QS_SrvMaxConnExcludeIP
+QS_SrvMaxConnPerIPIgnoreVIP
++ QS_SrvDataRateOff
+QS_SrvRequestRate
++ QS_SrvMinDataRate
+QS_SrvMinDataRateOffEvent
+QS_SrvMinDataRateIgnoreVIP
++ QS_SrvSerialize
++ QS_DenyRequestLine
++ QS_DenyPath
++ QS_DenyQuery
++ QS_DenyEvent
++ QS_PermitUri
+QS_DenyBody
+QS_DenyQueryBody
+QS_PermitUriBody
+QS_InvalidUrlEncoding
+QS_LimitRequestBody
+QS_DenyDecoding
+QS_DenyInheritanceOff
++ QS_RequestHeaderFilter
++ QS_ResponseHeaderFilter
++ QS_RequestHeaderFilterRule
++ QS_ResponseHeaderFilterRule
++ QS_MileStone
+QS_MileStoneTimeout
+QS_SessionCookieName
+QS_SessionCookiePath
+QS_SessionTimeout
+QS_SessionKey
++ QS_VipHeaderName
+QS_VipIPHeaderName
+QS_VipUser
+QS_VipIpUser
++ QS_UserTrackingCookieName (incl. h2)
++ QS_SetEnvIf
++ QS_SetEnvIfQuery
++ QS_SetEnvIfCmp
+QS_SetEnvIfParp
+QS_SetEnvIfBody
+QS_SetEnvStatus
++ QS_SetEnvIfStatus
++ QS_SetEnvIfResBody
+QS_SetEnv
+QS_SetReqHeader
++ QS_UnsetReqHeader
+QS_UnsetResHeader
+QS_SetEnvResHeader
+QS_SetEnvResHeaderMatch
+QS_SetEnvRes
++ QS_RedirectIf
+QS_ClientEntries
++ QS_ClientPrefer (incl. h2)
+QS_ClientTolerance
+QS_ClientContentTypes
++ QS_ClientEventBlockCount
+QS_ClientEventBlockExcludeIP
++ QS_ClientEventLimitCount
++ QS_CondClientEventLimitCount
+QS_ClientEventPerSecLimit
+QS_ClientEventRequestLimit
++ QS_ClientSerialize
++ QS_ClientIpFromHeader
++ QS_ClientGeoCountryDB
+QS_ClientGeoCountryPriv
++ QS_ErrorPage
++ QS_ErrorResponseCode
+QS_LogOnly
+QS_SupportIPv6
+QS_SemMemFile
+QS_SrvSampleRate
+QS_DisableHandler
+QS_EventCount
+QS_Status
+x QS_Chroot

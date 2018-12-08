@@ -1,0 +1,48 @@
+#
+#   SetEnvIf Request_URI       /a limit
+#   QS_EventRequestLimit       limit                           2
+#
+
+INCLUDE scripts/ports
+
+CLIENT 2
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 500
+
+_REQ localhost $QS_PORT_BASE
+__GET /b/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 1000
+_EXPECT EXEC . "mod_qos\(012\): access denied, QS_EventRequestLimit rule: var=\(limit\)\(2\), concurrent requests=3"
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END

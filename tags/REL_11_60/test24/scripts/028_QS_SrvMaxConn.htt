@@ -1,0 +1,40 @@
+#
+# $Id$
+#
+#   QS_SrvMaxConn              45
+#
+#   doing graceful restart while processing requets (no leaks/wrong counters)
+#
+
+INCLUDE scripts/ports
+
+CLIENT 45
+_SLEEP 5000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=4 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 1000
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=4 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 6000
+_EXEC ./ctl.sh graceful 2>/dev/null 1>/dev/null
+
+END

@@ -1,0 +1,141 @@
+#
+# $Header$
+#
+# mod_qos test configuration using mod_proxy
+#
+# See http://mod-qos.sourceforge.net/ for further
+# details about mod_qos.
+#
+
+ServerName              127.0.0.1
+<IfModule worker.c>
+StartServers            1
+ServerLimit             1
+MinSpareThreads         5
+MaxSpareThreads         64
+ThreadsPerChild         64
+</IfModule>
+<IfModule prefork.c>
+StartServers            64
+ServerLimit             64
+MinSpareServers         4
+MaxSpareServers         64
+</IfModule>
+
+MaxClients              64
+MaxRequestsPerChild     0
+
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/htdocs
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept.lock
+Timeout                 30
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        5
+
+LimitRequestFields      30
+<IfDefine !no_qos>
+QS_EnableInternalIPSimulation off
+
+# TCP DoS, minimal settings
+QS_SrvMinDataRate       120 3000
+
+# Dynamic keep-alive
+QS_SrvMaxConnClose 85%
+
+# Session DoS, minimal setting
+QS_SetEnvResHeaderMatch  Set-Cookie JSESSIONID
+QS_SetEnvIf              Set-Cookie !QSNOT QS_Block=yes
+QS_ClientEventBlockCount 100 300
+</IfDefine>
+
+Options                 FollowSymLinks Indexes Includes
+DefaultType             text/plain
+AddType                 text/html .shtml
+AddOutputFilter         INCLUDES .shtml
+
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %D %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i #%P"
+
+LogLevel                warn
+ErrorLog                ##ROOT##/logs/error_log
+<IfDefine !no_qos>
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_dos_qos_log -z -g 4 -s 3600 -f"
+</IfDefine>
+<IfDefine no_qos>
+TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_dos_log -z -g 4 -s 3600 -f"
+</IfDefine>
+TransferLog             "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f I....R.B.T.Q"
+PidFile                 ##ROOT##/logs/apache.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+
+TypesConfig             conf/mime.types
+LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
+LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
+LoadModule              status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
+LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
+<IfDefine !no_qos>
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+</IfDefine>
+LoadModule              parp_module libexec/mod_parp.so
+
+Listen                  127.0.0.1:##QS_PORT_BASE##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE##>
+   ServerName                 127.0.0.1
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /test !
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+   ProxyPass                  /aaa http://localhost:##QS_PORT_BASE6##/aaa retry=0
+   ProxyPassReverse           /aaa http://localhost:##QS_PORT_BASE6##/aaa
+
+   <Location /status>
+       SetHandler server-status
+   </Location>
+
+</VirtualHost>
+
+Listen                  127.0.0.1:##QS_PORT_BASE2##
+
+SSLProtocol             all -SSLv2
+SSLCipherSuite          RC4-SHA:RC4-MD5:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!SSLv2:!EXP
+SSLSessionCacheTimeout  864000
+SSLMutex                file:##ROOT##/logs/ssl_mutex
+SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
+SSLRandomSeed           startup builtin
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE2##>
+   SSLCertificateKeyFile  ssl/key.pem
+   SSLCertificateFile     ssl/cert.pem
+   SSLVerifyDepth         10
+   SSLEngine              on
+   ServerName             server1
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /test !
+   ProxyPass                  /htt http://localhost:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://localhost:##QS_PORT_BASE6##/htt
+
+</VirtualHost>
