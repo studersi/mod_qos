@@ -6628,14 +6628,16 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
       req_rate = req_rate + ((sconf->min_rate_max / sconf->max_clients) * connections);
       if(connections > sconf->max_clients) {
         // limit the max rate to its max if we have more connections then expected
-        ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
-                     QOS_LOG_PFX(036)"QS_SrvMinDataRate: unexpected connection status!"
-                     " connections=%d,"
-                     " cal. request rate=%d,"
-                     " max. limit=%d."
-                     " Check log for unclean child exit and consider"
-                     " to do a graceful server restart if this condition persists.",
-                     connections, req_rate, sconf->min_rate_max);
+        if(connections > (sconf->max_clients + 100)) {
+          ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
+                       QOS_LOG_PFX(036)"QS_SrvMinDataRate: unexpected connection status!"
+                       " connections=%d,"
+                       " cal. request rate=%d,"
+                       " max. limit=%d."
+                       " Check log for unclean child exit and consider"
+                       " to do a graceful server restart if this condition persists.",
+                       connections, req_rate, sconf->min_rate_max);
+        }
         QS_INC_EVENT(sconf, 36);
         req_rate = sconf->min_rate_max;
       }
