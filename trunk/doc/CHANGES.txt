@@ -2,7 +2,7 @@ Version 11.60
 
  - Fixed: Wrong connection counter in certain vhost configurations using
    SrvMaxConn* directives resulting an a too high value for the QS_AllConn
-   variable and too aggressive QS_SrvMinDataRate behavior.
+   variable and too aggressive QS_SrvMinDataRate behavior (threshold).
 
 Version 11.59
 
