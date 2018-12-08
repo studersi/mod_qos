@@ -1,0 +1,49 @@
+#
+#   QS_LocKBytesPerSecLimitMatch ^/image.iso$ 3000
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_EXEC ./sleep.sh
+
+_SET bytes=0
+_DATE:GET_TIME start
+
+# ~7450 kbytes/sec
+_LOOP 25
+_RPS 10 5
+_REQ localhost $QS_PORT_BASE
+__GET /image.iso HTTP/1.1
+__Host: localhost
+__
+_MATCH headers "Content-Length: ([0-9]*)" ct
+_EXPECT . "200 OK"
+_WAIT
+_MATH:OP $bytes ADD $ct bytes
+_END RPS
+_CLOSE
+_END LOOP
+
+_DATE:GET_TIME end
+_MATH:OP $end SUB $start duration
+_MATH:OP $bytes DIV $duration bms
+_DEBUG "kbytes/sec (netto) $bms"
+_IF $bms GT 3500
+_EXIT FAILED
+_END IF
+_IF $bms LT 2500
+_EXIT FAILED
+_END IF
+
+_MATCH EXEC ";b/s;([0-9]*);" BS
+_EXEC tail -1 logs/qs_log_v0
+
+_IF "${BS}" LT 2800000
+_EXIT FAILED
+_END IF
+_IF "${BS}" GT 3200000
+_EXIT FAILED
+_END IF
+
+END

@@ -1,0 +1,2719 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+ <title>mod_qos</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
+<meta name="author" content="Pascal Buchbinder" />
+<meta name="KeyWords" content="mod_qos, Quality of Service, Apache Web Server, Throttling, Web application security, WAF, Open Source Software, Secure Reverse Proxy, Denial of Service Prevention, DoS, DDoS" />
+<link rel="shortcut icon" href="favicon.ico" />
+<style TYPE="text/css">
+<!--  
+  body {
+	background-color: white;
+	color: black;
+	font-family: sans-serif, arial, verdana;
+	font-weight: normal;
+	text-align: left;
+  }
+  a:link    { color:#00673F; text-decoration:none; }
+  a:visited { color:#00673F; text-decoration:none; }
+  a:focus   { color:black; text-decoration:underline; }
+  a:hover   { color:black; text-decoration:underline; }
+  a:active  { color:black; text-decoration:underline; }
+  li { margin: 4px 0; }
+  syntax { font-family: monospace; font-size: 14; line-height: 1.8; }
+  .btable   { font-size:0.75em; }
+  .prept { font-size:0.75em; }
+-->
+</style>
+</head>
+<body>
+<!--
+
+ Quality of service module for Apache Web Server.
+
+ See http://mod-qos.sourceforge.net/ for further details.
+
+ Copyright (C) 2018 Pascal Buchbinder
+
+ Licensed to the Apache Software Foundation (ASF) under one or more
+ contributor license agreements.  See the NOTICE file distributed with
+ this work for additional information regarding copyright ownership.
+ The ASF licenses this file to You under the Apache License, Version 2.0
+ (the "License"); you may not use this file except in compliance with
+ the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+
+-->
+<table>
+<tbody>
+<tr><td><img src="images/mod_qos.gif" alt="mod_qos" title="mod_qos" /></td>
+    <td style="vertical-align: bottom;"><h1>mod_qos</h1></td>
+</tr>
+<tr><td>&nbsp;</td>
+    <td>
+<p>
+In computer networking, the term quality of service (QoS) describes 
+resource management rather than the quality of a service. 
+Quality of service implements control mechanisms to provide 
+different priority to different users, applications, and data 
+connections. It is used to guarantee a certain level of performance 
+to data resources. The term quality of service is often used 
+in the field of wide area network protocols (e.g. ATM) and 
+telephony (e.g. VoIP), but rarely in conjunction with web applications. 
+<b>mod_qos is a quality of service module for the Apache web server</b> 
+implementing control mechanisms that can provide different levels of 
+priority to different HTTP requests.
+</p>
+<p>
+But why do you need quality of service for a web application? Well, 
+web servers require threads and processes to serve HTTP requests. 
+Each TCP connection to the web server occupies one of these threads 
+respectively processes. Sometimes a server gets too busy to serve 
+every request due to the lack of free processes or threads. Another 
+parameter requiring control by mod_qos is the available bandwidth: 
+all clients communicate to the server over a network link with 
+limited bandwidth. Overfilling the link results in network 
+congestion and poor performance.
+</p>
+<p>
+Example situations where web applications require QoS:
+<ul>
+<li>
+More resources are consumed if request processing by an application 
+takes a long time, e.g. when request processing includes 
+time consuming database queries.
+</li>
+<li>
+Oversubscription of link capabilities due to many concurrent 
+clients uploading or downloading data.
+</li>
+<li>
+Penetration of the web server by attackers (DoS).<!-- line  is a MARKER -->
+</li>
+</ul>
+</p>
+<p>
+mod_qos may be used to determine which requests should be served and 
+which shouldn't in order to avoid resource oversubscription. The 
+module collects different attributes such as the request URL, 
+HTTP request and response headers, the IP source address, country codes, 
+the HTTP response code, history data (based on user session and source 
+IP address), the number of concurrent requests to the 
+server (total or requests having similar attributes), the number 
+of concurrent TCP connections (total or from a single source IP), 
+and so forth.</p>
+<p>
+<a name="rules"></a>
+The <u><a href="glossary.html#rules">rules</a></u> you want to configure
+are defined by the
+<u><a href="glossary.html#directives">module's directives</a></u>. Every rule
+reads attributes from different sources and using its own counters to 
+store their status.
+</p>
+<p>
+Counteractive measures to enforce the defined rules are: request 
+blocking, dynamic timeout adjustment, request delay, response 
+throttling, and dropping of TCP connections.
+</p>
+<p>
+The current release of the mod_qos module implements control 
+mechanisms:
+<ul>
+<li type=square>
+The maximum number of <a href="glossary.html#concurrency">concurrent</a> 
+requests to a location/resource (URL) 
+or virtual host.
+</li>
+<li type=square>
+Limitation of the <a href="glossary.html#throughput">bandwidth</a> such as the maximum 
+allowed number of requests per second to an URL or the maximum/minimum of downloaded 
+kbytes per second.
+</li>
+<li type=square>
+Limits the number of request <a href="glossary.html#requestPerSecond">events per second</a> (special request conditions).
+</li>
+<li type=square>
+Limits the number of request <a href="glossary.html#repeat">events within a defined 
+period of time</a>.
+</li>
+<li type=square>
+It can also detect very important persons (VIP) which may access the 
+web server without or with fewer restrictions.
+</li>
+<li type=square>
+Generic request line and header filter to deny unauthorized operations.
+</li>
+<li type=square>
+Request body data limitation and filtering (requires 
+<a href="http://parp.sourceforge.net">mod_parp <img src="images/link.png"/></a>).
+</li>
+<li type=square>
+Limits the number of request events for individual clients (IP).
+</li>
+<li type=square>
+Limitations on the TCP connection level, e.g., the maximum number of 
+allowed connections from a single IP source address or dynamic 
+keep-alive control.
+</li>
+<li type=square>
+Prefers known IP addresses when server runs out of free TCP connections.
+</li>
+</ul>
+</p>
+<hr>
+</td></tr>
+<tr><td>&nbsp;</td><td style="background-color: #E2EDE2">
+<p align="center">
+<br>
+mod_qos is an open source software licensed under the 
+<a href="LICENSE.txt">Apache License</a>. You can download the latest release at 
+<a href="https://sourceforge.net/projects/mod-qos/files/">SourceForge.net</a>.
+<br><br>
+</p>
+</td></tr>
+<tr><td>&nbsp;</td><td>
+<hr>
+<p>
+More information about mod_qos:
+<ul>
+<li><a href="#build">Build</a></li>
+<!-- DIST START -->
+<li><a href="#source">Source Code</a></li>
+<li><a href="CHANGES.txt">Changes</a></li>
+<!-- DIST END -->
+<li><a href="#configuration">Configuration</a></li>
+<ul>
+<li><a href="#requestlevelcontrol">Request Level Control</a></li>
+<li><a href="#statuscode">Status Code and Error Page</a></li>
+<li><a href="#privilegedusers">Privileged Users</a></li>
+<li><a href="#variables">Variables</a></li>
+<li><a href="#conditionalrules">Conditional Rules</a></li>
+<li><a href="#eventcontrol">Events</a></li>
+<li><a href="#filter">Request Level, Generic Filter</a></li>
+<li><a href="#connectionlevelcontrol">Connection Level Control</a></li>
+<li><a href="#clientlevelcontrol">Client Level Control</a></li>
+</ul>
+<li><a href="#messages">Log Messages</a></li>
+<ul>
+<li><a href="#errorlog">Error Log</a></li>
+<li><a href="#accesslog">Access Log</a></li>
+<li><a href="#requeststatistics">Request Statistics</a></li>
+<li><a href="#statusviewer">Status Viewer</a></li>
+<li><a href="#webconsole">Web Console</a></li>
+<li><a href="#utilities">Utilities</a></li>
+</ul>
+<li><a href="#usecases">Sample Use Cases</a></li>
+</ul>
+</p>
+
+<hr>
+<a name="build"></a>
+<h2>Build</h2>
+<p>
+mod_qos requires OpenSSL, PCRE, threading and shared memory support. mod_qos 
+was originally developed and fully tested for Apache version 2.2 
+<a href="http://httpd.apache.org/docs/2.2/mod/worker.html">MPM worker <img src="images/link.png"/></a> 
+binaries, but works with Apache version 2.4 as well. The module is optimized to be used in a 
+<a href="http://httpd.apache.org/docs/current/mod/mod_proxy.html">reverse proxy 
+<img src="images/link.png"/></a> server.<p>
+<p>
+<small><i>Notes:<br>&nbsp; You should definitely choose the <a href="https://httpd.apache.org/docs/current/mod/worker.html">worker MPM <img src="images/link.png"/></a> 
+if you intend to use any <a href="#connectionlevelcontrol">connection level control</a> directive. <br>
+&nbsp; If you decide to use <a href="https://httpd.apache.org/docs/current/howto/http2.html">HTTP/2 <img src="images/link.png"/></a>, 
+you should only use the <a href="#requestlevelcontrol">request level control</a> directives  
+as mod_qos works for the hypertext transfer protocol
+version 1.0 and 1.1 (RFC1945/RFC2616) only.
+</i></small>
+</p>
+<p>
+You can compile the module using 
+<code><a href="http://httpd.apache.org/docs/current/programs/apxs.html">apxs <img src="images/link.png"/></a></code>. 
+Your httpd binary must support dynamically loaded objects 
+(DSO). Verify this by checking the availability of mod_so: The command 
+<code>httpd -l</code> must list the mod_so.c module. 
+The following command compiles the module and installs mod_qos into the 
+server's modules directory.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+cd mod_qos-0.00/apache2
+apxs -i -c mod_qos.c -lcrypto -lpcre
+cd ../..
+</pre>
+</td></tr>
+</table>
+If the necessary header files of OpenSSL, PCRE, etc. cannot be found, add 
+the <code>-I</code> option to the <code>apxs</code> command to specify 
+the directory where header files can be found and if any of the required 
+libraries cannot be found (may happen if you use mod_qos without mod_ssl), 
+add the <code>-L</code> option to specify the directory where libraries 
+can be found.
+<br>
+<small><i>Note: you may customize the code using the following preprocessor directives:</i></small>
+<table class="prept" width="780px">
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td bgcolor="#E2EDE2">Name</td>
+ <td bgcolor="#E2EDE2">Description</td>
+ <td bgcolor="#E2EDE2">Default</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QS_MOD_EXT_HOOKS</td>
+ <td>Enables the optional hooks defined in mod_qos.h</td>
+ <td><i>not set</i></td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QSLOG_CLID</td>
+ <td>Defines the environment variable which shall be used for the "user tracking id" (U)
+within the format string used by the <a href="#QSLog"><code>QSLog</code></a> directive.</td>
+ <td>mod_qos_user_id</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QSLOG_EVENT</td>
+ <td>Defines the environment variable which shall be used for the "event" (Q)
+within the format string used by the <a href="#QSLog"><code>QSLog</code></a> directive.</td>
+ <td>Event</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QSLOG_AVERAGE</td>
+ <td>Defines the environment variable which shall be used for the "average" (a)
+within the format string used by the <a href="#QSLog"><code>QSLog</code></a> directive.</td>
+ <td>QS_AllConn</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QS_LOG_REPEAT</td>
+ <td>Counter used to define how many repetitive messages are summarized.</td>
+ <td>20</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QS_REQ_RATE_TM</td>
+ <td>Default for the <a href="#QS_SrvSampleRate"><code>QS_SrvSampleRate</code></a> directive.</td>
+ <td>5</td>
+</tr>
+<tr>
+ <td>&nbsp;&nbsp;</td>
+ <td>QS_EXTRA_MATCH_LIMIT</td>
+ <td>Match limit field used for PCRE data processing.</td>
+ <td>1500</td>
+</tr>
+</table>
+</p>
+<p>
+The <a href="#utilities">support tools</a> may be built (at least on some 
+Linux platforms) using the GNU autotools. Some of these 
+utilities require third-party libraries such as apr, apr-util, PCRE, 
+libpng, and OpenSSL.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+cd mod_qos-0.00/tools
+./configure
+make
+</pre>
+</td></tr>
+</table>
+<!--
+<small><i>Note: 
+If you have a different version of <code>aclocal</code> or 
+<code>automake</code> on your system (you get a message like 
+"aclocal-x.y is missing on your system"), edit the configure  
+script and change the <code>am__api_version</code> variable 
+to match the version you have installed (<code>aclocal --versions</code> 
+shows you which version this is).
+</i></small>
+-->
+</p>
+
+<!-- DIST START -->
+
+<a name="source"></a>
+<h2>Source Code</h2>
+<p>
+<a href="../apache2">mod_qos</a> is available for Apache version 2.2 respectively 2.4.
+</p>
+
+<!-- DIST END -->
+<!-- CONFIGURATION -->
+
+<a name="configuration"></a>
+<h2>Configuration</h2>
+<p>Configuration is mostly done on a per-server basis (except the 
+<a href="#filter">generic request</a> filter and a few other directives). 
+<a href="glossary.html#directives">Directives</a> within a virtual 
+host are merged with the settings in the global configuration.
+</p> 
+<p>
+The <code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code>, 
+<code><a href="#QS_SrvRequestRate">QS_SrvRequestRate</a></code>, 
+<code><a href="#QS_RequestHeaderFilterRule">QS_RequestHeaderFilterRule</a></code>, 
+<code><a href="#QS_ResponseHeaderFilterRule">QS_ResponseHeaderFilterRule</a></code>, 
+and all <code><a href="#clientlevelcontrol">QS_Client*</a></code> 
+directives may be used outside of virtual host configurations only.
+</p>
+<p>
+<a name="QS_LogOnly"></a>
+The <code>QS_LogOnly on</code> directive may be used to put mod_qos 
+into a permissive mode where rule violations are logged only but no 
+actions are applied to requests or connections to enforce a rule. 
+This may be used for test purposes.
+</p>
+
+<p>
+<a name="requestlevelcontrol"></a>
+<h3>Request Level Control</h3>
+The module features directives to control server access 
+on a per-URL level - basically the main function of mod_qos. <br>
+Only one <code>QS_Loc*</code> rule (URL string or 
+regular expression) of each type is evaluated per request where 
+regular expression rules (*Match) have higher priority 
+than the rules using a literal URL-string. A 
+<code>QS_LocRequestLimit*</code> rule may be used in parallel to a 
+<code>QS_LocRequestPerSecLimit*</code> and/or 
+<code>QS_LocKBytesPerSecLimit*</code> rule if they use the very 
+same URL string or regular expression.
+<ul>
+<li>
+<a name="QS_LocRequestLimitMatch"></a>
+<syntax>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</syntax><br>
+Defines the number of <a href="glossary.html#concurrency">concurrent</a> 
+requests for the specified request pattern (applied to the unparsed URL). 
+The rule with the lowest number of allowed concurrent connections has the 
+highest priority if multiple expressions match the request. 
+By default, no limitations are active.
+</li>
+<li>
+<a name="QS_LocRequestPerSecLimitMatch"></a>
+<syntax>QS_LocRequestPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</syntax><br>
+Defines the allowed number of <a href="glossary.html#requestPerSecond">requests per second</a>
+to the URL (path and query) pattern. Requests are limited by
+adding a delay to each request (linear). The delay calculation is based on
+an average request rate measurement using a sampling rate of 10 seconds. 
+By default, no limitation is active. This directive should be used in 
+conjunction with <code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> 
+only (you must use the very same regex pattern with the 
+<code><a href="#QS_LocRequestPerSecLimitMatch">QS_LocRequestPerSecLimitMatch</a></code> 
+and <code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> 
+directive) to avoid too many concurrent requests.
+</li>
+<li>
+<a name="QS_LocKBytesPerSecLimitMatch"></a>
+<syntax>QS_LocKBytesPerSecLimitMatch &lt;regex&gt; &lt;number&gt;</syntax><br>
+Defines the allowed download <a href="glossary.html#throughput">bandwidth</a> to the location
+matching the defined URL (path and query) pattern. Responses are slowed down by 
+adding a delay to each response (every 8kbytes). Bandwidth calculation 
+is based on measuring the transferred data.
+By default, no limitation is active. This directive should be used 
+in conjunction with <code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> 
+only (you must use the very same regex pattern with the 
+<code><a href="#QS_LocKBytesPerSecLimitMatch">QS_LocKBytesPerSecLimitMatch</a></code> and 
+<code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> directive) 
+to avoid too many concurrent requests.
+</li>
+<li>
+<a name="QS_LocRequestLimit"></a>
+<syntax>QS_LocRequestLimit &lt;location&gt; &lt;number&gt;</syntax><br>
+Defines the number of <a href="glossary.html#concurrency">concurrent</a> 
+requests for the specified location (applied to the parsed path). 
+By default, no limitations are active for locations. Has lower priority than 
+<code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code> 
+directives.
+</li>
+<li>
+<a name="QS_LocRequestLimitDefault"></a>
+<syntax>QS_LocRequestLimitDefault &lt;number&gt;</syntax><br>Defines the 
+default limitation for the maximum of concurrent requests per-location 
+for those locations not defined by any 
+<code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code> 
+directive. It could also be used to limit the number of concurrent 
+requests to a virtual host.
+</li>
+<li>
+<a name="QS_LocRequestPerSecLimit"></a>
+<syntax>QS_LocRequestPerSecLimit &lt;location&gt; &lt;number&gt;</syntax><br>
+Defines the allowed number of <a href="glossary.html#requestPerSecond">requests per second</a>
+to a location, similar to the
+<a href="#QS_LocRequestPerSecLimitMatch"><code>QS_LocRequestPerSecLimitMatch</code></a> 
+directive. The maximum number of requests is limited by adding a delay to 
+each request (linear, each request gets the same delay). By default, 
+no limitation is active.
+This directive should be used in conjunction with 
+<code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code> only (you 
+must use the same location for both directives) to avoid too many 
+concurrent requests.. Has lower priority than 
+<code><a href="#QS_LocRequestPerSecLimitMatch">QS_LocRequestPerSecLimitMatch</a></code>.
+</li>
+<li>
+<a name="QS_LocKBytesPerSecLimit"></a>
+<syntax>QS_LocKBytesPerSecLimit &lt;location&gt; &lt;number&gt;</syntax><br>
+Throttles the download <a href="glossary.html#throughput">bandwidth</a> to the defined
+kbytes per second. Works simlar as the
+<a href="#QS_LocKBytesPerSecLimitMatch"><code>QS_LocKBytesPerSecLimitMatch</code></a> 
+directive slowing down HTTP responses by adding a delay to each response. 
+By default, no limitation is active. This directive should be used in 
+conjunction with <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code> only 
+(you must use the same location for both directives) to avoid too many 
+concurrent requests.. Has lower priority than 
+<code><a href="#QS_LocKBytesPerSecLimitMatch">QS_LocKBytesPerSecLimitMatch</a></code>.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+# maximum number of active TCP connections is limited to 512
+MaxClients                    512
+
+# limits concurrent requests to the locations:
+# - /app/a  max. 200 concurrent requests
+# - /app/b and /app/c (together) max. 300 concurrent requests
+# - /images max. 100 concurrent requests
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>            /app/a                   200
+<a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a>       ^(/app/b/|/app/c/).*$    300
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>            /images                  100
+# limits download bandwidth to 5Mbit/sec (resp. 640kbytes/sec)
+# for downloads from /app/a:
+<a href="#QS_LocKBytesPerSecLimit">QS_LocKBytesPerSecLimit</a>       /app/a                   640
+</pre>
+</td></tr>
+</table>
+<br>
+
+
+<a name="statuscode"></a>
+<h3>Status Code and Error Page</h3>
+The <code>QS_Error*</code> directives are used to control the response 
+given to clients whose requests have been denied.
+<ul>
+<li>
+<a name="QS_ErrorPage"></a>
+<syntax>QS_ErrorPage &lt;URL&gt;</syntax><br>Defines an error page to be 
+returned when a request is denied. The defined URL must be a (S)HTML 
+document accessible by the client. 
+You may enable <a href="glossary.html#ssi">server-side includes (SSI)</a> 
+in order to present detailed error messages based on the 
+<a href="#errorlog">error codes</a> provided by mod_qos.<br>
+Alternatively, a HTTP redirect (302) to a dedicated error page may be 
+defined using an absolute URL defining schema, hostname, and path.
+</li>
+<li>
+<a name="QS_ErrorResponseCode"></a>
+<syntax>QS_ErrorResponseCode &lt;code&gt;</syntax><br>Defines the HTTP 
+response code which is used when a request is denied. Requests denied 
+at connection level usually get a HTTP 500 response code (ignoring 
+the settings of the <code>QS_ErrorResponseCode</code> and 
+<code><a href="#QS_ErrorPage">QS_ErrorPage</a></code> directives).<br>
+Default (no custom error code or page defined) codes are:<br>
+&nbsp;400: if a request has no valid URL.<br>
+&nbsp;403: for requests denied by a <code><a href="#filter">QS_Deny*</a></code>, 
+<code><a href="#filter">QS_Permit*</a></code> or 
+<code><a href="#QS_RequestHeaderFilter">QS_RequestHeaderFilter</a></code> 
+directive.<br>
+&nbsp;413: when limiting the max. body data length by the 
+<code><a href="#QS_LimitRequestBody">QS_LimitRequestBody</a></code> directive.<br>
+&nbsp;500: for requests denied by any other directive.<br>
+</li>
+</ul>
+
+<a name="privilegedusers"></a>
+<h3>Privileged Users</h3>
+Additional directives are used to identify VIPs (very important persons) 
+and to control the session life time and its cookie format. VIP users have 
+privileged access and less QoS restrictions than ordinary users. <br><br>
+VIP information is stored and evaluated at different levels:
+<ul>
+<li>
+Session: VIP identification is stored using a HTTP 
+session cookie. mod_qos starts a new session when detecting a HTTP 
+response header (the header name is defined by the 
+<code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code> 
+directive). Alternatively, a new session is started when detecting an 
+authenticated user, see <code><a href="#QS_VipUser">QS_VipUser</a></code>. 
+The <code><a href="#QS_Session">QS_Session*</a></code> 
+directives are used to set session attributes.
+</li>
+<li>
+Request: The <code><a href="#QS_VipRequest">QS_VipRequest</a></code> 
+process environment may be evaluated by mod_qos rules. This 
+variable is set automatically when receiving a valid mod_qos 
+session cookie. The <code><a href="#QS_VipRequest">QS_VipRequest</a></code> 
+variable may also be set by configuration using a <code><a href="#QS_SetEnvIf">QS_SetEnvIf*</a></code> 
+or <code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> 
+directive. VIP status lasts for the particular 
+request only.
+</li>
+<li>
+Client IP address: VIP identification may be stored at the server side 
+on a per-client IP address basis. 
+The <code><a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a></code>, 
+<code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code>, 
+<code><a href="#QS_VipIPUser">QS_VipIPUser</a></code>, and 
+<code><a href="#QS_VipUser">QS_VipUser</a></code> directives are used 
+to define when an IP address should be marked as a VIP user.
+</li>
+</ul>
+
+Directives:
+
+<ul>
+<li>
+<a name="QS_VipHeaderName"></a>
+<syntax>QS_VipHeaderName &lt;header name&gt;[=&lt;regex&gt;] [drop]</syntax><br>
+Defines an HTTP response header which marks a user as a VIP. mod_qos creates 
+a session for this user by setting a cookie, e.g., after successful user 
+authentication. 
+Tests optionally its value against the provided regular expression. 
+Specify the action 'drop' if you want mod_qos to remove this 
+control header from the HTTP response.
+</li>
+<li>
+<a name="QS_VipIPHeaderName"></a>
+<syntax>QS_VipIPHeaderName &lt;header name&gt;[=&lt;regex&gt;] [drop]</syntax><br>
+Defines an HTTP response header which marks a client source IP address as 
+a VIP. 
+Tests optionally its value against the provided regular expression. 
+Specify the action 'drop' if you want mod_qos to remove this 
+control header from the HTTP response.
+</li>
+<li>
+<a name="QS_VipUser"></a>
+<syntax>QS_VipUser</syntax><br>
+Creates a VIP session for users which have been authenticated by the 
+Apache server, e.g., by the standard mod_auth* modules.
+It works similar to the <code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code> directive.
+</li>
+<li>
+<a name="QS_VipIPUser"></a>
+<syntax>QS_VipIPUser</syntax><br>
+Marks a source IP address as a VIP if the user has been authenticated by the 
+Apache server, e.g. by the standard mod_auth* modules. It works similar to 
+the <code><a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a></code> directive.
+</li>
+<li>
+<a name="QS_Session"></a>
+<a name="QS_SessionTimeout"></a>
+<syntax>QS_SessionTimeout &lt;seconds&gt;</syntax><br>
+Defines the session life time for a VIP. It is only used for session 
+based (cookie) VIP identification (not for IP based). 
+Default is 3600 seconds.
+</li>
+<a name="QS_SessionCookieName"></a>
+<li>
+<syntax>QS_SessionCookieName &lt;name&gt;</syntax><br>
+A cookie is used to identify requests coming from a user which has 
+been identified as a VIP. This directive defines a custom cookie name 
+for the mod_qos session cookie. Default is MODQOS.
+</li>
+<li>
+<a name="QS_SessionCookiePath"></a>
+<syntax>QS_SessionCookiePath &lt;path&gt;</syntax><br>
+Defines the cookie path. Default is "/".
+</li>
+<li>
+<a name="QS_SessionKey"></a>
+<syntax>QS_SessionKey &lt;string&gt;</syntax><br>
+Secret key used for cookie encryption. This key must be defined 
+when using the same session cookie for multiple web servers 
+(load balancing) or the sessions should survive a server restart. 
+By default, a random key is used which changes every server restart.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+<a href="#QS_ErrorPage">QS_ErrorPage</a>                  /error-docs/qs_error.html
+
+# restricts max concurrent requests for any location which has no
+# individual rule:
+<a href="#QS_LocRequestLimitDefault">QS_LocRequestLimitDefault</a>                              200
+
+# limits access to *.gif files to 100 concurrent requests:
+<a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a>       "^.*\.gif$"              100
+
+# limits concurrent requests to the locations /images and /app/a:
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>            /images                  100
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>            /app/a                   300
+# limits download bandwidth to 5Mbit/sec:
+<a href="#QS_LocKBytesPerSecLimit">QS_LocKBytesPerSecLimit</a>       /app/a                   640
+
+# two locations (/app/b and /app/c) representing a single application:
+<a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a>       "^(/app/b/|/app/c/).*$"  300
+
+
+# allows the application to nominate VIP users by sending a
+# "mod-qos-vip" HTTP response header:
+<a href="#QS_VipHeaderName">QS_VipHeaderName</a>              mod-qos-vip
+<a href="#QS_SessionKey">QS_SessionKey</a>                 na&5san-sB.F4_0a=%VBEBahXT1
+</pre>
+</td></tr>
+</table>
+<br>
+
+<a name="privilegedusers_list"></a>
+The following table shows if a rules may be deactivated for VIPs:
+<table class="btable" width="280px">
+<tr><td>QS_ClientEventBlockCount</td><td>no</td></tr>
+<tr><td>QS_ClientEventLimitCount</td><td>no</td></tr>
+<tr><td>QS_ClientEventPerSecLimit</td><td>no</td></tr>
+<tr><td>QS_ClientEventRequestLimit</td><td>no</td></tr>
+<tr><td>QS_ClientPrefer</td><td>yes</td></tr>
+<tr><td>QS_ClientSerialize</td><td>no</td></tr>
+<tr><td>QS_ClientGeoCountryPriv</td><td>no</td></tr>
+<tr><td>QS_CondLocRequestLimitMatch</td><td>yes</td></tr>
+<tr><td>QS_CondEventLimitCount</td><td>no</td></tr>
+<tr><td>QS_CondClientEventLimitCount</td><td>no</td></tr>
+<tr><td>QS_DenyQueryBody</td><td>no</td></tr>
+<tr><td>QS_PermitUriBody</td><td>no</td></tr>
+<tr><td>QS_DenyEvent</td><td>no</td></tr>
+<tr><td>QS_DenyPath</td><td>no</td></tr>
+<tr><td>QS_DenyQuery</td><td>no</td></tr>
+<tr><td>QS_DenyRequestLine</td><td>no</td></tr>
+<tr><td>QS_EventKBytesPerSecLimit</td><td>yes</td></tr>
+<tr><td>QS_EventPerSecLimit</td><td>yes</td></tr>
+<tr><td>QS_EventRequestLimit</td><td>no</td></tr>
+<tr><td>QS_EventLimitCount</td><td>no</td></tr>
+<tr><td>QS_InvalidUrlEncoding</td><td>no</td></tr>
+<tr><td>QS_LimitRequestBody</td><td>no</td></tr>
+<tr><td>QS_LocKBytesPerSecLimit(Match)</td><td>yes</td></tr>
+<tr><td>QS_LocRequestLimit(Match)</td><td>yes</td></tr>
+<tr><td>QS_LocRequestPerSecLimit(Match)</td><td>yes</td></tr>
+<tr><td>QS_MileStone</td><td>no</td></tr>
+<tr><td>QS_RedirectIf</td><td>no</td></tr>
+<tr><td>QS_PermitUri</td><td>no</td></tr>
+<tr><td>QS_RequestHeaderFilter</td><td>no</td></tr>
+<tr><td>QS_ResponseHeaderFilter</td><td>no</td></tr>
+<tr><td>QS_SrvMaxConn</td><td>yes</td></tr>
+<tr><td>QS_SrvMaxConnClose</td><td>no</td></tr>
+<tr><td>QS_SrvMaxConnPerIP</td><td>yes*</td></tr>
+<tr><td>QS_SrvMinDataRate</td><td>yes*</td></tr>
+<tr><td>QS_SrvSerialize</td><td>no</td></tr>
+<tr><td>&nbsp;</td><td>&nbsp;</td></tr>
+</table>
+<small><i>Notes:<br>
+&nbsp;&nbsp;Directives marked by "*" allow you to disable VIP support.<br>
+&nbsp;&nbsp;Event based or conditional rules may evaluate the 
+<a href="#QS_VipRequest">QS_VipRequest</a> and 
+<a href="#QS_IsVipRequest">QS_IsVipRequest</a> variables to decide 
+if the rule should be applied.</i></small>
+<br>
+<a name="variables"></a>
+<h3>Variables</h3>
+<a href="glossary.html#variables">Environment variables</a> are used on a per
+request level and implement additional control mechanisms. Variables may be set
+using the standard Apache module
+<a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a> or 
+<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a>.
+See also the <a href="#eventcontrol">
+<code><a href="#QS_SetEnvIf">QS_SetEnvIf*</a></code></a> directives in order to combine multiple 
+variables to form new variables interpreted by mod_qos rules. <br>
+<br>
+These are the variables recognized by mod_qos:
+<ul>
+<li>
+<a name="QS_ErrorPage_Var"></a>
+<syntax>QS_ErrorPage=&lt;URL&gt;</syntax><br>
+Defines the error page overriding the setting made by the 
+<code><a href="#QS_ErrorPage">QS_ErrorPage</a></code> directive.
+</li>
+<li>
+<a name="QS_VipRequest"></a>
+<syntax>QS_VipRequest=yes</syntax><br>
+Disables some restrictions for this request (see <a href="#privilegedusers">privileged Users</a>). 
+Requires the definition of a VIP header using the 
+<code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code> directive 
+(this activates VIP verification). However, such an event does 
+not create a VIP session. The user has the VIP status only for 
+a single request. <br>The variable is set by mod_qos when 
+receiving a valid VIP <a href="#QS_SessionCookieName">session cookie</a>.
+</li>
+<li>
+<a name="QS_KeepAliveTimeout"></a>
+<syntax>QS_KeepAliveTimeout=&lt;seconds&gt;</syntax><br>
+Applies dynamic connection keep-alive settings overriding the Apache 
+<code><a href="http://httpd.apache.org/docs/current/mod/core.html#keepalivetimeout">KeepAliveTimeout <img src="images/link.png"/></a></code> directive settings.
+</li>
+<li>
+<a name="QS_MaxKeepAliveRequests"></a>
+<syntax>QS_MaxKeepAliveRequests=&lt;number&gt;</syntax><br>
+Applies dynamic connection keep-alive settings overriding the Apache 
+<code><a href="http://httpd.apache.org/docs/current/mod/core.html#maxkeepaliverequests">MaxKeepAliveRequests <img src="images/link.png"/></a></code> directive settings.
+</li>
+<li>
+<a name="QS_Timeout"></a>
+<syntax>QS_Timeout=&lt;seconds&gt;</syntax><br>
+Alters the I/O timeout (while reading the request body / writing the response) 
+of the current request overriding the Apache 
+<code><a href="http://httpd.apache.org/docs/current/mod/core.html#timeout">TimeOut <img src="images/link.png"/></a></code> 
+directive settings.
+</li>
+<li>
+<a name="QS_Set_DSCP"></a>
+<syntax>QS_Set_DSCP=&lt;value&gt;</syntax><br>
+Variable used to set the IP differentiated services code points 
+(DiffServ / RFC 2474). This allows you to classify the network 
+traffic when sending the response data to the client. "value" 
+represents the 6-bit DSCP field as a decimal number (0 to 63).<br>
+Commonly used values:
+<small>
+<table class="btable">
+<tr><td>DSCP</td><td>Class</td><td>&nbsp;&nbsp;</td>  <td>DSCP</td><td>Class</td></tr>
+<tr><td>0</td><td>none</td><td>&nbsp;&nbsp;&nbsp;</td>  <td>8</td><td>Class selector 1</td></tr>
+<tr><td>10</td><td>Assured forwarding 11</td><td>&nbsp;&nbsp;&nbsp;</td> <td>12</td><td>Assured forwarding 12</td></tr>
+<tr><td>14</td><td>Assured forwarding 13</td><td>&nbsp;&nbsp;&nbsp;</td> <td>16</td><td>Class selector 2</td></tr>
+<tr><td>18</td><td>Assured forwarding 21</td><td>&nbsp;&nbsp;&nbsp;</td> <td>20</td><td>Assured forwarding 22</td></tr>
+<tr><td>22</td><td>Assured forwarding 23</td><td>&nbsp;&nbsp;&nbsp;</td> <td>24</td><td>Class selector 3</td></tr>
+<tr><td>26</td><td>Assured forwarding 31</td><td>&nbsp;&nbsp;&nbsp;</td> <td>28</td><td>Assured forwarding 32</td></tr>
+<tr><td>30</td><td>Assured forwarding 33</td><td>&nbsp;&nbsp;&nbsp;</td> <td>32</td><td>Class selector 4</td></tr>
+<tr><td>34</td><td>Assured forwarding 41</td><td>&nbsp;&nbsp;&nbsp;</td> <td>36</td><td>Assured forwarding 42</td></tr>
+<tr><td>38</td><td>Assured forwarding 43</td><td>&nbsp;&nbsp;&nbsp;</td> <td>40</td><td>Class selector 5</td></tr>
+<tr><td>44</td><td>Voice admit</td><td>&nbsp;&nbsp;&nbsp;</td> <td>46</td><td>Expedited forwarding</td></tr>
+<tr><td>48</td><td>Class selector 6</td><td>&nbsp;&nbsp;&nbsp;</td> <td>56</td><td>Class selector 7</td></tr>
+</table>
+</small>
+</li>
+<li>
+<a name="QS_Delay"></a>
+<syntax>QS_Delay=&lt;milliseconds&gt;</syntax><br>
+Defines a number of milliseconds to delay the request processing.
+</li>
+<li>
+<a name="QS_Event"></a>
+<syntax>QS_Event</syntax><br>
+The variable processed by the <code><a href="#QS_ClientEventPerSecLimit">QS_ClientEventPerSecLimit</a></code> directive.
+</li>
+<li>
+<a name="QS_Block"></a>
+<syntax>QS_Block[=&lt;number&gt;]</syntax><br>
+Variable processed by the <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> 
+directive.<br>
+The optional <code>number</code> value defines the penalty points to 
+increase the counter (default is 1).
+</li>
+<li>
+<a name="QS_Limit"></a>
+<syntax>QS_Limit[=&lt;number&gt;]</syntax><br>
+(Default) variable processed by the
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+directive.<br>
+The optional <code>number</code> value defines the penalty points to 
+increase the counter (default is 1).
+</li>
+<li>
+<a name="_Clear"></a>
+<syntax>*_Clear</syntax><br>
+The counter of the variable processed by the
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>
+directive  is reset if you set the same variable suffixed by <code>_Clear</code>, 
+e.g. <code>QS_Limit_Clear</code>.
+</li>
+<li>
+<a name="_Decrement"></a>
+<syntax>*_Decrement</syntax><br>
+The counter of the variable processed by the
+<code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code>, 
+<code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code>, 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>, 
+<code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code>, and
+<code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> 
+directives 
+is decremented by the value set in the same variable suffixed by <code>_Decrement</code>, 
+e.g. <code>QS_Limit_Decrement=1</code> decrements the value of the <code>QS_Limit</code>
+variable of the corresponding
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>
+rule by 1. The variable is evaluated at the end of the request processing.
+</li>
+<li>
+<a name="QS_Serialize"></a>
+<syntax>QS_Serialize</syntax><br>
+Variable processed by the <code><a href="#QS_ClientSerialize">QS_ClientSerialize</a></code> 
+directive.
+</li>
+<li>
+<a name="QS_SrvSerialize_var"></a>
+<syntax>QS_SrvSerialize</syntax><br>
+Variable processed by the <code><a href="#QS_SrvSerialize">QS_SrvSerialize</a></code> 
+directive.
+</li>
+<li>
+<a name="QS_Cond"></a>
+<syntax>QS_Cond</syntax><br>
+Variable processed by the <code><a href="#QS_CondLocRequestLimitMatch">QS_CondLocRequestLimitMatch</a></code>, 
+<code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code>, and
+<code><a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a></code> directives.
+</li>
+<li>
+<a name="QS_EventRequest"></a>
+<syntax>QS_EventRequest</syntax><br>
+Variable processed by the <code><a href="#QS_ClientEventRequestLimit">QS_ClientEventRequestLimit</a></code> directive.
+</li>
+</ul>
+
+Variables set by mod_qos which may be processed by conditional or event based 
+rules, e.g., 
+<code><a href="#QS_CondLocRequestLimitMatch">QS_CondLocRequestLimitMatch</a></code>:
+<ul>
+<li>
+<a name="QS_SrvConn"></a>
+<syntax>QS_SrvConn</syntax><br>
+Number of <a href="glossary.html#concurrency">concurrent</a> 
+connections for this server/virtual host. Value is set 
+when using either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, 
+<code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code>, 
+<code><a href="#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a></code>, or 
+<code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> 
+directive. <br>
+<small><i>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.</i></small>
+</li>
+<li>
+<a name="QS_AllConn"></a>
+<syntax>QS_AllConn</syntax><br>
+Number of all concurrent connections for this Apache instance. Value is set 
+when using either the <code><a href="#QS_SrvMaxConn">QS_SrvMaxConn</a></code>, 
+<code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code>, 
+<code><a href="#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a></code>, or 
+<code><a href="#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a></code> 
+directive. <br>
+<small><i>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.</i></small>
+</li>
+<li>
+<a name="QS_IPConn"></a>
+<syntax>QS_IPConn</syntax><br>
+Number of IP connections open from the current IP address. Variable is 
+available when using the <code><a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a></code> 
+directive. <br>
+<small><i>Note: value is calulcated when the client establishes the connection 
+and remains the same for all HTTP requests performed on this connection.</i></small>
+</li>
+<li>
+<a name="QS_ClientLowPrio"></a>
+<syntax>QS_ClientLowPrio</syntax><br>
+The variable is set for connections by clients which have been marked to be 
+processed with low priority, see <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code>. 
+The variable's value is determined when the client opens a new connection and 
+its value represents the status flag of the tracked client attributes 
+(hexadecimal). <a href="#privilegedusers">VIP</a> status is ignored and
+the variable is always set even the IP has been marked as being VIP.
+</li>
+<li>
+<a name="QS_IsVipRequest"></a>
+<syntax>QS_IsVipRequest</syntax><br>
+Variable is set when detecting a <a href="#privilegedusers">VIP</a> request
+(either by cookie, IP address status, valid user, etc.). May be used by
+various event based directives.
+</li>
+<li>
+<a name="_Counter"></a>
+<syntax>*_Counter</syntax><br>
+The counter values of the variables used by the 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+and <code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code> 
+directive are stored within the variable whose name is suffixed by 
+<code>_Counter</code>, e.g. <code>QS_Limit_Counter</code> when limiting 
+<code><a href="#QS_Limit">QS_Limit</a></code> events.
+</li>
+<li>
+<a name="QS_ErrorNotes"></a>
+<syntax>QS_ErrorNotes</syntax><br>
+The error code (number only) of a mod_qos <a href="#errorlog">log message</a> 
+that has occured during a request.
+</li>
+<li>
+<a name="QS_Country"></a>
+<syntax>QS_Country</syntax><br>
+ISO 3166 country code of client IPv4 address. Only available if the 
+<a href="#QS_ClientGeoCountryDB">geographical database</a> file has been loaded.<br>
+<small><i>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
+directive to override the client's IP address based on the value within the defined 
+HTTP request header (e.g., X-Forwarded-For) instead of taking the IP address of 
+the client which has opened the TCP connection.</i></small>
+</li>
+<!--<li>
+<syntax>QS_RuleId</syntax><br>
+ID of the matching <code>QS_Deny*</code> rule.
+</li>-->
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample of variable usage:<br>
+<pre>
+# privileged access for curl clients:
+BrowserMatch             "curl"                   <a href="#QS_VipRequest">QS_VipRequest</a>=yes
+
+# allows privileged access to a single resource:
+SetEnvIf     Request_URI /app/start.html          <a href="#QS_VipRequest">QS_VipRequest</a>=yes
+
+# allows privileged access from a specified source address
+# or source address range:
+SetEnvIf     Remote_Addr 172.18.3.32              <a href="#QS_VipRequest">QS_VipRequest</a>=yes
+SetEnvIf     Remote_Addr 192.168.10.              <a href="#QS_VipRequest">QS_VipRequest</a>=yes
+
+# set keep-alive timeout for MSIE version 5.x browser to 65 seconds:
+BrowserMatch             "(MSIE 5\.)"             <a href="#QS_KeepAliveTimeout">QS_KeepAliveTimeout</a>=65
+
+# dynamic error page URL (per host error page):
+SetEnvIf     Host        ^([a-zA-Z0-9_\.\-]+)     <a href="#QS_ErrorPage">QS_ErrorPage</a>=/error-docs/$1.html
+# external redirect to a sever hosting the error page:
+SetEnvIf     Request_URI /app                     <a href="#QS_ErrorPage">QS_ErrorPage</a>=http://your.server.name/error.html
+</pre>
+</td></tr>
+</table>
+
+<a name="conditionalrules"></a>
+<h3>Conditional Rules</h3>
+Conditional rules are only enforced if the <code><a href="#QS_Cond">QS_Cond</a></code> 
+variable matches the specified pattern.
+<ul>
+<li>
+<a name="QS_CondLocRequestLimitMatch"></a>
+<syntax>QS_CondLocRequestLimitMatch &lt;regex&gt; &lt;number&gt; &lt;condition&gt;</syntax><br>
+Rule works similar to <a href="#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a> 
+but it is only enforced for requests whose <code><a href="#QS_Cond">QS_Cond</a></code> 
+variable matches the specified condition (regular expression). Every request 
+matching the defined pattern is counted, but the defined limitation is only 
+enforced for those requests matching the specified condition. <br>
+Only one <code>QS_CondLocRequestLimitMatch</code> rule is evaluated per request.
+</li>
+<li>
+<a name="QS_CondEventLimitCount"></a>
+<syntax>QS_CondEventLimitCount &lt;env-variable&gt; &lt;number&gt; &lt;seconds&gt; &lt;pattern&gt;</syntax><br>
+Same as <code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code> but
+requests are only blocked if the value of the
+<code><a href="#QS_Cond">QS_Cond</a></code> 
+variable matches the defined pattern (regex).
+</li>
+<li>
+<a name="QS_CondClientEventLimitCount"></a>
+<syntax>QS_CondClientEventLimitCount &lt;number&gt; &lt;seconds&gt; &lt;variable&gt; &lt;pattern&gt;</syntax><br>
+Defines the maximum number of the specified environment variable
+allowed within the defined time. Directive works similar as 
+<a href="#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
+but requests are only blocked if the value of the <code><a href="#QS_Cond">QS_Cond</a></code> 
+variable matches the defined pattern (regex). Directive is allowed 
+in global server context only. <br>
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample of conditional rules:<br>
+<pre>
+# set the conditional variable to spider if detecting a
+# "slurp" or "googlebot" search engine:
+BrowserMatch             "slurp"                  <a href="#QS_Cond">QS_Cond</a>=spider
+BrowserMatch             "googlebot"              <a href="#QS_Cond">QS_Cond</a>=spider
+
+# limits the number of concurrent requests to two applications
+# (/app/b and /app/c) to 300 but does not allow access by a "spider"
+# if the number of concurrent requests exceeds the limit of 10:
+<a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a>       "^(/app/b/|/app/c/).*$"  300
+<a href="#QS_LocRequestLimitMatch">QS_CondLocRequestLimitMatch</a>   "^(/app/b/|/app/c/).*$"  10   spider
+</pre>
+</td></tr>
+</table>
+
+<a name="eventcontrol"></a>
+<h3>Events</h3>
+mod_qos may control the frequency of "events". An event may be any 
+request attribute which can be represented by an
+<a href="glossary.html#variables">environment variable</a>. 
+Such variables may be set by 
+<a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a>, 
+<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a>, or 
+by other Apache modules.
+Please consider the <a href="glossary.html#directives">order of command execution</a> 
+to ensure that the necessary variables are set.
+
+<ul>
+<li>
+<a name="QS_EventRequestLimit"></a>
+<syntax>QS_EventRequestLimit &lt;env-variable&gt;[=&lt;regex&gt] &lt;number&gt;</syntax><br>
+Defines the number of <a href="glossary.html#concurrency">concurrent</a> events. 
+Directive works similar to 
+<code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code>, but 
+counts the requests having the same environment variable (and optionally 
+matching its value, too) rather than those that have the same URL pattern. 
+<br><small><i>Note: The counter's value is stored in the enviroment variable 
+QS_EventRequestLimit_&lt;env-variable&gt;_Counter.
+</i></small>
+</li>
+<li>
+<a name="QS_EventPerSecLimit"></a>
+<syntax>QS_EventPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</syntax><br>
+Defines how often requests may have the defined environment variable 
+(literal string) set. It measures the occurrences of the defined 
+environment variable on a <a href="glossary.html#requestPerSecond">request per seconds</a>
+level and tries to limit this occurrence to the defined number. It works similar as 
+<a href="#QS_LocRequestPerSecLimit"><code>QS_LocRequestPerSecLimit</code></a>, 
+but counts only the requests with the specified variable (or without it
+if the variable name is prefixed by a "!"). If a request matches 
+multiple events, the rule with the lowest bandwidth is applied. 
+Events are limited by adding a delay to each request causing an 
+event.
+</li>
+<li>
+<a name="QS_EventKBytesPerSecLimit"></a>
+<syntax>QS_EventKBytesPerSecLimit [!]&lt;env-variable&gt; &lt;number&gt;</syntax><br>
+Throttles the download <a href="glossary.html#throughput">bandwidth</a>
+of all requests having the defined variable set to the defined
+kbytes per second. Responses are slowed by adding a delay to each
+response (every 8kbytes). The delay calculation 
+is based on an average request rate measurement.
+By default, no limitation is active. 
+This directive should be used in conjunction with 
+<code><a href="#QS_EventRequestLimit">QS_EventRequestLimit</a></code> 
+only (you must use the same variable name for both directives) to avoid too many 
+concurrent requests.
+</li>
+<li>
+<a name="QS_EventLimitCount"></a>
+<syntax>QS_EventLimitCount &lt;env-variable&gt; &lt;number&gt; &lt;seconds&gt;</syntax><br>
+Defines the maximum <a href="glossary.html#repeat">number of events allowed within the defined time</a>. 
+Requests causing the event are denied when reaching this limitation for the specified time 
+(blocked at request level).<br>
+<small><i>Notes:<ul>
+<li>The current counter value is propagated to the process environment within 
+the variable <code>&lt;env-variable&gt;<a href="#_Counter">_Counter</a></code>.</li>
+<li>See also <a href="#QS_CondEventLimitCount"><code>QS_CondEventLimitCount</code></a> 
+if you want to enforce a rule under certain conditions only.</li>
+<li>The event counter can be decremented by setting the environment 
+<code>&lt;env-variable&gt;<a href="#_Decrement">_Decrement</a></code>.</li>
+</ul>
+</i></small>
+</li>
+</ul>
+Mulpiple built-in directives may be used to set or detect events (additional
+event variable processing could be configured using
+<a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a> or 
+<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a>).
+<ul>
+<li>
+<a name="QS_SetEnvIf"></a>
+<syntax>QS_SetEnvIf [!]&lt;env-variable1&gt; [!]&lt;env-variable2&gt; [!]&lt;env-variable=value&gt;</syntax><br>
+Sets (or unsets) the environment "variable=value" (literal string) if variable1 (literal 
+string) AND variable2 (literal string) are set in the request environment 
+variable list (not case sensitive). This is used to combine multiple 
+variables to a new event type.<br>
+This directive may be used on a per-server or
+<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+basis.
+</li>
+<li>
+<a name="QS_SetEnvIfMatch"></a>
+<syntax>QS_SetEnvIf &lt;env-variable1&gt;=&lt;regex&gt; [!]&lt;env-variable&gt;=&lt;value&gt;</syntax><br>
+Sets the environment variable if the environment variable1's value 
+matches the defined regular expression. <code>$1</code>..<code>$9</code> 
+within the value and are replaced by parenthesized subexpressions 
+of the regular expression.<br>
+This directive may be used on a per-server or
+<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+basis.
+</li>
+<li>
+<a name="QS_SetEnv"></a>
+<syntax>QS_SetEnv &lt;env-variable&gt; &lt;value&gt;</syntax><br>
+Sets the defined variable with the value where the value string may contain 
+other environment variables surrounded by "${" and "}". The variable is only 
+set if all defined variables within the value have been resolved.
+</li>
+<li>
+<a name="QS_SetEnvIfQuery"></a>
+<syntax>QS_SetEnvIfQuery &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</syntax><br>
+Directive works quite similar to the 
+<code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> 
+directive of the Apache module 
+<a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a>, 
+but the specified regex is applied against the query string 
+portion of the request line. The directive recognizes 
+the occurrences of $1..$9 within value and replaces them 
+by the sub-expressions of the defined regex pattern.<br>
+This directive may be used on a per-server or
+<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+basis.
+</li>
+<a name="QS_SetEnvIfCmp"></a>
+<li>
+<syntax>QS_SetEnvIfCmp &lt;env-variable1&gt; eq|ne|gt|lt &lt;env-variable2&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</syntax><br>
+Sets the defined environment variable if the specifed env-variables[1|2] 
+are numerical or alphabetically (case insensitive) equal (<code>eq</code>), 
+not equal (<code>ne</code>) greater (<code>gt</code>), or less (<code>lt</code>).<br> 
+This directive may be used on a per-<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+basis only.</li>
+<li>
+<a name="QS_SetEnvIfParp"></a>
+<syntax>QS_SetEnvIfParp &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</syntax><br>
+Directive parsing the request payload using the Apache module 
+<a href="http://parp.sourceforge.net">mod_parp <img src="images/link.png"/></a>. It matches 
+the request URL query and the HTTP request message body data as well 
+(<code>application/x-www-form-urlencoded</code>, 
+<code>multipart/form-data</code>, and <code>multipart/mixed</code>) 
+and sets the defined process variable (quite similar to the 
+<code><a href="#QS_SetEnvIfQuery">QS_SetEnvIfQuery</a></code> directive). 
+The directive recognizes the occurrences of $1..$9 within 
+value and replaces them by the sub-expressions 
+of the defined regex pattern. This directive activates 
+mod_parp for every request to the virtual host. 
+You may deactivate mod_parp for selected requests using the 
+<code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> 
+or <code><a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus <img src="images/link.png"/></a></code> 
+directive: unset the variable "parp" to do so.
+Important: request message body processing requires that the server 
+loads the whole request into its memory (at least twice the length 
+of the message). You should limit the allowed size of the HTTP 
+request message body using the <code><a href="#QS_LimitRequestBody">QS_LimitRequestBody</a></code> directive 
+when using <code><a href="#QS_SetEnvIfParp">QS_SetEnvIfParp</a></code>!
+</li>
+<li>
+<a name="QS_SetEnvIfBody"></a>
+<syntax>QS_SetEnvIfBody &lt;regex&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</syntax><br>
+Directive parsing the request body using the Apache module 
+<a href="http://parp.sourceforge.net">mod_parp <img src="images/link.png"/></a>. Specify the content 
+types to process using the mod_parp directive 
+<code><a href="http://parp.sourceforge.net/#PARP_BodyData">PARP_BodyData <img src="images/link.png"/></a></code> 
+and ensure that mod_parp is enabled using the 
+<code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> 
+or <code><a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus <img src="images/link.png"/></a></code> 
+directive.
+You should limit the allowed size of HTTP requests message body 
+using the <code><a href="#QS_LimitRequestBody">QS_LimitRequestBody</a></code> 
+directive when using mod_parp. The directive recognizes the occurrence of $1 
+within the variable value and replaces it by the sub-expressions of the 
+defined regex pattern. The regular expressions is case insensitive.
+</li>
+<li>
+<a name="QS_SetEnvIfStatus"></a>
+<syntax>QS_SetEnvIfStatus &lt;code&gt; &lt;env-variable&gt;[=&lt;value&gt;]</syntax><br>
+Sets the defined variable in the request environment if the HTTP 
+response status code matches the defined code. Default value is the status code, but 
+you might override this by any other value. 
+Directive may be used on a per-server or per-location basis. <br>
+A possible use case for this directive is the prevention of 
+repetitive occurrence of unwanted response status codes in 
+conjunction with the 
+<code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code> or 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+directive. <br>
+When using the special variable <code><a href="#QS_Block">QS_Block</a></code>, its 
+value is set to "1" by default. There are also three "special codes" available to 
+set the <code><a href="#QS_Block">QS_Block</a></code> event:
+<ul>
+<li><a name="QS_SrvMinDataRate_var"></a>
+<code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code> may be used 
+to set <code><a href="#QS_Block">QS_Block</a></code> events in order to limit the 
+allowed number of <a href="#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> 
+rule violations.</li>
+<li><a name="QS_SrvMaxConnPerIP_var"></a>
+<code><a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a></code> may be used 
+to increment the <code><a href="#QS_Block">QS_Block</a></code> 
+event when closing connections due to the reach of the limitation configured 
+by the <a href="#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> directive.</li>
+<li><a name="NullConnection"></a>
+<code>NullConnection</code> detects connections 
+which are closed even no HTTP request has been received. <br>
+<small><i>Note: The <code>NullConnection</code> event may happen silently (no log 
+message) expect when using <code><a href="http://httpd.apache.org/docs/current/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a></code> "debug". 
+The parameter may be used to defend against SSL DoS attacks. <!-- "defend against SSL DoS attacks" is a MARKER -->
+Please pay attention to the fact that unused speculative TCP pre-connections of 
+browsers may unintentionally cause this event as well.</i></small></li>
+<li><a name="BrokenConnection"></a>
+<code>BrokenConnection</code> may be used 
+to mark clients aborting the TCP connection before reading the whole HTTP 
+response.<br>
+<small><i>Note: Connections may also be aborted by mod_qos if client reads 
+the response too slow.</i></small></li>
+</ul>
+</li>
+<li>
+<a name="QS_SetEnvIfResBody"></a>
+<syntax>QS_SetEnvIfResBody &lt;string&gt; [!]&lt;env-variable&gt;</syntax><br>
+Adds the defined environment variable (e.g., <code><a href="#QS_Block">QS_Block</a></code>) 
+if the response body contains the defined literal string. Used on a per-
+<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+level. Only one directive may be defined per-location 
+(one search string per response). Prefixing the variably by a "!" 
+lets the variable being removed (unset). You may set the <code>QS_SetEnvIfResBodyIgnore</code> 
+environment variable if you want mod_qos to skip (not parsing) a request's response 
+body.
+</li>
+<li>
+<a name="QS_SetEnvRes"></a>
+<syntax>QS_SetEnvRes &lt;env-variable&gt; &lt;regex&gt; &lt;env-variable2&gt;[=&lt;value&gt;]</syntax><br>
+Sets the environmet variable (env-variable2) if the regular expression (regex) matches 
+against the value of the environment variable (env-variable). Occurrences of $1..$9 within 
+the value are replaced by parenthesized subexpressions of the regular expression.
+</li>
+<li>
+<a name="QS_SetReqHeader"></a>
+<syntax>QS_SetReqHeader [!]&lt;header name&gt; &lt;env-variable&gt; [late]</syntax><br>
+Sets the defined HTTP request header with the value of the specified 
+environment variable if the variable is available.<br>
+The header is unset (removed from the request) if the header name is prefixed by a "!".
+</li>
+<li>
+<a name="QS_SetEnvResHeader"></a>
+<syntax>QS_SetEnvResHeader &lt;header name&gt; [drop]</syntax><br>
+Sets the defined HTTP response header to the request environment variables. 
+Deletes the specified header if the action 'drop' has been specified.
+</li>
+<li>
+<a name="QS_SetEnvResHeaderMatch"></a>
+<syntax>QS_SetEnvResHeaderMatch &lt;header name&gt; &lt;regex&gt;</syntax><br>
+Sets the defined HTTP response header to the request environment variables if 
+the specified regular expression (pcre, not case sensitive) matches 
+the header value.
+</li>
+<li>
+<a name="QS_UnsetReqHeader"></a>
+<syntax>QS_UnsetReqHeader &lt;header name&gt;</syntax><br>
+The request header of this name is removed.
+</li>
+<li>
+<a name="QS_UnsetResHeader"></a>
+<syntax>QS_UnsetResHeader &lt;header name&gt;</syntax><br>
+The response header of this name is removed.
+</li>
+<li>
+<a name="QS_RedirectIf"></a>
+<syntax>QS_RedirectIf &lt;variable&gt; &lt;regex&gt; [&lt;code&gt;:]&lt;url&gt;</syntax><br>
+Redirects the client to the configured url if the regular expression (case insensitive)
+matches the value of the the environment variable. Occurrences of $1..$9 
+within the url are replaced by parenthesized subexpressions of the 
+regular expression. The default status code used by this directive is 302
+but you may prefix the url parameter by <i>307:</i> or <i>301:</i> to change 
+it to a "307 Temporary Redirect" or "301 Moved Permanently" response. 
+Directive may be used on a per-server or per-location basis.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample of event rules:<br>
+<pre>
+# marks clients coming from the internal network:
+SetEnvIf    Remote_Addr      ^192\.168\.            QS_Intra
+
+# marks clients neither coming from the internal network
+# nor are VIP clients as low priority clients:
+<a href="#QS_SetEnvIf">QS_SetEnvIf</a> !<a href="#QS_VipRequest">QS_VipRequest</a>   !QS_Intra              QS_LowPrio=1
+
+# limits the request rate for low priority (neither VIP nor internal)
+# clients (and no more than 400 concurrent requests for them):
+<a href="#QS_EventPerSecLimit">QS_EventPerSecLimit</a>          QS_LowPrio             100
+<a href="#QS_EventRequestLimit">QS_EventRequestLimit</a>         QS_LowPrio             400
+
+# detects the variable "file" within the query portion of the URL:
+<a href="#QS_SetEnvIfQuery">QS_SetEnvIfQuery</a>             file=([a-zA-Z]*)       QS_LowPrio=$1
+
+# combine variables and propagate them to the application via HTTP header:
+SetEnvIf    Content-Length   ([0-9]*)               QS_Length=$1
+<a href="#QS_SetEnv">QS_SetEnv</a>   QS_Type          "length=${QS_Length}; file=${QS_LowPrio}"
+<a href="#QS_SetReqHeader">QS_SetReqHeader</a>              X-File                 QS_Type
+
+# limit the max. body size since mod_parp loads the whole message into
+# the memory servers's:
+<a href="#QS_LimitRequestBody">QS_LimitRequestBody</a>          131072
+
+# body pattern detection, example limits the maximum number of concurrent
+# requests posting "id=1234" to ten:
+<a href="#QS_SetEnvIfParp">QS_SetEnvIfParp</a>  id=([0-9]*) PARP_PATTERN=$1
+<a href="#QS_EventRequestLimit">QS_EventRequestLimit</a>         PARP_PATTERN=1234      10
+# but ignore requests to the location /main/ (any sub-locations):
+SetEnvIf    Request_URI      /main/.*               !parp
+</pre>
+</td></tr>
+</table>
+
+<a name="filter"></a>
+<h3>Request Level, Generic Filter</h3>
+These filters are defined on a per-
+<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
+level and are used to restrict access to resources in 
+general, independent of server resource availability. 
+New rules are added by defining a rule id prefixed by a '+'. Rules are merged 
+to sub-locations. If a rule should not be active for a sub-location, the 
+very same rule must be defined, but instead, the rule id must be prefixed with a '-'. The filter rules are implemented as Perl-compatible regular expressions 
+(pcre) and are applied to the decoded URL components (un-escaped characters, 
+e.g., %20 is a space). The generic request filter ignores the 
+<a href="#privilegedusers">VIP</a> status of a client.<br>
+<small><i>Note: Compile mod_qos with the preprocessor definition 
+<code>-DQS_MOD_EXT_HOOKS</code> to enable the decoding hooks defined 
+in <code>mod_qos.h</code> if you intend to implement additional
+decodings by other Apache modules.</i></small>
+<ul>
+<li>
+<a name="QS_DenyRequestLine"></a>
+<syntax>QS_DenyRequestLine '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</syntax><br>
+Generic request line (method, path, query, and protocol) filter used to 
+deny access for requests matching the defined expression (pcre, case insensitive). 
+The action taken for matching rules is either 'log' (access is granted but the rule 
+match is logged) or 'deny' (access is denied).
+</li>
+<li>
+<a name="QS_DenyPath"></a>
+<syntax>QS_DenyPath '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</syntax><br>
+Generic abs_path (see RFC 2616 section 3.2.2) filter used to deny access 
+for requests matching the defined expression (pcre, case insensitive). 
+The action taken for matching rules is either 'log' (access is granted 
+but the rule match is logged) or 'deny' (access is denied).
+</li>
+<li>
+<a name="QS_DenyQuery"></a>
+<syntax>QS_DenyQuery '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</syntax><br>
+Generic query (see RFC 2616 section 3.2.2) filter used to deny access for 
+requests matching the defined expression (pcre, case insensitive). 
+The action taken for matching rules is either 'log' (access is granted 
+but the rule match is logged) or 'deny' (access is denied).
+</li>
+<li>
+<a name="QS_InvalidUrlEncoding"></a>
+<syntax>QS_InvalidUrlEncoding 'log'|'deny'|'off'</syntax><br>
+Enforces correct URL decoding in conjunction with the 
+<code><a href="#QS_DenyRequestLine">QS_DenyRequestLine</a></code>, 
+<code><a href="#QS_DenyPath">QS_DenyPath</a></code>, and 
+<code><a href="#QS_DenyQuery">QS_DenyQuery</a></code> directives.
+Default is "off" which means that an incorrect encoding does stop
+request processing.
+</li>
+<li>
+<a name="QS_Decoding"></a>
+<syntax>QS_Decoding 'uni'</syntax><br>
+Enables additional string decoding functions which are applied before 
+matching <code>QS_Deny*</code> and <code>QS_Permit*</code> directives. 
+Default is URL decoding (%xx, \\xHH, '+'). <br>Available additional decodings: 
+<ul>
+<li><code>uni</code>: unicode decoding for MS IIS (%uXXXX and \uXXXX) encoded characters.
+</li>
+</ul>
+</li>
+<li>
+<a name="QS_DenyEvent"></a>
+<syntax>QS_DenyEvent '+'|'-'&lt;id&gt; 'log'|'deny' [!]&lt;env-variable&gt;</syntax><br>
+Rule matching requests having the defined process environment variable set 
+(or NOT set if prefixed by a '!'). 
+The action taken for matching rules is either 'log' (access is granted 
+but the rule match is logged) or 'deny' (access is denied).
+</li>
+<li>
+<a name="QS_PermitUri"></a>
+<syntax>QS_PermitUri '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</syntax><br>
+Generic URL (path and query) filter implementing a request pattern 
+whitelist. Only requests matching at least one <code>QS_PermitUri</code> 
+pattern are allowed. If a <code>QS_PermitUri</code> pattern has 
+been defined and the request does not match any rule, the request 
+is denied. 
+All rules must define the same action. pcre is case sensitive. 
+You may use the <code><a href="qsfilter2.1.html">qsfilter2</a></code> 
+utility to generate rules based on access log files.
+</li>
+<li>
+<a name="QS_DenyInheritanceOff"></a>
+<syntax>QS_DenyInheritanceOff</syntax><br>
+Disables inheritance of <code>QS_Deny*</code> and <code>QS_Permit*</code> 
+directives (pattern definitions) to a location.
+</li>
+<li>
+<a name="QS_RequestHeaderFilter"></a>
+<syntax>QS_RequestHeaderFilter 'on'|'off'|'size'</syntax><br>
+Filters request headers using validation rules <a href="headerfilterrules.txt">provided by mod_qos</a>. 
+Suspicious headers (not matching the pattern or those which are too long) are normally 
+dropped (removed from the request). Abnormal <code>content-*</code> headers cause 
+request blocking. Only the defined headers are allowed (whitelist). Custom 
+rules (additional headers or different pattern/size definitions) may be 
+added using the 
+<code><a href="#QS_RequestHeaderFilterRule">QS_RequestHeaderFilterRule</a></code> 
+directive.<br> 
+This directive has three different operation modes: 'on' (activated), 'off' (disabled), 
+and 'size' (activated). The operation mode enabled by 'size' does not check the header 
+values against the patterns but limits the maximum length of request header 
+values only (similar to the Apache directive <code>LimitRequestFieldsize</code> 
+but with an individual rule for each header field). 
+This directive may be used on a per-server or per-location level.<br>
+<small><i>Notes:<ul><li>Header validation is also useful to avoid bypassing of 
+<code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> / 
+<code><a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus <img src="images/link.png"/></a></code> 
+(if configured on a per-location level) directive settings as request headers have higher priority than 
+<a href="glossary.html#variables">environment variables</a> for those 
+directives and therefore a header sent a by client 
+can override an environment variable having the same name.</li>
+<li>
+You might also configure blacklist rules (delete unwanted headers) using the 
+<code><a href="#QS_UnsetReqHeader">QS_UnsetReqHeader</a></code> or 
+<code><a href="#QS_UnsetResHeader">QS_UnsetResHeader</a></code> directive.
+</li>
+</ul></i></small>
+</li>
+<li>
+<a name="QS_RequestHeaderFilterRule"></a>
+<syntax>QS_RequestHeaderFilterRule &lt;header name&gt; 'drop'|'deny' &lt;pcre&gt; &lt;size&gt;</syntax><br>
+Used to add custom request header filter rules, e.g., to override the 
+<a href="headerfilterrules.txt">internal rules</a> (different pcre or size) 
+or to add additional headers which should be allowed. 
+Definitions are made globally (outside VirtualHost). The list of all loaded rules 
+is shown at server startup when using <code><a href="http://httpd.apache.org/docs/current/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a></code> "debug". pcre is 
+case sensitive. The size parameter defines the maximum length of a header value. 
+The action 'drop' removes a header not matching the pcre, the action 'deny' 
+rejects a request including such a header not matching the pcre.
+</li>
+<li>
+<a name="QS_ResponseHeaderFilter"></a>
+<syntax>QS_ResponseHeaderFilter 'on'|'silent'|'off'</syntax><br>
+Filters response headers using validation rules <a href="headerfilterrules.txt">provided by mod_qos</a>.
+Suspicious headers (not matching the pattern or those which are too long) are removed 
+from the response. Only the defined headers are allowed. Filter 
+is activated ('on' or 'silent') or deactivated ('off').
+</li>
+<li>
+<a name="QS_ResponseHeaderFilterRule"></a>
+<syntax>QS_ResponseHeaderFilterRule &lt;header name&gt; &lt;pcre&gt; &lt;size&gt;</syntax><br>
+Used to add custom response header filter rules, e.g., to override the 
+<a href="headerfilterrules.txt">internal rules</a> 
+(different pcre or size) or to add additional headers which should be allowed. 
+Definitions are made globally (outside VirtualHost). A list of all loaded rules 
+is shown at server startup when using <code><a href="http://httpd.apache.org/docs/current/mod/core.html#loglevel">LogLevel <img src="images/link.png"/></a></code> "debug". pcre is 
+case sensitive. The size parameter defines the maximum length of a header value. 
+</li>
+</ul>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+<a href="#QS_ErrorPage">QS_ErrorPage</a>                     /error-docs/qs_error.html
+
+# add a custom request header rule:
+<a href="#QS_RequestHeaderFilterRule">QS_RequestHeaderFilterRule</a>       UA-CPU drop "^[a-zA-Z0-9]+$" 20
+
+# enable header validation:
+<a href="#QS_RequestHeaderFilter">QS_RequestHeaderFilter</a>           on
+
+&lt;Location /&gt;
+   # don't allow access to the path /app/admin.jsp:
+   <a href="#QS_DenyPath">QS_DenyPath</a>        +admin     deny "^/app/admin.jsp$"
+
+   # allow printable characters only within the request line:
+   <a href="#QS_DenyRequestLine">QS_DenyRequestLine</a> +printable deny ".*[\x00-\x19].*"
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+</p>
+<p>
+Body data filtering requires <a href="http://parp.sourceforge.net">mod_parp <img src="images/link.png"/></a> 
+which processes the request's message body of the following HTTP request content types: 
+<code>application/x-www-form-urlencoded</code>, 
+<code>multipart/form-data</code>, and <code>multipart/mixed</code>. The content type 
+<code>application/json</code> may be processed by the built-in JSON parser of mod_qos. The body 
+data is transformed into a request query and may be filtered using the 
+<code><a href="#QS_DenyQuery">QS_DenyQuery</a></code> and 
+<code><a href="#QS_PermitUri">QS_PermitUri</a></code> directives.
+<ul>
+<li>
+<a name="QS_DenyQueryBody"></a>
+<syntax>QS_DenyQueryBody 'on|'off'</syntax><br>
+Enables request  body data filtering for the 
+<code><a href="#QS_DenyQuery">QS_DenyQuery</a></code> directive.
+</li>
+<li>
+<a name="QS_PermitUriBody"></a>
+<syntax>QS_PermitUriBody 'on|'off'</syntax><br>
+Enables request body data filtering for the 
+<code><a href="#QS_PermitUri">QS_PermitUri</a></code> directive.
+</li>
+<li>
+<a name="QS_LimitRequestBody"></a>
+<syntax>QS_LimitRequestBody &lt;bytes&gt;</syntax><br>
+Limits the allowed size of an HTTP request message body. This directive may 
+be placed anywhere in the configuration. Alternatively, the limitation 
+may be set as an environment variable using 
+<a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a> 
+(overriding the directive settings).
+</li>
+</ul>
+
+<a name="QS_DeflateReqBody"></a>
+Set the <code>QS_DeflateReqBody</code> variable if the request body data has to 
+be deflated (compressed data) using 
+<a href="http://httpd.apache.org/docs/current/mod/mod_deflate.html">mod_deflate <img src="images/link.png"/></a>.
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br><a name="qsfiltersample"></a>
+<pre>
+# configure the audit log writing the request body data to a file
+# (use this log to generate whitelist rules using <a href="qsfilter2.1.html">qsfilter2</a>
+# when <a href="#QS_PermitUriBody">QS_PermitUriBody</a> has been enabled)
+# format:
+#   %h:
+#   The remote host (used to filter by IP adress).
+#   %>s:
+#   The HTTP response status code.
+#   %{qos-loc}n
+#   The matching Location to generate the rules for.
+#   %{qos-path}n%{qos-query}n
+#   The request data required by qsfilter2 to generate rules.
+CustomLog             logs/qsaudit_log  "%h %>s %{qos-loc}n %{qos-path}n%{qos-query}n"
+
+# enable json parser
+PARP_BodyData               application/json
+
+<a href="#QS_RequestHeaderFilter">QS_RequestHeaderFilter</a>      on
+
+# limit the max. body size since mod_parp loads the whole message into the
+# servers's memory:
+SetEnvIfNoCase Content-Type application/x-www-form-urlencoded <a href="#QS_LimitRequestBody">QS_LimitRequestBody</a>=131072
+SetEnvIfNoCase Content-Type multipart/form-data               <a href="#QS_LimitRequestBody">QS_LimitRequestBody</a>=131072
+SetEnvIfNoCase Content-Type multipart/mixed                   <a href="#QS_LimitRequestBody">QS_LimitRequestBody</a>=131072
+SetEnvIfNoCase Content-Type application/json                  <a href="#QS_LimitRequestBody">QS_LimitRequestBody</a>=65536
+
+# enable mod_deflate input filter for compressed request body data:
+SetEnvIfNoCase Content-Encoding (gzip|compress|deflate)       <a href="#QS_DeflateReqBody">QS_DeflateReqBody</a>
+
+&lt;Location /app&gt;
+   # don't allow a certain string pattern within the request query or
+   # the request message body data:
+   <a href="#QS_DenyQueryBody">QS_DenyQueryBody</a>              on
+   <a href="#QS_DenyQuery">QS_DenyQuery</a>       +s01       deny "(EXEC|SELECT|INSERT|UPDATE|DELETE)"
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+You may enable request body filtering for arbitrary content types:
+<ul>
+<li>Register the <a href="http://parp.sourceforge.net">mod_parp <img src="images/link.png"/></a> raw parser using the 
+<code><a href="http://parp.sourceforge.net/#PARP_BodyData">PARP_BodyData <img src="images/link.png"/></a></code> directive.</li>
+<li>Enable mod_parp for the content type using the 
+<code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvifnocase">SetEnvIfNoCase <img src="images/link.png"/></a></code> directive.</li>
+<li>Use <code><a href="#QS_SetEnvIfBody">QS_SetEnvIfBody</a></code> to detect patterns within the HTTP request body.</li>
+<li>The <code><a href="#QS_DenyEvent">QS_DenyEvent</a></code> directive denies access for the request.</li>
+</ul>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+# sample (using the raw body parser of mod_parp) which denies XML documents
+# containing the pattern "&lt;code&gt;delete&lt;/code&gt;":
+PARP_BodyData               text/xml
+SetEnvIfNoCase Content-Type text/xml.*                        parp
+SetEnvIfNoCase Content-Type application/xml                   <a href="#QS_LimitRequestBody">QS_LimitRequestBody</a>=65536
+<a href="#QS_SetEnvIfBody">QS_SetEnvIfBody</a>             &lt;code&gt;delete&lt;/code&gt;               DENYACTION
+&lt;Location /app/web&gt;
+   <a href="#QS_DenyEvent">QS_DenyEvent</a>             +BADCODE deny                     DENYACTION
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+</p>
+<p>
+<a name="QS_MileStone"></a>
+<h4>Milestones</h4>
+You may define a number of resources (request line patterns) as milestones. A 
+client must access these resources in the correct order as they are defined within 
+the server configuration. A client is not allowed to skip these milestones (but may access 
+any other resource not covered by a milestone in between requests to milestones).
+<ul>
+<li>
+<syntax>QS_MileStone 'log'|'deny' &lt;pattern&gt; [&lt;thinktime&gt;]</syntax><br>
+Defines request line patterns a client must access in the defined order as
+they are defined in the configuration file. The optional 'thinktime' parameter
+defines the minimal elapse time (in seconds) between two milestones.
+Milestones are defined on a per-server basis, outside
+<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a>. 
+Access to milestones is tracked by a dedicated
+<a href="#QS_SessionKey">session cookie</a> (QSSCD).
+</li>
+<li>
+<a name="QS_MileStoneTimeout"></a>
+<syntax>QS_MileStoneTimeout &lt;seconds&gt;</syntax><br>
+Defines the time in seconds within which a client must reach the next
+milestone. Default are 3600 seconds.
+</li>
+</ul>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+# four milestones:
+# 1) client must start with /app/index.html
+# 2) and then read some images (e.g. media used within the first page)
+# 3) before posting data to /app/register
+# 4) afterwards, the user may download zip files
+<a href="#QS_MileStone">QS_MileStone</a>          deny       "^GET /app/index.html"
+<a href="#QS_MileStone">QS_MileStone</a>          deny       "^GET /app/images/.*"
+<a href="#QS_MileStone">QS_MileStone</a>          deny       "^POST /app/register*"
+<a href="#QS_MileStone">QS_MileStone</a>          deny       "^GET /app/.*\.zip HTTP/..."
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="connectionlevelcontrol"></a>
+<h3>Connection Level Control</h3>
+<p>
+The module features the following directives to control server access on a per-server 
+(TCP connection) level. These directives must only be used in the global server context 
+and for port based virtual hosts (don't use them for name based virtual hosts).
+<ul>
+<li>
+<a name="QS_SrvMaxConn"></a>
+<syntax>QS_SrvMaxConn &lt;number&gt;</syntax><br>
+Defines the maximum allowed number of <a href="glossary.html#concurrency">concurrent</a>
+TCP connections for this server (virtual host).
+</li>
+<li>
+<a name="QS_SrvMaxConnClose"></a>
+<syntax>QS_SrvMaxConnClose &lt;number&gt;[%]</syntax><br>
+Defines the maximum number of connections for this server (virtual host) supporting 
+HTTP keep-alive. If the number of <a href="glossary.html#concurrency">concurrent</a> 
+connections exceeds this threshold, the TCP connections 
+gets closed after each request. You may specify the number of 
+connections as a percentage of MaxClients if adding the suffix '%' to the specified value.<br>
+<small><i>Note: It's also possible to control the Keep-Alive settings dynamically using 
+the <code><a href="#QS_KeepAliveTimeout">QS_KeepAliveTimeout</a></code> 
+and <code><a href="#QS_MaxKeepAliveRequests">QS_MaxKeepAliveRequests</a></code> 
+environment <a href="glossary.html#variables">variables</a>.</i></small>
+</li>
+<li>
+<a name="QS_SrvMaxConnPerIP"></a>
+<syntax>QS_SrvMaxConnPerIP &lt;number&gt; [&lt;connections&gt;]</syntax><br>
+Defines the maximum number of connections per source IP address for this server (virtual host). 
+The "connections" argument defines the number of busy connections of the server 
+(all virtual hosts) to enable this limitation, default is 0 (which means that the limitation 
+is always enabled, even the server is idle).
+</li>
+<li>
+<a name="QS_SrvMaxConnExcludeIP"></a>
+<syntax>QS_SrvMaxConnExcludeIP &lt;address&gt;</syntax><br>
+Defines an IP address or address range to be excluded from connection 
+level control restrictions (trusted proxy servers). An address range 
+must end with a "." or ":".
+</li>
+<li>
+<a name="QS_SrvMaxConnPerIPIgnoreVIP"></a>
+<syntax>QS_SrvMaxConnPerIPIgnoreVIP 'on'|'off'</syntax><br>
+Tells the <a href="#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> directive 
+to ignore (if set to "on") the <a href="#privilegedusers">VIP</a> status of 
+clients. Default is "off", which means that <code>QS_SrvMaxConnPerIP</code> gets 
+disabled for VIPs.
+</li>
+<li>
+<a name="QS_SrvMinDataRate"></a>
+<syntax>QS_SrvMinDataRate &lt;bytes per second&gt; [&lt;max bytes per second&gt; [&lt;connections&gt;]]</syntax><br>
+Defines the minimum upload/download throughput a client must generate (the bytes 
+sent/received by the client per seconds). This bandwidth is measured while 
+receiving request data (<i>in</i>: request line, header fields, or body), sending response data 
+(<i>out</i>: header fields, body) and during keep-alive (<i>enforce keep-alive</i>).
+The client connection is closed if the client does not fulfill this required minimal 
+data rate and the IP address of the causing client is marked in order to be handled 
+with low priority (see the <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code> directive). 
+The "max bytes per second" activates <u><a href="images/SrvMinDataRate.png">dynamic minimum throughput control</a></u>: 
+The required minimal throughput is increased in parallel to the number of concurrent clients 
+sending/receiving data (starts increasing when reaching the "connections" threshold). 
+The "max bytes per second" setting is reached when the number of 
+sending/receiving clients is equal to the <code>MaxClients</code> setting. 
+The "connections" argument is used to specify the number of busy TCP connections a 
+server must have to enable this feature (0 by default). It is used to disable the 
+<code>QS_SrvMinDataRate</code> rule enforcement on idle servers.<br>
+This directives must only be used in the global server context.
+</li>
+<li>
+<a name="QS_SrvRequestRate"></a>
+<syntax>QS_SrvRequestRate &lt;bytes per second&gt; [&lt;max bytes per second&gt;]</syntax><br>
+Same as <code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code> but enforcing a 
+minimal upload (reading request) throughput only.
+</li>
+<li>
+<a name="QS_SrvDataRateOff"></a>
+<syntax>QS_SrvDataRateOff</syntax><br>
+Disables the <code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code> or 
+<code><a href="#QS_SrvRequestRate">QS_SrvRequestRate</a></code> enforcement 
+for a virtual host.
+</li>
+<li>
+<a name="QS_SrvMinDataRateOffEvent"></a>
+<syntax>QS_SrvMinDataRateOffEvent '+'|'-'&lt;env-variable&gt;</syntax><br>
+Disables the <code><a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a></code> or 
+<code><a href="#QS_SrvRequestRate">QS_SrvRequestRate</a></code> enforcement 
+for a connection when the defined process environment variable is set. 
+The '+' prefix is used to add a variable to the configuration while the '-' prefix 
+is used to remove a variable. Directive may be used on a per-server or a 
+per-<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> basis.
+</li>
+<li>
+<a name="QS_SrvSampleRate"></a>
+<syntax>QS_SrvSampleRate &lt;seconds&gt;</syntax><br>
+Defines the sampling rate used to measure the data throughput. 
+Default is 5 seconds or the value you have used for 
+<code>QS_REQ_RATE_TM</code> while compiling the module. 
+Increase this value if you want to compensate bandwidth 
+variations.<br>
+This directives must only be used in the global server context.<br>
+<small><i>Note: It might also be increased to avoid too many error messages generated by a 
+<code>QS_SrvMinDataRate</code> rule for clients opening unused TCP pre-connections 
+which might happen if Apache's
+<code><a href="http://httpd.apache.org/docs/current/mod/core.html#timeout">TimeOut <img src="images/link.png"/></a></code> directive is set to higher value than this sample rate.
+</i></small>
+</li>
+<li>
+<a name="QS_SrvMinDataRateIgnoreVIP"></a>
+<syntax>QS_SrvMinDataRateIgnoreVIP 'on'|'off'</syntax><br>
+Tells the <a href="#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> directive 
+to ignore (if set to "on") the <a href="#privilegedusers">VIP</a> status of 
+clients. Default is "off", which means that <code>QS_SrvMinDataRate</code> gets 
+disabled for VIPs.
+</li>
+<li>
+<a name="QS_SrvSerialize"></a>
+<syntax>QS_SrvSerialize 'on'|'off' [&lt;timeout&gt;]</syntax><br>
+Ensures that not more than one request having the 
+<a href="#QS_SrvSerialize_var"><code>QS_SrvSerialize</code></a> 
+variable set is processed at the same time by 
+<a href="glossary.html#serialization">serializing</a> them 
+(process one request after each other). Default is "off".<br>
+<small><i>Note: Maximum wait time for a request is defined by the 
+optional timeout parameter (in seconds). The default is 300 seconds.
+</i></small>
+</li>
+<li>
+Throttling the download bandwidth: 
+mod_qos does not support bandwith limitation on a per connection 
+basis but you might use the <code>RATE_LIMIT</code> filter 
+provided by the Apache module 
+<a href="https://httpd.apache.org/docs/2.4/mod/mod_ratelimit.html">mod_ratelimit <img src="images/link.png"/></a> 
+to implement a bandwidth rate limitation for connections.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+# minimum request rate (bytes/sec at request reading):
+<a href="#QS_SrvRequestRate">QS_SrvRequestRate</a>                                 120
+
+# limits the connections for this virtual host:
+<a href="#QS_SrvMaxConn">QS_SrvMaxConn</a>                                     800
+
+# allows keep-alive support till the server reaches 600 connections:
+<a href="#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a>                                600
+
+# allows max 50 connections from a single ip address:
+<a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a>                                 50
+
+# disables connection restrictions for certain clients:
+<a href="#QS_SrvMaxConnExcludeIP">QS_SrvMaxConnExcludeIP</a>                    172.18.3.32
+<a href="#QS_SrvMaxConnExcludeIP">QS_SrvMaxConnExcludeIP</a>                    192.168.10.
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="clientlevelcontrol"></a>
+<h3>Client Level Control</h3>
+<p>
+Client level control rules are applied per client (IP source address). 
+These directives must only be used in the global server context. 
+<ul>
+<li>
+<a name="QS_ClientEntries"></a>
+<syntax>QS_ClientEntries &lt;number&gt;</syntax><br>
+Defines the number of individual clients managed by mod_qos. 
+Default is 50'000 concurrent IP addresses. Each client requires 
+about 150 bytes memory on a 64bit system (depending on how many 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+events you have configured). Client IP source address store 
+survives graceful server restart. The maximum value is 10'000'000.
+</li>
+<li>
+<a name="QS_ClientEventRequestLimit"></a>
+<syntax>QS_ClientEventRequestLimit &lt;number&gt;</syntax><br>
+Defines the allowed number of <a href="glossary.html#concurrency">concurrent</a> 
+requests coming from the same client source IP address having the 
+<code><a href="#QS_EventRequest">QS_EventRequest</a></code> variable set.<br>
+<small><i>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
+directive to override the client's IP address based on the value within the defined 
+HTTP request header (e.g., X-Forwarded-For) instead of taking the IP address of 
+the client which has opened the TCP connection.</i></small>
+</li>
+<li>
+<a name="QS_ClientEventPerSecLimit"></a>
+<syntax>QS_ClientEventPerSecLimit &lt;number&gt;</syntax><br>
+Defines how often a client may cause a 
+<code><a href="#QS_Event">QS_Event</a></code> 
+per second. Such events are requests having the 
+<code><a href="#QS_Event">QS_Event</a></code> variable set, e.g., defined by 
+using the <code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> directive. 
+The rule is enforced by adding a delay to requests causing 
+the event (similar to the <code><a href="#QS_LocRequestPerSecLimit">QS_LocRequestPerSecLimit</a></code> 
+directive).
+</li>
+<li>
+<a name="QS_ClientEventBlockCount"></a>
+<a name="QS_ClientEventBlockExcludeIP"></a>
+<syntax>QS_ClientEventBlockCount &lt;number&gt; [&lt;seconds&gt;]</syntax><br>
+Defines the <a href="glossary.html#repeat">maximum number</a> of <code><a href="#QS_Block">QS_Block</a></code> 
+events allowed within the defined time (default is 600 seconds). 
+Client IP is blocked when reaching this counter for the specified 
+time (blocked at connection level: user might not always get a 
+user friendly error response).<br/>
+<small><i>Notes:
+<ul>
+<li>
+You may use <code>QS_ClientEventBlockExcludeIP &lt;addr&gt;</code> 
+to exclude an IP address from being processed by this limitation 
+(e.g. for trusted clients connecting via a proxy server). An address 
+range must end with a "." or ":".
+</li>
+<li>The counter can be decremented by setting the environment
+variable <code><a href="#_Decrement">QS_Block_Decrement</a></code>.
+</li>
+</ul></i></small>
+</li>
+<li>
+<a name="QS_ClientEventLimitCount"></a>
+<syntax>QS_ClientEventLimitCount &lt;number&gt; [&lt;seconds&gt; [&lt;variable&gt;]]</syntax><br>
+Defines the <a href="glossary.html#repeat">maximum number</a> of requests 
+having the defined environment variables 
+(<code><a href="#QS_Limit">QS_Limit</a></code> by default) set allowed within 
+the defined time (default is 600 seconds). Requests from client IP's reaching 
+this limitation are denied for the specified time (blocked at request level). <br/>
+<small><i>Notes:
+<ul>
+<li>The value of the variable defines the penalty points by which the counters 
+are increased. Default (empty or non-numeric value) is 1 (increment per request).</li>
+<li><a name="QS_ClientIpFromHeader"></a>
+You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> 
+directive to determine the client's IP address based on the defined HTTP 
+request header (e.g., X-Forwarded-For) instead of taking the IP address 
+of the client which has opened the TCP connection. The header must only 
+contain a single IP address.<br>
+You might even use the <a href="http://modsetenvifplus.sourceforge.net/#SetHashHeaderPlus"><code>SetHashHeaderPlus</code> <img src="images/link.png"/></a> 
+directive to create a hash representing a client using arbitrary HTTP 
+request attributes.
+</li>
+<li>The current value of this counter is stored within the variable suffixed 
+by <code><a href="#_Counter">_Counter</a></code>, e.g. <code>QS_Limit_Counter</code> for further 
+processing by other rules. </li>
+<a name="QS_Limit_Remaining"></a>
+<li>The remaining time (in seconds) is stored within the variabled suffixed 
+by <code>_Remaining</code>, e.g. <code>QS_Limit_Remaining</code> to be 
+used within <a href="glossary.html#ssi">SSI</a> error pages.</li>
+<li>The counter can be reset by setting the environment variable which name is 
+suffixed by <code><a href="#_Clear">_Clear</a></code>, e.g. <code>QS_Limit_Clear</code>.
+<li>The counter can be decremented by setting the environment variable which name is 
+suffixed by <code><a href="#_Decrement">_Decrement</a></code>, e.g. <code>QS_Limit_Decrement</code>.
+<li>Adding/removing events (configuration changes) require a server restart 
+(graceful restart is not supported).</li>
+<li>Only the default rule (<code><a href="#QS_Limit">QS_Limit</a></code>) is accessibly by the 
+<a href="#statusviewer">status viewer</a> (you may use the 
+<a href="#webconsole">console</a> to view other variables alternatively).</li>
+<li>See also <a href="#QS_CondClientEventLimitCount"><code>QS_CondClientEventLimitCount</code></a> 
+if you want to enforce a rule under certain conditions only.</li>
+</ul></i></small>
+</li>
+<li>
+<a name="QS_ClientSerialize"></a>
+<syntax>QS_ClientSerialize</syntax><br>
+<a href="glossary.html#serialization">Serializes</a> requests having the
+<a href="#QS_Serialize"><code>QS_Serialize</code></a> 
+variable set if they are comming from the same IP address.<br>
+<small><i>Notes:
+<ul>
+<li>You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+override the client's IP address based on the value within the defined HTTP request 
+header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
+the TCP connection.
+</li>
+<li>Maximum wait time for a request is 5 minutes.
+</li>
+</ul></i></small>
+</li>
+<li>
+<a name="QS_ClientPrefer"></a>
+<syntax>QS_ClientPrefer [&lt;percent&gt;]</syntax><br>
+Accepts only <a href="#privilegedusers">VIP</a> 
+and high priority clients when the server has less than 80% 
+(or the defined percentage) of free TCP connections. The server 
+<u><a href="images/ClientPrefer.png">continues dropping more and more clients</a></u> 
+(also those with few penalty points) the higher the number of connections 
+grows.
+<br>Use the 
+<code><a href="#QS_VipHeaderName">QS_VipHeaderName</a></code> or 
+<code><a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a></code> 
+directive in order to identify <a href="#privilegedusers">VIP</a> clients.<br>
+The distinction between high and low priority clients is made
+based on penality points which are calculated based of these attributes:
+<ul>
+<li>Data transfer behavior (clients sending data slowly / their transfer rate) (0x01).</li>
+<li>Accessing "unusual" content types (see <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> 
+and <code><a href="#QS_ClientContentTypes">QS_ClientContentTypes</a></code>) 
+(0x00 unknown / 0x02 normal / 0x04 unusual).</li>
+<li>Causing events <a href="#QS_ClientEventBlockCount">blocking</a> / 
+<a href="#QS_ClientEventLimitCount">limiting</a> them (0x08 block / 0x10 limit).</li>
+<li>If their connections get closed due to timeouts (0x20).</li>
+</ul>
+HTTP requests causing a client to get marked as "low priority" have the 
+"r;" event within the <a href="#mod_qos_ev">mod_qos_ev</a> variable set.
+You may use the <a href="#statusviewer">status viewer</a> to determine 
+which client addresses are identified as low priority clients. Feature is 
+disabled if directive is not set.<br>
+A low priority flag is cleared after 24h hours. Clients identified by 
+<code><a href="#QS_SrvMaxConnExcludeIP">QS_SrvMaxConnExcludeIP</a></code> 
+are excluded from connection restrictions. Filter is applied on connection level 
+blocking clients even before the server starts reading the HTTP request data.
+</li>
+<li>
+<a name="QS_ClientTolerance"></a>
+<syntax>QS_ClientTolerance &lt;percent&gt;</syntax><br>
+Defines the allowed variation from a "normal" client (average) behavior when enabling 
+the <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code> directive. Default is 20%.
+</li>
+<li>
+<a name="QS_ClientContentTypes"></a>
+<syntax>QS_ClientContentTypes &lt;html&gt; &lt;css/js&gt; &lt;images&gt; &lt;other&gt; &lt;304&gt;</syntax><br>
+Defines the distribution of HTTP response content types a client normaly 
+receives when accessing the server. Can only be used in conjunction with the 
+<code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code> directive. 
+<code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> defines 
+the allowed deviation from these values. mod_qos normally learns the average 
+behavior automatically by default (you can see the learned values within 
+the <a href="#statusviewer">status viewer</a> or by enabling the 
+<a href="#QS_Status"><code>QS_Status</code></a> log messages) but 
+you may specify a static configuration using this directive in order 
+to avoid influences by a high number of abnormal clients. Default is 
+automatic self-learning.
+</li>
+<li>
+<a name="QS_ClientGeoCountryDB"></a>
+<syntax>QS_ClientGeoCountryDB &lt;path&gt;</syntax><br>
+Defines the path to the geographical database file. 
+The file is a Comma Separated Value (CSV) format file 
+(<a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/test/conf/GeoIPCountryWhois.csv?format=raw">example</a>). 
+Each line contains the following fields:
+<ul>
+<li>
+Double quoted beginning <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">IPv4 number</id></i> of the address range, e.g. "1052272128" for 62.184.102.0
+</li>
+<li>
+Double quoted ending <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">IPv4 number</id></i> of the address range, e.g. "1052272543" for 62.184.103.159.
+</li>
+<li>
+Double quoted ISO 3166 country code, e.g. "FR" for France.
+</li>
+</ul>
+The <a href="#QS_Country"><code>QS_Country</code></a> variable contains 
+the country code for the client's IP address. <br>
+<small><i>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
+override the client's IP address based on the value within the defined HTTP request 
+header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
+the TCP connection.</i></small>
+
+</li>
+<li>
+<a name="QS_ClientGeoCountryPriv"></a>
+<syntax>QS_ClientGeoCountryPriv &lt;list&gt; &lt;connections&gt;</syntax><br>
+Defines a comma separated list of country codes for origin client IPv4 address 
+which are allowed to access the server even if the number of busy TCP 
+connections reaches the defined number of connections.
+</li>
+</ul>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+# allows not more than 20 events/penalty points per 10 minutes:
+<a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a>                          20
+
+# don't allow a client to access /app/start.html more than
+# 20 times within 10 minutes:
+SetEnvIf     Request_URI /app/start.html          <a href="#QS_Block">QS_Block</a>=1
+
+# don't allow more than 4 "403" status code responses
+# (forbidden) for a client within 10 minutes:
+<a href="#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        403                      <a href="#QS_Block">QS_Block</a>=5
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="messages"></a>
+<h2>Log Messages</h2>
+<a name="errorlog"></a>
+<h3>Error Log</h3>
+<p>
+mod_qos writes <a href="MESSAGES.txt">messages</a> to Apache's error log when 
+detecting a rule violation. Each error message is prefixed by an id: 
+<code>mod_qos(&lt;number&gt;)</code>. These error codes (number only) 
+are also written to the error notes (Apache's <code>error-notes</code> note 
+as well as the <a href="#QS_ErrorNotes"><code>QS_ErrorNotes</code></a>
+variable) in order to be processed within error pages using 
+<a href="glossary.html#ssi">server-side includes (SSI)</a>.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+mod_qos(00x):  initialisation event
+mod_qos(01x):  request level control event
+mod_qos(08x):  request level control event
+mod_qos(02x):  vip session event
+mod_qos(03x):  connection level event
+mod_qos(04x):  generic filter event
+mod_qos(14x):  generic filter event
+mod_qos(05x):  bandwidth limitation event
+mod_qos(06x):  client control event
+mod_qos(16x):  client control event
+mod_qos(07x):  console errors
+mod_qos(08x):  initialisation/resource errors
+mod_qos(10x):  geo errors
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="accesslog"></a>
+<h3>Access Log</h3>
+<p>
+mod_qos adds event variables to the request record which may be added 
+to access log messages.
+<ul>
+<li>
+<a name="mod_qos_ev"></a>
+<syntax>mod_qos_ev</syntax> <br> Status event message of mod_qos. It's a 
+single letter which is used to signalize an event: "D"=denied, "S"=pass 
+due to an available <a href="#privilegedusers">VIP</a> session, 
+"V"=create VIP session (cookie), "v"=marks an IP as VIP, 
+"K"=connection closed (no keep-alive), "T"=dynamic keep-alive, 
+"r"=IP is marked as a slow/bad client, "L"=means a request slowdown, 
+"u"=request without a <a href="#QS_UserTrackingCookieName">user tracking cookie</a>, 
+and "s" is used for serialized requests. The letter "A" for connection abort 
+is set if the status code detection 
+<a href="#BrokenConnection"><code>BrokenConnection</code></a> 
+has been configured.
+</li>
+<li>
+<a name="mod_qos_cr"></a>
+<syntax>mod_qos_cr</syntax> <br> The number of concurrent requests to a 
+location matching the <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code>, 
+<code><a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a></code>, 
+<code><a href="#QS_LocRequestPerSecLimit">QS_LocRequestPerSecLimit</a></code>, 
+<code><a href="#QS_LocRequestPerSecLimitMatch">QS_LocRequestPerSecLimitMatch</a></code>, 
+<code><a href="#QS_LocKBytesPerSecLimit">QS_LocKBytesPerSecLimit</a></code>, 
+<code><a href="#QS_LocKBytesPerSecLimitMatch">QS_LocKBytesPerSecLimitMatch</a></code>, 
+<code><a href="#QS_CondLocRequestLimitMatch">QS_CondLocRequestLimitMatch</a></code>, 
+or <code><a href="#QS_EventRequestLimit">QS_EventRequestLimit</a></code> directive.
+</li>
+<li>
+<a name="mod_qos_con"></a>
+<syntax>mod_qos_con</syntax> <br> This event shows the number of 
+concurrent connections to this server. Only available if the directive 
+<a href="#QS_SrvMaxConn"><code>QS_SrvMaxConn</code></a> 
+is used.
+</li>
+<li>
+<a name="mod_qos_user_id"></a>
+<a name="QS_UserTrackingCookieName"></a>
+<syntax>mod_qos_user_id</syntax> <br> The user id which is available when 
+enabling <a href="glossary.html#UserTracking">user tracking</a>.<br> 
+<a href="glossary.html#UserTracking">User tracking</a> is based on a unique identifier generated by 
+<a href="https://httpd.apache.org/docs/current/mod/mod_unique_id.html">mod_unique_id <img src="images/link.png"/></a>. 
+This unique identifier is stored as a cookie. The user tracking 
+feature is enabled by setting the 
+<code>QS_UserTrackingCookieName &lt;name&gt; [&lt;path&gt;] [&lt;domain&gt;] ['session']</code> 
+directive.<br>
+Options of the <code>QS_UserTrackingCookieName</code> directive are:
+<ul>
+<li>The <code>name</code> argument defining the name of the 
+user tracking cookie.</li>
+<li>The <code>path</code> specifies a local error document 
+which is shown if a user does not accept the cookie (enforcement). 
+<br>
+You may disable this enforcement for certain clients by setting the 
+<code>DISABLE_UTC_ENFORCEMENT</code> environment variable at server 
+level (outside Location), e.g., to allow crawlers not supporting 
+cookies to access your site.<br/>
+This option can be used to ensure whether a client/browser accepts cookies 
+at all which might be a requirement of your application.</li> 
+<li><code>domain</code> defines optionally the domain attribute for 
+the Set-Cookie header.</li>
+<li>The <code>session</code> flag indicates that a short lived (per 
+session) cookie shall be creaed which won't be stored by the browser 
+permanently.</li>
+</ul>
+<small><i>
+Notes:
+<ul>
+<li><code>QS_UserTrackingCookieName</code> ignores the 
+<code><a href="#QS_LogOnly">QS_LogOnly</a></code> 
+directive.</li>
+<li>The cookie is secured by the <code><a href="#QS_SessionKey">QS_SessionKey</a></code> 
+and you should set this directive to have a constant key.</li>
+</ul>
+</li>
+</i></small>
+<li>
+<a name="UNIQUE_ID"></a>
+<syntax>UNIQUE_ID</syntax> <br> This is a unique request id generated by 
+mod_unique_id. mod_qos uses this id to mark messages written to the 
+error log. So it might be useful to log the <code>UNIQUE_ID</code> 
+environment variable as well, in order to correlate errors 
+to access log messages.
+</li>
+<li>
+<a name="QS_ConnectionId"></a>
+<syntax>QS_ConnectionId</syntax> <br> Connecton correlation id used to 
+mark all messages belonging to the same TCP connection.
+</li>
+</ul>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+LogFormat "%h %u %t \"%r\" %>s %b %T \"%{content-length}i\" %k \"%{User-Agent}i\" \
+           %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e %{QS_SrvConn}e %{QS_AllConn}e \
+           id=%{UNIQUE_ID}e %{QS_ConnectionId}e %{mod_qos_user_id}e %{QS_Country}e #%P"
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="requeststatistics"></a>
+<h3>Request Statistics</h3>
+<p>
+The <code><a href="qslog.1.html">qslog</a></code> tool, which is part of 
+the support utilities of mod_qos, may be used to gather request 
+statistics from Apache's access log data. This includes data such 
+as the number of denied requests or new VIP session creations per 
+minute but also total requests per second and other data. Refer 
+to the usage text of the <code><a href="qslog.1.html">qslog</a></code> 
+utility and read <a href="glossary.html#RequestStatistics">"Request Statistics Using qslog"</a> 
+for further details.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+CustomLog "|/usr/bin/qslog -o logs/qslog.csv -x -f ISBDQkU" \
+          "%h %&gt;s %b %D %{mod_qos_ev}e %k %{mod_qos_user_id}e"
+</pre>
+</td></tr>
+</table>
+</p>
+<p>
+<a name="QSLog"></a>
+Instead of using the standard Apache log <code>CustomLog</code> directive, 
+you may use the <code>QSLog</code> directive of mod_qos alternatively. This
+allows you to configure a single log file for your Apache instance (globally, 
+not per virtal host) and you don't have to specify the format (-f) option.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+QSLog "|/usr/bin/qslog -o /var/log/apache/qslog.csv"
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="statusviewer"></a>
+<h3>Status Viewer</h3>
+<p>
+mod_qos features a handler showing the current connection and request status. 
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+&lt;Location /qos&gt;
+   SetHandler qos-viewer
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+A machine-readable version of the status information is available when using 
+the request query string <code>auto</code>, e.g., 
+<code>http://your.server.name/qos?auto</code>. The page updates itself 
+automatically every 10 seconds if you add the request 
+query string <code>refresh</code>, e.g., 
+<code>http://your.server.name/qos?refresh</code>.<br>
+<a name="QS_EventCount"></a>
+<small><i>Note: This view also shows you the <a href="#errorlog">error log event</a> 
+counters if you enable event (errors and warnings) counting by 
+configuring <code>QS_EventCount on</code> and are using any 
+<a href="#clientlevelcontrol">client level limitation</a> using 
+<code>QS_Client*</code> directives.</i></small>
+</p>
+<p>
+The status information is also provided on the server status page of 
+<a href="http://httpd.apache.org/docs/current/mod/mod_status.html">mod_status <img src="images/link.png"/></a> 
+(although in a reduced scope).<br>
+<small><i>Note: Compile mod_qos with the preprocessor definition 
+<code>-DQS_NO_STATUS_HOOK</code> to disable its regisration to 
+the status page rendered by mod_status.</i></small>
+</p>
+<p>
+<a name="QS_DisableHandler"></a>
+Use the directive <code>QS_DisableHandler on</code> to disable the qos-viewer and qos-console for 
+a virtual host in order to prevent accidental activation of these functions, includng by configuration 
+settings of per-directory files (e.g., .htaccess).
+</p>
+<p>
+<a name="QS_Status"></a>
+The directive <code>QS_Status 'on'|'off'</code> may be used to enable a 
+status log message (<i>mod_qos(200)</i>) written to the Apache server's 
+<code>ErrorLog</code>. This message contains information about the server's 
+scoreboard. The message is written once every minute.
+</p>
+
+<a name="webconsole"></a>
+<h3>Web Console</h3>
+<p>
+mod_qos implements an Apache handler which acts as a web console for setting attributes via HTTP requests.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+&lt;Location /qos/console&gt;
+   SetHandler qos-console
+&lt;/Location&gt;
+</pre>
+</td></tr>
+</table>
+Access a location where you have enabled the <code>qos-console</code> handler 
+with a web client and use the following request query parameter to modify 
+the status of a client (may only be used if <a href="#clientlevelcontrol">client level control</a> 
+has been enabled).
+<ul>
+<li>
+<syntax>address=&lt;IP address&gt;</syntax><br>Specifies the IP address of the client to modify.
+</li>
+<li>
+<syntax>action='block'|'unblock'|'limit'|'unlimit'|'inclimit'|'setvip'|'unsetvip'|'setlowprio'|'unsetlowprio'|'search'</syntax><br>Defines the command to be executed, or the attribute to be changed.
+<ul>
+<li><code>block</code>: <a href="#QS_ClientEventBlockCount">blocks</a> the client for the configured period of time, 
+see also <code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>.</li>
+<li><code>unblock</code>: clears the <a href="#QS_ClientEventBlockCount">block</a> attribute of the client.</li>
+<li><code>limit</code>: <a href="#QS_ClientEventLimitCount">denies requests</a> 
+from the client IP for the configured period of time, see also 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>.</li>
+<li><code>unlimit</code>: clears the <a href="#QS_ClientEventLimitCount">limit</a> 
+attribute of the client.</li>
+<li><code>inclimit</code>: increments the client's <a href="#QS_ClientEventLimitCount">limit</a> counter.</li>
+<li><code>setvip</code>: sets the client status to <a href="#privilegedusers">VIP</a>.</li>
+<li><code>unsetvip</code>: clears the <a href="#privilegedusers">VIP</a> status for a client.</li>
+<li><code>setlowprio</code>: sets the client's <a href="#QS_ClientPrefer">priority</a> to 'low'.</li>
+<li><code>unsetlowprio</code>: clears the 'low' <a href="#QS_ClientPrefer">priority</a>
+attribute of the client.</li>
+<li><code>search</code>: verifies the availability of a client IP address. <br/>Use the asterisk (*) 
+for the <code>address</code> parameter in order to get a list of all available clients (dump).</li>
+</ul>
+</li>
+<li><syntax>event=&lt;name&gt;</syntax><br>Specifies the event name of the 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+directive <a href="glossary.html#repeat">counter</a> which shall be
+shown or modified (used in conjunction with the <code>limit</code>,
+<code>unlimit</code>, <code>inclimit</code>, and <code>search</code> action).
+Default is <code><a href="#QS_Limit">QS_Limit</a></code>.</li>
+</ul>
+</p>
+<p>
+The output (which is plain text) contains the following fields:
+<ul>
+  <li>IP address</li>
+  <li><a href="#privilegedusers">VIP</a> status</li>
+  <li>low <a href="#QS_ClientPrefer">priority</a> status</li>
+  <li><code><a href="#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a></code>
+    counter (<a href="glossary.html#repeat">Cr</a>) and
+    remaining time (<a href="glossary.html#repeat">Td</a>)</li>
+  <li><code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code>
+    counter (<a href="glossary.html#repeat">Cr</a>) and
+    remaining time (<a href="glossary.html#repeat">Td</a>)</li>
+</ul>
+The wildcard search (<code>address=*</code>) generates a by a newline separated list of
+all client IP entries. Each line is prefixed by an index and terminated
+by the time of the last entry update (seconds since epoch).
+</p>
+<p>
+The console may be used to manually update the status of a client (IP) or 
+for automated actions. <br/>Examples:
+<ul>
+<li>To unlock a client which got blocked by mistake.</li>
+<li>To synchronize events within multiple Apache instances. <br/>
+An example using <code><a href="qsexec.1.html">qsexec</a></code> 
+is available within the 
+<a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/test/sync.sh?format=raw">source code repository</a>.</li>
+<li><a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/tools/cc_sync_2k.sh?format=raw">Download/upload</a> client status from one 
+Apache instance to another (or to the same instance, 
+e.g., when restarting an instance).</li>
+</ul>
+</p>
+<p>
+Examples to access the console:
+<ul>
+<li>Sets VIP status for the IP 194.31.217.21:<br>
+<code>http://your.server.name/qos/console?action=setvip&amp;address=194.31.217.21</code></li>
+<li>Clears the QS_Limit counter for the IP 194.31.217.21:<br>
+<code>http://your.server.name/qos/console?action=unlimit&amp;address=194.31.217.21&event=QS_Limit</code></li>
+</ul>
+</p>
+<p>
+The <a href="#statusviewer">status viewer</a> may be used as well to 
+verify the status of the client. Example: <br/>
+<code>http://your.server.name/qos?action=search&amp;address=194.31.217.21</code>
+</p>
+
+<a name="utilities"></a>
+<h3>Utilities</h3>
+<p>
+mod_qos provides optional tools for log data processing and analysis:
+<ul>
+<a name="qsdt"></a>
+<li><syntax><a href="qsdt.1.html">qsdt</a></syntax><br>Simple tool 
+to measure the elapse time between related log messages.</li>  
+<a name="qsexec"></a>
+<li><syntax><a href="qsexec.1.html">qsexec</a></syntax><br>Command execution 
+triggered by patterns within log files.</li>
+<a name="qsfilter2"></a>
+<li><syntax><a href="qsfilter2.1.html">qsfilter2</a></syntax><br>
+Rule generator. Creates <code><a href="#filter">QS_Permit*</a></code> directives and rule patterns 
+from audit log files.</li>
+<a name="qsgeo"></a>
+<li><syntax><a href="qsgeo.1.html">qsgeo</a></syntax><br>Adds the country code 
+for the client IP address within a log file.</li>
+<a name="qsgrep"></a>
+<li><syntax><a href="qsgrep.1.html">qsgrep</a></syntax><br>Searches a file for a 
+pattern and prints the data in a new format.</li>
+<a name="qslog"></a>
+<li><syntax><a href="qslog.1.html">qslog</a></syntax><br>A real time 
+<code><a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">TransferLog/CustomLog <img src="images/link.png"/></a></code> 
+data analyzer. It reads the per request log data from stdin and generates 
+statistic records every minute.</li>
+<a name="qslogger"></a>
+<li><syntax><a href="qslogger.1.html">qslogger</a></syntax><br>Shell command 
+interface to the syslog(3) system log module.</li>
+<a name="qspng"></a>
+<li><syntax><a href="qspng.1.html">qspng</a></syntax><br>Creates graphics (png 
+images) from the output of <code>qslog</code>.</li>
+<a name="qsre"></a>
+<li><syntax><a href="qsre.1.html">qsre</a></syntax><br>Regular expression (pcre) 
+pattern match test tool.</li>
+<a name="qsrespeed"></a>
+<li><syntax><a href="qsrespeed.1.html">qsrespeed</a></syntax><br>Compares the 
+expected processing time per regular expression.</li>
+<a name="qsrotate"></a>
+<li><syntax><a href="qsrotate.1.html">qsrotate</a></syntax><br>Log rotation tool 
+similar to Apache's <code>rotatelogs</code>.</li>
+<a name="qssign"></a>
+<li><syntax><a href="qssign.1.html">qssign</a></syntax><br>A log data integrity 
+check tool. It reads log data from stdin (pipe) and writes the signed data 
+to stdout adding a sequence number and signatur to ever log line.<br>
+<a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/tools/logstash-filter-qssign/lib/logstash/filters/qssign.rb?format=raw"><code>qssign.rb</code></a> is a <a href="http://www.logstash.net/">Logstash <img src="images/link.png"/></a> filter 
+plugin which may be used to verify the signatures of log messages in real time.</li>
+<a name="qstail"></a>
+<li><syntax><a href="qstail.1.html">qstail</a></syntax><br>Shows the end of a log 
+file beginning at a defined pattern.</li>
+</ul>
+
+</p>
+
+
+<a name="usecases"></a>
+<h2>Sample Use Cases</h2>
+
+The following use cases may give you an idea about how to use mod_qos.
+<a name="Slow_Application"></a>
+<h3>Slow Application</h3>
+<p>
+In case of a very slow application (e.g., at location /ccc), requests wait 
+until a timeout occurs. Due to many waiting requests, there are no free TCP 
+connections left and the web sever is not able to process other requests 
+to applications still working fine, e.g., to /aaa, /bbb /dd1, and /dd2. 
+mod_qos limits the number of <a href="glossary.html#concurrency">concurrent</a> 
+requests to an application in order to 
+assure the availability of other resources.
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# maximum number of active TCP connections is limited to 256 (limited
+# by the available memory, adjust the settings according to the
+# used hardware):
+MaxClients              256
+
+# limits the maximum of concurrent requests per application to 100:
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>      /aaa                100
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>      /bbb                100
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>      /ccc                100
+<a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a> "^(/dd1/|/dd2/).*$" 100
+</pre>
+</td></tr>
+</table>
+The <code><a href="qslog.1.html">qslog</a></code> tool may be used 
+to analyze your log files in order to idenitify "slow" resources by 
+using the <code>-pu</code>, <code>-puc</code>, or <code>-c</code> option.
+</p>
+
+<a name="HTTP_Keep-Alive"></a>
+<h3>HTTP Keep-Alive</h3>
+<p>
+The keep-alive extension of HTTP 1.1 allows persistent TCP connections for 
+multiple requests/responses. This accelerates access to the web server due to less and optimized network traffic. The disadvantage of these persistent 
+connections is that server resources are blocked even when no data is exchanged 
+between client and server. mod_qos allows a server to support keep-alive 
+as long as sufficient connections are available, but stops the keep-alive 
+support when it reaches a defined connection threshold. 
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# maximum number of active TCP connections is limited to 256 (limited
+# by the available memory, adjust the settings according to the
+# used hardware):
+MaxClients              256
+
+# disables keep-alive when 70% of the TCP connections are occupied:
+<a href="#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a>      70%
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="Client_Opens_Many_Concurrent_Connections"></a>
+<h3>Client Opens Many Concurrent Connections</h3>
+<p>
+A single client may open many TCP connections simultaneously in order to 
+download different content from the web server. So the client gets many 
+connections while other users may not be able to access the server because
+no free connections remain for them. mod_qos can limit the number 
+of concurrent connections for a singe IP source address. 
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# maximum number of active TCP connections is limited to 896
+# (limited by the available memory, adjust the settings according to the
+# used hardware):
+MaxClients              896
+
+# don't allow a single client to open more than 50 TCP connections if
+# the server has not more than 196 free connections:
+<a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a>      50 700
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="Many_Requests_to_a_Single_URL"></a>
+<h3>Many Requests to a Single URL</h3>
+<p>
+If you have to limit the number of requests to an URL, mod_qos can help 
+with that, too. You may limit the number of requests per second to 
+an URL. mod_qos will then calculate the necessary delay time to be added 
+to each requests accessing this resource in order to achive the defined 
+limitation. 
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# does not allow more than 150 requests/sec:
+<a href="#QS_LocRequestPerSecLimit">QS_LocRequestPerSecLimit</a> /download/mod_qos.so.gz 150
+
+# but do not allow more than 600 concurrent requests:
+<a href="#QS_LocRequestLimit">QS_LocRequestLimit</a>       /download/mod_qos.so.gz 600
+</pre>
+</td></tr>
+</table>
+</p>
+<a name="Many_Requests_to_a_Single_URL_SLOW"></a>
+<p>
+Alernatively, if you need to reduce the number of processed requests 
+per time to a very low value, you might add a constant delay to 
+each request and process only one of them at the same time. However, 
+this will delay ever request to the defined URI, even the server 
+is idle.
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# does not allow more than 4 requests/sec by adding a wait time of 250ms
+# to each request and process only one request at once:
+SetEnvIf                 Request_URI ^/download/mod_qos.so.gz <a href="#QS_SrvSerialize">QS_SrvSerialize</a>=1
+SetEnvIf                 Request_URI ^/download/mod_qos.so.gz <a href="#QS_Delay">QS_Delay</a>=250
+<a href="#QS_SrvSerialize">QS_SrvSerialize</a>          on
+
+# but do not allow more than 600 concurrent requests:
+<a href="#QS_EventRequestLimit">QS_EventRequestLimit</a>     <a href="#QS_SrvSerialize">QS_SrvSerialize</a> 600
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="Limit_per_IP"></a>
+<p>
+mod_qos can also restrict the access to an URL by limiting the number 
+of requests from a single IP address (<code>LimitDownloadCounter</code> is 
+the <a href="glossary.html#repeat">counter</a> to use while the 
+<code>LimitDownloadNow</code> pattern is used to limit access to this 
+specific resource only still allowing the IP address to access 
+other resources).
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# does not allow more than 4 downloads of mod_qos.so.gz per minute from a single IP address:
+SetEnvIf                     Request_URI ^/download/mod_qos.so.gz LimitDownloadCounter
+SetEnvIf                     Request_URI ^/download/mod_qos.so.gz <a href="#QS_Cond">QS_Cond</a>=LimitDownloadNow
+<a href="#QS_CondClientEventLimitCount">QS_CondClientEventLimitCount</a> 4 60 LimitDownloadCounter LimitDownloadNow
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="bandwidth_restriction"></a>
+<h3>Bandwidth Restriction</h3>
+<p>
+It's sometimes necessary to restrict the bandwidth consumed by 
+clients downloading certain type of data in order to avoid 
+that the entire bandwidth of your Internet connection is 
+exploited by less important data traffic, e.g. if your web server 
+hosts large files to be downloaded.<br/>
+mod_qos allows you to defined the bandwidth which may be 
+used when accessing a defined URL or when the server returns a 
+certain content-type.
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# limits the download bandwidth when accessing ISO images to 1 megabyte/sec
+# and does not allow more then 300 clients to download such file type in
+# parallel:
+<a href="#QS_LocKBytesPerSecLimitMatch">QS_LocKBytesPerSecLimitMatch</a> \.iso 1024
+<a href="#QS_LocRequestLimitMatch">QS_LocRequestLimitMatch</a>      \.iso  300
+</pre>
+</td></tr>
+</table>
+</p>
+
+<a name="brute_force"></a>
+<h3>Brute Force</h3>
+<p>
+Sometimes, you want to limit how often a resource may be accessed 
+within a certain amount of time, e.g., to defend against brute-force 
+respectively dictionary attacks or an account lockout DoS (someone 
+systematically locks user accounts by too many invalid sign-in 
+attempts). mod_qos allows you to limit this either server wide 
+(any request accessing the resource) by using the 
+<code><a href="#QS_EventLimitCount">QS_EventLimitCount</a></code> directive, 
+or on a per client IP basis using the 
+<code><a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a></code> 
+directive.
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# allows a single IP addess to access the URI /wp-login.php not more
+# than 10 times within an hour:
+SetEnvIf                 Request_URI ^/wp-login.php LimitLogin
+<a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a> 10 3600 LimitLogin
+</pre>
+</td></tr>
+</table>
+<small>
+<i>Note: Multiple users may share an IP addresses which might cause false 
+positives. You might avoid this by decrementing the counter on successful 
+user authentication / login, e.g. by setting the variable 
+<code><a href="#_Decrement">LimitLogin_Decrement=1</a></code>.
+</i></small>
+</p>
+<p>
+A brute force attack might also be performed by many distributed 
+clients (thousands of clients, but every client performs a few 
+requests only). To add protection to your server, you might configure an 
+overall limitation for critical resources allowing only known clients 
+(<a href="#privilegedusers">VIPs</a>) 
+to access your server without any restrictions. The 
+<code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code> 
+directive might be used to achieve this.
+</p>
+<a name="ddos"></a>
+<a name="Too_Many_Client_Connections"></a>
+<h3>Too Many Client Connections</h3>
+<p>
+mod_qos may <a href="#QS_ClientPrefer">prefer</a> "known" client IP 
+addresses in the case that too many clients access the server.
+"Known" clients are those which have once been identified by the 
+application by setting the corresponding 
+<a href="#QS_VipIPHeaderName ">HTTP response header</a>. 
+Such identification may happen at successful user login. 
+Connections from clients which are not known to mod_qos 
+(never marked by the corresponding response header) are denied 
+if the server runs on low TCP connection resources (20% or 
+fewer free connections in this example). mod_qos may 
+also prefer those clients which communicate with the server 
+instantaneously and fast, and denies access to slow clients 
+sending data irregularly, in case the server has not enough 
+resources.</p>
+<p>
+You may also set limitations defining how many resources 
+may be requested by a single IP address source, e.g., using 
+the <code><a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a></code> 
+directive and you can <a href="#HTTP_Keep-Alive">disable HTTP keep-alive</a> 
+dynamically.</p>
+<p>
+For more information about how mod_qos can help you in such situations, see the article 
+<a href="http://mod-qos.sourceforge.net/dos.html">"Denial of Service Defense"</a>.
+<br><br>Example:<br>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+<pre>
+# maximum number of active TCP connections is limited to 896 (limited
+# by the available memory, adjust the settings according to the used
+# hardware):
+MaxClients              896
+
+# idle timeout:
+Timeout                   5
+
+# keep alive (for up to 85% of all connections):
+KeepAlive                on
+MaxKeepAliveRequests     40
+KeepAliveTimeout          2
+<a href="#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a>       85%
+
+# name of the HTTP response header which marks preferred clients (this
+# may be used to let the application decide which clients are "good" and
+# have higher privileges, e.g. authenticated users.
+# you may also use the <a href="#QS_VipIPUser">QS_VipIPUser</a> directive when using an Apache 
+# authentication module such as mod_auth_basic or <a href="http://auth-openid.sourceforge.net/">mod_auth_oid <img src="images/link.png"/></a>):
+<a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a>       mod-qos-login
+
+# enables the known client prefer mode (server allows new TCP connections
+# from known/good clients only if there are more than 716 open TCP connections):
+<a href="#QS_ClientPrefer">QS_ClientPrefer</a>          80%
+
+# don't allow more than 30 TCP connections per client source address being
+# processed if the server has 500 or more open connections:
+<a href="#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a>       30 500
+</pre>
+</td></tr>
+</table>
+</p>
+
+
+</td></tr>
+</tbody>
+</table>
+<br>
+<hr>
+<small><small>&copy; 2007-2018, Pascal Buchbinder - mod_qos version 0.00</small></small>
+</body>
+</html>

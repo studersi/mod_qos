@@ -1,0 +1,50 @@
+#
+# test QS_KeepAliveTimeout (multiple clients, parallel requests)
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT 10
+
+_LOOP 20
+
+_REQ server1 $QS_PORT_BASE1
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Keep-Alive: 300
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "Keep-Alive: timeout=5"
+_WAIT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Keep-Alive: 300
+__Connection: keep-alive
+__User-Agent: Mozilla/4.0 (compatible; MSIE 5.1)
+__
+_EXPECT . "Keep-Alive: timeout=7"
+_WAIT
+
+_LOOP 10
+
+_REQ server1 $QS_PORT_BASE1
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Keep-Alive: 300
+__Connection: keep-alive
+__User-Agent: DONTSUPPORTKEEPALIVE
+__
+_EXPECT . "Connection: close"
+_WAIT
+_CLOSE
+
+_END LOOP
+
+_END LOOP
+
+END

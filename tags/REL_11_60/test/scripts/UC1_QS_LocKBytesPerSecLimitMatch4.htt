@@ -1,0 +1,64 @@
+#
+# $Id$
+#
+# <IfDefine uc1l2>
+#    QS_LocKBytesPerSecLimitMatch ^/myimages/  3000
+#    <Location /qos >
+#        SetHandler qos-viewer
+#    </Location>
+# </IfDefine>
+# 
+# => single file (using mod_proxy)
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/dvd2.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_MATCH EXEC "/myimages/dvd2.iso HTTP/1.1\" 200 ([0-9]+)" bytes
+_MATCH EXEC "/myimages/dvd2.iso HTTP/1.1\" 200 [0-9]+ \"htt\" ([0-9]+) " seconds
+_EXEC tail -1 logs/access_log
+_MATH:OP $bytes DIV $seconds BPS
+
+_DEBUG "bytes/sec (single file via proxy) $BPS"
+
+_IF "${BPS}" LT 2400000
+_EXIT FAILED
+_END IF
+_IF "${BPS}" GT 3600000
+_EXIT FAILED
+_END IF
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/dvd2.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_MATCH EXEC "/myimages/dvd2.iso HTTP/1.1\" 200 ([0-9]+)" bytes
+_MATCH EXEC "/myimages/dvd2.iso HTTP/1.1\" 200 [0-9]+ \"htt\" ([0-9]+) " seconds
+_EXEC tail -1 logs/access_log
+_MATH:OP $bytes DIV $seconds BPS
+
+_DEBUG "bytes/sec (single file via proxy) $BPS"
+
+_IF "${BPS}" LT 2400000
+_EXIT FAILED
+_END IF
+_IF "${BPS}" GT 3600000
+_EXIT FAILED
+_END IF
+
+END

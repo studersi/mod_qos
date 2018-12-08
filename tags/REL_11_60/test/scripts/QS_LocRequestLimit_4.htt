@@ -1,0 +1,29 @@
+#
+# test QS_LocRequestLimit and QS_ErrorPage directive
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT 4
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=4 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+CLIENT 2
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=4&image.gif HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
+

@@ -1,0 +1,51 @@
+#
+# $Id$
+#
+#QS_ClientPrefer           80
+#QS_VipIPUser
+#QS_ClientContentTypes     10 1 100 1 1
+#
+#   <Location /auth_qos>
+#       SetHandler             qos-viewer
+#       AuthType               Basic 
+#       AuthUserFile           ##ROOT##/conf/qos.htpasswd
+#       AuthName               "QoS Control, htpasswd"
+#       Require                valid-user
+#   </Location>
+#
+#   <Location /auth_qos/console>
+#       SetHandler qos-console
+#   </Location>
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /auth_qos?address=127.0.0.1&action=search HTTP/1.1
+__Host: localhost
+__User-Agent: 01
+__Authorization: Basic YWRtaW46MTIzNA==
+__
+_EXPECT . "<title>mod_qos</title>"
+_EXPECT . "<tr class=\"rows\"><td colspan=\"1\">127.0.0.1</td><td colspan=\"2\">[0-9:. ]+</td><td colspan=\"1\">no</td>"
+_MATCH body "client ip=([0-9.]+)</p>" IP
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "admin .* \"01\" 0 \- v; \- id="
+_EXEC tail -1 logs/access_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /auth_qos?address=${IP}&action=search HTTP/1.1
+__Host: localhost
+__User-Agent: 01
+__Authorization: Basic YWRtaW46MTIzNA==
+__
+_EXPECT . "<title>mod_qos</title>"
+_EXPECT . "<tr class=\"rows\"><td colspan=\"1\">${IP}</td><td colspan=\"2\">[0-9:. ]+</td><td colspan=\"1\">yes</td>"
+_MATCH body "client ip=([0-9.]+)</p>" IP
+_WAIT
+_CLOSE
+
+END

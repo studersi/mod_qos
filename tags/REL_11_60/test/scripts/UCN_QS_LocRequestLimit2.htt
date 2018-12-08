@@ -1,0 +1,66 @@
+#
+#   QS_ErrorPage                  /error-docs/error.html
+#   QS_LocRequestLimitDefault                              10
+#   QS_LocRequestLimitMatch       "^.*\.gif$"              5
+#   QS_LocRequestLimit            /images                  8
+#   QS_LocRequestLimit            /a                       4
+#   QS_LocKBytesPerSecLimit       /a                       3000
+#   QS_LocRequestLimitMatch       "^(/b/|/c/).*$"          3
+#
+
+INCLUDE scripts/ports
+
+CLIENT 3
+_REQ localhost $QS_PORT_BASE
+__GET /b/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+#
+# /b, /c reached limit...
+#
+_SLEEP 500
+_REQ localhost $QS_PORT_BASE
+__GET /b/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /c/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+
+#
+# .../a not
+#
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_EXPECT EXEC "mod_qos\(010\): access denied, QS_LocRequestLimit\* rule: \^\(/b/\|/c/\).\*\$\(3\), concurrent requests=4"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /b/sleep.cgi HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_WAIT
+
+END
