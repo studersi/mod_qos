@@ -167,6 +167,10 @@ Listen         ##QS_PORT_BASE##
     Allow from all
   </Location>
 
+   <Location /qos>
+      SetHandler qos-viewer
+   </Location>
+
 <IfDefine serializeReq>
   QS_EventRequestLimit     LimitLocation 20
   SetEnvIfPlus             REQUEST_URI /serialize SerialLimtCfg=5

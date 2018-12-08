@@ -48,7 +48,7 @@ _CLOSE
 
 _EXEC ./ctl.sh graceful
 
-_SLEEP 4500
+_SLEEP 5500
 
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1

@@ -22,7 +22,7 @@ _EXEC tail -5 logs/access_log
 END
 
 CLIENT
-_SLEEP 8000
+_SLEEP 9000
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1
 __Host: localhost

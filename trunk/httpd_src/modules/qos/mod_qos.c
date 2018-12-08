@@ -597,6 +597,7 @@ typedef struct {
   qs_ip_entry_t *conn_ip;
   int conn_ip_len;
   int connections;
+  char id[64];
 } qs_conn_t;
 
 typedef struct {
@@ -1023,6 +1024,7 @@ module AP_MODULE_DECLARE_DATA qos_module;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 static int m_worker_mpm = 1; // note: mod_qos is fully tested for Apache 2.2 worker MPM only
 static int m_event_mpm = 0;
+static int m_ccont = 1;
 static unsigned int m_hostcode = 0;
 static int m_generation = 0; // parent process (restart generation)
 static int m_qos_cc_partition = QSMOD;
@@ -2939,6 +2941,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     act->conn->conn_ip_len = max_ip * QS_MEM_SEG;
     act->conn->conn_ip = conn_ip;
     act->conn->connections = 0;
+    sprintf(act->conn->id, "%p_%d", connEntryP, m_ccont++);
     for(i = 0; i < act->conn->conn_ip_len; i++) {
       conn_ip->ip6[0] = 0;
       conn_ip->ip6[1] = 0;
@@ -6496,12 +6499,12 @@ static int qos_server_connections(qos_srv_config *sconf) {
   apr_table_t *recTable;
   apr_pool_create(&ptemp, NULL);
   recTable = apr_table_make(ptemp, 10);
+  apr_table_add(recTable, bsconf->act->conn->id, "");
   s = s->next;
   while(s) {
     qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    char *scId = apr_psprintf(ptemp, "%"APR_UINT64_T_HEX_FMT, (long unsigned int)sc->act->conn);
-    if(sc->act->conn != bsconf->act->conn && apr_table_get(recTable, scId) == NULL) {
-      apr_table_add(recTable, scId, "");
+    if(apr_table_get(recTable, sc->act->conn->id) == NULL) {
+      apr_table_add(recTable, sc->act->conn->id, "");
       connections += sc->act->conn->connections;
     }
     s = s->next;
@@ -10514,7 +10517,7 @@ static const char *detectErrorPage(apr_pool_t *ptemp, server_rec *bs, ap_directi
  * inits the server configuration
  */
 static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptemp, server_rec *bs) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
+  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   char *rev = qos_revision(ptemp);
   qos_user_t *u;
   int net_prefer = 0;
@@ -10533,13 +10536,13 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
     // prefork.c returns 0 for AP_MPMQ_MAX_THREADS
     maxThreads = 1;
   }
-  sconf->max_clients = maxThreads * maxDaemons;
-  net_prefer = sconf->max_clients;
+  bsconf->max_clients = maxThreads * maxDaemons;
+  net_prefer = bsconf->max_clients;
   ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
                QOS_LOGD_PFX"calculated MaxClients/MaxRequestWorkers: %d",
-               sconf->max_clients);
+               bsconf->max_clients);
   
-  if(sconf->ip_type == QS_IP_V4) {
+  if(bsconf->ip_type == QS_IP_V4) {
     m_ip_type = QS_IP_V4;
   } else {
     m_ip_type = QS_IP_V6;
@@ -10555,11 +10558,11 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
 //    }
 //  }
 
-  if(sconf->log_only) {
+  if(bsconf->log_only) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"running in 'log only' mode - rules are NOT enforced!");
   }
-  if(sconf->geo_limit != -1 && !sconf->geodb) {
+  if(bsconf->geo_limit != -1 && !bsconf->geodb) {
     ap_log_error(APLOG_MARK, APLOG_CRIT, 0, bs, 
                  QOS_LOG_PFX(100)"QS_ClientGeoCountryDB has not been configured");
   }
@@ -10567,48 +10570,48 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   // verify if this Apache version is supported/mod_qos has been tested for
   qos_version_check(bs);
 
-  if(sconf->max_conn_close_percent) {
-    sconf->max_conn_close = net_prefer * sconf->max_conn_close_percent / 100;
+  if(bsconf->max_conn_close_percent) {
+    bsconf->max_conn_close = net_prefer * bsconf->max_conn_close_percent / 100;
   }
-  cc_net_prefer_limit = net_prefer * sconf->qos_cc_prefer / 100;
-  if(sconf->qos_cc_prefer && net_prefer) {
-    sconf->qos_cc_prefer = net_prefer;
-    sconf->qos_cc_prefer_limit = cc_net_prefer_limit;
+  cc_net_prefer_limit = net_prefer * bsconf->qos_cc_prefer / 100;
+  if(bsconf->qos_cc_prefer && net_prefer) {
+    bsconf->qos_cc_prefer = net_prefer;
+    bsconf->qos_cc_prefer_limit = cc_net_prefer_limit;
   } else {
-    sconf->qos_cc_prefer = 0;
-    sconf->qos_cc_prefer_limit = 0;
+    bsconf->qos_cc_prefer = 0;
+    bsconf->qos_cc_prefer_limit = 0;
   }
   u = qos_get_user_conf(bs->process->pool);
   if(u == NULL) return !OK;
   u->server_start++;
   /* mutex init */
-  if(sconf->act->lock_file == NULL) {
-    sconf->act->lock_file = apr_psprintf(sconf->act->pool, "%s.mod_qos",
-                                         qos_tmpnam(sconf->act->pool, bs));
+  if(bsconf->act->lock_file == NULL) {
+    bsconf->act->lock_file = apr_psprintf(bsconf->act->pool, "%s.mod_qos",
+                                         qos_tmpnam(bsconf->act->pool, bs));
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
                  QOS_LOGD_PFX"create mutex (ACT)(%s)",
-                 sconf->act->lock_file);
-    rv = apr_global_mutex_create(&sconf->act->lock, sconf->act->lock_file,
-                                 APR_LOCK_DEFAULT, sconf->act->pool);
+                 bsconf->act->lock_file);
+    rv = apr_global_mutex_create(&bsconf->act->lock, bsconf->act->lock_file,
+                                 APR_LOCK_DEFAULT, bsconf->act->pool);
     if (rv != APR_SUCCESS) {
       char buf[MAX_STRING_LEN];
       apr_strerror(rv, buf, sizeof(buf));
       ap_log_error(APLOG_MARK, APLOG_EMERG, 0, bs, 
                    QOS_LOG_PFX(004)"failed to create mutex (ACT)(%s): %s",
-                   sconf->act->lock_file, buf);
+                   bsconf->act->lock_file, buf);
       exit(1);
     }
 #ifdef AP_NEED_SET_MUTEX_PERMS
-    qos_unixd_set_global_mutex_perms(sconf->act->lock);
+    qos_unixd_set_global_mutex_perms(bsconf->act->lock);
 #endif
   }
-  sconf->base_server = bs;
-  sconf->act->timeout = apr_time_sec(bs->timeout);
-  if(sconf->act->timeout == 0) sconf->act->timeout = 300;
-  if(qos_init_shm(bs, sconf, sconf->act, sconf->location_t, net_prefer) != APR_SUCCESS) {
+  bsconf->base_server = bs;
+  bsconf->act->timeout = apr_time_sec(bs->timeout);
+  if(bsconf->act->timeout == 0) bsconf->act->timeout = 300;
+  if(qos_init_shm(bs, bsconf, bsconf->act, bsconf->location_t, net_prefer) != APR_SUCCESS) {
     return !OK;
   }
-  apr_pool_pre_cleanup_register(sconf->pool, sconf->act, qos_cleanup_shm);
+  apr_pool_pre_cleanup_register(bsconf->pool, bsconf->act, qos_cleanup_shm);
 
   if((qos_module_check("mod_unique_id.c") != APR_SUCCESS) &&
      (qos_module_check("mod_navajo.cpp") != APR_SUCCESS)) {
@@ -10631,16 +10634,16 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   if(u->server_start == 2) {
     int i;
-    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(sconf->hfilter_table)->elts;
-    for(i = 0; i < apr_table_elts(sconf->hfilter_table)->nelts; i++) {
+    apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(bsconf->hfilter_table)->elts;
+    for(i = 0; i < apr_table_elts(bsconf->hfilter_table)->nelts; i++) {
       qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
       ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
                    QOS_LOGD_PFX"request header filter rule (%s) %s: %s max=%d",
                    he->action == QS_FLT_ACTION_DROP ? "drop" : "deny", entry[i].key,
                    he->text, he->size);
     }
-    entry = (apr_table_entry_t *)apr_table_elts(sconf->reshfilter_table)->elts;
-    for(i = 0; i < apr_table_elts(sconf->reshfilter_table)->nelts; i++) {
+    entry = (apr_table_entry_t *)apr_table_elts(bsconf->reshfilter_table)->elts;
+    for(i = 0; i < apr_table_elts(bsconf->reshfilter_table)->nelts; i++) {
       qos_fhlt_r_t *he = (qos_fhlt_r_t *)entry[i].val;
       ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
                    QOS_LOGD_PFX"response header filter rule (%s) %s: %s max=%d",
@@ -10648,18 +10651,18 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                    he->text, he->size);
     }
   }
-  if(sconf->has_qos_cc) {
+  if(bsconf->has_qos_cc) {
     if(!u->qos_cc) {
-      u->qos_cc = qos_cc_new(bs->process->pool, bs, sconf->qos_cc_size, sconf->qos_cc_limitTable);
+      u->qos_cc = qos_cc_new(bs->process->pool, bs, bsconf->qos_cc_size, bsconf->qos_cc_limitTable);
       if(u->qos_cc == NULL) {
         return !OK;
       }
     } else {
       int configOk = 1;
-      int limitTableSize = apr_table_elts(sconf->qos_cc_limitTable)->nelts;
+      int limitTableSize = apr_table_elts(bsconf->qos_cc_limitTable)->nelts;
       if(u->qos_cc->limitTable) {
         int i;
-        apr_table_entry_t *te = (apr_table_entry_t *)apr_table_elts(sconf->qos_cc_limitTable)->elts;
+        apr_table_entry_t *te = (apr_table_entry_t *)apr_table_elts(bsconf->qos_cc_limitTable)->elts;
         for(i = 0; i < limitTableSize; i++) {
           const char *name = te[i].key;
           qos_s_entry_limit_conf_t *newentry = (qos_s_entry_limit_conf_t *)te[i].val;
@@ -10700,8 +10703,8 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       }
     }
   }
-  if(sconf->error_page == NULL && error_page != NULL) {
-    sconf->error_page = error_page;
+  if(bsconf->error_page == NULL && error_page != NULL) {
+    bsconf->error_page = error_page;
     auto_error_page = 1;
     ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
                  QOS_LOGD_PFX"QS_ErrorPage: use %s for server %s:%d (global)",
@@ -10710,14 +10713,14 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
                  bs->addrs->host_port);
   }
 
-  if(sconf->qslog_str) {
-    char *qslogarg = apr_psprintf(pconf, "%s -f %s", sconf->qslog_str, QSLOGFORMAT);
+  if(bsconf->qslog_str) {
+    char *qslogarg = apr_psprintf(pconf, "%s -f %s", bsconf->qslog_str, QSLOGFORMAT);
     piped_log *pl = ap_open_piped_log(pconf, qslogarg);
     if(pl == NULL) {
       ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                    QOS_LOG_PFX(009)"failed to initialize the qslog facility '%s'", qslogarg);
     }
-    sconf->qslog_p = ap_piped_log_write_fd(pl);
+    bsconf->qslog_p = ap_piped_log_write_fd(pl);
   }
 
   {
@@ -10727,30 +10730,30 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
 
       /* mutex init */
       if(ssconf->act->lock == NULL) {
-        ssconf->act->lock_file = sconf->act->lock_file;
-        ssconf->act->lock = sconf->act->lock;
+        ssconf->act->lock_file = bsconf->act->lock_file;
+        ssconf->act->lock = bsconf->act->lock;
       }
       ssconf->base_server = bs;
       ssconf->act->timeout = apr_time_sec(s->timeout);
-      ssconf->qos_cc_prefer = sconf->qos_cc_prefer;
-      ssconf->qos_cc_prefer_limit = sconf->qos_cc_prefer_limit;
-      ssconf->max_clients = sconf->max_clients;
+      ssconf->qos_cc_prefer = bsconf->qos_cc_prefer;
+      ssconf->qos_cc_prefer_limit = bsconf->qos_cc_prefer_limit;
+      ssconf->max_clients = bsconf->max_clients;
       if(ssconf->max_conn_close_percent) {
         ssconf->max_conn_close = net_prefer * ssconf->max_conn_close_percent / 100;
       }
       if(ssconf->act->timeout == 0) {
         ssconf->act->timeout = 300;
       }
-      ssconf->qslog_p = sconf->qslog_p;
+      ssconf->qslog_p = bsconf->qslog_p;
       if(ssconf->is_virtual) {
         if(qos_init_shm(s, ssconf, ssconf->act, ssconf->location_t, net_prefer) != APR_SUCCESS) {
           return !OK;
         }
         apr_pool_pre_cleanup_register(ssconf->pool, ssconf->act,
                                       qos_cleanup_shm);
-        if(ssconf->has_conn_counter == 0 && sconf->has_conn_counter == 1) {
+        if(ssconf->has_conn_counter == 0 && bsconf->has_conn_counter == 1) {
           // shall use global counter because vhost has not QS_SrvMaxConn* directive
-          ssconf->act->conn = sconf->act->conn;
+          ssconf->act->conn = bsconf->act->conn;
         }
       }
       if(ssconf->error_page == NULL && error_page != NULL) {
