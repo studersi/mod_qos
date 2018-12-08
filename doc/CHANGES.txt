@@ -1,8 +1,9 @@
 Version 11.60
 
- - Fixed: Wrong connection counter in certain vhost configurations using
-   SrvMaxConn* directives resulting an a too high value for the QS_AllConn
-   variable and too aggressive QS_SrvMinDataRate behavior (threshold).
+ - Fixed: Wrong connection counter (total server connections stored in the
+   QS_AllConn variable) when using SrvMaxConn* directives globally only but
+   other QS_* directives within virtual hosts. Bug influenced QS_SrvMinDataRate
+   behavior as well (activating and increasing the min. data rate too fast).
 
 Version 11.59
 

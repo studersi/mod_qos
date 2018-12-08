@@ -101,6 +101,10 @@ QS_SrvMaxConnPerIP      2
 QS_SrvMaxConn           5
 </IfDefine>
 
+<IfDefine globalOnlymaxconn>
+QS_SrvMaxConn           5
+</IfDefine>
+
 <IfDefine uc1status>
 StartServers            2
 ServerLimit             4
@@ -312,6 +316,13 @@ Listen                  127.0.0.1:##QS_PORT_BASE##
        AuthName               "QoS Control, htpasswd"
        Require                valid-user
    </Location>
+
+<IfDefine globalOnlymaxconn>
+   QS_LocRequestLimit         /any 100
+   <Location /qos>
+       SetHandler             qos-viewer
+   </Location>
+</IfDefine>
 
    <Location /auth_qos/console>
        SetHandler qos-console
