@@ -597,7 +597,6 @@ typedef struct {
   qs_ip_entry_t *conn_ip;
   int conn_ip_len;
   int connections;
-  char id[64];
 } qs_conn_t;
 
 typedef struct {
@@ -1024,7 +1023,6 @@ module AP_MODULE_DECLARE_DATA qos_module;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 static int m_worker_mpm = 1; // note: mod_qos is fully tested for Apache 2.2 worker MPM only
 static int m_event_mpm = 0;
-static int m_ccont = 1;
 static unsigned int m_hostcode = 0;
 static int m_generation = 0; // parent process (restart generation)
 static int m_qos_cc_partition = QSMOD;
@@ -2941,7 +2939,6 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     act->conn->conn_ip_len = max_ip * QS_MEM_SEG;
     act->conn->conn_ip = conn_ip;
     act->conn->connections = 0;
-    sprintf(act->conn->id, "%p_%d", connEntryP, m_ccont++);
     for(i = 0; i < act->conn->conn_ip_len; i++) {
       conn_ip->ip6[0] = 0;
       conn_ip->ip6[1] = 0;
@@ -6495,21 +6492,15 @@ static int qos_server_connections(qos_srv_config *sconf) {
   server_rec *s = sconf->base_server;
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
   int connections = bsconf->act->conn->connections;
-  apr_pool_t *ptemp;
-  apr_table_t *recTable;
-  apr_pool_create(&ptemp, NULL);
-  recTable = apr_table_make(ptemp, 10);
-  apr_table_add(recTable, bsconf->act->conn->id, "");
   s = s->next;
   while(s) {
     qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    if(apr_table_get(recTable, sc->act->conn->id) == NULL) {
-      apr_table_add(recTable, sc->act->conn->id, "");
+    if(sc->act->conn != bsconf->act->conn) {
+      // server has either his own counter or the base server's counter
       connections += sc->act->conn->connections;
     }
     s = s->next;
   }
-  apr_pool_destroy(ptemp);
   return connections;
   /*
   int i, j;
