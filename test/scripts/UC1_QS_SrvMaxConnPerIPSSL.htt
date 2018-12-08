@@ -10,7 +10,7 @@
 
 INCLUDE scripts/ports
 
-CLIENT 2
+CLIENT
 
 _REQ 127.0.0.1 SSL:$QS_PORT_BASE2
 __GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
@@ -25,26 +25,26 @@ _EXPECT EXEC "!Segmentation fault"
 _EXEC tail -20 logs/error_log
 END
 
-CLIENT 5
-_SLEEP 500
-
-_REQ 127.0.0.1 $QS_PORT_BASE2
-__GET / HTTP/1.0
-_FLUSH
+CLIENT
 _SLEEP 100
+_REQ 127.0.0.1 SSL:$QS_PORT_BASE2
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
 _CLOSE
-
+_SLEEP 500
+_EXPECT EXEC "mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=2"
+_EXEC tail -4 logs/error_log
 END
 
-CLIENT 5
-_SLEEP 500
-
+CLIENT 10
+_SLEEP 200
+_EXPECT ERROR "Connection reset by peer"
 _REQ 127.0.0.1 $QS_PORT_BASE2
 __GET / HTTP/1.0
-_FLUSH
-_SLEEP 100
-_CLOSE
 
 END
-
 
