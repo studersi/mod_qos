@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.60";
+static const char g_revision[] = "11.61";
 
 /************************************************************************
  * Includes
@@ -126,7 +126,11 @@ static const char g_revision[] = "11.60";
 #define QS_PKT_RATE_TH    3
 #define QS_BW_SAMPLING_RATE 10
 // split linear QS_SrvMaxConnPerIP* entry (conn->conn_ip) search:
-#define QS_MEM_SEG 1
+#ifndef QS_MEM_SEG
+#define QS_MEM_SEG 4
+#endif
+// spare if srv opens new connections faster than it closes existing ones
+#define QS_DOUBLE_CONN 128
 
 #define QS_CONN_ABORT "mod_qos_connection_aborted"
 
@@ -597,6 +601,7 @@ typedef struct {
   qs_ip_entry_t *conn_ip;
   int conn_ip_len;
   int connections;
+  int max_client;
 } qs_conn_t;
 
 typedef struct {
@@ -2889,7 +2894,7 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   if(sconf->thread_limit == 0) sconf->thread_limit = 1; /* mpm prefork */
   max_ip = sconf->thread_limit * sconf->server_limit;
   max_ip = maxclients > 0 ? maxclients : max_ip;
-  act->size = (max_ip * QS_MEM_SEG * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
+  act->size = ((max_ip+QS_DOUBLE_CONN) * QS_MEM_SEG * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
     (ruleEntries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (event_limit_entries * APR_ALIGN_DEFAULT(sizeof(qos_event_limit_entry_t))) +
     APR_ALIGN_DEFAULT(sizeof(qs_conn_t)) +
@@ -2936,8 +2941,9 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
     act->qsstatustimer = qsstatustimer;
     *act->qsstatustimer = 0;
     act->conn = connEntryP;
-    act->conn->conn_ip_len = max_ip * QS_MEM_SEG;
+    act->conn->conn_ip_len = (max_ip + QS_DOUBLE_CONN) * QS_MEM_SEG;
     act->conn->conn_ip = conn_ip;
+    act->conn->max_client = max_ip;
     act->conn->connections = 0;
     for(i = 0; i < act->conn->conn_ip_len; i++) {
       conn_ip->ip6[0] = 0;
@@ -3178,7 +3184,7 @@ static void qos_collect_ip(request_rec *r, qos_srv_config *sconf,
  * Count's the number of free ip entries (for the status viewer only)
  */
 static int qos_count_free_ip(qos_srv_config *sconf) {
-  int c = sconf->act->conn->conn_ip_len / QS_MEM_SEG;
+  int c = sconf->act->conn->max_client;
   int i = sconf->act->conn->conn_ip_len;
   qs_ip_entry_t *conn_ip = sconf->act->conn->conn_ip;
   apr_global_mutex_lock(sconf->act->lock);   /* @CRT7 */
@@ -3191,7 +3197,7 @@ static int qos_count_free_ip(qos_srv_config *sconf) {
     i--;
   }
   apr_global_mutex_unlock(sconf->act->lock); /* @CRT7 */
-  return c;
+  return c > 0 ? c : 0;
 }
 
 /**
@@ -6622,7 +6628,7 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
       req_rate = req_rate + ((sconf->min_rate_max / sconf->max_clients) * connections);
       if(connections > sconf->max_clients) {
         // limit the max rate to its max if we have more connections then expected
-        if(connections > (sconf->max_clients + 100)) {
+        if(connections > (sconf->max_clients + QS_DOUBLE_CONN)) {
           ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
                        QOS_LOG_PFX(036)"QS_SrvMinDataRate: unexpected connection status!"
                        " connections=%d,"

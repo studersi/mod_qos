@@ -1,9 +1,16 @@
+Version 11.61
+
+ - QS_SrvMaxConnPerIP can handle more than MaxClient IP addresses
+   (if the server opens new connections faster than closing old)
+   and enables memory block distribution by default.
+
 Version 11.60
 
  - Fixed: Wrong connection counter (total server connections stored in the
    QS_AllConn variable) when using SrvMaxConn* directives globally only but
-   other QS_* directives within virtual hosts. Bug influenced QS_SrvMinDataRate
-   behavior as well (activating and increasing the min. data rate too fast).
+   other QS_* directives within virtual hosts. Bug influenced
+   QS_SrvMinDataRate behavior as well (activating and increasing the min.
+   data rate too fast).
 
 Version 11.59
 
