@@ -129,8 +129,9 @@ static const char g_revision[] = "11.61";
 #ifndef QS_MEM_SEG
 #define QS_MEM_SEG 4
 #endif
-// spare if srv opens new connections faster than it closes existing ones
-#define QS_DOUBLE_CONN 128
+// buffer if srv opens new connections faster than it closes existing ones
+#define QS_DOUBLE_CONN_H 128
+#define QS_DOUBLE_CONN   32
 
 #define QS_CONN_ABORT "mod_qos_connection_aborted"
 
@@ -6423,7 +6424,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
           notmodified = u->qos_cc->notmodified;
           apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT48 */
           snprintf(clientContentTypes, 8191, ", \"clientContentTypes\": { "
-                   "\"html\": %llu,  \"css/js\": %llu,"
+                   "\"html\": %llu, \"css/js\": %llu,"
                    " \"images\": %llu, \"other\": %llu, \"304\": %llu }",
                    html, cssjs,
                    img, other, notmodified
@@ -6628,7 +6629,7 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
       req_rate = req_rate + ((sconf->min_rate_max / sconf->max_clients) * connections);
       if(connections > sconf->max_clients) {
         // limit the max rate to its max if we have more connections then expected
-        if(connections > (sconf->max_clients + QS_DOUBLE_CONN)) {
+        if(connections > (sconf->max_clients + QS_DOUBLE_CONN_H)) {
           ap_log_error(APLOG_MARK, APLOG_CRIT, 0, sconf->base_server, 
                        QOS_LOG_PFX(036)"QS_SrvMinDataRate: unexpected connection status!"
                        " connections=%d,"

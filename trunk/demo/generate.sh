@@ -65,7 +65,8 @@ cp ../doc/*.html ../test/htdocs/demo/doc/
 cp ../doc/*.gif ../test/htdocs/demo/doc/
 cp ../doc/*.jpg ../test/htdocs/demo/doc/
 cp ../doc/*.ico ../test/htdocs/demo/doc/
-cp ../doc/images/*.gif ../test/htdocs/demo/doc/
-cp ../doc/images/*.jpg ../test/htdocs/demo/doc/
+cp ../doc/images/*.gif ../test/htdocs/demo/doc/images/
+cp ../doc/images/*.jpg ../test/htdocs/demo/doc/images/
+cp ../doc/images/*.png ../test/htdocs/demo/doc/images/
 cp ../doc/images/mod_qos.gif ../test/htdocs/demo/doc/mod_qos_s.gif
 cp conf/httpd.conf ../test/htdocs/demo/doc/
