@@ -239,6 +239,7 @@ Listen         ##QS_PORT_BASE##
    QS_LocRequestPerSecLimitMatch ^/limitrs/.*     10
    QS_LocKBytesPerSecLimitMatch  ^/limitbs/.*    500
    QS_LocRequestLimitMatch       ^/index.html    200
+   QS_LocRequestLimit             /special.html    3
    QS_LocRequestLimitMatch       ^/cgi2/.*   2
    SetEnvIf                   User-Agent delayme QS_Delay=100
    SetEnvIf                   User-Agent delay1000 QS_Delay=1000

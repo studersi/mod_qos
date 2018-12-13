@@ -16,6 +16,7 @@ _EXPECT . "QS_AllConn: 1"
 _EXPECT . "QS_LocRequestLimitMatch;2../cgi2/...: 0"
 _EXPECT . "QS_LocRequestLimitMatch;2../htt/limit2/...: 0"
 _EXPECT . "QS_LocRequestLimitMatch;200../index.html.: 0"
+_EXPECT . "QS_LocRequestLimit;3./special.html.: 0"
 _EXPECT . "QS_SrvMaxConn;[0-9]+\[\]: 1"
 _EXPECT . "QS_SrvMaxConnClose;[0-9]+\[\]: 1"
 _WAIT
@@ -43,4 +44,5 @@ __GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
 __Host: 127.0.0.1
 __
 _WAIT
+_CLOSE
 END
