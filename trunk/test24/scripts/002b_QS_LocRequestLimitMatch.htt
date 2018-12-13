@@ -54,5 +54,8 @@ __
 _EXPECT . "503 Service Unavailable"
 _WAIT
 _CLOSE
+_SLEEP 100
+_EXPECT EXEC "Connection refused"
+_EXEC tail -3 logs/error_log
 
 END

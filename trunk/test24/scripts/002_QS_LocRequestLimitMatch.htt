@@ -49,7 +49,7 @@ __Connection: keep-alive
 __
 _EXPECT . "QS_LocRequestLimitMatch;2\[\^/htt/limit2/\.\*\]: 2"
 _WAIT
-
+_SLEEP 100
 # no more requests allowed
 _REQ localhost $QS_PORT_BASE
 __GET /htt/limit2/index.html HTTP/1.1
