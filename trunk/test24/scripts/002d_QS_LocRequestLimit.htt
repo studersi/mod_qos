@@ -21,7 +21,7 @@ _WAIT
 END
 
 CLIENT 1
-_SLEEP 30
+_SLEEP 60
 _REQ localhost $QS_PORT_BASE
 __GET /special.htm HTTP/1.1
 __Host: localhost
@@ -40,7 +40,7 @@ _EXEC tail -1 logs/error_log
 END
 
 CLIENT
-_SLEEP 40
+_SLEEP 50
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1
 __Host: localhost
@@ -60,7 +60,7 @@ __
 _EXPECT . "404 Not Found"
 _WAIT
 _CLOSE
-
+_SLEEP 10
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1
 __Host: localhost
