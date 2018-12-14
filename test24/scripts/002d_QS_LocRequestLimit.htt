@@ -8,33 +8,33 @@
 
 INCLUDE scripts/ports
 
-CLIENT 3
+CLIENT 10
 _REQ localhost $QS_PORT_BASE
-__GET /special.html HTTP/1.1
+__GET /special.htm HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __User-Agent: delayme
 __
-_EXPECT . "this is special.html"
+_EXPECT . "this is the special.htm document"
 _WAIT
 
 END
 
 CLIENT 1
-_SLEEP 20
+_SLEEP 30
 _REQ localhost $QS_PORT_BASE
-__GET /special.html HTTP/1.1
+__GET /special.htm HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __User-Agent: delayme
 __
-_EXPECT . "!this is special.html"
+_EXPECT . "!this is the special.htm document"
 _EXPECT . "custom error page"
 _EXPECT . "code=010"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(010\): access denied, QS_LocRequestLimit\* rule: /special.html\(3\), concurrent requests=4"
+_EXPECT EXEC "mod_qos\(010\): access denied, QS_LocRequestLimit\* rule: /special.htm\(10\), concurrent requests=11"
 _EXEC tail -1 logs/error_log
 
 END
@@ -46,14 +46,14 @@ __GET /qos?auto HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
-_EXPECT . "QS_LocRequestLimit;10./special.htm.: 0"
-_EXPECT . "QS_LocRequestLimit;3./special.html.: 3"
+_EXPECT . "QS_LocRequestLimit;10./special.htm.: 10"
+_EXPECT . "QS_LocRequestLimit;3./special.html.: 0"
 _WAIT
 
 _SLEEP 200
 
 _REQ localhost $QS_PORT_BASE
-__GET /special.html_404 HTTP/1.1
+__GET /special.htm_404 HTTP/1.1
 __Host: localhost
 __Connection: keep-alive
 __
