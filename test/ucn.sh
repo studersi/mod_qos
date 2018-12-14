@@ -111,7 +111,7 @@ ERRORS=`expr $ERRORS + $?`
 waitApache
 ./run.sh -s scripts/UCN_QS_SrvSerialize.htt
 ERRORS=`expr $ERRORS + $?`
-SLEEP 1
+sleep 1
 ./run.sh -s scripts/UCN_QS_SrvSerialize2.htt
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
