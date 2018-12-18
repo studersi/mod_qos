@@ -1,0 +1,68 @@
+#
+# QS_LocRequestPerSecLimit   /aaa          100
+#
+
+INCLUDE scripts/ports
+
+# helper client (burst at the beginning (~1sec) to ensure to
+# have more than 100 req/sec)
+CLIENT 2
+
+_LOOP 50
+_LOOP 10
+_REQ localhost $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "aaa index.html"
+_WAIT
+_END LOOP
+_CLOSE
+_END LOOP
+
+END
+
+CLIENT
+
+_LOOP 100
+_LOOP 10
+_REQ localhost $QS_PORT_BASE1
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "aaa index.html"
+_WAIT
+_END LOOP
+_CLOSE
+_END LOOP
+
+_SLEEP 100
+
+# now start the measurement loop
+_LOOP 200
+_LOOP 10
+_REQ localhost $QS_PORT_BASE1
+_DATE:GET_TIME START
+__GET /aaa/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "aaa index.html"
+_WAIT
+_DATE:GET_TIME END
+_MATH:OP $END SUB $START TIME
+_EXEC echo $TIME
+# normal requests (no delay by mod_qos) must be faster than 6ms
+_IF "$TIME" GT "6"
+_EXIT FAILED
+_END IF
+_END LOOP
+_CLOSE
+_END LOOP
+_EXPECT EXEC "mod_qos\(050\): request rate limit, rule: /aaa\(100\), req/sec"
+_EXEC tail -1 logs/error_log
+
+END
+

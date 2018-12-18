@@ -1,0 +1,34 @@
+#
+#   SetEnvIfPlus           Request_Query id=a limita=1
+#   SetEnvIfPlus           Request_URI / limitb=3
+#   QS_EventLimitCount     limita 100 5
+#   SetEnvIfCmpPlus        limita_Counter gt limitb limitc
+#   QS_EventLimitCount     limitc 1 3
+#
+INCLUDE scripts/ports
+
+CLIENT
+
+_LOOP 5
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=a HTTP/1.1
+__Host: localhost
+__User-Agent: limitme
+__
+_EXPECT . "root index"
+_WAIT
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?id=a HTTP/1.1
+__Host: localhost
+__User-Agent: limitme
+__
+_EXPECT . "!root index"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(013\): access denied, QS_EventLimitCount rule: limitc, max=1, current=2"
+_EXEC tail -1 logs/error_log
+
+END

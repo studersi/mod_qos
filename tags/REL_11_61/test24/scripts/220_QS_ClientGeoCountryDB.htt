@@ -1,0 +1,43 @@
+# 
+# QS_ClientGeoCountryDB conf/GeoIPCountryWhois.csv
+# QS_RedirectIf         QS_Country DE http://qos.de/
+# QS_ClientIpFromHeader X-Frwd-Address
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D QS_ClientGeoCountryDB -D fromHeader >/dev/null
+SLEEP 1000
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__X-Frwd-Address: 157.55.107.22
+__Connection: close
+__
+_EXPECT . "200 OK"
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__X-Frwd-Address: 157.97.104.123
+__Connection: close
+__
+_EXPECT . "!200 OK"
+_EXPECT . "!this is the root index.html"
+_EXPECT . "Location: http://qos.de/"
+_WAIT
+_CLOSE
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh stop 2>/dev/null 1>/dev/null
+_SLEEP 1000
+_EXEC ./ctl.sh start 2>/dev/null 1>/dev/null
+END
+

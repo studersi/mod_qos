@@ -1,0 +1,173 @@
+#
+# $Id$
+#
+# by header:
+#   # detect new session (implements session dos prevention
+#   # using QS_ClientEventBlockCount)
+#   QS_SetEnvResHeaderMatch    Set-Cookie        JSESSIONID=
+#   QS_SetEnvIf                Set-Cookie !QSNOT QS_Block=yes
+#
+# by env (set by mod_qtest):
+#   QS_SetEnvRes               NEWSESSION (1)    QS_Block=num=$1
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+# by header:
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_SLEEP 100
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index2.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index3.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index4.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index5.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "500"
+_EXPECT . "code=060"
+_WAIT
+_CLOSE
+
+_EXEC ./ctl.sh restart -D cc -D real_ip > /dev/null
+# by env variable
+_REQ localhost $QS_PORT_BASE
+__GET /htt/loginme/index7.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_SLEEP 100
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/loginme/index8.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/loginme/index9.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/loginme/index10.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "500"
+_EXPECT . "code=060"
+_WAIT
+
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__Set-Cookie: JSessionID=1111
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__Set-Cookie: JSessionID=1112
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__Set-Cookie: language=session
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__Set-Cookie: JSessionID=1113
+__
+__==AS1==
+_CLOSE
+
+# by env
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+END

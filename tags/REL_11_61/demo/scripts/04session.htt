@@ -1,0 +1,22 @@
+
+INCLUDE scripts/ports
+
+SET HOST=server1
+
+CLIENT
+
+_LOOP FOREVER
+_REQ $HOST SSL:$QS_PORT_BASE
+__POST /c/login.cgi HTTP/1.1
+__Host: $HOST:$QS_PORT_BASE
+__User-Agent: htt
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: AUTO
+__
+_-name=test&password=test&login=login
+_EXPECT . "Set-Cookie: SESSIONID"
+_WAIT
+_CLOSE
+_END LOOP
+
+END
