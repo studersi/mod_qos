@@ -1683,7 +1683,8 @@ Defines the maximum number of connections for this server (virtual host) support
 HTTP keep-alive. If the number of <a href="glossary.html#concurrency">concurrent</a> 
 connections exceeds this threshold, the TCP connections 
 gets closed after each request. You may specify the number of 
-connections as a percentage of MaxClients if adding the suffix '%' to the specified value.<br>
+connections as a percentage of <a href="http://httpd.apache.org/docs/current/mod/mpm_common.html#maxrequestworkers"><code>MaxClients</code> <img src="images/link.png"/></a> if adding the suffix '%' to the 
+specified value.<br>
 <small><i>Note: It's also possible to control the Keep-Alive settings dynamically using 
 the <code><a href="#QS_KeepAliveTimeout">QS_KeepAliveTimeout</a></code> 
 and <code><a href="#QS_MaxKeepAliveRequests">QS_MaxKeepAliveRequests</a></code> 
