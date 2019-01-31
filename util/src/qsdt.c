@@ -138,6 +138,21 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  2018-03-13 16:35:09.891 threadid23 DEBUG MessageHandler Received Response\n");
   printf("\n");
   if(man) {
+    printf(".SH NOTE\n");
+  } else {
+    printf("Notes:\n");
+  }
+  qs_man_println(man, "The four patterns (t,i,s,e) are concatenated into two search patterns:\n");
+  qs_man_println(man, " first (start): [t (HH:MM:SS)(SSS) ].*[i (id) ].*[s ]\n");
+  qs_man_println(man, " second (end):  [t (HH:MM:SS)(SSS) ].*[i (id) ].*[e ]\n");
+  printf("\n");
+  qs_man_print(man, "And the three sub-expression are used to extract the timestamp and the\n");
+  qs_man_print(man, "unique identifier that the start and end message have in common.\n");
+  qs_man_print(man, "This means that you could specify the sub-expression for the unique\n");
+  qs_man_print(man, "identifier in the start (-s) or end (-e) pattern alternatively, e.g. in\n");
+  qs_man_print(man, "case the identifier is at the end of the log line.\n");
+  printf("\n");
+  if(man) {
     printf(".SH SEE ALSO\n");
     printf("qsexec(1), qsfilter2(1), qsgeo(1), qsgrep(1), qshead(1), qslog(1), qslogger(1), qspng(1), qsre(1), qsrespeed(1), qsrotate(1), qssign(1), qstail(1)\n");
     printf(".SH AUTHOR\n");

@@ -242,6 +242,13 @@ static int qtest_handler(request_rec * r) {
 
   /**
    * DEVELOPMENT MODE ONLY
+   */
+  if(strcmp(r->parsed_uri.path, "/qstforbidden403/") == 0) {
+    return HTTP_FORBIDDEN;
+  }
+
+  /**
+   * DEVELOPMENT MODE ONLY
    * writes the variables to the response
    */
   if(strncmp(r->parsed_uri.path, "/dumpvar/", 9) == 0) {
