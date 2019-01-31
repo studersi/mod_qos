@@ -8,7 +8,7 @@
 
 TOP=`pwd`
 
-APACHE_VER=2.4.37
+APACHE_VER=2.4.38
 #MPM=event
 MPM=worker
 

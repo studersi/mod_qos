@@ -44,6 +44,12 @@ waitApache
 ERRORS=`expr $ERRORS + $?`
 ./ctl.sh stop 2>/dev/null 1>/dev/null
 
+../httpd/httpd -d `pwd` -f conf/ucn.conf -D limit2block -D qtest 2>/dev/null 1>/dev/null
+waitApache
+./run.sh -seT scripts/UCN_block403.htt
+ERRORS=`expr $ERRORS + $?`
+./ctl.sh stop 2>/dev/null 1>/dev/null
+
 ../httpd/httpd -d `pwd` -f conf/ucn.conf -D limit2block -D usertracking 2>/dev/null 1>/dev/null
 waitApache
 ./run.sh -seT scripts/UCN_limit2blockCookie.htt

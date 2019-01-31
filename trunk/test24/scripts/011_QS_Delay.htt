@@ -24,7 +24,7 @@ _END IF
 _IF "$DELTA" GT "2500"
 _EXIT FAILED
 _END IF
-_SLEEP 100
-_EXPECT EXEC "\"GET /index.html HTTP/1.1\" 200 159 \"delay2100" 2 1 L; 1 id"
-_EXEC tail -1 logs/access_log
+_SLEEP 200
+_EXPECT EXEC "\"GET /index.html HTTP/1.1\" 200 ... \"delay2100\" 2 cr=1 ev=L; con=1 id"
+_EXEC tail -2 logs/access_log
 END
