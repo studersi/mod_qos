@@ -103,7 +103,9 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n");
   qs_man_print(man, "     Pattern (regular expression) matching the identifier which the two\n");
   qs_man_print(man, "     messages have in common. The sub-expression defines the part which\n");
-  qs_man_print(man, "     needs to be extracted from the matching string.\n");
+  qs_man_print(man, "     needs to be extracted from the matching string. Note: You can also\n");
+  qs_man_print(man, "     use the start (-s) and end (-e) pattern to define the sub-expression\n");
+  qs_man_print(man, "     matching this identifier.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -s <regex>\n");
   if(man) printf("\n");
