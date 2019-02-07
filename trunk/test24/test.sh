@@ -93,6 +93,12 @@ if [ `grep -c -e "exit signal" -e AH00051 -e AH00052 logs/error_log` -gt 0 ]; th
     echo "WARNING: found 'exit signal' message"
 fi
 
+if [ `grep -c "unclean child exit" logs/error_log` -gt 0 ]; then
+    WARNINGS=`expr $WARNINGS + 1`
+    grep "unclean child exit" logs/error_log | tail
+    echo "WARNING: found 035/036 error message"
+fi    
+
 if [ $WARNINGS -ne 0 ]; then
     echo "ERROR: got $WARNINGS warnings and $ERRORS errors"
     exit 1

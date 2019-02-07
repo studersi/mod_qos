@@ -1188,6 +1188,14 @@ for L in $eLogs; do
     fi
 done
 
+for L in $eLogs; do
+    if [ `grep -c "unclean child exit" $L` -gt 0 ]; then
+	WARNINGS=`expr $WARNINGS + 1`
+	grep "unclean child exit" $L | tail
+	echo "WARNING: found 035/036 error message in $L"
+    fi
+fi
+
 echo "ipcs: $IPCS $IPCS2"
 if [ $IPCS -ne $IPCS2 ]; then
     echo "WARNING: ipcs count changed ($IPCS -> $IPCS2)"

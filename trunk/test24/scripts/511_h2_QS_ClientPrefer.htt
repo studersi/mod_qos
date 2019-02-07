@@ -10,7 +10,7 @@
 
 INCLUDE scripts/ports
 
-EXEC ./ctl.sh restart -D QS_ClientPrefer -D h2 >/dev/null
+EXEC ./ctl.sh restart -D QS_ClientPrefer -D LowMaxClients -D h2 >/dev/null
 SLEEP 1000
 
 CLIENT 30

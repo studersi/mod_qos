@@ -1036,6 +1036,10 @@ static qos_unique_id_t m_unique_id;
 static const char qos_basis_64[] =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
 
+#ifdef QS_INTERNAL_TEST
+static int m_qs_sim_ip_len = QS_SIM_IP_LEN;
+#endif
+
 #ifdef QS_APACHE_24
 APLOG_USE_MODULE(qos);
 #endif
@@ -8370,7 +8374,7 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
 #ifdef QS_INTERNAL_TEST
     /* use one of the predefined ip addresses */
     if(cconf->sconf->enable_testip) {
-      char *testid = apr_psprintf(c->pool, "%d", rand()%(QS_SIM_IP_LEN-1));
+      char *testid = apr_psprintf(c->pool, "%d", rand()%(m_qs_sim_ip_len-1));
       const char *testip = apr_table_get(cconf->sconf->testip, testid);
       qos_ip_str2long(testip, cconf->ip6);
     }
@@ -11618,10 +11622,14 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
 #ifdef QS_INTERNAL_TEST
   {
     int i;
-    sconf->testip = apr_table_make(sconf->pool, QS_SIM_IP_LEN);
+    sconf->testip = apr_table_make(sconf->pool, m_qs_sim_ip_len);
     sconf->enable_testip = 1;
-    for(i = 0; i < QS_SIM_IP_LEN; i++) {
+    for(i = 0; i < (m_qs_sim_ip_len*3/4); i++) {
       char *qsmi = apr_psprintf(p, "%d.%d.%d.%d", rand()%255, rand()%255, rand()%255, rand()%255);
+      apr_table_add(sconf->testip, apr_psprintf(p, "%d", i), qsmi);
+    }
+    for(i = m_qs_sim_ip_len*3/4; i < m_qs_sim_ip_len; i++) {
+      char *qsmi = apr_psprintf(p, "fe%d::%d:%d:%d", rand()%100, rand()%4000, rand()%4000, rand()%400);
       apr_table_add(sconf->testip, apr_psprintf(p, "%d", i), qsmi);
     }
   }
@@ -13930,10 +13938,21 @@ const char *qos_disable_handler_cmd(cmd_parms *cmd, void *dcfg, int flag) {
 }
 
 #ifdef QS_INTERNAL_TEST
-const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+const char *qos_disable_int_ip_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  sconf->enable_testip = flag;
+  if(strcasecmp(arg, "off") == 0 ) {
+    sconf->enable_testip = 0;
+  } else if(strcasecmp(arg, "on") == 0 ) {
+    sconf->enable_testip = 1;
+  } else {
+    sconf->enable_testip = 1;
+    m_qs_sim_ip_len = atoi(arg);
+    if(m_qs_sim_ip_len == 0) {
+      return apr_psprintf(cmd->pool, "%s: must be on/off or the number of IPs", 
+                          cmd->directive->directive);
+    }
+  }
   return NULL;
 }
 #endif
@@ -14692,9 +14711,9 @@ static const command_rec qos_config_cmds[] = {
                 " instance) 'qslog' logger."),
 
 #ifdef QS_INTERNAL_TEST
-  AP_INIT_FLAG("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
-               RSRC_CONF,
-               ""),
+  AP_INIT_TAKE1("QS_EnableInternalIPSimulation", qos_disable_int_ip_cmd, NULL,
+                RSRC_CONF,
+                ""),
 #endif
 
   { NULL }
