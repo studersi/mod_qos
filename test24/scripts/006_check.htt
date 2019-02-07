@@ -23,6 +23,24 @@ _EXPECT . "QS_SrvMaxConnClose;[0-9]+\[\]: 1"
 _WAIT
 _CLOSE
 
+_LOOP 12
+_REQ localhost $QS_PORT_BASE
+__GET /qos?option=ip&action=enable HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH body "client ip=([a-z0-9]+[:.]+[0-9]+[:.]+[0-9]+[:.]+[0-9]+)</p>" CLIENTIP
+_WAIT
+_REQ localhost $QS_PORT_BASE
+__GET /qos?option=ip&action=enable HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "<tr class=.rows.><td colspan=.6.>${CLIENTIP}</td><td  colspan=.3.>1</td></tr>"
+_WAIT
+_CLOSE
+_END LOOP
+
 _SLEEP 500
 _REQ localhost $QS_PORT_BASE
 __GET /qos?auto HTTP/1.1

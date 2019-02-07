@@ -29,7 +29,7 @@ __Authorization: Basic YWRtaW46MTIzNA==
 __
 _EXPECT . "<title>mod_qos</title>"
 _EXPECT . "<tr class=\"rows\"><td colspan=\"1\">127.0.0.1</td><td colspan=\"2\">[0-9:. ]+</td><td colspan=\"1\">no</td>"
-_MATCH body "client ip=([0-9.]+)</p>" IP
+_MATCH body "client ip=([a-z0-9.:]+)</p>" IP
 _WAIT
 _CLOSE
 _SLEEP 100
@@ -44,7 +44,7 @@ __Authorization: Basic YWRtaW46MTIzNA==
 __
 _EXPECT . "<title>mod_qos</title>"
 _EXPECT . "<tr class=\"rows\"><td colspan=\"1\">${IP}</td><td colspan=\"2\">[0-9:. ]+</td><td colspan=\"1\">yes</td>"
-_MATCH body "client ip=([0-9.]+)</p>" IP
+_MATCH body "client ip=([a-z0-9.:]+)</p>" IP
 _WAIT
 _CLOSE
 

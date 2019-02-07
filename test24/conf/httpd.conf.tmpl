@@ -23,10 +23,10 @@ StartServers             1
 MinSpareThreads         25
 MaxSpareThreads         75 
 ThreadsPerChild         25
-<IfDefine !QS_ClientPrefer>
+<IfDefine !LowMaxClients>
 MaxRequestWorkers      150
 </IfDefine>
-<IfDefine QS_ClientPrefer>
+<IfDefine LowMaxClients>
 MaxRequestWorkers       50
 </IfDefine>
 <IfDefine MaxConnectionsPerChild>
@@ -67,6 +67,10 @@ QS_RedirectIf                 QS_Country DE http://qos.de/
 QS_EnableInternalIPSimulation off
 </IfDefine>
 
+<IfDefine high_ip>
+QS_EnableInternalIPSimulation 1000
+</IfDefine>
+
 <IfDefine QS_ClientPrefer>
 QS_ClientPrefer               20
 </IfDefine>
@@ -97,6 +101,10 @@ QS_SetEnvIfStatus             BrokenConnection QS_Block
 SetEnvIfPlus                  Request_Query QS_Set_DSCP=([0-9]+) QS_Set_DSCP=$1
 
 QS_SrvMinDataRate             120 3000 10
+
+<IfDefine LimitPerIp>
+   QS_SrvMaxConnPerIP         30
+</IfDefine>
 
 <IfDefine QS_SrvMinDataRateIgnoreVIP>
    QS_SrvMinDataRateIgnoreVIP on
