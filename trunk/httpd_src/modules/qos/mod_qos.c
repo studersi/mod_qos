@@ -859,8 +859,6 @@ typedef struct {
   qs_ip_type_e ip_type;       /* GLOBAL ONLY */
   int qsstatus;               /* GLOBAL ONLY */
   int qsevents;               /* GLOBAL ONLY */
-  int server_limit;
-  int thread_limit;
   apr_array_header_t *milestones;
   time_t milestoneTimeout;
   /* predefined client behavior */
@@ -2775,6 +2773,19 @@ static void qs_inc_eventcounter(apr_pool_t *ppool, int event, int locked) {
   }
 }
 
+static int qs_calc_maxClients(server_rec *bs) {
+  int maxThreads = 0;
+  int maxDaemons = 0;
+  int maxClients = 0;
+  ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &maxDaemons);
+  ap_mpm_query(AP_MPMQ_MAX_THREADS, &maxThreads);
+  maxClients = (maxThreads == 0 ? 1 : maxThreads) * (maxDaemons == 0 ? 1 : maxDaemons);
+  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
+               QOS_LOGD_PFX"calculated MaxClients/MaxRequestWorkers (max connections): %d",
+               maxClients);
+  return maxClients;
+}
+
 #ifdef QS_APACHE_24
 /**
  * tells if server is terminating immediately or not
@@ -2885,7 +2896,7 @@ static apr_status_t qos_cleanup_shm(void *p) {
  *                      + [event_limit_entries]
  */
 static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actable_t *act,
-                                 apr_table_t *locRuleCfgTable, int maxclients) {
+                                 apr_table_t *locRuleCfgTable, int maxClients) {
   char *file = "-";
   apr_status_t res;
   int i;
@@ -2893,12 +2904,8 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   apr_table_entry_t *locRuleEntry = (apr_table_entry_t *)apr_table_elts(locRuleCfgTable)->elts;
   int event_limit_entries = sconf->event_limit_a->nelts;
   qs_acentry_t *actEntry = NULL;
-  int max_ip;
-  ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &sconf->server_limit);
-  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &sconf->thread_limit);
-  if(sconf->thread_limit == 0) sconf->thread_limit = 1; /* mpm prefork */
-  max_ip = sconf->thread_limit * sconf->server_limit;
-  max_ip = maxclients > 0 ? maxclients : max_ip;
+  int max_ip = maxClients;
+
   act->size = ((max_ip+QS_DOUBLE_CONN) * QS_MEM_SEG * APR_ALIGN_DEFAULT(sizeof(qs_ip_entry_t))) +
     (ruleEntries * APR_ALIGN_DEFAULT(sizeof(qs_acentry_t))) +
     (event_limit_entries * APR_ALIGN_DEFAULT(sizeof(qos_event_limit_entry_t))) +
@@ -10522,27 +10529,15 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   char *rev = qos_revision(ptemp);
   qos_user_t *u;
-  int net_prefer = 0;
+  int maxClients = qs_calc_maxClients(bs);
   int cc_net_prefer_limit = 0;
   apr_status_t rv;
   ap_directive_t *pdir = ap_conftree;
   const char *error_page = detectErrorPage(ptemp, bs, pdir);
   int auto_error_page = 0;
-  int maxThreads, maxDaemons;
 
   QOS_MY_GENERATION(m_generation);
-
-  ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &maxDaemons);
-  ap_mpm_query(AP_MPMQ_MAX_THREADS, &maxThreads);
-  if(maxThreads == 0) {
-    // prefork.c returns 0 for AP_MPMQ_MAX_THREADS
-    maxThreads = 1;
-  }
-  bsconf->max_clients = maxThreads * maxDaemons;
-  net_prefer = bsconf->max_clients;
-  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-               QOS_LOGD_PFX"calculated MaxClients/MaxRequestWorkers: %d",
-               bsconf->max_clients);
+  bsconf->max_clients = maxClients;
   
   if(bsconf->ip_type == QS_IP_V4) {
     m_ip_type = QS_IP_V4;
@@ -10551,14 +10546,6 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
 
   qos_hostcode(ptemp, bs);
-
-//  for (pdir = ap_conftree; pdir != NULL; pdir = pdir->next) {
-//    if(strcasecmp(pdir->directive, "MaxClients") == 0 ||
-//       strcasecmp(pdir->directive, "MaxRequestWorkers") == 0) {
-//      net_prefer = atoi(pdir->args);
-//      sconf->max_clients = net_prefer;
-//    }
-//  }
 
   if(bsconf->log_only) {
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
@@ -10573,11 +10560,11 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_version_check(bs);
 
   if(bsconf->max_conn_close_percent) {
-    bsconf->max_conn_close = net_prefer * bsconf->max_conn_close_percent / 100;
+    bsconf->max_conn_close = maxClients * bsconf->max_conn_close_percent / 100;
   }
-  cc_net_prefer_limit = net_prefer * bsconf->qos_cc_prefer / 100;
-  if(bsconf->qos_cc_prefer && net_prefer) {
-    bsconf->qos_cc_prefer = net_prefer;
+  cc_net_prefer_limit = maxClients * bsconf->qos_cc_prefer / 100;
+  if(bsconf->qos_cc_prefer) {
+    bsconf->qos_cc_prefer = maxClients;
     bsconf->qos_cc_prefer_limit = cc_net_prefer_limit;
   } else {
     bsconf->qos_cc_prefer = 0;
@@ -10610,7 +10597,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   bsconf->base_server = bs;
   bsconf->act->timeout = apr_time_sec(bs->timeout);
   if(bsconf->act->timeout == 0) bsconf->act->timeout = 300;
-  if(qos_init_shm(bs, bsconf, bsconf->act, bsconf->location_t, net_prefer) != APR_SUCCESS) {
+  if(qos_init_shm(bs, bsconf, bsconf->act, bsconf->location_t, maxClients) != APR_SUCCESS) {
     return !OK;
   }
   apr_pool_pre_cleanup_register(bsconf->pool, bsconf->act, qos_cleanup_shm);
@@ -10741,14 +10728,14 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       ssconf->qos_cc_prefer_limit = bsconf->qos_cc_prefer_limit;
       ssconf->max_clients = bsconf->max_clients;
       if(ssconf->max_conn_close_percent) {
-        ssconf->max_conn_close = net_prefer * ssconf->max_conn_close_percent / 100;
+        ssconf->max_conn_close = maxClients * ssconf->max_conn_close_percent / 100;
       }
       if(ssconf->act->timeout == 0) {
         ssconf->act->timeout = 300;
       }
       ssconf->qslog_p = bsconf->qslog_p;
       if(ssconf->is_virtual) {
-        if(qos_init_shm(s, ssconf, ssconf->act, ssconf->location_t, net_prefer) != APR_SUCCESS) {
+        if(qos_init_shm(s, ssconf, ssconf->act, ssconf->location_t, maxClients) != APR_SUCCESS) {
           return !OK;
         }
         apr_pool_pre_cleanup_register(ssconf->pool, ssconf->act,
