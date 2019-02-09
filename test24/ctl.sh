@@ -101,9 +101,15 @@ case "$COMMAND" in
 	fi
 	;;
   restart)
-	$0 stop
-        $0 start $ADDARGS
-        sleep 2
+      if [ -r .ctl.lock ]; then
+	  echo "ignored"
+	  exit 0
+      fi
+      touch .ctl.lock
+      $0 stop
+      $0 start $ADDARGS
+      sleep 2
+      rm -f .ctl.lock
 esac
 
 exit 0
