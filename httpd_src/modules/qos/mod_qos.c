@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.61";
+static const char g_revision[] = "11.62";
 
 /************************************************************************
  * Includes
@@ -6807,27 +6807,29 @@ static void qos_ext_status_short(request_rec *r, apr_table_t *qt) {
           event_limit++;
         }
       }
-      if(sconf->max_conn != -1) {
-        ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConn"QOS_DELIM"%d[]: %d\n", sn,
-                   sconf->max_conn,
-                   sconf->act->conn->connections);
-      }
-      if(sconf->max_conn_close != -1) {
-        ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConnClose"QOS_DELIM"%d[]: %d\n", sn,
-                   sconf->max_conn_close,
-                   sconf->act->conn->connections);
-      }
-      if(option && strstr(option, "ip")) {
-        if(sconf->act->conn->connections) {
-          apr_table_t *entries = apr_table_make(r->pool, 100);
-          int j;
-          apr_table_entry_t *entry;
-          qos_collect_ip(r, sconf, entries, sconf->max_conn_per_ip, 0);
-          entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
-          for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
-            ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConnPerIP"QOS_DELIM"%s: %s\n",
-                       sn,
-                       entry[j].key, entry[j].val);
+      if(!s->is_virtual || sconf->act->conn != bsconf->act->conn) {
+        if(sconf->max_conn != -1) {
+          ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConn"QOS_DELIM"%d[]: %d\n", sn,
+                     sconf->max_conn,
+                     sconf->act->conn->connections);
+        }
+        if(sconf->max_conn_close != -1) {
+          ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConnClose"QOS_DELIM"%d[]: %d\n", sn,
+                     sconf->max_conn_close,
+                     sconf->act->conn->connections);
+        }
+        if(option && strstr(option, "ip")) {
+          if(sconf->act->conn->connections) {
+            apr_table_t *entries = apr_table_make(r->pool, 100);
+            int j;
+            apr_table_entry_t *entry;
+            qos_collect_ip(r, sconf, entries, sconf->max_conn_per_ip, 0);
+            entry = (apr_table_entry_t *)apr_table_elts(entries)->elts;
+            for(j = 0; j < apr_table_elts(entries)->nelts; j++) {
+              ap_rprintf(r, "%s"QOS_DELIM"QS_SrvMaxConnPerIP"QOS_DELIM"%s: %s\n",
+                         sn,
+                         entry[j].key, entry[j].val);
+            }
           }
         }
       }

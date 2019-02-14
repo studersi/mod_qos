@@ -1,3 +1,9 @@
+Version
+
+ - Machine-readable version of the status viewer does no longer
+   show QS_SrvMaxConn* counters for virtual hosts using the base
+   server's configuration and counter.
+
 Version 11.61
 
  - QS_SrvMaxConnPerIP can handle more than MaxClient IP addresses
