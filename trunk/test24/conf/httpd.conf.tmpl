@@ -103,7 +103,11 @@ SetEnvIfPlus                  Request_Query QS_Set_DSCP=([0-9]+) QS_Set_DSCP=$1
 QS_SrvMinDataRate             120 3000 10
 
 <IfDefine LimitPerIp>
-   QS_SrvMaxConnPerIP         30
+QS_SrvMaxConnPerIP            31
+</IfDefine>
+
+<IfDefine QS_SrvMaxConnBase>
+QS_SrvMaxConn                 4
 </IfDefine>
 
 <IfDefine QS_SrvMinDataRateIgnoreVIP>
@@ -373,6 +377,10 @@ Listen         ##QS_PORT_BASE1##
     Order allow,deny
     Allow from all
   </Location>
+
+   <Location /qos>
+      SetHandler qos-viewer
+   </Location>
 
 </VirtualHost>
 
