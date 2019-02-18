@@ -12,10 +12,10 @@
 INCLUDE scripts/ports
 
 EXEC ./ctl.sh restart -D LimitPerIp -D real_ip >/dev/null
-SLEEP 3000
+SLEEP 2000
 
 CLIENT 30
-_SLEEP 1000
+_SLEEP 2000
 _REQ localhost $QS_PORT_BASE
 __GET /cgi-local/sleep.cgi?s=3 HTTP/1.1
 __Host: localhost
@@ -37,7 +37,7 @@ _WAIT
 END
 
 CLIENT
-_SLEEP 2000
+_SLEEP 3000
 _REQ localhost $QS_PORT_BASE
 _EXPECT ERROR "Connection reset"
 __GET /cgi-local/sleep.cgi?s=3 HTTP/1.1
@@ -54,8 +54,10 @@ _EXEC tail -3 logs/error_log
 
 END
 
+
+
 CLIENT 31
-_SLEEP 500
+_SLEEP 1000
 _REQ localhost $QS_PORT_BASE1
 __GET /cgi/sleep.cgi?s=3 HTTP/1.1
 __Host: localhost
@@ -64,7 +66,7 @@ __
 _EXPECT . "done"
 _WAIT
 _CLOSE
-_SLEEP 500
+_SLEEP 1000
 
 _REQ localhost $QS_PORT_BASE1
 __GET /index.html HTTP/1.1
