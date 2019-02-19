@@ -1668,7 +1668,10 @@ Sample configuration:<br>
 <p>
 The module features the following directives to control server access on a per-server 
 (TCP connection) level. These directives must only be used in the global server context 
-and for port based virtual hosts (don't use them for name based virtual hosts).
+and for port based virtual hosts. 
+Virtual hosts neither defining <code>QS_SrvMaxConn</code>, <code>QS_SrvMaxConnClose</code>, 
+nor <code>QS_SrvMaxConnPerIP</code> are using the base server's settings and counters. 
+And do not use these three directives for name based virtual hosts! 
 <ul>
 <li>
 <a name="QS_SrvMaxConn"></a>
