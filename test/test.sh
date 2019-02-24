@@ -1194,7 +1194,7 @@ for L in $eLogs; do
 	grep "unclean child exit" $L | tail
 	echo "WARNING: found 035/036 error message in $L"
     fi
-fi
+done
 
 echo "ipcs: $IPCS $IPCS2"
 if [ $IPCS -ne $IPCS2 ]; then
