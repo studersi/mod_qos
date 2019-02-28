@@ -1,8 +1,10 @@
-Version
+Version 11.62
 
  - Machine-readable version of the status viewer does no longer
    show QS_SrvMaxConn* counters for virtual hosts using the base
    server's configuration and counter.
+
+ - New directive  QS_MaxClients.
 
 Version 11.61
 

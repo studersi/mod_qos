@@ -829,6 +829,7 @@ typedef struct {
   int min_rate_off;
   int req_ignore_vip_rate;    /* GLOBAL ONLY */
   int max_clients;
+  int max_clients_conf;
 #ifdef QS_INTERNAL_TEST
   apr_table_t *testip;
   int enable_testip;
@@ -2773,16 +2774,30 @@ static void qs_inc_eventcounter(apr_pool_t *ppool, int event, int locked) {
   }
 }
 
-static int qs_calc_maxClients(server_rec *bs) {
+static int qs_calc_maxClients(server_rec *bs, qos_srv_config *bsconf) {
   int maxThreads = 0;
   int maxDaemons = 0;
+  int maxClientsCalc = 0;
   int maxClients = 0;
+  
   ap_mpm_query(AP_MPMQ_MAX_DAEMONS, &maxDaemons);
   ap_mpm_query(AP_MPMQ_MAX_THREADS, &maxThreads);
-  maxClients = (maxThreads == 0 ? 1 : maxThreads) * (maxDaemons == 0 ? 1 : maxDaemons);
-  ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
-               QOS_LOGD_PFX"calculated MaxClients/MaxRequestWorkers (max connections): %d",
-               maxClients);
+  maxClientsCalc = (maxThreads == 0 ? 1 : maxThreads) * (maxDaemons == 0 ? 1 : maxDaemons);
+  if(bsconf->max_clients_conf > 0) {
+    maxClients = bsconf->max_clients_conf;
+  } else {
+    maxClients = maxClientsCalc;
+  }
+  if(maxClients != maxClientsCalc) {
+    ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
+                 QOS_LOG_PFX(007)"calculated MaxClients/MaxRequestWorkers (max connections): %d,"
+                 " applied limit: %d",
+                 maxClientsCalc, maxClients);
+  } else {
+    ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, bs, 
+                 QOS_LOGD_PFX"calculated MaxClients/MaxRequestWorkers (max connections): %d",
+                 maxClients);
+  }
   return maxClients;
 }
 
@@ -10531,7 +10546,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(bs->module_config, &qos_module);
   char *rev = qos_revision(ptemp);
   qos_user_t *u;
-  int maxClients = qs_calc_maxClients(bs);
+  int maxClients = qs_calc_maxClients(bs, bsconf);
   int cc_net_prefer_limit = 0;
   apr_status_t rv;
   ap_directive_t *pdir = ap_conftree;
@@ -10729,6 +10744,7 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
       ssconf->qos_cc_prefer = bsconf->qos_cc_prefer;
       ssconf->qos_cc_prefer_limit = bsconf->qos_cc_prefer_limit;
       ssconf->max_clients = bsconf->max_clients;
+      ssconf->max_clients_conf = bsconf->max_clients_conf;
       if(ssconf->max_conn_close_percent) {
         ssconf->max_conn_close = maxClients * ssconf->max_conn_close_percent / 100;
       }
@@ -11499,6 +11515,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->min_rate_off = 0;
   sconf->req_ignore_vip_rate = -1;
   sconf->max_clients = 1024;
+  sconf->max_clients_conf = -1;
   sconf->has_event_filter = 0;
   sconf->has_event_limit = 0;
   sconf->event_limit_a = apr_array_make(p, 2, sizeof(qos_event_limit_entry_t));
@@ -11797,6 +11814,21 @@ const char *qos_logonly_cmd(cmd_parms *cmd, void *dcfg, int flag) {
   return NULL;
 }
 
+const char *qos_maxclients_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  sconf->max_clients_conf = atoi(arg1);
+  if(sconf->max_clients_conf <= 0) {
+    return apr_psprintf(cmd->pool, "%s: number must be numeric value >=0", 
+                        cmd->directive->directive);
+  }
+  return NULL;
+}
+ 
 const char *qos_mfile_cmd(cmd_parms *cmd, void *dcfg, const char *path) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
@@ -14667,6 +14699,12 @@ static const command_rec qos_config_cmds[] = {
                 " which shall be used for file based samaphores/shared memory"
                 " usage."
                 " Default is "QS_MFILE"."),
+
+  AP_INIT_TAKE1("QS_MaxClients", qos_maxclients_cmd, NULL,
+                RSRC_CONF,
+                "QS_MaxClients <number>, optional override for mod_qos's"
+                " MaxClients/MaxRequestWorkers calculation which defines"
+                " the maximum number of TCP connections the server can handle."),
 
   AP_INIT_FLAG("QS_DisableHandler", qos_disable_handler_cmd, NULL,
                RSRC_CONF,
