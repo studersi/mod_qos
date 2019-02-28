@@ -58,6 +58,10 @@ SSLRandomSeed startup         builtin
 #SSLRandomSeed startup        file:/dev/random
 #SSLRandomSeed startup        file:/dev/urandom 1024
 
+<IfDefine QS_MaxClients>
+QS_MaxClients                 800
+</IfDefine>
+
 <IfDefine QS_ClientGeoCountryDB>
 QS_ClientGeoCountryDB         conf/GeoIPCountryWhois.csv
 QS_RedirectIf                 QS_Country DE http://qos.de/
