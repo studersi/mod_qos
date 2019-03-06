@@ -1,0 +1,49 @@
+# 
+# $Id$
+#
+# SetEnvIf                     Request_URI ^/download/mod_qos.so.gz LimitDownload
+# SetEnvIf                     Request_URI ^/download/mod_qos.so.gz QS_Cond=LimitDownload
+# QS_CondClientEventLimitCount 4 60 LimitDownload LimitDownload
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_LOOP 3
+_REQ localhost $QS_PORT_BASE
+__GET /download/mod_qos.so.gz HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "dummy file"
+_WAIT
+_END LOOP
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /download/mod_qos.so.gz HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "!dummy file"
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 10
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_CondClientEventLimitCount rule: event=LimitDownload, max=4, current=4"
+_EXEC tail -1 logs/error_log
+
+# cond: other URLs still work
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+END

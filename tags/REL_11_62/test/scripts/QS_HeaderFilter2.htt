@@ -1,0 +1,50 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/@html;level=2;q=0.4, */*;q=0.5
+__myheader: deny
+__
+_EXPECT . "!custom error page"
+_EXPECT . "!code=043"
+_EXPECT . "HTTP_MYHEADER: deny"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC " mod_qos\(043\): access denied \(log only\), request header: 'myheader: deny'"
+_EXEC tail -1 logs/error_log
+
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local_s/index.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Accept: text/*;q=0.3, text/html;q=0.7, text/html;level=1, text/@html;level=2;q=0.4, */*;q=0.5
+__Keep-Alive: 3000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+__
+_EXPECT . "Date: .*"
+_EXPECT . "Server: Apache.*"
+_EXPECT . "Keep-Alive: timeout=.*, max=.*"
+_EXPECT . "Connection: Keep-Alive"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "200 OK"
+_EXPECT . "HTTP Headers:"
+_EXPECT . "HTTP_ACCEPT"
+_EXPECT . "HTTP_KEEP_ALIVE"
+_EXPECT . "3000000000000000"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(042\): drop request header \(log only\): 'Keep-Alive"
+_EXEC tail -1 logs/error_log
+
+END
+

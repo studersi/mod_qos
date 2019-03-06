@@ -1,0 +1,113 @@
+#
+# test to ensure that the filters of mod_cache do not disturb our counters
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_EXEC ./ctl.sh restart -D cache 1>/dev/null
+
+_REQ localhost $QS_PORT_BASE
+__GET /localpages/reqlimit/scripts/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: event 1
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+# not in cache, requires took 2 seconds
+_SLEEP 200
+_EXPECT EXEC "sleep.cgi\?s=2 HTTP/1.1\" 200 5 \"event 1\" 2"
+_EXEC tail -1 logs/access_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /localpages/reqlimit/scripts/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: event 2
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+# cache hit!, request took 0 second0
+_SLEEP 200
+_EXPECT EXEC "sleep.cgi\?s=2 HTTP/1.1\" 200 5 \"event 2\" 0"
+_EXEC tail -1 logs/access_log
+
+# perfrom another 1000 requests (nothing blocked by to leaking counters/dead entries)
+_LOOP 1000
+_REQ localhost $QS_PORT_BASE
+__GET /localpages/reqlimit/scripts/sleep.cgi?s=2 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: event 3
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_END LOOP
+
+END
+
+#CLIENT 10
+#
+#_REQ localhost $QS_PORT_BASE
+#__GET /localpages/reqlimit/scripts/sleep.cgi?s=1 HTTP/1.1
+#__Host: localhost
+#__Connection: keep-alive
+#__User-Agent: event
+#__
+#_EXPECT . "done"
+#_WAIT
+#_CLOSE
+#
+## wait for server restart
+#_SLEEP 5000
+#_REQ localhost $QS_PORT_BASE
+#__GET /localpages/reqlimit/scripts/sleep.cgi?s=6 HTTP/1.1
+#__Host: localhost
+#__Connection: keep-alive
+#__User-Agent: event
+#__
+#_EXPECT . "done"
+#_WAIT
+#_CLOSE
+#
+#END
+#
+#CLIENT
+#_SLEEP 500
+#_REQ localhost $QS_PORT_BASE
+#__GET /localpages/reqlimit/scripts/sleep.cgi?s=1 HTTP/1.1
+#__Host: localhost
+#__Connection: keep-alive
+#__User-Agent: event
+#__
+#_EXPECT . "code=010"
+#_EXPECT . "!done"
+#_WAIT
+#_CLOSE
+## sleep requests are now finished
+#_SLEEP 700
+## takes about 2 to 5 seconds
+#_EXEC ./ctl.sh restart -D cache 1>/dev/null
+#
+#_SLEEP 5000
+#_REQ localhost $QS_PORT_BASE
+#__GET /localpages/reqlimit/scripts/sleep.cgi?s=1 HTTP/1.1
+#__Host: localhost
+#__Connection: keep-alive
+#__User-Agent: event
+#__
+#_EXPECT . "code=010"
+#_EXPECT . "!done"
+#_WAIT
+#_CLOSE
+#
+#END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 1>/dev/null
+END

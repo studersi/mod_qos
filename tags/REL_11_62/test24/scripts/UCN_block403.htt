@@ -1,0 +1,37 @@
+# 
+#  QS_ClientEventBlockCount 20  300
+#  QS_SetEnvIfStatus        403                QS_Block=3
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_LOOP 7
+_REQ localhost $QS_PORT_BASE
+__GET /qstforbidden403/ HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "403 Forbidden"
+_WAIT
+_CLOSE
+_END LOOP
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=20, current=21, age=0"
+_EXEC tail -2 logs/error_log
+
+_SLEEP 1000
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=20, current=21, age=1"
+_EXEC tail -2 logs/error_log
+
+END

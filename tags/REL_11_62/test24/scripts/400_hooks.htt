@@ -1,0 +1,149 @@
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D qtest >/dev/null
+
+CLIENT
+
+# Pre-Connection:
+#    ...
+#    10 mod_logio.c
+#    (10 mod_remoteip.c <Apache 2.4.33>)
+#    10 mod_qos.c
+#    10 mod_ssl.c
+#    20 mod_qos.c
+#    30 core.c
+
+_REQ localhost $QS_PORT_BASE
+__GET /qsinfo/ HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "hook Pre-Connection: .*10 mod_logio.c.* 10 mod_qos.c 10 mod_ssl.c 20 mod_qos.c 30 core.c"
+_WAIT
+_CLOSE
+
+
+# Process Connection:
+#    00 mod_http2.c
+#    10 mod_echo.c
+#    10 mod_ssl.c
+#    10 mod_qos.c
+#    20 mod_http2.c
+#    20 mod_reqtimeout.c
+#    30 http_core.c
+
+_REQ localhost $QS_PORT_BASE
+__GET /qsinfo/ HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "hook Process Connection: 00 mod_http2.c 10 mod_echo.c 10 mod_ssl.c 10 mod_qos.c 20 mod_http2.c 20 mod_reqtimeout.c 30 http_core.c"
+_WAIT
+_CLOSE
+
+
+# Post-Read Request:
+#    10 mod_unique_id.c
+#    ...
+#    10 mod_qos.c
+#    10 mod_setenvif.c
+#    10 mod_ssl.c
+#    10 mod_setenvifplus.c
+#    ....
+#    10 mod_qos.c
+
+_REQ localhost $QS_PORT_BASE
+__GET /qsinfo/ HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "hook Post-Read Request: 10 mod_unique_id.c .*mod_qos.c 10 mod_setenvif.c 10 mod_ssl.c 10 mod_setenvifplus.c .*10 mod_qos.c"
+_WAIT
+_CLOSE
+
+
+# Header Parse:
+#    00 mod_qos.c
+#    10 mod_setenvif.c
+#    10 mod_setenvifplus.c
+#    00 mod_qos.c
+#    10 mod_parp.c
+#    10 mod_qos.c
+
+_REQ localhost $QS_PORT_BASE
+__GET /qsinfo/ HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "hook Header Parse: 00 mod_qos.c 10 mod_setenvif.c 10 mod_setenvifplus.c 00 mod_qos.c 10 mod_parp.c 10 mod_qos.c "
+_WAIT
+_CLOSE
+
+
+# Fixups:
+#    ...
+#    10 mod_setenvifplus.c
+#    10 mod_qos.c
+#    ...
+
+_REQ localhost $QS_PORT_BASE
+__GET /qsinfo/ HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "hook Fixups: .*10 mod_setenvifplus.c 10 mod_qos.c"
+_WAIT
+_CLOSE
+
+
+# Insert Filters:
+#    00 mod_log_debug.c
+#    10 core.c
+#    10 mod_proxy_html.c
+#    10 mod_filter.c
+#    10 mod_expires.c
+#    10 mod_session.c
+#    10 mod_qos.c
+#    10 mod_setenvifplus.c
+#    20 mod_request.c
+#    20 mod_logio.c
+#    20 mod_headers.c
+#    30 mod_charset_lite.c
+
+_REQ localhost $QS_PORT_BASE
+__GET /qsinfo/ HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "hook Insert Filters: .*10 core.c.* 10 mod_filter.c.* 10 mod_qos.c 10 mod_setenvifplus.c"
+_WAIT
+_CLOSE
+
+# Transaction Logging:
+#    00 mod_log_debug.c
+#    00 mod_qos.c
+#    10 mod_log_config.c
+#    10 mod_logio.c
+#    30 mod_log_forensic.c
+
+
+# Request level output (response) filter
+
+_REQ localhost $QS_PORT_BASE
+__GET /qsinfo/ HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "std output-filter: .*sp_out_filter qos-out-filter.* qos-out-filter-brokencon core"
+_WAIT
+_CLOSE
+
+END
+
+
+BLOCK FINALLY
+_EXEC ./ctl.sh stop 2>/dev/null 1>/dev/null
+_SLEEP 1000
+_EXEC ./ctl.sh start 2>/dev/null 1>/dev/null
+END
+

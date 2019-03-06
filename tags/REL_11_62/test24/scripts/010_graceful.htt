@@ -1,0 +1,24 @@
+#
+
+INCLUDE scripts/ports
+
+CLIENT 2
+
+_LOOP 1
+_LOOP 100
+_REQ localhost $QS_PORT_BASE
+__GET /limitrs/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "this is the limitrs index.html"
+_WAIT
+_CLOSE
+_END LOOP
+_END LOOP
+END
+
+CLIENT
+_SLEEP 70
+_EXEC ./ctl.sh graceful 1>/dev/null
+END

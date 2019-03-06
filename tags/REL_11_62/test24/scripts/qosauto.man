@@ -1,0 +1,14 @@
+# verifies connection and request  counter
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+END
