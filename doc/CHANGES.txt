@@ -4,7 +4,7 @@ Version 11.62
    show QS_SrvMaxConn* counters for virtual hosts using the base
    server's configuration and counter.
 
- - New directive  QS_MaxClients.
+ - New directive QS_MaxClients.
 
 Version 11.61
 
