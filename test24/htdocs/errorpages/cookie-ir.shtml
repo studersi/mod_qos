@@ -6,7 +6,7 @@
 <title>Cookie Check Redirect</title>
 <script type="text/javascript">
 <!--
-var link = "<!--#echo var="QS_UT_FETCH_COOKIE" -->";
+var link = "?setCookie.txt";
 if(window.XMLHttpRequest) {
   req = new XMLHttpRequest();
   req.onreadystatechange = qsCallback;
@@ -27,8 +27,8 @@ if(window.XMLHttpRequest) {
 function qsCallback() {
   if(req.readyState == 4) {
     if(req.status == 200) {
-      var contentType = this.getResponseHeader("Content-Type");
-      if(contentType == "text/plain") {
+      var headerCheck = this.getResponseHeader("Cache-Control");
+      if(headerCheck == "no-cache, no-store, private") {
          window.location = "<!--#echo var="QS_UT_INITIAL_URI" -->";
       }
     }

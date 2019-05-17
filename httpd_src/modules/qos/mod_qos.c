@@ -779,6 +779,7 @@ typedef struct {
   char *user_tracking_cookie;
   char *user_tracking_cookie_force;
   int user_tracking_cookie_session;
+  int user_tracking_cookie_passive;
   char *user_tracking_cookie_domain;
   int max_age;
   unsigned char key[EVP_MAX_KEY_LENGTH];
@@ -8696,6 +8697,9 @@ static int qos_post_read_request_later(request_rec *r) {
   if(!sconf->user_tracking_cookie_force) {
     return DECLINED;
   }
+  if(strcmp("/favicon.ico", r->parsed_uri.path) == 0) {
+    return DECLINED;
+  }
 
   ignore = apr_table_get(r->subprocess_env, QOS_DISABLE_UTC_ENFORCEMENT);
   if(ignore) {
@@ -8703,18 +8707,36 @@ static int qos_post_read_request_later(request_rec *r) {
   }
   if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
     /* access to check url */
-    if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) == NULL) {
+    if(sconf->user_tracking_cookie_passive == 1) {
+      if(r->parsed_uri.query && strcmp(r->parsed_uri.query, "setCookie.txt") == 0) {
+        apr_table_add(r->headers_out, "Cache-Control", "no-cache, no-store, private");
+        qos_send_user_tracking_cookie(r, sconf, HTTP_OK);
+        return DECLINED;
+      }
       if(r->parsed_uri.query && (strncmp(r->parsed_uri.query, "r=", 2) == 0)) {
-        /* client has send a cookie, redirect to original url */
         char *redirect_page;
         int buf_len = 0;
         unsigned char *buf;
         char *q = r->parsed_uri.query;
         buf_len = qos_decrypt(r, sconf, &buf, &q[2]);
         if(buf_len > 0) {
-          redirect_page = apr_psprintf(r->pool, "%s%.*s",
-                                       qos_this_host(r),
+          redirect_page = apr_psprintf(r->pool, "%.*s",
                                        buf_len, buf);
+          apr_table_set(r->subprocess_env, "QS_UT_INITIAL_URI", redirect_page);
+        }
+      }
+    }
+    if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) == NULL) {
+      if(r->parsed_uri.query && (strncmp(r->parsed_uri.query, "r=", 2) == 0)) {
+        /* client has send a cookie, redirect to original url */
+        int buf_len = 0;
+        unsigned char *buf;
+        char *q = r->parsed_uri.query;
+        buf_len = qos_decrypt(r, sconf, &buf, &q[2]);
+        if(buf_len > 0) {
+          char *redirect_page = apr_psprintf(r->pool, "%s%.*s",
+                                             qos_this_host(r),
+                                             buf_len, buf);
           apr_table_set(r->headers_out, "Location", redirect_page);
           return HTTP_MOVED_TEMPORARILY;
         }
@@ -8734,7 +8756,9 @@ static int qos_post_read_request_later(request_rec *r) {
                                                     strlen(r->unparsed_uri)),
                                         NULL);
       apr_table_set(r->headers_out, "Location", redirect_page);
-      qos_send_user_tracking_cookie(r, sconf, HTTP_MOVED_TEMPORARILY);
+      if(sconf->user_tracking_cookie_passive < 1) {
+        qos_send_user_tracking_cookie(r, sconf, HTTP_MOVED_TEMPORARILY);
+      }
       return HTTP_MOVED_TEMPORARILY;
     }
   }
@@ -10061,10 +10085,10 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   qos_setenvstatus(r, sconf, dconf);
   qos_setenvresheader(r, sconf);
   qos_setenvres(r, sconf);
-  if(sconf && sconf->user_tracking_cookie) {
+  if(sconf->user_tracking_cookie && sconf->user_tracking_cookie_passive < 1) {
     qos_send_user_tracking_cookie(r, sconf, r->status);
   }
-  if(sconf && sconf->milestones) {
+  if(sconf->milestones) {
     qos_update_milestone(r, sconf);
   }
   if(sconf->ip_header_name) {
@@ -11537,6 +11561,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->user_tracking_cookie = NULL;
   sconf->user_tracking_cookie_force = NULL;
   sconf->user_tracking_cookie_session = -1;
+  sconf->user_tracking_cookie_passive = -1;
   sconf->user_tracking_cookie_domain = NULL;
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
@@ -11738,6 +11763,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
     o->user_tracking_cookie = b->user_tracking_cookie;
     o->user_tracking_cookie_force = b->user_tracking_cookie_force;
     o->user_tracking_cookie_session = b->user_tracking_cookie_session;
+    o->user_tracking_cookie_passive = b->user_tracking_cookie_passive;
     o->user_tracking_cookie_domain = b->user_tracking_cookie_domain;
   }
   if(o->keyset == 0) {
@@ -12784,6 +12810,8 @@ const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg,
       sconf->user_tracking_cookie_force = apr_pstrdup(cmd->pool, value);
     } else if(strcasecmp(value, "session") == 0) {
       sconf->user_tracking_cookie_session = 1;
+    } else if(strcasecmp(value, "passive") == 0) {
+      sconf->user_tracking_cookie_passive = 1;
     } else {
       if(sconf->user_tracking_cookie_domain != NULL) {
         return apr_psprintf(cmd->pool, "%s: invalid attribute"
@@ -14394,7 +14422,7 @@ static const command_rec qos_config_cmds[] = {
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
                     RSRC_CONF,
-                    "QS_UserTrackingCookieName <name> [<path>] [<domain>] ['session'],"
+                    "QS_UserTrackingCookieName <name> [<path>] [<domain>] ['session'] ['passive'],"
                     " enables the user tracking cookie by defining a cookie"
                     " name. The \"path\" parameter is an option cookie"
                     " check page which is used to ensure the client accepts"
