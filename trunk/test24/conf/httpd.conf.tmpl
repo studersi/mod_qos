@@ -141,6 +141,10 @@ QS_ClientEventLimitCount      3 2 QS_Hash
 QS_UserTrackingCookieName     _ckUT /errorpages/cookie.html
 </IfDefine>
 
+<IfDefine usertrack_force_passive>
+QS_UserTrackingCookieName     _ckUTP /errorpages/cookie-ir.shtml passive
+</IfDefine>
+
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
    ServerName  127.0.0.1
