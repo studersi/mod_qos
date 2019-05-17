@@ -1,0 +1,58 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<meta http-equiv="Cache-Control" content="no-cache, no-store"/>
+<meta http-equiv="expires" content="0" />
+<title>Cookie Check Redirect</title>
+<script type="text/javascript">
+<!--
+var link = "<!--#echo var="QS_UT_FETCH_COOKIE" -->";
+if(window.XMLHttpRequest) {
+  req = new XMLHttpRequest();
+  req.onreadystatechange = qsCallback;
+  try {
+    req.open("GET", link, true);
+  } catch (e) {
+    // ignore
+  }
+  req.send(null);
+} else if(window.ActiveXObject) {
+  req = new ActiveXObject("Microsoft.XMLHTTP");
+  if(req) {
+    req.onreadystatechange = qsCallback;
+    req.open("GET", link, true);
+    req.send();
+  }
+}
+function qsCallback() {
+  if(req.readyState == 4) {
+    if(req.status == 200) {
+      var contentType = this.getResponseHeader("Content-Type");
+      if(contentType == "text/plain") {
+         window.location = "<!--#echo var="QS_UT_INITIAL_URI" -->";
+      }
+    }
+  }
+}
+-->
+</script>
+</head>
+<body>
+<p>
+Please enable cookies in your browser.<br>
+Try again <a href="<!--#echo var="QS_UT_INITIAL_URI" -->">here ...</a><br><br>
+
+Bitte schalten Sie in Ihrem Browser Cookies ein.<br>
+Versuche es nochmals <a href="<!--#echo var="QS_UT_INITIAL_URI" -->">hier ...</a><br><br>
+
+Activez les cookies dans votre navigateur, s'il vous pla&icirc;t.<br>
+Essayez encore <a href="<!--#echo var="QS_UT_INITIAL_URI" -->">ici ...</a><br><br>
+
+Por favor active las cookies en su navegador.<br>
+Int&eacute;ntalo de nuevo <a href="<!--#echo var="QS_UT_INITIAL_URI" -->">aqui ...</a><br><br>
+
+Si prega di attivare i cookies nel proprio browser.<br>
+Riprova <a href="<!--#echo var="QS_UT_INITIAL_URI" -->">qui ...</a><br>
+</p>
+</body>
+</html>
