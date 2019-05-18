@@ -8711,6 +8711,7 @@ static int qos_post_read_request_later(request_rec *r) {
       if(r->parsed_uri.query && strcmp(r->parsed_uri.query, "setCookie.txt") == 0) {
         apr_table_add(r->headers_out, "Cache-Control", "no-cache, no-store, private");
         qos_send_user_tracking_cookie(r, sconf, HTTP_OK);
+        apr_table_set(r->subprocess_env, "QS_UT_INITIAL_URI", "/");
         return DECLINED;
       }
       if(r->parsed_uri.query && (strncmp(r->parsed_uri.query, "r=", 2) == 0)) {
@@ -8723,6 +8724,8 @@ static int qos_post_read_request_later(request_rec *r) {
           redirect_page = apr_psprintf(r->pool, "%.*s",
                                        buf_len, buf);
           apr_table_set(r->subprocess_env, "QS_UT_INITIAL_URI", redirect_page);
+        } else {
+          apr_table_set(r->subprocess_env, "QS_UT_INITIAL_URI", "/");
         }
       }
     }
