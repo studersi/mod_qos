@@ -27,8 +27,7 @@ if(window.XMLHttpRequest) {
 function qsCallback() {
   if(req.readyState == 4) {
     if(req.status == 200) {
-      var headerCheck = this.getResponseHeader("Cache-Control");
-      if(headerCheck == "no-cache, no-store, private") {
+      if(document.cookie.indexOf("<!--#echo var="QS_UT_NAME" -->=") != -1) {
          window.location = "<!--#echo var="QS_UT_INITIAL_URI" -->";
       }
     }

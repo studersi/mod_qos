@@ -779,7 +779,7 @@ typedef struct {
   char *user_tracking_cookie;
   char *user_tracking_cookie_force;
   int user_tracking_cookie_session;
-  int user_tracking_cookie_passive;
+  int user_tracking_cookie_jsredirect;
   char *user_tracking_cookie_domain;
   int max_age;
   unsigned char key[EVP_MAX_KEY_LENGTH];
@@ -8707,9 +8707,10 @@ static int qos_post_read_request_later(request_rec *r) {
   }
   if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
     /* access to check url */
-    if(sconf->user_tracking_cookie_passive == 1) {
+    if(sconf->user_tracking_cookie_jsredirect == 1) {
+      apr_table_set(r->subprocess_env, "QS_UT_NAME", sconf->user_tracking_cookie);
       if(r->parsed_uri.query && strcmp(r->parsed_uri.query, "setCookie.txt") == 0) {
-        apr_table_add(r->headers_out, "Cache-Control", "no-cache, no-store, private");
+        apr_table_add(r->headers_out, "Cache-Control", "no-cache, no-store");
         qos_send_user_tracking_cookie(r, sconf, HTTP_OK);
         apr_table_set(r->subprocess_env, "QS_UT_INITIAL_URI", "/");
         return DECLINED;
@@ -8749,7 +8750,7 @@ static int qos_post_read_request_later(request_rec *r) {
        server when redireced to this url */
     apr_table_add(r->headers_out, "Cache-Control", "no-cache, no-store");
   } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
-    if(r->method_number == M_GET) {
+    if(r->method_number == M_GET || sconf->user_tracking_cookie_jsredirect == 1) {
       /* no valid cookie in request, redirect to check page */
       char *redirect_page = apr_pstrcat(r->pool, qos_this_host(r),
                                         sconf->user_tracking_cookie_force,
@@ -8759,7 +8760,7 @@ static int qos_post_read_request_later(request_rec *r) {
                                                     strlen(r->unparsed_uri)),
                                         NULL);
       apr_table_set(r->headers_out, "Location", redirect_page);
-      if(sconf->user_tracking_cookie_passive < 1) {
+      if(sconf->user_tracking_cookie_jsredirect < 1) {
         qos_send_user_tracking_cookie(r, sconf, HTTP_MOVED_TEMPORARILY);
       }
       return HTTP_MOVED_TEMPORARILY;
@@ -10088,7 +10089,7 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   qos_setenvstatus(r, sconf, dconf);
   qos_setenvresheader(r, sconf);
   qos_setenvres(r, sconf);
-  if(sconf->user_tracking_cookie && sconf->user_tracking_cookie_passive < 1) {
+  if(sconf->user_tracking_cookie && sconf->user_tracking_cookie_jsredirect < 1) {
     qos_send_user_tracking_cookie(r, sconf, r->status);
   }
   if(sconf->milestones) {
@@ -11564,7 +11565,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->user_tracking_cookie = NULL;
   sconf->user_tracking_cookie_force = NULL;
   sconf->user_tracking_cookie_session = -1;
-  sconf->user_tracking_cookie_passive = -1;
+  sconf->user_tracking_cookie_jsredirect = -1;
   sconf->user_tracking_cookie_domain = NULL;
   sconf->max_age = atoi(QOS_MAX_AGE);
   sconf->header_name = NULL;
@@ -11766,7 +11767,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
     o->user_tracking_cookie = b->user_tracking_cookie;
     o->user_tracking_cookie_force = b->user_tracking_cookie_force;
     o->user_tracking_cookie_session = b->user_tracking_cookie_session;
-    o->user_tracking_cookie_passive = b->user_tracking_cookie_passive;
+    o->user_tracking_cookie_jsredirect = b->user_tracking_cookie_jsredirect;
     o->user_tracking_cookie_domain = b->user_tracking_cookie_domain;
   }
   if(o->keyset == 0) {
@@ -12813,8 +12814,8 @@ const char *qos_user_tracking_cookie_cmd(cmd_parms *cmd, void *dcfg,
       sconf->user_tracking_cookie_force = apr_pstrdup(cmd->pool, value);
     } else if(strcasecmp(value, "session") == 0) {
       sconf->user_tracking_cookie_session = 1;
-    } else if(strcasecmp(value, "passive") == 0) {
-      sconf->user_tracking_cookie_passive = 1;
+    } else if(strcasecmp(value, "jsredirect") == 0) {
+      sconf->user_tracking_cookie_jsredirect = 1;
     } else {
       if(sconf->user_tracking_cookie_domain != NULL) {
         return apr_psprintf(cmd->pool, "%s: invalid attribute"
@@ -14425,7 +14426,7 @@ static const command_rec qos_config_cmds[] = {
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_UserTrackingCookieName", qos_user_tracking_cookie_cmd, NULL,
                     RSRC_CONF,
-                    "QS_UserTrackingCookieName <name> [<path>] [<domain>] ['session'] ['passive'],"
+                    "QS_UserTrackingCookieName <name> [<path>] [<domain>] ['session'] ['jsredirect'],"
                     " enables the user tracking cookie by defining a cookie"
                     " name. The \"path\" parameter is an option cookie"
                     " check page which is used to ensure the client accepts"

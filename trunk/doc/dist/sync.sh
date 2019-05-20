@@ -47,3 +47,7 @@ scp ../MESSAGES.txt ${dest}/
 scp ../LICENSE.txt ${dest}/
 scp ../headerfilterrules.txt ${dest}/
 
+echo "sample"
+scp ../../test24/htdocs/errorpages/cookie-ir.shtml ${dest}/
+
+
