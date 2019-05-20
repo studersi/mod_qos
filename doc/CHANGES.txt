@@ -1,3 +1,10 @@
+Version
+
+ - Adds the option 'jsredirect' to the QS_UserTrackingCookieName directive:
+   Client (browser) has to use the Javascript within the cookie check page
+   to fetch the cookie and for redirect back to the initial request.
+   Example: view-source:http://mod-qos.sourceforge.net/cookie-ir.shtml
+
 Version 11.62
 
  - Machine-readable version of the status viewer does no longer
