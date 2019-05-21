@@ -30,14 +30,14 @@ __
 _EXPECT . "window.location = \"/index.html\?test"
 _EXPECT . "if\(document.cookie.indexOf\(\"_ckUTP=\"\) != -1\)"
 _EXPECT . "<a href=\"/index.html\?test\">here ...</a>"
-_EXPECT . "link = \"\?setCookie.txt\";"
+_EXPECT . "link = \"\?qs=init\";"
 _EXPECT . "!Set-Cookie"
 _EXPECT . "Cache-Control: no-cache, no-store"
 _WAIT
 _CLOSE
 
 _REQ 127.0.0.1 $QS_PORT_BASE
-__GET /errorpages/cookie-ir.shtml?setCookie.txt HTTP/1.1
+__GET /errorpages/cookie-ir.shtml?qs=init HTTP/1.1
 __Host: 127.0.0.1:${QS_PORT_BASE}
 __User-Agent: 071 3
 __
