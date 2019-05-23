@@ -1,4 +1,4 @@
-1#
+#
 # $Id$
 #
 # QS_UserTrackingCookieName     _ckUTP /errorpages/cookie-ir.shtml jsredirect
@@ -9,7 +9,6 @@ INCLUDE scripts/ports
 CLIENT
 _EXEC ./ctl.sh restart -D usertrack_force_passive -D debug 2>/dev/null 1>/dev/null
 
-# HTTP -------------------------
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /index.html?test HTTP/1.1
 __Host: 127.0.0.1:${QS_PORT_BASE}
@@ -59,8 +58,42 @@ _EXPECT . "!Set-Cookie"
 _WAIT
 _CLOSE
 
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /errorpages/cookie-ir.shtml HTTP/1.1
+__Host: 127.0.0.1:${QS_PORT_BASE}
+__User-Agent: 071 6
+__
+_EXPECT . "!Set-Cookie"
+_WAIT
+_CLOSE
+
+# renew
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /errorpages/cookie-ir.shtml?qs=init HTTP/1.1
+__Host: 127.0.0.1:${QS_PORT_BASE}
+__User-Agent: 071 7
+__X-TEST-USER-TRACK-MONTH: 13
+__
+_MATCH headers "Set-Cookie: _ckUTP=(.*); Path=/" UCA
+_EXPECT . "Cache-Control: no-cache, no-store"
+_EXPECT . "Set-Cookie: _ckUTP="
+_EXPECT . "!302"
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html?test HTTP/1.1
+__Host: 127.0.0.1:${QS_PORT_BASE}
+__User-Agent: 071 8
+__Cookie: _ckUTP=${UCA}
+__
+_EXPECT . "this is the root index.html"
+_EXPECT . "Set-Cookie"
+_WAIT
+_CLOSE
+
 END
 
 BLOCK FINALLY
 _EXEC ./ctl.sh restart -D h2 2>/dev/null 1>/dev/null
 END
+

@@ -48,6 +48,9 @@ scp ../LICENSE.txt ${dest}/
 scp ../headerfilterrules.txt ${dest}/
 
 echo "sample"
-scp ../../test24/htdocs/errorpages/cookie-ir.shtml ${dest}/
-
-
+echo "<html><head><title>exaple cookie check</title></head><body><pre>" > cookie-ir.shtml
+sed <../../test24/htdocs/errorpages/cookie-ir.shtml >> cookie-ir.shtml \
+    -e 's:<:\&lt;:g' \
+    -e 's:>:\&gt;:g'
+echo "</pre></body></html>" >> cookie-ir.shtml
+scp cookie-ir.shtml ${dest}/

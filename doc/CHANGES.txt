@@ -3,13 +3,13 @@ Version 11.63
  - Adds the option 'jsredirect' to the QS_UserTrackingCookieName directive:
    Client (browser) has to use Javascript within the cookie check page
    to fetch the cookie and to redirect the client back to the initially
-   requested page.
+   requested page (adding Javascript to the cookie challenge).
    SSI variables to be used in the HTML page / Javascript:
    - QS_UT_QUERY: query string to call (ajax) the cookie page again to
                   obtain the cookie.
    - QS_UT_NAME: name of the cookie
    - QS_UT_INITIAL_URI: inital page to redirect to
-   Example: view-source:http://mod-qos.sourceforge.net/cookie-ir.shtml
+   Sample page: http://mod-qos.sourceforge.net/cookie-ir.shtml
 
 Version 11.62
 
