@@ -76,6 +76,32 @@ _EXPECT . "Set-Cookie: _ckUT="
 _WAIT
 _CLOSE
 
+# Renew ----------------------------------
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: 127.0.0.1:${QS_PORT_BASE}
+__User-Agent: 570 1
+__X-TEST-USER-TRACK-MONTH: 13
+__
+_MATCH headers "Set-Cookie: _ckUT=(.*); Path=/" UCA
+_EXPECT . "Set-Cookie: _ckUT="
+_EXPECT . "302"
+_WAIT
+_CLOSE
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: 127.0.0.1:${QS_PORT_BASE}
+__User-Agent: 571 2
+__Cookie: _ckUT=${UCA}
+__
+_EXPECT . "this is the root index.html"
+_EXPECT . "Set-Cookie: _ckUT="
+_EXPECT . "!302"
+_WAIT
+_CLOSE
+
+
 # HTTPS ------------------------
 _REQ 127.0.0.1 SSL:$QS_PORT_BASE2
 __GET /index.html HTTP/1.1

@@ -113,6 +113,7 @@ static const char g_revision[] = "11.63";
 #define QOS_COOKIE_NAME "MODQOS"
 #define QOS_USER_TRACKING "mod_qos_user_id"
 #define QOS_USER_TRACKING_NEW "QOS_USER_ID_NEW"
+#define QOS_USER_TRACKING_RENEW "QOS_USER_ID_RENEW"
 #define QOS_DISABLE_UTC_ENFORCEMENT "DISABLE_UTC_ENFORCEMENT"
 #define QOS_MILESTONE "mod_qos_milestone"
 #define QOS_MILESTONE_TIMEOUT 3600
@@ -2381,7 +2382,14 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
     char *domain = NULL;
     apr_time_exp_gmt(&timeEx, r->request_time);
     apr_strftime(timeString, &retcode, sizeof(timeString), "%m", &timeEx);
-
+#ifdef QS_INTERNAL_TEST
+    {
+      const char *m = apr_table_get(r->headers_in, "X-TEST-USER-TRACK-MONTH");
+      if(m) {
+        strcpy(timeString, m);
+      }
+    }
+#endif
     memcpy(value, timeString, 2);
     memcpy(&value[2], new_user, new_user_len);
     value[len] = '\0';
@@ -2407,6 +2415,7 @@ static void qos_send_user_tracking_cookie(request_rec *r, qos_srv_config* sconf,
  * Verifies and sets the user tracking cookie
  * - QOS_USER_TRACKING if the cookie was available
  * - QOS_USER_TRACKING_NEW if a new cookie needs to be set
+ * - QOS_USER_TRACKING_RENEW if the cookie shall be renewed
  *
  * syntax: b64(enc(<month><UNIQUE_ID>))
  *
@@ -2442,6 +2451,7 @@ static void qos_get_create_user_tracking(request_rec *r, qos_srv_config* sconf,
     if(strncmp(timeString, verified, 2) != 0) {
       /* renew, if not from this month */
       apr_table_set(r->subprocess_env, QOS_USER_TRACKING_NEW, &verified[2]);
+      apr_table_set(r->subprocess_env, QOS_USER_TRACKING_RENEW, "1");
     }
     newUID = &verified[2];
   } else {
@@ -8749,7 +8759,8 @@ static int qos_post_read_request_later(request_rec *r) {
        server when redireced to this url */
     apr_table_add(r->headers_out, "Cache-Control", "no-cache, no-store");
   } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
-    if(r->method_number == M_GET || sconf->user_tracking_cookie_jsredirect == 1) {
+    if((r->method_number == M_GET || sconf->user_tracking_cookie_jsredirect == 1) &&
+       (apr_table_get(r->subprocess_env, QOS_USER_TRACKING_RENEW) == NULL)) {
       /* no valid cookie in request, redirect to check page */
       char *redirect_page = apr_pstrcat(r->pool, qos_this_host(r),
                                         sconf->user_tracking_cookie_force,
@@ -10088,8 +10099,11 @@ static apr_status_t qos_out_filter(ap_filter_t *f, apr_bucket_brigade *bb) {
   qos_setenvstatus(r, sconf, dconf);
   qos_setenvresheader(r, sconf);
   qos_setenvres(r, sconf);
-  if(sconf->user_tracking_cookie && sconf->user_tracking_cookie_jsredirect < 1) {
-    qos_send_user_tracking_cookie(r, sconf, r->status);
+  if(sconf->user_tracking_cookie) {
+    if((sconf->user_tracking_cookie_jsredirect < 1) ||
+       (apr_table_get(r->subprocess_env, QOS_USER_TRACKING_RENEW) != NULL)) {
+      qos_send_user_tracking_cookie(r, sconf, r->status);
+    }
   }
   if(sconf->milestones) {
     qos_update_milestone(r, sconf);
