@@ -58,6 +58,7 @@ _EXPECT . "!Set-Cookie"
 _WAIT
 _CLOSE
 
+# no cookie without init request parameter
 _REQ 127.0.0.1 $QS_PORT_BASE
 __GET /errorpages/cookie-ir.shtml HTTP/1.1
 __Host: 127.0.0.1:${QS_PORT_BASE}
@@ -91,6 +92,22 @@ _EXPECT . "Set-Cookie"
 _WAIT
 _CLOSE
 
+# invalid cookie
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html?test HTTP/1.1
+__Host: 127.0.0.1:${QS_PORT_BASE}
+__User-Agent: 071 8
+__Cookie: _ckUTP=Y2hhYmlzLi4uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAK
+__
+_EXPECT . "!this is the root index.html"
+_EXPECT . "!Set-Cookie"
+_EXPECT . "Location: http://127.0.0.1:${QS_PORT_BASE}/errorpages/cookie-ir.shtml\?r="
+_EXPECT . "302"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(\): qos_decrypt\(\) decryption operation failed"
+_EXEC tail -2 logs/error_log
 END
 
 BLOCK FINALLY
