@@ -1,0 +1,154 @@
+#
+#   SetEnvIfPlus Request_Query MaxKeepAliveRequests=([0-9]+) QS_MaxKeepAliveRequests=$1
+#   SetEnvIfPlus Request_Query KeepAliveTimeout=([0-9]+) QS_KeepAliveTimeout=$1
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__User-Agent: htt-1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=100"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-2
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=7"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-3
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=6"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-4
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=5"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-5
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=4"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-6
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=3"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=8 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-7
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=2"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: htt-8
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=1"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: htt-9
+__Connection: keep-alive
+__
+_EXPECT . "Connection: close"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: htt-10
+__Connection: keep-alive
+__
+_EXPECT ERROR "End of file"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "htt\-9"
+_EXEC tail -1 logs/access_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=800 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-11
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=800"
+_EXPECT . "root index"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?MaxKeepAliveRequests=700 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-11
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=699"
+_EXPECT . "root index"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: localhost
+__User-Agent: htt-12
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=100"
+_EXPECT . "<title>mod_qos</title>"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?MKAR=200 HTTP/1.1
+__Host: localhost
+__User-Agent: htt-13
+__Connection: keep-alive
+__
+_EXPECT . "Keep-Alive: timeout=5, max=199"
+_EXPECT . "<title>mod_qos</title>"
+_WAIT
+
+
+END

@@ -1,0 +1,99 @@
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=;DECLARE%20@S%20NVARCHAR(4000);SET%20@S=CAST(0x4400450006F007200%20AS%20NVARCHAR(4000));EXEC(@S);--
+_EXPECT . "code=040"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE6
+__GET /check HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: qoscs=$SESSION
+__
+_EXPECT . "POST /qos/parp/search HTTP/1.1. 500 [0-9]+ ... [01] "
+_EXPECT . "mod_qos.040.: access denied, QS_DenyQuery rule id: s01 ..EXEC.SELECT.INSERT.UPDATE.DELETE.."
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=sell
+_EXPECT . "!code=040"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/sub/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=sell
+_EXPECT . "!code=040"
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/sub/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=;DECLARE%20@S%20NVARCHAR(4000);SET%20@S=CAST(0x4400450006F007200%20AS%20NVARCHAR(4000));EXEC(@S);--
+_EXPECT . "code=040"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /qos/parp/off/search HTTP/1.1
+__Host: localhost
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+__user=1234&operation=;DECLARE%20@S%20NVARCHAR(4000);SET%20@S=CAST(0x4400450006F007200%20AS%20NVARCHAR(4000));EXEC(@S);--
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO
+__Content-Type: text/html
+__
+__==AS1==
+_PIPE
+_EXEC tail -1 logs/access_log
+_PIPE
+_EXEC tail -1 logs/error_log
+
+END

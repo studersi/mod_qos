@@ -1,0 +1,59 @@
+#
+# $Id$
+#
+#   QS_SrvMaxConn              45
+#
+
+INCLUDE scripts/ports
+
+CLIENT 45
+_SLEEP 5000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=4 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 1
+_SLEEP 6000
+_REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset by peer"
+__GET /cgi-local/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(030\): access denied, QS_SrvMaxConn rule: max=45, concurrent connections=46"
+_EXEC tail -3 logs/error_log
+
+_REQ localhost $QS_PORT_BASE1
+__GET /qos/?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "v;127.0.0.1;${QS_PORT_BASE};QS_SrvMaxConn;45..: 45"
+_EXPECT . "!v;127.0.0.1;${QS_PORT_BASE1};QS_SrvMaxConn"
+_EXPECT . "!b;127.0.0.1;0;QS_SrvMaxConn"
+_EXPECT . "b;127.0.0.1;0;QS_AllConn: 46"
+_WAIT
+_CLOSE
+
+_SLEEP 14000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_EXPECT . "200 OK"
+_WAIT
+
+END

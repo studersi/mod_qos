@@ -1,0 +1,61 @@
+#
+#    QS_LocRequestLimitMatch     ^/htt/limit2/.*   2
+#    QS_LocRequestLimitMatch     ^/index.html    200
+#    SetEnvIf                     User-Agent delayme QS_Delay=100
+
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: delayme
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 10
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_LocRequestLimitMatch;200../index.html.: 1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html_404 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "!this is the root index.html"
+_EXPECT . "404 Not Found"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/limit2/anything HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "503 Service Unavailable"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "Connection refused"
+_EXEC tail -3 logs/error_log
+
+END

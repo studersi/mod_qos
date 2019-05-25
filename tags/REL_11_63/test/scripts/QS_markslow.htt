@@ -1,0 +1,66 @@
+#
+# $Id$
+#
+# slow clients get marked
+#
+
+INCLUDE scripts/ports
+
+SET TME=1000
+
+CLIENT
+
+_REQ server1 $QS_PORT_BASE1
+__GET /htt/prefer/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+
+_CLOSE
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+_SLEEP 11000
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT ERROR "Software caused connection abort"
+_WAIT
+
+_CLOSE
+
+_REQ server1 $QS_PORT_BASE1
+__GET /htt/prefer/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_WAIT
+
+END
+
+
+SERVER $QS_PORT_BASE6
+
+_RES
+_EXPECT . "!Via: QS_ClientLowPrio"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==html==
+
+_CLOSE
+
+_RES
+_EXPECT . "Via: QS_ClientLowPrio=0x01"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==html==
+
+END

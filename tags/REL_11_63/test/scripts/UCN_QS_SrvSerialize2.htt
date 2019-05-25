@@ -1,0 +1,66 @@
+#
+# $Id$
+#
+# SetEnvIf                      User-Agent max4persec QS_SrvSerialize=1
+# SetEnvIf                      User-Agent max4persec QS_Delay=250
+# QS_EventRequestLimit                                QS_SrvSerialize 4
+# QS_SrvSerialize                                     on
+#
+
+INCLUDE scripts/ports
+
+CLIENT 3
+
+_LOOP 4
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: max4persec
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_END LOOP
+
+END
+
+CLIENT 1
+_SLEEP 50
+
+_DATE:GET_TIME START1
+_LOOP 4
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: max4persec
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_END LOOP
+_DATE:GET_TIME END1
+
+_OP $END1 SUB $START1 DELTA1
+_IF "$DELTA1" LT "3800"
+_EXIT FAILED
+_END IF
+_IF "$DELTA1" GT "5200"
+_EXIT FAILED
+_END IF
+
+END
+
+CLIENT
+_SLEEP 140
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: max4persec
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(012\): access denied, QS_EventRequestLimit rule: var=\(QS_SrvSerialize\)\(4\)"
+_EXEC tail -2 logs/error_log
+END

@@ -1,0 +1,12 @@
+   <Location /qos >
+       SetHandler qos-viewer
+
+       # -------------------------------------------------------------
+       # request level control, generic filter
+       # -------------------------------------------------------------
+       QS_DenyRequestLine +restrict  deny ".*private.*"
+       QS_DenyRequestLine +special   deny ".*special.*"
+       QS_DenyPath        +qos       deny ^/qos/internal.*$
+       QS_DenyRequestLine +printable deny ".*[\x00-\x19].*"
+   </Location>
+

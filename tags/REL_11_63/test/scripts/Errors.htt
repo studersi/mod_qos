@@ -1,0 +1,121 @@
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index1.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: monitor
+__
+_EXPECT . "200"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index2.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: monitor
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ localhost $QS_PORT_BASE
+__GET /app/a/index3.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: monitor
+__
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /app/a/index3.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: monitor
+__
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__POST /app/a/index4.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Content-Type: multipart/form-data; boundary=---------------------------16009193506174
+__Content-Length: 1000
+__
+__-----------------------------16009193506174
+__Content-Disposition: form-data; name="filename"
+__
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "<!--0-->.*free ip entries.*896"
+_EXPECT . "<!--0-->.*current connections.*colspan=.3.>0</td>"
+_EXPECT . "<!--2-->.*free ip entries.*896"
+_EXPECT . "<!--2-->.*current connections.*colspan=.3.>0</td>"
+_EXPECT . "<!--3-->.*free ip entries.*896"
+_EXPECT . "<!--3-->.*current connections.*colspan=.3.>0</td>"
+_EXPECT . "<!--3-->.*/no.*<td >0</td>"
+_EXPECT . "<!--3--><td>/cgi</a></td><td>200</td><td >0</td>"
+_EXPECT . "<!--3--><td>/aaa</a></td><td>200</td><td >0</td>"
+_EXPECT . "<!--3--><td>/bbb</a></td><td>200</td><td >0</td>"
+_EXPECT . "<!--3--><td>/ccc/.*</a></td><td>200</td><td >0</td>"
+_EXPECT . "<!--4-->.*free ip entries.*895"
+_EXPECT . "<!--4-->.*current connections.*colspan=.3.>1</td>"
+_EXPECT . "<!--4-->.*<td>30</td><td >1</td>"
+_EXPECT . "<!--4-->.*<td>5</td><td >0</td>"
+_EXPECT . "<!--4-->.*<td>100</td><td >0</td>"
+_EXPECT . "<!--4-->.*<td>50</td><td >0</td>"
+_EXPECT . "<!--4-->.*<td>2</td><td >0</td>"
+_EXPECT . "<!--4-->.*conditional.*<td>2</td>.*>0</td>"
+_EXPECT . "<!--4-->.*/app/a/./app/b/./app/c/.*<td>1</td><td >0</td>"
+_EXPECT . "<!--4-->.*/app/d/.*<td>1</td><td >0</td>"
+_EXPECT . "<!--4-->.*/app/e/.*<td>1</td><td >0</td>"
+_EXPECT . "<!--4-->.*/cgi.*conditional.</small></a></td><td>2</td><td >0</td>"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "index1.html"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+_CLOSE
+
+_RES
+_EXPECT . "index2.html"
+_WAIT
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+_CLOSE
+
+_RES
+_EXPECT . "index3.html"
+_WAIT
+_CLOSE
+
+END

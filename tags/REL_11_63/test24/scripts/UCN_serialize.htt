@@ -1,0 +1,66 @@
+#
+# Example: serialize requests if server has more then 5 connections
+#
+# QS_SrvMaxConnClose       85%
+# SetEnvIfPlus REQUEST_URI / SerialLimt=5
+# SetEnvIfCmpPlus          QS_SrvConn gt SerialLimt QS_SrvSerialize=1
+# QS_SrvSerialize          on
+#
+
+INCLUDE scripts/ports
+
+CLIENT 4
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /serialize/cgi/sleep.cgi?s=4 HTTP/1.1
+__Host: 127.0.0.1
+__
+_WAIT
+END
+
+CLIENT 2
+_SLEEP 1000
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /serialize/cgi/sleep.cgi?s=3 HTTP/1.1
+__Host: 127.0.0.1
+__
+_WAIT
+END
+
+CLIENT 1
+_SLEEP 200
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html?7 HTTP/1.1
+__Host: 127.0.0.1
+__
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "GET /index.html\?7 HTTP/1.1\" 200 ... \".\" 0 cr=. ev=. "
+_EXEC tail -10 logs/access_log
+
+_SLEEP 1000
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html?8 HTTP/1.1
+__Host: 127.0.0.1
+__
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "GET /index.html\?8 HTTP/1.1\" 200 ... \".\" 2 cr=. ev=s;"
+_EXEC tail -10 logs/access_log
+
+END
+
+CLIENT 1
+_SLEEP 1400
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html?9 HTTP/1.1
+__Host: 127.0.0.1
+__
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "GET /index.html\?9 HTTP/1.1\" 200 ... \".\" 2 cr=. ev=s;"
+_EXEC tail -10 logs/access_log
+
+END
