@@ -1,0 +1,646 @@
+#
+# $Header$
+#
+# mod_qos test configuration using single use cases
+#
+# See http://mod-qos.sourceforge.net/ for further
+# details about mod_qos.
+#
+
+ServerName              127.0.0.1
+<IfModule worker.c>
+StartServers            1
+ServerLimit             1
+MinSpareThreads         5
+MaxSpareThreads         64
+ThreadsPerChild         64
+</IfModule>
+<IfModule prefork.c>
+StartServers            64
+ServerLimit             64
+MinSpareServers         4
+MaxSpareServers         64
+</IfModule>
+
+MaxClients              64
+MaxRequestsPerChild     0
+
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/htdocs
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept.lock
+Timeout                 30
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        5
+
+QS_EventCount           on
+
+LimitRequestFields      30
+<IfDefine !net>
+QS_EnableInternalIPSimulation off
+</IfDefine>
+
+<IfDefine logonly>
+QS_LogOnly              on
+</IfDefine>
+
+Options                 FollowSymLinks Indexes Includes
+DefaultType             text/plain
+AddType                 text/html .shtml
+AddOutputFilter         INCLUDES .shtml
+
+LogFormat               "%h %{QS_Country}e %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e u=%{mod_qos_user_id}e %{qs_special}e %{content-length}i %O %D %{QS_ResponseDelayTime}e #%P"
+
+LogLevel                warn
+ErrorLog                ##ROOT##/logs/error_log
+#TransferLog             "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 14400 -f"
+TransferLog             ##ROOT##/logs/access_log
+CustomLog               "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log -f ISBDUQ" \
+                        "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
+
+PidFile                 ##ROOT##/logs/apache.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+TypesConfig             conf/mime.types
+LoadModule              proxy_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy.so
+LoadModule              proxy_http_module ##ROOT##/../httpd/modules/proxy/.libs/mod_proxy_http.so
+LoadModule              qos_module ##ROOT##/../httpd/modules/qos/.libs/mod_qos.so
+LoadModule              parp_module libexec/mod_parp.so
+LoadModule              logio_module ##ROOT##/../httpd/modules/loggers/.libs/mod_logio.so
+<IfDefine uc1b>
+QS_ClientEventLimitCount 3 3
+QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
+QS_ErrorPage             /error-docs/error.shtml
+</IfDefine>
+
+<IfDefine net>
+QS_EnableInternalIPSimulation on
+LoadModule               setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus             Remote_Net (.*) NetAddr=$1
+RequestHeaderPlus        set X-NetAddr ${NetAddr}
+QS_ClientIpFromHeader    X-NetAddr
+QS_ClientEventLimitCount 3 3 NET
+QS_SetEnvIfQuery         NET NET=yes
+</IfDefine>
+
+<IfDefine status>
+LoadModule               status_module ##ROOT##/../httpd/modules/generators/.libs/mod_status.so
+</IfDefine>
+
+<IfDefine uc1vssl>
+QS_SrvMaxConnPerIP      2
+</IfDefine>
+
+<IfDefine globalmaxconn>
+QS_SrvMaxConn           5
+</IfDefine>
+
+<IfDefine globalOnlymaxconn>
+QS_SrvMaxConn           5
+</IfDefine>
+
+<IfDefine uc1status>
+StartServers            2
+ServerLimit             4
+MaxSpareThreads         128
+MaxClients              256
+QS_Status               on
+</IfDefine>
+
+<IfDefine uc1bb>
+QS_ClientEventLimitCount 6 3
+QS_SetEnvIfQuery         QS_Limit QS_Limit=3
+QS_ErrorPage             /error-docs/error.html
+</IfDefine>
+
+<IfDefine uc1bbE>
+LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus              Request_URI / QS_ErrorPage=/error-docs/error.json
+</IfDefine>
+
+<IfDefine uc1bbb>
+QS_ClientEventLimitCount 6 3 QS_LimitEX
+QS_SetEnvIfQuery         QS_LimitEX QS_LimitEX=3
+QS_ClientEventLimitCount 6 3 QS_LimitEY
+QS_SetEnvIfQuery         QS_LimitEY QS_LimitEY=1
+QS_ErrorPage             /error-docs/error.html
+</IfDefine>
+
+<IfDefine uc1u>
+QS_SrvMinDataRate        120 1500 5
+</IfDefine>
+
+<IfDefine uc1uu>
+QS_SrvMinDataRate        120 1500 5
+QS_SrvSampleRate         10
+</IfDefine>
+
+<IfDefine uc1v>
+QS_SrvMinDataRate        120 1500
+</IfDefine>
+
+<IfDefine uc1x>
+QS_ClientGeoCountryDB    conf/GeoIPCountryWhois.csv
+QS_ClientIpFromHeader    Y-Forwarded-For
+QS_RedirectIf            QS_Country DE http://qos.de/
+</IfDefine>
+
+<IfDefine uc1ip2location>
+QS_ClientGeoCountryDB    conf/LITE-DB1.CSV
+QS_ClientIpFromHeader    Y-Forwarded-For
+QS_RedirectIf            QS_Country CN 301:http://qos.cn/
+</IfDefine>
+
+<IfDefine uc1x1>
+QS_ClientGeoCountryPriv  DE,FR,CH 5
+QS_ClientGeoCountryDB    conf/GeoIPCountryWhois.csv
+</IfDefine>
+<IfDefine uc1x2>
+QS_ClientGeoCountryPriv  DE,FR,CH,LO 5
+QS_ClientGeoCountryDB    conf/GeoIPCountryWhois.csv
+</IfDefine>
+
+<IfDefine uc1e>
+QS_ClientEventBlockCount 3 3
+QS_SetEnvIfStatus        404 QS_Block=1
+QS_SetEnvIfStatus        NullConnection    QS_Block
+</IfDefine>
+
+<IfDefine uc1h>
+QS_ClientEventLimitCount 3 2
+QS_SetEnvIfQuery         QS_Limit QS_Limit=yes
+QS_ErrorPage             /error-docs/error_c.html
+# allow access to content of the error page
+SetEnvIf Request_URI     ^/error-docs/(.*) QS_ErrorPage=/error-docs/$1
+</IfDefine>
+
+<IfDefine uc1p>
+QS_CondClientEventLimitCount 3  2        QS_CondLimit /htt/a
+SetEnvIf                     Request_URI ^/htt/a      QS_Cond=/htt/a
+QS_SetEnvIfQuery             QS_Limit    QS_CondLimit=yes
+</IfDefine>
+
+<IfDefine uc1pp>
+QS_CondClientEventLimitCount 6  2        QS_CondLimit /htt/a
+SetEnvIf                     Request_URI ^/htt/a      QS_Cond=/htt/a
+QS_SetEnvIfQuery             QS_Limit    QS_CondLimit=2
+</IfDefine>
+
+<IfDefine uc1q>
+QS_ClientIpFromHeader        Y-Forwarded-For
+</IfDefine>
+
+<IfDefine uc1s>
+QS_SessionKey             1234567890
+QS_UserTrackingCookieName utc /error-docs/cookie.html
+# note: redirects GET requests only
+# SetEnvIf                Request_Method POST DISABLE_UTC_ENFORCEMENT
+SetEnvIf                  DNT 1 DISABLE_UTC_ENFORCEMENT
+</IfDefine>
+
+<IfDefine uc1ss>
+QS_SessionKey             1234567890
+QS_UserTrackingCookieName utc /error-docs/cookie.html session
+</IfDefine>
+
+<IfDefine uc1sss>
+QS_SessionKey             1234567890
+QS_UserTrackingCookieName utc /error-docs/cookie.html .joebar.ch
+</IfDefine>
+
+<IfDefine uc1ssss>
+QS_SessionKey             1234567890
+QS_UserTrackingCookieName utc /error-docs/cookie.html .joebar.ch session
+</IfDefine>
+
+<IfDefine uc1t>
+LoadModule              unique_id_module ##ROOT##/../httpd/modules/metadata/.libs/mod_unique_id.so
+QS_UserTrackingCookieName utc /error-docs/cookie.html
+</IfDefine>
+
+<IfDefine uc1w>
+LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
+QS_ClientIpFromHeader     Y-Forwarded-For
+SetEnvIfPlus              User-Agent serializeme QS_Serialize=yes
+QS_ClientSerialize
+</IfDefine>
+
+<IfDefine uc1WW>
+Timeout                   500
+LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus              User-Agent serializeme QS_SrvSerialize=yes
+QS_SrvSerialize           on
+</IfDefine>
+<IfDefine uc1WWTMO>
+LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus              User-Agent serializeme QS_SrvSerialize=yes
+QS_SrvSerialize           on 10
+</IfDefine>
+
+<IfDefine uc1WWV>
+LoadModule                setenvifplus_module libexec/mod_setenvifplus.so
+SetEnvIfPlus              User-Agent serializeme QS_SrvSerialize=yes
+</IfDefine>
+
+<IfDefine clientSerial>
+LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
+SetEnvIf                Request_URI / QS_Serialize=yes
+QS_ClientSerialize
+</IfDefine>
+
+<IfDefine srvSerial>
+LoadModule              qtest_module ##ROOT##/../httpd/modules/qtest/.libs/mod_qtest.so
+SetEnvIf                Request_URI / QS_SrvSerialize=yes
+QS_SrvSerialize         on
+</IfDefine>
+
+<IfDefine uc1z>
+QS_ClientPrefer           80
+QS_VipIPUser
+QS_ClientContentTypes     10 1 100 1 1
+</IfDefine>
+
+NameVirtualHost         127.0.0.1:##QS_PORT_BASE##
+Listen                  127.0.0.1:##QS_PORT_BASE##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE##>
+   ServerName                 127.0.0.1
+
+   TransferLog ##ROOT##/logs/access_log
+   CustomLog "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qs_log_v0 -f ISBiDUQ" "%h %>s %O %I %D %{mod_qos_user_id}e %{mod_qos_ev}o '%v:%U'"
+
+   ProxyRequests              Off
+   <Proxy *>
+      Order deny,allow
+      Allow from all
+   </Proxy>
+
+   ProxyPass                  /error-docs !
+   ProxyPass                  /status !
+   ProxyPass                  /test !
+   ProxyPass                  /a !
+   ProxyPass                  /b !
+   ProxyPass                  /c !
+   ProxyPass                  /headerfilter !
+   ProxyPass                  /cgi-local !
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
+
+   ProxyPass                  /myimages/ http://127.0.0.1:##QS_PORT_BASE10##/ retry=0
+   ProxyPassReverse           /myimages/ http://127.0.0.1:##QS_PORT_BASE10##/
+
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /b/            ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /c/            ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /x/            ##ROOT##/htdocs/cgi-local/
+
+   <Location /headerfilter>
+       SetHandler qos-headerfilter
+   </Location>
+
+<IfDefine globalmaxconn>
+  QS_SrvMaxConn          3
+</IfDefine>
+
+   <Location /auth_qos>
+       SetHandler             qos-viewer
+       AuthType               Basic 
+       AuthUserFile           ##ROOT##/conf/qos.htpasswd
+       AuthName               "QoS Control, htpasswd"
+       Require                valid-user
+   </Location>
+
+<IfDefine globalOnlymaxconn>
+   QS_LocRequestLimit         /any 100
+   <Location /qos>
+       SetHandler             qos-viewer
+   </Location>
+</IfDefine>
+
+   <Location /auth_qos/console>
+       SetHandler qos-console
+   </Location>
+
+<IfDefine status>
+   <Location /status>
+       SetHandler server-status
+   </Location>
+</IfDefine>
+
+<IfDefine uc1WWV>
+QS_SrvSerialize           on
+</IfDefine>
+
+<IfDefine uc1KK>
+   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus Request_Query MaxKeepAliveRequests=([0-9]+) QS_MaxKeepAliveRequests=$1
+   SetEnvIfPlus Request_Query KeepAliveTimeout=([0-9]+) QS_KeepAliveTimeout=$1
+</IfDefine>
+
+<IfDefine uc1r>
+   QS_SessionKey             1234567890
+   QS_UserTrackingCookieName utc /error-docs/cookie.html
+   # note: redirects GET requests only
+   # SetEnvIf                Request_Method POST DISABLE_UTC_ENFORCEMENT
+   SetEnvIf                  DNT 1 DISABLE_UTC_ENFORCEMENT
+</IfDefine>
+
+<IfDefine uc1m>
+   QS_SrvMaxConn              6
+</IfDefine>
+
+<IfDefine uc1n>
+   QS_SrvMaxConnClose         10%
+</IfDefine>
+
+<IfDefine uc1a>
+   QS_LocRequestLimitMatch    "^(/htt/a/|/htt/b/|/htt/c/).*$" 2
+
+   QS_SetEnvIfQuery           QueryLimit query
+   QS_EventRequestLimit       query                           2
+</IfDefine>
+
+<IfDefine uc1c>
+   QS_SetEnvIfQuery           Limit QS_Cond=1
+   QS_CondLocRequestLimitMatch "^(/a/|/b/|/c/).*$" 2 [0-9]+
+</IfDefine>
+
+<IfDefine uc1d>
+   QS_LocRequestLimit         /a 2
+</IfDefine>
+
+<IfDefine uc1f>
+   SetEnvIf Request_URI       /a limit
+   QS_EventRequestLimit       limit                           2
+</IfDefine>
+
+<IfDefine uc1g>
+   SetEnvIf Request_URI       /a limit=a
+   SetEnvIf Request_URI       /b limit=b
+   QS_RedirectIf              limit a  http://localhost/error
+</IfDefine>
+
+<IfDefine uc1g307>
+   SetEnvIf Request_URI       /a limit=a
+   SetEnvIf Request_URI       /b limit=b
+   QS_RedirectIf              limit a  307:http://localhost/error
+</IfDefine>
+
+<IfDefine uc1i>
+   QS_LocRequestPerSecLimit   / 10
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine viewer>
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine uc1z>
+   <Location /htt/priv>
+     QS_RedirectIf             QS_ClientLowPrio (0x[0-9]+) http://localhost/error?$1
+   </Location>
+
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+
+   <Location /console>
+       SetHandler qos-console
+   </Location>
+</IfDefine>
+
+<IfDefine uc1KK>
+   <Location /qos >
+       SetHandler qos-viewer
+       SetEnvIfPlus Request_Query MKAR=([0-9]+) QS_MaxKeepAliveRequests=$1
+   </Location>
+</IfDefine>
+
+<IfDefine uc1j>
+   QS_EventLimitCount ALIMIT 3 2
+   SetEnvIf User-Agent limitme ALIMIT   
+</IfDefine>
+
+<IfDefine uc1k>
+   QS_MileStone deny "^GET /index.html "
+   QS_MileStone deny "^GET /a/sleep.cgi "
+</IfDefine>
+
+<IfDefine uc1ktime>
+   QS_MileStone deny "^GET /index.html "
+   QS_MileStone deny "^GET /a/sleep.cgi " 3
+</IfDefine>
+
+<IfDefine uc1l>
+   QS_LocKBytesPerSecLimitMatch ^/image.iso$ 3000
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine uc1l2>
+   QS_LocKBytesPerSecLimitMatch ^/myimages/  3000
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine uc1l3>
+   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus Request_URI ^/myimages/ myimages
+   QS_EventNewKbytesPerSecLimit myimages 3000
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine uc1l5>
+   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus Request_URI ^/dvd[0-9]?.iso myimages
+   QS_EventKbytesPerSecLimit myimages 5000
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine uc1l6>
+   LoadModule   setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus Request_URI ^/dvd[0-9]?.iso dvd
+   QS_EventKbytesPerSecLimit dvd 5000
+   SetEnvIfPlus Request_URI ^/image.iso img
+   QS_EventKbytesPerSecLimit img 500
+   QS_LocKBytesPerSecLimitMatch ^/[a-z]+.html  200
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+<IfDefine uc1l7>
+   QS_LocKBytesPerSecLimitMatch \.iso 1024
+   QS_LocRequestLimitMatch      \.iso  300
+</IfDefine>
+
+<IfDefine uc1o>
+   SetEnvIf Request_URI  /index.html limit=a
+   QS_EventPerSecLimit   limit 10
+</IfDefine>
+
+<IfDefine uc1count>
+   LoadModule             setenvifplus_module libexec/mod_setenvifplus.so
+   SetEnvIfPlus           Request_Query id=a limita=1
+   SetEnvIfPlus           Request_URI / limitb=3
+   QS_EventLimitCount     limita 100 5
+   SetEnvIfCmpPlus        limita_Counter gt limitb limitc
+   QS_EventLimitCount     limitc 1 3
+</IfDefine>
+
+<IfDefine uc1y>
+   <Location />
+       QS_PermitUri +01 deny ^/index.html$
+       QS_PermitUri +02 deny ^/large.html$
+   </Location>
+</IfDefine>
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
+</VirtualHost>
+
+Listen                  127.0.0.1:##QS_PORT_BASE1##
+
+<VirtualHost 127.0.0.1:##QS_PORT_BASE1##>
+   ServerName                 127.0.0.1
+
+   TransferLog ##ROOT##/logs/access_log
+
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+
+<IfDefine globalmaxconn>
+   QS_EventLimitCount     limitc 1 3
+#   QS_LocRequestLimitMatch      \.iso  300
+</IfDefine>
+
+<IfDefine uc1WW>
+QS_SrvSerialize           off
+</IfDefine>
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
+</VirtualHost>
+
+
+<IfDefine uc1vssl>
+Listen                  127.0.0.1:##QS_PORT_BASE2##
+SSLProtocol             all -SSLv2
+SSLCipherSuite          RC4-SHA:RC4-MD5:AES256-SHA:AES128-SHA:DES-CBC3-SHA:!SSLv2:!EXP
+SSLSessionCacheTimeout  864000
+SSLMutex                file:##ROOT##/logs/ssl_mutex
+SSLSessionCache         shmht:##ROOT##/logs/ssl_cache(33554432)
+SSLRandomSeed           startup builtin
+<VirtualHost 127.0.0.1:##QS_PORT_BASE2##>
+   SSLCertificateKeyFile  ssl/key.pem
+   SSLCertificateFile     ssl/cert.pem
+   SSLVerifyDepth         10
+   SSLEngine              on
+   ServerName                 127.0.0.1
+
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
+   <Location /console>
+       SetHandler qos-console
+   </Location>
+
+</VirtualHost>
+</IfDefine>
+
+Listen       127.0.0.1:##QS_PORT_BASE10##
+<VirtualHost 127.0.0.1:##QS_PORT_BASE10##>
+   ServerName                 127.0.0.1
+   TransferLog ##ROOT##/logs/access_app_log
+
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+
+</VirtualHost>
+
+<IfDefine uc1v6c>
+QS_SrvMaxConnPerIP      2
+</IfDefine>
+
+<IfDefine uc1ex>
+QS_SrvMaxConnPerIP            2
+QS_VipIPHeaderName            mod-qos-vip-ip drop
+</IfDefine>
+
+<IfDefine uc1ex2>
+QS_SrvMaxConn                 2
+QS_VipIPHeaderName            mod-qos-vip-ip drop
+</IfDefine>
+
+<IfDefine v6>
+Listen                  [fc00::111]:##QS_PORT_BASE10##
+
+<VirtualHost [fc00::111]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+
+   ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
+   <Location /console>
+       SetHandler qos-console
+   </Location>
+
+   <Location /qos >
+       SetHandler qos-viewer
+   </Location>
+
+</VirtualHost>
+
+Listen                  [fc00::112]:##QS_PORT_BASE10##
+
+<VirtualHost [fc00::112]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+
+   ScriptAlias /a/            ##ROOT##/htdocs/cgi-local/
+   ScriptAlias /cgi-local/    ##ROOT##/htdocs/cgi-local/
+
+   <Location /qos>
+       SetHandler             qos-viewer
+   </Location>
+
+   <Location /cgi-local>
+       Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+       Order allow,deny
+       Allow from all
+   </Location>
+
+</VirtualHost>
+</IfDefine>

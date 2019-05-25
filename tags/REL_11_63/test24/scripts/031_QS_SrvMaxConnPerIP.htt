@@ -1,0 +1,67 @@
+#
+# $Id$
+#
+# <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
+#
+#      QS_SrvMaxConnPerIP         30
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D real_ip >/dev/null
+
+CLIENT 30
+_SLEEP 1000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 1000
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 2000
+_REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
+__GET /cgi-local/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+#_EXPECT . "500 Internal Server Error"
+_EXPECT . "!done"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=30, concurrent connections=31"
+_EXEC tail -2 logs/error_log
+
+END
+
+CLIENT
+_SLEEP 2000
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END

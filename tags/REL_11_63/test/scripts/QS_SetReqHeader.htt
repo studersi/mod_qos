@@ -1,0 +1,54 @@
+#
+# $Id$
+#
+#   SetEnvIfPlus    Request_Query suppressUserAgent
+#   QS_SetReqHeader !User-Agent suppressUserAgent
+#
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /htt/allowHeader HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "200"
+_EXPECT . "AS1"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/dontAllowHeader?suppressUserAgent HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "200"
+_EXPECT . "AS2"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "User-Agent: Mozilla"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+_CLOSE
+
+_RES
+_EXPECT . "!User-Agent: Mozilla"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS2==
+_CLOSE
+
+END

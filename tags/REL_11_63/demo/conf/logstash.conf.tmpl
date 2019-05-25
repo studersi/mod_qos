@@ -1,0 +1,80 @@
+
+input {
+    file {
+        path => [ "##TOP##/test/logs/access_log_signed" ]
+        type => "access"
+    }
+
+    file {
+        path => [ "##TOP##/demo/logs/access_log_signed" ]
+        type => "json"
+    }
+}
+
+filter {
+  grok {
+    match => [ "message", "%{GREEDYDATA:data} %{INT:sequence}#%{NOTSPACE:hmac}" ]
+    tag_on_failure => [ ]
+  }
+  if [data] {
+    qssign {
+      message => "data"
+      source => "path"
+      sequence => "sequence"
+      hmac => "hmac"
+      secret => "##TOP##/demo/keypass.sh"
+    }
+    mutate {
+      replace => [ "message", "%{data}" ]
+      remove_field => [ "data" ]
+    }
+  } else {
+    mutate {
+      add_field => [ "signature", "missing" ]
+    }
+  }
+}
+
+filter{
+  if [type] == "access" {
+    grok {
+      match => [ "message", "%{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] \"(?:%{WORD:method} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})\" %{NUMBER:status:int} (?:%{NUMBER:bytes:int}|-) %{NUMBER:duration:int}" ]
+    }
+    date {
+      match => [ "timestamp" , "dd/MMM/yyyy:HH:mm:ss Z" ]
+    }
+    mutate {
+      remove_field => [ "timestamp" ]
+    }
+  }
+
+  if [type] == "qssign" {
+    grok {
+      match => [ "message", "\[%{GREEDYDATA:timestamp}\] \[notice\] qssign---end-of-data%{GREEDYDATA}",
+                 "message", "\[%{GREEDYDATA:timestamp}\] qssign---end-of-data%{GREEDYDATA}",
+                 "message", "%{GREEDYDATA} \[%{GREEDYDATA:timestamp}\] qssign---end-of-data%{GREEDYDATA}" ]
+      break_on_match => true
+    }
+    date {
+      match => [ "timestamp", "EEE MMM dd HH:mm:ss yyyy", "dd/MMM/yyyy:HH:mm:ss Z" ]
+    }
+  }
+
+  if [type] == "json" {
+    json{
+      source => "message"
+    }
+    date {
+      match => [ "timestamp", "ISO8601" ]
+    }
+    mutate {
+      remove_field => [ "timestamp", "message", "hmac" ]
+    }
+  }
+}
+
+output{
+  elasticsearch {
+    embedded => true
+  }
+}

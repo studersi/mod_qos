@@ -1,0 +1,84 @@
+#
+# QS_SrvMaxConn[PerIP]          2
+# QS_VipIPHeaderName            mod-qos-vip-ip drop
+#
+
+INCLUDE scripts/ports
+
+CLIENT 2
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: client 1
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+_SLEEP 1000
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: client 1
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 200
+_REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: client 2
+__
+#_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+
+_SLEEP 1050
+_EXPECT EXEC "mod_qos\(03[01]\): access denied, QS_SrvMaxConn(PerIP)? rule: max=2, concurrent connections=3"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/ HTTP/1.1
+__Host: localhost
+__User-Agent: client 2
+__
+_EXPECT . "AS1"
+_EXPECT . "!mod-qos-vip-ip"
+_WAIT
+_CLOSE
+
+_SLEEP 1000
+
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: client 2
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__mod-qos-vip-ip: VIP
+__
+__==AS1==
+
+END
