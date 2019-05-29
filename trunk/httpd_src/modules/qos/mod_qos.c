@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.63";
+static const char g_revision[] = "11.64";
 
 /************************************************************************
  * Includes
@@ -1070,28 +1070,28 @@ static int m_knownEvents[] = { 10, 11, 12, 13, 21, 23, 25, 30, 31, 34, 35, 36, 3
    extensions which are used rarely) */
 /* reserved (to be escaped): {}[]()^$.|*+?\ */
 static const qos_her_t qs_header_rules[] = {
-#define QS_URL_UNRESERVED  "a-zA-Z0-9\\._~% \\-"
-#define QS_URL_GEN         ":/\\?#\\[\\]@"
-#define QS_URL_SUB         "!\\$&'\\(\\)\\*\\+,;="
+#define QS_URL_UNRESERVED  "a-zA-Z0-9._~% -"
+#define QS_URL_GEN         ":/?#\\[\\]@"
+#define QS_URL_SUB         "!$&'()*+,;="
 #define QS_URL             "["QS_URL_GEN""QS_URL_SUB""QS_URL_UNRESERVED"]"
 #define QS_2616TOKEN       "[\\x21\\x23-\\x27\\x2a-\\x2e0-9A-Z\\x5-\\x60a-z\\x7e]+"
-#define QS_B64_SP          "[a-zA-Z0-9 \\+/\\$=:]"
+#define QS_B64_SP          "[a-zA-Z0-9 +/$=:]"
 #define QS_PIPE            "\\|"
 #define QS_WEAK            "(W/)?"
-#define QS_H_ACCEPT        "[a-zA-Z0-9_\\*\\+\\-]+/[a-zA-Z0-9_\\*\\+\\.\\-]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9\\.]+)?"
-#define QS_H_ACCEPT_C      "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
-#define QS_H_ACCEPT_E      "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
-#define QS_H_ACCEPT_L      "[a-zA-Z\\*\\-]+[0-9]{0,3}(;[ ]?q=[0-9\\.]+)?"
+#define QS_H_ACCEPT        "[a-zA-Z0-9_*+-]+/[a-zA-Z0-9_*+.-]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9.]+)?"
+#define QS_H_ACCEPT_C      "[a-zA-Z0-9*-]+(;[ ]?q=[0-9.]+)?"
+#define QS_H_ACCEPT_E      "[a-zA-Z0-9*-]+(;[ ]?q=[0-9.]+)?"
+#define QS_H_ACCEPT_L      "[a-zA-Z*-]+[0-9]{0,3}(;[ ]?q=[0-9.]+)?"
 #define QS_H_CACHE         "no-cache|no-store|max-age=[0-9]+|max-stale(=[0-9]+)?|min-fresh=[0-9]+|no-transform|only-if-chached"
-#define QS_H_CONTENT       "[\"a-zA-Z0-9\\*/; =\\-]+"
+#define QS_H_CONTENT       "[\"a-zA-Z0-9*/; =-]+"
 #define QS_H_COOKIE        "["QS_URL_GEN""QS_URL_SUB"\""QS_URL_UNRESERVED"]"
-#define QS_H_EXPECT        "[a-zA-Z0-9= ;\\.,\\-]"
-#define QS_H_PRAGMA        "[a-zA-Z0-9= ;\\.,\\-]"
-#define QS_H_FROM          "[a-zA-Z0-9=@;\\.,\\(\\)\\-]"
-#define QS_H_HOST          "[a-zA-Z0-9\\.\\-]+(:[0-9]+)?"
-#define QS_H_IFMATCH       "[a-zA-Z0-9=@;\\.,\\*\"\\-]"
+#define QS_H_EXPECT        "[a-zA-Z0-9= ;.,-]"
+#define QS_H_PRAGMA        "[a-zA-Z0-9= ;.,-]"
+#define QS_H_FROM          "[a-zA-Z0-9=@;.,()-]"
+#define QS_H_HOST          "[a-zA-Z0-9.-]+(:[0-9]+)?"
+#define QS_H_IFMATCH       "[a-zA-Z0-9=@;.,*\"-]"
 #define QS_H_DATE          "[a-zA-Z0-9 :,]"
-#define QS_H_TE            "[a-zA-Z0-9\\*\\-]+(;[ ]?q=[0-9\\.]+)?"
+#define QS_H_TE            "[a-zA-Z0-9*-]+(;[ ]?q=[0-9.]+)?"
   { "Accept", "^("QS_H_ACCEPT"){1}([ ]?,[ ]?("QS_H_ACCEPT"))*$", QS_FLT_ACTION_DROP, 300 },
   { "Accept-Charset", "^("QS_H_ACCEPT_C"){1}([ ]?,[ ]?("QS_H_ACCEPT_C"))*$", QS_FLT_ACTION_DROP, 300 },
   { "Accept-Encoding", "^("QS_H_ACCEPT_E"){1}([ ]?,[ ]?("QS_H_ACCEPT_E"))*$", QS_FLT_ACTION_DROP, 500 },
@@ -1100,8 +1100,8 @@ static const qos_her_t qs_header_rules[] = {
   { "Access-Control-Request-Headers", "^([a-zA-Z0-9-]+){1}([ ]?,[ ]?([a-zA-Z0-9-]+))*$", QS_FLT_ACTION_DROP, 500 },
   { "Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 4000 },
   { "Cache-Control", "^("QS_H_CACHE"){1}([ ]?,[ ]?("QS_H_CACHE"))*$", QS_FLT_ACTION_DROP, 100 },
-  { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9\\-]+){1}([ ]?,[ ]?([teTE]+))?$", QS_FLT_ACTION_DROP, 100 },
-  { "Content-Encoding", "^[a-zA-Z0-9\\-]+(,[ ]*[a-zA-Z0-9\\-]+)*$", QS_FLT_ACTION_DENY, 100 },
+  { "Connection", "^([teTE]+,[ ]?)?([a-zA-Z0-9-]+){1}([ ]?,[ ]?([teTE]+))?$", QS_FLT_ACTION_DROP, 100 },
+  { "Content-Encoding", "^[a-zA-Z0-9-]+(,[ ]*[a-zA-Z0-9-]+)*$", QS_FLT_ACTION_DENY, 100 },
   { "Content-Language", "^([0-9a-zA-Z]{0,8}(-[0-9a-zA-Z]{0,8})*)(,[ ]*([0-9a-zA-Z]{0,8}(-[0-9a-zA-Z]{0,8})*))*$", QS_FLT_ACTION_DROP, 100 },
   { "Content-Length", "^[0-9]+$", QS_FLT_ACTION_DENY, 10 },
   { "Content-Location", "^"QS_URL"+$", QS_FLT_ACTION_DENY, 200 },
@@ -1114,29 +1114,29 @@ static const qos_her_t qs_header_rules[] = {
   { "Expect", "^"QS_H_EXPECT"+$", QS_FLT_ACTION_DROP, 200 },
   { "From", "^"QS_H_FROM"+$", QS_FLT_ACTION_DROP, 100 },
   { "Host", "^"QS_H_HOST"$", QS_FLT_ACTION_DROP, 100 },
-  { "If-Invalid", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 500 },
+  { "If-Invalid", "^[a-zA-Z0-9_.:;() /+!-]+$", QS_FLT_ACTION_DROP, 500 },
   { "If-Match", "^"QS_WEAK""QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-None-Match", "^"QS_WEAK""QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Range", "^"QS_H_IFMATCH"+$", QS_FLT_ACTION_DROP, 100 },
   { "If-Unmodified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
-  { "If-Valid", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 500 },
+  { "If-Valid", "^[a-zA-Z0-9_.:;() /+!-]+$", QS_FLT_ACTION_DROP, 500 },
   { "Keep-Alive", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { "Max-Forwards", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { "Origin", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
   { "Proxy-Authorization", "^"QS_B64_SP"+$", QS_FLT_ACTION_DROP, 400 },
   { "Pragma", "^"QS_H_PRAGMA"+$", QS_FLT_ACTION_DROP, 200 },
-  { "Range", "^[a-zA-Z0-9=_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 200 },
+  { "Range", "^[a-zA-Z0-9=_.:;() /+!-]+$", QS_FLT_ACTION_DROP, 200 },
   { "Referer", "^"QS_URL"+$", QS_FLT_ACTION_DROP, 2000 },
   { "TE", "^("QS_H_TE"){1}([ ]?,[ ]?("QS_H_TE"))*$", QS_FLT_ACTION_DROP, 100 },
   { "Transfer-Encoding", "^(chunked|Chunked|compress|Compress|deflate|Deflate|gzip|Gzip|identity|Identity)([ ]?,[ ]?(chunked|Chunked|compress|Compress|deflate|Deflate|gzip|Gzip|identity|Identity))*$", QS_FLT_ACTION_DENY, 100 },
   { "Unless-Modified-Since", "^"QS_H_DATE"+$", QS_FLT_ACTION_DROP, 100 },
   { "User-Agent", "^[a-zA-Z0-9]+[a-zA-Z0-9_.:;()\\[\\]@ /+!=,-]+$", QS_FLT_ACTION_DROP, 300 },
   { "Upgrade-Insecure-Requests", "^1$", QS_FLT_ACTION_DROP, 1 },
-  { "Via", "^[a-zA-Z0-9_\\.:;\\(\\) /\\+!\\-]+$", QS_FLT_ACTION_DROP, 100 },
-  { "X-Forwarded-For", "^[a-zA-Z0-9_\\.:\\-]+(, [a-zA-Z0-9_\\.:\\-]+)*$", QS_FLT_ACTION_DROP, 100 },
-  { "X-Forwarded-Host", "^[a-zA-Z0-9_\\.:\\-]+$", QS_FLT_ACTION_DROP, 100 },
-  { "X-Forwarded-Server", "^[a-zA-Z0-9_\\.:\\-]+$", QS_FLT_ACTION_DROP, 100 },
+  { "Via", "^[a-zA-Z0-9_.:;() /+!-]+$", QS_FLT_ACTION_DROP, 100 },
+  { "X-Forwarded-For", "^[a-zA-Z0-9_.:-]+(, [a-zA-Z0-9_.:-]+)*$", QS_FLT_ACTION_DROP, 100 },
+  { "X-Forwarded-Host", "^[a-zA-Z0-9_.:-]+$", QS_FLT_ACTION_DROP, 100 },
+  { "X-Forwarded-Server", "^[a-zA-Z0-9_.:-]+$", QS_FLT_ACTION_DROP, 100 },
   { "X-lori-time-1", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { "X-Do-Not-Track", "^[0-9]+$", QS_FLT_ACTION_DROP, 20 },
   { NULL, NULL, 0, 0 }
