@@ -1,3 +1,8 @@
+Version 11.64
+
+ - Updated request header filter rules (allows signed HTTP exchanges content
+   type in Accept header).
+
 Version 11.63
 
  - Adds the option 'jsredirect' to the QS_UserTrackingCookieName directive:
