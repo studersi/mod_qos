@@ -1078,7 +1078,7 @@ static const qos_her_t qs_header_rules[] = {
 #define QS_B64_SP          "[a-zA-Z0-9 +/$=:]"
 #define QS_PIPE            "\\|"
 #define QS_WEAK            "(W/)?"
-#define QS_H_ACCEPT        "[a-zA-Z0-9_*+-]+/[a-zA-Z0-9_*+.-]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?q=[0-9.]+)?"
+#define QS_H_ACCEPT        "[a-zA-Z0-9_*+-]+/[a-zA-Z0-9_*+.-]+(;[ ]?[a-zA-Z0-9]+=[0-9]+)?[ ]?(;[ ]?[qv]=[a-z0-9.]+)?"
 #define QS_H_ACCEPT_C      "[a-zA-Z0-9*-]+(;[ ]?q=[0-9.]+)?"
 #define QS_H_ACCEPT_E      "[a-zA-Z0-9*-]+(;[ ]?q=[0-9.]+)?"
 #define QS_H_ACCEPT_L      "[a-zA-Z*-]+[0-9]{0,3}(;[ ]?q=[0-9.]+)?"
@@ -1323,8 +1323,9 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *outHdrFltTable
     hdrFltElement->action = hdrFltRuleDefEntry->action;
     hdrFltElement->size = hdrFltRuleDefEntry->size;
     if(hdrFltElement->pcre == NULL) {
-      return apr_psprintf(pool, "could not compile pcre %s at position %d,"
-                          " reason: %s", 
+      return apr_psprintf(pool, "could not compile pcre '%s' for %s header at position %d,"
+                          " reason: %s",
+                          hdrFltElement->text,
                           hdrFltRuleDefEntry->name,
                           erroffset, errptr);
     }
@@ -12416,9 +12417,10 @@ const char *qos_event_setenvresheadermatch_cmd(cmd_parms *cmd, void *dcfg, const
   int erroffset;
   pcre *pr = pcre_compile(pcres, PCRE_DOTALL | PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(pr == NULL) {
-    return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre '%s' at position %d,"
                         " reason: %s", 
                         cmd->directive->directive,
+                        pcres,
                         erroffset, errptr);
   }
   apr_pool_cleanup_register(cmd->pool, pr, (int(*)(void*))pcre_free, apr_pool_cleanup_null);
@@ -12642,9 +12644,10 @@ const char *qos_event_setenvifparpbody_cmd(cmd_parms *cmd, void *dcfg,
 #endif
   setenvif->preg = pcre_compile(rx, PCRE_DOTALL | PCRE_CASELESS, &errptr, &erroffset, NULL);
   if(setenvif->preg == NULL) {
-    return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre '%s' at position %d,"
                         " reason: %s", 
                         cmd->directive->directive,
+                        rx,
                         erroffset, errptr);
   }
   setenvif->extra = qos_pcre_study(cmd->pool, setenvif->preg);
@@ -13285,9 +13288,10 @@ const char *qos_deny_cmd(cmd_parms *cmd, void *dcfg,
   if(flt->type != QS_DENY_EVENT) {
     flt->pr = pcre_compile(pcres, PCRE_DOTALL | options, &errptr, &erroffset, NULL);
     if(flt->pr == NULL) {
-      return apr_psprintf(cmd->pool, "%s: could not compile pcre at position %d,"
+      return apr_psprintf(cmd->pool, "%s: could not compile pcre '%s' at position %d,"
                           " reason: %s", 
                           cmd->directive->directive,
+                          pcres,
                           erroffset, errptr);
     }
     flt->extra = qos_pcre_study(cmd->pool, flt->pr);
@@ -13364,7 +13368,7 @@ const char *qos_milestone_cmd(cmd_parms *cmd, void *dcfg, const char *action,
   }
   ms->preg = pcre_compile(pattern, PCRE_DOTALL, &errptr, &erroffset, NULL);
   if(ms->preg == NULL) {
-    return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre '%s' at position %d,"
                         " reason: %s", 
                         cmd->directive->directive,
                         pattern,
@@ -13551,7 +13555,7 @@ const char *qos_headerfilter_rule_cmd(cmd_parms *cmd, void *dcfg,
                         cmd->directive->directive, action);
   }
   if(he->pcre == NULL) {
-    return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre '%s' at position %d,"
                         " reason: %s", 
                         cmd->directive->directive,
                         rule,
@@ -13585,7 +13589,7 @@ const char *qos_resheaderfilter_rule_cmd(cmd_parms *cmd, void *dcfg,
   he->pcre = pcre_compile(rule, PCRE_DOTALL, &errptr, &erroffset, NULL);
   he->action = QS_FLT_ACTION_DROP;
   if(he->pcre == NULL) {
-    return apr_psprintf(cmd->pool, "%s: could not compile pcre %s at position %d,"
+    return apr_psprintf(cmd->pool, "%s: could not compile pcre '%s' at position %d,"
                         " reason: %s", 
                         cmd->directive->directive,
                         rule,
