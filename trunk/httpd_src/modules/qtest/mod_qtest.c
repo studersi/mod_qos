@@ -164,8 +164,9 @@ static int qtest_fixup(request_rec * r) {
 }
 
 static int qtest_logger(request_rec *r) {
-  const char *dumphdr = apr_table_get(r->headers_in, "X-dumpvar");
-  if(dumphdr) {
+  const char *dumphdr = apr_table_get(r->headers_in, "X-dumphdr");
+  const char *dumpvar = apr_table_get(r->headers_in, "X-dumpvar");
+  if(dumpvar) {
     char *msg = "";
     int i;
     apr_table_entry_t *e = (apr_table_entry_t *) apr_table_elts(r->subprocess_env)->elts;
@@ -174,6 +175,16 @@ static int qtest_logger(request_rec *r) {
     }
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
                   QTEST_LOG_PFX(001)"VAR %s %s", r->unparsed_uri, msg);
+  }
+  if(dumphdr) {
+    char *msg = "";
+    int i;
+    apr_table_entry_t *e = (apr_table_entry_t *) apr_table_elts(r->headers_in)->elts;
+    for (i = 0; i < apr_table_elts(r->headers_in)->nelts; ++i) {
+      msg = apr_psprintf(r->pool, "%s=%s;%s",  e[i].key, e[i].val, msg);
+    }
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QTEST_LOG_PFX(001)"HDR %s %s", r->unparsed_uri, msg);
   }
   return DECLINED;
 }
