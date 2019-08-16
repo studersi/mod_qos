@@ -126,6 +126,16 @@ SetEnvIf                     Request_URI ^/download/mod_qos.so.gz QS_Cond=LimitD
 QS_CondClientEventLimitCount 4 60 LimitDownload LimitDownload
 </IfDefine>
 
+<IfDefine hash>
+SetEnvIfPlus              Remote_Addr (.*) realIP=$1
+SetEnvIfPlus              User-Agent "^[Cc]isco\x2FSPA[0-9]{3}[G]?-[0-9a-z.]+ \(([0-9A-Z]+)\)" virtualIP=$1
+RequestHeaderPlus     set X-Hash ${realIP}
+SetHashHeaderPlus         X-Hash virtualIP
+SetEnvIfPlus              virtualIP .* limitPhone=1
+QS_ClientIpFromHeader     X-Hash
+QS_ClientEventLimitCount  4 5 limitPhone
+</IfDefine>
+
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
    ServerName   127.0.0.1
