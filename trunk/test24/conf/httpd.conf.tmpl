@@ -157,6 +157,10 @@ Listen         ##QS_PORT_BASE##
    RequestReadTimeout         header=20-40,MinRate=500 body=20,MinRate=500
 </IfDefine>
 
+<IfDefine noSanityCheck>
+   QS_ReqSanityCheck          Off
+</IfDefine>
+
    ProxyRequests              Off
    <Proxy *>
       Order deny,allow
