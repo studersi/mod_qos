@@ -1,0 +1,29 @@
+# 
+# QS_ReqSanityCheck          Off
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D noSanityCheck >/dev/null
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET ?name=value HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(045\): sanity check failed, invalid request line: can't parse uri, c="
+_EXEC tail -1 logs/error_log
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh stop 2>/dev/null 1>/dev/null
+_SLEEP 1000
+_EXEC ./ctl.sh start 2>/dev/null 1>/dev/null
+END

@@ -837,8 +837,9 @@ typedef struct {
   int enable_testip;
 #endif
   int disable_handler;
-  /* client control */
+  int request_sanity_check;
   int log_only;               /* GLOBAL ONLY */
+  /* client control */
   int has_qos_cc;             /* GLOBAL ONLY */
   int qos_cc_size;            /* GLOBAL ONLY */
   int qos_cc_prefer;          /* GLOBAL ONLY */
@@ -4625,9 +4626,9 @@ static void qos_enable_parp(request_rec *r) {
 }
 
 /** 
- * Generic request validation.
- * We ensure to have at least a valid request uri received (no futher uri validation
- * required in your code).
+ * Generic request validation / sanity check:
+ * We ensure to have at least a valid, decoded request uri received.
+ *
  * @param r
  * @param sconf
  * @return HTTP_BAD_REQUEST for requests which may not be processed by mod_qos, otherwise
@@ -4635,13 +4636,21 @@ static void qos_enable_parp(request_rec *r) {
  */
 static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
   if((r->unparsed_uri == NULL) || (r->parsed_uri.path == NULL)) {
-    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                  QOS_LOG_PFX(045)"access denied, invalid request line:"
-                  " can't parse uri, c=%s, id=%s",
-                  QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
-                  qos_unique_id(r, "045"));
-    QS_INC_EVENT(sconf, 45);
-    return HTTP_BAD_REQUEST;
+    if(sconf->request_sanity_check == 0) {
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
+                    QOS_LOG_PFX(045)"sanity check failed, invalid request line:"
+                    " can't parse uri, c=%s, id=%s",
+                    QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                    qos_unique_id(r, "045"));
+    } else {
+      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                    QOS_LOG_PFX(045)"access denied, invalid request line:"
+                    " can't parse uri, c=%s, id=%s",
+                    QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                    qos_unique_id(r, "045"));
+      QS_INC_EVENT(sconf, 45);
+      return HTTP_BAD_REQUEST;
+    }
   }
   return APR_SUCCESS;
 }
@@ -8708,7 +8717,7 @@ static int qos_post_read_request_later(request_rec *r) {
   if(!sconf->user_tracking_cookie_force) {
     return DECLINED;
   }
-  if(strcmp("/favicon.ico", r->parsed_uri.path) == 0) {
+  if(r->parsed_uri.path && strcmp("/favicon.ico", r->parsed_uri.path) == 0) {
     return DECLINED;
   }
 
@@ -8716,7 +8725,7 @@ static int qos_post_read_request_later(request_rec *r) {
   if(ignore) {
     return DECLINED;
   }
-  if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
+  if(r->parsed_uri.path && strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
     /* access to check url */
     if(sconf->user_tracking_cookie_jsredirect == 1) {
       apr_table_set(r->subprocess_env, "QS_UT_NAME", sconf->user_tracking_cookie);
@@ -11272,14 +11281,14 @@ static int qos_handler_view(request_rec * r) {
   ap_set_content_type(r, "text/html");
   if(!r->header_only) {
     int hasSlash = 1;
-    if(strlen(r->parsed_uri.path) > 0) {
+    if(r->parsed_uri.path && strlen(r->parsed_uri.path) > 0) {
       if(r->parsed_uri.path[strlen(r->parsed_uri.path)-1] != '/') {
         hasSlash = 0;
       }
     }
     ap_rputs("<html><head><title>mod_qos</title>\n", r);
     ap_rprintf(r,"<link rel=\"shortcut icon\" href=\"%s%sfavicon.ico\"/>\n", 
-               r->parsed_uri.path,
+               ap_escape_html(r->pool, r->parsed_uri.path),
                hasSlash ? "" : "/");
     ap_rputs("<meta http-equiv=\"content-type\" content=\"text/html; charset=ISO-8859-1\">\n", r);
     ap_rputs("<meta name=\"author\" content=\"Pascal Buchbinder\">\n", r);
@@ -11603,6 +11612,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->hfilter_table = apr_table_make(p, 5);
   sconf->reshfilter_table = apr_table_make(p, 5);
   sconf->disable_reqrate_events = apr_table_make(p, 1);
+  sconf->request_sanity_check = -1;
   sconf->log_only = 0;
   sconf->has_qos_cc = 0;
   sconf->cc_exclude_ip = apr_table_make(sconf->pool, 2);
@@ -11847,6 +11857,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
     o->static_other = b->static_other;
     o->static_notmodified = b->static_notmodified;
   }
+  if(o->request_sanity_check == -1) {
+    o->request_sanity_check = b->request_sanity_check;
+  }
   return o;
 }
 
@@ -11858,6 +11871,13 @@ const char *qos_logonly_cmd(cmd_parms *cmd, void *dcfg, int flag) {
     return err;
   }
   sconf->log_only = flag;
+  return NULL;
+}
+
+const char *qos_sanitycheck_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->request_sanity_check = flag;
   return NULL;
 }
 
@@ -14739,6 +14759,12 @@ static const command_rec qos_config_cmds[] = {
                "QS_LogOnly 'on'|'off', enables the log only mode of the module"
                " where no limitations are enforced. Default is off."
                " Directive is allowed in global server context only."),
+
+  AP_INIT_FLAG("QS_ReqSanityCheck", qos_sanitycheck_cmd, NULL,
+               RSRC_CONF,
+               "QS_ReqSanityCheck 'on'|'off', enables the request sanity"
+               " check (request has a valid, decoded path in the request line)."
+               " Default is on."),
 
   AP_INIT_FLAG("QS_SupportIPv6", qos_enable_ipv6_cmd, NULL,
                RSRC_CONF,
