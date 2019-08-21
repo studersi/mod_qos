@@ -390,7 +390,7 @@ same URL string or regular expression.
 <a name="QS_LocRequestLimitMatch"></a>
 <syntax>QS_LocRequestLimitMatch &lt;regex&gt; &lt;number&gt;</syntax><br>
 Defines the number of <a href="glossary.html#concurrency">concurrent</a> 
-requests for the specified request pattern (applied to the unparsed URL). 
+requests for the specified request pattern (path and query). 
 The rule with the lowest number of allowed concurrent connections has the 
 highest priority if multiple expressions match the request. 
 By default, no limitations are active.

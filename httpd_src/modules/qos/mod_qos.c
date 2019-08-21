@@ -837,7 +837,6 @@ typedef struct {
   int enable_testip;
 #endif
   int disable_handler;
-  int request_sanity_check;
   int log_only;               /* GLOBAL ONLY */
   /* client control */
   int has_qos_cc;             /* GLOBAL ONLY */
@@ -3568,7 +3567,7 @@ static qs_acentry_t *qos_getrule_bylocation(request_rec * r, qos_srv_config *sco
   qs_acentry_t *actEntry = act->entry;
   int match_len = 0;
   while(actEntry) {
-    if((actEntry->event == NULL) && (actEntry->regex == NULL) && (r->parsed_uri.path != NULL)) {
+    if((actEntry->event == NULL) && (actEntry->regex == NULL)) {
       /* per location limitation */
       if(actEntry->url && (strncmp(actEntry->url, r->parsed_uri.path, actEntry->url_len) == 0)) {
         /* best match */
@@ -3996,7 +3995,7 @@ static int qos_per_dir_rules(request_rec *r, qos_srv_config *sconf,
                              qos_dir_config *dconf) {
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(dconf->rfilter_table)->elts;
   int i;
-  char *path = apr_pstrdup(r->pool, r->parsed_uri.path ? r->parsed_uri.path : "");
+  char *path = apr_pstrdup(r->pool, r->parsed_uri.path);
   char *query = NULL;
   char *fragment = NULL;
   char *request_line = apr_pstrdup(r->pool, r->the_request);
@@ -4628,7 +4627,7 @@ static void qos_enable_parp(request_rec *r) {
 /** 
  * Generic request validation / sanity check:
  * We ensure to have at least a valid, decoded request uri received.
- *
+ * (no futher uri validation required in your code)
  * @param r
  * @param sconf
  * @return HTTP_BAD_REQUEST for requests which may not be processed by mod_qos, otherwise
@@ -4636,21 +4635,13 @@ static void qos_enable_parp(request_rec *r) {
  */
 static apr_status_t qos_request_check(request_rec *r, qos_srv_config *sconf) {
   if((r->unparsed_uri == NULL) || (r->parsed_uri.path == NULL)) {
-    if(sconf->request_sanity_check == 0) {
-      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
-                    QOS_LOG_PFX(045)"sanity check failed, invalid request line:"
-                    " can't parse uri, c=%s, id=%s",
-                    QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
-                    qos_unique_id(r, "045"));
-    } else {
-      ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
-                    QOS_LOG_PFX(045)"access denied, invalid request line:"
-                    " can't parse uri, c=%s, id=%s",
-                    QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
-                    qos_unique_id(r, "045"));
-      QS_INC_EVENT(sconf, 45);
-      return HTTP_BAD_REQUEST;
-    }
+    ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
+                  QOS_LOG_PFX(045)"access denied, invalid request line:"
+                  " can't parse uri, c=%s, id=%s",
+                  QS_CONN_REMOTEIP(r->connection) == NULL ? "-" : QS_CONN_REMOTEIP(r->connection),
+                  qos_unique_id(r, "045"));
+    QS_INC_EVENT(sconf, 45);
+    return HTTP_BAD_REQUEST;
   }
   return APR_SUCCESS;
 }
@@ -6999,7 +6990,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
              "      <td colspan=\"1\">auto refresh</td>\n", r);
     ap_rputs("      <td colspan=\"8\">\n", r);
     ap_rprintf(r, "        <form action=\"%s\" method=\"get\">\n",
-               ap_escape_html(r->pool, r->parsed_uri.path ? r->parsed_uri.path : ""));
+               ap_escape_html(r->pool, r->parsed_uri.path));
     if(option && strstr(option, "ip")) {
       ap_rprintf(r, "          <input name=\"option\" value=\"ip\" type=\"hidden\">\n");
     }
@@ -7021,7 +7012,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
              "      <td colspan=\"1\">client ip connections</td>\n", r);
     ap_rputs("      <td colspan=\"8\">\n", r);
     ap_rprintf(r, "        <form action=\"%s\" method=\"get\">\n",
-               ap_escape_html(r->pool, r->parsed_uri.path ? r->parsed_uri.path : ""));
+               ap_escape_html(r->pool, r->parsed_uri.path));
     if(!option || (option && !strstr(option, "ip")) ) {
       ap_rprintf(r, "          <input name=\"option\" value=\"ip\" type=\"hidden\">\n");
       ap_rprintf(r, "          <input name=\"action\" value=\"enable\" type=\"submit\">\n");
@@ -7045,7 +7036,7 @@ static void qos_show_ip(request_rec *r, qos_srv_config *sconf, apr_table_t *qt) 
                "      <td colspan=\"1\">search a client ip entry</td>\n", r); 
       ap_rputs("      <td colspan=\"8\">\n", r);
       ap_rprintf(r, "        <form action=\"%s\" method=\"get\">\n",
-                 ap_escape_html(r->pool, r->parsed_uri.path ? r->parsed_uri.path : ""));
+                 ap_escape_html(r->pool, r->parsed_uri.path));
       if(option && strstr(option, "ip")) {
         ap_rprintf(r, "          <input name=\"option\" value=\"ip\" type=\"hidden\">\n");
       }
@@ -8717,7 +8708,7 @@ static int qos_post_read_request_later(request_rec *r) {
   if(!sconf->user_tracking_cookie_force) {
     return DECLINED;
   }
-  if(r->parsed_uri.path && strcmp("/favicon.ico", r->parsed_uri.path) == 0) {
+  if(r->parsed_uri.path && (strcmp("/favicon.ico", r->parsed_uri.path) == 0)) {
     return DECLINED;
   }
 
@@ -8725,7 +8716,7 @@ static int qos_post_read_request_later(request_rec *r) {
   if(ignore) {
     return DECLINED;
   }
-  if(r->parsed_uri.path && strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
+  if(r->parsed_uri.path && (strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0)) {
     /* access to check url */
     if(sconf->user_tracking_cookie_jsredirect == 1) {
       apr_table_set(r->subprocess_env, "QS_UT_NAME", sconf->user_tracking_cookie);
@@ -11264,7 +11255,7 @@ static int qos_handler_view(request_rec * r) {
                   qos_unique_id(r, "072"));
     return DECLINED;
   }
-  if(r->parsed_uri.path && (strstr(r->parsed_uri.path, "favicon.ico") != NULL)) {
+  if(strstr(r->parsed_uri.path, "favicon.ico") != NULL) {
     apr_table_add(r->err_headers_out, "Cache-Control", "public, max-age=2592000");
     return qos_favicon(r);
   }
@@ -11281,7 +11272,7 @@ static int qos_handler_view(request_rec * r) {
   ap_set_content_type(r, "text/html");
   if(!r->header_only) {
     int hasSlash = 1;
-    if(r->parsed_uri.path && strlen(r->parsed_uri.path) > 0) {
+    if(strlen(r->parsed_uri.path) > 0) {
       if(r->parsed_uri.path[strlen(r->parsed_uri.path)-1] != '/') {
         hasSlash = 0;
       }
@@ -11612,7 +11603,6 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->hfilter_table = apr_table_make(p, 5);
   sconf->reshfilter_table = apr_table_make(p, 5);
   sconf->disable_reqrate_events = apr_table_make(p, 1);
-  sconf->request_sanity_check = -1;
   sconf->log_only = 0;
   sconf->has_qos_cc = 0;
   sconf->cc_exclude_ip = apr_table_make(sconf->pool, 2);
@@ -11857,9 +11847,6 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
     o->static_other = b->static_other;
     o->static_notmodified = b->static_notmodified;
   }
-  if(o->request_sanity_check == -1) {
-    o->request_sanity_check = b->request_sanity_check;
-  }
   return o;
 }
 
@@ -11871,13 +11858,6 @@ const char *qos_logonly_cmd(cmd_parms *cmd, void *dcfg, int flag) {
     return err;
   }
   sconf->log_only = flag;
-  return NULL;
-}
-
-const char *qos_sanitycheck_cmd(cmd_parms *cmd, void *dcfg, int flag) {
-  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
-                                                                &qos_module);
-  sconf->request_sanity_check = flag;
   return NULL;
 }
 
@@ -14759,12 +14739,6 @@ static const command_rec qos_config_cmds[] = {
                "QS_LogOnly 'on'|'off', enables the log only mode of the module"
                " where no limitations are enforced. Default is off."
                " Directive is allowed in global server context only."),
-
-  AP_INIT_FLAG("QS_ReqSanityCheck", qos_sanitycheck_cmd, NULL,
-               RSRC_CONF,
-               "QS_ReqSanityCheck 'on'|'off', enables the request sanity"
-               " check (request has a valid, decoded path in the request line)."
-               " Default is on."),
 
   AP_INIT_FLAG("QS_SupportIPv6", qos_enable_ipv6_cmd, NULL,
                RSRC_CONF,
