@@ -2665,7 +2665,9 @@ static int qos_verify_session(request_rec *r, qos_srv_config* sconf) {
   int buf_len = 0;
   unsigned char *buf;
   char *value = qos_get_remove_cookie(r, sconf->cookie_name);
-  if(value == NULL) return 0;
+  if(value == NULL) {
+    return 0;
+  }
   buf_len = qos_decrypt(r, sconf, &buf, value);
   if(buf_len != sizeof(qos_session_t)) {
     ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_WARNING, 0, r,
@@ -8702,13 +8704,19 @@ static int qos_post_read_request_later(request_rec *r) {
   if(!ap_is_initial_req(r) || !sconf->user_tracking_cookie) {
     return DECLINED;
   }
+
   value = qos_get_remove_cookie(r, sconf->user_tracking_cookie);
   qos_get_create_user_tracking(r, sconf, value);
 
   if(!sconf->user_tracking_cookie_force) {
     return DECLINED;
   }
-  if(r->parsed_uri.path && (strcmp("/favicon.ico", r->parsed_uri.path) == 0)) {
+
+  if(qos_request_check(r, sconf) != APR_SUCCESS) {
+    return HTTP_BAD_REQUEST;
+  }
+
+  if(strcmp("/favicon.ico", r->parsed_uri.path) == 0) {
     return DECLINED;
   }
 
@@ -8716,7 +8724,7 @@ static int qos_post_read_request_later(request_rec *r) {
   if(ignore) {
     return DECLINED;
   }
-  if(r->parsed_uri.path && (strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0)) {
+  if(strcmp(sconf->user_tracking_cookie_force, r->parsed_uri.path) == 0) {
     /* access to check url */
     if(sconf->user_tracking_cookie_jsredirect == 1) {
       apr_table_set(r->subprocess_env, "QS_UT_NAME", sconf->user_tracking_cookie);
@@ -8881,6 +8889,7 @@ static int qos_post_read_request(request_rec *r) {
   if(isVipIP) {
     apr_table_set(r->subprocess_env, QS_ISVIPREQ, isVipIP);
   }
+
   if(qos_request_check(r, sconf) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;
   }
