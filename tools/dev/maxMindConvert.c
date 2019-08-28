@@ -102,7 +102,7 @@ static int resolveCountry(FILE *file, int id, char *country_iso_code) {
 	  }
 	  goto found;
 	}
-	fprintf(stderr, "ERROR, unexpected line %s\n", line);
+	fprintf(stderr, "ERROR, unexpected line '%s'\n", line);
 	goto wrongSyntax;
       }
     }
