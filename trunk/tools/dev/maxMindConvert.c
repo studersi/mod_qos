@@ -88,21 +88,24 @@ static int resolveCountry(FILE *file, int id, char *country_iso_code) {
   char line[MAX_LINE], raw[MAX_LINE];
   country_iso_code[0] = '\0';
   while(fgets(line, sizeof(line), file) != NULL) {
-    int geoname_id;
-    char locale_code[32], continent_code[32];
-    sscanf(line, "%d,%2s,%2s,%256c", &geoname_id,
-	   locale_code, continent_code, raw);
-    if(geoname_id == id) {
-      char *next = strchr(raw, ',');
-      if(next) {
-	sscanf(next, ",%2s,", country_iso_code);
-	if(country_iso_code[0] == ',') {
-	  strcpy(country_iso_code, continent_code);
+    if(strstr(line, "geoname_id") == NULL) {
+      int geoname_id;
+      char locale_code[32], continent_code[32];
+      sscanf(line, "%d,%2s,%2s,%256c", &geoname_id,
+	     locale_code, continent_code, raw);
+      if(geoname_id == id) {
+	char *next = strchr(raw, ',');
+	if(next) {
+	  sscanf(next, ",%2s,", country_iso_code);
+	  if(country_iso_code[0] == ',') {
+	    strcpy(country_iso_code, continent_code);
+	  }
+	  goto found;
 	}
-	goto found;
+	fprintf(stderr, "ERROR, unexpected line %s\n", line);
+	goto wrongSyntax;
       }
-      goto wrongSyntax;
-    }      
+    }
   }
 
  wrongSyntax:
