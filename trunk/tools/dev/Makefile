@@ -4,7 +4,7 @@ srcdir       = ../../httpd/support
 builddir     = ../../httpd/support
 VPATH        = ../../httpd/support
 
-PROGRAMS = qsgrep qslog qsdt regex regexspeed b64 qnc crs mem json pws qssearch vszl stack2 rand qssyslog net2range VMB
+PROGRAMS = qsgrep qslog qsdt regex regexspeed b64 qnc crs mem json pws qssearch vszl stack2 rand qssyslog maxMindConvert net2range VMB
 TARGETS  = $(PROGRAMS)
 
 PROGRAM_LDADD        = $(UTIL_LDFLAGS) $(PROGRAM_DEPENDENCIES) $(EXTRA_LIBS) $(AP_LIBS)
@@ -62,6 +62,11 @@ qssyslog_OBJECTS = qssyslog.lo
 qssyslog_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
 qssyslog: $(qssyslog_OBJECTS)
 	$(LINK) $(qssyslog_LTFLAGS) -static $(qssyslog_OBJECTS) $(qssyslog_LDADD)
+
+maxMindConvert_OBJECTS = maxMindConvert.lo
+maxMindConvert_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
+maxMindConvert: $(maxMindConvert_OBJECTS)
+	$(LINK) $(maxMindConvert_LTFLAGS) -static $(maxMindConvert_OBJECTS) $(maxMindConvert_LDADD)
 
 net2range_OBJECTS = net2range.lo
 net2range_LDADD = $(PROGRAM_LDADD) $(SSL_LIBS)
@@ -134,5 +139,5 @@ VMB: VMB.c
 	cc -O3 -pthread -o $@ $<
 
 clean:
-	rm -f *.o stack stack2 regex regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog net2range VMB qsgrep qsgrep.c qslog qslog.c qsdt qstd.c
+	rm -f *.o stack stack2 regex regexspeed b64 qnc crs mem vszl json pws qssearch rand qssyslog maxMindConvert net2range VMB qsgrep qsgrep.c qslog qslog.c qsdt qstd.c
 
