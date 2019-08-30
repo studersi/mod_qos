@@ -59,13 +59,13 @@ static const qs_mask_t qs_mask[] = {
 };
 
 static void usage() {
-  printf("usage: net2range <network>\n");
+  printf("usage: net2range <network in CIDR format (e.g. 12.3.8.0/22)>\n");
   printf("\n");
   exit(1);
 }
 
 int main(int argc, const char * const argv[]) {
-  char *a, *p;
+  const char *net;
   int w,x,y,z,n;
   qs_mask_t m;
 
@@ -74,36 +74,12 @@ int main(int argc, const char * const argv[]) {
   if(argc != 1) {
     usage();
   }
-  a = *argv;
-  p = strchr(a, '.');
-  if(p == NULL) usage();
-  p[0] = '\0';
-  w = atoi(a);
+  net = *argv;
+  sscanf(net, "%d.%d.%d.%d/%d", &w, &x, &y, &z, &n);
   if(w < 0 || w > 255) usage();
-  
-  a = &p[1];
-  p = strchr(a, '.');
-  if(p == NULL) usage();
-  p[0] = '\0';
-  x = atoi(a);
   if(x < 0 || x > 255) usage();
-
-  a = &p[1];
-  p = strchr(a, '.');
-  if(p == NULL) usage();
-  p[0] = '\0';
-  y = atoi(a);
   if(y < 0 || y > 255) usage();
-
-  a = &p[1];
-  p = strchr(a, '/');
-  if(p == NULL) usage();
-  p[0] = '\0';
-  z = atoi(a);
   if(z < 0 || z > 255) usage();
-
-  p++;
-  n = atoi(p);
   if(n < 0 || n > 32) usage();
 
   m = qs_mask[32-n];
