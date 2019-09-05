@@ -42,6 +42,11 @@ static void usage() {
 }
 
 typedef struct {
+  int id;
+  char code[3];
+} qs_location_t;
+
+typedef struct {
   int w;
   int x;
   int y;
@@ -84,43 +89,59 @@ static const qs_mask_t qs_mask[] = {
   { 0, 0, 0, 0 }
 };
 
-static int resolveCountry(FILE *file, int id, char *country_iso_code) {
+static qs_location_t *loadCountry(FILE *file, int *locationTableSize) {
+  qs_location_t *locationTable = NULL;
   char line[MAX_LINE], raw[MAX_LINE];
-  country_iso_code[0] = '\0';
+  char country_iso_code[32];
+  int position = 0;
   while(fgets(line, sizeof(line), file) != NULL) {
     if(strstr(line, "geoname_id") == NULL) {
+      position++;
+    }
+  }
+  fseek(file, 0, SEEK_SET);
+  locationTable = calloc(position, sizeof(qs_location_t));
+  position = 0;
+  while(fgets(line, sizeof(line), file) != NULL) {
+    if(strstr(line, "geoname_id") == NULL) {
+      char *next;
       int geoname_id;
       char locale_code[32], continent_code[32];
       sscanf(line, "%d,%2s,%2s,%256c", &geoname_id,
 	     locale_code, continent_code, raw);
-      if(geoname_id == id) {
-	char *next = strchr(raw, ',');
-	if(next) {
-	  sscanf(next, ",%2s,", country_iso_code);
-	  if(country_iso_code[0] == ',') {
-	    strcpy(country_iso_code, continent_code);
-	  }
-	  goto found;
+      next = strchr(raw, ',');
+      if(next) {
+	sscanf(next, ",%2s,", country_iso_code);
+	if(country_iso_code[0] == ',') {
+	  strcpy(country_iso_code, continent_code);
 	}
-	fprintf(stderr, "ERROR, unexpected line '%s'\n", line);
-	goto wrongSyntax;
       }
+      locationTable[position].id = geoname_id;
+      strncpy(locationTable[position].code, country_iso_code, 2);
+      position++;
     }
   }
+  *locationTableSize = position;
+  return locationTable;
+}
 
- wrongSyntax:
-  fseek(file, 0, SEEK_SET);
-  return 1;
-
- found:
-  fseek(file, 0, SEEK_SET);
-  return 0;
+static const char *resolveCountry(qs_location_t * locationTable, int locationTableSize, int id) {
+  int position = 0;
+  while(position < locationTableSize) {
+    if(locationTable[position].id == id) {
+      return locationTable[position].code;
+    }
+    position++;
+  }
+  return NULL;
 }
 
 int main(int argc, const char * const argv[]) {
   FILE *blockFile;
   FILE *locationFile;
   char line[MAX_LINE];
+  qs_location_t *locationTable = NULL;
+  int locationTableSize = 0;
 
   argc--;
   argv++;
@@ -138,9 +159,14 @@ int main(int argc, const char * const argv[]) {
     fprintf(stderr, "ERROR, failed to open location file '%s'\n", *argv);
     exit(1);
   }
+  locationTable = loadCountry(locationFile, &locationTableSize);
+  fclose(locationFile);
+  if(locationTableSize < 1) {
+    fprintf(stderr, "ERROR, failed to read location file '%s'\n", *argv);
+    exit(1);
+  }
 
   while(fgets(line, sizeof(line), blockFile) != NULL) {
-    char country_iso_code[32];
     int w,x,y,z,n;
     int geoname_id, registered_country_geoname_id,
       represented_country_geoname_id;
@@ -149,7 +175,8 @@ int main(int argc, const char * const argv[]) {
 	   &represented_country_geoname_id);
     if(geoname_id > 0) {
       qs_mask_t m;
-      if(resolveCountry(locationFile, geoname_id, country_iso_code) != 0) {
+      const char *country_iso_code = resolveCountry(locationTable, locationTableSize, geoname_id);
+      if(country_iso_code == NULL) {
 	fprintf(stderr, "ERROR, failed to resolve %d\n", geoname_id);
 	exit(1);
       }
@@ -164,7 +191,6 @@ int main(int argc, const char * const argv[]) {
   }
 
   fclose(blockFile);
-  fclose(locationFile);
 
   return 0;
 }
