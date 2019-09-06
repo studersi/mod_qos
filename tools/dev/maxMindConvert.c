@@ -2,10 +2,12 @@
  * Converts GeoLite2 Country CSV files into the a format
  * which can be loaded by mod_qos.
  *
- * The GeoLite2-Country-CSV_<date>.zip archive contains
- * the IP range/block defintion file "GeoLite2-Country-Blocks-IPv4.csv"
+ * The GeoLite2-Country-CSV_<date>.zip archive contains the 
+ * IP range/block defintion file "GeoLite2-Country-Blocks-IPv4.csv"
  * as well as the ISO 3166 country code block mapping file
  * "GeoLite2-Country-Locations-en.csv".
+ * This tool merges those two files into one by adding the
+ * country code to each IP range definition.
  *
  * Copyright (C) 2019 Pascal Buchbinder
  *
@@ -95,9 +97,7 @@ static qs_location_t *loadCountry(FILE *file, int *locationTableSize) {
   char country_iso_code[32];
   int position = 0;
   while(fgets(line, sizeof(line), file) != NULL) {
-    if(strstr(line, "geoname_id") == NULL) {
-      position++;
-    }
+    position++;
   }
   fseek(file, 0, SEEK_SET);
   locationTable = calloc(position, sizeof(qs_location_t));
@@ -107,18 +107,19 @@ static qs_location_t *loadCountry(FILE *file, int *locationTableSize) {
       char *next;
       int geoname_id;
       char locale_code[32], continent_code[32];
+      country_iso_code[0] = '\0';
       sscanf(line, "%d,%2s,%2s,%256c", &geoname_id,
 	     locale_code, continent_code, raw);
       next = strchr(raw, ',');
       if(next) {
 	sscanf(next, ",%2s,", country_iso_code);
 	if(country_iso_code[0] == ',') {
-	  strcpy(country_iso_code, continent_code);
+	  strncpy(country_iso_code, continent_code, 2);
 	}
+	locationTable[position].id = geoname_id;
+	strncpy(locationTable[position].code, country_iso_code, 2);
+	position++;
       }
-      locationTable[position].id = geoname_id;
-      strncpy(locationTable[position].code, country_iso_code, 2);
-      position++;
     }
   }
   *locationTableSize = position;
@@ -140,6 +141,7 @@ int main(int argc, const char * const argv[]) {
   FILE *blockFile;
   FILE *locationFile;
   char line[MAX_LINE];
+
   qs_location_t *locationTable = NULL;
   int locationTableSize = 0;
 
@@ -177,7 +179,7 @@ int main(int argc, const char * const argv[]) {
       qs_mask_t m;
       const char *country_iso_code = resolveCountry(locationTable, locationTableSize, geoname_id);
       if(country_iso_code == NULL) {
-	fprintf(stderr, "ERROR, failed to resolve %d\n", geoname_id);
+	fprintf(stderr, "ERROR, failed to resolve id %d\n", geoname_id);
 	exit(1);
       }
       m = qs_mask[32-n];
