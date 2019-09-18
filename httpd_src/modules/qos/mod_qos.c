@@ -13035,7 +13035,7 @@ const char *qos_max_conn_close_cmd(cmd_parms *cmd, void *dcfg, const char *numbe
     sconf->max_conn_close = atoi(n);
     sconf->max_conn_close_percent = sconf->max_conn_close;
     if(sconf->max_conn_close > 99) {
-      return apr_psprintf(cmd->pool, "%s: number must be a percentage <99", 
+      return apr_psprintf(cmd->pool, "%s: number must be a percentage <100", 
                           cmd->directive->directive);
     }
   } else {
@@ -13043,7 +13043,7 @@ const char *qos_max_conn_close_cmd(cmd_parms *cmd, void *dcfg, const char *numbe
     sconf->max_conn_close_percent = 0;
   }
   if(sconf->max_conn_close == 0) {
-    return apr_psprintf(cmd->pool, "%s: number must be numeric value >0", 
+    return apr_psprintf(cmd->pool, "%s: number must be >0", 
                         cmd->directive->directive);
   }
   return NULL;
