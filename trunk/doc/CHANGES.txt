@@ -3,6 +3,9 @@ Version 11.64
  - Updated request header filter rules (allows signed HTTP exchanges content
    type in Accept header).
 
+ - qsgeo: New pattern to detect "readable" format (no longer adding IP address
+   range twice for some file formats).
+
 Version 11.63
 
  - Adds the option 'jsredirect' to the QS_UserTrackingCookieName directive:
