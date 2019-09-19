@@ -24,7 +24,7 @@ END
 CLIENT
 _EXEC ./sleep.sh 55 1>/dev/null
 _SLEEP 7100
-_EXPECT EXEC "mod_qos\(200\): { \"scoreboard\": { \"open\": 896, \"waiting\": 125, \"read\": 2, \"write\": 1, .*{ \"max\": 256, \"busy\": 3 }"
+_EXPECT EXEC "mod_qos\(200\): { \"scoreboard\": { \"open\": 896, \"waiting\": 125, \"read\": 2, \"write\": 1, .*{ \"max\": 256, \"busy\": 3, \"QS_AllConn\": 3 }"
 
 _MATCH EXEC " ([0-9]+:[0-9]+:[0-9]+) " DATE
 _EXEC grep "mod_qos(200)" logs/error_log | tail -1

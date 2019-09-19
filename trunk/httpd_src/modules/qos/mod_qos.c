@@ -6359,6 +6359,57 @@ static apr_status_t qos_cleanup_status_thread(void *selfv) {
   return APR_SUCCESS;
 }
 
+// checks if connection counting is enabled (any host)
+static int qos_count_connections(qos_srv_config *sconf) {
+  server_rec *s = sconf->base_server;
+  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+  if(QS_COUNT_CONNECTIONS(bsconf)) {
+    return 1;
+  }
+  s = s->next;
+  while(s) {
+    qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    if(QS_COUNT_CONNECTIONS(sc)) {
+      return 1;
+    }
+    s = s->next;
+  }
+  return 0;
+}
+
+// total (server/all hosts) conections
+static int qos_server_connections(qos_srv_config *sconf) {
+  server_rec *s = sconf->base_server;
+  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+  int connections = bsconf->act->conn->connections;
+  s = s->next;
+  while(s) {
+    qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
+    if(sc->act->conn != bsconf->act->conn) {
+      // server has either his own counter or the base server's counter
+      connections += sc->act->conn->connections;
+    }
+    s = s->next;
+  }
+  return connections;
+  /*
+  int i, j;
+  worker_score *ws_record;
+  process_score *ps_record;
+  for(i = 0; i < sconf->server_limit; ++i) {
+    ps_record = ap_get_scoreboard_process(i);
+    for(j = 0; j < sconf->thread_limit; ++j) {
+      ws_record = ap_get_scoreboard_worker(i, j);
+      if(!ps_record->quiescing && ps_record->pid) {
+        if(ws_record->status == SERVER_READY && ps_record->generation == qos_my_generation) {
+          ready++;
+        }
+      }
+    }
+  }
+  */ 
+}
+
 /**
  * Status logger thread
  *
@@ -6372,6 +6423,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
   while(!s->exit) {
     char clientContentTypes[8192];
+    char allConn[64];
     int s_busy = 0;
     int s_open = 0;
     int s_ready = 0;
@@ -6471,6 +6523,13 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
                    );
         }
       }
+      allConn[0] = '\0';
+      if(qos_count_connections(s->sconf)) {
+        int all_connections = qos_server_connections(s->sconf);
+        snprintf(allConn, 64, ", \"QS_AllConn\": %d",
+                 all_connections
+                 );
+      }
       ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s->sconf->base_server,
                    QOS_LOG_PFX(200)"{ \"scoreboard\": { "
                    "\"open\": %d, \"waiting\": %d, \"read\": %d, "
@@ -6479,10 +6538,11 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
                    "\"dns\": %d, \"closing\": %d, "
                    "\"finishing\": %d, \"idle\": %d }, "
                    "\"maxclients\": { "
-                   "\"max\": %d, \"busy\": %d }%s }",
+                   "\"max\": %d, \"busy\": %d%s }%s }",
                    s_open, s_ready, s_read, s_write, s_keep, s_start, s_log,
                    s_dns, s_closing, s_usr1, s_kill,
                    s->maxclients, s_busy,
+                   allConn,
                    clientContentTypes);
     }
   }
@@ -6515,57 +6575,6 @@ static void qos_init_status_thread(apr_pool_t *p, qos_srv_config *sconf, int max
   }
 }
 #endif
-
-// checks if connection counting is enabled (any host)
-static int qos_count_connections(qos_srv_config *sconf) {
-  server_rec *s = sconf->base_server;
-  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-  if(QS_COUNT_CONNECTIONS(bsconf)) {
-    return 1;
-  }
-  s = s->next;
-  while(s) {
-    qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    if(QS_COUNT_CONNECTIONS(sc)) {
-      return 1;
-    }
-    s = s->next;
-  }
-  return 0;
-}
-
-// total (server/all hosts) conections
-static int qos_server_connections(qos_srv_config *sconf) {
-  server_rec *s = sconf->base_server;
-  qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-  int connections = bsconf->act->conn->connections;
-  s = s->next;
-  while(s) {
-    qos_srv_config *sc = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
-    if(sc->act->conn != bsconf->act->conn) {
-      // server has either his own counter or the base server's counter
-      connections += sc->act->conn->connections;
-    }
-    s = s->next;
-  }
-  return connections;
-  /*
-  int i, j;
-  worker_score *ws_record;
-  process_score *ps_record;
-  for(i = 0; i < sconf->server_limit; ++i) {
-    ps_record = ap_get_scoreboard_process(i);
-    for(j = 0; j < sconf->thread_limit; ++j) {
-      ws_record = ap_get_scoreboard_worker(i, j);
-      if(!ps_record->quiescing && ps_record->pid) {
-        if(ws_record->status == SERVER_READY && ps_record->generation == qos_my_generation) {
-          ready++;
-        }
-      }
-    }
-  }
-  */ 
-}
 
 /**
  * client control rules at process connection handler
