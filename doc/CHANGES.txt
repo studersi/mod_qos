@@ -6,6 +6,8 @@ Version 11.64
  - qsgeo: New pattern to detect "readable" format (no longer adding IP address
    range twice for some file formats).
 
+ - QS_Status: adds the QS_AllConn variable to the maxClients object.
+
 Version 11.63
 
  - Adds the option 'jsredirect' to the QS_UserTrackingCookieName directive:
