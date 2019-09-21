@@ -6419,7 +6419,6 @@ static int qos_server_connections(qos_srv_config *sconf) {
 static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
   qsstatus_t *s = selfv;
   int server_limit, thread_limit;
-  qos_user_t *u = qos_get_user_conf(s->sconf->act->ppool);
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_DAEMONS, &server_limit);
   while(!s->exit) {
@@ -6451,7 +6450,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
       }
     }
     if(!s->exit) {
-      apr_global_mutex_lock(s->lock);          /* @CRT47 */
+      apr_global_mutex_lock(s->lock);            /* @CRT47 */
       now = time(NULL);
       if(*s->qsstatustimer <= now) {
         // set next and fetch the data
@@ -6502,6 +6501,7 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
       }
       clientContentTypes[0] = '\0';
       if(s->sconf->qos_cc_prefer) {
+        qos_user_t *u = qos_get_user_conf(s->sconf->act->ppool);
         if(u) {
           unsigned long long html;
           unsigned long long cssjs;
@@ -6525,12 +6525,12 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
       }
       allConn[0] = '\0';
       if(qos_count_connections(s->sconf)) {
-        apr_global_mutex_lock(u->qos_cc->lock);            /* @CRT52 */
+        apr_global_mutex_lock(s->lock);          /* @CRT52 */
         int all_connections = qos_server_connections(s->sconf);
         snprintf(allConn, 64, ", \"QS_AllConn\": %d",
                  all_connections
                  );
-        apr_global_mutex_unlock(u->qos_cc->lock);          /* @CRT52 */
+        apr_global_mutex_unlock(s->lock);        /* @CRT52 */
       }
       ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, s->sconf->base_server,
                    QOS_LOG_PFX(200)"{ \"scoreboard\": { "
