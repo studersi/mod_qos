@@ -1,0 +1,40 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+# get a cookie
+_REQ localhost $QS_PORT_BASE
+__GET /login/vip.cgi HTTP/1.1
+__Host: localhost
+__
+_MATCH headers "MODQOS=(.*); Path" COOKIE_VAL 
+_EXPECT . "200 OK"
+_EXPECT . "!mod-qos-vip"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /app/a/1 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: MODQOS=$COOKIE_VAL
+__
+_EXPECT . "AS1"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "!MODQOS"
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+END

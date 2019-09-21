@@ -1,0 +1,76 @@
+#
+# $Id$
+#
+# QS_ClientIpFromHeader         Y-Forwarded-For
+# SetEnvIfPlus                  User-Agent serializeme QS_Serialize=yes
+# QS_ClientSerialize
+# 
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_TIMEOUT 700000
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=305 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme 1
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=305 HTTP/1.1\" 200 5 \"serializeme 1\" 30[345] . -"
+_EXEC tail -1 logs/access_log
+
+_SLEEP 2000
+
+_REQ localhost $QS_PORT_BASE
+__GET /status?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: verify
+__
+_EXPECT . "QS_LocRequestLimit.* 1"
+_EXPECT . "200 OK"
+_WAIT
+
+END
+
+CLIENT
+_TIMEOUT 700000
+_SLEEP 100
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme 2
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme 2\" 30[12] . s;"
+_EXEC tail -1 logs/access_log
+_EXPECT EXEC "mod_qos\(068\): QS_ClientSerialize exceeds limit of 5 minutes, c=127.0.0.2"
+_EXEC tail -2 logs/error_log
+
+_SLEEP 7000
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme 3
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme 3\" 1 . -"
+_EXEC tail -1 logs/access_log
+
+END

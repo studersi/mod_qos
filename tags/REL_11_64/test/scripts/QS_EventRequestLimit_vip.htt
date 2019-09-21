@@ -1,0 +1,63 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT 3
+_SLEEP 300
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=4&QS_EventRequestLimit=ok HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+
+END
+
+# same as QS_EventRequestLimit.htt, but this time we are a vip user
+CLIENT 1
+_REQ localhost $QS_PORT_BASE
+__GET /login/vip.cgi HTTP/1.1
+__Host: localhost
+__
+_MATCH headers "Set-Cookie: MODQOS=(.*); Path" QOS
+_WAIT
+
+_SLEEP 1000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?QS_EventRequestLimit=ok HTTP/1.1
+__Host: localhost
+__Cookie: MODQOS=$QOS
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+# we are vip as long as we send a valid cookie only
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?QS_EventRequestLimit=ok HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "custom error page"
+_EXPECT . "code=012"
+_EXPECT . "message: request rule"
+_WAIT
+
+END
+
+# allowed
+CLIENT 1
+_SLEEP 5000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=0&QS_EventRequestLimit=ok HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+
+END

@@ -1,0 +1,63 @@
+#
+#   SetEnvIfPlus                  Request_Query limitMe limitEvent
+#   QS_EventLimitCount            limitEvent 5 3
+#   QS_RedirectIf                 limitEvent_Counter (3) http://127.0.0.1/redirect.html?c=$1
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_LOOP 2
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?limitMe HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "root index"
+_WAIT
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?limitMe HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "Location: http://127.0.0.1/redirect.html\?c=3"
+_WAIT
+_CLOSE
+
+_LOOP 2
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?limitMe HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "root index"
+_WAIT
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?limitMe HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(013\): access denied, QS_EventLimitCount rule: limitEvent, max=5, current=6"
+_EXEC tail -1 logs/error_log
+_SLEEP  4000
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?limitMe HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla
+__
+_EXPECT . "200 OK"
+_EXPECT . "root index"
+_WAIT
+
+END

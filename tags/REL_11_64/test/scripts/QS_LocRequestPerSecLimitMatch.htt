@@ -1,0 +1,127 @@
+#
+# $Id$
+#
+#   QS_LocRequestPerSecLimitMatch /ccc/.*     75
+#
+
+INCLUDE scripts/ports
+
+CLIENT 10
+
+_LOOP 23
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 10
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 10
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+_END LOOP
+
+_DATE:GET_TIME START
+
+_LOOP 23
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 10
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 10
+
+_REQ server1 $QS_PORT_BASE1
+__GET /ccc/index.html HTTP/1.1
+__Host: localhost.qos.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_WAIT
+_CLOSE
+_SLEEP 100
+_END LOOP
+
+_DATE:GET_TIME END
+_OP $END SUB $START DELTA
+# DELTA is the time (ms) we required for 1150 requests
+_IF "$DELTA" GT "17000"
+_EXIT FAILED
+_END IF
+_IF "$DELTA" LT "13000"
+_EXIT FAILED
+_END IF
+
+END

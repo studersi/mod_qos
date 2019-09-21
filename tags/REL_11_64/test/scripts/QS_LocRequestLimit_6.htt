@@ -1,0 +1,36 @@
+#
+# test QS_LocRequestLimit
+#
+#   QS_LocRequestLimit         /cgi            5
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT 10
+_REQ localhost $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: QS_LocRequestLimit_6
+_FLUSH
+_SLEEP 1000
+__
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 1
+_SLEEP 3000
+# 5 of 10 requests are allowed
+_EXPECT EXEC "^5$"
+_EXEC tail -10 logs/access_log | grep -c 'GET /cgi/sleep.cgi?s=1 HTTP/1.1\" 200'
+# and passed to the application
+_EXPECT EXEC "^5$"
+_EXEC tail -10 logs/access1_log | grep -c 'QS_LocRequestLimit_6'
+# while the other 5 are denied
+_EXPECT EXEC "^5$"
+_EXEC tail -10 logs/access_log | grep -c 'GET /cgi/sleep.cgi?s=1 HTTP/1.1\" 500'
+END

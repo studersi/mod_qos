@@ -1,0 +1,117 @@
+#
+# $Id$
+#
+#   RedirectMatch                ^/index.html$ http://127.0.0.1:##QS_PORT_BASE##/htt/milestone/admin
+#   QS_MileStone                 deny "^GET /index.html"
+#   QS_MileStone                 deny "^POST /htt/milestone/register*"
+#   QS_MileStone                 deny "^GET /htt/milestone/.*\.zip HTTP/...$"
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D milestone302
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/filter/index.html HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__
+_EXPECT . "==AS1=="
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/milestone/image.zip HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__
+_EXPECT . "custom error page"
+_EXPECT . "code=047"
+_WAIT
+_CLOSE
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path=/;" COOKIE
+_EXPECT . "302"
+_EXPECT . "/htt/milestone/index.html"
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__POST /htt/milestone/register HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Content-Type: application/x-www-form-urlencoded
+__Content-Length: AUTO
+__Cookie: QSSCD=${COOKIE}
+__
+__username=me&password=1234
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path=/;" COOKIE
+_EXPECT . "==AS3=="
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/milestone/image.zip HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: QSSCD=${COOKIE}
+__
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path=/;" COOKIE
+_EXPECT . "==AS4=="
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/filter/index.html HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: QSSCD=${COOKIE}
+__
+_EXPECT . "==AS9=="
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__==AS3==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__==AS4==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__==AS9==
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END

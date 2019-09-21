@@ -1,0 +1,90 @@
+#
+# $Header$
+#
+# mod_qos test configuration using mod_proxy
+#
+# See http://mod-qos.sourceforge.net/ for further
+# details about mod_qos.
+#
+
+ServerName              127.0.0.1
+StartServers            1
+ServerLimit             1
+MinSpareThreads         5
+MaxSpareThreads         32
+ThreadsPerChild         32
+MaxClients              32
+MaxRequestsPerChild     0
+
+User                    ##USR##
+Group                   users
+ServerAdmin             webmaster@127.0.0.1
+ServerRoot              ##ROOT##
+DocumentRoot            ##ROOT##/../test/htdocs/demo
+ServerSignature         off
+HostnameLookups         off
+UseCanonicalName        on
+LockFile                ##ROOT##/logs/accept2.lock
+Timeout                 30
+KeepAlive               on
+MaxKeepAliveRequests    100
+KeepAliveTimeout        5
+
+LimitRequestFields      30
+LimitRequestLine        7168
+
+Options                 FollowSymLinks Indexes Includes
+DefaultType             text/plain
+AddType                 text/html .shtml
+AddOutputFilter         INCLUDES .shtml
+
+LogFormat               "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T %{mod_qos_cr}e %{mod_qos_ev}e %{mod_qos_con}e id=%{UNIQUE_ID}e %{qs_special}e %{content-length}i %{mod_qos_user_id}e #%P"
+
+LogLevel                warn
+ErrorLog                ##ROOT##/logs/error2_log
+PidFile                 ##ROOT##/logs/apache2.pid
+CoreDumpDirectory       ##ROOT##/logs/
+
+TypesConfig             ../test/conf/mime.types
+
+Listen                  server1:##QS_PORT_BASE1##
+<VirtualHost server1:##QS_PORT_BASE1##>
+   SSLEngine              off
+   ServerName             server1    
+
+   TransferLog            "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access2_log -z -g 4 -s 3600 -f"
+   
+   ScriptAlias /a/1.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
+   ScriptAlias /a/2.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
+   ScriptAlias /a/3.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
+   ScriptAlias /a/4.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
+   ScriptAlias /a/5.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
+   ScriptAlias /a/6.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
+   ScriptAlias /a/7.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
+   ScriptAlias /a/8.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
+   ScriptAlias /a/9.jpg ##ROOT##/../test/htdocs/demo/a/1.jpg
+   <Location /a>
+        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Order allow,deny
+        Allow from all
+   </Location>
+
+   ScriptAlias /b ##ROOT##/../test/htdocs/demo/b
+   <Location /b>
+        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Order allow,deny
+        Allow from all
+   </Location>
+   
+   ScriptAlias /c/1.jpg ##ROOT##/../test/htdocs/demo/c/1.jpg
+   ScriptAlias /c/2.jpg ##ROOT##/../test/htdocs/demo/c/1.jpg
+   ScriptAlias /c/3.jpg ##ROOT##/../test/htdocs/demo/c/1.jpg
+   ScriptAlias /c/login.cgi ##ROOT##/../test/htdocs/demo/c/login.cgi
+   <Location /c>
+        Options ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Order allow,deny
+        Allow from all
+   </Location>
+
+</VirtualHost>
+

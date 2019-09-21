@@ -1,0 +1,121 @@
+# 
+# QS_ClientIpFromHeader         Y-Forwarded-For
+# SetEnvIfPlus                  User-Agent serializeme QS_Serialize=yes
+# QS_ClientSerialize
+# 
+# => ensures we always unlock the client (std vs err filter)
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "Location: http"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /htt HTTP/1.1\" 302 [0-9]+ \"serializeme\" 1 . -"
+_EXEC tail -1 logs/access_log
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme 2
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "502 Proxy Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /htt HTTP/1.1\" 502 [0-9]+ \"serializeme 2\" 0 . -"
+_EXEC tail -1 logs/access_log
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /404 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme 3
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "404"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /404 HTTP/1.1\" 404 [0-9]+ \"serializeme 3\" 0 . -"
+_EXEC tail -1 logs/access_log
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme 4
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "404"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /htt HTTP/1.1\" 404 [0-9]+ \"serializeme 4\" 0 . -"
+_EXEC tail -1 logs/access_log
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme 6
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "==AS6=="
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /htt HTTP/1.1\" 200 [0-9]+ \"serializeme 6\" 1 . -"
+_EXEC tail -1 logs/access_log
+
+END
+
+SERVER $QS_PORT_BASE6
+
+_RES
+_SLEEP 1000
+_WAIT
+__HTTP/1.1 302 Found
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__Location: http://localhost:$QS_PORT_BASE6/htt/aaa/index.html?login
+__
+__http://localhost:$QS_PORT_BASE6/htt/aaa/index.html?login
+_CLOSE
+
+_RES
+_WAIT
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 404 Not Found
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__404
+_CLOSE
+
+_RES
+_SLEEP 1000
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS6==
+_CLOSE
+
+END
