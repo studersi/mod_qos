@@ -68,7 +68,7 @@ static const char revision[] = "$Id$";
 #define NUM_EVENT_TABLES   8
 #define QS_GENERATIONS 14
 #define EVENT_DELIM ','
-#define QSEVENTPATH "QSEVENTPATH" /* varibale name to find event definitions */
+#define QSEVENTPATH "QSEVENTPATH" /* variable name to find event definitions */
 #define QSCOUNTERPATH "QSCOUNTERPATH" /* counter rule definitions */
 #define COUNTER_PATTERN "([a-zA-Z0-9_]+):([a-zA-Z0-9_]+)[-]([0-9]+)[*]([a-zA-Z0-9_]+)[/]([0-9]+)=([0-9]+)"
 
@@ -312,10 +312,10 @@ static int qs_tableSelector(const char *str) {
 }
 
 /**
- * Inserts an event entry and delets expired.
+ * Inserts an event entry and deletes expired.
  *
  * @param l_qs_event Pointer to the event list.
- * @param id Identifer, e.g. IP address or user tracking cookie
+ * @param id Identifier, e.g. IP address or user tracking cookie
  * @param type which counter is used (either 'I' or 'U')
  * @return event counter (number of updates) for the provided id
  */
@@ -439,7 +439,7 @@ static void *gcThread(void *argv) {
 
 /**
  * Helper to print an error message when terminating
- * the programm due to an unexpected error.
+ * the program due to an unexpected error.
  */
 static void qerror(const char *fmt,...) {
   char buf[MAX_LINE];
@@ -977,7 +977,7 @@ static void qs_updateEvents(apr_pool_t *pool, char *E, apr_table_t *events) {
     }
     E = sep;
     if(restore) {
-      // suports multiple parsing of the event string
+      // supports multiple parsing of the event string
       restore[0] = EVENT_DELIM;
     }
   }
@@ -1599,7 +1599,7 @@ static void updateStat(apr_pool_t *pool, const char *cstr, char *line) {
   char *k = NULL; /* connections (keep alive requests = 0) */
   char *C = NULL; /* custom patter matching the config file */
   char *s = NULL; /* sum */
-  char *a = NULL; /* avarage 1 */
+  char *a = NULL; /* average 1 */
   char *A = NULL; /* average 2 */
   char *M = NULL; /* max */
   char *E = NULL; /* events */
@@ -2086,7 +2086,7 @@ static void usage(const char *cmd, int man) {
   qs_man_println(man, "  - number of requests within measured time (req)\n");
   qs_man_println(man, "  - bytes sent to the client per second ("NBS")\n");
   qs_man_println(man, "  - bytes received from the client per second ("NBIS")\n");
-  qs_man_println(man, "  - repsonse status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");
+  qs_man_println(man, "  - response status codes within the last minute (1xx,2xx,3xx,4xx,5xx)\n");
   qs_man_println(man, "  - average response duration ("NAV")\n");
   qs_man_println(man, "  - average response duration in milliseconds ("NAVMS")\n");
   qs_man_println(man, "  - distribution of response durations in seconds within the last minute\n");
@@ -2118,7 +2118,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "     Defines the log data format and the positions of data\n");
   qs_man_print(man, "     elements processed by this utility.\n");
   qs_man_print(man, "     See to the 'LogFormat' directive of the httpd.conf file\n");
-  qs_man_print(man, "     to see the format defintions of the servers access log data.\n");
+  qs_man_print(man, "     to see the format definitions of the servers access log data.\n");
   if(man) printf("\n");
   qs_man_println(man, "     %s knows the following elements:\n", cmd);
   qs_man_println(man, "     I defines the client ip address (%%h)\n");
@@ -2179,7 +2179,7 @@ static void usage(const char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -c <path>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Enables the collection of log statitics for different request types.\n");
+  qs_man_print(man, "     Enables the collection of log statistics for different request types.\n");
   qs_man_print(man, "     'path' specifies the necessary rule file. Each rule consists of a rule\n");
   qs_man_print(man, "     identifier and a regular expression to identify a request seprarated\n");
   qs_man_print(man, "     by a colon, e.g., 01:^(/a)|(/c). The regular expressions are matched against\n");

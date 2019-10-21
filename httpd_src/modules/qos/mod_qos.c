@@ -18,7 +18,7 @@
  * used in a reverse proxy.
  *
  * See http://mod-qos.sourceforge.net/ for further
- * details and to optain the latest version of this module.
+ * details and to obtain the latest version of this module.
  *
  * Copyright (C) 2019 Pascal Buchbinder
  *
@@ -1216,7 +1216,7 @@ static char *qos_ip_long2str(apr_pool_t *pool, const void *src) {
  * Converts an ip string to long array (128 bit) representation
  *
  * @param src String representation, e.g. 139.12.33.1 or 1::8
- * @param dst Pointer to array of unsigned long (2) (contains "{ 0, 0 }" on errror)
+ * @param dst Pointer to array of unsigned long (2) (contains "{ 0, 0 }" on error)
  * @return 1 on success, 0 on error
  */
 static int qos_ip_str2long(const char *src, apr_uint64_t *dst) {
@@ -1238,7 +1238,7 @@ static int qos_ip_str2long(const char *src, apr_uint64_t *dst) {
 }
 
 /**
- * Studies pcre pattern (for perfomance improvement) and sets match limits.
+ * Studies pcre pattern (for performance improvement) and sets match limits.
  * @param pool Pool to allocate structure from (or to register cleanup)
  * @param pc Pattern to study
  * @return extra data
@@ -1341,7 +1341,7 @@ static char *qos_load_headerfilter(apr_pool_t *pool, apr_table_t *outHdrFltTable
  * Returns string representation of filter type (for logging purposes)
  * @param pool To allocate string
  * @param type Rule type
- * @retrun Name of the directive used to configure the rule
+ * @return Name of the directive used to configure the rule
  */
 static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
   if(type == QS_DENY_REQUEST_LINE) return apr_pstrdup(pool, "QS_DenyRequestLine");
@@ -1354,7 +1354,7 @@ static char *qos_rfilter_type2text(apr_pool_t *pool, qs_rfilter_type_e type) {
 
 /**
  * Sets unique apache instance id (hopefully) to the global m_hostcore variable
- * @param ptemp Pool to allocate memroy from
+ * @param ptemp Pool to allocate memory from
  * @param s Base server record
  */
 static void qos_hostcode(apr_pool_t *ptemp, server_rec *s) {
@@ -2003,7 +2003,7 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
  * @param r Request to get the IP from the header
  * @param sconf
  * @param cconf (if available) to get the real IP from
- * @param caller Which caller of the methode
+ * @param caller Which caller of the method
  * @param ip6 The client's IP address to be used (pointer to array of unsigned long (2))
  * @return The client's IP address as a string (for logging)
  */
@@ -2603,7 +2603,7 @@ static char *qos_get_remove_cookie(request_rec *r, const char *cookieName) {
         char pre = pt[-1];
         if(pre == ' ' ||
            pre == ';') {
-          // @beginnin of a cookie
+          // @beginning of a cookie
           p = pt;
           pt = NULL;
         } else {
@@ -3952,7 +3952,7 @@ static int qos_json(request_rec *r, qos_dir_config *dconf, const char **query, c
 #endif
         data = copyq;
         if(strlen(data) != len) {
-          *msg = apr_pstrdup(r->pool, "null chracter within data structure in query");
+          *msg = apr_pstrdup(r->pool, "null character within data structure in query");
           return HTTP_BAD_REQUEST;
         }
       } else {
@@ -3965,7 +3965,7 @@ static int qos_json(request_rec *r, qos_dir_config *dconf, const char **query, c
       apr_table_t *tl = apr_table_make(r->pool, 200);
       int rc;
       if(strlen(value) != len) {
-        *msg = apr_pstrdup(r->pool, "null chracter within data structure");
+        *msg = apr_pstrdup(r->pool, "null character within data structure");
         return HTTP_BAD_REQUEST;
       }
       rc = j_val(r->pool, &value, tl, "J", 0);
@@ -4147,7 +4147,7 @@ static int qos_per_dir_rules(request_rec *r, qos_srv_config *sconf,
         deny_rule = 1;
         ex = pcre_exec(rfilter->pr, rfilter->extra, query, query_len, 0, 0, NULL, 0);
       } else if(rfilter->type == QS_DENY_EVENT) {
-        /* event rules are processed seperately */
+        /* event rules are processed separately */
       } else {
         permit_rule = 1;
         ex = pcre_exec(rfilter->pr, rfilter->extra, uri, uri_len, 0, 0, NULL, 0);
@@ -4214,7 +4214,7 @@ static int qos_header_filter(request_rec *r, qos_srv_config *sconf,
         denied += 2;
       }
       if(denied) {
-        char *pattern = apr_psprintf(r->pool, "(pattern=%s, max. lenght=%d)",
+        char *pattern = apr_psprintf(r->pool, "(pattern=%s, max. length=%d)",
                                      he->text, he->size);
         if(he->action == QS_FLT_ACTION_DENY) {
           ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, r,
@@ -4629,7 +4629,7 @@ static void qos_enable_parp(request_rec *r) {
 /** 
  * Generic request validation / sanity check:
  * We ensure to have at least a valid, decoded request uri received.
- * (no futher uri validation required in your code)
+ * (no further uri validation required in your code)
  * @param r
  * @param sconf
  * @return HTTP_BAD_REQUEST for requests which may not be processed by mod_qos, otherwise
@@ -5352,7 +5352,7 @@ static void qos_hp_srv_serialize(request_rec *r, qos_srv_config *sconf,
                     qos_unique_id(r, "037"));
       QS_INC_EVENT(sconf, 37);
       /* remove this request from the queue resp. clear the queue
-         to avaoid a deadlock */
+         to avoid a deadlock */
       apr_global_mutex_lock(sconf->act->lock);     /* @CRT44.1 */
       sconf->act->serialize->q2 = 0;
       sconf->act->serialize->q1 = 0;
@@ -5427,7 +5427,7 @@ static void qos_hp_cc_serialize(request_rec *r, qos_srv_config *sconf, qs_req_ct
                       qos_unique_id(r, "068"));
         QS_INC_EVENT(sconf, 68);
         /* remove this request from the queue resp. clear the queue
-           to avaoid a deadlock */
+           to avoid a deadlock */
         apr_global_mutex_lock(u->qos_cc->lock);          /* @CRT36.1 */
         clientEntry = qos_cc_getOrSet(u->qos_cc, &searchE, apr_time_sec(r->request_time));
         (*clientEntry)->serializeQueue = 0;
@@ -5671,7 +5671,7 @@ static void qos_timeout_pc(conn_rec *connection, qos_srv_config *sconf) {
 /** 
  * determines client behavior based on accessed content types
  *
- * @return 0=normal, -1=unkonwn (not enough data), >=1 abnormal
+ * @return 0=normal, -1=unknown (not enough data), >=1 abnormal
  */
 static int qos_content_type(request_rec *r, qos_srv_config *sconf,
                             qos_s_t *s, qos_s_entry_t *e, int limit) {
@@ -5715,7 +5715,7 @@ static int qos_content_type(request_rec *r, qos_srv_config *sconf,
       int i;
       unsigned int server[5];
       unsigned int client[5];
-      // note: all e->* variables are initialized by "1" to avaoid FPE
+      // note: all e->* variables are initialized by "1" to avoid FPE
       if(sconf->static_on == 1) {
         /* use predefined value */
         unsigned long e_all = e->html + e->img + e->cssjs + e->other + e->notmodified;
@@ -5813,7 +5813,7 @@ static void qos_logger_event_limit(request_rec *r, qos_srv_config *sconf) {
 }
 
 /**
- * client contol rules at log transaction
+ * client control rules at log transaction
  */
 static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rctx) {
   int lowrate = 0;
@@ -6063,7 +6063,7 @@ static void qos_logger_cc(request_rec *r, qos_srv_config *sconf, qs_req_ctx *rct
 }
 
 /**
- * client contol rules at header parser
+ * client control rules at header parser
  */
 static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **uid) {
   int ret = DECLINED;
@@ -6244,7 +6244,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
             seenEvent = apr_pstrcat(r->pool, QS_LIMIT_SEEN, eventName, NULL);
           }
           if(apr_table_get(r->subprocess_env, seenEvent) == NULL) {
-            // first occurance
+            // first occurrance
             apr_table_set(r->subprocess_env, seenEvent, "");
             if((*clientEntryFromHdr)->limit[limitTableIndex].limit == 0) {
               /* .start timer */
@@ -6377,7 +6377,7 @@ static int qos_count_connections(qos_srv_config *sconf) {
   return 0;
 }
 
-// total (server/all hosts) conections
+// total (server/all hosts) connections
 static int qos_server_connections(qos_srv_config *sconf) {
   server_rec *s = sconf->base_server;
   qos_srv_config *bsconf = (qos_srv_config*)ap_get_module_config(s->module_config, &qos_module);
@@ -6644,7 +6644,7 @@ static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t
           // calculate the min. required free connections allowing us to serve request by this IP
           reqSpare = (cconf->sconf->max_clients - cconf->sconf->qos_cc_prefer_limit) * penalty / 12;
           if((cconf->sconf->max_clients - u->qos_cc->connections) < reqSpare) {
-            /* not enougth free connections */
+            /* not enough free connections */
             if(u->qos_cc->connections > cconf->sconf->qos_cc_prefer_limit) {
               *msg = apr_psprintf(cconf->mc->pool, 
                                   QOS_LOG_PFX(066)"access denied%s, "
@@ -6669,7 +6669,7 @@ static int qos_cc_pc_filter(conn_rec *connection, qs_conn_ctx *cconf, qos_user_t
 }
 
 /**
- * calculates the current minimal up/download bandwith
+ * calculates the current minimal up/download bandwidth
  */
 static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
   int req_rate = sconf->req_rate;
@@ -8025,7 +8025,7 @@ static void qos_deflate_contentlength(request_rec *r) {
  * - old (2.0.x, 2.2.x) MPM Apache prefork versions do not unload the
  *   DSO properly or child exit may cause a segfault (pool cleanup)
  * - Apache 2.4 should work but is not yet fully tested
- *   (see CHANGES.txt for more informaton)
+ *   (see CHANGES.txt for more information)
  * - Apache 2.0 does not support all directives (e.g. QS_ClientPrefer) and
  *   we do no longer test against this version (the module does probably
  *   not even compile with version 2.0)
@@ -8056,7 +8056,7 @@ static void qos_version_check(server_rec *bs) {
 }
 
 /**
- * enforces the QS_RedirectIf varibale
+ * enforces the QS_RedirectIf variable
  * @param r
  * @param sconf
  * @param rules Rules array
@@ -8667,7 +8667,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
                        QS_CONN_REMOTEIP(c) == NULL ? "-" : QS_CONN_REMOTEIP(c));
         }
         if(!sconf->log_only) {
-          apr_table_set(c->notes, QS_BLOCK_SEEN, ""); // supress NullConnection messages
+          apr_table_set(c->notes, QS_BLOCK_SEEN, ""); // suppress NullConnection messages
           c->keepalive = AP_CONN_CLOSE;
           c->aborted = 1;
           if(c->cs) {
@@ -8775,7 +8775,7 @@ static int qos_post_read_request_later(request_rec *r) {
         }
       }
     } /* else, "grant access" to the error page */
-    /* but prevent page caching (the browser shall always acces the
+    /* but prevent page caching (the browser shall always access the
        server when redireced to this url */
     apr_table_add(r->headers_out, "Cache-Control", "no-cache, no-store");
   } else if(apr_table_get(r->subprocess_env, QOS_USER_TRACKING_NEW) != NULL) {
@@ -9730,7 +9730,7 @@ static apr_status_t qos_out_filter_body(ap_filter_t *f, apr_bucket_brigade *bb) 
           int blen = nbytes > len ? len : nbytes - 1;
           /* 1. overlap: this buffer avoids that we miss a string if it is cut apart
              within two buckets 
-             e.g., [Logi][n Page] instaed of [Login Page] when searching for "Login Page" */
+             e.g., [Logi][n Page] instead of [Login Page] when searching for "Login Page" */
           if(rctx->body_window == NULL) {
             // first call, create a window buffer
             rctx->body_window = apr_pcalloc(r->pool, (len*2)+1);
@@ -9895,7 +9895,7 @@ static apr_status_t qos_out_filter_delay(ap_filter_t *f, apr_bucket_brigade *bb)
 }
 
 /**
- * Out filter measuring the minimal download bandwith.
+ * Out filter measuring the minimal download bandwidth.
  *
  * @param f
  * @param bb
@@ -9928,7 +9928,7 @@ static apr_status_t qos_out_filter_min(ap_filter_t *f, apr_bucket_brigade *bb) {
 }
 
 /**
- * Merges two  rule tables. Entires whose key/name begin with a "+" are added
+ * Merges two  rule tables. Entries whose key/name begin with a "+" are added
  * while those with a "-" prefix are removed.
  *
  * @param p Pool to allocate new table from.
@@ -10417,7 +10417,7 @@ static int qos_logger(request_rec *r) {
 #endif
 
   if(sconf->qslog_p) {
-    // ISBiDUkEQaC equiv %h %>s %B %{Content-Lenght}i %D %{mod_qos_user_id}e %k %{Event}e %{mod_qos_ev}e %{QS_AllConn}e '%v:%U'
+    // ISBiDUkEQaC equiv %h %>s %B %{Content-Length}i %D %{mod_qos_user_id}e %k %{Event}e %{mod_qos_ev}e %{QS_AllConn}e '%v:%U'
     apr_size_t nbytes;
     const char *clID = apr_table_get(r->subprocess_env, QSLOG_CLID); // client identifier (individual users)
     const char *event = apr_table_get(r->subprocess_env, QSLOG_EVENT); // generic event variable
@@ -10967,7 +10967,7 @@ static int qos_console_dump(request_rec * r, const char *event) {
     int i = 0;
     qos_user_t *u = qos_get_user_conf(sconf->act->ppool);
     qos_s_entry_t **clientEntry = NULL;
-    /* table requires heap (100'000 ~ 4MB) but we avaoid io with drawn lock */
+    /* table requires heap (100'000 ~ 4MB) but we avoid io with drawn lock */
     apr_table_t *iptable = apr_table_make(r->pool, u->qos_cc->max);
     apr_table_entry_t *entry;
     apr_time_t now = apr_time_sec(r->request_time);
@@ -12019,7 +12019,7 @@ const char *qos_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match, con
   rule->regex = ap_pregcomp(cmd->pool, match, REG_EXTENDED);
 #endif
   if(rule->regex == NULL) {
-    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
+    return apr_psprintf(cmd->pool, "%s: failed to compile regular expression (%s)",
                        cmd->directive->directive, match);
   }
   rule->event = NULL;
@@ -12051,11 +12051,11 @@ const char *qos_cond_match_con_cmd(cmd_parms *cmd, void *dcfg, const char *match
   rule->condition = ap_pregcomp(cmd->pool, pattern, REG_EXTENDED);
 #endif
   if(rule->regex == NULL) {
-    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
+    return apr_psprintf(cmd->pool, "%s: failed to compile regular expression (%s)",
                        cmd->directive->directive, match);
   }
   if(rule->condition == NULL) {
-    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
+    return apr_psprintf(cmd->pool, "%s: failed to compile regular expression (%s)",
                        cmd->directive->directive, pattern);
   }
   rule->event = NULL;
@@ -12086,7 +12086,7 @@ const char *qos_match_rs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
   rule->regex = ap_pregcomp(cmd->pool, match, REG_EXTENDED);
 #endif
   if(rule->regex == NULL) {
-    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
+    return apr_psprintf(cmd->pool, "%s: failed to compile regular expression (%s)",
                        cmd->directive->directive, match);
   }
   rule->event = NULL;
@@ -12118,7 +12118,7 @@ const char *qos_match_bs_cmd(cmd_parms *cmd, void *dcfg, const char *match, cons
   rule->regex = ap_pregcomp(cmd->pool, match, REG_EXTENDED);
 #endif
   if(rule->regex == NULL) {
-    return apr_psprintf(cmd->pool, "%s: failed to compile regular expession (%s)",
+    return apr_psprintf(cmd->pool, "%s: failed to compile regular expression (%s)",
                        cmd->directive->directive, match);
   }
   rule->event = NULL;
@@ -14178,7 +14178,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_SrvMaxConnExcludeIP", qos_max_conn_ex_cmd, NULL,
                 RSRC_CONF,
                 "QS_SrvMaxConnExcludeIP <addr>, excludes an IP address or"
-                " address range from beeing limited."),
+                " address range from being limited."),
 
   AP_INIT_FLAG("QS_SrvMaxConnPerIPIgnoreVIP", qos_max_conn_ip_vip_off_cmd, NULL,
                 RSRC_CONF,
@@ -14205,14 +14205,14 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE12("QS_SrvRequestRate", qos_req_rate_cmd, NULL,
                  RSRC_CONF,
                  "QS_SrvRequestRate <bytes per seconds> [<max bytes per second>],"
-                 " defines the minumum upload"
+                 " defines the minimum upload"
                  " throughput a client must generate. See also QS_SrvMinDataRate."),
 
 #ifdef AP_TAKE_ARGV
   AP_INIT_TAKE_ARGV("QS_SrvMinDataRate", qos_min_rate_cmd, NULL,
                     RSRC_CONF,
                     "QS_SrvMinDataRate <bytes per seconds> [<max bytes per second> [<connections>]],"
-                    " defines the minumum upload/download"
+                    " defines the minimum upload/download"
                     " throughput a client must generate (the bytes send/received by the client"
                     " per seconds). This bandwidth is measured while transmitting the data"
                     " (request line, header fields, request body, or response data). The"
@@ -14234,7 +14234,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE2("QS_SrvMinDataRate", qos_min_rate_cmd, NULL,
                     RSRC_CONF,
                     "QS_SrvMinDataRate <bytes per seconds> [<max bytes per second>],"
-                    " defines the minumum upload/download"
+                    " defines the minimum upload/download"
                     " throughput a client must generate (the bytes send/received by the client"
                     " per seconds). This bandwidth is measured while transmitting the data"
                     " (request line, header fields, request body, or response data). The"
@@ -14311,7 +14311,7 @@ static const command_rec qos_config_cmds[] = {
                 " allowed. If a QS_PermitUri pattern has been defined an the"
                 " request does not match any rule, the request is denied albeit of"
                 " any server resource availability (white list). All rules"
-                " must define the same action. pcre is case sensitve."),
+                " must define the same action. pcre is case sensitive."),
 
   AP_INIT_FLAG("QS_DenyBody", qos_denybody_cmd, NULL,
                ACCESS_CONF,
@@ -14498,14 +14498,14 @@ static const command_rec qos_config_cmds[] = {
                  " are set in the request environment variable list (not case"
                  " sensitive). This is used to combine multiple variables"
                  " to a new event type. Alternatively, a regular expression"
-                 " can be specifed for variable1's value and variable2 must be"
+                 " can be specified for variable1's value and variable2 must be"
                  " omitted in order to simply set a new variable if"
                  " the regular expression matches."),
 
   AP_INIT_TAKE_ARGV("QS_SetEnvIfCmp", qos_cmp_cmd, NULL,
                     ACCESS_CONF,
                     "QS_SetEnvIfCmpP <env-variable1> eq|ne|gt|lt <env-variable2> [!]<env-variable>[=<value>],"
-                    " sets the specifed environment variable if the specifed env-variables"
+                    " sets the specified environment variable if the specified env-variables"
                     " are alphabetically or numerical equal (eq), not equal (ne),"
                     " greater (gt), less (lt)."),
 
@@ -14665,7 +14665,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE_ARGV("QS_ClientContentTypes", qos_client_contenttype, NULL,
                     RSRC_CONF,
                     "QS_ClientContentTypes <html> <css/js> <images> <other> <304>,"
-                    " defines the distribution of HTTP response content types a client normaly"
+                    " defines the distribution of HTTP response content types a client normally"
                     " receives when accessing the server. mod_qos normally learns the average"
                     " behavior automatically by default but you may specify a static configuration"
                     " in order to avoid influences by a high number of abnormal clients."),
@@ -14680,7 +14680,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ClientEventBlockExcludeIP", qos_client_ex_cmd, NULL,
                  RSRC_CONF,
                  "QS_ClientEventBlockExcludeIP <addr>, excludes an IP address or"
-                " address range from beeing limited by QS_ClientEventBlockCount."),
+                " address range from being limited by QS_ClientEventBlockCount."),
 
   AP_INIT_TAKE123("QS_ClientEventLimitCount", qos_client_limit_cmd, NULL,
                   RSRC_CONF,
@@ -14714,7 +14714,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_TAKE1("QS_ClientEventRequestLimit", qos_client_event_req_cmd, NULL,
                 RSRC_CONF,
                 "QS_ClientEventRequestLimit <number>, defines the allowed"
-                " number of concurrent requests comming from the same client"
+                " number of concurrent requests coming from the same client"
                 " source IP address"
                 " having the QS_EventRequest variable set."
                 " Directive is allowed in global server context only."),
@@ -14722,7 +14722,7 @@ static const command_rec qos_config_cmds[] = {
   AP_INIT_NO_ARGS("QS_ClientSerialize", qos_client_serial_cmd, NULL,
                   RSRC_CONF,
                   "QS_ClientSerialize, serializes requests having the "QS_SERIALIZE" variable"
-                  " set if they are comming from the same IP address."),
+                  " set if they are coming from the same IP address."),
 
   AP_INIT_TAKE1("QS_ClientIpFromHeader", qos_client_forwardedfor_cmd, NULL,
                 RSRC_CONF,
@@ -14883,7 +14883,7 @@ static void qos_register_hooks(apr_pool_t * p) {
  ***********************************************************************/
 module AP_MODULE_DECLARE_DATA qos_module ={ 
   STANDARD20_MODULE_STUFF,
-  qos_dir_config_create,                    /**< dir config creater */
+  qos_dir_config_create,                    /**< dir config creator */
   qos_dir_config_merge,                     /**< dir merger */
   qos_srv_config_create,                    /**< server config */
   qos_srv_config_merge,                     /**< server merger */

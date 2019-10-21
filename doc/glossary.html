@@ -357,7 +357,7 @@ per second:
 <h2>Serialization</h2>
 <p>
 <a href="index.html">mod_qos</a> offers you the option to serialize requests. 
-Serialization means, that requests are processed one after the other. Incomming
+Serialization means, that requests are processed one after the other. Incoming
 requests are queued if another request is in process and have to wait until
 the previous request is finished.
 </p>
@@ -376,7 +376,7 @@ Requests, which shall be serialized, are tagged by one of the following
 Serialization might be applied on a per 
 <a href="index.html#QS_SrvSerialize">server level</a> (serializing all HTTP
 requests) or on a <a href="index.html#QS_ClientSerialize">per client level</a>
-(serializing multiple requests comming from the same client/IP address).
+(serializing multiple requests coming from the same client/IP address).
 </p>
 
 
@@ -571,7 +571,7 @@ CustomLog "|/usr/bin/qslog -o logs/qslog.csv -x -f ISBDk" "%h %&gt;s %b %D %k"
 </table>
 </p><p>
 Or you can use it to process any existing log file using the post processing 
-optin <code>-p</code>. This does not only work for 
+option <code>-p</code>. This does not only work for 
 <a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">Apache log  <img src="images/link.png"/></a> files but for any other log file as well. You just have to know what's in the log 
 and configure the format string argument <code>-f</code> of the 
 <code><a href="qslog.1.html">qslog</a></code> command accordingly.
@@ -581,7 +581,7 @@ Example:<br>
 <img src="images/qslogFormat.png" height="381" width="738" alt="log format definition"/>  
 </p>
 <p>
-The ouput shows the data as a function of time: a summary of what happened every minute. 
+The output shows the data as a function of time: a summary of what happened every minute. 
 Each line includes all measured values as semicolon spearated name/value pairs (CSV).
 </p>
 <p>

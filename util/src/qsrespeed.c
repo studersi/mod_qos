@@ -82,7 +82,7 @@ static void usage(const char *cmd, int man) {
     printf("Summary\n");
   }
   qs_man_print(man, "%s loads regular expressions from the provided file and matches\n", cmd);
-  qs_man_print(man, "them against a build-in set of strings measuring the time needed to\n");
+  qs_man_print(man, "them against a built-in set of strings measuring the time needed to\n");
   qs_man_print(man, "process them. It's a benchmark too to judge the expressions you have\n");
   qs_man_print(man, "defined regarding the potential CPU consumption.\n");
   printf("\n");
@@ -250,7 +250,7 @@ int main(int argc, const char *const argv[]) {
       
       rule->pc = pcre_compile(p, PCRE_DOTALL|PCRE_CASELESS, &errptr, &erroffset, NULL);
       if(rule->pc == NULL) {
-	printf("faild to compile pattern [%s], reason: %s\n", p, errptr);
+	printf("failed to compile pattern [%s], reason: %s\n", p, errptr);
 	exit(1);
       }
       rule->extra = pcre_study(rule->pc, 0, &errptr);
