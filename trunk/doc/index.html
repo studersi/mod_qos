@@ -460,7 +460,7 @@ concurrent requests.. Has lower priority than
 <a name="QS_LocKBytesPerSecLimit"></a>
 <syntax>QS_LocKBytesPerSecLimit &lt;location&gt; &lt;number&gt;</syntax><br>
 Throttles the download <a href="glossary.html#throughput">bandwidth</a> to the defined
-kbytes per second. Works simlar as the
+kbytes per second. Works similar as the
 <a href="#QS_LocKBytesPerSecLimitMatch"><code>QS_LocKBytesPerSecLimitMatch</code></a> 
 directive slowing down HTTP responses by adding a delay to each response. 
 By default, no limitation is active. This directive should be used in 
@@ -933,7 +933,7 @@ directive are stored within the variable whose name is suffixed by
 <a name="QS_ErrorNotes"></a>
 <syntax>QS_ErrorNotes</syntax><br>
 The error code (number only) of a mod_qos <a href="#errorlog">log message</a> 
-that has occured during a request.
+that has occurred during a request.
 </li>
 <li>
 <a name="QS_Country"></a>
@@ -1051,7 +1051,7 @@ Directive works similar to
 <code><a href="#QS_LocRequestLimit">QS_LocRequestLimit</a></code>, but 
 counts the requests having the same environment variable (and optionally 
 matching its value, too) rather than those that have the same URL pattern. 
-<br><small><i>Note: The counter's value is stored in the enviroment variable 
+<br><small><i>Note: The counter's value is stored in the environment variable 
 QS_EventRequestLimit_&lt;env-variable&gt;_Counter.
 </i></small>
 </li>
@@ -1152,7 +1152,7 @@ basis.
 <a name="QS_SetEnvIfCmp"></a>
 <li>
 <syntax>QS_SetEnvIfCmp &lt;env-variable1&gt; eq|ne|gt|lt &lt;env-variable2&gt; [!]&lt;env-variable&gt;[=&lt;value&gt;]</syntax><br>
-Sets the defined environment variable if the specifed env-variables[1|2] 
+Sets the defined environment variable if the specified env-variables[1|2] 
 are numerical or alphabetically (case insensitive) equal (<code>eq</code>), 
 not equal (<code>ne</code>) greater (<code>gt</code>), or less (<code>lt</code>).<br> 
 This directive may be used on a per-<a href="http://httpd.apache.org/docs/current/mod/core.html.en#location">location <img src="images/link.png"/></a> 
@@ -1561,7 +1561,7 @@ Sample configuration:<br><a name="qsfiltersample"></a>
 # when <a href="#QS_PermitUriBody">QS_PermitUriBody</a> has been enabled)
 # format:
 #   %h:
-#   The remote host (used to filter by IP adress).
+#   The remote host (used to filter by IP address).
 #   %>s:
 #   The HTTP response status code.
 #   %{qos-loc}n
@@ -1796,7 +1796,7 @@ optional timeout parameter (in seconds). The default is 300 seconds.
 </li>
 <li>
 Throttling the download bandwidth: 
-mod_qos does not support bandwith limitation on a per connection 
+mod_qos does not support bandwidth limitation on a per connection 
 basis but you might use the <code>RATE_LIMIT</code> filter 
 provided by the Apache module 
 <a href="https://httpd.apache.org/docs/2.4/mod/mod_ratelimit.html">mod_ratelimit <img src="images/link.png"/></a> 
@@ -1936,7 +1936,7 @@ if you want to enforce a rule under certain conditions only.</li>
 <syntax>QS_ClientSerialize</syntax><br>
 <a href="glossary.html#serialization">Serializes</a> requests having the
 <a href="#QS_Serialize"><code>QS_Serialize</code></a> 
-variable set if they are comming from the same IP address.<br>
+variable set if they are coming from the same IP address.<br>
 <small><i>Notes:
 <ul>
 <li>You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
@@ -1962,7 +1962,7 @@ grows.
 <code><a href="#QS_VipIPHeaderName">QS_VipIPHeaderName</a></code> 
 directive in order to identify <a href="#privilegedusers">VIP</a> clients.<br>
 The distinction between high and low priority clients is made
-based on penality points which are calculated based of these attributes:
+based on penalty points which are calculated based of these attributes:
 <ul>
 <li>Data transfer behavior (clients sending data slowly / their transfer rate) (0x01).</li>
 <li>Accessing "unusual" content types (see <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> 
@@ -1991,7 +1991,7 @@ the <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code> directive. Defau
 <li>
 <a name="QS_ClientContentTypes"></a>
 <syntax>QS_ClientContentTypes &lt;html&gt; &lt;css/js&gt; &lt;images&gt; &lt;other&gt; &lt;304&gt;</syntax><br>
-Defines the distribution of HTTP response content types a client normaly 
+Defines the distribution of HTTP response content types a client normally 
 receives when accessing the server. Can only be used in conjunction with the 
 <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code> directive. 
 <code><a href="#QS_ClientTolerance">QS_ClientTolerance</a></code> defines 
@@ -2156,7 +2156,7 @@ at all which might be a requirement of your application.</li>
 <li><code>domain</code> defines optionally the domain attribute for 
 the Set-Cookie header.</li>
 <li>The <code>session</code> flag indicates that a short lived (per 
-session) cookie shall be creaed which won't be stored by the browser 
+session) cookie shall be created which won't be stored by the browser 
 permanently.</li>
 </ul>
 <small><i>
@@ -2176,7 +2176,7 @@ The following <a href="glossary.html#ssi">SSI variables</a> can be used:<ul>
 <li><code>QS_UT_QUERY</code>: Query string to call (ajax) the cookie 
 page again to obtain the cookie.</li>
 <li><code>QS_UT_NAME</code>: Name of the cookie.</li>
-<li><code>QS_UT_INITIAL_URI</code>: Inital page to redirect to.</li>
+<li><code>QS_UT_INITIAL_URI</code>: Initial page to redirect to.</li>
 </ul>
 </ul>
 </li>
@@ -2273,13 +2273,13 @@ The status information is also provided on the server status page of
 <a href="http://httpd.apache.org/docs/current/mod/mod_status.html">mod_status <img src="images/link.png"/></a> 
 (although in a reduced scope).<br>
 <small><i>Note: Compile mod_qos with the preprocessor definition 
-<code>-DQS_NO_STATUS_HOOK</code> to disable its regisration to 
+<code>-DQS_NO_STATUS_HOOK</code> to disable its registration to 
 the status page rendered by mod_status.</i></small>
 </p>
 <p>
 <a name="QS_DisableHandler"></a>
 Use the directive <code>QS_DisableHandler on</code> to disable the qos-viewer and qos-console for 
-a virtual host in order to prevent accidental activation of these functions, includng by configuration 
+a virtual host in order to prevent accidental activation of these functions, including by configuration 
 settings of per-directory files (e.g., .htaccess).
 </p>
 <p>
@@ -2430,7 +2430,7 @@ similar to Apache's <code>rotatelogs</code>.</li>
 <a name="qssign"></a>
 <li><syntax><a href="qssign.1.html">qssign</a></syntax><br>A log data integrity 
 check tool. It reads log data from stdin (pipe) and writes the signed data 
-to stdout adding a sequence number and signatur to ever log line.<br>
+to stdout adding a sequence number and signature to ever log line.<br>
 <a href="https://sourceforge.net/p/mod-qos/source/HEAD/tree/trunk/tools/logstash-filter-qssign/lib/logstash/filters/qssign.rb?format=raw"><code>qssign.rb</code></a> is a <a href="http://www.logstash.net/">Logstash <img src="images/link.png"/></a> filter 
 plugin which may be used to verify the signatures of log messages in real time.</li>
 <a name="qstail"></a>
@@ -2473,7 +2473,7 @@ MaxClients              256
 </td></tr>
 </table>
 The <code><a href="qslog.1.html">qslog</a></code> tool may be used 
-to analyze your log files in order to idenitify "slow" resources by 
+to analyze your log files in order to identify "slow" resources by 
 using the <code>-pu</code>, <code>-puc</code>, or <code>-c</code> option.
 </p>
 
@@ -2509,7 +2509,7 @@ A single client may open many TCP connections simultaneously in order to
 download different content from the web server. So the client gets many 
 connections while other users may not be able to access the server because
 no free connections remain for them. mod_qos can limit the number 
-of concurrent connections for a singe IP source address. 
+of concurrent connections for a single IP source address. 
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
@@ -2533,7 +2533,7 @@ MaxClients              896
 If you have to limit the number of requests to an URL, mod_qos can help 
 with that, too. You may limit the number of requests per second to 
 an URL. mod_qos will then calculate the necessary delay time to be added 
-to each requests accessing this resource in order to achive the defined 
+to each requests accessing this resource in order to achieve the defined 
 limitation. 
 <br><br>Example:<br>
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
@@ -2635,7 +2635,7 @@ directive.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
 <pre>
-# allows a single IP addess to access the URI /wp-login.php not more
+# allows a single IP address to access the URI /wp-login.php not more
 # than 10 times within an hour:
 SetEnvIf                 Request_URI ^/wp-login.php LimitLogin
 <a href="#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a> 10 3600 LimitLogin

@@ -310,7 +310,7 @@ void qs_signal_exit(int e) {
 }
 
 /**
- * Tries to find out a suiteable log line format which is used
+ * Tries to find out a suitable log line format which is used
  * to log sign end messages (so let the verifier known, that the
  * data ends nothing has been cut off).
  *
@@ -517,7 +517,7 @@ static long qs_verify(const char *sec) {
       if(strcmp(m, sig) != 0) {
 	err++;
 	fprintf(stderr, "ERROR on line %ld: invalid signature\n", lineNumber);
-	/* message may be modified/currupt or inserted: next line may have
+	/* message may be modified/corrupt or inserted: next line may have
 	   the next sequence number (modified) or the same (inserted) */
 	nr_alt = m_nr + 1;
 	nr_alt_lineNumber = lineNumber + 1;
@@ -534,9 +534,9 @@ static long qs_verify(const char *sec) {
       } else {
 	if(m_nr != -1) {
 	  if(lineNumber == nr_alt_lineNumber) {
-	    // last line was modfied
+	    // last line was modified
 	    if(m_nr != msgSeqNr) {
-	      // and therefore, we also accept the next seqence number
+	      // and therefore, we also accept the next sequence number
 	      m_nr = nr_alt;
 	    }
 	    nr_alt = -1;
@@ -629,7 +629,7 @@ static void usage(char *cmd, int man) {
   }
   qs_man_print(man, "%s is a log data integrity check tool. It reads log data\n", cmd);
   qs_man_print(man, "from stdin (pipe) and writes the data to stdout adding a sequence\n");
-  qs_man_print(man, "number and signatur to ever log line.\n");
+  qs_man_print(man, "number and signature to ever log line.\n");
   printf("\n");
   if(man) {
     printf(".SH OPTIONS\n");

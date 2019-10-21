@@ -65,7 +65,7 @@ static char *checkedHosts = NULL;
  */
 static void usage(char *cmd) {
   printf("\n");
-  printf("Monitor programm testing the TCP connectivity to servers.\n");
+  printf("Monitor program testing the TCP connectivity to servers.\n");
   printf("\n");
   printf("Usage: %s -c <httpd.conf> [-v]\n", cmd);
   printf("\n");

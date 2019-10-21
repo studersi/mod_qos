@@ -52,7 +52,7 @@ static const char revision[] = "$Id$";
 static int m_default_severity = LOG_NOTICE;
 
 /**
- * Similar to standard strstr() but case insensitive and lenght limitation
+ * Similar to standard strstr() but case insensitive and length limitation
  * (string which is not 0 terminated).
  *
  * @param s1 String to search in
@@ -135,7 +135,7 @@ static int qsgetprio(const char *priorityname, int len) {
  * regular expression and determinest the priofity using
  * qsgetprio().
  *
- * @param preg Regular expression to extract the serverity
+ * @param preg Regular expression to extract the severity
  * @param line Log fline to extract the severity from
  * @return Level or LOG_NOTICE (see m_default_severity) if level could not be determined.
  */
@@ -264,7 +264,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "  -l <level>\n");
   if(man) printf("\n");
   qs_man_print(man, "     Defines the minimal severity a message must have in order to\n");
-  qs_man_print(man, "     be forwarded. Default is 'DEBUG' (fowarding everything).\n");
+  qs_man_print(man, "     be forwarded. Default is 'DEBUG' (forwarding everything).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -x <prefix>\n");
   if(man) printf("\n");
@@ -284,7 +284,7 @@ static void usage(const char *cmd, int man) {
   qs_man_print(man, "  -d <level>\n");
   if(man) printf("\n");
   qs_man_print(man, "     The default severity if the specified pattern (-r) does not\n");
-  qs_man_print(man, "     match and the message's serverity can't be determined. Default\n");
+  qs_man_print(man, "     match and the message's severity can't be determined. Default\n");
   qs_man_print(man, "     is 'NOTICE'.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -p\n");

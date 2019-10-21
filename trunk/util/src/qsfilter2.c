@@ -373,7 +373,7 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, " users or to protect the server from malicious patterns. The\n");
   qs_man_print(man, " QS_Permit* rules implement a positive security model (whitelist).\n");
   qs_man_print(man, " These directives are used to define allowed request line patterns.\n");
-  qs_man_print(man, " Request which do not match any of thses patterns are not allowed\n");
+  qs_man_print(man, " Request which do not match any of these patterns are not allowed\n");
   qs_man_print(man, " to access the server.\n");
   if(man) printf("\n\n");
   qs_man_print(man, " %s is an audit log analyzer used to generate filter\n", cmd);
@@ -393,7 +393,7 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "     Input file containing request URIs.\n");
   qs_man_print(man, "     The URIs for this file have to be extracted from the servers\n");
   qs_man_print(man, "     access logs. Each line of the input file contains a request\n");
-  qs_man_print(man, "     URI consiting of a path and and query.\n");
+  qs_man_print(man, "     URI consisting of a path and and query.\n");
   printf("\n");
   printf("     Example:\n");
   qs_man_println(man, "       /aaa/index.do\n");
@@ -450,7 +450,7 @@ static void usage(char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -p\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Repesents query by pcre only (no literal strings).\n");
+  qs_man_print(man, "     Represents query by pcre only (no literal strings).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -s\n");
   if(man) printf("\n");
@@ -458,7 +458,7 @@ static void usage(char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -m\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Uses one pcre for multipe query values (recommended mode).\n");
+  qs_man_print(man, "     Uses one pcre for multiple query values (recommended mode).\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -o\n");
   if(man) printf("\n");
@@ -1114,7 +1114,7 @@ static char *qos_query_string_pcre(apr_pool_t *pool, const char *path) {
     return ret;
   } else {
     return ret;
-    /* it woud be nice to use (see -o):
+    /* it would be nice to use (see -o):
      *  ((a=b)?(c=d)?)* 
      * instead of:
      *  (a=b)?(c=d)? and (c=d)?(a=b)?

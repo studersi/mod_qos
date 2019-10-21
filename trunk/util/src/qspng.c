@@ -86,7 +86,7 @@ static const qs_png_elt_t qs_png_elts[] = {
   { "qV", "created VIP sessions",  55, 50, 155 },
   { "qS", "session pass",          55, 75, 160 },
   { "qD", "access denied",         55, 70, 170 },
-  { "qK", "conection closed",      55, 60, 145 },
+  { "qK", "connection closed",      55, 60, 145 },
   { "qT", "dynamic keep-alive",    55, 55, 153 },
   { "qL", "slow down",             55, 65, 140 },
   { "qA", "connection aborts",     55, 50, 175 },
@@ -400,7 +400,7 @@ static void lp_init(int width, int height, int border, png_bytep **start) {
  * "Main" png function:
  * - reads the data from the file
  * - draws the curve
- * - lables the x axis
+ * - labels the x axis
  *
  * @param width IN size (x axis) of the graph
  * @param height IN size (y axis) of the graph
@@ -426,14 +426,14 @@ static long qs_png_draw(int width, int height, int border,
   char line[HUGE_STRING_LEN];
 
   long peak = 0;           // max of all values
-  double scale = 1;        // scaling factor (heigth x scale = unit)
+  double scale = 1;        // scaling factor (height x scale = unit)
 
   int hour = -1;           // detect "new" hour
   char date_str[32] = "";  // sting storing the first day (if fist value is at 00h)
 
   long ret;
   for(x=0; x<width; x++) hours[x] = 0;
-  /* reads the file and resample measure points to witdh of the graph */
+  /* reads the file and resample measure points to width of the graph */
   while(!qs_png_getline(line, sizeof(line), stat_log) && i < width) {
     char *p = strstr(line, name);
     req[i] = 0;
@@ -486,7 +486,7 @@ static long qs_png_draw(int width, int height, int border,
       sample++;
     }
   }
-  /* calculate y axis scaling (1:1 are heigth pixels) */
+  /* calculate y axis scaling (1:1 are height pixels) */
   if(peak < 10) {
     scale = 0.1;
   } else {

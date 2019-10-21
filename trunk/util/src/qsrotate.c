@@ -365,7 +365,7 @@ int main(int argc, char **argv) {
     cmd++;
   }
   m_cmd = calloc(1, strlen(cmd)+1);
-  strcpy(m_cmd, cmd); // copy as we wan't to pass it when forking
+  strcpy(m_cmd, cmd); // copy as we can't pass it when forking
 
   while(argc >= 1) {
     if(strcmp(*argv,"-o") == 0) {

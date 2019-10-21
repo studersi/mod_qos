@@ -18,7 +18,7 @@ Version 11.63
    - QS_UT_QUERY: query string to call (ajax) the cookie page again to
                   obtain the cookie.
    - QS_UT_NAME: name of the cookie
-   - QS_UT_INITIAL_URI: inital page to redirect to
+   - QS_UT_INITIAL_URI: initial page to redirect to
    Sample page: http://mod-qos.sourceforge.net/cookie-ir.shtml
 
 Version 11.62
@@ -46,7 +46,7 @@ Version 11.60
 Version 11.59
 
  - QS_EventRequestLimit writes the current counter value to the
-   QS_EventRequestLimit_<env-variable>_Counter envrionment variable.
+   QS_EventRequestLimit_<env-variable>_Counter environment variable.
 
  - New directive QS_SetEnvIfCmp.
 
@@ -158,7 +158,7 @@ Version 11.43
 Version 11.42c
 
  - qslog supports QSCOUNTERPATH (-pc mode) environment variable which
-   defines a file containg a list of QS_ClientEventLimitCount rules.
+   defines a file containing a list of QS_ClientEventLimitCount rules.
    The 'E' format character defines the event string in the log
    to match (literal string) the event1 and event2 event names against.
 
@@ -171,7 +171,7 @@ Version 11.42c
    Sample qslog rule:
     QS_LimitEv:AU04-2*AU05/600=20
 
-   Special us case mathing against the HTTP status code ('S' character)
+   Special us case matching against the HTTP status code ('S' character)
    is used if the rule 'name' starts with STATUS.
    Example mod_qos configuration:
     QS_ClientEventLimitCount 10 300 QS_LimisS
@@ -257,7 +257,7 @@ Version 11.34
 Version 11.33
 
  - QS_ClientLowPrio variable's value contains the status flag representing
-   the tracked attribues.
+   the tracked attributes.
 
  - Sets QS_IsVipRequest variable for marked IP addresses at connection
    processing handler and propagetes it to every request.
@@ -291,7 +291,7 @@ Version 11.30
 Version 11.29
 
  - mod_qos_ev variable sets character "u" if server is accessed by a
-   client wihout a user tracking cookie (but QS_UserTrackingCookieName
+   client without a user tracking cookie (but QS_UserTrackingCookieName
    has been configured).
 
  - Minor (non-functional) DSCP implementation code changes (incl. new log
@@ -329,7 +329,7 @@ Version 11.24
 
 Version 11.23
 
- - Directive QS_SetEnvIf supports singe variable match.
+ - Directive QS_SetEnvIf supports single variable match.
 
  - qslog -p:
    * fallback to simple hour/minutes detection
@@ -520,14 +520,14 @@ Version 11.3
  - Minor changes to the status viewer.
 
  - Modified error messages 060 and 067 (adding the "age" parameter which
-   indicates the seconds since the event occured the first time).
+   indicates the seconds since the event occurred the first time).
 
  - Fixed: Message 065 contained wrong directive name.
 
 Version 11.2
 
  - Adds variable QS_ResponseDelayTime showing the delay time (us)
-   calcualted for reponse throttling.
+   calculated for response throttling.
 
  - New variable QS_Timeout.
 
@@ -804,7 +804,7 @@ Version 10.2
 
  - Add the qsgeo utility to the distribution archive file.
 
- - Fixed: Supress warning message about missing mod_unique_id if 
+ - Fixed: Suppress warning message about missing mod_unique_id if 
    mod_navajo.cpp is available.
 
  - New connection correlation id QS_ConnectionId (available as
@@ -857,7 +857,7 @@ Version 9.76
 
  - Fixed: Don't show connections in the overview if not measured.
 
- - Internal: QS_EventRequestLimit are added (insted of set) to the event
+ - Internal: QS_EventRequestLimit are added (instead of set) to the event
    table in order to prevent multiple increments by the very same request.
 
 Version 9.75
@@ -897,7 +897,7 @@ Version 9.72
  - QS_ClientEventBlockCount is processed at pre_connection hook (more
    aggressive, before mod_ssl).
 
- - Supress warning message about missing mod_unique_id if mod_navajo is
+ - Suppress warning message about missing mod_unique_id if mod_navajo is
    available.
 
 Version 9.71
@@ -934,7 +934,7 @@ Version 9.70
 Version 9.69
 
  - Client behavior (content type a client is downloading) is calculated
-   in a percent of the whole trafic type distribution. The directive
+   in a percent of the whole traffic type distribution. The directive
    QS_ClientTolerance supports only values between 5 and 80.
 
  - Add directive QS_ClientContentTypes to define the normally downloaded
@@ -1136,7 +1136,7 @@ Version 9.42
 
  - Console "action=search&address=*" returns a list of all clients.
 
- - Fixed: Removes the apr_shm_destroy() calls to avaoid double-free
+ - Fixed: Removes the apr_shm_destroy() calls to avoid double-free
    errors on Linux with old APR library versions.
 
 Version 9.41
@@ -1420,7 +1420,7 @@ Version 8.14
 
 Version 8.13
 
- - New directives QS_DenyQueryBody and QS_PermitUriBody obsolte
+ - New directives QS_DenyQueryBody and QS_PermitUriBody obsolete
    QS_DenyBody.
 
  - Fixed: QS_Deny*/QS_Permit* directives can handle strings containing
@@ -1565,7 +1565,7 @@ Version 7.9
 Version 7.8
 
  - Directive QS_SrvMinDataRate/QS_SrvRequestRate supports min/max
-   limitation in order to increase the minimum upload/download bandwith
+   limitation in order to increase the minimum upload/download bandwidth
    on multiple simultaneously connections.
 
  - Fixed: Activation of QS_SrvMinDataRate did not work
@@ -1583,7 +1583,7 @@ Version 7.6
 
 Version 7.5
 
- - New diretive QS_ErrorResponseCode
+ - New directive QS_ErrorResponseCode
 
  - Multiple directives (QS_LocRequestLimit, QS_LocRequestLimitMatch,
    QS_CondLocRequestLimitMatch, QS_ClientEventBlockCount, and
@@ -1611,7 +1611,7 @@ Version 7.1
 
 Version 7.0
 
- - New directive QS_SrvRequestRate enforces minimum upload bandwith
+ - New directive QS_SrvRequestRate enforces minimum upload bandwidth
    (used for TCP DoS prevention). Requires thread support.
 
  - QS_ClientPrefer allows definition of free connections in percent
@@ -1623,7 +1623,7 @@ Version 7.0
 
 Version 6.7
 
- - Detects low priotity clients (clients sending slow or using small
+ - Detects low priority clients (clients sending slow or using small
    data packets get marked as low priority clients). 
 
  - New directives QS_VipUser and QS_VipIpUser.
@@ -1711,7 +1711,7 @@ Version 5.11
 
 Version 5.10
 
- - Rules do not use individual mutex any longer. This allows an unlimted
+ - Rules do not use individual mutex any longer. This allows an unlimited
    number of rules.
 
 Version 5.9
