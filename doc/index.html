@@ -2026,15 +2026,16 @@ the country code for the client's IP address. <br>
 <small><i>Note: You may use the <code>QS_ClientIpFromHeader &lt;header&gt;</code> directive to 
 override the client's IP address based on the value within the defined HTTP request 
 header (e.g., X-Forwarded-For) instead of taking the IP address of the client which has opened 
-the TCP connection.</i></small>
-
+the TCP connection to evaluate this variable.</i></small>
 </li>
 <li>
 <a name="QS_ClientGeoCountryPriv"></a>
 <syntax>QS_ClientGeoCountryPriv &lt;list&gt; &lt;connections&gt;</syntax><br>
 Defines a comma separated list of country codes for origin client IPv4 address 
 which are allowed to access the server even if the number of busy TCP 
-connections reaches the defined number of connections.
+connections reaches the defined number of connections.<br>
+Uses the geographical database loaded by 
+<a href="#QS_ClientGeoCountryDB"><code>QS_ClientGeoCountryDB</code></a>.
 </li>
 </ul>
 
