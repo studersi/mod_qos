@@ -66,7 +66,7 @@ _EXPECT . "Content-Type: text/plain"
 _EXPECT . "=ASFPATTERN="
 _WAIT
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(042\): drop response header: 'Last-Modified: Thu, 08 Mar .x102018 17:10:19 GMT', \(pattern=.*, max. lenght=4000\)"
+_EXPECT EXEC "mod_qos\(042\): drop response header: 'Last-Modified: Thu, 08 Mar .x102018 17:10:19 GMT', \(pattern=.*, max. length=4000\)"
 _EXEC tail -1 logs/error_log
 
 _REQ 127.0.0.1 $QS_PORT_BASE

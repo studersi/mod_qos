@@ -34,6 +34,7 @@ _CLOSE
 END
 
 CLIENT
+_EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 028_QS_SrvMaxConn.htt" >> logs/error_log
 _SLEEP 6000
 _EXEC ./ctl.sh graceful 2>/dev/null 1>/dev/null
 

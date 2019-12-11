@@ -25,6 +25,8 @@ _WAIT
 END
 
 CLIENT
+_EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 053_QS_ClientEventLimitCount.htt" >> logs/error_log
+
 _SLEEP 200
 _REQ localhost $QS_PORT_BASE
 __GET /cgi/sleep.cgi HTTP/1.1

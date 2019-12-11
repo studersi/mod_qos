@@ -7,6 +7,8 @@
 INCLUDE scripts/ports
 
 CLIENT
+_EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 002b_QS_LocRequestLimit.htt " >> logs/error_log
+
 _REQ localhost $QS_PORT_BASE
 __GET /index.html HTTP/1.1
 __Host: localhost

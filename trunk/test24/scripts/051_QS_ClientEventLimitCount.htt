@@ -15,6 +15,7 @@ INCLUDE scripts/ports
 EXEC ./ctl.sh restart -D real_ip >/dev/null
 
 CLIENT
+_EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 051_QS_ClientEventLimitCount.htt" >> logs/error_log
 
 _REQ localhost $QS_PORT_BASE
 __GET /htt/limit/index.html HTTP/1.1

@@ -6540,9 +6540,14 @@ static void *qos_status_thread(apr_thread_t *thread, void *selfv) {
                    "\"dns\": %d, \"closing\": %d, "
                    "\"finishing\": %d, \"idle\": %d }, "
                    "\"maxclients\": { "
-                   "\"max\": %d, \"busy\": %d%s }%s }",
-                   s_open, s_ready, s_read, s_write, s_keep, s_start, s_log,
-                   s_dns, s_closing, s_usr1, s_kill,
+                   "\"max\": %d, \"busy\": %d"
+                   "%s }"
+                   "%s }",
+                   s_open, s_ready, s_read,
+                   s_write, s_keep,
+                   s_start, s_log,
+                   s_dns, s_closing,
+                   s_usr1, s_kill,
                    s->maxclients, s_busy,
                    allConn,
                    clientContentTypes);

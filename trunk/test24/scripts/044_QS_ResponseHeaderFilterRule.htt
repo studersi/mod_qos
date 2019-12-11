@@ -40,7 +40,7 @@ _EXPECT . "!X-QOS"
 _EXPECT . "=ASFDENY="
 _WAIT
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(042\): drop response header: 'X\-QOS: 123', \(pattern=.a.zA.Z.., max. lenght=20\)"
+_EXPECT EXEC "mod_qos\(042\): drop response header: 'X\-QOS: 123', \(pattern=.a.zA.Z.., max. length=20\)"
 _EXEC tail -1 logs/error_log
 
 END
