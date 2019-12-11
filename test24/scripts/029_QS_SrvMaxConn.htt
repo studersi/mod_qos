@@ -21,6 +21,7 @@ _CLOSE
 END
 
 CLIENT 1
+_EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 029_QS_SrvMaxConn.htt" >> logs/error_log
 _SLEEP 6000
 _REQ localhost $QS_PORT_BASE
 _EXPECT ERROR "Connection reset by peer"

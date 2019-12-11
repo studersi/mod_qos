@@ -47,7 +47,7 @@ __
 _EXPECT . "==ASF2=="
 _WAIT
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(042\): drop request header: 'User-Agent: .*', \(pattern=.*max. lenght=300\)"
+_EXPECT EXEC "mod_qos\(042\): drop request header: 'User-Agent: .*', \(pattern=.*max. length=300\)"
 _EXEC tail -1 logs/error_log
 
 _REQ 127.0.0.1 $QS_PORT_BASE

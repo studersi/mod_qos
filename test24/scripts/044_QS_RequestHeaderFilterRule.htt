@@ -35,7 +35,7 @@ _EXPECT . "code=043"
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(043\): access denied, request header: 'X-QOS: 700', \(pattern=.a-z.., max. lenght=20\)"
+_EXPECT EXEC "mod_qos\(043\): access denied, request header: 'X-QOS: 700', \(pattern=.a-z.., max. length=20\)"
 _EXEC tail -1 logs/error_log
 
 _REQ 127.0.0.1 $QS_PORT_BASE
