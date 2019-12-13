@@ -1,3 +1,8 @@
+Version 11.65
+
+ - Fixed: QS_SrvMinDataRate did not enfore (log only) min data rate
+   in simple mode (only one arg).
+
 Version 11.64
 
  - Updated request header filter rules (allows signed HTTP exchanges content
