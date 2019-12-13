@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.64";
+static const char g_revision[] = "11.65";
 
 /************************************************************************
  * Includes
@@ -7737,8 +7737,8 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
   apr_uint64_t *ips = calloc(sconf->max_clients * 2, APR_ALIGN_DEFAULT(sizeof(apr_uint64_t)));
   while(!sconf->inctx_t->exit) {
     apr_uint64_t *ip = ips;
-    int currentcon = 0;
-    int req_rate = qos_req_rate_calc(sconf, &currentcon);
+    int current_con = 0;
+    int req_rate = qos_req_rate_calc(sconf, &current_con);
     apr_time_t now = apr_time_sec(apr_time_now());
     apr_time_t interval = now - sconf->qs_req_rate_tm;
     int i;
@@ -7774,7 +7774,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
               cconf->has_lowrate = 1; /* mark connection low rate */
             }
             /* enable only if min. num of connection reached */
-            if(currentcon <= sconf->req_rate_start) {
+            if(current_con < sconf->req_rate_start) {
               level = APLOG_DEBUG;
               cconf->has_lowrate = 1; /* mark connection low rate */
             }
@@ -7821,7 +7821,7 @@ static void *qos_req_rate_thread(apr_thread_t *thread, void *selfv) {
                   cconf->has_lowrate = 1; /* mark connection low rate */
                 }
                 /* enable only if min. num of connection reached */
-                if(currentcon <= sconf->req_rate_start) {
+                if(current_con < sconf->req_rate_start) {
                   level = APLOG_DEBUG;
                   cconf->has_lowrate = 1; /* mark connection low rate */
                 }

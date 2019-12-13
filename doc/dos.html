@@ -210,14 +210,14 @@ can be used to implement this rule.
 Syntax: <code><a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a> &lt;bytes per second&gt; &lt;max bytes per second&gt; &lt;connections&gt;</code><br>
 
 <p>It offers three parameters. The first defines the 
-minimum data rate a client must achieve when this limitation becomes active 
-(at low number of connections) and the second parameter defines the throughput 
+minimum data rate a client must achieve if the server would be idle 
+(no connections) and the second parameter defines the throughput 
 a client must achieve when the server reaches its <code>MaxClients</code> 
 setting (at maximum number of connections). The third parameter defines the 
 number of busy connections (at low number of connections) to enable this 
 restriction.
 </p>
-<img src="images/SrvMinDataRate.png" height="344" width="620"/>
+<img src="images/SrvMinDataRate.png" height="370" width="698"/>
 <table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
 # minimum request/response data reate if the server has 500 or more
 # open connections:

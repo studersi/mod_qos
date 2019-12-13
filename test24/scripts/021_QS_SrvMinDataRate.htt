@@ -7,6 +7,7 @@ INCLUDE scripts/ports
 SET TME=1000
 
 CLIENT
+_SLEEP 100
 _EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 021_QS_SrvMinDataRate.htt" >> logs/error_log
 
 # slow request
