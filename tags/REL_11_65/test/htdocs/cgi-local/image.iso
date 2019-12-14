@@ -1,0 +1,17 @@
+#!/usr/bin/perl -w
+
+use strict;
+use CGI;
+
+print "Content-type: application/octet-stream\r\n";
+print "Cache-Control: no-cache\r\n";
+print "\r\n";
+my $src = "../image.iso";
+
+open(DLFILE, "<$src") || Error('open', 'file');
+my $record;
+while ($record = <DLFILE>) {
+  print $record;
+ }
+
+close (DLFILE) || Error ('close', 'file');

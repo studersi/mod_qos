@@ -1,0 +1,140 @@
+#
+# $Id$
+#
+#   QS_MileStone deny "^GET /htt/index.html"
+#   QS_MileStone deny "^GET /htt/logo.gif"
+#   QS_MileStone deny "^POST /htt/login"
+#
+# violates order
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /htt/any.gif HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__
+_EXPECT . "200"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/logo.gif HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__
+_EXPECT . "HTTP/1.. 500"
+_EXPECT . "code=047"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/any.gif HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__
+_EXPECT . "200"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(047\): access denied, reached milestone '1' \(\^GET /htt/logo.gif\), user has already passed 'none', action=deny, c="
+_EXEC tail -1 logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path" QSSCD
+_EXPECT . "200"
+_EXPECT . "Set-Cookie"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__POST /htt/login HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__Cookie: QSSCD=$QSSCD
+__Content-Length: AUTO
+__Content-Type: application/x-www-form-urlencoded
+__
+_-id=pascal&pwd=1234
+_EXPECT . "HTTP/1.. 500"
+_EXPECT . "code=047"
+_EXPECT . "!Set-Cookie"
+_WAIT
+
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH headers "Set-Cookie: QSSCD=(.*); Path" QSSCD
+_EXPECT . "200"
+_EXPECT . "Set-Cookie"
+_WAIT
+
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(047\): access denied, reached milestone '2' \(\^POST /htt/login\), user has already passed '0', action=deny, c="
+_EXEC tail -1 logs/error_log
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+_CLOSE
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+_CLOSE
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+_CLOSE
+
+_RES
+_EXPECT . "!Cookie"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/html
+__
+__==AS1==
+
+END
