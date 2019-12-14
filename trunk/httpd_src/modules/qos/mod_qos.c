@@ -6682,7 +6682,7 @@ static int qos_req_rate_calc(qos_srv_config *sconf, int *current) {
     int connections = qos_server_connections(sconf);
     if(connections > sconf->req_rate_start) {
       /* keep the minimal rate until reaching the min connections */
-      req_rate = req_rate + ((sconf->min_rate_max / sconf->max_clients) * connections);
+      req_rate = req_rate + (sconf->min_rate_max * connections / sconf->max_clients);
       if(connections > sconf->max_clients) {
         // limit the max rate to its max if we have more connections then expected
         if(connections > (sconf->max_clients + QS_DOUBLE_CONN_H)) {
