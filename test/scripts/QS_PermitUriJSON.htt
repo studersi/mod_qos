@@ -177,7 +177,7 @@ _EXPECT . "!200 OK"
 _WAIT
 _CLOSE
 _SLEEP 200
-_EXPECT EXEC "mod_qos\(048\): access denied, invalid JSON syntax \(null chracter within data structure in query\), action=deny"
+_EXPECT EXEC "mod_qos\(048\): access denied, invalid JSON syntax \(null character within data structure in query\), action=deny"
 _EXEC tail -1 logs/error_log
 
 # ---

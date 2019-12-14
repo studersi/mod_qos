@@ -1728,8 +1728,8 @@ data rate and the IP address of the causing client is marked in order to be hand
 with low priority (see the <code><a href="#QS_ClientPrefer">QS_ClientPrefer</a></code> directive). 
 The "max bytes per second" activates <u><a href="images/SrvMinDataRate.png">dynamic minimum throughput control</a></u>: 
 The required minimal throughput is increased in parallel to the number of concurrent clients 
-sending/receiving data (starts increasing when reaching the "connections" threshold). 
-The "max bytes per second" setting is reached when the number of 
+sending/receiving data (starts increasing when reaching the "connections" threshold) 
+as a percentage of the "max bytes per second" which maximum is reached when the number of 
 sending/receiving clients is equal to the <code>MaxClients</code> setting. 
 The "connections" argument is used to specify the number of busy TCP connections a 
 server must have to enable this feature (0 by default). It is used to disable the 
