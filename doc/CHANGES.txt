@@ -2,6 +2,9 @@ Version 11.65
 
  - Fixed: QS_SrvMinDataRate did not enfore (log only) min data rate
    in simple mode (only one arg).
+   Updated documentation how min. data rate is calculated.
+
+ - Fixed: Several typos in documentation.
 
 Version 11.64
 
