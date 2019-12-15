@@ -85,6 +85,9 @@ QS_SetEnvIf               QOS_USER_ID_NEW=^. QS_Block=1
 <IfDefine minDataRateSimple>
 QS_SrvMinDataRate        500
 </IfDefine>
+<IfDefine minDataRateSimpleDual>
+QS_SrvMinDataRate        500 1000
+</IfDefine>
 
 <IfDefine limit2block>
  #MaxRequestWorkers        896

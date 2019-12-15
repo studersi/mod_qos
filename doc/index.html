@@ -1732,8 +1732,8 @@ sending/receiving data (starts increasing when reaching the "connections" thresh
 as a percentage of the "max bytes per second" which maximum is reached when the number of 
 sending/receiving clients is equal to the <code>MaxClients</code> setting. 
 The "connections" argument is used to specify the number of busy TCP connections a 
-server must have to enable this feature (0 by default). It is used to disable the 
-<code>QS_SrvMinDataRate</code> rule enforcement on idle servers.<br>
+server must have to enable this feature (used to disable the 
+<code>QS_SrvMinDataRate</code> rule enforcement on idle servers).<br>
 This directives must only be used in the global server context.
 </li>
 <li>
@@ -1808,8 +1808,9 @@ to implement a bandwidth rate limitation for connections.
 <tr><td bgcolor="#E2EDE2">
 Sample configuration:<br>
 <pre>
-# minimum request rate (bytes/sec at request reading):
-<a href="#QS_SrvRequestRate">QS_SrvRequestRate</a>                                 120
+# minimum data rate (bytes/sec) when the server
+# has 150 or more open TCP connections:
+<a href="#QS_SrvDataRate">QS_SrvDataRate</a>                                    64 256 150
 
 # limits the connections for this virtual host:
 <a href="#QS_SrvMaxConn">QS_SrvMaxConn</a>                                     800
