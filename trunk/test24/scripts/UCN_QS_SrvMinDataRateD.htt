@@ -44,8 +44,16 @@ _EXPECT ERROR "Broken pipe"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in:0\): min=500, this connection=0, c=127.0.0.1"
+_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in:0\): min=540, this connection=0, c=127.0.0.1"
 _EXEC tail -1 logs/error_log
 
 END
 
+CLIENT 5
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=20 HTTP/1.1
+__Host: localhost
+__
+_WAIT
+_CLOSE
+END
