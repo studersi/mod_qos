@@ -225,7 +225,7 @@ binaries, but works with Apache version 2.4 as well. The module is optimized to 
 <a href="http://httpd.apache.org/docs/current/mod/mod_proxy.html">reverse proxy 
 <img src="images/link.png"/></a> server.<p>
 <p>
-<small><i>Notes:<br>&nbsp; You should definitely choose the <a href="https://httpd.apache.org/docs/current/mod/worker.html">worker MPM <img src="images/link.png"/></a> 
+<small><i>Notes:<br>&nbsp; You should choose the <a href="https://httpd.apache.org/docs/current/mod/worker.html">worker MPM <img src="images/link.png"/></a> 
 if you intend to use any <a href="#connectionlevelcontrol">connection level control</a> directive. <br>
 &nbsp; If you decide to use <a href="https://httpd.apache.org/docs/current/howto/http2.html">HTTP/2 <img src="images/link.png"/></a>, 
 you should only use the <a href="#requestlevelcontrol">request level control</a> directives  
@@ -1810,7 +1810,7 @@ Sample configuration:<br>
 <pre>
 # minimum data rate (bytes/sec) when the server
 # has 150 or more open TCP connections:
-<a href="#QS_SrvDataRate">QS_SrvDataRate</a>                                    64 256 150
+<a href="#QS_SrvMinDataRate">QS_SrvMinDataRate</a>                                 64 256 150
 
 # limits the connections for this virtual host:
 <a href="#QS_SrvMaxConn">QS_SrvMaxConn</a>                                     800

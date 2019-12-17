@@ -11,7 +11,7 @@ SET TME=1000
 EXEC ./ctl.sh restart -D real_ip -D QS_SrvMinDataRateIgnoreVIP
 
 CLIENT
-
+_SLEEP 20
 # slow request (not VIP)
 _REQ localhost $QS_PORT_BASE
 _-GET /
@@ -49,7 +49,7 @@ _EXPECT ERROR "Broken pipe"
 _WAIT
 _CLOSE
 _SLEEP 100
-_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in:0\): min=..., this connection=0, c=127.0.0.1"
+_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in:0\): min=340, this connection=0, c=127.0.0.1"
 _EXEC tail -1 logs/error_log
 
 _REQ localhost $QS_PORT_BASE
@@ -107,13 +107,13 @@ END
 CLIENT 10
 
 _REQ localhost $QS_PORT_BASE
-__GET /cgi/sleep.cgi?s=10 HTTP/1.1
+__GET /cgi-local/sleep.cgi?s=10 HTTP/1.1
 __Host: localhost
 __
 _WAIT
 
 _REQ localhost $QS_PORT_BASE
-__GET /cgi/sleep.cgi?s=10 HTTP/1.1
+__GET /cgi-local/sleep.cgi?s=10 HTTP/1.1
 __Host: localhost
 __
 _WAIT
