@@ -9,7 +9,7 @@
  * This tool merges those two files into one by adding the
  * country code to each IP range definition.
  *
- * Copyright (C) 2019 Pascal Buchbinder
+ * Copyright (C) 2020 Pascal Buchbinder
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with

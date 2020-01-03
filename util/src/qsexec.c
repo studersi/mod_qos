@@ -5,7 +5,7 @@
  *
  * See http://mod-qos.sourceforge.net/ for further details.
  *
- * Copyright (C) 2019 Pascal Buchbinder
+ * Copyright (C) 2020 Pascal Buchbinder
  *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
