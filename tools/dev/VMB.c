@@ -21,6 +21,8 @@
  *
  */
 
+/* gcc -o VMB -pthread -O3 VMB.c */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -249,6 +251,8 @@ static int add(int in) {
 static void calc(const char *id) {
   char buff[] = "abcdefghABCDEFGXXXXXXXXXXXX123\n";
   char *p;
+  char str[256];
+  int r;
 
   char hx;
   int i, k;
@@ -256,11 +260,17 @@ static void calc(const char *id) {
   double d;
   
   for(i = 1; i < 10000000; i++) {
+    if(i%2 == 0) {
+      sprintf(str, "%d", i);
+      r = atoi(str);
+    } else {
+      r = i;
+    }
     counter++;
     p = strchr(buff, '1');
     k = atoi(p);
     counter = k * counter;
-    if(i % 1000000 == 0) {
+    if(r % 1000000 == 0) {
       fflush(stdout);
       printf("%s", id);
     }
@@ -376,7 +386,7 @@ int main(int argc, const char *const argv[]) {
   printf("memory:     %10lldms\n", memory);
   printf("processing: %10lldms\n", cpu);
   if(maxSize == MSIZE && number == MAX) {
-    printf("VMB index:  %10lld\n", (60000/cpu) + (30000/memory));
+    printf("VMBc index: %10lld\n", (100000/cpu) + (30000/memory));
   }
   printf("========================\n");
 
