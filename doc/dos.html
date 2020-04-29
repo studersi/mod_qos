@@ -363,22 +363,25 @@ as long as the server has less than 499 connections.
 </pre></td></tr></table> 
 
 <p>
+<a name="RepeatedlySlow"></a>
 Clients violating these rules may times can be blocked for an even 
 longer period of time. This is implemented by a second counter, called 
-<code>SlowRepeatedlySlow</code> in this example.<br>Alternatively, the
-<a href="index.html#QS_Block"><code>QS_Block</code></a> variable 
+<code>RepeatedlySlow</code> in this example.
+</p>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# deny a client IP for 10 minutes if he violates the rule above 3 times:
+<a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          3 600 <a href="index.html#QS_Limit">RepeatedlySlow</a>
+<a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>      <a href="index.html#_Counter">SlowRequest_Counter</a>=20 RepeatedlySlow=1
+</pre></td></tr></table> 
+<p>
+Alternatively, the <a href="index.html#QS_Block"><code>QS_Block</code></a> variable 
 could be set to incremented the 
 <a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a> 
 counter in the case of a repeated rule violation (to block clients at a 
 connection level extending the list of events defined 
 <a href="#blockevents">above</a>).
 </p>
-
-<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
-# deny a client IP for 10 minutes if he violates the rule above 3 times:
-<a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          3 600 <a href="index.html#QS_Limit">SlowRepeatedlySlow</a>
-<a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>      <a href="index.html#_Counter">SlowRequest_Counter</a>=20 SlowRepeatedlySlow=1
-</pre></td></tr></table> 
 
 <a name="separation"></a>
 <h3>Separation</h3>
