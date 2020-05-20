@@ -8904,7 +8904,7 @@ static int qos_post_read_request(request_rec *r) {
   if(sconf->geodb) {
     if(sconf->qos_cc_forwardedfor) {
       // override country determined on a per connection basis
-      const char *forwardedfor = qos_forwardedfor(r, sconf->qos_cc_forwardedfor);
+      const char *forwardedfor = qos_forwardedfor_fromHeader(r, sconf->qos_cc_forwardedfor);
       if(forwardedfor) {
         unsigned long ip = qos_geo_str2long(r->pool, forwardedfor);
         if(ip) {
