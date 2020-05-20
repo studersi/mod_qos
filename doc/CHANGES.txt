@@ -1,3 +1,11 @@
+Version 11.66
+
+ - QS_ClientIpFromHeader supports pseudo IP by creating a hash
+   of a HTTP request header's value if the header name is prefixed
+   by '#', e.g. #Authorization to use the HTTP basic auth header.
+   It's also possoble to use the client's SSL client certificate's
+   subject and issuer DN
+
 Version 11.65
 
  - Fixed: QS_SrvMinDataRate did not enfore (log only) min data rate

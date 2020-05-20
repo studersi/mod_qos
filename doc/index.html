@@ -1908,9 +1908,11 @@ directive to determine the client's IP address based on the defined HTTP
 request header (e.g., X-Forwarded-For) instead of taking the IP address 
 of the client which has opened the TCP connection. The header must only 
 contain a single IP address.<br>
-You might even use the <a href="http://modsetenvifplus.sourceforge.net/#SetHashHeaderPlus"><code>SetHashHeaderPlus</code> <img src="images/link.png"/></a> 
-directive to create a hash representing a client using arbitrary HTTP 
-request attributes.
+You might also use a pseudo IP address by creating a hash from the 
+header's value if you prefix the header name by a '#', 
+e.g. <code>#Authorization</code> to use the HTTP basic auth header. 
+as the pseudo IP address. The special name <code>#SSL_CLIENT_S_DN</code> 
+creates a pseudo IP from the SSL client certificate's subject and issuer DN.
 </li>
 <li>The current value of this counter is stored within the variable suffixed 
 by <code><a href="#_Counter">_Counter</a></code>, e.g. <code>QS_Limit_Counter</code> for further 
