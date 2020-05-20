@@ -21,7 +21,12 @@
  *
  */
 
-/* gcc -o VMB -pthread -O3 VMB.c */
+/* gcc -o VMB -pthread -O3 VMB.c
+ *
+ * Intel Xeon E5630 @2.53GHz (8x5054.31):    VMBc 206
+ * AMD Sempron(tm) 145 800MHz (1x5624.46):   VMBc 127
+ * Intel Core i3-2367M @1.40GHz (4x2793.87): VMBc 111
+ */
 
 #include <stdio.h>
 #include <string.h>

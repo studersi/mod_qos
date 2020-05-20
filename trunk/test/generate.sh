@@ -149,6 +149,46 @@ ln -s ../../mod-websocket/.libs/mod_websocket_echo.so .
 ln -s ../../mod-websocket/.libs/mod_websocket_mirror.so .
 cd ..
 
+if [ ! -f ssl/cert.pem ]; then
+    cd ssl
+    touch index.txt
+    echo 01 > serial
+    openssl req -config ./openssl.conf -new -x509 -days 3650 -nodes \
+	    -keyout cakey.pem -out cacert.pem
+    sed <./openssl.conf >./openssl2.conf \
+	-e "s;qos ca;server1;g"
+    openssl req -config ./openssl2.conf -new -nodes \
+	    -keyout key.pem \
+	    -out req.pem
+    openssl ca  -config ./openssl2.conf -batch -policy policy_anything \
+	    -out cert.pem \
+	    -infiles req.pem
+    rm req.pem ./openssl2.conf
+
+    sed <./openssl.conf >./openssl2.conf \
+	-e "s;qos ca;client0;g"
+    openssl req -config ./openssl2.conf -new -nodes \
+	    -keyout ckey.pem \
+	    -out creq.pem
+    openssl ca  -config ./openssl2.conf -batch -policy policy_anything \
+	    -out ccert.pem \
+	    -infiles creq.pem
+    rm creq.pem ./openssl2.conf
+
+    sed <./openssl.conf >./openssl2.conf \
+	-e "s;qos ca;client2;g"
+    openssl req -config ./openssl2.conf -new -nodes \
+	    -keyout c2key.pem \
+	    -out c2req.pem
+    openssl ca  -config ./openssl2.conf -batch -policy policy_anything \
+	    -out c2cert.pem \
+	    -infiles c2req.pem
+    rm c2req.pem ./openssl2.conf
+
+    rm 01.pem 02.pem 03.pem index.txt* serial*
+    cd ..
+fi
+
 cd ./bin
 cc -o sleep sleep.c
 cd ..

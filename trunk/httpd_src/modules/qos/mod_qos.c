@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.65";
+static const char g_revision[] = "11.66";
 
 /************************************************************************
  * Includes
@@ -76,6 +76,7 @@ static const char g_revision[] = "11.65";
 #include <scoreboard.h>
 #include <ap_config.h>
 #include <mpm_common.h>
+#include <util_md5.h>
 
 /* apr / scrlib */
 #include <pcre.h>
@@ -1060,6 +1061,8 @@ static int m_enable_audit = 0;
 /* mod_ssl, forward and optional function */
 APR_DECLARE_OPTIONAL_FN(int, ssl_is_https, (conn_rec *));
 static APR_OPTIONAL_FN_TYPE(ssl_is_https) *qos_is_https = NULL;
+APR_DECLARE_OPTIONAL_FN(char *, ssl_var_lookup, (apr_pool_t *, server_rec *, conn_rec *, request_rec *, char *));
+static APR_OPTIONAL_FN_TYPE(ssl_var_lookup) *qos_ssl_var = NULL;
 
 static void qs_inc_eventcounter(apr_pool_t *ppool, int event, int locked);
 #define QS_INC_EVENT(sconf, event) if(sconf->qsevents) qs_inc_eventcounter(sconf->act->ppool, event, 0)
@@ -1996,6 +1999,84 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
   return uid;
 }
 
+static char *qos_ipv6_hash(request_rec *r, const char *var) {
+  char *md = ap_md5_binary(r->pool, (unsigned char *)var, strlen(var));
+  char *hash = apr_pcalloc(r->pool, 64);
+  char *d = hash;
+  int c = 0;
+  while(md[0]) {
+    d[0] = md[0];
+    d++;
+    c++;
+    md++;
+    if(c == 4 && md[0]) {
+      c=0;
+      d[0] = ':';
+      d++;
+    }
+  }
+  d[0] = '\0';
+  return hash;
+}
+
+static const char *qos_forwardedfor_fromHeader(request_rec *r, const char *header) {
+  const char *forwardedfor = apr_table_get(r->headers_in, header);
+  if(forwardedfor == NULL && r->prev) {
+    // internal redirect?
+    forwardedfor = apr_table_get(r->prev->headers_in, header);
+  }
+  if(forwardedfor == NULL && r->main) {
+    // internal redirect?
+    forwardedfor = apr_table_get(r->main->headers_in, header);
+  }
+  return forwardedfor;
+}
+
+static const char *qos_forwardedfor_fromSSL(request_rec *r) {
+  const char *dn = qos_ssl_var(r->pool, r->server, r->connection, r, "SSL_CLIENT_S_DN");
+  const char *issuer = qos_ssl_var(r->pool, r->server, r->connection, r, "SSL_CLIENT_I_DN");
+  char *header = apr_pstrcat(r->pool, dn, issuer, NULL);
+  if(header && header[0]) {
+    return header;
+  }
+  return NULL;
+}
+
+static const char *qos_pseudoip(request_rec *r, const char *header) {
+  const char *forwardedfor = NULL;
+  if(strcmp("SSL_CLIENT_S_DN", header) == 0) {
+    forwardedfor = qos_forwardedfor_fromSSL(r);
+  } else {
+    forwardedfor = qos_forwardedfor_fromHeader(r, header);
+  }
+  if(forwardedfor && forwardedfor[0]) {
+    return qos_ipv6_hash(r, forwardedfor);
+  }
+  return NULL;
+}
+
+static const char *qos_forwardedfor(request_rec *r, const char *header) {
+  const char *forwardedfor = NULL;
+  if(header[0] == '#') {
+    forwardedfor = qos_pseudoip(r, &header[1]);
+    if(QS_ISDEBUG(r->server)) {
+      ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                    QOS_LOGD_PFX"clientIP: pseudo IP from %s is %s, id=%s",
+                    &header[1], forwardedfor ? forwardedfor : "NULL",
+                    qos_unique_id(r, NULL));
+    }
+  } else {
+    forwardedfor = qos_forwardedfor_fromHeader(r, header);
+    if(QS_ISDEBUG(r->server)) {
+      ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
+                    QOS_LOGD_PFX"clientIP: IP from %s is %s, id=%s",
+                    header, forwardedfor ? forwardedfor : "NULL",
+                    qos_unique_id(r, NULL));
+    }
+  }
+  return forwardedfor;
+}
+
 /**
  * Returns the client IP, either from the connection
  * of from the forwarded-for header if configured
@@ -2012,15 +2093,7 @@ static const char *qos_get_clientIP(request_rec *r, qos_srv_config *sconf,
                                     apr_uint64_t *ip6) {
   const char *forwardedForLogIP;
   if(sconf->qos_cc_forwardedfor) {
-    const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
-    if(forwardedfor == NULL && r->prev) {
-      // internal redirect?
-      forwardedfor = apr_table_get(r->prev->headers_in, sconf->qos_cc_forwardedfor);
-    }
-    if(forwardedfor == NULL && r->main) {
-      // internal redirect?
-      forwardedfor = apr_table_get(r->main->headers_in, sconf->qos_cc_forwardedfor);
-    }
+    const char *forwardedfor = qos_forwardedfor(r, sconf->qos_cc_forwardedfor);
     if(forwardedfor) {
       if(qos_ip_str2long(forwardedfor, ip6) == 0) {
         if(apr_table_get(r->notes, "QOS_LOG_PFX069") == NULL) {
@@ -8831,7 +8904,7 @@ static int qos_post_read_request(request_rec *r) {
   if(sconf->geodb) {
     if(sconf->qos_cc_forwardedfor) {
       // override country determined on a per connection basis
-      const char *forwardedfor = apr_table_get(r->headers_in, sconf->qos_cc_forwardedfor);
+      const char *forwardedfor = qos_forwardedfor(r, sconf->qos_cc_forwardedfor);
       if(forwardedfor) {
         unsigned long ip = qos_geo_str2long(r->pool, forwardedfor);
         if(ip) {
@@ -10697,6 +10770,11 @@ static int qos_post_config(apr_pool_t *pconf, apr_pool_t *plog, apr_pool_t *ptem
   }
   qos_audit_check(ap_conftree);
   qos_is_https = APR_RETRIEVE_OPTIONAL_FN(ssl_is_https);
+  qos_ssl_var = APR_RETRIEVE_OPTIONAL_FN(ssl_var_lookup);
+  if(qos_is_https == NULL || qos_ssl_var) {
+    ap_log_error(APLOG_MARK, APLOG_INFO, 0, bs, 
+                 QOS_LOG_PFX(009)"could not retrieve mod_ssl functions");
+  }
   if(m_requires_parp) {
     if(qos_module_check("mod_parp.c") != APR_SUCCESS) {
       qos_parp_hp_table_fn = NULL;

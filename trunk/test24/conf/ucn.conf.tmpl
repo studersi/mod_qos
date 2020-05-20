@@ -188,6 +188,10 @@ Listen         ##QS_PORT_BASE##
       SetHandler qos-viewer
    </Location>
 
+   <Location /info>
+      SetHandler server-info
+   </Location>
+
 <IfDefine serializeReq>
   QS_EventRequestLimit     LimitLocation 20
   SetEnvIfPlus             REQUEST_URI /serialize SerialLimtCfg=5
@@ -199,6 +203,12 @@ Listen         ##QS_PORT_BASE##
 
 </VirtualHost>
 
+<IfDefine SSLVAR>
+   QS_ClientIpFromHeader  #SSL_CLIENT_S_DN
+   QS_ClientEventLimitCount 3 2 QS_HdrHash
+   SetEnvIfPlus           User-Agent QS_HdrHash QS_HdrHash=1
+</IfDefine>
+
 Listen         ##QS_PORT_BASE2##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE2##>
    ServerName   127.0.0.1
@@ -209,8 +219,13 @@ Listen         ##QS_PORT_BASE2##
 
    SSLCertificateKeyFile  ../test/ssl/key.pem
    SSLCertificateFile     ../test/ssl/cert.pem
+   SSLCACertificateFile   ../test/ssl/cacert.pem
    SSLVerifyDepth         10
    SSLEngine              on
+<IfDefine SSLVAR>
+   SSLVerifyClient        optional
+   SSLOptions            +StdEnvVars
+</IfDefine>
 
    Include conf/demo.conf
 
