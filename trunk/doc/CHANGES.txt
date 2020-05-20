@@ -6,6 +6,7 @@ Version 11.66
    It's also possible to use the client's SSL client certificate's
    subject and issuer DN if you specify #SSL_CLIENT_S_DN instead
    of a real HTTP header name.
+   Note: Does not work for IP geolocation.
 
 Version 11.65
 
