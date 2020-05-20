@@ -2033,11 +2033,13 @@ static const char *qos_forwardedfor_fromHeader(request_rec *r, const char *heade
 }
 
 static const char *qos_forwardedfor_fromSSL(request_rec *r) {
-  const char *dn = qos_ssl_var(r->pool, r->server, r->connection, r, "SSL_CLIENT_S_DN");
-  const char *issuer = qos_ssl_var(r->pool, r->server, r->connection, r, "SSL_CLIENT_I_DN");
-  char *header = apr_pstrcat(r->pool, dn, issuer, NULL);
-  if(header && header[0]) {
-    return header;
+  if(qos_ssl_var) {
+    const char *dn = qos_ssl_var(r->pool, r->server, r->connection, r, "SSL_CLIENT_S_DN");
+    const char *issuer = qos_ssl_var(r->pool, r->server, r->connection, r, "SSL_CLIENT_I_DN");
+    char *header = apr_pstrcat(r->pool, dn, issuer, NULL);
+    if(header && header[0]) {
+      return header;
+    }
   }
   return NULL;
 }
@@ -2059,20 +2061,8 @@ static const char *qos_forwardedfor(request_rec *r, const char *header) {
   const char *forwardedfor = NULL;
   if(header[0] == '#') {
     forwardedfor = qos_pseudoip(r, &header[1]);
-    if(QS_ISDEBUG(r->server)) {
-      ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                    QOS_LOGD_PFX"clientIP: pseudo IP from %s is %s, id=%s",
-                    &header[1], forwardedfor ? forwardedfor : "NULL",
-                    qos_unique_id(r, NULL));
-    }
   } else {
     forwardedfor = qos_forwardedfor_fromHeader(r, header);
-    if(QS_ISDEBUG(r->server)) {
-      ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, 
-                    QOS_LOGD_PFX"clientIP: IP from %s is %s, id=%s",
-                    header, forwardedfor ? forwardedfor : "NULL",
-                    qos_unique_id(r, NULL));
-    }
   }
   return forwardedfor;
 }
