@@ -203,6 +203,12 @@ Listen         ##QS_PORT_BASE##
 
 </VirtualHost>
 
+<IfDefine BASICAUTH>
+   QS_ClientIpFromHeader  #Authorization
+   QS_ClientEventLimitCount 3 2 QS_HdrHash
+   SetEnvIfPlus           User-Agent QS_HdrHash QS_HdrHash=1
+</IfDefine>
+
 <IfDefine SSLVAR>
    QS_ClientIpFromHeader  #SSL_CLIENT_S_DN
    QS_ClientEventLimitCount 3 2 QS_HdrHash
