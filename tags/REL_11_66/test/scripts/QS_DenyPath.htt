@@ -1,0 +1,28 @@
+#
+# $Id$
+#
+
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/path/search/%53elEcT/get HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "code=040"
+_EXPECT . "!200 OK"
+_EXPECT . "!viewer settings"
+_WAIT
+_CLOSE 
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/path/search/go/get HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "200 OK"
+_EXPECT . "viewer settings"
+_WAIT
+
+END

@@ -1,0 +1,613 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+ <title>mod_qos - Denial of Service Defense</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
+<meta name="author" content="Pascal Buchbinder" />
+<meta name="KeyWords" content="Dos, DDoS, mod_qos, Quality of Service, Apache Web Server, Web application security, WAF, Open Source Software, Denial of Service Prevention" />
+<link rel="shortcut icon" href="favicon.ico" />
+<style TYPE="text/css">
+<!--  
+  body {
+	background-color: white;
+	color: black;
+	font-family: sans-serif, arial, verdana;
+	font-weight: normal;
+	text-align: left;
+  }
+  a:link    { color:#00673F; text-decoration:none; }
+  a:visited { color:#00673F; text-decoration:none; }
+  a:focus   { color:black; text-decoration:underline; }
+  a:hover   { color:black; text-decoration:underline; }
+  a:active  { color:black; text-decoration:underline; }
+  li { margin: 4px 0; }
+  syntax { font-family: monospace; font-size: 14; line-height: 1.8; }
+  .btable   { font-size:0.75em; }
+-->
+</style>
+</head>
+<body>
+<!--
+
+ Quality of service module for Apache Web Server.
+
+ See http://mod-qos.sourceforge.net/ for further details.
+
+ Copyright (C) 2020 Pascal Buchbinder
+
+ Licensed to the Apache Software Foundation (ASF) under one or more
+ contributor license agreements.  See the NOTICE file distributed with
+ this work for additional information regarding copyright ownership.
+ The ASF licenses this file to You under the Apache License, Version 2.0
+ (the "License"); you may not use this file except in compliance with
+ the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+
+-->
+<table>
+<tbody>
+<tr><td><a href="index.html"><img src="images/mod_qos.gif" alt="mod_qos" title="mod_qos" /></a></td>
+    <td style="vertical-align: bottom;"><h1>Denial of Service Defense</h1></td></tr>
+<tr><td>&nbsp;</td>
+    <td>
+
+
+<p>
+<a href="index.html">mod_qos</a> cannot only be used to implement QoS by controlling your Apache 
+web server's traffic but may also help you to protect 
+your web site against denial of service (DoS) attacks. The two features 
+of <a href="index.html">mod_qos</a> which are particularly suitable to help you in doing this, 
+are the possibility to measure the bandwidth used for a TCP connection 
+(and the possibility to enforce that the requirements concerning the 
+minimum bandwidth is fulfilled) and the existence of event counters 
+per client's IP addresses (allowing you to limit the number of events 
+a client is allowed cause on your web site).
+</p>
+<p>
+<i>
+Note: Multiple users may share an IP addresses (IP address is not 
+unique per user) when using an intermediate proxy server or source NAT. 
+This is especially true for B2B applications.
+</i>
+</p>
+<p>
+This documentation shall give you an idea on how you could use <a href="index.html">mod_qos</a> 
+within your Apache web server to defense against the following DoS attacks:
+<ul>
+<li><i>Low-bandwidth DoS attacks</i><br>
+The attacker tries to keep many TCP connections to your web server open, 
+only sending partiality request data periodically (just enough not triggering 
+any inactivity timeouts). The target is to occupy all available connections 
+(running threads of your Apache server) so that nobody else can connect.
+</li>
+<li><i>HTTP GET/POST flood DoS attacks</i><br>
+The attacker sends a huge amount of HTTP requests to your web server without 
+awaiting the server's response. This requires only little traffic for the 
+attacker but may occupy your server's threads and consumes computing resources 
+(CPU, memory). Some attackers scan your web site prior an attack measuring 
+the duration it takes to answer the request in order to find out which one are 
+the "most expensive" HTTP requests (consuming most time while being processed 
+by your web server).
+</li>
+</ul>
+</p>
+<p>
+The following is a step-by-step checklist about potential configuration 
+options you want to apply to improve your Apache server's DoS resistance. 
+It shall give you an idea about which parameter you might want to set, to 
+build an additional protective layer against DoS attacks. Nevertheless, 
+I recommend you to read the detailed configuration options of each command 
+which you intend to use to learn all about the different possibilities.
+</p>
+<p>
+<i>
+Note: If you are under an attack, it's no a question whether someone 
+is blocked or not, but who. <a href="index.html">mod_qos</a> helps your 
+web server to make the right decision. Your job is to set the thresholds 
+matching your infrastructure. You might either decide to have these 
+rules active all the time or just as part ot your incident response plan.
+</i>
+</p>
+
+<hr>
+<p>
+<ul>
+<li><a href="#basic">Basic Settings</a></li>
+<li><a href="#connections">Connections per IP</a></li>
+<li><a href="#datarate">Minimum Data Rate</a></li>
+<li><a href="#block">Repeat Offender</a></li>
+<li><a href="#clients">Requests per IP</a></li>
+<li><a href="#separation">Separation</a></li>
+<li><a href="#country">Country Specific Rules</a></li>
+<li><a href="#prefer">Prefer Known Clients</a></li>
+<li><a href="#request">Size Restrictions</a></li>
+<li><a href="#kernel">Kernel and iptables</a></li>
+<li><a href="#sync">Inform Others</a></li>
+</ul>
+</p>
+<hr>
+
+<a name="basic"></a>
+<h3>Basic Settings</h3>
+<p>
+Hardware is inexpensive. Today's CPUs offers many cores allowing you to run 
+many threads in parallel and prices for memory are as low as never before. 
+So please allow your Apache server to serve many requests / TCP connections in 
+parallel by setting a "high" value for its <a href="http://httpd.apache.org/docs/current/mod/mpm_common.html#maxrequestworkers"><code>MaxClients</code> resp. <code>MaxRequestWorkers</code> <img src="images/link.png"/></a> 
+parameter (and the corresponding <code>ServerLimit</code>/<code>ThreadsPerChild</code>  
+values). I'm going to use <i>896</i> in the following examples. This is not 
+an absolute value. Its probably not even a particular "high" value if you 
+are fighting against a <i>low-bandwidth DoS attack</i>. Maybe it is fine 
+for a quad-core Intel CPU serving several thousand concurrent users 
+(assuming you are running the Apache server as your web tier only and 
+not using more than half of the possible connections in the normal 
+case - the upper half is only a reserve for exceptional situations, better 
+if you have even more reserves as over-provisioning may be really helpful) 
+but you might choose a different value suitable for your environment 
+(note that each tread requires about 1 to 2 MB of memory). Just adapt 
+all other values mentioned on this page accordingly.
+</p>
+<p>
+Other important Apache base settings concern timeouts. 
+One is the <a href="http://httpd.apache.org/docs/current/mod/core.html#timeout"><code>TimeOut</code> <img src="images/link.png"/></a>  
+directive defining the idle timeout while waiting for data on the network 
+socket, the other directive is 
+<a href="http://httpd.apache.org/docs/current/mod/core.html#keepalivetimeout"><code>KeepAliveTimeout</code> <img src="images/link.png"/></a>, telling the Apache 
+server for how long to wait for a subsequent request before closing an idle 
+connection. Keep-Alive is an important feature to accelerate your web server 
+but you should disable it if the server runs out of free connections. 
+Disabling Keep-Alive will give more users a chance to connect to your 
+server and send a HTTP request if your server becomes too busy and don't 
+has any free slots anymore. mod_qos's <a href="index.html#QS_SrvMaxConnClose"><code>QS_SrvMaxConnClose</code></a> directive allows you to disable Keep-Alive 
+in such a situation automatically.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# maximum number of active TCP connections is limited to 896 (limited
+# by the available memory, adjust the settings according to the used
+# hardware):
+MaxClients                          896
+
+# idle timeout (while the server is waiting for TCP packets):
+TimeOut                               5
+
+# keep alive (enabled, but only until 80% of all connections are busy):
+KeepAlive                            on
+KeepAliveTimeout                      2
+MaxKeepAliveRequests                 40
+<a href="index.html#QS_SrvMaxConnClose">QS_SrvMaxConnClose</a>                   80%
+</pre></td></tr></table>
+
+<a name="connections"></a>
+<h3>Connections per IP</h3>
+<p>
+There is no reason to allow a single IP address to open an unlimited number of 
+TCP connections. The <a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> 
+directive can be used to limit the connections a single IP is allowed to open.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# don't allow more than 30 TCP connections per client source address
+# if the server has 500 or more open connections:
+<a href="index.html#QS_SrvMaxConnPerIP">QS_SrvMaxConnPerIP</a>               30 500
+</pre></td></tr></table>
+
+<a name="datarate"></a>
+<h3>Minimum Data Rate</h3>
+<p>
+The definition of a minimum upload/download throughput a client must generate 
+(the bytes sent/received by the client per seconds) is a very important protection 
+mechanism against <i>low-bandwidth DoS attacks</i>. 
+The <a href="index.html#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> directive 
+can be used to implement this rule.
+</p>
+<a name="datarateparam"></a>
+Syntax: <code><a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a> &lt;bytes per second&gt; &lt;max bytes per second&gt; &lt;connections&gt;</code><br>
+
+<p>It offers three parameters. The first defines the 
+minimum data rate a client must achieve if the server would be idle 
+(no connections) and the second parameter defines the throughput 
+a client must achieve in addition when the server reaches its <code>MaxClients</code> 
+setting (at maximum number of connections). The third parameter defines the 
+number of busy connections (at low number of connections) to enable this 
+restriction.
+</p>
+<img src="images/SrvMinDataRate.png" height="352" width="636"/>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# minimum request/response data reate if the server has 500 or more
+# open connections:
+<a href="index.html#QS_SrvMinDataRate">QS_SrvMinDataRate</a>          120 1500 500
+</pre></td></tr></table>
+<p>
+You might also want to have a look at the Apache module 
+<a href="http://httpd.apache.org/docs/current/mod/mod_reqtimeout.html">mod_reqtimeout <img src="images/link.png"/></a> 
+(available since Apache 2.2.15) which may be used to set various timeouts for 
+receiving the request headers and the request body from the client.
+</p>
+
+<a name="block"></a>
+<h3>Repeat Offender</h3>
+<p>
+A very effective means of protection is the possibility to block client 
+IP addresses automatically for a certain period if they violate a rule 
+multiple times respectively if they cause errors many times. 
+The <a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a> 
+directive can be used to do this. 
+It defines <a href="glossary.html#repeat">how often</a> a "block event" (the Apache 
+process <a href="glossary.html#variables">environment variable</a> 
+<a href="index.html#QS_Block"><code>QS_Block</code></a>) may occur during a 
+defined period of time. This enhances the effect of the above limitations. 
+Incoming TCP connections are rejected if a client IP address reaches 
+this threshold until the limitation expires.
+<img align="right" src="images/QS_ClientEventBlockCount.png" height="308" width="422" />
+
+</p>
+<p>
+The <a href="index.html#QS_SetEnvIfStatus"><code>QS_SetEnvIfStatus</code></a> is one of mod_qos's 
+directive which may be used to define an event which must not occur too frequently.
+<ul>
+<li><i>400 405 406 408 413 414 500</i><br>
+Status codes which may be caused by clients sending invalid or incomplete requests.
+</li>
+<li><i>QS_SrvMinDataRate</i><br>
+Slow clients violating the <a href="index.html#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> rule (see above).
+</li>
+<li><i>QS_SrvMaxConnPerIP</i><br>
+Clients opening too many TCP connections, see <a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> above.
+</li>
+<li><i>BrokenConnection</i><br>
+Clients closing/aborting the TCP connection before reading the the HTTP response (<a href="index.html#BrokenConnection"><code>BrokenConnection</code></a> event).
+</li>
+</ul>
+</p>
+These limitations do not only increase the DoS defense efficiency. <a href="index.html#BrokenConnection"><code>BrokenConnection</code></a> in particular can be used to detect clients performing a <i>HTTP GET/POST flood DoS attack</i>.
+<p><a name="blockevents"></a>
+The following example blocks clients if they cause more than 20 events within 5 minutes.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# block clients violating some basic rules frequently (don't allows more than 20
+# violations within 5 minutes):
+<a href="index.html#QS_ClientEventBlockCount">QS_ClientEventBlockCount</a> 20 300
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        400                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        405                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        406                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        408                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        413                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        414                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        500                <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMinDataRate_var">QS_SrvMinDataRate</a>  <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#QS_SrvMaxConnPerIP_var">QS_SrvMaxConnPerIP</a> <a href="index.html#QS_Block">QS_Block</a>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#BrokenConnection">BrokenConnection</a>   <a href="index.html#QS_Block">QS_Block</a>
+</pre></td></tr></table>
+<p>
+This is just an example of events you might want to limit. Feel free to add 
+more or to ignore some events.
+</p>
+<p>
+<a name="NullConnection"></a>
+If you want to prevent from SSL DoS attacks as well (many SSL handshakes 
+initiated by the client), you might also want to block clients opening TCP 
+connections not sending any HTTP data. These clients may be marked using the 
+<a href="index.html#NullConnection"><code>NullConnection</code></a> event.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+<a href="index.html#QS_SetEnvIfStatus">QS_SetEnvIfStatus</a>        <a href="index.html#NullConnection">NullConnection</a>     <a href="index.html#QS_Block">QS_Block</a>
+</pre></td></tr></table>
+
+<a name="clients"></a>
+<h3>Requests per IP</h3>
+<p>
+Rules, limiting a clients number of requests to a resource, may be configured 
+using the 
+<a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
+directive. This provides an event counter per IP address and you may specify 
+<a href="glossary.html#repeat">how often</a> a client is allowed to
+trigger this event within a defined period of 
+time. Such a limitation might defense <i>HTTP GET/POST flood DoS attacks</i>, 
+especially if you know which requests are the most expensive ones / which 
+URLs provide the greatest risk of being attacked.
+</p>
+<p>You may use any request attributes to distinguish between "expensive" 
+(resources your server takes long to process, e.g. a search function 
+requiring a query running against a database) and "inexpensive" (like static 
+resource files which can be send to the client immediately). You can also 
+define different attribues and configure more than one counter per IP 
+(each counter is idenitfied by the specified name). 
+One attribute could be the request's URL and you may use the 
+<a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus"><code>SetEnvIfPlus</code> <img src="images/link.png"/></a> 
+directive to detect them and to increment the counter.<br>
+You can use the <code><a href="qslog.1.html">qslog</a></code> tool 
+(option <code>-pu</code>) to analyze log data (or just use any other log data 
+management tool). You should not only search your Apache server's log about 
+"slow requests" but also check how many requests are issued by a single 
+IP address to decide what limitations you want to configure (which URLs 
+and how often).
+</p>
+<p>
+For the following example, lets assume that requests to static resources 
+(jpg,gif,css,...) are cheap (quickly processed by your server) and other 
+requests expensive (takes long to be processed) while the most expensive 
+URL path is <code>/generateReport.php</code>. Therefore, you won't need 
+to set any penalty when accessing a static resource. Other resources 
+are marked by "1" (allowing a client to access them 20 times within two minutes) 
+while requests to the "most expensive" resource 
+<code>/generateReport.php</code> are burden by a 
+penalty of "2" (may be accessed only 10 times within two minutes).<br>
+It is also possible that you enable this limitation only if the server 
+reaches a predefined number of busy connections (no limitation if it is not 
+necessary). 
+You can achieve this by deleting the event variable (<code>SlowRequest</code> 
+in this example) if the server has less connections. 
+The <a href="index.html#QS_AllConn"><code>QS_AllConn</code></a> 
+variable tells you the number of busy TCP connections and the 
+<a href="index.html#QS_SetEnvIf"><code>QS_SetEnvIf</code></a> directive 
+allows you to <a href="glossary.html#variables">set or unset variables</a>. 
+The following example unset the <code>SlowRequest</code> variable 
+as long as the server has less than 499 connections.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# don't allow a client IP to access a "handler" (not a static resource like
+# a jpg, gif, ..) more than 20 times within two minutes:
+<a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          20 120 <a href="index.html#QS_Limit">SlowRequest</a>
+<a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI / SlowRequest=1
+<a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI /generateReport.php SlowRequest=2
+<a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus</a>              Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
+
+# disable any event counting if the server has less than 499 connections:
+<a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>               <a href="index.html#QS_AllConn">QS_AllConn</a>=^[1234]?[0-9]{1,2}$ !SlowRequest
+</pre></td></tr></table> 
+
+<p>
+<a name="RepeatedlySlow"></a>
+Clients violating these rules may times can be blocked for an even 
+longer period of time. This is implemented by a second counter, called 
+<code>RepeatedlySlow</code> in this example.
+</p>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# deny a client IP for 10 minutes if he violates the rule above 3 times:
+<a href="index.html#QS_ClientEventLimitCount">QS_ClientEventLimitCount</a>          3 600 <a href="index.html#QS_Limit">RepeatedlySlow</a>
+<a href="index.html#QS_SetEnvIf">QS_SetEnvIf</a>      <a href="index.html#_Counter">SlowRequest_Counter</a>=20 RepeatedlySlow=1
+</pre></td></tr></table> 
+<p>
+Alternatively, the <a href="index.html#QS_Block"><code>QS_Block</code></a> variable 
+could be set to incremented the 
+<a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a> 
+counter in the case of a repeated rule violation (to block clients at a 
+connection level extending the list of events defined 
+<a href="#blockevents">above</a>).
+</p>
+
+<a name="separation"></a>
+<h3>Separation</h3>
+<p>
+Your site might hosts multiple web applications of different importance. An 
+unimportant application can be prone to a <i>HTTP GET/POST flood DoS attack</i>. 
+To minimize the influence of such an application on others, you can limit the 
+allocable resources using the 
+<a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a> or 
+<a href="index.html#QS_LocRequestLimit"><code>QS_LocRequestLimit</code></a> 
+directive. These directives allow you to limit the number of 
+<a href="glossary.html#concurrency">concurrent requests</a> 
+to certain URLs.
+</p>
+<p>
+  <img src="images/qsloc.png" height="205" width="705"/>
+</p>
+<p>
+You can either separate the entire URL namespaces of different applications or you configure 
+<a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a> / 
+<a href="index.html#QS_LocRequestLimit"><code>QS_LocRequestLimit</code></a> 
+rules for those URLs which are particularly vulnerable to be exploited  
+(requests that require a long processing time).
+</p>
+
+<a name="country"></a>
+<h3>Country Specific Rules</h3>
+<p>
+Some web sites may have content that is only of regional interest, e.g., a 
+site whose content is written in German has probably most visitors from 
+countries where German is a national language. This allows you 
+to deny clients connecting from other countries in the case 
+your server runs out of free TCP connections.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# loads the GEO IP database and allows only client connections from
+# Germany, Austria or Switzerland if the number of busy connections
+# server reaches 700:
+<a href="index.html#QS_ClientGeoCountryDB">QS_ClientGeoCountryDB</a>          conf/GeoIPCountryWhois.csv
+<a href="index.html#QS_ClientGeoCountryPriv">QS_ClientGeoCountryPriv</a>        DE,AT,CH 700
+</pre></td></tr></table> 
+<p>
+The geolocation database file is a CSV file containing the following 
+fields: the double quoted <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">integer number<id></i> 
+defining the first IPv4 address in a netblock, the double quoted <i><id title="where w.x.y.z results in 16777216*w + 65536*x + 256*y + z">integer number<id></i> 
+defining the last IPv4 address in a netblock, and the double quoted ISO 3166 
+country code.
+</p>
+Example (extract) of a database file:
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+"176.10.86.0","176.10.87.255",<b>"2953467392","2953467903","GB"</b>,"United Kingdom"
+"176.10.88.0","176.10.95.255",<b>"2953467904","2953469951","BE"</b>,"Belgium"
+"176.10.96.0","176.10.127.255",<b>"2953469952","2953478143","CH"</b>,"Switzerland"
+"176.10.128.0","176.10.227.63",<b>"2953478144","2953503551","SE"</b>,"Sweden"
+"176.10.227.64","176.10.227.71",<b>"2953503552","2953503559","NO"</b>,"Norway"
+"176.10.227.72","176.10.255.255",<b>"2953503560","2953510911","SE"</b>,"Sweden"
+</pre></td></tr></table> 
+
+<a name="prefer"></a>
+<h3>Prefer Known Clients</h3>
+<p>
+<a href="index.html">mod_qos</a> may prefer "known" (aka 
+<a href="index.html#privilegedusers">VIP</a>) client IP 
+addresses in the case that too many clients access the server. 
+"Known" clients are those which have once been identified by 
+the application by setting the corresponding HTTP response header. 
+</p>
+<p>
+<a href="images/ClientPrefer.png"><img align="right" src="images/ClientPrefer.png" height="266" width="205" /></a>
+Such identification may happen at successful user login. If your 
+application does not authenticate users (anonymous access only), 
+you might decide to identify known/friendly IP addresses by any 
+other attributes, e.g., if your application can confirm that 
+the client interprets JavaScript or by using a captcha. 
+Connections from clients which are not known to 
+<a href="index.html">mod_qos</a> (never marked by 
+the corresponding response header) are denied 
+if the server runs on low TCP connection resources.
+</p>
+<p>
+<a href="index.html">mod_qos</a> prefers clients 
+which communicate with the server instantaneously and fast, 
+and denies access for slow clients sending data irregularly, 
+violating other rules or loading different content types than 
+the majority of the other clients do. If the threshold to block 
+unknown clients has been reached, the clients with the "worst" 
+behavior are denied first.
+</p>
+<p>
+The directive to enable this is feature called 
+<a href="index.html#QS_ClientPrefer"><code>QS_ClientPrefer</code></a>. When 
+using this feature, you should define how to detect the "good" clients 
+using the <a href="index.html#QS_VipIPHeaderName"><code>QS_VipIPHeaderName</code></a> 
+directive (as mentioned above: let your application add a special response header
+if a user successfully authenticates). Alternatively, you can use the 
+<a href="#QS_VipIPUser"><code>QS_VipIPUser</code></a> directive if you are using 
+an Apache authentication module such as mod_auth_basic to mark IP addresses 
+from which someone has successfully been authenticated. </p>
+<p>
+It is also recommended to configure a static value for the 
+<a href="index.html#QS_ClientContentTypes"><code>QS_ClientContentTypes</code></a> 
+directive in order to avoid falsification of the reference values during an attack.
+</p>
+
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# mark an IP address from which someone has authenticated
+<a href="#QS_VipIPUser">QS_VipIPUser</a>
+
+# specify the threshold (busy connections) when mod_qos starts to prefer some clients:
+<a href="index.html#QS_ClientPrefer">QS_ClientPrefer</a>                      80%
+
+# define what content type "normal" clients do access (this is just an example!):
+#                     html css/js images other 304
+<a href="index.html#QS_ClientContentTypes">QS_ClientContentTypes</a>   40     15    150    10  40
+</pre></td></tr></table> 
+
+<p>
+Preferring known clients also increases your server's resistance against 
+distributed denial of service (DDoS) attacks. 
+You might use the <code><a href="#QS_CondEventLimitCount">QS_CondEventLimitCount</a></code> 
+directive in addtion to configure limitations only affecting unknown 
+clients while known clients might continue to access your server even 
+the configured threshold is reached.
+</p>
+<p><i>Note: Clients marked as <a href="index.html#privilegedusers">VIP</a> 
+can pass the restrictions defined by the 
+<a href="index.html#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a> and 
+<a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a> by 
+default.<br> You can use 
+<a href="index.html#QS_SrvMinDataRateIgnoreVIP"><code>QS_SrvMinDataRateIgnoreVIP</code></a> and
+<a href="index.html#QS_SrvMaxConnPerIPIgnoreVIP"><code>QS_SrvMaxConnPerIPIgnoreVIP</code></a>
+if you want to change this (which is recommended in most cases).</i>
+</p>
+
+<a name="request"></a>
+<h3>Size Restrictions</h3>
+<p>
+There are two reasons why you would like to limit some request attributes 
+when fighting against DoS attacks. Having request line or header limitations 
+may lay open clients exceeding these limits exposing attackers trying 
+to hide themslef. The other one is that you don't want allow a client to 
+send too much data. 
+Three <a href="https://httpd.apache.org/docs/current/mod/core.html">Apache core <img src="images/link.png"></a> 
+and one <a href="index.html">mod_qos</a> directives may be used to set limitations.
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# limits request line, header and body:
+LimitRequestLine                   7168
+LimitRequestFields                   35
+LimitRequestFieldSize              7168
+<a href="index.html#QS_LimitRequestBody">QS_LimitRequestBody</a>              102400
+</pre></td></tr></table> 
+<p>
+<i>
+Note: These parameters needs to be adapted to fit your web server's usage. 
+Especially the request body size limitation. 
+You might want to configure this limitation depending 
+on the request's content type or increase the values for some URLs.
+</i>
+</p>
+
+<a name="kernel"></a>
+<h3>Kernel and iptables</h3>
+<p>
+You should also ensure to have the kernel parameters of your server adjusted 
+to meet the requirements of a web server (many ports, short close timeouts).
+</p>
+<p>
+Example:
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# example settings
+net.core.somaxconn = 32000
+net.core.netdev_max_backlog = 32000
+net.ipv4.ip_local_port_range = 9999 61000
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_slow_start_after_idle = 0
+</pre></td></tr></table> 
+
+<p>
+Your firewall in front or your Apache web server also performs important 
+tasks related to DoS prevention - but the configuration of your FW is out of 
+the scope of this article. However, <i>iptables</i> can also be fun...
+</p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%"><tr><td bgcolor="#E2EDE2"><pre>
+# limits the number of new connections (active after reaching the burst limit only):
+iptables -A INPUT -p tcp --dport 80,443 -m limit \
+  --state NEW --limit 60/minute --limit-burst 250 -j ACCEPT
+
+# limits the number of established/concurrent connections:
+iptables -A INPUT -m state --state RELATED,ESTABLISHED \
+  -m limit --limit 50/second --limit-burst 50 -j ACCEPT
+
+# limits the connections from a single source IP to 100:
+iptables -A INPUT -p tcp --syn --dport 80,443 -m connlimit \
+  --connlimit-above 100 -j REJECT
+</pre></td></tr></table> 
+
+<a name="sync"></a>
+<h3>Inform Others</h3>
+<p>
+You may want to inform other systems about client IP addresses which shall 
+be blocked, e.g., to synchronize multiple Apache instances (using the 
+<a href="index.html#webconsole">web console</a>), to configure 
+<i>iptables</i> rules (to apply an IP address blacklist for example), 
+or to inform your ISP about clients which shall no 
+longer be routed to your site. Watch your server's 
+<a href="index.html#errorlog">logs</a>! The directives mentioned on this 
+page may write event <a href="MESSAGES.txt">messages</a> using the 
+following identifiers when blocking clients.
+<ul>
+<li><a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a>: mod_qos(031)</li>
+<li><a href="index.html#QS_SrvMinDataRate"><code>QS_SrvMinDataRate</code></a>: mod_qos(034)</li>
+<li><a href="index.html#QS_ClientEventBlockCount"><code>QS_ClientEventBlockCount</code></a>: mod_qos(060)</li>
+<li><a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a>: mod_qos(067)</li>
+<li><a href="index.html#QS_ClientGeoCountryPriv"><code>QS_ClientGeoCountryPriv</code></a>: mod_qos(101)</li>
+<li><a href="index.html#QS_ClientPrefer"><code>QS_ClientPrefer</code></a>: mod_qos(066)</li>
+</ul>
+</p>
+
+</td></tr>
+</tbody>
+</table>
+<br>
+<hr>
+<SMALL><SMALL>&copy; 2020, Pascal Buchbinder</SMALL></SMALL>
+</body>
+</html>

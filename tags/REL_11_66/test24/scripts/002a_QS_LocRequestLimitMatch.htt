@@ -1,0 +1,110 @@
+#
+# $Id$
+#
+#    QS_LocRequestLimitMatch     ^/htt/limit2/.*   2
+#    QS_LocRequestLimitMatch     ^/index.html    200
+#    SetEnvIf                     User-Agent delayme QS_Delay=100
+
+
+INCLUDE scripts/ports
+
+CLIENT 5
+
+_LOOP 13
+_LOOP 3
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: delayme
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_END LOOP
+_CLOSE
+_END LOOP
+END
+
+
+CLIENT 2
+
+# first two clients are allowed
+_REQ localhost $QS_PORT_BASE
+__GET /htt/limit2/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "==AS1=="
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 2
+_SLEEP 500
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_LocRequestLimitMatch;2\[\^/htt/limit2/\.\*\]: 2"
+_WAIT
+_SLEEP 100
+# no more requests allowed
+_REQ localhost $QS_PORT_BASE
+__GET /htt/limit2/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "503 Service"
+_EXPECT . "custom error page"
+_EXPECT . "code=010"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(010\): access denied, QS_LocRequestLimit\* rule: \^/htt/limit2/\.\*\(2\), concurrent requests="
+_EXEC tail -1 logs/error_log
+
+_SLEEP 2000
+# first client has finished, requests are now allowed
+_REQ localhost $QS_PORT_BASE
+__GET /htt/limit2/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "==AS1=="
+_WAIT
+_SLEEP 100
+
+# and counter are 0
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_LocRequestLimitMatch;2\[\^/htt/limit2/\.\*\]: 0"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6 2
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: 9
+__
+_SLEEP 1000
+__==AS1==
+_CLOSE
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__==AS1==
+
+END

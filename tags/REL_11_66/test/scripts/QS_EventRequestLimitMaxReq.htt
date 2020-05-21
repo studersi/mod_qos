@@ -1,0 +1,173 @@
+#
+# $Id$
+#
+# MaxRequestsPerChild     125
+#
+# 1 minutes, about 200 req/sec
+#
+# slow client and fast:
+#   QS_SetEnvIfQuery           QS_EventRequestV=([a-z]*) queryv=$1
+#   QS_EventRequestLimit       queryv=abc      3
+#
+# sinlge, req rate client:
+#   BrowserMatch               "event"                         qsevent=yes
+#   QS_SetEnvIf                qsevent !QS_VipRequest          qsmin=event
+#   QS_EventPerSecLimit        qsmin  5
+#
+# fast cliennt:
+#   BrowserMatch               longterm        longterm
+#   QS_EventRequestLimit       longterm        20
+#
+
+INCLUDE scripts/ports
+
+# slow client (ensures we have concurrency)
+CLIENT
+
+# 60 requests (60 sec)
+
+_LOOP 60
+
+_REQ localhost $QS_PORT_BASE
+__GET /localpages/scripts/sleep.cgi?s=1&QS_EventRequestV=abc HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 20
+_END LOOP
+
+END
+
+# 404 client (internal subrequests due to ErrorPage directive)
+CLIENT
+
+# 2 req/sec (user agent limit is set to 5)
+_RPS 1000 30
+
+# causes also 2 events per sec
+_REQ localhost $QS_PORT_BASE
+__GET /localpages/scripts/gugus?QS_EventRequestV=abc HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: event
+__
+_EXPECT . "ErrorDocument 404"
+_WAIT
+_CLOSE
+_SLEEP 400
+
+_END RPS
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH body "QS_EventPerSecLimit;5\[var=\[qsmin\]\]: (.*)" VALUE
+_WAIT
+_CLOSE
+_IF "$VALUE" MATCH "^0$"
+_EXIT FAILED
+_END IF
+
+# 2 req/sec (user agent limit is set to 5)
+_RPS 1000 30
+
+# causes also 0.5 event per sec
+_REQ localhost $QS_PORT_BASE
+__GET /localpages/scripts/gugus?QS_EventRequestV=abc HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: event
+__
+_EXPECT . "ErrorDocument 404"
+_WAIT
+_CLOSE
+_SLEEP 2000
+
+_END RPS
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH body "QS_EventPerSecLimit;5\[var=\[qsmin\]\]: (.*)" VALUE
+_WAIT
+_IF "$VALUE" NOT MATCH "^0$"
+_EXIT FAILED
+_END IF
+
+END
+
+# relatively fast client (200 of req/sec)
+CLIENT
+
+_RPS 1000 60
+_REQ localhost $QS_PORT_BASE
+__GET /localpages/index.html?QS_EventRequestV=abc HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_MATCH headers "Connection: (.*)" CONNECTION
+_EXPECT . "localpages index.html"
+_WAIT
+_IF "$CONNECTION" MATCH "close"
+_CLOSE
+_END IF
+_SLEEP 50
+
+_END RPS
+
+END
+
+# fast client (200 of req/sec)
+CLIENT 10
+
+_RPS 200 60
+_REQ localhost $QS_PORT_BASE
+__POST /localpages/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: longterm
+__Content-Length: 10
+__
+_SLEEP 5
+__012345678
+_MATCH headers "Connection: (.*)" CONNECTION
+_EXPECT . "localpages index.html"
+_WAIT
+_IF "$CONNECTION" MATCH "close"
+_CLOSE
+_END IF
+_SLEEP 50
+
+_END RPS
+
+END
+
+BLOCK FINALLY
+_SLEEP 2000
+# at the end, the counter must be 0
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_MATCH body "QS_EventRequestLimit;3\[var=\(queryv=abc\)\]: (.*)" VALUE
+_MATCH body "QS_EventRequestLimit;20\[var=\(longterm\)\]: (.*)" VALUE2
+_WAIT
+_IF "$VALUE" NOT MATCH "^0$"
+_EXIT FAILED
+_END IF
+_IF "$VALUE2" NOT MATCH "^0$"
+_EXIT FAILED
+_END IF
+
+END
+

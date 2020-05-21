@@ -1,0 +1,66 @@
+#
+#   QS_ClientIpFromHeader  #Authorization
+#   QS_ClientEventLimitCount 3 2 QS_HdrHash
+#   SetEnvIfPlus           User-Agent QS_HdrHash QS_HdrHash=1
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: server1
+__Connection: keep-alive
+__User-Agent: QS_HdrHash
+__
+_EXPECT . "200 OK"
+_EXPECT . "root index.html"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "no valid IP header found"
+_EXEC tail -1 logs/error_log
+
+_LOOP 2
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: server1
+__Connection: keep-alive
+__User-Agent: QS_HdrHash
+__Authorization: Basic cGJ1Y2hiaW5kZXI6MTIzNDU2Nzg=
+__
+_EXPECT . "200 OK"
+_EXPECT . "root index.html"
+_WAIT
+_CLOSE
+_END LOOP
+
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: server1
+__Connection: keep-alive
+__User-Agent: QS_HdrHash
+__Authorization: Basic cGJ1Y2hiaW5kZXI6MTIzNDU2Nzg=
+__
+_EXPECT . "500 Internal Server Error"
+_EXPECT . "!root index.html"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "access denied, QS_ClientEventLimitCount rule: event=QS_HdrHash"
+_EXEC tail -1 logs/error_log
+
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: server1
+__Connection: keep-alive
+__User-Agent: QS_HdrHash
+__Authorization: Basic Zm9vOjEyMzQ0NTU2Njc3ODg=
+__
+_EXPECT . "200 OK"
+_EXPECT . "root index.html"
+_WAIT
+_CLOSE
+
+END

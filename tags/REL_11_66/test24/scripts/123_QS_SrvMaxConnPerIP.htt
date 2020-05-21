@@ -1,0 +1,132 @@
+# 
+# QS_SrvMaxConnPerIP            31
+# 
+# 
+# <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
+# 
+#    QS_SrvMaxConnClose         25
+#    QS_SrvMaxConnPerIP         30
+#    QS_SrvMaxConn              45
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D LimitPerIp -D real_ip >/dev/null
+SLEEP 2000
+
+CLIENT 30
+_SLEEP 2000
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 1000
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 3000
+_REQ localhost $QS_PORT_BASE
+_EXPECT ERROR "Connection reset"
+__GET /cgi-local/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+#_EXPECT . "500 Internal Server Error"
+_EXPECT . "!done"
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=30, concurrent connections=31"
+_EXEC tail -3 logs/error_log
+
+END
+
+
+
+CLIENT 31
+_SLEEP 1000
+_REQ localhost $QS_PORT_BASE1
+__GET /cgi/sleep.cgi?s=3 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 1000
+
+_REQ localhost $QS_PORT_BASE1
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_SLEEP 500
+
+_REQ localhost $QS_PORT_BASE1
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 2000
+_EXPECT ERROR "Connection refused"
+_REQ localhost $QS_PORT_BASE1
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(031\): access denied, QS_SrvMaxConnPerIP rule: max=31, concurrent connections=32"
+_EXEC tail -3 logs/error_log
+
+_SLEEP 5000
+_REQ localhost $QS_PORT_BASE
+__GET /qos?option=ip&action=enable&auto HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "v;127.0.0.1;${QS_PORT_BASE};QS_SrvMaxConnPerIP;127.0.0.1: 1"
+_EXPECT . "!v;127.0.0.1;${QS_PORT_BASE1};QS_SrvMaxConnPerIP;"
+_EXPECT . "!v;127.0.0.1;${QS_PORT_BASE2};QS_SrvMaxConnPerIP;"
+_EXPECT . "!b;127.0.0.1;0;QS_SrvMaxConnPerIP;127.0.0.1: 1"
+_WAIT
+_CLOSE
+_SLEEP 50
+_REQ localhost $QS_PORT_BASE1
+__GET /qos?option=ip&action=enable&auto HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "!v;127.0.0.1;${QS_PORT_BASE};QS_SrvMaxConnPerIP;"
+_EXPECT . "!v;127.0.0.1;${QS_PORT_BASE1};QS_SrvMaxConnPerIP;"
+_EXPECT . "!v;127.0.0.1;${QS_PORT_BASE2};QS_SrvMaxConnPerIP;"
+_EXPECT . "b;127.0.0.1;0;QS_SrvMaxConnPerIP;127.0.0.1: 1"
+_WAIT
+_CLOSE
+
+END
+
+BLOCK FINALLY
+_SLEEP 1000
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END

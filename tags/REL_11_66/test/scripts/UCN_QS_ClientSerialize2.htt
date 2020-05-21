@@ -1,0 +1,97 @@
+# 
+# QS_ClientIpFromHeader         Y-Forwarded-For
+# SetEnvIfPlus                  User-Agent serializeme QS_Serialize=yes
+# QS_ClientSerialize
+# 
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "done"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme\" 1 . -"
+_EXEC tail -1 logs/access_log
+
+END
+
+CLIENT
+_SLEEP 100
+_DATE:GET_TIME START1
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "done"
+_WAIT
+_DATE:GET_TIME END1
+
+_OP $END1 SUB $START1 DELTA1
+_IF "$DELTA1" GT "2100"
+_EXIT FAILED
+_END IF
+_IF "$DELTA1" LT "1900"
+_EXIT FAILED
+_END IF
+
+_SLEEP 100
+_EXPECT EXEC "GET /cgi-local/sleep.cgi\?s=1 HTTP/1.1\" 200 5 \"serializeme\" 2 . s;"
+_EXEC tail -1 logs/access_log
+
+_DATE:GET_TIME START1
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.2
+__
+_EXPECT . "done"
+_WAIT
+_DATE:GET_TIME END1
+
+_OP $END1 SUB $START1 DELTA1
+_IF "$DELTA1" GT "1100"
+_EXIT FAILED
+_END IF
+_IF "$DELTA1" LT "900"
+_EXIT FAILED
+_END IF
+
+END
+
+CLIENT
+_SLEEP 100
+_DATE:GET_TIME START2
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: serializeme
+__Connection: keep-alive
+__Y-Forwarded-For: 127.0.0.3
+__
+_EXPECT . "done"
+_WAIT
+_DATE:GET_TIME END2
+
+_OP $END2 SUB $START2 DELTA2
+_IF "$DELTA2" GT "1100"
+_EXIT FAILED
+_END IF
+_IF "$DELTA2" LT "900"
+_EXIT FAILED
+_END IF
+
+END

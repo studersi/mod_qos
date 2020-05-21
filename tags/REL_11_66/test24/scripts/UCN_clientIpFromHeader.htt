@@ -1,0 +1,139 @@
+#
+# SetEnvIfPlus              Remote_Addr (.*) realIP=$1
+# SetEnvIfPlus              User-Agent "^[Cc]isco\x2FSPA[0-9]{3}[G]?-[0-9a-z.]+ \(([0-9A-Z]+)\)" virtualIP=$1
+# RequestHeaderPlus     set X-Hash ${realIP}
+# SetHashHeaderPlus         X-Hash virtualIP
+# SetEnvIfPlus              virtualIP .* limitPhone=1
+# QS_ClientIpFromHeader     X-Hash
+# QS_ClientEventLimitCount  4 5 limitPhone
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_LOOP 10
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html?1 HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__X-dumpvar: on
+__X-dumphdr: on
+__
+_EXPECT . "AS1"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC " VAR /htt/index.html\?1 .*realIP=127.0.0.1"
+_EXPECT EXEC " HDR /htt/index.html\?1 .*X-Hash=127.0.0.1"
+_EXEC tail -2 logs/error_log
+_END LOOP
+
+_LOOP 3
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html?2 HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Cisco/SPA514G-7.6.2e (10DB18A05417)(sipuraspa)
+__X-dumpvar: on
+__X-dumphdr: on
+__
+_EXPECT . "AS2"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC " VAR /htt/index.html\?2 .*realIP=127.0.0.1"
+_EXPECT EXEC " VAR /htt/index.html\?2 .*virtualIP=10DB18A05417"
+_EXPECT EXEC " HDR /htt/index.html\?2 .*X-Hash=69ad:ad5b:7a8a:2316:2ba3:f455:1a22:c63d"
+_EXEC tail -2 logs/error_log
+_END LOOP
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html?3 HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Cisco/SPA514G-7.6.2e (10DB18A05417)(sipuraspa)
+__X-dumpvar: on
+__X-dumphdr: on
+__
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=limitPhone, max=4, current=4, age=., c=69ad:ad5b:7a8a:2316:2ba3:f455:1a22:c63d"
+_EXPECT EXEC " VAR /htt/index.html\?3 .*realIP=127.0.0.1"
+_EXPECT EXEC " VAR /htt/index.html\?3 .*virtualIP=10DB18A05417"
+_EXPECT EXEC " HDR /htt/index.html\?3 .*X-Hash=69ad:ad5b:7a8a:2316:2ba3:f455:1a22:c63d"
+_EXEC tail -3 logs/error_log
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__X-dumpvar: on
+__X-dumphdr: on
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Cisco/SPA514G-7.6.2e (10DB18A05417)(sipuraspa)
+__X-dumpvar: on
+__X-dumphdr: on
+__
+_EXPECT . "!this is the root index.html"
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+
+_SLEEP 6100
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Cisco/SPA514G-7.6.2e (10DB18A05417)(sipuraspa)
+__X-dumpvar: on
+__X-dumphdr: on
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+END
+
+SERVER $QS_PORT_BASE6
+
+_LOOP 10
+_RES
+_EXPECT headers "X-Hash: 127.0.0.1"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__==AS1==
+_CLOSE
+_END LOOP
+
+_LOOP 3
+_RES
+_EXPECT headers "X-Hash: 69ad:ad5b:7a8a:2316:2ba3:f455:1a22:c63d"
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Type: text/plain
+__Content-Length: AUTO
+__
+__==AS2==
+_CLOSE
+_END LOOP
+
+#_RES
+#_EXPECT headers "X-Hash: f528:764d:624d:b129:b32c:21fb:ca0c:b8d6"
+#_WAIT
+#__HTTP/1.1 200 OK
+#__Content-Type: text/plain
+#__Content-Length: AUTO
+#__
+#__==AS1==
+#_CLOSE
+
+END

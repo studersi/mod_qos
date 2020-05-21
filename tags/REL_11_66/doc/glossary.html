@@ -1,0 +1,600 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+ <title>mod_qos - Additional Information</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1" />
+<meta name="author" content="Pascal Buchbinder" />
+<meta name="KeyWords" content="mod_qos, Quality of Service, Apache Web Server" />
+<link rel="shortcut icon" href="favicon.ico" />
+<style TYPE="text/css">
+<!--  
+  body {
+	background-color: white;
+	color: black;
+	font-family: sans-serif, arial, verdana;
+	font-weight: normal;
+	text-align: left;
+  }
+  a:link    { color:#00673F; text-decoration:none; }
+  a:visited { color:#00673F; text-decoration:none; }
+  a:focus   { color:black; text-decoration:underline; }
+  a:hover   { color:black; text-decoration:underline; }
+  a:active  { color:black; text-decoration:underline; }
+  syntax { font-family: monospace; font-size: 14; line-height: 1.6; }
+  .btable   { font-size:0.75em; }
+-->
+</style>
+</head>
+<body>
+<!--
+
+ Quality of service module for Apache Web Server.
+
+ See http://mod-qos.sourceforge.net/ for further details.
+
+ Copyright (C) 2020 Pascal Buchbinder
+
+ Licensed to the Apache Software Foundation (ASF) under one or more
+ contributor license agreements.  See the NOTICE file distributed with
+ this work for additional information regarding copyright ownership.
+ The ASF licenses this file to You under the Apache License, Version 2.0
+ (the "License"); you may not use this file except in compliance with
+ the License.  You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+
+-->
+<table>
+<tbody>
+<tr><td><a href="index.html"><img src="images/mod_qos.gif" alt="mod_qos" title="mod_qos" /></a></td>
+    <td style="vertical-align: bottom;"><h1>Additional Information</h1></td></tr>
+<tr><td>&nbsp;</td>
+    <td>
+
+
+<p>
+This page gives you additional information on certain aspects of 
+<a href="index.html">mod_qos</a> to get a better understanding about
+how to use the module.  
+</p>
+<hr>
+
+<p>
+  <ul>
+    <li><a href="#directives">Directives</a></li>
+    <li><a href="#rules">Rules</a></li>
+    <li><a href="#variables">Environment Variables</a></li>
+    <li><a href="#concurrency">Concurrency Counter</a></li>
+    <ul>
+      <li><a href="#QS_LocRequestLimit_Example">Sample Use Case</a></li>
+    </ul>
+    <li><a href="#repeat">Repeat Counter</a></li>
+    <li><a href="#throughput">Throughput Control</a></li>
+    <ul>
+      <li><a href="#requestPerSecond">Requests per Second</a></li>
+    </ul>
+    <li><a href="#serialization">Serialization</a></li>
+    <li><a href="#ssi">Error Pages and Server Side Includes (SSI)</a></li>
+    <li><a href="#UserTracking">User Tracking</a></li>
+    <li><a href="#RequestStatistics">Request Statistics Using <i>qslog</i></a></li>
+  </ul>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="directives"></a>
+<h2>Directives</h2>
+<p>
+The module is configured by directives. All directives process the 
+connection, HTTP request, and response data in a pre-defined sequence. 
+The following graph shows the order in which the directives work.
+</p>
+<p>
+<a href="images/directive_seq.gif"><img src="images/directive_seq.gif" height="435" width="558" title="directive sequence" alt="directive sequence"/></a>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="rules"></a>
+<h2>Rules</h2>
+<p>
+<a href="index.html">mod_qos</a> allows you to configure different kind of 
+rules. The main component of a rule is its counter. A rule measures either 
+the <a href="#concurrency">concurrency</a> (how many times something happens 
+at the same time), the <a href="#repeat">occurrence </a> (how often does 
+something happen in a certain amount of time), or the 
+<a href="#throughput">throughput</a> (sent amount of data or number of 
+request) and stores this information within that counter.</p>
+<p>
+Every rule has it's own threshold and maintains its own counter. A rule 
+is identified by either an URL pattern/matching string or by an 
+<a href="#variables">environment variable name</a>. 
+You can configure as many rules as you want. </p>
+<img src="images/Rule.png" height="164" width="514" alt="Rule" />
+<p>
+<i>Note: Some counters are only available once. This applies to the counters of
+the rules using the
+<code><a href="index.html#QS_Block">QS_Block</a></code>, 
+<code><a href="index.html#QS_SrvSerialize_var">QS_SrvSerialize</a></code>, and 
+<code><a href="index.html#QS_Serialize">QS_Serialize</a></code> 
+<a href="#variables">environment variables</a>.
+</i>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="variables"></a>
+<h2>Environment Variables</h2>
+<p>
+The Apache web server provides a mechanism for storing information 
+in so called <i>environment variables</i>. <a href="index.html">mod_qos</a> uses these 
+variables to exchange data respectively signalize events between 
+<a href="#rules">different rules</a> defined by the 
+<a href="#directives">corresponding directive</a>. These 
+variables can also be written or read by other Apache modules, such as
+<a href="http://modsetenvifplus.sourceforge.net/">mod_setenvifplus <img src="images/link.png"/></a> 
+or <a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html">mod_setenvif <img src="images/link.png"/></a>.
+</p>
+<p>Example:<br>
+The <code><a href="http://httpd.apache.org/docs/current/mod/mod_setenvif.html#setenvif">SetEnvIf <img src="images/link.png"/></a></code> directive 
+is used to set the <i>LimitLogin</i> variable if the request line matches 
+the <code>^/wp-login.php</code> pattern while the 
+<a href="index.html#QS_ClientEventLimitCount"><code>QS_ClientEventLimitCount</code></a> 
+directives increments the <a href="#repeat">repeat counter</a> having the same name
+if the variable is present.
+<br>
+<img src="images/Events.png" height="396" width="795" alt="Event set by SetEnvIf and processed by QS_ClientEventLimitCount" />
+</p>
+<p>It is also possible to write the values of these variables to your log
+file using the format string <code>%{VARNAME}e</code> within the
+<code><a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">TransferLog/CustomLog <img src="images/link.png"/></a></code>
+directives. Or you can use them within error pages using
+<a href="#ssi">server-side includes (SSI)</a>.
+</p>
+<p>
+<i>Note: Whenever you use a directive (such as 
+<code><a href="http://modsetenvifplus.sourceforge.net/#SetEnvIfPlus">SetEnvIfPlus <img src="images/link.png"/></a></code>) which can either process request attributes (such 
+as HTTP headers) or environment variables, you must make sure that 
+a client can not bypass your rules by sending a request header 
+with the same name as the environment variable used in your configuration. 
+Use either the <a href="index.html#QS_RequestHeaderFilter">request header filter</a> 
+or the <code><a href="index.html#QS_UnsetReqHeader">QS_UnsetReqHeader</a></code> 
+directive to prevent anyone from sending a request header with the same name as 
+the variable you have defined.
+</i></p>
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="concurrency"></a>
+<h2>Concurrency Counter</h2>
+<p>
+A "concurrency counter" is used to determine how many times something 
+happens at the same time (concurrent), e.g. HTTP requests accessing the same 
+resource/URL at the same time. The rules using this counter type are either 
+defined by an <a href="#variables">environment variable name</a> or an 
+URL pattern (regular expression or a string matching the request's URL). 
+Such a rule automatically increments the counter when the Apache web server 
+starts to process a matching request and decrements the counter when the 
+request processing is completed.
+</p>
+<p>
+You have to configure a threshold and the rule's variable name resp. URL 
+pattern. Requests (or new connections) are denied as soon as the configured 
+threshold is reached.
+</p>
+<p>
+Directives using this counter type are:
+<ul>
+<li><a href="index.html#QS_LocRequestLimitMatch"><syntax>QS_LocRequestLimitMatch</syntax></a></li>
+<li><a href="index.html#QS_LocRequestLimit"><syntax>QS_LocRequestLimit</syntax></a></li>
+<li><a href="index.html#QS_CondLocRequestLimitMatch"><syntax>QS_CondLocRequestLimitMatch</syntax></a></li>
+<li><a href="index.html#QS_EventRequestLimit"><syntax>QS_EventRequestLimit</syntax></a></li>
+<li><a href="index.html#QS_ClientEventRequestLimit"><syntax>QS_ClientEventRequestLimit</syntax></a></li>
+</ul>
+Also the 
+<a href="index.html#QS_SrvMaxConn"><code>QS_SrvMaxConn</code></a>, 
+<a href="index.html#QS_SrvMaxConnClose"><code>QS_SrvMaxConnClose</code></a>, and 
+<a href="index.html#QS_SrvMaxConnPerIP"><code>QS_SrvMaxConnPerIP</code></a>
+directives use this counter type, although with fewer parameter options.
+</p>
+<p>
+<a name="QS_LocRequestLimit_Example"></a>
+<h4>Sample Use Case</h4>
+Now let us look at an example to show where these rules can be used. 
+Let's assume that you have two applications. We call them 
+"<font color="green">A</font>" and "<font color="blue">B</font>". 
+Application "<font color="green">A</font>" has been deployed on 
+path <code>/app/a</code> and "<font color="blue">B</font>" 
+on <code>/app/b</code>.
+<table width="780px">
+  <tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<td>
+As long as the server has enough resources, users can access both 
+applications the same time without influencing each other.<br> 
+All requests are processed quickly and the workers become free 
+again to serve new requests.
+<br><br>
+</td>
+<td>
+  <img src="images/qsloc1.png" height="212" width="439" alt="trouble-free"/>
+</td>
+  </tr>
+  <tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<td>
+But if the application "<font color="blue">B</font>" becomes slow, 
+the duration of request processing increases and all workers become busy. 
+There are no free workers left and application 
+"<font color="green">A</font>" becomes unavailable because of that.
+<br><br>
+</td>
+<td>
+  <img src="images/qsloc2.png" height="223" width="439" alt="disruption"/>
+</td>
+  </tr>
+  <tr>
+<td>&nbsp;&nbsp;&nbsp;&nbsp;</td>
+<td>
+A <a href="index.html#QS_LocRequestLimit"><code>QS_LocRequestLimit</code></a> or 
+<a href="index.html#QS_LocRequestLimitMatch"><code>QS_LocRequestLimitMatch</code></a>
+rule can help in such a situation. mod_qos limits the 
+number of requests to application "<font color="blue">B</font>" 
+so that application "<font color="green">A</font>" remains 
+available even application "<font color="blue">B</font>" 
+has problems.
+</td>
+<td>
+  <img src="images/qsloc3.png" height="241" width="439" alt="disruption"/>
+</td>
+  </tr>
+</table>
+<br>
+Such a scenario can occur due to various infrastructure problems, 
+e.g., by slow database queries.<br> A similar situation can also 
+arise through an external influence: if someone penetrates application 
+"<font color="blue">B</font>" with a <i>HTTP GET / POST flood DoS attack</i>, 
+then application "<font color="green">A</font>" could also become 
+unreachable. 
+A <a href="index.html#QS_LocRequestLimit"><code>QS_LocRequestLimit</code></a> 
+rule can prevent this.
+</p>
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="repeat"></a>
+<h2>Repeat Counter</h2>
+<p>
+"Repeat counters" limit the number how often (Cr) something is allowed to 
+happen in a certain amount of time (Td). These rules trigger a timer whenever
+the defined event occurs the first time and start to count every subsequent event
+until the timer expires. If the event counter reaches the defined limitation,
+requests are blocked until the time is up.
+</p>
+<p>
+    <img src="images/LimitCount.png" height="432" width="576" alt="reapet counter"/>
+</p>
+<p>
+All repeat counters allow you to define an event which shall 
+increment the counter if they occur. You also have to configure a 
+duration Td and the threshold Cr, defining how many events are 
+allowed within the time Td.</p>
+<p>Directive parameter example:<br>
+<img src="images/LimitCountExample.png" height="165" width="574" alt="QS_ClientEventLimitCount" />
+</p>
+<p>
+While the counter is automatically cleared (set to 0) when the 
+time Td is up, you might also configure additional events to 
+<a href="index.html#_Decrement">decrement</a> or
+<a href="index.html#_Clear">clear</a> the counter earlier.
+</p>
+<p>
+The directives using this counter type are:
+<ul>
+<li><a href="index.html#QS_EventLimitCount"><syntax>QS_EventLimitCount</syntax></a></li>
+<li><a href="index.html#QS_CondEventLimitCount"><syntax>QS_CondEventLimitCount</syntax></a></li>
+<li><a href="index.html#QS_ClientEventLimitCount"><syntax>QS_ClientEventLimitCount</syntax></a></li>
+<li><a href="index.html#QS_CondClientEventLimitCount"><syntax>QS_CondClientEventLimitCount</syntax></a></li>
+<li><a href="index.html#QS_ClientEventBlockCount"><syntax>QS_ClientEventBlockCount</syntax></a></li>
+</ul>
+<i>Note: Some directives support the increase of the counter by more than "1" 
+taking the variable's value into account.</i>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="throughput"></a>
+<h2>Throughput Control</h2>
+<p>
+Throughput control is implemented by measuring the current usage and
+calculating a necessary delay which needs to be applied to the
+data processing in order to achieve the desired limitation (closed
+loop control system).
+</p>
+<p>
+    <img src="images/ClosedLoop.png" height="216" width="478" alt="closed loop"/>
+</p>
+<p>
+<a href="index.html">mod_qos</a> can limit the bandwidth when downloading 
+data from your web server to the client. This throughput control can
+be configured by the following directives:
+<ul>
+<li><a href="index.html#QS_LocKBytesPerSecLimitMatch"><syntax>QS_LocKBytesPerSecLimitMatch</syntax></a></li>
+<li><a href="index.html#QS_LocKBytesPerSecLimit"><syntax>QS_LocKBytesPerSecLimit</syntax></a></li>
+<li><a href="index.html#QS_EventKBytesPerSecLimit"><syntax>QS_EventKBytesPerSecLimit</syntax></a></li>
+</ul>
+</p>
+<a name="requestPerSecond"></a>
+<h3>Requests per Second</h3>
+<p>
+It is also possible to limit the number or requests per second to a 
+resource. This control function is less accurate than the bandwidth 
+limitation, since the measurement of the request rate takes longer 
+(several seconds) and the request delay is more coarse-grained.<br>
+The following directive can be used to limit the number of requests
+per second:
+<ul>
+<li><a href="index.html#QS_LocRequestPerSecLimitMatch"><syntax>QS_LocRequestPerSecLimitMatch</syntax></a></li>
+<li><a href="index.html#QS_LocRequestPerSecLimit"><syntax>QS_LocRequestPerSecLimit</syntax></a></li>
+<li><a href="index.html#QS_EventPerSecLimit"><syntax>QS_EventPerSecLimit</syntax></a></li>
+</ul>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="serialization"></a>
+<h2>Serialization</h2>
+<p>
+<a href="index.html">mod_qos</a> offers you the option to serialize requests. 
+Serialization means, that requests are processed one after the other. Incoming
+requests are queued if another request is in process and have to wait until
+the previous request is finished.
+</p>
+<p>
+    <img src="images/Serialization.png" height="336" width="570" alt="serialization"/>
+</p>
+<p>
+Requests, which shall be serialized, are tagged by one of the following 
+<a href="#variables">environment variables</a>:
+<ul>
+<li><syntax><a href="index.html#QS_SrvSerialize_var">QS_SrvSerialize</a></syntax></li>
+<li><syntax><a href="index.html#QS_Serialize">QS_Serialize</a></syntax></li>
+</ul>
+</p>
+<p>
+Serialization might be applied on a per 
+<a href="index.html#QS_SrvSerialize">server level</a> (serializing all HTTP
+requests) or on a <a href="index.html#QS_ClientSerialize">per client level</a>
+(serializing multiple requests coming from the same client/IP address).
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="ssi"></a>
+<a name="SSI"></a>
+<h2>Error Pages and Server Side Includes (SSI)</h2>
+<p>
+Custom error documents to be used by <a href="index.html">mod_qos</a> 
+are either configured using the 
+<code><a href="index.html#QS_ErrorPage">QS_ErrorPage</a></code> directive 
+or the <code><a href="index.html#QS_ErrorPage_Var">QS_ErrorPage</a></code> 
+variable.<br>
+You may also use Apache's <a href="http://httpd.apache.org/docs/current/howto/ssi.html">server-side includes (SSI) <img src="images/link.png"/></a> to generate the content 
+of the error document dynamically. The <a href="index.html#errorlog">error codes</a> and 
+other <a href="index.html#variables">variables</a> set by
+<a href="index.html">mod_qos</a> can be used.
+</p>
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+AddType                   text/html .shtml
+AddOutputFilter           INCLUDES .shtml
+QS_ErrorPage              <a href="#qs_error.shtml">/errorpages/qs_error.shtml</a>
+</pre>
+</td></tr>
+</table>
+</p>
+
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2"><a name="qs_error.shtml"></a>
+Sample page:<br>
+<pre>
+&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;!-- 
+      --  mod_qos sample SSI error page (Apache 2.4)
+      --&gt;
+    &lt;meta http-equiv="Cache-Control" content="no-cache, no-store"/&gt;
+    &lt;meta http-equiv="expires" content="0" /&gt;
+    &lt;title&gt;ERROR - &lt;!--#echo var="REDIRECT_ERROR_NOTES" --&gt;&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+  &lt;p&gt;
+    &lt;b&gt;&lt;i&gt;sorry - the server was unable to complete your request&lt;/i&gt;&lt;/b&gt;
+  &lt;/p&gt;
+  &lt;p&gt;
+        code: mod_qos(&lt;!--#echo var="<a href="index.html#QS_ErrorNotes">QS_ErrorNotes</a>" --&gt;)&lt;br&gt;
+    &lt;!--#if expr="v('REDIRECT_ERROR_NOTES') =~ /00[0-9]/" --&gt;
+        reason: initialisation failure
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /0[18][0-9]/" --&gt;
+        reason: request rule
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /03[0-9]/" --&gt;
+        reason: connection rule
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /[01]4[0-9]/" --&gt;
+        reason: request filter
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /05[0-9]/" --&gt;
+        reason: bandwidth limitation
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /[01]6[0-9]/" --&gt;
+        reason: client limitation &lt;br&gt;
+        remaining time: &lt;span id="remaining"&gt;&lt;!--#echo var="<a href="index.html#QS_Limit_Remaining">QS_Limit_Remaining</a>" --&gt;&lt;/span&gt; seconds
+        &lt;script type="text/javascript"&gt;
+        &lt;!--
+        setInterval(function () {
+          var msg = document.getElementById('remaining');
+          if(msg) {
+            var value = msg.innerHTML;
+            var remainTime = value - 1;
+            if(remainTime &lt; 0) {
+              window.location = window.location.pathname;
+            } else {
+              msg.innerHTML = remainTime;
+            }
+          }
+        }, 1000);
+        //--&gt;
+        &lt;/script&gt;
+    &lt;!--#elif expr="v('REDIRECT_ERROR_NOTES') =~ /10[0-9]/" --&gt;
+        reason: GEO location limitation
+    &lt;!--#else --&gt;
+        reason: generic failure
+    &lt;!--#endif --&gt;
+  &lt;/p&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</td></tr>
+</table>
+</p>
+
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="UserTracking"></a>
+<a name="QS_UserTrackingCookieName"></a>
+<h2>User Tracking</h2>
+<p>
+It might be necessary to identify individual users to define appropriate QoS
+rules. For this reason, <a href="index.html">mod_qos</a> can set a cookie
+containing a unique identifier. This identifier is then written to the
+<code><a href="index.html#mod_qos_user_id">mod_qos_user_id</a></code>
+environment variable and you can add it to your log files by the
+format string <code>%{mod_qos_user_id}e</code>. This allows you to identify
+all requests issued by a user.</p>
+<p>
+This feature is enabled by the following directive:
+<ul>
+<li><syntax>QS_UserTrackingCookieName &lt;name&gt; [&lt;path&gt;] [&lt;domain&gt;] ['session']</syntax><br>
+The parameter "name" defines the cookie's name and "domain" (optional) 
+the domain attribute for the Set-Cookie header. The string "session" can 
+be defined if the cookie should not be stored by the session (but can 
+be deleted when the user closes this browser).
+</li>
+</ul>
+You can also enforce the browser to support cookies by specifying the 
+"path" parameter for the <code>QS_UserTrackingCookieName</code> directive. 
+This parameter defines an error document and mod_qos 
+answers the request with a redirect (302) to this document when setting 
+the cookie initially. The browser will follow the redirect and mod_qos 
+redirects the browser back to the initially requested page if the request 
+to this error document contains the tracking cookie. If the browser did not 
+send the cookie, the error document is shown.
+</p>
+<p>  <img src="images/UserTracking.png" height="386" width="410" alt="user tracking cookie enforcement"/></p>
+<p>
+<i>Note: You can exclude certain clients from this enforcement by 
+setting the <code>DISABLE_UTC_ENFORCEMENT</code> 
+<a href="#variables">environment variable</a> 
+at server level (outside Location), e.g., to allow crawlers not 
+supporting cookies to access your site.</i>
+</p>
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+<a href="index.html#QS_UserTrackingCookieName">QS_UserTrackingCookieName</a> qstrack <a href="#cookiecheck">/errorpages/cookiecheck.html</a> session
+<a href="index.html#QS_SessionKey">QS_SessionKey</a>             sB.F4_0%D700ahXT2
+</pre>
+</td></tr>
+</table>
+</p>
+<p>
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2"><a name="cookiecheck"></a>
+Sample page:<br>
+<pre>
+&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"&gt;
+&lt;html&gt;
+  &lt;head&gt;
+    &lt;meta http-equiv="Cache-Control" content="no-cache, no-store"/&gt;
+    &lt;meta http-equiv="expires" content="0" /&gt;
+    &lt;title&gt;Cookie Check Page&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;h1&gt;Cookie Check Failed&lt;/h1&gt;
+     &lt;p&gt;
+       Please enable cookies in your browser.&lt;br&gt;
+       Bitte schalten Sie in Ihrem Browser Cookies ein.&lt;br&gt;
+       Activez les cookies dans votre navigateur, s'il vous pla&amp;icirc;t.&lt;br&gt;
+       Por favor active las cookies en su navegador.&lt;br&gt;
+       Si prega di attivare i cookies nel proprio browser.&lt;br&gt;
+     &lt;/p&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</pre>
+</td></tr>
+</table>
+</p>
+
+<!-- --------------------------------------------------------- -->
+<hr>
+<a name="qslog"></a>
+<a name="RequestStatistics"></a>
+<h2>Request Statistics Using <i>qslog</i></h2>
+<p>
+<code><a href="qslog.1.html">qslog</a></code> is a command line tool to 
+generate usage statistics data from log files. It can generate the data in
+real time if defined within your Apache's server configuration.
+<table border="0" cellspacing="5" cellpadding="10" width="100%">
+<tr><td bgcolor="#E2EDE2">
+Sample configuration:<br>
+<pre>
+CustomLog "|/usr/bin/qslog -o logs/qslog.csv -x -f ISBDk" "%h %&gt;s %b %D %k"
+</pre>
+</td></tr>
+</table>
+</p><p>
+Or you can use it to process any existing log file using the post processing 
+option <code>-p</code>. This does not only work for 
+<a href="http://httpd.apache.org/docs/current/mod/mod_log_config.html">Apache log  <img src="images/link.png"/></a> files but for any other log file as well. You just have to know what's in the log 
+and configure the format string argument <code>-f</code> of the 
+<code><a href="qslog.1.html">qslog</a></code> command accordingly.
+</p>
+<p>
+Example:<br>
+<img src="images/qslogFormat.png" height="381" width="738" alt="log format definition"/>  
+</p>
+<p>
+The output shows the data as a function of time: a summary of what happened every minute. 
+Each line includes all measured values as semicolon spearated name/value pairs (CSV).
+</p>
+<p>
+You can use the spreadsheet program of your choice to process the output:<br><br>
+<img src="images/qslog_spreadsheet_example.png" height="413" width="850" alt="spreadsheet"/>  
+</p>
+
+<!-- --------------------------------------------------------- -->
+</td></tr>
+</tbody>
+</table>
+<br>
+<hr>
+<SMALL><SMALL>&copy; 2020, Pascal Buchbinder</SMALL></SMALL>
+</body>
+</html>
