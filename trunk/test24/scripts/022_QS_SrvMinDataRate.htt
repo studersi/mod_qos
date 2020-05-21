@@ -21,7 +21,7 @@ _RECV 100
 _EXPECT . "!END OF dvd.iso"
 _WAIT
 _CLOSE 
-_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(out\): min=440, this connection=0, c=127.0.0.1"
+_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(out\): min=4[234]0, this connection=0, c=127.0.0.1"
 _EXEC tail -1 logs/error_log
 
 END
