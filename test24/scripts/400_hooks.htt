@@ -96,7 +96,7 @@ __Host: localhost
 __Connection: close
 __RX: Fixups
 __
-_EXPECT . "hook Fixups: .*10 mod_setenvifplus.c 10 mod_qos.c"
+_EXPECT . "hook Fixups: .*10 mod_ssl.*10 mod_setenvifplus.c 10 mod_qos.c"
 _WAIT
 _CLOSE
 
