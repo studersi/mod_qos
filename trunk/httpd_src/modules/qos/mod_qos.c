@@ -14904,6 +14904,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   static const char *postlog[] = { "mod_logio.c", NULL };
   static const char *parp[] = { "mod_parp.c", NULL };
   static const char *prelast[] = { "mod_setenvif.c", "mod_setenvifplus.c", "mod_ssl.c", NULL };
+  static const char *preFix[] = { "mod_ssl.c", "mod_setenvifplus.c", NULL };
   
   ap_hook_post_config(qos_post_config, preconf, NULL, APR_HOOK_MIDDLE);
 #ifndef QS_HAS_APACHE_PATH
@@ -14927,7 +14928,7 @@ static void qos_register_hooks(apr_pool_t * p) {
   ap_hook_header_parser(qos_header_parser1, post, parp, APR_HOOK_FIRST);
   ap_hook_header_parser(qos_header_parser, pre, NULL, APR_HOOK_MIDDLE);
 
-  ap_hook_fixups(qos_fixup, pre, NULL, APR_HOOK_MIDDLE);
+  ap_hook_fixups(qos_fixup, preFix, NULL, APR_HOOK_MIDDLE);
 
   ap_hook_handler(qos_handler, NULL, NULL, APR_HOOK_MIDDLE);
 

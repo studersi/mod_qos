@@ -333,7 +333,9 @@ be configured by the following directives:
 <li><a href="index.html#QS_LocKBytesPerSecLimit"><syntax>QS_LocKBytesPerSecLimit</syntax></a></li>
 <li><a href="index.html#QS_EventKBytesPerSecLimit"><syntax>QS_EventKBytesPerSecLimit</syntax></a></li>
 </ul>
-</p>
+<i>Note: Throughput control should always be used with a <a href="#concurrency">concurrency counter</a> 
+because the added delay increases the number of simultaneous requests.
+</i></p>
 <a name="requestPerSecond"></a>
 <h3>Requests per Second</h3>
 <p>
@@ -347,6 +349,7 @@ per second:
 <li><a href="index.html#QS_LocRequestPerSecLimitMatch"><syntax>QS_LocRequestPerSecLimitMatch</syntax></a></li>
 <li><a href="index.html#QS_LocRequestPerSecLimit"><syntax>QS_LocRequestPerSecLimit</syntax></a></li>
 <li><a href="index.html#QS_EventPerSecLimit"><syntax>QS_EventPerSecLimit</syntax></a></li>
+<li><a href="index.html#QS_ClientEventPerSecLimit"><syntax>QS_ClientEventPerSecLimit</syntax></a></li>
 </ul>
 </p>
 
