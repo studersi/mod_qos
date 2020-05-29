@@ -223,6 +223,13 @@ Listen         ##QS_PORT_BASE2##
    Protocols h2 http/1.1
 </IfDefine>
 
+<IfDefine QS_SrvMaxConn_Only>
+   QS_SrvMaxConn   10
+   <Location /qos>
+      SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
    SSLCertificateKeyFile  ../test/ssl/key.pem
    SSLCertificateFile     ../test/ssl/cert.pem
    SSLCACertificateFile   ../test/ssl/cacert.pem
