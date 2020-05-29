@@ -1,0 +1,47 @@
+# Listen         5000
+# <VirtualHost   127.0.0.1:5000>
+#    ServerName   127.0.0.1
+# </VirtualHost>
+# 
+# Listen         5002
+# <VirtualHost   127.0.0.1:5002>
+#    ServerName   127.0.0.1
+#    QS_SrvMaxConn   10
+#    <Location /qos>
+#       SetHandler qos-viewer
+#    </Location>
+# </VirtualHost>
+# 
+# Listen         5001
+# <VirtualHost   127.0.0.1:5001>
+#   ServerName   127.0.0.1
+# </VirtualHost>
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /qos/?auto HTTP/1.1
+__Host: localhost
+__Connection: close
+__User-Agent: Mozilla
+__
+_EXPECT . "b;127.0.0.1;0;QS_AllConn: 1"
+_EXPECT . "v;127.0.0.1;${QS_PORT_BASE2};QS_SrvMaxConn;10\[\]: 1"
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ localhost $QS_PORT_BASE
+__GET /qos/?auto HTTP/1.1
+__Host: localhost
+__Connection: close
+__User-Agent: Mozilla
+__
+_EXPECT . "b;127.0.0.1;0;QS_AllConn: 1"
+_EXPECT . "v;127.0.0.1;${QS_PORT_BASE2};QS_SrvMaxConn;10\[\]: 0"
+_WAIT
+_CLOSE
+
+END
