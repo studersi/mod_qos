@@ -1,0 +1,23 @@
+
+INCLUDE scripts/ports
+
+CLIENT 200
+
+_MATH:RAND 1 100 SLEEP
+_SLEEP $SLEEP
+
+_AUTO_CLOSE on
+
+_LOOP FOREVER
+_REQ server3 $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: server3
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_WAIT
+_SLEEP 10
+#_CLOSE
+_END LOOP
+
+END

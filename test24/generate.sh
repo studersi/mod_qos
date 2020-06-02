@@ -101,7 +101,7 @@ if [ ! -d htdocs/demo ]; then
     ln -s ../../test/htdocs/demo/
     cd ..
 fi
-CONFFILES="conf/httpd.conf conf/demo.conf conf/ucn.conf conf/dos.conf"
+CONFFILES="conf/httpd.conf conf/demo.conf conf/ucn.conf conf/dos.conf conf/nameBased.conf"
 for E in $CONFFILES; do
     sed <$E.tmpl >$E \
 	-e "s;##ROOT##;$ROOT;g" \
