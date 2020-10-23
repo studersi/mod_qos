@@ -123,6 +123,11 @@ QS_ClientEventRequestLimit    2
 QS_ClientEventLimitCount      3 10
 QS_SetEnvIfStatus             414 QS_Limit=1
 
+<IfDefine resetAfterLinit>
+QS_ClientEventLimitCount      3 3 QS_DEEP_L
+QS_ClientIpFromHeader         X-Frwd-Address
+</IfDefine>
+
 <IfDefine serialize>
 QS_ClientSerialize
 QS_ClientIpFromHeader         X-Frwd-Address
@@ -192,6 +197,11 @@ Listen         ##QS_PORT_BASE##
 
 <IfDefine QS_RequestHeaderFilter>
    QS_RequestHeaderFilter on
+</IfDefine>
+
+<IfDefine resetAfterLinit>
+   SetEnvIfPlus                Request_Query username=123        QS_DEEP_L=1
+   SetEnvIfPlus                Request_Query captcha_deep_link   QS_DEEP_L_Clear=1
 </IfDefine>
 
    SetEnvIfNoCase Content-Type application/x-www-form-urlencoded QS_LimitRequestBody=131072
