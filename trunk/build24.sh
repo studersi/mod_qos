@@ -8,9 +8,10 @@
 
 TOP=`pwd`
 
-APACHE_VER=2.4.41
+APACHE_VER=2.4.43
 #MPM=event
 MPM=worker
+#MPM=prefork
 
 echo "build Apache $APACHE_VER"
 if [ -d httpd-${APACHE_VER}-${MPM} ]; then
