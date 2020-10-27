@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.66";
+static const char g_revision[] = "11.67";
 
 /************************************************************************
  * Includes
@@ -8092,7 +8092,7 @@ static void qos_deflate_contentlength(request_rec *r) {
  *
  * - old (2.0.x, 2.2.x) MPM Apache prefork versions do not unload the
  *   DSO properly or child exit may cause a segfault (pool cleanup)
- * - Apache 2.4 should work but is not yet fully tested
+ * - Apache 2.4 should work (but is not yet fully tested)
  *   (see CHANGES.txt for more information)
  * - Apache 2.0 does not support all directives (e.g. QS_ClientPrefer) and
  *   we do no longer test against this version (the module does probably
@@ -8109,7 +8109,7 @@ static void qos_version_check(server_rec *bs) {
     m_worker_mpm = 0; // disable child cleanup
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
                  QOS_LOG_PFX(009)"loaded MPM is '%s'"
-                 " but mod_qos should be used with MPM 'Worker' only.",
+                 " but mod_qos should be used with MPM 'Worker' or 'Event' only.",
                  ap_show_mpm());
   }
 
