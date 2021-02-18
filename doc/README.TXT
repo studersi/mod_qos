@@ -2,7 +2,7 @@
  Quality of service module for Apache Web Server.
  http://mod-qos.sourceforge.net/
 
- Copyright (C) 2020 Pascal Buchbinder
+ Copyright (C) 2021 Pascal Buchbinder
 
  Licensed to the Apache Software Foundation (ASF) under one or more
  contributor license agreements.  See the NOTICE file distributed with
