@@ -681,7 +681,7 @@ Version 10.17
    for the default QS_Limit variable, in order to be processed by other
    rules.
 
- - Add Content-Security-Policy to the default response header white list.
+ - Add Content-Security-Policy to the default response header allow list.
 
  - qslog features enhanced "-pc" mode providing more information:
    * Collects content type information (%{content-type}o).
@@ -743,7 +743,7 @@ Version 10.11
 
 Version 10.10
 
- - Add DNT HTTP request header to the default request header white list.
+ - Add DNT HTTP request header to the default request header allow list.
 
  - qslog "-pc" supports counting established connections.
 
@@ -947,7 +947,7 @@ Version 9.70
  - Adjust attributes/number of requests required to identify the client
    behavior.
 
- - Update request header white list rule for Content-Type.
+ - Update request header allow list rule for Content-Type.
 
 Version 9.69
 
@@ -977,7 +977,7 @@ Version 9.69
 
  - qslog extracts additional time formats (offline mode).
 
- - Added "X-Do-Not-Track" to the built-in request header white list.
+ - Added "X-Do-Not-Track" to the built-in request header allow list.
 
  - Minor changes within the status viewer (machine-readable view).
 
@@ -1035,7 +1035,7 @@ Version 9.58
  - New variable QS_ErrorNotes.
 
  - Add "Transfer-Encoding" (very strict) to the built-in request header
-   white list.
+   allow list.
 
 Version 9.57
 
@@ -1796,7 +1796,7 @@ Version 4.18
 
  - Add new directive QS_DenyInheritanceOff
 
- - Add qsfilter2, a tool to generate request URI white list rules.
+ - Add qsfilter2, a tool to generate request URI allow list rules.
 
  - Use mod_unique_id to tag error messages.
 

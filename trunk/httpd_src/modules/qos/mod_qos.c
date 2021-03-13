@@ -4194,7 +4194,7 @@ static int qos_per_dir_rules(request_rec *r, qos_srv_config *sconf,
       return HTTP_FORBIDDEN;
     }
   }
-  /* process black and white list rules in one loop */
+  /* process deny- and allow- list rules in one loop */
   for(i = 0; i < apr_table_elts(dconf->rfilter_table)->nelts; i++) {
     if(entry[i].key[0] == '+') {
       int deny_rule = 0;
@@ -14383,7 +14383,7 @@ static const command_rec qos_config_cmds[] = {
                 " Only requests matching at least one QS_PermitUri pattern are"
                 " allowed. If a QS_PermitUri pattern has been defined an the"
                 " request does not match any rule, the request is denied albeit of"
-                " any server resource availability (white list). All rules"
+                " any server resource availability (allow list). All rules"
                 " must define the same action. pcre is case sensitive."),
 
   AP_INIT_FLAG("QS_DenyBody", qos_denybody_cmd, NULL,

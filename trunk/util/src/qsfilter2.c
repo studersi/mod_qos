@@ -2,7 +2,7 @@
  */
 /**
  * Filter utilities for the quality of service module mod_qos
- * used to create white list rules for request line filters.
+ * used to create allow list rules for request line filters.
  *
  * See http://mod-qos.sourceforge.net/ for further
  * details.
@@ -368,10 +368,10 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, " line. The module supports both, negative and positive security\n");
   qs_man_print(man, " model. The QS_Deny* directives are used to specify request line\n");
   qs_man_print(man, " patterns which are not allowed to access the server (negative\n");
-  qs_man_print(man, " security model / blacklist). These rules are used to restrict\n");
+  qs_man_print(man, " security model / deny list). These rules are used to restrict\n");
   qs_man_print(man, " access to certain resources which should not be available to\n");
   qs_man_print(man, " users or to protect the server from malicious patterns. The\n");
-  qs_man_print(man, " QS_Permit* rules implement a positive security model (whitelist).\n");
+  qs_man_print(man, " QS_Permit* rules implement a positive security model (allow list).\n");
   qs_man_print(man, " These directives are used to define allowed request line patterns.\n");
   qs_man_print(man, " Request which do not match any of these patterns are not allowed\n");
   qs_man_print(man, " to access the server.\n");
@@ -422,10 +422,10 @@ static void usage(char *cmd, int man) {
   qs_man_print(man, "     request URI in the input data (-i) in order to make sure not\n");
   qs_man_print(man, "     to be deleted by the rule optimisation algorithm.\n");
   qs_man_print(man, "     QS_Deny* rules from this file are used to filter request lines\n");
-  qs_man_print(man, "     which should not be used for whitelist rule generation.\n");
+  qs_man_print(man, "     which should not be used for allow list rule generation.\n");
   printf("\n");
   printf("     Example:\n");
-  qs_man_println(man, "       # manually defined whitelist rule:\n");
+  qs_man_println(man, "       # manually defined allow list rule:\n");
   qs_man_println(man, "       QS_PermitUri +view deny \"^[/a-zA-Z0-9]+/view\\?(page=[0-9]+)?$\"\n");
   qs_man_println(man, "       # filter unwanted request line patterns:\n");
   qs_man_println(man, "       QS_DenyRequestLine +printable deny \".*[\\x00-\\x19].*\"\n");
@@ -930,15 +930,15 @@ static int qos_test_for_existing_rule(char *plain, char *line, apr_table_t *rule
   return 0;
 }
 
-/* filter lines we don't want to add to the whitelist */
-static int qos_enforce_blacklist(apr_table_t *rules, const char *line) {
+/* filter lines we don't want to add to the allow list */
+static int qos_enforce_denylist(apr_table_t *rules, const char *line) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
   if((line == 0) || (strlen(line) == 0)) return 0;
   for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
     qs_rule_t *rs = (qs_rule_t *)entry[i].val;
     if(pcre_exec(rs->pcre, rs->extra, line, strlen(line), 0, 0, NULL, 0) == 0) {
-      if(m_verbose > 1) printf(" blacklist match, rule %s\n", entry[i].key);
+      if(m_verbose > 1) printf(" deny list match, rule %s\n", entry[i].key);
       return 1;
     }
   }
@@ -1002,10 +1002,10 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
   fclose(f);
 }
 
-static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const char *httpdconf) {
-  qos_load_rules(pool, blacklist, httpdconf, "QS_DenyRequestLine", PCRE_CASELESS);
+static void qos_load_denylist(apr_pool_t *pool, apr_table_t *denylist, const char *httpdconf) {
+  qos_load_rules(pool, denylist, httpdconf, "QS_DenyRequestLine", PCRE_CASELESS);
 }
-static void qos_load_whitelist(apr_pool_t *pool, apr_table_t *rules, const char *httpdconf) {
+static void qos_load_allowlist(apr_pool_t *pool, apr_table_t *rules, const char *httpdconf) {
   qos_load_rules(pool, rules, httpdconf, "QS_PermitUri", 0);
 }
 
@@ -1374,7 +1374,7 @@ static void qos_auto_detect(char **raw) {
 }
 
 /* process the input file line by line */
-static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
+static void qos_process_log(apr_pool_t *pool, apr_table_t *denylist, apr_table_t *rules,
                             apr_table_t *rules_url, apr_table_t *special_rules,
                             FILE *f, int *ln, int *dc, int first) {
   char *readline = apr_pcalloc(pool, MAX_BODY_BUFFER);
@@ -1418,8 +1418,8 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
       char *fragment = NULL;
       char *copy = apr_pstrdup(lpool, line);
       qos_unescaping(copy);
-      if(qos_enforce_blacklist(blacklist, copy)) {
-        fprintf(stderr, "WARNING: blacklist filter match at line %d for %s\n",
+      if(qos_enforce_denylist(denylist, copy)) {
+        fprintf(stderr, "WARNING: deny list filter match at line %d for %s\n",
                 line_nr, line);
         deny_count++;
       } else {
@@ -1562,7 +1562,7 @@ static void qos_process_log(apr_pool_t *pool, apr_table_t *blacklist, apr_table_
   *ln = line_nr;
 }
 
-static void qos_measurement(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules, FILE *f, int *ln) {
+static void qos_measurement(apr_pool_t *pool, apr_table_t *denylist, apr_table_t *rules, FILE *f, int *ln) {
   char *readline = apr_pcalloc(pool, MAX_BODY_BUFFER);
   int line_nr = 0;
   while(!qos_fgetline(readline, MAX_BODY_BUFFER, f)) {
@@ -1612,17 +1612,17 @@ int main(int argc, const char * const argv[]) {
   apr_pool_t *pool;
   apr_table_t *rules;
   apr_table_t *special_rules;
-  apr_table_t *blacklist;
+  apr_table_t *denylist;
   apr_table_t *rules_url;
-  int blacklist_size = 0;
-  int whitelist_size = 0;
+  int denylist_size = 0;
+  int allowlist_size = 0;
   char *cmd = strrchr(argv[0], '/');
   const char *httpdconf = NULL;
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
   rules = apr_table_make(pool, 10);
   special_rules = apr_table_make(pool, 10);
-  blacklist = apr_table_make(pool, 10);
+  denylist = apr_table_make(pool, 10);
   rules_url = apr_table_make(pool, 10);
   rc = nice(10);
   if(rc == -1) {
@@ -1723,10 +1723,10 @@ int main(int argc, const char * const argv[]) {
   }
 
   if(httpdconf) {
-    qos_load_blacklist(pool, blacklist, httpdconf);
-    blacklist_size = apr_table_elts(blacklist)->nelts;
-    qos_load_whitelist(pool, rules, httpdconf);
-    whitelist_size = apr_table_elts(rules)->nelts;
+    qos_load_denylist(pool, denylist, httpdconf);
+    denylist_size = apr_table_elts(denylist)->nelts;
+    qos_load_allowlist(pool, rules, httpdconf);
+    allowlist_size = apr_table_elts(rules)->nelts;
   }
 
   if(access_log == NULL) usage(cmd, 0);
@@ -1735,7 +1735,7 @@ int main(int argc, const char * const argv[]) {
     fprintf(stderr, "ERROR, could not open input file %s\n", access_log);
     exit(1);
   }
-  qos_process_log(pool, blacklist, rules, rules_url, special_rules, f, &line_nr, &deny_count, 1);
+  qos_process_log(pool, denylist, rules, rules_url, special_rules, f, &line_nr, &deny_count, 1);
   fclose(f);
 
   if(m_redundant) {
@@ -1749,10 +1749,10 @@ int main(int argc, const char * const argv[]) {
       fflush(stdout);
     }
     //    if(httpdconf) {
-    //      qos_load_whitelist(pool, rules, httpdconf);
+    //      qos_load_allowlist(pool, rules, httpdconf);
     //    }
     f = fopen(access_log, "r");
-    qos_process_log(pool, blacklist, rules, rules_url, special_rules, f, &xl, &y, 0);
+    qos_process_log(pool, denylist, rules, rules_url, special_rules, f, &xl, &y, 0);
     fclose(f);
   }
 
@@ -1761,7 +1761,7 @@ int main(int argc, const char * const argv[]) {
     apr_time_t tv;
     f = fopen(access_log, "r");
     tv = apr_time_now();
-    qos_measurement(pool, blacklist, rules, f, &lx);
+    qos_measurement(pool, denylist, rules, f, &lx);
     tv = apr_time_now() - tv;
     performance = apr_time_msec(tv) + (apr_time_sec(tv) * 1000);
     performance = performance / lx;
@@ -1804,9 +1804,9 @@ int main(int argc, const char * const argv[]) {
   printf("#  exit on error (-e): %s\n", m_exit_on_error == 1 ? "yes" : "no");
   printf("#  rule file (-c): %s\n", httpdconf == NULL ? "-" : httpdconf);
   if(httpdconf) {
-    printf("#    whitelist (loaded existing rules): %d\n", whitelist_size);
-    printf("#    blacklist (loaded deny rules): %d\n", blacklist_size);
-    printf("#    blacklist matches: %d\n", deny_count);
+    printf("#    allow list (loaded existing rules): %d\n", allowlist_size);
+    printf("#    deny list (loaded deny rules): %d\n", denylist_size);
+    printf("#    deny list matches: %d\n", deny_count);
   }
   printf("#  duration: %ld minutes\n", (end - start) / 60);
   printf("# --------------------------------------------------------\n");

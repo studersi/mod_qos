@@ -1415,7 +1415,7 @@ but the rule match is logged) or 'deny' (access is denied).
 <a name="QS_PermitUri"></a>
 <syntax>QS_PermitUri '+'|'-'&lt;id&gt; 'log'|'deny' &lt;pcre&gt;</syntax><br>
 Generic URL (path and query) filter implementing a request pattern 
-whitelist. Only requests matching at least one <code>QS_PermitUri</code> 
+allow list. Only requests matching at least one <code>QS_PermitUri</code> 
 pattern are allowed. If a <code>QS_PermitUri</code> pattern has 
 been defined and the request does not match any rule, the request 
 is denied. 
@@ -1435,7 +1435,7 @@ directives (pattern definitions) to a location.
 Filters request headers using validation rules <a href="headerfilterrules.txt">provided by mod_qos</a>. 
 Suspicious headers (not matching the pattern or those which are too long) are normally 
 dropped (removed from the request). Abnormal <code>content-*</code> headers cause 
-request blocking. Only the defined headers are allowed (whitelist). Custom 
+request blocking. Only the defined headers are allowed (allow list). Custom 
 rules (additional headers or different pattern/size definitions) may be 
 added using the 
 <code><a href="#QS_RequestHeaderFilterRule">QS_RequestHeaderFilterRule</a></code> 
@@ -1454,7 +1454,7 @@ This directive may be used on a per-server or per-location level.<br>
 directives and therefore a header sent a by client 
 can override an environment variable having the same name.</li>
 <li>
-You might also configure blacklist rules (delete unwanted headers) using the 
+You might also configure deny list rules (delete unwanted headers) using the 
 <code><a href="#QS_UnsetReqHeader">QS_UnsetReqHeader</a></code> or 
 <code><a href="#QS_UnsetResHeader">QS_UnsetResHeader</a></code> directive.
 </li>
@@ -1557,7 +1557,7 @@ be deflated (compressed data) using
 Sample configuration:<br><a name="qsfiltersample"></a>
 <pre>
 # configure the audit log writing the request body data to a file
-# (use this log to generate whitelist rules using <a href="qsfilter2.1.html">qsfilter2</a>
+# (use this log to generate allow list rules using <a href="qsfilter2.1.html">qsfilter2</a>
 # when <a href="#QS_PermitUriBody">QS_PermitUriBody</a> has been enabled)
 # format:
 #   %h:

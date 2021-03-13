@@ -587,7 +587,7 @@ iptables -A INPUT -p tcp --syn --dport 80,443 -m connlimit \
 You may want to inform other systems about client IP addresses which shall 
 be blocked, e.g., to synchronize multiple Apache instances (using the 
 <a href="index.html#webconsole">web console</a>), to configure 
-<i>iptables</i> rules (to apply an IP address blacklist for example), 
+<i>iptables</i> rules (to apply an IP address deny list for example), 
 or to inform your ISP about clients which shall no 
 longer be routed to your site. Watch your server's 
 <a href="index.html#errorlog">logs</a>! The directives mentioned on this 
