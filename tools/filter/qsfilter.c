@@ -1,6 +1,6 @@
 /**
  * qsfilter.c: Filter utilities for the quality of service module mod_qos
- * used to create white list rules for request line filters.
+ * used to create allow list rules for request line filters.
  *
  * See http://mod-qos.sourceforge.net/ for further
  * details.
@@ -266,14 +266,14 @@ static void usage(char *cmd) {
   exit(1);
 }
 
-static int qos_enforce_blacklist(apr_table_t *rules, const char *line) {
+static int qos_enforce_denylist(apr_table_t *rules, const char *line) {
   int i;
   apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(rules)->elts;
   if((line == 0) || (strlen(line) == 0)) return 0;
   for(i = 0; i < apr_table_elts(rules)->nelts; i++) {
     qs_rule_t *rs = (qs_rule_t *)entry[i].val;
     if(pcre_exec(rs->pcre, rs->extra, line, strlen(line), 0, 0, NULL, 0) == 0) {
-      if(m_verbose > 1) printf(" blacklist match, rule %s\n", entry[i].key);
+      if(m_verbose > 1) printf(" deny list match, rule %s\n", entry[i].key);
       return 1;
     }
   }
@@ -341,10 +341,10 @@ static void qos_load_rules(apr_pool_t *pool, apr_table_t *ruletable,
   fclose(f);
 }
 
-static void qos_load_blacklist(apr_pool_t *pool, apr_table_t *blacklist, const char *httpdconf) {
-  qos_load_rules(pool, blacklist, httpdconf, "QS_DenyRequestLine", PCRE_CASELESS);
+static void qos_load_denylist(apr_pool_t *pool, apr_table_t *denylist, const char *httpdconf) {
+  qos_load_rules(pool, denylist, httpdconf, "QS_DenyRequestLine", PCRE_CASELESS);
 }
-static void qos_load_whitelist(apr_pool_t *pool, apr_table_t *rules, const char *httpdconf) {
+static void qos_load_allowlist(apr_pool_t *pool, apr_table_t *rules, const char *httpdconf) {
   qos_load_rules(pool, rules, httpdconf, "QS_PermitUri", 0);
 }
 
@@ -700,7 +700,7 @@ static void qos_delete_obsolete_rules(apr_pool_t *pool, apr_table_t *rules, apr_
   }
 }
 
-static void qos_generate_rules(apr_pool_t *pool, apr_table_t *blacklist, apr_table_t *rules,
+static void qos_generate_rules(apr_pool_t *pool, apr_table_t *denylist, apr_table_t *rules,
 			       apr_table_t *rules_url, FILE *f, int *dc, int *ln) {
   int deny_count = *dc;
   int line_nr = *ln;
@@ -730,8 +730,8 @@ static void qos_generate_rules(apr_pool_t *pool, apr_table_t *blacklist, apr_tab
       line_test = apr_pstrdup(lpool, line);
       qos_unescaping(line_test);
 
-      if(qos_enforce_blacklist(blacklist, line_test)) {
-	fprintf(stderr, "WARNING: blacklist filter match at line %d for %s\n", line_nr, line);
+      if(qos_enforce_denylist(denylist, line_test)) {
+	fprintf(stderr, "WARNING: deny list filter match at line %d for %s\n", line_nr, line);
 	deny = 1;
 	deny_count++;
       }
@@ -809,16 +809,16 @@ int main(int argc, const char * const argv[]) {
   apr_pool_t *pool;
   apr_table_t *rules;
   apr_table_t *rules_url;
-  apr_table_t *blacklist;
-  int blacklist_size = 0;
-  int whitelist_size = 0;
+  apr_table_t *denylist;
+  int denylist_size = 0;
+  int allowlist_size = 0;
   char *cmd = strrchr(argv[0], '/');
   const char *httpdconf = NULL;
   apr_app_initialize(&argc, &argv, NULL);
   apr_pool_create(&pool, NULL);
   rules = apr_table_make(pool, 10);
   rules_url = apr_table_make(pool, 10);
-  blacklist = apr_table_make(pool, 10);
+  denylist = apr_table_make(pool, 10);
   nice(10);
   if(cmd == NULL) {
     cmd = (char *)argv[0];
@@ -866,10 +866,10 @@ int main(int argc, const char * const argv[]) {
   qos_init_pcre();
 
   if(httpdconf) {
-    qos_load_blacklist(pool, blacklist, httpdconf);
-    blacklist_size = apr_table_elts(blacklist)->nelts;
-    qos_load_whitelist(pool, rules, httpdconf);
-    whitelist_size = apr_table_elts(rules)->nelts;
+    qos_load_denylist(pool, denylist, httpdconf);
+    denylist_size = apr_table_elts(denylist)->nelts;
+    qos_load_allowlist(pool, rules, httpdconf);
+    allowlist_size = apr_table_elts(rules)->nelts;
   }
   if(access_log == NULL) usage(cmd);
   f = fopen(access_log, "r");
@@ -877,9 +877,9 @@ int main(int argc, const char * const argv[]) {
     fprintf(stderr, "ERROR, could not open input file %s\n", access_log);
     exit(1);
   }
-  qos_generate_rules(pool, blacklist, rules, rules_url, f, &deny_count, &line_nr);
+  qos_generate_rules(pool, denylist, rules, rules_url, f, &deny_count, &line_nr);
   fclose(f);
-  if((whitelist_size == 0) && m_redundant) {
+  if((allowlist_size == 0) && m_redundant) {
     int x = 0;
     int y = 0;
     // delete useless rules
@@ -890,7 +890,7 @@ int main(int argc, const char * const argv[]) {
       fflush(stdout);
     }
     f = fopen(access_log, "r");
-    qos_generate_rules(pool, blacklist, rules, rules_url, f, &x, &y);
+    qos_generate_rules(pool, denylist, rules, rules_url, f, &x, &y);
     fclose(f);
   }
 
@@ -909,11 +909,11 @@ int main(int argc, const char * const argv[]) {
     printf("#  source: %s\n", access_log);
     printf("#  strict mode: %d\n", m_strict);
     printf("#  base64 detection: %d\n", m_base64);
-    printf("#  redundancy check: %s\n", (m_redundant && (whitelist_size == 0)) == 1 ? "on" : "off");
+    printf("#  redundancy check: %s\n", (m_redundant && (allowlist_size == 0)) == 1 ? "on" : "off");
     printf("#  extra mode: %d\n", m_nq);
     printf("#  rule file: %s\n", httpdconf == NULL ? "-" : httpdconf);
-    printf("#    white list (loaded existing rules): %d\n", whitelist_size);
-    printf("#    black list (loaded deny rules): %d\n", blacklist_size);
+    printf("#    allow list (loaded existing rules): %d\n", allowlist_size);
+    printf("#    deny list (loaded deny rules): %d\n", denylist_size);
     printf("#    filtered lines: %d\n", deny_count);
     printf("#  duration: %d minutes\n", duration);
     printf("# --------------------------------------------------------\n");
