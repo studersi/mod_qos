@@ -2142,7 +2142,7 @@ enabling <a href="glossary.html#UserTracking">user tracking</a>.<br>
 <a href="https://httpd.apache.org/docs/current/mod/mod_unique_id.html">mod_unique_id <img src="images/link.png"/></a>. 
 This unique identifier is stored as a cookie. The user tracking 
 feature is enabled by setting the 
-<code>QS_UserTrackingCookieName &lt;name&gt; [&lt;path&gt;] [&lt;domain&gt;] ['session']</code> 
+<code>QS_UserTrackingCookieName &lt;name&gt; [&lt;path&gt;] [&lt;domain&gt;] ['session'] ['jsredirect']</code> 
 directive.<br>
 Options of the <code>QS_UserTrackingCookieName</code> directive are:
 <ul>
@@ -2162,15 +2162,6 @@ the Set-Cookie header.</li>
 <li>The <code>session</code> flag indicates that a short lived (per 
 session) cookie shall be created which won't be stored by the browser 
 permanently.</li>
-</ul>
-<small><i>
-Notes:
-<ul>
-<li><code>QS_UserTrackingCookieName</code> ignores the 
-<code><a href="#QS_LogOnly">QS_LogOnly</a></code> 
-directive.</li>
-<li>The cookie is secured by the <code><a href="#QS_SessionKey">QS_SessionKey</a></code> 
-and you should set this directive to have a constant key.</li>
 <li>When using the additional option <code>'jsredirect'</code>, 
 the client (browser) has to interpret Javascript used within the 
 <a href="http://mod-qos.sourceforge.net/cookie-ir.shtml">cookie check page</a> 
@@ -2182,6 +2173,15 @@ page again to obtain the cookie.</li>
 <li><code>QS_UT_NAME</code>: Name of the cookie.</li>
 <li><code>QS_UT_INITIAL_URI</code>: Initial page to redirect to.</li>
 </ul>
+</ul>
+<small><i>
+Notes:
+<ul>
+<li><code>QS_UserTrackingCookieName</code> ignores the 
+<code><a href="#QS_LogOnly">QS_LogOnly</a></code> 
+directive.</li>
+<li>The cookie is secured by the <code><a href="#QS_SessionKey">QS_SessionKey</a></code> 
+and you should set this directive to have a constant key.</li>
 </ul>
 </li>
 </i></small>
