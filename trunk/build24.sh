@@ -8,7 +8,7 @@
 
 TOP=`pwd`
 
-APACHE_VER=2.4.43
+APACHE_VER=2.4.48
 #MPM=event
 MPM=worker
 #MPM=prefork
