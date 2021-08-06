@@ -1,3 +1,9 @@
+Version 11.67
+
+ - The QS_LogEnv directive can be used to enable environment variable
+   logging. mod_qos writes all environment variables which are set when
+   entering a handler to the log.
+
 Version 11.66
 
  - QS_ClientIpFromHeader supports pseudo IP by creating a hash

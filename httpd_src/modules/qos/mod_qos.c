@@ -839,6 +839,7 @@ typedef struct {
 #endif
   int disable_handler;
   int log_only;               /* GLOBAL ONLY */
+  int log_env;
   /* client control */
   int has_qos_cc;             /* GLOBAL ONLY */
   int qos_cc_size;            /* GLOBAL ONLY */
@@ -1997,6 +1998,18 @@ static const char *qos_unique_id(request_rec *r, const char *eid) {
     apr_table_set(r->subprocess_env, "UNIQUE_ID", uid);
   }
   return uid;
+}
+
+static void qos_log_env(request_rec *r, const char *handler) {
+  char *msg = "";
+  int i;
+  apr_table_entry_t *e = (apr_table_entry_t *) apr_table_elts(r->subprocess_env)->elts;
+  for (i = 0; i < apr_table_elts(r->subprocess_env)->nelts; ++i) {
+    msg = apr_psprintf(r->pool, "%s=%s;%s",  e[i].key, e[i].val, msg);
+  }
+  ap_log_rerror(APLOG_MARK, APLOG_NOERRNO|APLOG_NOTICE, 0, r,
+                QOS_LOG_PFX(210)"ENV %s %s %s", handler, msg, qos_unique_id(r, NULL));
+  return;
 }
 
 static char *qos_ipv6_hash(request_rec *r, const char *var) {
@@ -8780,6 +8793,11 @@ static int qos_post_read_request_later(request_rec *r) {
                                                                 &qos_module);
   char *value;
   const char *ignore;
+
+  if(sconf->log_env == 1) {
+    qos_log_env(r, ">PR_2");
+  }
+
   if(!ap_is_initial_req(r) || !sconf->user_tracking_cookie) {
     return DECLINED;
   }
@@ -8969,6 +8987,10 @@ static int qos_post_read_request(request_rec *r) {
     apr_table_set(r->subprocess_env, QS_ISVIPREQ, isVipIP);
   }
 
+  if(sconf->log_env == 1) {
+    qos_log_env(r, ">PR_1");
+  }
+
   if(qos_request_check(r, sconf) != APR_SUCCESS) {
     return HTTP_BAD_REQUEST;
   }
@@ -9097,6 +9119,10 @@ static int qos_header_parser1(request_rec * r) {
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
 
+    if(sconf->log_env == 1) {
+      qos_log_env(r, ">HP_2");
+    }
+
     qos_deflate(r);
    
     /** QS_LimitRequestBody */
@@ -9132,6 +9158,10 @@ static int qos_header_parser0(request_rec * r) {
                                                                   &qos_module);
     qos_dir_config *dconf = (qos_dir_config*)ap_get_module_config(r->per_dir_config,
                                                                   &qos_module);
+
+    if(sconf->log_env == 1) {
+      qos_log_env(r, ">HP_1");
+    }
 
     /*
      * QS_DenyBody requires mod_parp
@@ -9177,6 +9207,10 @@ static int qos_header_parser(request_rec * r) {
                                                                   &qos_module);
     qs_req_ctx *rctx = NULL;
     const char *error_page = sconf->error_page;
+
+    if(sconf->log_env == 1) {
+      qos_log_env(r, ">HP_3");
+    }
 
     qos_deflate_contentlength(r);
 
@@ -10359,6 +10393,11 @@ static int qos_fixup(request_rec * r) {
       apr_table_set(r->subprocess_env, QS_ISVIPREQ, "yes");
     }
   }
+
+  if(sconf->log_env == 1) {
+    qos_log_env(r, ">FX_1");
+  }
+
 #if APR_HAS_THREADS
   qos_disable_rate(r, sconf, dconf);
 #endif
@@ -10402,6 +10441,9 @@ static int qos_logger(request_rec *r) {
   }
   qos_propagate_notes(r);
   qos_propagate_events(r);
+  if(sconf->log_env == 1) {
+    qos_log_env(r, "<LG_1");
+  }
   qos_end_res_rate(r, sconf);
   if(apr_table_elts(sconf->setenvif_t)->nelts > 0) {
     qos_setenvif(r, sconf->setenvif_t);
@@ -11697,6 +11739,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->reshfilter_table = apr_table_make(p, 5);
   sconf->disable_reqrate_events = apr_table_make(p, 1);
   sconf->log_only = 0;
+  sconf->log_env = -1;
   sconf->has_qos_cc = 0;
   sconf->cc_exclude_ip = apr_table_make(sconf->pool, 2);
   sconf->qos_cc_size = 50000;
@@ -11796,6 +11839,9 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->hfilter_table = b->hfilter_table;
   o->reshfilter_table = b->reshfilter_table;
   o->log_only = b->log_only;
+  if(o->log_env == -1) {
+    o->log_env = b->log_env;
+  }
   o->has_qos_cc = b->has_qos_cc;
   o->cc_exclude_ip = b->cc_exclude_ip;
   o->qos_cc_size = b->qos_cc_size;
@@ -11951,6 +11997,13 @@ const char *qos_logonly_cmd(cmd_parms *cmd, void *dcfg, int flag) {
     return err;
   }
   sconf->log_only = flag;
+  return NULL;
+}
+
+const char *qos_logenv_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
+                                                                &qos_module);
+  sconf->log_env = flag;
   return NULL;
 }
 
@@ -14832,6 +14885,11 @@ static const command_rec qos_config_cmds[] = {
                "QS_LogOnly 'on'|'off', enables the log only mode of the module"
                " where no limitations are enforced. Default is off."
                " Directive is allowed in global server context only."),
+
+  AP_INIT_FLAG("QS_LogEnv", qos_logenv_cmd, NULL,
+               RSRC_CONF,
+               "QS_LogEnv 'on'|'off', enables logging of environment"
+               " variables."),
 
   AP_INIT_FLAG("QS_SupportIPv6", qos_enable_ipv6_cmd, NULL,
                RSRC_CONF,
