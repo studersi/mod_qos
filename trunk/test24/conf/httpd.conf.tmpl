@@ -11,6 +11,10 @@ LogLevel       warn
 <IfDefine debug>
 LogLevel       debug
 </IfDefine>
+<IfDefine LogEnv>
+QS_LogEnv      on
+</IfDefine>
+
 
 LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T cr=%{mod_qos_cr}e ev=%{mod_qos_ev}e con=%{mod_qos_con}e id=%{UNIQUE_ID}e sp=%{qs_special}e cl=%{content-length}i uid=%{mod_qos_user_id}e k=%k country=%{QS_Country}e srcConn=%{QS_SrvConn}e allConn=%{QS_AllConn}e #%P"
 TransferLog    "|$##ROOT##/../util/src/qssign -a sha256 -s 1234567890 -e |##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
