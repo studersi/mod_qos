@@ -722,10 +722,7 @@ using the standard Apache module
 See also the <a href="#eventcontrol">
 <code><a href="#QS_SetEnvIf">QS_SetEnvIf*</a></code></a> directives in order to combine multiple 
 variables to form new variables interpreted by mod_qos rules. <br>
-<a name="QS_LogEnv"></a>
-<small><i>Note: The <code>QS_LogEnv</code> directive can be used to enable environment variable logging. mod_qos writes 
-all environment variables which are set when entering a <a href="glossary.html#directives">handler</a> to the log.</i></small>
-<br><br>
+<br>
 These are the variables recognized by mod_qos:
 <ul>
 <li>
@@ -979,6 +976,11 @@ SetEnvIf     Request_URI /app                     <a href="#QS_ErrorPage">QS_Err
 </pre>
 </td></tr>
 </table>
+<a name="QS_LogEnv"></a>
+<small><i>Note: The <code>QS_LogEnv</code> directive can be used to enable environment variable logging. mod_qos 
+writes all environment variables which are set when entering a <a href="glossary.html#directives">handler</a> 
+to the log.</i></small>
+<br>
 
 <a name="conditionalrules"></a>
 <h3>Conditional Rules</h3>
