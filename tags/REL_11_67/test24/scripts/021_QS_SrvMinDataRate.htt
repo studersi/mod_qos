@@ -1,0 +1,104 @@
+#
+# QS_SrvMinDataRate  120 3000 10
+#
+
+INCLUDE scripts/ports
+
+SET TME=1000
+
+CLIENT
+# limt @12 connections: min data rate 360 b/s
+_SLEEP 100
+_EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 021_QS_SrvMinDataRate.htt" >> logs/error_log
+
+# slow request
+_REQ localhost $QS_PORT_BASE
+_-GET /
+_-i
+_FLUSH
+_SLEEP $TME
+_-n
+_FLUSH
+_SLEEP $TME
+_-d
+_FLUSH
+_SLEEP $TME
+_-e
+_FLUSH
+_SLEEP $TME
+_-x
+_FLUSH
+_SLEEP $TME
+_-.
+_FLUSH
+_SLEEP $TME
+_-h
+_FLUSH
+_SLEEP $TME
+_-t
+_FLUSH
+_SLEEP $TME
+_-m
+__l HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT ERROR "Broken pipe"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(034\): access denied, QS_SrvMinDataRate rule \(in:0\): min=360, this connection=0, c=127.0.0.1"
+_EXEC tail -1 logs/error_log
+
+END
+
+CLIENT
+
+# QS_SrvDataRateOff off
+_REQ localhost $QS_PORT_BASE1
+_-GET /
+_-i
+_FLUSH
+_SLEEP $TME
+_-n
+_FLUSH
+_SLEEP $TME
+_-d
+_FLUSH
+_SLEEP $TME
+_-e
+_FLUSH
+_SLEEP $TME
+_-x
+_FLUSH
+_SLEEP $TME
+_-.
+_FLUSH
+_SLEEP $TME
+_-h
+_FLUSH
+_SLEEP $TME
+_-t
+_FLUSH
+_SLEEP $TME
+_-m
+__l HTTP/1.1
+__Host: server1
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+
+END
+
+CLIENT 10
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=20 HTTP/1.1
+__Host: localhost
+__
+_WAIT
+_CLOSE
+END

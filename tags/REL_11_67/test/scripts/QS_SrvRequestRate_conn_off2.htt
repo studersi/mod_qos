@@ -1,0 +1,106 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+SET TME=1000
+
+CLIENT
+_REQ server1 SSL:$QS_PORT_BASE2
+__POST /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0
+__Content-Length: 77
+__Content-Type: text/xml
+__
+__<node>
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP $TME
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP 200
+__.
+__.
+_FLUSH
+_SLEEP 200
+__.
+__.
+_FLUSH
+_SLEEP 4000
+__3
+_EXPECT ERROR "connection"
+#_EXPECT . "==AS1=="
+#_EXPECT . "200 OK"
+_WAIT
+
+_CLOSE
+
+_REQ server1 SSL:$QS_PORT_BASE2
+__POST /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla/5.0, SUPERUSER
+__Content-Length: 77
+__Content-Type: text/xml
+__
+__<node>
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP $TME
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+#_FLUSH
+#_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP $TME
+__.
+__.
+_FLUSH
+_SLEEP 4000
+__.
+__.
+__</node>
+_EXPECT . "this is the root index.html"
+_EXPECT . "200 OK"
+_WAIT
+
+END
+

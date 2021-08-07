@@ -1,0 +1,94 @@
+INCLUDE scripts/ports
+
+CLIENT
+
+_DATE:GET_TIME START1
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 1.1
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_DATE:GET_TIME END1
+
+_OP $END1 SUB $START1 DELTA1
+_IF "$DELTA1" GT "1300"
+_EXIT FAILED
+_END IF
+_IF "$DELTA1" LT "800"
+_EXIT FAILED
+_END IF
+
+_SLEEP 1000
+_DATE:GET_TIME START1
+_REQ localhost $QS_PORT_BASE
+__POST /a/sleep.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 1.2
+__Content-Type: text/xml
+__Content-Length: AUTO
+__
+__<xml>data</xml>
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_DATE:GET_TIME END1
+
+_OP $END1 SUB $START1 DELTA1
+_IF "$DELTA1" GT "3300"
+_EXIT FAILED
+_END IF
+_IF "$DELTA1" LT "2700"
+_EXIT FAILED
+_END IF
+
+END
+
+CLIENT
+_SLEEP 100
+
+_DATE:GET_TIME START2
+_REQ localhost $QS_PORT_BASE
+__GET /a/sleep.cgi?s=1 HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 2.1
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_DATE:GET_TIME END2
+
+_OP $END2 SUB $START2 DELTA2
+_IF "$DELTA2" GT "1300"
+_EXIT FAILED
+_END IF
+_IF "$DELTA2" LT "700"
+_EXIT FAILED
+_END IF
+
+_SLEEP 1000
+_DATE:GET_TIME START2
+_REQ localhost $QS_PORT_BASE
+__POST /a/sleep.cgi HTTP/1.1
+__Host: localhost
+__User-Agent: Mozilla 2.2
+__Content-Type: text/xml
+__Content-Length: AUTO
+__
+__<xml>data</xml>
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_DATE:GET_TIME END2
+
+_OP $END2 SUB $START2 DELTA2
+_IF "$DELTA2" GT "6400"
+_EXIT FAILED
+_END IF
+_IF "$DELTA2" LT "5600"
+_EXIT FAILED
+_END IF
+
+END

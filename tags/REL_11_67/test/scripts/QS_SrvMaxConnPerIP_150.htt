@@ -1,0 +1,10 @@
+INCLUDE scripts/ports
+
+CLIENT 150
+_REQ server1 $QS_PORT_BASE1
+__GET /cgi100/sleep.cgi?s=10 HTTP/1.1
+__Host: localhost
+__
+_WAIT
+
+END

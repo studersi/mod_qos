@@ -1,0 +1,104 @@
+#
+# $Id$
+#
+#   SetEnvIfPlus           User-Agent EL5 EL=1
+#   SetEnvIfPlus           User-Agent EL6 EL=2
+#   QS_EventRequestLimit   EL=1 5
+#
+
+INCLUDE scripts/ports
+
+CLIENT 4
+
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: EL5
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 1
+_SLEEP 200
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: EL5
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 1
+_SLEEP 400
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: EL6
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 1
+_SLEEP 400
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: XXX
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT 1
+_SLEEP 400
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: EL5
+__X-dumpvar: 1
+__
+_EXPECT . "!200 OK"
+_EXPECT . "!done"
+_EXPECT . "500 Internal Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(012\): access denied, QS_EventRequestLimit rule: var=\(EL=1\)\(5\), concurrent requests=6,"
+_EXEC tail -2 logs/error_log
+_EXPECT EXEC ";QS_EventRequestLimit_EL_Counter=6;"
+_EXEC tail -2 logs/error_log
+_SLEEP 3000
+
+_SLEEP 400
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /cgi/sleep.cgi HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: EL5
+__
+_EXPECT . "200 OK"
+_EXPECT . "done"
+_EXPECT . "!500 Internal Server Error"
+_WAIT
+
+END

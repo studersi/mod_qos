@@ -1,0 +1,135 @@
+#
+# $Id$
+#
+# <IfDefine uc1l2>
+#    QS_LocKBytesPerSecLimitMatch ^/myimages/  3000
+#    <Location /qos >
+#        SetHandler qos-viewer
+#    </Location>
+# </IfDefine>
+# 
+# => multiple different/parallel clients downloading data
+#
+# 03.05.2014 13:30:00
+# -------------------
+# uc1l2:
+# 2602127	
+# 2331582	
+# 2416241	
+# -------
+# 2449983 82%
+#
+# uc1l3:
+# 1588674	
+# 1555038	
+# 1926315	
+# -------
+# 1690009 56%
+
+
+INCLUDE scripts/ports
+
+EXEC ./sleep.sh
+
+CLIENT 2
+
+_RPS 1000 80
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/dvd.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_END RPS
+
+END
+
+CLIENT
+
+_RPS 1000 80
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 2000
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/image.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+
+_END RPS
+
+END
+
+CLIENT
+
+_RPS 1000 80
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 5000
+
+_END RPS
+
+END
+
+CLIENT
+_SLEEP 70000
+_MATCH EXEC "b/s;([0-9]+);" BS
+_EXEC tail -1 logs/qs_log_v0
+_DEBUG "bytes/sec: $BS"
+# max. +/- 20%
+_IF "${BS}" LT 2300000
+_EXIT FAILED
+_END IF
+_IF "${BS}" GT 3600000
+_EXIT FAILED
+_END IF
+
+END

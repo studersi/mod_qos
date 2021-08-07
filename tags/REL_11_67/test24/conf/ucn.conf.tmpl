@@ -1,0 +1,271 @@
+
+ServerRoot     ##ROOT##
+User           ##USR##
+Group          users
+ServerName     127.0.0.1
+
+ServerAdmin    ##USR##@example.com
+DocumentRoot   ##ROOT##/htdocs
+ErrorLog       logs/error_log
+LogLevel       warn
+
+LogFormat      "%h %l %u %t \"%r\" %>s %b \"%{User-Agent}i\" %T cr=%{mod_qos_cr}e ev=%{mod_qos_ev}e con=%{mod_qos_con}e id=%{UNIQUE_ID}e sp=%{qs_special}e cl=%{content-length}i uid=%{mod_qos_user_id}e k=%k country=%{QS_Country}e srcConn=%{QS_SrvConn}e allConn=%{QS_AllConn}e #%P"
+TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access_log -z -g 4 -s 21600 -f"
+CustomLog      "|##ROOT##/../util/src/qslog -o ##ROOT##/logs/qslog.csv -f ISBDUQ" "%h %>s %b %D %{mod_qos_user_id}e %{mod_qos_ev}o"
+
+LoadModule     setenvifplus_module ##ROOT##/../install/modules/.libs/mod_setenvifplus.so
+<IfDefine qtest>
+LoadModule     qtest_module ##ROOT##/../install/modules/.libs/mod_qtest.so
+</IfDefine>
+TypesConfig    conf/mime.types
+Options        FollowSymLinks Indexes Includes
+PidFile        logs/apache.pid
+
+StartServers             1
+MinSpareThreads         25
+MaxSpareThreads         75 
+ThreadsPerChild         25
+MaxRequestWorkers      150
+MaxConnectionsPerChild   0
+
+Timeout                 20
+KeepAlive               on
+MaxKeepAliveRequests    50
+KeepAliveTimeout         5
+RequestReadTimeout       header=0 body=0
+
+SSLProtocol              all -SSLv2 -SSLv3
+SSLCipherSuite           EDH:EECDH:!aNULL:!eNULL:!LOW:!MD5:!EXP:!ADH:!DSS:!ECDSA:!3DES:!RC4:!SEED:!CAMELLIA+SHA1
+SSLSessionCacheTimeout   864000
+SSLRandomSeed startup    builtin
+
+QS_EnableInternalIPSimulation off
+
+<IfDefine ssi>
+AddType                  text/html .shtml
+AddOutputFilter          INCLUDES .shtml
+QS_ErrorPage             /errorpages/error.shtml
+QS_ClientEventLimitCount 20 10
+SetEnvIfPlus Request_URI / QS_Limit
+SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !QS_Limit
+#QS_SetEnvIf              QS_AllConn=^[12345]?[0-9]{1,2}$ !QS_Limit
+</IfDefine>
+
+<IfDefine limit2level>
+ QS_ClientEventLimitCount 20 2 SlowRequest
+ QS_ClientEventLimitCount 3 300 SlowRepeatedlySlow
+ SetEnvIfPlus Request_URI / SlowRequest
+ SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
+</IfDefine>
+
+<IfDefine serialize>
+ QS_SrvMaxConnClose       85%
+ SetEnvIfPlus REQUEST_URI / SerialLimt=5
+ SetEnvIfCmpPlus          QS_SrvConn gt SerialLimt QS_SrvSerialize=1
+ QS_SrvSerialize          on
+</IfDefine>
+
+<IfDefine serializeReq>
+ QS_SrvSerialize          on
+</IfDefine>
+
+<IfDefine limit2levelnext>
+ QS_ClientEventLimitCount 20 2 SlowRequest
+ QS_ClientEventLimitCount 3 300 SlowRepeatedlySlow
+ SetEnvIfPlus Request_URI / SlowRequest
+ SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
+ QS_SetEnvIf SlowRequest_Counter=20 SlowRepeatedlySlow=1
+</IfDefine>
+
+<IfDefine usertracking>
+QS_UserTrackingCookieName _ckUT /errorpages/cookie.html
+QS_SetEnvIf               QOS_USER_ID_NEW=^. QS_Block=1
+</IfDefine>
+
+<IfDefine minDataRateSimple>
+QS_SrvMinDataRate        500
+</IfDefine>
+<IfDefine minDataRateSimpleDual>
+QS_SrvMinDataRate        500 1000
+</IfDefine>
+
+<IfDefine limit2block>
+ #MaxRequestWorkers        896
+ # low-bandwidth DoS
+ QS_SrvMaxConnClose       85%
+ QS_ClientPrefer          80%
+ #QS_SrvMinDataRate        120 1500 500
+ QS_SrvMinDataRate        120 1500 100
+ #QS_SrvMaxConnPerIP       30  500
+ QS_SrvMaxConnPerIP       20  100
+ QS_ClientEventBlockCount 20  300
+ QS_SetEnvIfStatus        400                QS_Block=1
+ QS_SetEnvIfStatus        401                QS_Block=1
+ QS_SetEnvIfStatus        403                QS_Block=3
+ QS_SetEnvIfStatus        404                QS_Block=1
+ QS_SetEnvIfStatus        405                QS_Block=1
+ QS_SetEnvIfStatus        406                QS_Block=1
+ QS_SetEnvIfStatus        408                QS_Block=1
+ QS_SetEnvIfStatus        411                QS_Block=1
+ QS_SetEnvIfStatus        413                QS_Block=1
+ QS_SetEnvIfStatus        414                QS_Block=1
+ QS_SetEnvIfStatus        417                QS_Block=1
+ QS_SetEnvIfStatus        500                QS_Block=1
+ QS_SetEnvIfStatus        503                QS_Block=1
+ QS_SetEnvIfStatus        505                QS_Block=1
+ QS_SetEnvIfStatus        QS_SrvMinDataRate  QS_Block
+ QS_SetEnvIfStatus        QS_SrvMaxConnPerIP QS_Block
+ # HTTP GET/POST flood DoS attack prevention
+ #QS_ClientEventLimitCount 20 60 SlowRequest
+ QS_ClientEventLimitCount 20 2 SlowRequest
+ SetEnvIfPlus Request_URI / SlowRequest
+ SetEnvIfPlus Request_URI .*\.(jpg)|(jpeg)|(gif)|(png)|(js)|(css)$ !SlowRequest
+</IfDefine>
+
+<IfDefine e1>
+SetEnvIf                 Request_URI ^/wp-login.php LimitLogin
+QS_ClientEventLimitCount 10 3600 LimitLogin
+</IfDefine>
+
+<IfDefine e2>
+SetEnvIf                     Request_URI ^/download/mod_qos.so.gz LimitDownload
+SetEnvIf                     Request_URI ^/download/mod_qos.so.gz QS_Cond=LimitDownload
+QS_CondClientEventLimitCount 4 60 LimitDownload LimitDownload
+</IfDefine>
+
+<IfDefine hash>
+SetEnvIfPlus              Remote_Addr (.*) realIP=$1
+SetEnvIfPlus              User-Agent "^[Cc]isco\x2FSPA[0-9]{3}[G]?-[0-9a-z.]+ \(([0-9A-Z]+)\)" virtualIP=$1
+RequestHeaderPlus     set X-Hash ${realIP}
+SetHashHeaderPlus         X-Hash virtualIP
+SetEnvIfPlus              virtualIP .* limitPhone=1
+QS_ClientIpFromHeader     X-Hash
+QS_ClientEventLimitCount  4 5 limitPhone
+</IfDefine>
+
+Listen         ##QS_PORT_BASE##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE##>
+   ServerName   127.0.0.1
+
+<IfDefine ssi>
+   <Location />
+     QS_PermitUri +QSF001 deny "^/$"
+     QS_PermitUri +QSF002 deny "^/[a-zA-Z0-9]+\.html$"
+   </Location>
+</IfDefine>
+
+<IfDefine limit2level>
+   <Location />
+     SetEnvIfPlus SlowRequest_Counter 19 SlowRepeatedlySlow=1 late
+   </Location>
+</IfDefine>
+
+<IfDefine limit2block>
+   <Location />
+     SetEnvIfPlus SlowRequest_Counter 19 QS_Block=5 late
+   </Location>
+</IfDefine>
+
+   ProxyPass                  /cgi-local !
+   ProxyPass                  /serialize !
+
+   ProxyPass                  /htt http://127.0.0.1:##QS_PORT_BASE6##/htt retry=0
+   ProxyPassReverse           /htt http://127.0.0.1:##QS_PORT_BASE6##/htt
+
+   ProxyPass                  /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi retry=0
+   ProxyPassReverse           /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi
+
+
+  ScriptAlias /cgi-local/ ##ROOT##/htdocs/cgi/
+  ScriptAlias /serialize/cgi/ ##ROOT##/htdocs/cgi/
+  <Location /cgi-local>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
+
+   <Location /qos>
+      SetHandler qos-viewer
+   </Location>
+
+   <Location /info>
+      SetHandler server-info
+   </Location>
+
+<IfDefine serializeReq>
+  QS_EventRequestLimit     LimitLocation 20
+  SetEnvIfPlus             REQUEST_URI /serialize SerialLimtCfg=5
+  SetEnvIfPlus             REQUEST_URI /serialize LimitLocation=on
+  <Location /serialize>
+    QS_SetEnvIfCmp         QS_EventRequestLimit_LimitLocation_Counter gt SerialLimtCfg QS_SrvSerialize=1
+  </Location>
+</IfDefine>
+
+</VirtualHost>
+
+<IfDefine BASICAUTH>
+   QS_ClientIpFromHeader  #Authorization
+   QS_ClientEventLimitCount 3 2 QS_HdrHash
+   SetEnvIfPlus           User-Agent QS_HdrHash QS_HdrHash=1
+</IfDefine>
+
+<IfDefine SSLVAR>
+   QS_ClientIpFromHeader  #SSL_CLIENT_S_DN
+   QS_ClientEventLimitCount 3 2 QS_HdrHash
+   SetEnvIfPlus           User-Agent QS_HdrHash QS_HdrHash=1
+</IfDefine>
+
+Listen         ##QS_PORT_BASE2##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE2##>
+   ServerName   127.0.0.1
+
+<IfDefine h2>
+   Protocols h2 http/1.1
+</IfDefine>
+
+<IfDefine QS_SrvMaxConn_Only>
+   QS_SrvMaxConn   10
+   <Location /qos>
+      SetHandler qos-viewer
+   </Location>
+</IfDefine>
+
+   SSLCertificateKeyFile  ../test/ssl/key.pem
+   SSLCertificateFile     ../test/ssl/cert.pem
+   SSLCACertificateFile   ../test/ssl/cacert.pem
+   SSLVerifyDepth         10
+   SSLEngine              on
+<IfDefine SSLVAR>
+   SSLVerifyClient        optional
+</IfDefine>
+
+   Include conf/demo.conf
+
+<IfDefine ucna>
+   QS_LocRequestLimit     /cgi 5
+</IfDefine>
+<IfDefine ucnb>
+   SetEnvIfPlus           User-Agent EL5 EL=1
+   SetEnvIfPlus           User-Agent EL6 EL=2
+   QS_EventRequestLimit   EL=1 5
+</IfDefine>
+
+   ProxyPass              /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi retry=0
+   ProxyPassReverse       /cgi http://127.0.0.1:##QS_PORT_BASE1##/cgi
+
+</VirtualHost>
+
+Listen         ##QS_PORT_BASE1##
+<VirtualHost   127.0.0.1:##QS_PORT_BASE1##>
+  ServerName   127.0.0.1
+
+  TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 21600 -f"
+
+  ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
+  <Location /cgi>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
+
+</VirtualHost>
