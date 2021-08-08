@@ -95,7 +95,7 @@ static void usage(char *cmd, int man) {
   if(man) printf(".TP\n");
   qs_man_print(man, "  -e <pattern>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Specifes the search pattern causing an event which shall trigger the\n");
+  qs_man_print(man, "     Specifies the search pattern causing an event which shall trigger the\n");
   qs_man_print(man, "     command.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -t <number>:<sec>\n");

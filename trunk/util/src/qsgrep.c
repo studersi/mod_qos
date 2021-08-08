@@ -97,7 +97,7 @@ static void usage(char *cmd, int man) {
   if(man) printf(".TP\n");
   qs_man_print(man, "  -e <pattern>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Specifes the search pattern.\n");
+  qs_man_print(man, "     Specifies the search pattern.\n");
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -o <string>\n");
   if(man) printf("\n");

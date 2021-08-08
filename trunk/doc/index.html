@@ -1261,7 +1261,7 @@ body.
 <li>
 <a name="QS_SetEnvRes"></a>
 <syntax>QS_SetEnvRes &lt;env-variable&gt; &lt;regex&gt; &lt;env-variable2&gt;[=&lt;value&gt;]</syntax><br>
-Sets the environmet variable (env-variable2) if the regular expression (regex) matches 
+Sets the environment variable (env-variable2) if the regular expression (regex) matches 
 against the value of the environment variable (env-variable). Occurrences of $1..$9 within 
 the value are replaced by parenthesized subexpressions of the regular expression.
 </li>
@@ -2200,7 +2200,7 @@ to access log messages.
 </li>
 <li>
 <a name="QS_ConnectionId"></a>
-<syntax>QS_ConnectionId</syntax> <br> Connecton correlation id used to 
+<syntax>QS_ConnectionId</syntax> <br> Connection correlation id used to 
 mark all messages belonging to the same TCP connection.
 </li>
 </ul>
@@ -2241,7 +2241,7 @@ CustomLog "|/usr/bin/qslog -o logs/qslog.csv -x -f ISBDQkU" \
 Instead of using the standard Apache log <code>CustomLog</code> directive, 
 you may use the <code>QSLog</code> directive of mod_qos alternatively. This
 allows you to configure a single log file for your Apache instance (globally, 
-not per virtal host) and you don't have to specify the format (-f) option.
+not per virtual host) and you don't have to specify the format (-f) option.
 <table border="0" cellspacing="5" cellpadding="10" width="100%">
 <tr><td bgcolor="#E2EDE2">
 <pre>

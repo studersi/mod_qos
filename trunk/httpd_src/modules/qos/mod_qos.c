@@ -6320,7 +6320,7 @@ static int qos_hp_cc(request_rec *r, qos_srv_config *sconf, char **msg, char **u
             seenEvent = apr_pstrcat(r->pool, QS_LIMIT_SEEN, eventName, NULL);
           }
           if(apr_table_get(r->subprocess_env, seenEvent) == NULL) {
-            // first occurrance
+            // first occurrence
             apr_table_set(r->subprocess_env, seenEvent, "");
             if((*clientEntryFromHdr)->limit[limitTableIndex].limit == 0) {
               /* .start timer */
@@ -6997,7 +6997,7 @@ static int qos_geo_comp(const void *_pA, const void *_pB) {
 /**
  * Translates an IP address (from geo csv) to a numeric value.
  *
- * @param pool To dup the string whike parsing.
+ * @param pool To dup the string while parsing.
  * @param ip
  * @return
  */
@@ -14742,7 +14742,7 @@ static const command_rec qos_config_cmds[] = {
 
   AP_INIT_TAKE3("QS_SetEnvRes", qos_setenvres_cmd, NULL,
                 RSRC_CONF,
-                "QS_SetEnvRes <variable> <regex> <variable2>[=<value>], sets the environmet"
+                "QS_SetEnvRes <variable> <regex> <variable2>[=<value>], sets the environment"
                 " variable2 if the regular expression matches against the value of"
                 " the environment variable. Occurrences of $1..$9 within the value"
                 " and replace them by parenthesized subexpressions of the regular expression."),
@@ -15020,5 +15020,5 @@ module AP_MODULE_DECLARE_DATA qos_module ={
   qos_srv_config_create,                    /**< server config */
   qos_srv_config_merge,                     /**< server merger */
   qos_config_cmds,                          /**< command table */
-  qos_register_hooks,                       /**< hook registery */
+  qos_register_hooks,                       /**< hook registration */
 };

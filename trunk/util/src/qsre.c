@@ -87,7 +87,7 @@ static void usage(const char *cmd, int man) {
   if(man) printf(".TP\n");
   qs_man_print(man, "  <string>|<path>\n");
   if(man) printf("\n");
-  qs_man_print(man, "     The first argument either defines a sinlge test string of a path to\n");
+  qs_man_print(man, "     The first argument either defines a single test string of a path to\n");
   qs_man_print(man, "     a file containing either multiple test strings or a test pattern with\n");
   qs_man_print(man, "     newline characters (text).\n");
   if(man) printf("\n.TP\n");
