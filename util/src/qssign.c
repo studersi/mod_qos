@@ -544,7 +544,7 @@ static long qs_verify(const char *sec) {
 	  }
 	  if(valid && isSpecialLine(line, QS_START)) {
 	    // new start line (graceful restart)
-	    // we expect now msg nummber 1
+	    // we expect now msg number 1
 	    // but still acept the old until we get the end marker
 	    nr_usr1_lineNumber = m_nr;
 	    m_nr = 1; 
@@ -566,7 +566,7 @@ static long qs_verify(const char *sec) {
 		fprintf(stderr, "ERROR on line %ld: wrong sequence (expect %."SEQDIG"ld)\n", lineNumber, m_nr);
 	      }
 	    } else {
-	      // well done - this is the sequence number we expet
+	      // well done - this is the sequence number we expect
 	    }
 	  }
 	} else if(m_logend) {
@@ -664,7 +664,7 @@ static void usage(char *cmd, int man) {
   if(man) printf("\n.TP\n");
   qs_man_print(man, "  -a 'sha1'|'sha256'\n");
   if(man) printf("\n");
-  qs_man_print(man, "     Specifes the algorithm to use. Default is sha1.\n");
+  qs_man_print(man, "     Specifies the algorithm to use. Default is sha1.\n");
   printf("\n");
   if(man) {
     printf(".SH EXAMPLE\n");

@@ -76,11 +76,11 @@ static const qs_png_elt_t qs_png_elts[] = {
   { "4s", "requests with 4 seconds response time", 25, 95, 180 },
   { "5s", "requests with 5 seconds response time", 15, 90, 180 },
   { ">5s","requests slower than 5 seconds", 35, 90, 185 },
-  { "1xx","requets with HTTP status 1xx",   50, 70, 150 },
-  { "2xx","requets with HTTP status 2xx",   50, 70, 150 },
-  { "3xx","requets with HTTP status 3xx",   50, 70, 150 },
-  { "4xx","requets with HTTP status 4xx",   50, 70, 150 },
-  { "5xx","requets with HTTP status 5xx",   50, 70, 150 },
+  { "1xx","requests with HTTP status 1xx",   50, 70, 150 },
+  { "2xx","requests with HTTP status 2xx",   50, 70, 150 },
+  { "3xx","requests with HTTP status 3xx",   50, 70, 150 },
+  { "4xx","requests with HTTP status 4xx",   50, 70, 150 },
+  { "5xx","requests with HTTP status 5xx",   50, 70, 150 },
   { "ip", "IP addresses",          55, 60, 150 },
   { "usr","active users",          55, 66, 150 },
   { "qV", "created VIP sessions",  55, 50, 155 },
@@ -429,7 +429,7 @@ static long qs_png_draw(int width, int height, int border,
   double scale = 1;        // scaling factor (height x scale = unit)
 
   int hour = -1;           // detect "new" hour
-  char date_str[32] = "";  // sting storing the first day (if fist value is at 00h)
+  char date_str[32] = "";  // string storing the first day (if fist value is at 00h)
 
   long ret;
   for(x=0; x<width; x++) hours[x] = 0;

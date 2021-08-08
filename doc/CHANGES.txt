@@ -16,7 +16,7 @@ Version 11.66
 
 Version 11.65
 
- - Fixed: QS_SrvMinDataRate did not enfore (log only) min data rate
+ - Fixed: QS_SrvMinDataRate did not enforce (log only) min data rate
    in simple mode (only one arg).
    Improved min. data rate calculation and updated documentation.
 
@@ -1574,7 +1574,7 @@ Version 7.12
 
  - Process event filter only if some rules have been defined.
 
- - Recovery rate (decreas limitation) for bandwidth and and request
+ - Recovery rate (decrease limitation) for bandwidth and and request
    limit has been increased from 16% to 25%.
 
 Version 7.11

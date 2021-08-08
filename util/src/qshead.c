@@ -62,7 +62,7 @@ static void usage(char *cmd, int man) {
   } else {
     printf("Summary\n");
   }
-  qs_man_print(man, " %s reads lines from stdin and prints them to stdout unitl a line contains\n", cmd);
+  qs_man_print(man, " %s reads lines from stdin and prints them to stdout until a line contains\n", cmd);
   qs_man_print(man, " the specified pattern (literal string).\n");
   printf("\n");
   if(man) {
