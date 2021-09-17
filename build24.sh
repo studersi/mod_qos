@@ -23,15 +23,12 @@ rm -rf httpd-${APACHE_VER}-${MPM}
 mv httpd-${APACHE_VER} httpd-${APACHE_VER}-${MPM}
 ln -s httpd-${APACHE_VER}-${MPM} httpd
 
-if [ ! -d ../apr ]; then
-    cd ..
-    svn co http://svn.apache.org/repos/asf/apr/apr/trunk apr
-    cd apr
-    ./buildconf
-    ./configure
-    make
-    cd $TOP
-fi
+cd httpd/srclib
+gzip -c -d $TOP/3thrdparty/apr-1.7.0.tar.gz | tar xf -
+mv apr-1.7.0 apr
+gzip -c -d $TOP/3thrdparty/apr-util-1.6.1.tar.gz | tar xf -
+mv apr-util-1.6.1 apr-util
+cd ../..
 
 rm -rf httpd/modules/qos
 mkdir -p httpd/modules/qos
@@ -52,7 +49,8 @@ cd httpd
 
 prefix=$TOP/install
 mkdir -p $prefix
-./configure --prefix=$prefix --with-apr=`pwd`/../../apr --with-mpm=${MPM} --enable-modules=all --enable-mods-static=all --with-module=qos:qos --enable-http2 --with-nghttp2=${TOP}/../nghttp2-1.10.0/ --with-ssl=${TOP}/../../openssl/
+#./configure --prefix=$prefix --with-apr=`pwd`/../../apr --with-mpm=${MPM} --enable-modules=all --enable-mods-static=all --with-module=qos:qos --enable-http2 --with-nghttp2=${TOP}/../nghttp2-1.10.0/ --with-ssl=${TOP}/../../openssl/
+./configure --prefix=$prefix --with-included-apr --with-mpm=${MPM} --enable-modules=all --enable-mods-static=all --with-module=qos:qos --enable-http2
 
 if [ $? -ne 0 ]; then
   echo "ERROR"

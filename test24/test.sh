@@ -31,6 +31,10 @@ if [ `../httpd/httpd -l | grep -c worker.c` -eq 1 ]; then
 	    ERRORS=`expr $ERRORS + 1`
 	    echo "FAILED $E"
 	fi
+	if [ -f core ]; then
+	    echo "CORE at $E"
+	    exit 1
+	fi
 	sleep 2
     done
 fi
@@ -41,6 +45,10 @@ if [ `../httpd/httpd -l | grep -c event.c` -eq 1 ]; then
 	    ERRORS=`expr $ERRORS + 1`
 	    echo "FAILED $E"
 	fi
+	if [ -f core ]; then
+	    echo "CORE at $E"
+	    exit 1
+	fi
 	sleep 2
     done
 fi
@@ -50,6 +58,10 @@ for E in `ls scripts/*.htt | grep -v -e "dos.htt" -e "WORKER.htt" -e "EVENT.htt"
   if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED $E"
+  fi
+  if [ -f core ]; then
+      echo "CORE at $E"
+      exit 1
   fi
   sleep 2
 done
@@ -67,6 +79,10 @@ for E in `ls scripts/*.htt | grep "_h2" | sort`; do
   if [ $? -ne 0 ]; then
     ERRORS=`expr $ERRORS + 1`
     echo "FAILED $E"
+  fi
+  if [ -f core ]; then
+      echo "CORE at $E"
+      exit 1
   fi
   sleep 2
 done
