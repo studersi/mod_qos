@@ -3525,8 +3525,6 @@ static int qos_return_error_andclose(conn_rec *connection, apr_socket_t *socket)
   e = apr_bucket_flush_create(c->bucket_alloc);
   APR_BRIGADE_INSERT_TAIL(bb, e);
   ap_pass_brigade(c->output_filters, bb);
-  //  e = apr_bucket_flush_create(c->bucket_alloc);
-  //  APR_BRIGADE_INSERT_TAIL(bb, e);
 
 //  if(socket) {
 //    // speed up connection termination
