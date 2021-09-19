@@ -14,6 +14,7 @@ ulimit -c unlimited
 
 ERRORS=0
 WARNINGS=0
+CCNT=1
 
 # delete the access log file since it is used to generate permit rules
 ./ctl.sh stop > /dev/null
@@ -32,8 +33,9 @@ if [ `../httpd/httpd -l | grep -c worker.c` -eq 1 ]; then
 	    echo "FAILED $E"
 	fi
 	if [ -f core ]; then
-	    echo "CORE at $E"
-	    exit 1
+	    echo "CORE at $E $CCNT"
+	    mv core core.${CCNT}
+	    CCNT=`expr $CCNT + 1`
 	fi
 	sleep 2
     done
@@ -46,8 +48,9 @@ if [ `../httpd/httpd -l | grep -c event.c` -eq 1 ]; then
 	    echo "FAILED $E"
 	fi
 	if [ -f core ]; then
-	    echo "CORE at $E"
-	    exit 1
+	    echo "CORE at $E $CCNT"
+	    mv core core.${CCNT}
+	    CCNT=`expr $CCNT + 1`
 	fi
 	sleep 2
     done
@@ -60,8 +63,9 @@ for E in `ls scripts/*.htt | grep -v -e "dos.htt" -e "WORKER.htt" -e "EVENT.htt"
     echo "FAILED $E"
   fi
   if [ -f core ]; then
-      echo "CORE at $E"
-      exit 1
+      echo "CORE at $E $CCNT"
+      mv core core.${CCNT}
+      CCNT=`expr $CCNT + 1`
   fi
   sleep 2
 done
@@ -81,8 +85,9 @@ for E in `ls scripts/*.htt | grep "_h2" | sort`; do
     echo "FAILED $E"
   fi
   if [ -f core ]; then
-      echo "CORE at $E"
-      exit 1
+      echo "CORE at $E $CCNT"
+      mv core core.${CCNT}
+      CCNT=`expr $CCNT + 1`
   fi
   sleep 2
 done
