@@ -1,3 +1,8 @@
+Version 11.68
+
+ - Compatibility with Apache 2.4.49 (avoid segfault when returning
+   error code in pre-connection hook / issue similar to CVE-2017-3169).
+
 Version 11.67
 
  - The QS_LogEnv directive can be used to enable environment variable
