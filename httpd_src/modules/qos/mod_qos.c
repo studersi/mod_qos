@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.67";
+static const char g_revision[] = "11.68";
 
 /************************************************************************
  * Includes
@@ -1029,6 +1029,7 @@ typedef struct {
  ***********************************************************************/
 
 module AP_MODULE_DECLARE_DATA qos_module;
+static int m_apache_2_4_49 = 0;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 static int m_worker_mpm = 1; // note: mod_qos is fully tested for Apache 2.2 worker MPM only
 static int m_event_mpm = 0;
@@ -3520,7 +3521,11 @@ static int qos_return_error_andclose(conn_rec *connection, apr_socket_t *socket)
     c->cs->state = CONN_STATE_LINGER;
   }
   apr_table_set(c->notes, QS_CONN_ABORT, QS_CONN_ABORT);
+  if (m_apache_2_4_49 == 1) {
+    return DECLINED;
+  }
 
+  //apr_brigade_cleanup(bb);
   APR_BRIGADE_INSERT_HEAD(bb, e);
   e = apr_bucket_flush_create(c->bucket_alloc);
   APR_BRIGADE_INSERT_TAIL(bb, e);
@@ -8125,6 +8130,10 @@ static void qos_version_check(server_rec *bs) {
   }
 
   ap_get_server_revision(&version);
+  if(version.major == 2 && version.minor == 4 && version.patch >= 49) {
+    // compat: prevents Apache segfault on connection close
+    m_apache_2_4_49 = 1;
+  }
   if(version.major != 2 || (version.minor != 2 && version.minor != 4)) {
     // 2.2 and 2.4 should be ok / older or newer versions are not tested
     ap_log_error(APLOG_MARK, APLOG_NOTICE, 0, bs, 
@@ -8753,7 +8762,11 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
             c->cs->state = CONN_STATE_LINGER;
           }
           apr_table_set(c->notes, QS_CONN_ABORT, QS_CONN_ABORT);
-          ret = m_retcode;
+          if (m_apache_2_4_49 == 1) {
+            ret = DECLINED;
+          } else {
+            ret = m_retcode;
+          }
         }
       } else {
         /* release */
