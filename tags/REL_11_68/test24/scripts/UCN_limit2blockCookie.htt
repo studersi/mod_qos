@@ -1,0 +1,55 @@
+# 
+# QS_UserTrackingCookieName _ckUT /errorpages/cookie.html
+# QS_SetEnvIf               QOS_USER_ID_NEW=^. QS_Block=1
+# QS_ClientEventBlockCount 20  300
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__
+_MATCH headers "Set-Cookie: _ckUT=([a-zA-Z0-9_.+=/-]+); Path" UCOOKIE
+_EXPECT . "302"
+_WAIT
+_CLOSE
+
+_LOOP 25
+_REQ localhost $QS_PORT_BASE
+__GET /style.css HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: Mozilla
+__Cookie: _ckUT=${UCOOKIE}
+__
+_EXPECT . "font-size"
+_WAIT
+_END LOOP
+_CLOSE
+
+_LOOP 19
+_REQ localhost $QS_PORT_BASE
+__GET /style.css HTTP/1.1
+__Host: localhost
+__Connection: close
+__User-Agent: Mozilla
+__
+_EXPECT . "302 Found"
+_WAIT
+_CLOSE
+_END LOOP
+
+_EXPECT ERROR "Connection reset by peer"
+_REQ localhost $QS_PORT_BASE
+__GET /style.css HTTP/1.1
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(060\): access denied, QS_ClientEventBlockCount rule: max=20, current=20"
+_EXEC tail -1 logs/error_log
+
+END

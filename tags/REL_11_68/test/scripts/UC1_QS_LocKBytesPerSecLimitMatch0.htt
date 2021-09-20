@@ -1,0 +1,133 @@
+#
+# $Id$
+#
+# QS_LocKBytesPerSecLimitMatch ^/myimages/  3000
+#
+#HTTEST=/usr/local/bin/httest-2.4.9
+
+INCLUDE scripts/ports
+
+CLIENT
+
+# not yet reached 3000 kbytes/sec (no limitation)
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "\"GET /myimages/images/_1.jpg HTTP/1.1\" 200 [0-9]+ \"htt\" . . - - id="
+_EXEC tail -1 logs/access_log
+
+# the second request is going to be throttled (indicated by "L;")
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/dvd2.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_MATCH headers "Content-Length: ([0-9]+)" CT
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_MATCH EXEC "\"GET /myimages/dvd2.iso HTTP/1.1\" 200 [0-9]+ \"htt\" ([0-9]+) . L; - id=" TM
+_EXEC tail -1 logs/access_log
+
+_MATH:OP $CT DIV $TM BPS
+_DEBUG "$BPS"
+_IF "${BPS}" LT 2300000
+_EXIT FAILED
+_END IF
+_IF "${BPS}" GT 3600000
+_EXIT FAILED
+_END IF
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "\"GET /myimages/images/_1.jpg HTTP/1.1\" 200 [0-9]+ \"htt\" . . L; - id="
+_EXEC tail -1 logs/access_log
+
+_LOOP 12
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 1000
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "\"GET /myimages/images/_1.jpg HTTP/1.1\" 200 [0-9]+ \"htt\" . . - - id="
+_EXEC tail -1 logs/access_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/dvd.iso HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "\"GET /myimages/dvd.iso HTTP/1.1\" 200 [0-9]+ \"htt\" . . L; - id="
+_EXEC tail -1 logs/access_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "\"GET /myimages/images/_1.jpg HTTP/1.1\" 200 [0-9]+ \"htt\" . . L; - id="
+_EXEC tail -1 logs/access_log
+
+_LOOP 12
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 1000
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /myimages/images/_1.jpg HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_EXPECT . "200 OK"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "\"GET /myimages/images/_1.jpg HTTP/1.1\" 200 [0-9]+ \"htt\" . . - - id="
+_EXEC tail -1 logs/access_log
+
+END
+

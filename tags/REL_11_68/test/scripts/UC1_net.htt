@@ -1,0 +1,38 @@
+# 
+# $Id$
+# 
+# QS_EnableInternalIPSimulation on
+# LoadModule               setenvifplus_module libexec/mod_setenvifplus.so
+# SetEnvIfPlus             Remote_Net (.*) NetAddr=$1
+# RequestHeaderPlus        set X-NetAddr ${NetAddr}
+# QS_ClientIpFromHeader    X-NetAddr
+# QS_ClientEventLimitCount 3 3 NET
+# QS_SetEnvIfQuery         NET NET=yes
+# 
+
+INCLUDE scripts/ports
+
+CLIENT
+_LOOP 2
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?name=NET HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+_END LOOP
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?name=NET HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "!this is the root index.html"
+_EXPECT . "Server Error"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=NET, max=3, current=3, age=0, c=127.0.0.0"
+_EXEC tail -1 logs/error_log
+
+END

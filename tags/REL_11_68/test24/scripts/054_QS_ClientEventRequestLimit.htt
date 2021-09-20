@@ -1,0 +1,79 @@
+# QS_ClientEventLimitCount      3 3 QS_DEEP_L
+#   SetEnvIfPlus                Request_Query username=123        QS_DEEP_L=1
+#   SetEnvIfPlus                Request_Query captcha_deep_link   QS_DEEP_L_Clear=1
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D real_ip -D resetAfterLinit >/dev/null
+
+CLIENT 
+
+_EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 054_QS_ClientEventLimitCount.htt" >> logs/error_log
+
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?username=123 HTTP/1.1
+__Host: localhost
+__Req: 01
+__X-Frwd-Address: 192.12.32.34
+__
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?username=123 HTTP/1.1
+__Host: localhost
+__Req: 02
+__X-Frwd-Address: 192.12.32.34
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?username=123 HTTP/1.1
+__Host: localhost
+__Req: 03
+__X-Frwd-Address: 192.12.32.34
+__
+_EXPECT . "!this is the root index.html"
+_EXPECT . "custom error page"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?username=123 HTTP/1.1
+__Host: localhost
+__Req: 04
+__X-Frwd-Address: 192.12.32.34
+__
+_EXPECT . "!this is the root index.html"
+_EXPECT . "custom error page"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?captcha_deep_link HTTP/1.1
+__Host: localhost
+__Req: 05
+__X-Frwd-Address: 192.12.32.34
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+_REQ localhost $QS_PORT_BASE
+__GET /index.html?username=123 HTTP/1.1
+__Host: localhost
+__Req: 06
+__X-Frwd-Address: 192.12.32.34
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END

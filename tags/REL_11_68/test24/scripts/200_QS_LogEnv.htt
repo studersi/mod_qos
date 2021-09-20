@@ -1,0 +1,29 @@
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D status -D LogEnv 2>/dev/null 1>/dev/null
+
+CLIENT
+
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /index.html HTTP/1.1
+__Host: localhost
+__User-Agent: htt
+__
+_WAIT
+_SLEEP 100
+
+_EXPECT EXEC "mod_qos\(210\): ENV >PR_1 .*;UNIQUE_ID"
+_EXPECT EXEC "mod_qos\(210\): ENV >PR_2 .*;UNIQUE_ID"
+_EXPECT EXEC "mod_qos\(210\): ENV >HP_1 .*;UNIQUE_ID"
+_EXPECT EXEC "mod_qos\(210\): ENV >HP_2 .*;UNIQUE_ID"
+_EXPECT EXEC "mod_qos\(210\): ENV >HP_3 .*;UNIQUE_ID"
+_EXPECT EXEC "mod_qos\(210\): ENV >FX_1 .*;UNIQUE_ID"
+_EXPECT EXEC "mod_qos\(210\): ENV <LG_1 .*;UNIQUE_ID"
+_EXEC tail -7 logs/error_log
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END

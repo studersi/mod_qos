@@ -1,0 +1,33 @@
+#
+# $Id$
+#
+INCLUDE scripts/ports
+
+CLIENT
+_EXEC echo "127.0.0.1 - - [21/Dec/2010:15:43:48 +0100] \"GET /htt/index.txt HTTP/1.1\" 200 9 \"START QSTAIL\" 4 - - - id=- - - #453" >> logs/access_log
+
+_REQ localhost $QS_PORT_BASE	
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_WAIT
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "#2#"
+_EXEC ../util/src/qstail -i logs/access_log -p QSTAIL | wc -l | awk '{print "#" $1 "#"}'
+
+_EXPECT EXEC "127.0.0.1 - - \[21/Dec/2010:15:43:48 \+0100\] \"GET /htt/index.txt HTTP/1.1\" 200 9 \"START QSTAIL\" 4 - - - id=- - - #453"
+_EXEC ../util/src/qstail -i logs/access_log -p QSTAIL
+
+_LOOP 10
+_REQ localhost $QS_PORT_BASE	
+__GET /index.html HTTP/1.1
+__Host: localhost
+__
+_WAIT
+_END LOOP
+_CLOSE
+_EXPECT EXEC "#12#"
+_EXEC ../util/src/qstail -i logs/access_log -p QSTAIL | wc -l | awk '{print "#" $1 "#"}'
+
+END

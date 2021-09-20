@@ -1,0 +1,41 @@
+
+INCLUDE scripts/ports
+
+SET HOST=server1
+
+BLOCK REQUEST URL
+_REQ $HOST SSL:$QS_PORT_BASE
+__GET $URL HTTP/1.1
+__Host: $HOST:$QS_PORT_BASE
+__User-Agent: htt
+__Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+__Accept-Language: en-us,de-ch;q=0.7,en;q=0.3
+__Accept-Encoding: gzip,deflate
+__Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+__Connection: keep-alive
+__
+#_MATCH headers "Connection: (.*)" CLOSE
+_WAIT
+#_IF "$CLOSE" MATCH "close"
+#_CLOSE
+#_END IF
+
+END
+
+CLIENT 16
+
+_RAND 0 1000 SLEEP
+_SLEEP $SLEEP
+_AUTO_CLOSE on
+
+_LOOP 2
+# each loop takes about 30 sec
+_CALL REQUEST /b/index.cgi
+_CALL REQUEST /b/image.cgi
+_CALL REQUEST /b/image3.cgi
+_CALL REQUEST /b/image5.cgi
+_CALL REQUEST /b/image2.cgi
+_CALL REQUEST /b/image4.cgi
+_END LOOP
+
+END

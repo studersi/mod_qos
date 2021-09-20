@@ -1,0 +1,56 @@
+#
+# QS_ClientEventLimitCount 6 3
+# QS_SetEnvIfQuery         QS_Limit QS_Limit=3
+# QS_ErrorPage             /error-docs/error.html
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "AS1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "custom error page"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(067\): access denied, QS_ClientEventLimitCount rule: event=QS_Limit, max=6"
+_EXEC tail -1 logs/error_log
+_SLEEP 4000
+
+_REQ localhost $QS_PORT_BASE
+__GET /htt/a/?name=QS_Limit HTTP/1.1
+__Host: localhost
+__
+_EXPECT . "AS3"
+_WAIT
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS3==
+
+
+END
