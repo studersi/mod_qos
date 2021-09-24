@@ -37,7 +37,7 @@ QS_PORT_BASE9=`expr $QS_PORT_BASE + 9`
 QS_PORT_BASE10=`expr $QS_PORT_BASE + 10`
 QS_PORT_BASE11=`expr $QS_PORT_BASE + 11`
 QS_PORT_BASE12=`expr $QS_PORT_BASE + 12`
-
+QS_EXT_HOST=`ifconfig -a | grep 192.168 | tail -1 | awk -F':' '{print $2}' | awk '{print $1}'`
 echo "SET QS_PORT_BASE=$QS_PORT_BASE"   >  scripts/ports
 echo "SET QS_PORT_BASE1=$QS_PORT_BASE1" >> scripts/ports
 echo "SET QS_PORT_BASE2=$QS_PORT_BASE2" >> scripts/ports
@@ -51,6 +51,7 @@ echo "SET QS_PORT_BASE11=$QS_PORT_BASE11" >> scripts/ports
 echo "SET QS_PORT_BASE12=$QS_PORT_BASE12" >> scripts/ports
 echo "SET QS_HOME=`pwd`" >> scripts/ports
 echo "SET QS_HOME_ENC=`pwd | sed s:/:%2F:g`" >> scripts/ports
+echo "SET QS_EXT_HOST=$QS_EXT_HOST" >> scripts/ports
 
 echo "QS_PORT_BASE=$QS_PORT_BASE"   >  ports
 echo "export QS_PORT_BASE"          >> ports
@@ -116,7 +117,8 @@ for E in $CONFFILES; do
 	-e "s;##QS_PORT_BASE9##;$QS_PORT_BASE9;g" \
 	-e "s;##QS_PORT_BASE10##;$QS_PORT_BASE10;g" \
 	-e "s;##QS_PORT_BASE11##;$QS_PORT_BASE11;g" \
-	-e "s;##QS_PORT_BASE12##;$QS_PORT_BASE12;g"
+	-e "s;##QS_PORT_BASE12##;$QS_PORT_BASE12;g" \
+	-e "s;##QS_EXT_HOST##;$QS_EXT_HOST;g"
 done
 
 if [ ! -x run.sh ]; then

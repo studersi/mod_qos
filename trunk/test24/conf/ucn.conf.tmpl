@@ -143,6 +143,11 @@ QS_ClientIpFromHeader     X-Hash
 QS_ClientEventLimitCount  4 5 limitPhone
 </IfDefine>
 
+<IfDefine QS_ClientGeoCountryPriv>
+QS_ClientGeoCountryDB         conf/GeoIPCountryWhois.csv
+QS_ClientGeoCountryPriv       LO  5
+</IfDefine>
+
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
    ServerName   127.0.0.1
@@ -269,3 +274,19 @@ Listen         ##QS_PORT_BASE1##
   </Location>
 
 </VirtualHost>
+
+Listen         ##QS_PORT_BASE3##
+<VirtualHost   ##QS_EXT_HOST##:##QS_PORT_BASE3##>
+  ServerName   ##QS_EXT_HOST##
+
+  TransferLog    "|##ROOT##/../util/src/qsrotate -o ##ROOT##/logs/access1_log -z -g 4 -s 21600 -f"
+
+  ScriptAlias /cgi/ ##ROOT##/htdocs/cgi/
+  <Location /cgi>
+    Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+    Order allow,deny
+    Allow from all
+  </Location>
+
+</VirtualHost>
+

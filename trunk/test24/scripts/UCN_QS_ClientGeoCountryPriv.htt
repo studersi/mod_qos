@@ -1,0 +1,43 @@
+# QS_ClientGeoCountryDB         conf/GeoIPCountryWhois.csv
+# QS_ClientGeoCountryPriv       LO  5
+
+INCLUDE scripts/ports
+
+CLIENT 5
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=2 HTTP/1.1
+__Host: 127.0.0.1
+__
+_EXPECT . "done"
+_WAIT
+
+END
+
+CLIENT 1
+
+_SLEEP 1000
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=1 HTTP/1.1
+__Host: 127.0.0.1
+__
+_EXPECT . "done"
+_WAIT
+
+END
+
+CLIENT 1
+
+_SLEEP 800
+_REQ $QS_EXT_HOST $QS_PORT_BASE3
+__GET /cgi/sleep.cgi?s=1 HTTP/1.1
+__Host: $QS_EXT_HOST
+__
+_EXPECT ERROR "Connection reset by peer"
+_EXPECT . "!done"
+_WAIT
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoCountryPriv rule: max=5, concurrent connections=., c=.* country=PV"
+_EXEC tail -1 logs/error_log
+
+END
