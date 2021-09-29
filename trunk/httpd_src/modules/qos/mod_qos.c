@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.68";
+static const char g_revision[] = "11.69";
 
 /************************************************************************
  * Includes
@@ -743,7 +743,7 @@ typedef struct {
   int decodings; 
   apr_table_t *disable_reqrate_events;
   apr_table_t *setenvstatus_t;
-  apr_table_t *setenvif_t;
+  apr_array_header_t *setenvif_t;
   apr_table_t *setenvifquery_t;
   apr_array_header_t* setenvcmp;
 } qos_dir_config;
@@ -765,7 +765,7 @@ typedef struct {
   apr_table_t *setreqheaderlate_t;
   apr_table_t *unsetresheader_t;
   apr_table_t *unsetreqheader_t;
-  apr_table_t *setenvif_t;
+  apr_array_header_t *setenvif_t;
   apr_table_t *setenvifquery_t;
   apr_table_t *setenvifparp_t;
   apr_table_t *setenvifparpbody_t;
@@ -4942,11 +4942,11 @@ static void qos_setreqheader(request_rec *r, apr_table_t *header_t) {
  * @param r
  * @param setenvif_t
  */
-static void qos_setenvif(request_rec *r, apr_table_t *setenvif_t) {
+static void qos_setenvif(request_rec *r, apr_array_header_t *setenvif_t) {
   int i;
-  apr_table_entry_t *entry = (apr_table_entry_t *)apr_table_elts(setenvif_t)->elts;
-  for(i = 0; i < apr_table_elts(setenvif_t)->nelts; i++) {
-    qos_setenvif_t *setenvif = (qos_setenvif_t *)entry[i].val;
+  qos_setenvif_t *entries = (qos_setenvif_t *)setenvif_t->elts;
+  for(i = 0; i < setenvif_t->nelts; i++) {
+    qos_setenvif_t *setenvif = &entries[i];
     if(setenvif->preg == NULL) {
       // mode 1 (boolean AND operator)
       if((setenvif->variable1[0] == '!') && (setenvif->variable2[0] == '!')) {
@@ -9280,10 +9280,10 @@ static int qos_header_parser(request_rec * r) {
     if(r->parsed_uri.query) {
       qos_setenvifquery(r, sconf, dconf);
     }
-    if(apr_table_elts(sconf->setenvif_t)->nelts > 0) {
+    if(sconf->setenvif_t->nelts > 0) {
       qos_setenvif(r, sconf->setenvif_t);
     }
-    if(apr_table_elts(dconf->setenvif_t)->nelts > 0) {
+    if(dconf->setenvif_t->nelts > 0) {
       qos_setenvif(r, dconf->setenvif_t);
     }
     if(apr_table_elts(sconf->setenv_t)->nelts > 0) {
@@ -10456,10 +10456,10 @@ static int qos_logger(request_rec *r) {
     qos_log_env(r, "<LG_1");
   }
   qos_end_res_rate(r, sconf);
-  if(apr_table_elts(sconf->setenvif_t)->nelts > 0) {
+  if(sconf->setenvif_t->nelts > 0) {
     qos_setenvif(r, sconf->setenvif_t);
   }
-  if(apr_table_elts(dconf->setenvif_t)->nelts > 0) {
+  if(dconf->setenvif_t->nelts > 0) {
     qos_setenvif(r, dconf->setenvif_t);
   }
   if(sconf->has_qos_cc) {
@@ -11592,7 +11592,7 @@ static void *qos_dir_config_create(apr_pool_t *p, char *d) {
   dconf->redirectif = apr_array_make(p, 20, sizeof(qos_redirectif_entry_t));
   dconf->disable_reqrate_events = apr_table_make(p, 1);
   dconf->setenvstatus_t = apr_table_make(p, 5);
-  dconf->setenvif_t = apr_table_make(p, 1);
+  dconf->setenvif_t = apr_array_make(p, 20, sizeof(qos_setenvif_t));
   dconf->setenvifquery_t = apr_table_make(p, 1);
   dconf->setenvcmp = apr_array_make(p, 2, sizeof(qos_cmp_entry_t));
   return dconf;
@@ -11663,8 +11663,7 @@ static void *qos_dir_config_merge(apr_pool_t *p, void *basev, void *addv) {
   dconf->setenvstatus_t = apr_table_copy(p, b->setenvstatus_t);
   qos_table_merge(dconf->setenvstatus_t, o->setenvstatus_t);
 
-  dconf->setenvif_t = apr_table_copy(p, b->setenvif_t);
-  qos_table_merge(dconf->setenvif_t, o->setenvif_t);
+  dconf->setenvif_t = apr_array_append(p, b->setenvif_t, o->setenvif_t);
 
   dconf->setenvifquery_t = apr_table_copy(p, b->setenvifquery_t);
   qos_table_merge(dconf->setenvifquery_t, o->setenvifquery_t);
@@ -11682,7 +11681,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->pool = p;
   sconf->chroot = NULL;
   sconf->location_t = apr_table_make(sconf->pool, 2);
-  sconf->setenvif_t = apr_table_make(sconf->pool, 1);
+  sconf->setenvif_t = apr_array_make(sconf->pool, 20, sizeof(qos_setenvif_t));
   sconf->setenv_t = apr_table_make(sconf->pool, 1);
   sconf->setreqheader_t = apr_table_make(sconf->pool, 5);
   sconf->setreqheaderlate_t = apr_table_make(sconf->pool, 5);
@@ -11892,7 +11891,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
     o->error_page = b->error_page;
   }
   qos_table_merge(o->location_t, b->location_t);
-  qos_table_merge(o->setenvif_t, b->setenvif_t);
+  o->setenvif_t =  apr_array_append(p, b->setenvif_t, o->setenvif_t);
   qos_table_merge(o->setenv_t, b->setenv_t);
   qos_table_merge(o->setreqheader_t, b->setreqheader_t);
   qos_table_merge(o->setreqheaderlate_t, b->setreqheaderlate_t);
@@ -12651,7 +12650,14 @@ const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, c
                                    const char *a3) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
-  qos_setenvif_t *setenvif = apr_pcalloc(cmd->pool, sizeof(qos_setenvif_t));
+  qos_setenvif_t *setenvif;
+  if(cmd->path) {
+    qos_dir_config *dconf = (qos_dir_config*)dcfg;
+    setenvif = apr_array_push(dconf->setenvif_t);
+  } else {
+    setenvif = apr_array_push(sconf->setenvif_t);
+  }
+
   if(a3) {
     // mode 1 (boolean AND operator)
     setenvif->variable1 = apr_pstrdup(cmd->pool, v1);
@@ -12704,12 +12710,6 @@ const char *qos_event_setenvif_cmd(cmd_parms *cmd, void *dcfg, const char *v1, c
       setenvif->value[0] = '\0';
       setenvif->value++;
     }
-  }
-  if(cmd->path) {
-    qos_dir_config *dconf = (qos_dir_config*)dcfg;
-    apr_table_setn(dconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
-  } else {
-    apr_table_setn(sconf->setenvif_t, apr_pstrcat(cmd->pool, v1, v2, a3, NULL), (char *)setenvif);
   }
   return NULL;
 }

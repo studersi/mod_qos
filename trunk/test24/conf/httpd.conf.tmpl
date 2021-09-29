@@ -314,10 +314,17 @@ Listen         ##QS_PORT_BASE##
   <Location /dumpvar/s0>
      QS_SetEnvIf              QS_SetEnvIf_IN=(LOC0[a-z]*) QS_SetEnvIf_IN=$1_LOC0
      QS_SetEnvIfQuery         ^QueryLocation QS_SetEnvIfQuery_LOC=S0
+     # order
+     QS_SetEnvIf              !NOTSET !NOTSET    SET001=1
+     QS_SetEnvIf              !NOTSET  SET001    SET002=2
+     QS_SetEnvIf               SET001  SET002    XET003=3
+     QS_SetEnvIf               XET003=3          SET004=4
+     QS_SetEnvIf               SET001  SET002   !XET003=3
   </Location>
 
   <Location /dumpvar/s0/s1>
      QS_SetEnvIf              QS_SetEnvIf_IN=(LOC1[a-z]*) QS_SetEnvIf_IN=$1_LOC1
+     QS_SetEnvIf              !NOTSET  SET004    SET005=5
   </Location>
 
   <Location /dumpvar/sc>
