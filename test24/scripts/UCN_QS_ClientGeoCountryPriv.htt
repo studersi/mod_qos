@@ -36,8 +36,17 @@ __
 _EXPECT ERROR "Connection reset by peer"
 _EXPECT . "!done"
 _WAIT
-_SLEEP 100
+_CLOSE
+_SLEEP 200
 _EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoCountryPriv rule: max=5, concurrent connections=., c=.* country=PV"
 _EXEC tail -1 logs/error_log
+
+_SLEEP 1200
+_REQ $QS_EXT_HOST $QS_PORT_BASE3
+__GET /cgi/sleep.cgi?s=1 HTTP/1.1
+__Host: $QS_EXT_HOST
+__
+_EXPECT . "done"
+_WAIT
 
 END
