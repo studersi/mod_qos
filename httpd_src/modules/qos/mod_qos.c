@@ -8130,7 +8130,7 @@ static void qos_version_check(server_rec *bs) {
   }
 
   ap_get_server_revision(&version);
-  if(version.major == 2 && version.minor == 4 && version.patch >= 49) {
+  if(version.major == 2 && version.minor == 4 && version.patch == 49) {
     // compat: prevents Apache segfault on connection close
     m_apache_2_4_49 = 1;
   }
