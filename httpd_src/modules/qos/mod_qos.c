@@ -1029,7 +1029,7 @@ typedef struct {
  ***********************************************************************/
 
 module AP_MODULE_DECLARE_DATA qos_module;
-static int m_apache_2_4_49 = 0;
+static int m_forced_close = 1;
 static int m_retcode = HTTP_INTERNAL_SERVER_ERROR;
 static int m_worker_mpm = 1; // note: mod_qos is fully tested for Apache 2.2 worker MPM only
 static int m_event_mpm = 0;
@@ -3521,7 +3521,7 @@ static int qos_return_error_andclose(conn_rec *connection, apr_socket_t *socket)
     c->cs->state = CONN_STATE_LINGER;
   }
   apr_table_set(c->notes, QS_CONN_ABORT, QS_CONN_ABORT);
-  if (m_apache_2_4_49 == 1) {
+  if (m_forced_close == 0) {
     return DECLINED;
   }
 
@@ -8131,8 +8131,8 @@ static void qos_version_check(server_rec *bs) {
 
   ap_get_server_revision(&version);
   if(version.major == 2 && version.minor == 4 && version.patch == 49) {
-    // compat: prevents Apache segfault on connection close
-    m_apache_2_4_49 = 1;
+    // 2.4.49 compat: prevents Apache segfault on connection close
+    m_forced_close = 0;
   }
   if(version.major != 2 || (version.minor != 2 && version.minor != 4)) {
     // 2.2 and 2.4 should be ok / older or newer versions are not tested
@@ -8762,7 +8762,7 @@ static int qos_pre_connection(conn_rec *connection, void *skt) {
             c->cs->state = CONN_STATE_LINGER;
           }
           apr_table_set(c->notes, QS_CONN_ABORT, QS_CONN_ABORT);
-          if (m_apache_2_4_49 == 1) {
+          if (m_forced_close == 0) {
             ret = DECLINED;
           } else {
             ret = m_retcode;
@@ -12968,6 +12968,18 @@ const char *qos_error_code_cmd(cmd_parms *cmd, void *dcfg, const char *arg) {
   return NULL;
 }
 
+/**
+ * global connection close behavior
+ */
+const char *qos_forced_close_cmd(cmd_parms *cmd, void *dcfg, int flag) {
+  const char *err = ap_check_cmd_context(cmd, GLOBAL_ONLY);
+  if (err != NULL) {
+    return err;
+  }
+  m_forced_close = flag;
+  return NULL;
+}
+
 /** QS_UserTrackingCookieName */
 
 #ifdef AP_TAKE_ARGV
@@ -14889,6 +14901,12 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_ErrorResponseCode <code>, defines the HTTP response code which"
                 " is used when a request is denied, default is 500."),
+
+  AP_INIT_FLAG("QS_ForcedClose", qos_forced_close_cmd, NULL,
+               RSRC_CONF,
+               "QS_ForcedClose 'on'|'off', defines if mod_qos connection handler shall"
+               " exit with an error code (on) or not. Default is on (except for"
+               " Apache 2.4.49)."),
 
   /* module settings / various stuff */
   AP_INIT_FLAG("QS_LogOnly", qos_logonly_cmd, NULL,

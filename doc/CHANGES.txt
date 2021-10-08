@@ -6,6 +6,8 @@ Version
 
  - Apache 2.4.49 compatibility fix introduced by mod_qos 11.68 is no
    longer applied for Apache version 2.4.50 and newer.
+   'QS_ForcedClose off' could be used to enable gentle connection
+   close handling manually.
 
 Version 11.68
 
