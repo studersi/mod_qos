@@ -1,0 +1,40 @@
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D status 2>/dev/null 1>/dev/null
+
+CLIENT
+_EXEC ./bin/sleep.sh 58
+
+_REQ localhost SSL:$QS_PORT_BASE2
+__GET /cgi-local/sleep.cgi?s=4 HTTP/1.1
+__Host: localhost
+__User-Agent: limipersec
+__
+_EXPECT . "done"
+_WAIT
+
+END
+
+CLIENT
+_EXEC ./bin/sleep.sh 58
+
+_REQ localhost $QS_PORT_BASE
+__GET /cgi-local/sleep.cgi?s=4 HTTP/1.1
+__Host: localhost
+__User-Agent: limipersec
+__
+_EXPECT . "done"
+_WAIT
+
+_EXPECT EXEC "mod_qos\(200\): { \"scoreboard\": { \"open\": 131022, \"waiting\": 48, \"read\": 0, \"write\": 2, \"keepalive\": 0, \"start\": 0, \"log\": 0, \"dns\": 0, \"closing\": 0, \"finishing\": 0, \"idle\": 0 }, \"maxclients\": { \"max\": 150, \"busy\": 2, \"QS_AllConn\": 2 } }"
+_EXEC tail -1 logs/error_log
+
+END
+
+
+BLOCK FINALLY
+_EXEC ./ctl.sh stop 2>/dev/null 1>/dev/null
+_SLEEP 1000
+_EXEC ./ctl.sh start 2>/dev/null 1>/dev/null
+END

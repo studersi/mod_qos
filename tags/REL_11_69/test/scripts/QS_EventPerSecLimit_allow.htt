@@ -1,0 +1,17 @@
+INCLUDE scripts/ports
+
+CLIENT 1
+_LOOP 100
+_REQ localhost $QS_PORT_BASE
+__GET /test/index.html HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: event
+__
+_EXPECT . "test index.html"
+_WAIT
+_SLEEP 2000
+_CLOSE
+_END LOOP
+
+END

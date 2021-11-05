@@ -1,0 +1,47 @@
+#
+# $Id$
+#
+#   # mutiple rule match
+#   BrowserMatch  "yoda"          YODA
+
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /internalredirectme/?/localpages/index.html HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: yoda
+__
+_EXPECT . "this is the localpages index.html"
+_WAIT
+_CLOSE
+
+END
+
+CLIENT
+_SLEEP 200
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "QS_EventRequestLimit;4\[var=\(YODA\)\]: 1"
+_EXPECT . "QS_LocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_EXPECT . "QS_CondLocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_WAIT
+_CLOSE
+
+_SLEEP 1500
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "QS_EventRequestLimit;4\[var=\(YODA\)\]: 0"
+_EXPECT . "QS_LocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_EXPECT . "QS_CondLocRequestLimitMatch;4\[.*YODA.*\]: 0"
+_WAIT
+_CLOSE
+
+END

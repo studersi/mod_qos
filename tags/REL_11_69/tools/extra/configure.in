@@ -1,0 +1,52 @@
+#                                               -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ(2.53)
+AC_INIT(httest, 0.0.1, pbuchbinder@users.sourceforge.net)
+#AC_CONFIG_AUX_DIR([config])
+#AM_CONFIG_HEADER([config/config.h])
+
+dnl This is a Hack to deal with a Macro name descrpency between Autoconf
+dnl Versions. 
+m4_ifdef([AC_INIT_AUTOMAKE], [AC_INIT_AUTOMAKE]) dnl 2.53
+m4_ifdef([AM_INIT_AUTOMAKE], [AM_INIT_AUTOMAKE]) dnl 2.57
+
+# Setting up C compiler stuff 
+AC_PROG_CC
+AC_PROG_CPP
+AC_AIX
+AC_ISC_POSIX
+AC_HEADER_STDC
+AC_CHECK_HEADERS([unistd.h])
+AC_PROG_LIBTOOL
+
+# Checks for typedefs, structures, and compiler characteristics.
+dnl 2.53 also doesn't have this
+m4_ifdef([AC_HEADER_STDBOOL], [AC_HEADER_STDBOOL])
+AC_C_CONST
+AC_HEADER_TIME
+
+# Checks for library functions.
+AC_FUNC_MALLOC
+AC_FUNC_SELECT_ARGTYPES
+AC_CHECK_FUNCS([bzero select socket])
+
+# customize settings
+AC_ARG_ENABLE([use-static], AS_HELP_STRING(--enable-use-static,Try to use archives instead of shared libraries))
+AC_ARG_ENABLE([full-static], AS_HELP_STRING(--enable-full-static,Try to compile a statical linked executable))
+AC_ARG_ENABLE([ssl], AS_HELP_STRING(--disable-ssl,Disable ssl support (not supported yet)))
+
+# if link static
+if test "$enable_full_static" = "yes"; then
+  LDFLAGS="-all-static"
+fi
+
+# if link static
+if test "$enable_use_static" = "yes"; then
+  LDFLAGS="-static"
+fi
+
+# generate makefiles
+AC_CONFIG_FILES([Makefile
+                 src/Makefile])
+AC_OUTPUT

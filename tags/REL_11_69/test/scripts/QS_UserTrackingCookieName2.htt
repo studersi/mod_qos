@@ -1,0 +1,38 @@
+#
+# $Id$
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_MATCH exec "month=(.*) cookie=" MONTH
+_MATCH exec "month=.* cookie=(.*) id=" COOKIE
+_MATCH exec "month=.* cookie=.* id=(.*)" ID
+_EXEC ./scripts/trcookies.sh
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/index.html?id=1 HTTP/1.1
+__Host: 127.0.0.1
+__Connection: keep-alive
+__Cookie: stat=$COOKIE
+__
+_EXPECT . "!Cookie"
+_WAIT
+
+_CLOSE
+_SLEEP 200
+_EXPECT EXEC "$ID"
+_EXEC tail -1 logs/access_log
+
+END
+
+SERVER $QS_PORT_BASE6
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Content-Length: AUTO 
+__Content-Type: text/plain
+__
+__==AS1==
+
+END

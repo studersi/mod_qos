@@ -1,0 +1,58 @@
+#
+#    QS_LocRequestLimitMatch     ^/htt/limit2/.*   2
+#    QS_LocRequestLimitMatch     ^/index.html    200
+#    QS_LocRequestLimit           /special.htm    10
+#    QS_LocRequestLimit           /special.html    3
+#    SetEnvIf                    User-Agent delayme QS_Delay=100
+#
+#    SetEnvIfPlus               User-Agent reDirectMe=(/errorpages/error.html) QS_RI=$1
+#    QS_RedirectIf              QS_RI ([a-z0-9_/.-]+) $1
+#
+
+INCLUDE scripts/ports
+
+CLIENT
+_EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 002e_QS_LocRequestLimit.htt " >> logs/error_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /special.html HTTP/1.1
+__Host: localhost
+__Connection: close
+__User-Agent: reDirectMe=/errorpages/error.html
+__
+_EXPECT . "Location: .*/errorpages/error.html"
+_WAIT
+_CLOSE
+_SLEEP 150
+_EXPECT EXEC "GET /special.html.* 302 .* cr=1"
+_EXEC tail -2 logs/access_log
+
+_REQ localhost $QS_PORT_BASE
+__GET /OTHERspecial.html HTTP/1.1
+__Host: localhost
+__Connection: close
+__User-Agent: reDirectMe=/errorpages/error.html
+__
+_EXPECT . "Location: .*/errorpages/error.html"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "GET /OTHERspecial.html.* 302 .* cr=\-"
+_EXEC tail -2 logs/access_log
+
+END
+
+CLIENT
+_SLEEP 100
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_LocRequestLimit;10./special.htm.: 0"
+_EXPECT . "QS_LocRequestLimit;3./special.html.: 0"
+_WAIT
+
+_SLEEP 200
+
+END

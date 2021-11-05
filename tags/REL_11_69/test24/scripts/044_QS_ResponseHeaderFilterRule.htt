@@ -1,0 +1,75 @@
+#
+# QS_ResponseHeaderFilterRule X-QOS "[a-zA-Z]+" 20
+#
+#   <Location /htt/headerfilteron>
+#     QS_ResponseHeaderFilter on
+#   </Location>
+#   <Location /htt/headerfiltersilent>
+#     QS_ResponseHeaderFilter silent
+#   </Location>
+#   <Location /htt/headerfilteroff>
+#     QS_ResponseHeaderFilter off
+#   </Location>
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D QS_ResponseHeaderFilter -D QS_ResponseHeaderFilterRule >/dev/null
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/headerfilteron HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "Server: htt"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "X-QOS: ABC"
+_EXPECT . "=ASFCUST="
+_WAIT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /htt/headerfilteron HTTP/1.1
+__Host: 127.0.0.1
+__User-Agent: Mozilla
+__
+_EXPECT . "Server: htt"
+_EXPECT . "Content-Type: text/plain"
+_EXPECT . "!X-QOS"
+_EXPECT . "=ASFDENY="
+_WAIT
+_SLEEP 200
+_EXPECT EXEC "mod_qos\(042\): drop response header: 'X\-QOS: 123', \(pattern=.a.zA.Z.., max. length=20\)"
+_EXEC tail -1 logs/error_log
+
+END
+
+
+SERVER $QS_PORT_BASE6
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Server: htt
+__Content-Type: text/plain
+__Content-Length: AUTO
+__X-QOS: ABC
+__
+__==ASFCUST==
+
+_RES
+_WAIT
+__HTTP/1.1 200 OK
+__Server: htt
+__Content-Type: text/plain
+__Content-Length: AUTO
+__X-QOS: 123
+__
+__==ASFDENY==
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END

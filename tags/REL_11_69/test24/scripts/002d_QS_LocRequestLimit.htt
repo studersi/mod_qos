@@ -1,0 +1,75 @@
+#
+#    QS_LocRequestLimitMatch     ^/htt/limit2/.*   2
+#    QS_LocRequestLimitMatch     ^/index.html    200
+#    QS_LocRequestLimit           /special.htm    10
+#    QS_LocRequestLimit           /special.html    3
+#    SetEnvIf                    User-Agent delayme QS_Delay=100
+#
+
+INCLUDE scripts/ports
+
+CLIENT 10
+_REQ localhost $QS_PORT_BASE
+__GET /special.htm HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: delayme
+__
+_EXPECT . "this is the special.htm document"
+_WAIT
+
+END
+
+CLIENT 1
+_EXEC echo "[`date '+%a %b %d %H:%M:%S.000000 %Y'`] [test:notice] [pid $$:tid 0] htt: 002d_QS_LocRequestLimit.htt " >> logs/error_log
+_SLEEP 60
+_REQ localhost $QS_PORT_BASE
+__GET /special.htm HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__User-Agent: delayme
+__
+_EXPECT . "!this is the special.htm document"
+_EXPECT . "custom error page"
+_EXPECT . "code=010"
+_WAIT
+_CLOSE
+_SLEEP 100
+_EXPECT EXEC "mod_qos\(010\): access denied, QS_LocRequestLimit\* rule: /special.htm\(10\), concurrent requests=11"
+_EXEC tail -1 logs/error_log
+
+END
+
+CLIENT
+_SLEEP 50
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_LocRequestLimit;10./special.htm.: 10"
+_EXPECT . "QS_LocRequestLimit;3./special.html.: 0"
+_WAIT
+
+_SLEEP 200
+
+_REQ localhost $QS_PORT_BASE
+__GET /special.htm_404 HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "404 Not Found"
+_WAIT
+_CLOSE
+_SLEEP 10
+_REQ localhost $QS_PORT_BASE
+__GET /qos?auto HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "QS_LocRequestLimit;10./special.htm.: 0"
+_EXPECT . "QS_LocRequestLimit;3./special.html.: 0"
+_WAIT
+_CLOSE
+
+END

@@ -1,0 +1,84 @@
+#
+#  SetEnvIfPlus               Request_Query QS_SetEnvIf=([a-zA-Z0-9]+) QS_SetEnvIf_IN=$1
+#  QS_SetEnvIf                QS_SetEnvIf_IN=(SRV[a-z]*) QS_SetEnvIf_IN=$1_VHOST
+#
+#  <Location /dumpvar/s0>
+#     QS_SetEnvIf                QS_SetEnvIf_IN=(LOC0[a-z]*) QS_SetEnvIf_IN=$1_LOC0
+#     QS_SetEnvIf              !NOTSET !NOTSET    SET001=1
+#     QS_SetEnvIf              !NOTSET  SET001    SET002=2
+#     QS_SetEnvIf               SET001  SET002    XET003=3
+#     QS_SetEnvIf               XET003=3          SET004=4
+#     QS_SetEnvIf               SET001  SET002   !XET003=3
+#  </Location>
+#
+#  <Location /dumpvar/s0/s1>
+#     QS_SetEnvIf                QS_SetEnvIf_IN=(LOC1[a-z]*) QS_SetEnvIf_IN=$1_LOC1
+#     QS_SetEnvIf              !NOTSET  SET004    SET005=5
+#  </Location>
+#
+
+INCLUDE scripts/ports
+
+EXEC ./ctl.sh restart -D qtest >/dev/null
+
+CLIENT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/?QS_SetEnvIf=SRVa HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "var QS_SetEnvIf_IN=SRVa_VHOST"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/s0/?QS_SetEnvIf=SRVa HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "var QS_SetEnvIf_IN=SRVa_VHOST"
+_EXPECT . "var SET002=2"
+_EXPECT . "!var XET003=3"
+_EXPECT . "var SET004=4"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/s0/?QS_SetEnvIf=LOC0a HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "var QS_SetEnvIf_IN=LOC0a_LOC0"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/s0/s1/?QS_SetEnvIf=LOC0a HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "var QS_SetEnvIf_IN=LOC0a_LOC0"
+_EXPECT . "var SET004=4"
+_EXPECT . "var SET005=5"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/s0/s1/?QS_SetEnvIf=LOC1a HTTP/1.1
+__Host: localhost
+__Connection: keep-alive
+__
+_EXPECT . "var QS_SetEnvIf_IN=LOC1a_LOC1"
+_WAIT
+
+_REQ localhost $QS_PORT_BASE
+__GET /dumpvar/s0/?QS_SetEnvIf=LOC1a HTTP/1.1
+__Host: localhost
+__Connection: close
+__
+_EXPECT . "!var QS_SetEnvIf_IN=LOC1a_LOC1"
+_WAIT
+_CLOSE
+
+END
+
+BLOCK FINALLY
+_EXEC ./ctl.sh restart 2>/dev/null 1>/dev/null
+END

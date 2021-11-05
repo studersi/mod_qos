@@ -1,0 +1,95 @@
+# ADD line 1: /app/test
+# 001 ^(/[a-zA-Z0-9\-_]+)+[/]?\.?[a-zA-Z]{0,4}$
+# ADD line 3: /m/this?name=val&more
+# 002 ^[/a-zA-Z]+/this\?((name=[a-zA-Z]{0,13}[&]?)?more)?$
+# ADD line 4: /app/mo^"'re?name=value
+# 003 ^[/a-zA-Z]+/mo\^"'re\?(name=[a-zA-Z]{0,15}[&]?)?$
+# ADD line 5: /app/this/cont?n=1&v=2
+# 004 ^[/a-zA-Z]+/cont\?(n=[0-9]{0,11}[&]?)?(v=[0-9]{0,11}[&]?)?$
+# ADD line 6: /app/this/cont?v=1&n=2
+# 005 ^[/a-zA-Z]+/cont\?(v=[0-9]{0,11}[&]?)?(n=[0-9]{0,11}[&]?)?$
+# ADD line 9: /app/this/cont?name%c4=value%c3
+# 006 ^[/a-zA-Z]+/cont\?(name\xc4=[a-zA-Z\xc3]{0,16}[&]?)?$
+# ADD line 10: /app/this/cont2?name%c4=value%c3
+# 007 ^[/a-zA-Z]+/cont2\?(name\xc4=[a-zA-Z\xc3]{0,16}[&]?)?$
+# ADD line 11: /app/sp;v1.1%20?show_all
+# 008 ^[/a-zA-Z]+/sp;v1\.1 \?(show_all)?$
+# ADD line 12: /app/f/main.do?show=7834639&infoWord=Yes+Go&refN=98876&code=rk1lhTLn266YBx9$$
+# 009 ^[/a-zA-Z]+/main\.do\?(show=[0-9]{0,17}[&]?)?(infoWord=[a-zA-Z ]{0,16}[&]?)?(refN=[0-9]{0,15}[&]?)?(code=[a-zA-Z0-9\$]{0,27}[&]?)?$
+# ADD line 13: /app/sp2ä/mo.reö?name=+$m?ore&n=b
+# 010 ^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?(name=[ \$a-zA-Z\?]{0,17}[&]?)?(n=[a-zA-Z]{0,11}[&]?)?$
+# ADD line 14: /app/test/__JDbhLdSs4dpOhE1LmbspyhEshuV.Ss__/b;XXX=Abc!-22!-33!44!55
+# 011 ^[/a-zA-Z_0-9\.;=!\-]+$
+# ADD line 15: /app/test/__JDbhLdSs4qpOhE1LmbspOhELmbhuV.Ss__/b;XXX=Abc!-22!-33!44!55888888%C3
+# 012 ^[/a-zA-Z_0-9\.;=!\-\xc3]+$
+# ADD line 16: /app/test/__JDbhLdSs4qpOhE1kajji78oJa8HLmbsp_-*other?name=value
+# 013 ^[/a-zA-Z]+/[a-zA-Z0-9\-_\$\+!]+\*other\?(name=[a-zA-Z]{0,15}[&]?)?$
+# ADD line 17: /app/test/sub?n=v#u?as
+# 014 ^[/a-zA-Z]+/sub\?(n=[a-zA-Z]{0,11}[&]?)?#[a-zA-Z\?]+$
+# ADD line 18: /app/test/?n=http://a.b.c/i.t??
+# 015 ^[/]?[/a-zA-Z]+/test[/]?\?(n=[a-zA-Z:/\.\?]{0,28}[&]?)?$
+# ADD line 19: /?n=n
+# 016 ^/\?(n=[a-zA-Z]{0,11}[&]?)?$
+# ADD line 20: /app/test?l=x/\\"oM=\"javascript:alert(true)\"\"
+# 017 ^[/a-zA-Z]+/test\?(l=[a-zA-Z/\\"=:\(\)]{0,46}[&]?)?$
+# ADD line 21: /app/test?n&m=1
+# 018 ^[/a-zA-Z]+/test\?[a-zA-Z]{0,11}[&]?(m=[0-9]{0,11}[&]?)?$
+# ADD line 22: /app/test?n=m&=
+# 019 ^[/a-zA-Z]+/test\?(n=[a-zA-Z]{0,11}[&]?)?(=)?$
+# ADD line 23: /app/test?&n=m&=
+# 020 ^[/a-zA-Z]+/test\?[&]?(n=[a-zA-Z]{0,11}[&]?)?(=)?$
+# ADD line 27: /app/ervlet?action=search&ret=http%3A%2F%2Fserver%2Fapp&name=value&&name=value
+# 021 ^[/a-zA-Z]+/ervlet\?(action=[a-zA-Z]{0,16}[&]?)?(ret=[a-zA-Z:/]{0,27}[&]?)?(name=[a-zA-Z]{0,15}[&]?)?[&]?(name=[a-zA-Z]{0,15}[&]?)?$
+# ADD line 28: /app/ervlet?other=search&ret=http%3A%2F%2Fserver%2Fapp&name=value&&name=value
+# 022 ^[/a-zA-Z]+/ervlet\?(other=[a-zA-Z]{0,16}[&]?)?(ret=[a-zA-Z:/]{0,27}[&]?)?(name=[a-zA-Z]{0,15}[&]?)?[&]?(name=[a-zA-Z]{0,15}[&]?)?$
+# ADD line 29: /app/k.x/umlhex\xc3\xbcurl%C3%BC/?Cmd=new
+# 023 ^[/a-zA-Z\.]+/umlhex\xc3\xbcurl\xc3\xbc[/]?\?(Cmd=[a-zA-Z]{0,13}[&]?)?$
+# ADD line 30: /o-b/test.php?blah1=&blah2=
+# 024 ^[/a-zA-Z\-]+/test\.php\?(blah1=[&]?)?(blah2=)?$
+# ADD line 31: /qos/parp/json /qos/parp/json?session=12&_o_name_v=Jack%20%28%5c%22Bee%5c%22%29%20Nimble&_o_format_o_type_v=rect&_o_format_o_width_n=1920&_o_format_o_height_n=1080&_o_format_o_interlace_b=false&_o_format_o_frame%20rates_a_n=24&_o_format_o_frame%20rates_a_n=30&_o_format_o_frame%20rates_a_n=60&_o_format_o_frame%20rates_a_n=72
+# 025 ^[/a-zA-Z ]+/json\?(session=[0-9]{0,12}[&]?)?(_o_name_v=[a-zA-Z \(\\"\)]{0,31}[&]?)?(_o_format_o_type_v=[a-zA-Z]{0,14}[&]?)?(_o_format_o_width_n=[0-9]{0,14}[&]?)?(_o_format_o_height_n=[0-9]{0,14}[&]?)?(_o_format_o_interlace_b=[a-zA-Z]{0,15}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?$
+# search for redundant rules [0][12][1][13][2][14][3][15][4][16][5][17][6][18][7][19][8][20][9][21][10][22][11][23][24] done
+# DEL rule (not required): ^(/[a-zA-Z0-9\-_]+)+[/]?\.?[a-zA-Z]{0,4}$
+# DEL rule (not required): ^[/a-zA-Z_0-9\.;=!\-]+$
+# DEL rule (not required): ^[/a-zA-Z]+/test\?(n=[a-zA-Z]{0,11}[&]?)?(=)?$
+# verify new rules ...
+
+# --------------------------------------------------------
+# Wed Nov  3 20:13:03 2010
+# 22 rules from 31 access log lines
+#  source (-i): access_log
+#  path depth (-d): 1
+#  disable path only regex (-h): no
+#  base64 detection level (-b): 5
+#  redundancy check (-n): yes
+#  pcre only for query (-p): no
+#  decoding (-u): url
+#  one pcre for query value (-m): no
+#  single pcre for query (-s): no
+#  query outsize (-l): 10
+#  exit on error (-e): yes
+#  rule file (-c): -
+#  duration: 0 minutes
+# --------------------------------------------------------
+QS_PermitUri +QSF001 deny "^[/a-zA-Z_0-9\.;=!\-\xc3]+$"
+QS_PermitUri +QSF002 deny "^[/a-zA-Z]+/this\?((name=[a-zA-Z]{0,13}[&]?)?more)?$"
+QS_PermitUri +QSF003 deny "^[/a-zA-Z]+/test\?[a-zA-Z]{0,11}[&]?(m=[0-9]{0,11}[&]?)?$"
+QS_PermitUri +QSF004 deny "^[/a-zA-Z]+/test\?[&]?(n=[a-zA-Z]{0,11}[&]?)?(=)?$"
+QS_PermitUri +QSF005 deny "^[/a-zA-Z]+/test\?(l=[a-zA-Z/\x5c\x22=:\(\)]{0,46}[&]?)?$"
+QS_PermitUri +QSF006 deny "^[/a-zA-Z]+/sub\?(n=[a-zA-Z]{0,11}[&]?)?#[a-zA-Z\?]+$"
+QS_PermitUri +QSF007 deny "^[/a-zA-Z]+/sp;v1\.1 \?(show_all)?$"
+QS_PermitUri +QSF008 deny "^[/a-zA-Z]+/mo\^\x22're\?(name=[a-zA-Z]{0,15}[&]?)?$"
+QS_PermitUri +QSF009 deny "^[/a-zA-Z]+/main\.do\?(show=[0-9]{0,17}[&]?)?(infoWord=[a-zA-Z ]{0,16}[&]?)?(refN=[0-9]{0,15}[&]?)?(code=[a-zA-Z0-9\$]{0,27}[&]?)?$"
+QS_PermitUri +QSF010 deny "^[/a-zA-Z]+/ervlet\?(other=[a-zA-Z]{0,16}[&]?)?(ret=[a-zA-Z:/]{0,27}[&]?)?(name=[a-zA-Z]{0,15}[&]?)?[&]?(name=[a-zA-Z]{0,15}[&]?)?$"
+QS_PermitUri +QSF011 deny "^[/a-zA-Z]+/ervlet\?(action=[a-zA-Z]{0,16}[&]?)?(ret=[a-zA-Z:/]{0,27}[&]?)?(name=[a-zA-Z]{0,15}[&]?)?[&]?(name=[a-zA-Z]{0,15}[&]?)?$"
+QS_PermitUri +QSF012 deny "^[/a-zA-Z]+/cont\?(v=[0-9]{0,11}[&]?)?(n=[0-9]{0,11}[&]?)?$"
+QS_PermitUri +QSF013 deny "^[/a-zA-Z]+/cont\?(name\xc4=[a-zA-Z\xc3]{0,16}[&]?)?$"
+QS_PermitUri +QSF014 deny "^[/a-zA-Z]+/cont\?(n=[0-9]{0,11}[&]?)?(v=[0-9]{0,11}[&]?)?$"
+QS_PermitUri +QSF015 deny "^[/a-zA-Z]+/cont2\?(name\xc4=[a-zA-Z\xc3]{0,16}[&]?)?$"
+QS_PermitUri +QSF016 deny "^[/a-zA-Z]+/[a-zA-Z0-9\-_\$\+!]+\*other\?(name=[a-zA-Z]{0,15}[&]?)?$"
+QS_PermitUri +QSF017 deny "^[/a-zA-Z\.]+/umlhex\xc3\xbcurl\xc3\xbc[/]?\?(Cmd=[a-zA-Z]{0,13}[&]?)?$"
+QS_PermitUri +QSF018 deny "^[/a-zA-Z\-]+/test\.php\?(blah1=[&]?)?(blah2=)?$"
+QS_PermitUri +QSF019 deny "^[/a-zA-Z0-9\xe4]+/mo\.re\xf6\?(name=[ \$a-zA-Z\?]{0,17}[&]?)?(n=[a-zA-Z]{0,11}[&]?)?$"
+QS_PermitUri +QSF020 deny "^[/a-zA-Z ]+/json\?(session=[0-9]{0,12}[&]?)?(_o_name_v=[a-zA-Z \(\x5c\x22\)]{0,31}[&]?)?(_o_format_o_type_v=[a-zA-Z]{0,14}[&]?)?(_o_format_o_width_n=[0-9]{0,14}[&]?)?(_o_format_o_height_n=[0-9]{0,14}[&]?)?(_o_format_o_interlace_b=[a-zA-Z]{0,15}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?(_o_format_o_frame rates_a_n=[0-9]{0,12}[&]?)?$"
+QS_PermitUri +QSF021 deny "^[/]?[/a-zA-Z]+/test[/]?\?(n=[a-zA-Z:/\.\?]{0,28}[&]?)?$"
+QS_PermitUri +QSF022 deny "^/\?(n=[a-zA-Z]{0,11}[&]?)?$"

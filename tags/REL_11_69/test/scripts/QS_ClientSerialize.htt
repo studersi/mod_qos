@@ -1,0 +1,44 @@
+INCLUDE scripts/ports
+
+CLIENT
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /404?serializeme=yes HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+# unset serialize flag even on error conditions
+_EXPECT . "404"
+_WAIT
+_CLOSE
+_SLEEP 100
+
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /cgi/sleep.cgi?s=5&serializeme=yes HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "done"
+_WAIT
+
+END
+
+CLIENT
+_SLEEP 1800
+_REQ 127.0.0.1 $QS_PORT_BASE
+__GET /index.html?serializeme=yes HTTP/1.1
+__Host: localhost.host.ch
+__User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.1.5) Gecko/20070713 Firefox/2.0.0.5
+__Connection: keep-alive
+__
+_EXPECT . "this is the root index.html"
+_WAIT
+_CLOSE
+_SLEEP 500
+_EXPECT EXEC "GET /cgi/sleep.cgi\?s=5&serializeme=yes HTTP/1.1\" 200 .*Firefox/2.0.0.5\" 5 . -"
+_EXPECT EXEC "GET /index.html\?serializeme=yes HTTP/1.1\" 200 .*Firefox/2.0.0.5\" 3 . s;"
+_EXEC tail -2 logs/access_log
+
+END
