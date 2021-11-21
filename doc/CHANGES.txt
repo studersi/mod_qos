@@ -1,3 +1,9 @@
+Version 11.70
+
+ - QS_ClientGeoCountryPriv skips clients whose IP address can't
+   be mapped to a country code if the argument 'excludeUnknown'
+   is specified.
+
 Version 11.69
 
  - Internal: QS_SetEnvIf directives use an array to store all

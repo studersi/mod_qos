@@ -2041,12 +2041,14 @@ the TCP connection to evaluate this variable.</i></small>
 </li>
 <li>
 <a name="QS_ClientGeoCountryPriv"></a>
-<syntax>QS_ClientGeoCountryPriv &lt;list&gt; &lt;connections&gt;</syntax><br>
+<syntax>QS_ClientGeoCountryPriv &lt;list&gt; &lt;connections&gt; ['excludeUnknown']</syntax><br>
 Defines a comma separated list of country codes for origin client IPv4 address 
 which are allowed to access the server even if the number of busy TCP 
 connections reaches the defined number of connections.<br>
 Uses the geographical database loaded by 
 <a href="#QS_ClientGeoCountryDB"><code>QS_ClientGeoCountryDB</code></a>.
+Clients whose IP can't be mapped to a country code can be excluded 
+from the limitation by configuring the 'excludeUnknown' argument.
 </li>
 </ul>
 

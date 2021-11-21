@@ -43,7 +43,7 @@
  * Version
  ***********************************************************************/
 static const char revision[] = "$Id$";
-static const char g_revision[] = "11.69";
+static const char g_revision[] = "11.70";
 
 /************************************************************************
  * Includes
@@ -861,6 +861,7 @@ typedef struct {
   qos_geo_t *geodb;           /* GLOBAL ONLY */
   int geo_limit;              /* GLOBAL ONLY */
   apr_table_t *geo_priv;      /* GLOBAL ONLY */
+  int geo_excludeUnknown;     /* GLOBAL ONLY */
   qs_ip_type_e ip_type;       /* GLOBAL ONLY */
   int qsstatus;               /* GLOBAL ONLY */
   int qsevents;               /* GLOBAL ONLY */
@@ -3147,14 +3148,6 @@ static apr_status_t qos_init_shm(server_rec *s, qos_srv_config *sconf, qs_actabl
   return APR_SUCCESS;
 }
 
-//static apr_status_t qos_cleanup_geodb(void *p) {
-//  qos_geo_t *geodb = p;
-//  if(geodb->data) {
-//    free(geodb->data);
-//  }
-//  return APR_SUCCESS;
-//}
-
 /**
  * Loads the geo database. See QS_GEO_PATTERN about the file format.
  * @param pool To allocate memory from
@@ -3216,7 +3209,6 @@ static apr_status_t qos_loadgeo(apr_pool_t *pool, qos_geo_t *geodb,
   }
   
   geodb->size = lines;
-  //geodb->data = calloc(geodb->size, sizeof(qos_geo_entry_t));
   geodb->data = apr_pcalloc(pool, APR_ALIGN_DEFAULT(sizeof(qos_geo_entry_t)) * geodb->size);
 
   // load the file into the memory
@@ -8579,7 +8571,12 @@ static int qos_pre_process_connection(conn_rec *connection, void *skt) {
       }
       if(sconf->geo_limit != -1) {
         if(all_connections >= sconf->geo_limit) {
-          if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
+          if(sconf->geo_excludeUnknown == 1 && (pB == NULL || pB->country == NULL)) {
+            ap_log_error(APLOG_MARK, APLOG_DEBUG, 0, c->base_server, 
+                         QOS_LOGD_PFX"skip QS_ClientGeoCountryPriv enforcement"
+                         " for client address %s which could not be mapped to country code",
+                         QS_CONN_REMOTEIP(c) ? QS_CONN_REMOTEIP(c) : "UNKNOWN");
+          } else if(pB == NULL || apr_table_get(sconf->geo_priv, pB->country) == NULL) {
             ap_log_error(APLOG_MARK, APLOG_NOERRNO|APLOG_ERR, 0, c->base_server,
                          QOS_LOG_PFX(101)"access denied%s,"
                          " QS_ClientGeoCountryPriv rule: max=%d,"
@@ -11765,6 +11762,7 @@ static void *qos_srv_config_create(apr_pool_t *p, server_rec *s) {
   sconf->geodb = NULL;
   sconf->geo_limit = -1;
   sconf->geo_priv = apr_table_make(p, 20);
+  sconf->geo_excludeUnknown = -1;
   sconf->qslog_p = NULL;
   sconf->qsstatus = 0;
   sconf->qsevents = 0;
@@ -11869,6 +11867,7 @@ static void *qos_srv_config_merge(apr_pool_t *p, void *basev, void *addv) {
   o->geodb = b->geodb;
   o->geo_limit = b->geo_limit;
   o->geo_priv = b->geo_priv;
+  o->geo_excludeUnknown = b->geo_excludeUnknown;
   o->qslog_p = b->qslog_p;
   o->qsstatus = b->qsstatus;
   o->qsevents = b->qsevents;
@@ -13798,12 +13797,11 @@ const char *qos_geodb_cmd(cmd_parms *cmd, void *dcfg, const char *arg1) {
                         errors);
   }
 
-  //apr_pool_pre_cleanup_register(cmd->pool, geodb, qos_cleanup_geodb);
-
   return NULL;
 }
 
-const char *qos_geopriv_cmd(cmd_parms *cmd, void *dcfg, const char *list, const char *con) {
+const char *qos_geopriv_cmd(cmd_parms *cmd, void *dcfg, const char *list, const char *con,
+                            const char *excludeUnknown) {
   qos_srv_config *sconf = (qos_srv_config*)ap_get_module_config(cmd->server->module_config,
                                                                 &qos_module);
   char *next = apr_pstrdup(cmd->pool, list);
@@ -13830,6 +13828,13 @@ const char *qos_geopriv_cmd(cmd_parms *cmd, void *dcfg, const char *list, const 
   if(sconf->geo_limit != -1 && sconf->geo_limit != geo_limit) {
     return apr_psprintf(cmd->pool, "%s: already configured with a different limitation",
                         cmd->directive->directive);
+  }
+  if(excludeUnknown != NULL) {
+    if(strcasecmp(excludeUnknown, excludeUnknown) != 0) {
+      return apr_psprintf(cmd->pool, "%s: invalid argument %s",
+                          cmd->directive->directive, excludeUnknown);
+    }
+    sconf->geo_excludeUnknown = 1;
   }
   sconf->geo_limit = geo_limit;
   return NULL;
@@ -14885,12 +14890,15 @@ static const command_rec qos_config_cmds[] = {
                 RSRC_CONF,
                 "QS_ClientGeoCountryDB <path>, path to the geograpical database file."),
 
-  AP_INIT_TAKE2("QS_ClientGeoCountryPriv", qos_geopriv_cmd, NULL,
+  AP_INIT_TAKE23("QS_ClientGeoCountryPriv", qos_geopriv_cmd, NULL,
                 RSRC_CONF,
-                "QS_ClientGeoCountryPriv <list> <connections>, defines a comma separated list of"
-                " country codes for origin client IP address which are allowed to"
-                " access the server if the number of busy TCP connections reaches"
-                " the defined number of connections."),
+                "QS_ClientGeoCountryPriv <list> <connections> ['excludeUnknown'],"
+                 " defines a comma separated list of country codes"
+                 " for origin client IP address which are allowed to"
+                 " access the server if the number of busy TCP connections reaches"
+                 " the defined number of connections while others are denied access."
+                 " Clients whose IP can't be mapped to a country code can be excluded"
+                 " from the limitation by configuring the 'excludeUnknown' argument."),
 
   /* error documents */
   AP_INIT_TAKE1("QS_ErrorPage", qos_error_page_cmd, NULL,

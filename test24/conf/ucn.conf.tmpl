@@ -148,6 +148,11 @@ QS_ClientGeoCountryDB         conf/GeoIPCountryWhois.csv
 QS_ClientGeoCountryPriv       LO  5
 </IfDefine>
 
+<IfDefine QS_ClientGeoCountryPriv_excludeUnknown>
+QS_ClientGeoCountryDB         conf/GeoIPCountryWhois.csv
+QS_ClientGeoCountryPriv       LO  5  excludeUnknown
+</IfDefine>
+
 Listen         ##QS_PORT_BASE##
 <VirtualHost   127.0.0.1:##QS_PORT_BASE##>
    ServerName   127.0.0.1
@@ -290,3 +295,7 @@ Listen         ##QS_PORT_BASE3##
 
 </VirtualHost>
 
+Listen                  [::1]:##QS_PORT_BASE10##
+<VirtualHost [::1]:##QS_PORT_BASE10##>
+   ServerName                 ip6-localhost
+</VirtualHost>

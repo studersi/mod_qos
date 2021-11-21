@@ -1,5 +1,5 @@
 # QS_ClientGeoCountryDB         conf/GeoIPCountryWhois.csv
-# QS_ClientGeoCountryPriv       LO  5
+# QS_ClientGeoCountryPriv       LO  5  excludeUnknown
 
 INCLUDE scripts/ports
 
@@ -54,19 +54,6 @@ END
 CLIENT 1
 
 _SLEEP 1000
-_REQ [::1] $QS_PORT_BASE10
-__GET /index.html HTTP/1.1
-__Host: ip6-localhost
-__
-_EXPECT ERROR "Connection reset by peer"
-_EXPECT . "!this is the root index.html"
-_WAIT
-_CLOSE
-_SLEEP 100
-_EXPECT EXEC "mod_qos\(101\): access denied, QS_ClientGeoCountryPriv rule: max=5, concurrent connections=., c=.* country=\-"
-_EXEC tail -1 logs/error_log
-
-_SLEEP 1200
 _REQ [::1] $QS_PORT_BASE10
 __GET /index.html HTTP/1.1
 __Host: ip6-localhost
